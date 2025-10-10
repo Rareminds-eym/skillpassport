@@ -1,24 +1,28 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
-import Header from '../components/Students/components/Header';
-import ProfileHeroEdit from '../components/Students/components/ProfileHeroEdit';
-import Footer from '../components/Students/components/Footer';
-import { Toaster } from '../components/Students/components/ui/toaster';
+import React, { useState } from "react";
+import "./App.css";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Header from "./components/Header";
+import HeroSection from "./components/HeroSection";
+import ProfileHeroEdit from "./components/ProfileHeroEdit";
+import Dashboard from "./components/Dashboard";
+import ProfileEditSection from "./components/ProfileEditSection";
+import Footer from "./components/Footer";
+import { Toaster } from "./components/ui/toaster";
 import {
   EducationEditModal,
   TrainingEditModal,
   ExperienceEditModal,
   SkillsEditModal
-} from '../components/Students/components/ProfileEditModals';
+} from './components/ProfileEditModals';
 import {
   educationData,
   trainingData,
   experienceData,
   technicalSkills,
   softSkills
-} from '../components/Students/data/mockData';
+} from './data/mockData';
 
-const StudentLayout = () => {
+const SkillPassportDashboard = () => {
   const [activeTab, setActiveTab] = useState('skills');
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
@@ -38,7 +42,7 @@ const StudentLayout = () => {
 
   const handleEditClick = (sectionId) => {
     if (sectionId === 'profile') {
-      // Navigate to profile edit or handle profile editing
+      // Show full profile edit section
       setActiveTab('profile');
     } else {
       // Open specific modal
@@ -46,13 +50,18 @@ const StudentLayout = () => {
     }
   };
 
+  const renderContent = () => {
+    if (activeTab === 'profile') {
+      return <ProfileEditSection />;
+    }
+    return <Dashboard />;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
       <ProfileHeroEdit onEditClick={handleEditClick} />
-      <main className="py-8 px-6">
-        <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
-      </main>
+      {renderContent()}
       <Footer />
       <Toaster />
 
@@ -99,4 +108,16 @@ const StudentLayout = () => {
   );
 };
 
-export default StudentLayout;
+function App() {
+  return (
+    <div className="App">
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<SkillPassportDashboard />} />
+        </Routes>
+      </BrowserRouter>
+    </div>
+  );
+}
+
+export default App;
