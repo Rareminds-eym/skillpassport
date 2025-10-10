@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
-import { Button } from '../../components/Students/components/ui/button';
-import { Badge } from '../../components/Students/components/ui/badge';
-import { Progress } from '../../components/Students/components/ui/progress';
-import {
-  Bell,
-  TrendingUp,
-  CheckCircle,
-  Star,
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { Progress } from './ui/progress';
+import { 
+  Bell, 
+  TrendingUp, 
+  CheckCircle, 
+  Star, 
   ExternalLink,
   Edit,
   Calendar,
@@ -16,24 +16,24 @@ import {
   Code,
   MessageCircle
 } from 'lucide-react';
-import {
-  recentUpdates,
-  suggestions,
-  educationData,
-  trainingData,
-  experienceData,
-  technicalSkills,
-  softSkills,
-  opportunities
-} from '../../components/Students/data/mockData';
+import { 
+  recentUpdates, 
+  suggestions, 
+  educationData, 
+  trainingData, 
+  experienceData, 
+  technicalSkills, 
+  softSkills, 
+  opportunities 
+} from '../data/mockData';
 import {
   EducationEditModal,
   TrainingEditModal,
   ExperienceEditModal,
   SkillsEditModal
-} from '../../components/Students/components/ProfileEditModals';
+} from './ProfileEditModals';
 
-const StudentDashboard = () => {
+const Dashboard = () => {
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
     education: educationData,
@@ -52,9 +52,9 @@ const StudentDashboard = () => {
 
   const renderStars = (level) => {
     return [...Array(5)].map((_, i) => (
-      <Star
-        key={i}
-        className={`w-4 h-4 ${i < level ? 'fill-[#FFD700] text-[#FFD700]' : 'text-gray-300'}`}
+      <Star 
+        key={i} 
+        className={`w-4 h-4 ${i < level ? 'fill-[#FFD700] text-[#FFD700]' : 'text-gray-300'}`} 
       />
     ));
   };
@@ -63,10 +63,10 @@ const StudentDashboard = () => {
     <div className="bg-gray-50 py-8 px-6">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
+          
           {/* LEFT COLUMN - User Activity & Updates */}
-          <div className="lg:col-span-1 space-y-6">
-
+          <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-20">
+            
             {/* Recent Updates */}
             <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
@@ -109,7 +109,7 @@ const StudentDashboard = () => {
           {/* RIGHT COLUMN - 6 Key Boxes */}
           <div className="lg:col-span-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
+              
               {/* 1. My Education - Multiple Entries */}
               <Card className="h-full border-t-4 border-t-emerald-500 shadow-lg hover:shadow-xl transition-shadow">
                 <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50">
@@ -133,11 +133,11 @@ const StudentDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 max-h-80 overflow-y-auto">
-                  {userData.education.map((education) => (
+                  {userData.education.map((education, index) => (
                     <div key={education.id} className={`p-4 rounded-lg border-l-4 ${
-                      education.status === 'ongoing'
-                        ? 'border-l-blue-500 bg-blue-50'
-                        : education.level === "Bachelor's"
+                      education.status === 'ongoing' 
+                        ? 'border-l-blue-500 bg-blue-50' 
+                        : education.level === 'Bachelor\'s' 
                           ? 'border-l-emerald-500 bg-emerald-50'
                           : education.level === 'Certificate'
                             ? 'border-l-amber-500 bg-amber-50'
@@ -149,8 +149,8 @@ const StudentDashboard = () => {
                           <p className="text-sm text-gray-600 font-medium">{education.university}</p>
                         </div>
                         <Badge className={`${
-                          education.status === 'ongoing'
-                            ? 'bg-blue-500 hover:bg-blue-500'
+                          education.status === 'ongoing' 
+                            ? 'bg-blue-500 hover:bg-blue-500' 
                             : 'bg-emerald-500 hover:bg-emerald-500'
                         } text-white text-xs`}>
                           {education.status}
@@ -210,8 +210,8 @@ const StudentDashboard = () => {
                     <div key={index} className="space-y-3 p-3 bg-gradient-to-r from-purple-50 to-white rounded-lg border-l-2 border-l-purple-400">
                       <div className="flex justify-between items-start">
                         <p className="text-sm font-semibold text-gray-800">{training.course}</p>
-                        <Badge className={training.status === 'completed'
-                          ? 'bg-emerald-500 hover:bg-emerald-500 text-white'
+                        <Badge className={training.status === 'completed' 
+                          ? 'bg-emerald-500 hover:bg-emerald-500 text-white' 
                           : 'bg-blue-500 hover:bg-blue-500 text-white'}>
                           {training.status}
                         </Badge>
@@ -220,8 +220,8 @@ const StudentDashboard = () => {
                       <p className="text-xs text-purple-700 font-medium">{training.progress}% Complete</p>
                     </div>
                   ))}
-                  <Button
-                    variant="outline"
+                  <Button 
+                    variant="outline" 
                     onClick={() => setActiveModal('training')}
                     className="w-full border-purple-500 text-purple-700 hover:bg-purple-50 font-medium"
                   >
@@ -272,7 +272,7 @@ const StudentDashboard = () => {
               </Card>
 
               {/* 4. Opportunities */}
-              <Card className="h-full border-t-4 border-t-rose-500 shadow-lg hover:shadow-xl transition-shadow">
+              <Card variant="orange" className="h-full border-t-4 border-t-rose-500 shadow-lg hover:shadow-xl transition-shadow">
                 <CardHeader className="bg-gradient-to-r from-rose-50 to-pink-50">
                   <CardTitle className="flex items-center gap-2 text-rose-700">
                     <ExternalLink className="w-5 h-5" />
@@ -296,71 +296,64 @@ const StudentDashboard = () => {
               </Card>
 
               {/* 5. My Soft Skills */}
-              <Card className="h-full border-t-4 border-t-sky-500 shadow-lg hover:shadow-xl transition-shadow">
-                <CardHeader className="bg-gradient-to-r from-sky-50 to-blue-50">
-                  <CardTitle className="flex items-center justify-between text-sky-700">
-                    <div className="flex items-center gap-2">
-                      <MessageCircle className="w-5 h-5" />
-                      My Soft Skills
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setActiveModal('skills')}
-                      className="text-sky-600 hover:text-sky-700 hover:bg-sky-100 p-1"
-                      title="Edit Soft Skills"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
+              <Card className="h-full border-t-4 border-t-teal-500 shadow-lg hover:shadow-xl transition-shadow">
+                <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+                  <CardTitle className="flex items-center gap-2 text-teal-700">
+                    <MessageCircle className="w-5 h-5" />
+                    My Soft Skills
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {userData.softSkills.map((skill) => (
-                    <div key={skill.id} className="p-4 bg-gradient-to-r from-sky-50 to-white rounded-lg border border-sky-100">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-semibold text-sm text-gray-800">{skill.name}</h4>
-                          <p className="text-xs text-sky-600 font-medium">{skill.description}</p>
-                        </div>
-                        <div className="flex gap-1">
+                  <div className="p-3 bg-gradient-to-r from-teal-50 to-white rounded-lg border-l-2 border-l-teal-400">
+                    <p className="text-sm font-semibold mb-3 text-teal-700">Languages</p>
+                    {softSkills.filter(skill => skill.type === 'language').map((skill, index) => (
+                      <div key={index} className="flex items-center justify-between mb-2 p-2 bg-white rounded border border-teal-100">
+                        <span className="text-sm font-medium text-gray-800">{skill.name}</span>
+                        <div className="flex">
                           {renderStars(skill.level)}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                  <div className="p-3 bg-gradient-to-r from-cyan-50 to-white rounded-lg border-l-2 border-l-cyan-400">
+                    <p className="text-sm font-semibold mb-3 text-cyan-700">Communication</p>
+                    {softSkills.filter(skill => skill.type === 'communication').map((skill, index) => (
+                      <div key={index} className="flex items-center justify-between mb-2 p-2 bg-white rounded border border-cyan-100">
+                        <span className="text-sm font-medium text-gray-800">{skill.name}</span>
+                        <div className="flex">
+                          {renderStars(skill.level)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
 
               {/* 6. My Technical Skills */}
-              <Card className="h-full border-t-4 border-t-cyan-500 shadow-lg hover:shadow-xl transition-shadow">
-                <CardHeader className="bg-gradient-to-r from-cyan-50 to-teal-50">
-                  <CardTitle className="flex items-center justify-between text-cyan-700">
-                    <div className="flex items-center gap-2">
-                      <Code className="w-5 h-5" />
-                      Technical Skills
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setActiveModal('technicalSkills')}
-                      className="text-cyan-600 hover:text-cyan-700 hover:bg-cyan-100 p-1"
-                      title="Edit Technical Skills"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
+              <Card className="h-full border-t-4 border-t-slate-500 shadow-lg hover:shadow-xl transition-shadow">
+                <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50">
+                  <CardTitle className="flex items-center gap-2 text-slate-700">
+                    <Code className="w-5 h-5" />
+                    My Skills (Technical)
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {userData.technicalSkills.map((skill) => (
-                    <div key={skill.id} className="p-4 bg-gradient-to-r from-cyan-50 to-white rounded-lg border border-cyan-100">
-                      <div className="flex items-center justify-between">
+                <CardContent className="space-y-3">
+                  {technicalSkills.map((skill, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-white rounded-lg border-l-2 border-l-slate-400 hover:shadow-sm transition-shadow">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{skill.icon}</span>
                         <div>
-                          <h4 className="font-semibold text-sm text-gray-800">{skill.name}</h4>
-                          <p className="text-xs text-cyan-600 font-medium">{skill.category}</p>
+                          <span className="text-sm font-semibold text-gray-800">{skill.name}</span>
+                          {skill.verified && (
+                            <Badge className="ml-2 bg-emerald-500 hover:bg-emerald-500 text-white text-xs px-2 py-0">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Verified
+                            </Badge>
+                          )}
                         </div>
-                        <div className="flex gap-1">
-                          {renderStars(skill.level)}
-                        </div>
+                      </div>
+                      <div className="flex">
+                        {renderStars(skill.level)}
                       </div>
                     </div>
                   ))}
@@ -370,56 +363,8 @@ const StudentDashboard = () => {
           </div>
         </div>
       </div>
-
-      {/* Modals for editing sections */}
-      {activeModal === 'education' && (
-        <EducationEditModal
-          isOpen
-          onClose={() => setActiveModal(null)}
-          data={userData.education}
-          onSave={(data) => handleSave('education', data)}
-        />
-      )}
-
-      {activeModal === 'training' && (
-        <TrainingEditModal
-          isOpen
-          onClose={() => setActiveModal(null)}
-          data={userData.training}
-          onSave={(data) => handleSave('training', data)}
-        />
-      )}
-
-      {activeModal === 'experience' && (
-        <ExperienceEditModal
-          isOpen
-          onClose={() => setActiveModal(null)}
-          data={userData.experience}
-          onSave={(data) => handleSave('experience', data)}
-        />
-      )}
-
-      {activeModal === 'skills' && (
-        <SkillsEditModal
-          isOpen
-          onClose={() => setActiveModal(null)}
-          data={{ softSkills: userData.softSkills, technicalSkills: userData.technicalSkills }}
-          onSave={(data) => handleSave('softSkills', data)}
-          title="Edit Soft Skills"
-        />
-      )}
-
-      {activeModal === 'technicalSkills' && (
-        <SkillsEditModal
-          isOpen
-          onClose={() => setActiveModal(null)}
-          data={{ softSkills: userData.softSkills, technicalSkills: userData.technicalSkills }}
-          onSave={(data) => handleSave('technicalSkills', data)}
-          title="Edit Technical Skills"
-        />
-      )}
     </div>
   );
 };
 
-export default StudentDashboard;
+export default Dashboard;
