@@ -178,10 +178,7 @@ code {
 
 .text-white\/80 {
   color: rgba(255, 255, 255, 0.8);
-<<<<<<< HEAD
-} 
-
-
+}
 
 .scroll-stack-scroller {
   position: relative;
@@ -273,6 +270,3 @@ code {
 .text-case-subtitle { font-size: clamp(1rem, 0.92rem + 0.7vw, 1.5rem); }
 /* Stat number sizing for mobile */
 .text-stat { font-size: clamp(2rem, 1.2rem + 3vw, 2.75rem); line-height: 1.1; }
-=======
-}
->>>>>>> origin/main
