@@ -1,8 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { ArrowRight, Link, Zap } from "lucide-react";
 import { Badge } from "./badge";
-import { Button } from "./button";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
 
 interface TimelineItem {
@@ -42,10 +40,21 @@ export default function RadialOrbitalTimeline({
   const orbitRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
-  // Layout constants for node and label alignment
-  const NODE_SIZE = 64; // px (w-16 h-16)
-  const LABEL_WIDTH = 220; // px
-  const GAP = 32; // px between node edge and label
+  // Layout constants for node and label alignment - responsive based on screen size
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  const NODE_SIZE = isMobile ? 48 : 64; // Smaller on mobile
+  const LABEL_WIDTH = isMobile ? 120 : 220; // Narrower labels on mobile
+  const GAP = isMobile ? 16 : 32; // Reduced gap on mobile
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === containerRef.current || e.target === orbitRef.current) {
@@ -120,7 +129,7 @@ export default function RadialOrbitalTimeline({
 
   const calculateNodePosition = (index: number, total: number) => {
     const angle = ((index / total) * 360 + rotationAngle) % 360;
-    const radius = 240; // Increased from 200 for better spacing
+    const radius = isMobile ? 140 : 240; // Smaller orbit radius on mobile
     const radian = (angle * Math.PI) / 180;
 
     const x = radius * Math.cos(radian) + centerOffset.x;
@@ -188,17 +197,22 @@ export default function RadialOrbitalTimeline({
             transform: `translate(${centerOffset.x}px, ${centerOffset.y}px)`,
           }}
         >
-          <div className={`absolute w-32 h-32 rounded-full flex items-center justify-center z-10 ${
+          <div className={`absolute rounded-full flex items-center justify-center z-10 ${
+            isMobile ? "w-20 h-20" : "w-32 h-32"
+          } ${
             theme === "light" ? "bg-white border-[2px] border-black/20" : "bg-black border-[2px] border-white/20"
           }`}>
             <img
               src="/assets/HomePage/RMLogo.webp"
               alt="RM Logo"
-              className="w-20 h-20 object-contain"
+              className={isMobile ? "w-12 h-12" : "w-20 h-20"}
+              style={{ objectFit: "contain" }}
             />
           </div>
 
-          <div className={`absolute w-[480px] h-[480px] rounded-full border ${
+          <div className={`absolute rounded-full border ${
+            isMobile ? "w-[280px] h-[280px]" : "w-[480px] h-[480px]"
+          } ${
             theme === "light" ? "border-black/30" : "border-white/10"
           }`}></div>
 
@@ -291,7 +305,8 @@ export default function RadialOrbitalTimeline({
 
                 <div
                   className={`
-                  w-16 h-16 rounded-full flex items-center justify-center relative
+                  rounded-full flex items-center justify-center relative
+                  ${isMobile ? "w-12 h-12" : "w-16 h-16"}
                   ${
                     theme === "light"
                       ? isExpanded
@@ -305,7 +320,7 @@ export default function RadialOrbitalTimeline({
                       ? "bg-white/50 text-black"
                       : "bg-black text-white"
                   }
-                  border-[3px]
+                  ${isMobile ? "border-[2px]" : "border-[3px]"}
                   ${
                     theme === "light"
                       ? isExpanded
@@ -320,17 +335,18 @@ export default function RadialOrbitalTimeline({
                       : "border-white"
                   }
                   transition-all duration-300 transform
-                  ${isExpanded ? "scale-150" : ""}
+                  ${isExpanded ? (isMobile ? "scale-125" : "scale-150") : ""}
                 `}
                 >
-                  <span className="text-2xl font-bold">{item.id}</span>
+                  <span className={isMobile ? "text-lg font-bold" : "text-2xl font-bold"}>{item.id}</span>
                 </div>
 
                 <div
                   className={`
                   whitespace-normal break-words leading-tight
-                  text-base md:text-lg font-semibold
+                  font-semibold
                   transition-all duration-300
+                  ${isMobile ? "text-xs" : "text-base md:text-lg"}
                   ${
                     theme === "light"
                       ? isExpanded ? "text-black scale-105" : "text-black/80"
@@ -343,7 +359,9 @@ export default function RadialOrbitalTimeline({
                 </div>
 
                 {isExpanded && (
-                  <Card className={`absolute top-24 left-1/2 -translate-x-1/2 w-64 backdrop-blur-lg shadow-xl overflow-visible ${
+                  <Card className={`absolute left-1/2 -translate-x-1/2 backdrop-blur-lg shadow-xl overflow-visible ${
+                    isMobile ? "top-16 w-[85vw] max-w-[280px]" : "top-24 w-64"
+                  } ${
                     theme === "light"
                       ? "bg-white/90 border-black/30 shadow-black/10"
                       : "bg-black/90 border-white/30 shadow-white/10"
@@ -351,10 +369,10 @@ export default function RadialOrbitalTimeline({
                     <div className={`absolute -top-3 left-1/2 -translate-x-1/2 w-px h-3 ${
                       theme === "light" ? "bg-black/50" : "bg-white/50"
                     }`}></div>
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-center">
+                    <CardHeader className={isMobile ? "pb-2 px-3 pt-3" : "pb-2"}>
+                      <div className="flex justify-between items-center gap-2">
                         <Badge
-                          className={`px-2 text-xs ${getStatusStyles(
+                          className={`px-2 text-xs flex-shrink-0 ${getStatusStyles(
                             item.status
                           )}`}
                         >
@@ -364,86 +382,22 @@ export default function RadialOrbitalTimeline({
                             ? "IN PROGRESS"
                             : "PENDING"}
                         </Badge>
-                        <span className={`text-xs font-mono ${
+                        <span className={`text-xs font-mono flex-shrink-0 ${
                           theme === "light" ? "text-black/50" : "text-white/50"
                         }`}>
                           {item.date}
                         </span>
                       </div>
-                      <CardTitle className="text-sm mt-2">
+                      <CardTitle className={isMobile ? "text-xs mt-2" : "text-sm mt-2"}>
                         {item.title}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className={`text-xs ${
+                    <CardContent className={`${
+                      isMobile ? "text-[11px] px-3 pb-3" : "text-xs"
+                    } ${
                       theme === "light" ? "text-black/80" : "text-white/80"
                     }`}>
-                      <p>{item.content}</p>
-
-                      <div className={`mt-4 pt-3 border-t ${
-                        theme === "light" ? "border-black/10" : "border-white/10"
-                      }`}>
-                        <div className="flex justify-between items-center text-xs mb-1">
-                          <span className="flex items-center">
-                            <Zap size={10} className="mr-1" />
-                            Energy Level
-                          </span>
-                          <span className="font-mono">{item.energy}%</span>
-                        </div>
-                        <div className={`w-full h-1 rounded-full overflow-hidden ${
-                          theme === "light" ? "bg-black/10" : "bg-white/10"
-                        }`}>
-                          <div
-                            className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-                            style={{ width: `${item.energy}%` }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      {item.relatedIds.length > 0 && (
-                        <div className={`mt-4 pt-3 border-t ${
-                          theme === "light" ? "border-black/10" : "border-white/10"
-                        }`}>
-                          <div className="flex items-center mb-2">
-                            <Link size={10} className={theme === "light" ? "text-black/70 mr-1" : "text-white/70 mr-1"} />
-                            <h4 className={`text-xs uppercase tracking-wider font-medium ${
-                              theme === "light" ? "text-black/70" : "text-white/70"
-                            }`}>
-                              Connected Nodes
-                            </h4>
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            {item.relatedIds.map((relatedId) => {
-                              const relatedItem = timelineData.find(
-                                (i) => i.id === relatedId
-                              );
-                              return (
-                                <Button
-                                  key={relatedId}
-                                  variant="outline"
-                                  size="sm"
-                                  className={`flex items-center h-6 px-2 py-0 text-xs rounded-none bg-transparent transition-all ${
-                                    theme === "light"
-                                      ? "border-black/20 hover:bg-black/10 text-black/80 hover:text-black"
-                                      : "border-white/20 hover:bg-white/10 text-white/80 hover:text-white"
-                                  }`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleItem(relatedId);
-                                  }}
-                                >
-                                  {relatedItem?.title}
-                                  <ArrowRight
-                                    size={8}
-                                    className={`ml-1 ${
-                                      theme === "light" ? "text-black/60" : "text-white/60"
-                                    }`}
-                                  />
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+                      <p className="leading-relaxed">{item.content}</p>
                     </CardContent>
                   </Card>
                 )}

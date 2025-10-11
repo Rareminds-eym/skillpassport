@@ -57,15 +57,9 @@ export default function WorkSection() {
   return (
     <section className="relative py-20">
       <div className="max-w-7xl mx-auto px-6 lg:px-12">
-         {/* Top Icon */}
-        <div className="flex justify-center mb-6">
-          <div className="bg-[#000000] rounded-2xl w-12 h-12 flex items-center justify-center shadow-md">
-            <Workflow  className="text-white w-5 h-5" />
-          </div>
-        </div>
         {/* Heading */}
         <h2 className="text-center text-3xl md:text-4xl font-extrabold text-[#011938] mb-4">
-          How Skill Passport <span className="text-[#E32A18]">Works.</span>
+          How It Works
         </h2>
         <p className="text-center text-gray-500 text-sm md:text-base mb-16">
           The Rareminds Skill Passport transforms training outcomes into

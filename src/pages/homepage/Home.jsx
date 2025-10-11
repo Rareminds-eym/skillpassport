@@ -7,9 +7,9 @@ const Home = () => {
       <Features />
       <BusinessImpact />
       <BuiltForCorporates />
-      <SecurityCompliance />
       <HowItWorks/>
       <CaseHighlights />
+       <SecurityCompliance />
       <FinalCTA />
     </div>
   );

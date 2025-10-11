@@ -15,53 +15,26 @@ const BusinessImpact = () => {
   ];
 
   return (
-    <section style={{ 
-      backgroundColor: '#000', 
-      color: '#fff',
-      padding: '80px 20px'
-    }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', textAlign: 'center' }}>
+    <section className="bg-black text-white px-5 py-16 sm:py-20">
+      <div className="mx-auto max-w-7xl text-center">
         {/* Heading */}
-        <h2 style={{ 
-          fontSize: '48px', 
-          fontWeight: '700', 
-          marginBottom: '16px',
-          color: '#fff'
-        }}>
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 text-white">
           Business Impact
         </h2>
 
         {/* Subheading */}
-        <p style={{ 
-          fontSize: '18px', 
-          color: '#ccc',
-          marginBottom: '60px'
-        }}>
+        <p className="text-base md:text-lg text-gray-300 mb-12">
           Measurable results that matter to your bottom line
         </p>
 
         {/* Stats Grid */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '40px',
-          marginBottom: '60px'
-        }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-10 mb-12">
           {stats.map((stat, index) => (
-            <div key={index} style={{ textAlign: 'center' }}>
-              <div style={{ 
-                fontSize: '64px', 
-                fontWeight: '700',
-                color: '#d4af37',
-                marginBottom: '12px'
-              }}>
+            <div key={index} className="text-center">
+              <div className="text-5xl sm:text-6xl font-bold text-amber-400 mb-3">
                 {stat.percentage}
               </div>
-              <p style={{ 
-                fontSize: '16px',
-                color: '#ccc',
-                lineHeight: '1.5'
-              }}>
+              <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
                 {stat.description}
               </p>
             </div>
@@ -69,11 +42,7 @@ const BusinessImpact = () => {
         </div>
 
         {/* Bottom tagline */}
-        <p style={{ 
-          fontSize: '18px',
-          fontStyle: 'italic',
-          color: '#ccc'
-        }}>
+        <p className="text-base md:text-lg italic text-gray-300">
           Because what gets measured — gets mastered.
         </p>
       </div>

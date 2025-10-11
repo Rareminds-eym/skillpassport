@@ -2,101 +2,60 @@ import { ArrowUpRight } from 'lucide-react';
 
 const Hero = () => {
   return (
-    <section style={{ minHeight: '100vh', backgroundColor: '#f5f5f0' }} className="flex items-center">
+    <section
+      className="flex items-center min-h-screen bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: 'url(/assets/HomePage/Hero-bg.jpg)' }}
+    >
       <div className="w-full px-8 py-16 lg:px-20">
-        <div style={{ maxWidth: '1200px' }}>
+        <div className="max-w-7xl">
           {/* Main Heading */}
-          <h1 style={{ fontSize: '64px', lineHeight: '1.1', fontWeight: '900', marginBottom: '40px' }} className="text-black">
+          <h1 className="text-black font-black mb-10 leading-tight text-4xl sm:text-5xl md:text-6xl lg:text-7xl">
             <span className="block">Verified Skills.</span>
             <span className="block">Visible Workforce.</span>
-            <span className="block">Measurable Impact.</span>
+            <span className="relative inline-block">
+              Measurable Impact.
+              <span
+                className="absolute inset-x-0 -z-10 rounded"
+                style={{ bottom: '6px', height: '20px', backgroundColor: '#FFD700' }}
+              />
+            </span>
           </h1>
 
           {/* Subheading */}
-          <p style={{ fontSize: '20px', lineHeight: '1.6', marginBottom: '48px', maxWidth: '800px' }} className="text-gray-700">
+          <p className="text-black font-semibold mb-12 max-w-xl text-base md:text-xl leading-relaxed">
             The Rareminds Skill Passport gives enterprises a single source of truth for employee
             capabilities — turning training outcomes into real-time talent intelligence.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-wrap items-center" style={{ gap: '16px' }}>
+          <div className="flex flex-wrap items-center gap-4">
             {/* Book a Demo group */}
-            <div className="flex items-center" style={{ gap: '10px' }}>
-              <button 
-                style={{
-                  height: '48px',
-                  paddingLeft: '28px',
-                  paddingRight: '28px',
-                  borderRadius: '9999px',
-                  backgroundColor: '#e63b2e',
-                  color: 'white',
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  boxShadow: '0 4px 16px rgba(230, 59, 46, 0.3)',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
+            <div className="flex items-center gap-2">
+              <button
+                className="h-12 px-7 rounded-full bg-[#e63b2e] text-white text-xs sm:text-sm font-extrabold uppercase tracking-wide shadow-[0_4px_16px_rgba(230,59,46,0.3)] hover:brightness-110"
               >
                 BOOK A DEMO
               </button>
-              <button 
+              <button
                 aria-label="Open demo"
-                style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '9999px',
-                  backgroundColor: '#e63b2e',
-                  color: 'white',
-                  boxShadow: '0 4px 16px rgba(230, 59, 46, 0.3)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
+                className="w-12 h-12 rounded-full bg-[#e63b2e] text-white shadow-[0_4px_16px_rgba(230,59,46,0.3)] flex items-center justify-center hover:brightness-110"
               >
-                <ArrowUpRight style={{ width: '20px', height: '20px', strokeWidth: 2.5 }} />
+                <ArrowUpRight className="w-5 h-5" style={{ strokeWidth: 2.5 }} />
               </button>
             </div>
 
             {/* Explore Dashboard group */}
-            <div className="flex items-center" style={{ gap: '10px' }}>
-              <button 
-                style={{
-                  height: '48px',
-                  paddingLeft: '28px',
-                  paddingRight: '28px',
-                  borderRadius: '9999px',
-                  backgroundColor: 'white',
-                  color: 'black',
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  border: '2px solid black',
-                  cursor: 'pointer'
-                }}
+            <div className="flex items-center gap-2">
+              <button
+                className="h-12 px-7 rounded-full bg-white text-black text-xs sm:text-sm font-extrabold uppercase tracking-wide border-2 border-black hover:bg-gray-50"
               >
                 EXPLORE DASHBOARD
               </button>
-              <button 
+              <button
                 aria-label="Open dashboard"
-                style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '9999px',
-                  backgroundColor: 'white',
-                  color: 'black',
-                  border: '2px solid black',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
+                className="w-12 h-12 rounded-full bg-white text-black border-2 border-black flex items-center justify-center hover:bg-gray-50"
               >
-                <ArrowUpRight style={{ width: '20px', height: '20px', strokeWidth: 2.5 }} />
+                <ArrowUpRight className="w-5 h-5" style={{ strokeWidth: 2.5 }} />
               </button>
             </div>
           </div>

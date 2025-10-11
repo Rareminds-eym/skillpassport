@@ -11,7 +11,7 @@ const FinalCTA = () => {
     >
       <div className="relative z-10 flex flex-col items-center">
         {/* Main Heading */}
-        <h1 className="max-w-5xl text-center text-5xl font-bold leading-tight text-white sm:text-6xl sm:leading-tight md:text-7xl md:leading-tight">
+        <h1 className="max-w-5xl text-center text-3xl font-bold leading-tight text-white sm:text-4xl sm:leading-tight md:text-5xl md:leading-tight lg:text-6xl lg:leading-tight">
           Make Every Skill Count.
         </h1>
         
