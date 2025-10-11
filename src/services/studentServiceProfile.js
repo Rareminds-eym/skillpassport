@@ -10,19 +10,46 @@
 import { supabase } from '../utils/api';
 
 /**
- * Get student data by looking up profile fields
- * Some profiles have email populated, others don't - we handle both
+ * Safely parse JSON string that may contain NaN values
+ * @param {string} jsonString - JSON string with potential NaN values
+ * @returns {Object} Parsed object
+ */
+function safeJSONParse(jsonString) {
+  if (typeof jsonString !== 'string') {
+    return jsonString; // Already an object
+  }
+  
+  // Replace NaN with null before parsing (NaN is not valid JSON)
+  const sanitized = jsonString.replace(/:\s*NaN\s*([,}])/g, ': null$1');
+  
+  try {
+    return JSON.parse(sanitized);
+  } catch (error) {
+    console.error('❌ JSON parse error:', error);
+    console.error('📋 Problematic JSON:', jsonString.substring(0, 200));
+    return null;
+  }
+}
+
+/**
+ * Fetch student data by email from Supabase
+ * @param {string} email - Student email
+ * @returns {Promise<Object>} Student data
  */
 export async function getStudentByEmail(email) {
   try {
     console.log('🔍 Fetching student data for email:', email);
-
+    
     // First, try to find by email in profile (for students with email populated)
+    console.log('🔍 Trying JSONB query: profile->>email =', email);
     let { data, error } = await supabase
       .from('students')
       .select('*')
       .eq('profile->>email', email)
       .maybeSingle();
+
+    console.log('🔍 JSONB query result - data:', data);
+    console.log('🔍 JSONB query result - error:', error);
 
     if (error) {
       console.error('❌ Error fetching student:', error);
@@ -32,7 +59,14 @@ export async function getStudentByEmail(email) {
     // If found by email, we're done!
     if (data) {
       console.log('✅ Student found by email in profile:', data.profile?.name);
-      const transformedData = transformProfileData(data.profile, email);
+      console.log('📋 Raw profile data:', data.profile);
+      
+      // CRITICAL: Parse profile if it's a string (Supabase returns JSONB as string sometimes)
+      // Handle NaN values which are not valid JSON
+      const profileData = safeJSONParse(data.profile);
+      
+      const transformedData = transformProfileData(profileData, email);
+      console.log('📋 Transformed data:', transformedData);
       return {
         success: true,
         data: transformedData,
@@ -40,37 +74,43 @@ export async function getStudentByEmail(email) {
       };
     }
 
-    // If not found by email, try fallback for imported data with blank emails
-    console.log('⚠️ Email not found in profile, trying fallback...');
-    const nameFromEmail = email.split('@')[0]; // e.g., "chinnuu116" from "chinnuu116@gmail.com"
-    
-    const { data: allData, error: allError } = await supabase
+    // If JSONB query didn't work, try fetching all students and checking manually
+    // (This handles cases where profile is stored as a string or JSONB operator doesn't work)
+    console.log('🔍 JSONB query returned null. Trying manual search...');
+    const { data: allStudents, error: allError } = await supabase
       .from('students')
       .select('*');
-    
+
     if (allError) {
+      console.error('❌ Error fetching all students:', allError);
       return { success: false, error: allError.message };
     }
 
-    if (allData && allData.length > 0) {
-      // Find by name similarity or just return first student for demo
-      data = allData.find(student => 
-        student.profile?.name?.toLowerCase().includes(nameFromEmail.toLowerCase())
-      ) || allData[0]; // Fallback to first student for demo
-      
-      if (data) {
-        console.log('✅ Found student by fallback:', data.profile?.name);
-        const transformedData = transformProfileData(data.profile, email);
-        return {
-          success: true,
-          data: transformedData,
-          rawData: data
-        };
-      }
+    console.log('🔍 Found', allStudents?.length || 0, 'total students. Searching for email...');
+
+    // Manually search for matching email
+    const matchingStudent = allStudents?.find(student => {
+      const profileData = safeJSONParse(student.profile);
+      const studentEmail = profileData?.email;
+      console.log('🔍 Checking student:', profileData?.name, 'email:', studentEmail);
+      return studentEmail?.toLowerCase() === email.toLowerCase();
+    });
+
+    if (matchingStudent) {
+      console.log('✅ Student found by manual search:', matchingStudent.profile?.name || matchingStudent.profile);
+      const profileData = safeJSONParse(matchingStudent.profile);
+      const transformedData = transformProfileData(profileData, email);
+      return {
+        success: true,
+        data: transformedData,
+        rawData: matchingStudent
+      };
     }
 
-    console.log('⚠️ No student found');
-    return { success: false, error: 'Student not found' };
+    // If not found by email, do NOT fallback to name matching or first student
+    // Only show a student if their email is actually present in the JSONB profile
+    console.log('❌ No student found with email in profile. Returning null.');
+    return { success: false, error: 'No data found for this email.' };
 
   } catch (err) {
     console.error('❌ Unexpected error:', err);
@@ -85,7 +125,15 @@ export async function getStudentByEmail(email) {
  * Output: Structured data matching Dashboard expectations
  */
 function transformProfileData(profile, email) {
+  console.log('🔄 transformProfileData called with:');
+  console.log('  - profile:', profile);
+  console.log('  - email:', email);
+  console.log('  - profile.name:', profile?.name);
+  console.log('  - profile.registration_number:', profile?.registration_number);
+  console.log('  - profile.university:', profile?.university);
+  
   if (!profile) {
+    console.log('❌ Profile is null/undefined!');
     return null;
   }
 
@@ -96,12 +144,14 @@ function transformProfileData(profile, email) {
   const passportId = profile.registration_number 
     ? `SP-${profile.registration_number}` 
     : 'SP-0000';
+  
+  console.log('  - Calculated passportId:', passportId);
 
   // Format phone number
   const phone = formatPhoneNumber(profile.contact_number, profile.contact_number_dial_code);
   const alternatePhone = formatPhoneNumber(profile.alternate_number);
 
-  return {
+  const result = {
     // Basic profile info
     profile: {
       name: profile.name || 'Student',
@@ -218,6 +268,9 @@ function transformProfileData(profile, email) {
       }
     ]
   };
+  
+  console.log('✅ Transform complete, returning result with name:', result.profile.name);
+  return result;
 }
 
 /**

@@ -20,10 +20,17 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   console.log('🔍 ProfileHeroEdit - loading:', loading);
   console.log('🔍 ProfileHeroEdit - error:', error);
   
-  // Use real data if available, otherwise fallback to mock data
-  const displayData = realStudentData || studentData;
+  // Use real data only; if not found, display nothing or a message
+  const displayData = realStudentData?.profile;
   
   console.log('🔍 ProfileHeroEdit - displayData.name:', displayData?.name);
+  if (!displayData) {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-700 text-center">
+        No student data found. Please check your email or contact support.
+      </div>
+    );
+  }
   const quickEditSections = [
     {
       id: 'education',
