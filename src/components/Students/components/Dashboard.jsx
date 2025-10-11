@@ -16,7 +16,8 @@ import {
   Code,
   MessageCircle,
   Loader2,
-  Database
+  Database,
+  Share
 } from 'lucide-react';
 import { 
   recentUpdates as mockRecentUpdates, 
@@ -40,6 +41,7 @@ import { useAuth } from '../../../context/AuthContext';
 
 const Dashboard = () => {
   const [activeModal, setActiveModal] = useState(null);
+  const [activeNavItem, setActiveNavItem] = useState('skills'); // Default to skills
 
   // Get email from your custom auth
   const { user } = useAuth();
@@ -50,39 +52,43 @@ const Dashboard = () => {
     studentData,
     loading,
     error,
-    refresh
+    refresh,
+    updateEducation,
+    updateTraining,
+    updateExperience,
+    updateTechnicalSkills,
+    updateSoftSkills
   } = useStudentDataByEmail(userEmail, false); // no fallback to mock data
 
-  // Extract data with fallback to mock
-  // Extract data (no fallback)
+  // Extract data with fallback to mock data
   const profile = studentData?.profile;
-  const education = studentData?.education;
-  const training = studentData?.training;
-  const experience = studentData?.experience;
-  const technicalSkills = studentData?.technicalSkills;
-  const softSkills = studentData?.softSkills;
-  const recentUpdates = studentData?.recentUpdates;
-  const suggestions = studentData?.suggestions;
-  const opportunities = studentData?.opportunities;
+  const education = studentData?.education || mockEducationData;
+  const training = studentData?.training || mockTrainingData;
+  const experience = studentData?.experience || mockExperienceData;
+  const technicalSkills = studentData?.technicalSkills || mockTechnicalSkills;
+  const softSkills = studentData?.softSkills || mockSoftSkills;
+  const recentUpdates = studentData?.recentUpdates || mockRecentUpdates;
+  const suggestions = studentData?.suggestions || mockSuggestions;
+  const opportunities = studentData?.opportunities || mockOpportunities;
 
   const [userData, setUserData] = useState({
-    education: education,
-    training: training,
-    experience: experience,
-    technicalSkills: technicalSkills,
-    softSkills: softSkills
+    education: education || mockEducationData,
+    training: training || mockTrainingData,
+    experience: experience || mockExperienceData,
+    technicalSkills: technicalSkills || mockTechnicalSkills,
+    softSkills: softSkills || mockSoftSkills
   });
 
   // Update local state when Supabase data changes
   React.useEffect(() => {
     setUserData({
-      education: education,
-      training: training,
-      experience: experience,
-      technicalSkills: technicalSkills,
-      softSkills: softSkills
+      education: education || mockEducationData,
+      training: training || mockTrainingData,
+      experience: experience || mockExperienceData,
+      technicalSkills: technicalSkills || mockTechnicalSkills,
+      softSkills: softSkills || mockSoftSkills
     });
-  }, [studentData]);
+  }, [studentData, education, training, experience, technicalSkills, softSkills]);
 
   const handleSave = async (section, data) => {
     setUserData(prev => ({
@@ -91,35 +97,39 @@ const Dashboard = () => {
     }));
     
     // If connected to Supabase, save to database
-    if (currentUserId && studentData?.profile) {
+    if (userEmail && studentData?.profile) {
       try {
-        // Save each item that has an id
-        if (Array.isArray(data)) {
-          for (const item of data) {
-            if (item.id) {
-              switch (section) {
-                case 'education':
-                  await updateEducation(item.id, item);
-                  break;
-                case 'training':
-                  await updateTraining(item.id, item);
-                  break;
-                case 'experience':
-                  await updateExperience(item.id, item);
-                  break;
-                case 'technicalSkills':
-                  await updateTechnicalSkill(item.id, item);
-                  break;
-                case 'softSkills':
-                  await updateSoftSkill(item.id, item);
-                  break;
-              }
-            }
-          }
+        console.log(`🔄 Saving ${section} data:`, data);
+        
+        let result;
+        switch (section) {
+          case 'education':
+            result = await updateEducation(data);
+            break;
+          case 'training':
+            result = await updateTraining(data);
+            break;
+          case 'experience':
+            result = await updateExperience(data);
+            break;
+          case 'technicalSkills':
+            result = await updateTechnicalSkills(data);
+            break;
+          case 'softSkills':
+            result = await updateSoftSkills(data);
+            break;
+          default:
+            console.warn('Unknown section:', section);
+            return;
         }
-        refresh(); // Refresh data after save
+
+        if (result.success) {
+          console.log(`✅ ${section} saved successfully`);
+        } else {
+          console.error(`❌ Error saving ${section}:`, result.error);
+        }
       } catch (err) {
-        console.error('Error saving to Supabase:', err);
+        console.error(`❌ Error saving ${section} to Supabase:`, err);
       }
     }
   };
@@ -131,6 +141,322 @@ const Dashboard = () => {
         className={`w-4 h-4 ${i < level ? 'fill-[#FFD700] text-[#FFD700]' : 'text-gray-300'}`} 
       />
     ));
+  };
+
+  // Function to render cards in the correct order based on active navigation
+  const renderCardsByPriority = () => {
+    const allCards = {
+      education: (
+        <Card key="education" className="h-full border-t-4 border-t-emerald-500 shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50">
+            <CardTitle className="flex items-center justify-between text-emerald-700">
+              <div className="flex items-center gap-2">
+                <Award className="w-5 h-5" />
+                My Education
+                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                  {userData.education?.filter(education => education.enabled !== false).length || 0} Qualifications
+                </Badge>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveModal('education')}
+                className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 p-1"
+                title="Edit Education"
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 max-h-80 overflow-y-auto">
+            {userData.education?.filter(education => education.enabled !== false).map((education, index) => (
+              <div key={education.id} className={`p-4 rounded-lg border-l-4 ${
+                education.status === 'ongoing' 
+                  ? 'border-l-blue-500 bg-blue-50' 
+                  : education.level === 'Bachelor\'s' 
+                    ? 'border-l-emerald-500 bg-emerald-50'
+                    : education.level === 'Certificate'
+                      ? 'border-l-amber-500 bg-amber-50'
+                      : 'border-l-gray-500 bg-gray-50'
+              } hover:shadow-md transition-shadow`}>
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-800 text-sm">{education.degree}</h4>
+                    <p className="text-sm text-gray-600 font-medium">{education.university}</p>
+                  </div>
+                  <Badge className={`${
+                    education.status === 'ongoing' 
+                      ? 'bg-blue-500 hover:bg-blue-500' 
+                      : 'bg-emerald-500 hover:bg-emerald-500'
+                  } text-white text-xs`}>
+                    {education.status}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div key={`level-${education.id}`}>
+                    <p className="text-gray-500 font-medium">Level</p>
+                    <p className="font-semibold text-gray-700">{education.level}</p>
+                  </div>
+                  <div key={`year-${education.id}`}>
+                    <p className="text-gray-500 font-medium">Year</p>
+                    <p className="font-semibold text-gray-700">{education.yearOfPassing}</p>
+                  </div>
+                  <div key={`grade-${education.id}`}>
+                    <p className="text-gray-500 font-medium">Grade</p>
+                    <p className="font-semibold text-gray-700">{education.cgpa}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div className="text-center mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setActiveModal('education')}
+                className="border-emerald-500 text-emerald-700 hover:bg-emerald-50"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Manage Education
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ),
+      training: (
+        <Card key="training" className="h-full shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-purple-50 to-purple-100">
+          <CardHeader className="bg-gradient-to-r from-purple-100 to-purple-200 border-b border-purple-200">
+            <CardTitle className="flex items-center justify-between text-purple-800">
+              <div className="flex items-center gap-2">
+                <Code className="w-5 h-5" />
+                My Training
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveModal('training')}
+                className="text-purple-700 hover:text-purple-800 hover:bg-purple-200 p-1"
+                title="Edit Training"
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 bg-gradient-to-br from-purple-25 to-purple-50">
+            {userData.training?.filter(training => training.enabled !== false).slice(0, 2).map((training, index) => (
+              <div key={index} className="space-y-3 p-4 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg border border-purple-300 shadow-sm">
+                <div className="flex justify-between items-start">
+                  <p className="text-sm font-semibold text-purple-900">{training.course}</p>
+                  <Badge className={training.status === 'completed' 
+                    ? 'bg-emerald-500 hover:bg-emerald-500 text-white' 
+                    : 'bg-purple-500 hover:bg-purple-500 text-white'}>
+                    {training.status}
+                  </Badge>
+                </div>
+                <Progress value={training.progress} className="h-3 bg-purple-300" />
+                <p className="text-xs text-purple-800 font-medium">{training.progress}% Complete</p>
+              </div>
+            ))}
+            <Button 
+              variant="outline" 
+              onClick={() => setActiveModal('training')}
+              className="w-full border-purple-500 text-purple-700 hover:bg-purple-100 hover:border-purple-600 font-medium bg-white/50"
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Training
+            </Button>
+          </CardContent>
+        </Card>
+      ),
+      experience: (
+        <Card key="experience" className="h-full border-t-4 border-t-indigo-500 shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50">
+            <CardTitle className="flex items-center justify-between text-indigo-700">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                My Experience
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveModal('experience')}
+                className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 p-1"
+                title="Edit Experience"
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {userData.experience?.filter(exp => exp.enabled !== false).slice(0, 2).map((exp, index) => (
+              <div key={index} className="p-4 bg-gradient-to-r from-indigo-50 to-white rounded-lg border-l-4 border-l-indigo-400 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm text-gray-800">{exp.role}</p>
+                    <p className="text-sm text-indigo-600 font-medium">{exp.organization}</p>
+                    <p className="text-xs text-gray-600 mt-1">{exp.duration}</p>
+                  </div>
+                  {exp.verified && (
+                    <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Verified
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ),
+      opportunities: (
+  <Card key="opportunities" variant="orange" className="h-full border-2 border-[#FFB800] rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader className="bg-white">
+            <CardTitle className="flex items-center gap-2 text-gray-900">
+              <ExternalLink className="w-5 h-5 text-[#FFB800]" />
+              Opportunities
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {opportunities?.slice(0, 2).map((opp, index) => (
+              <div key={index} className="p-4 border-2 border-[#FFB800] bg-white rounded-lg hover:shadow-md transition-all">
+                <h4 className="font-semibold text-sm text-gray-800">{opp.title}</h4>
+                <p className="text-sm text-[#FFB800] font-medium mb-2">{opp.company}</p>
+                <div className="flex items-center justify-between">
+                  <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">{opp.type}</Badge>
+                  <Button size="sm" className="bg-[#FFB800] hover:bg-[#E5A600] text-black font-medium">
+                    Apply Now
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ),
+      softSkills: (
+        <Card key="softSkills" className="h-full border-t-4 border-t-teal-500 shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+            <CardTitle className="flex items-center gap-2 text-teal-700">
+              <MessageCircle className="w-5 h-5" />
+              My Soft Skills
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-3 bg-gradient-to-r from-teal-50 to-white rounded-lg border-l-2 border-l-teal-400">
+              <p className="text-sm font-semibold mb-3 text-teal-700">Languages</p>
+              {softSkills?.filter(skill => skill.type === 'language' && skill.enabled !== false).map((skill, index) => (
+                <div key={index} className="flex items-center justify-between mb-2 p-2 bg-white rounded border border-teal-100">
+                  <span className="text-sm font-medium text-gray-800">{skill.name}</span>
+                  <div className="flex">
+                    {renderStars(skill.level)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="p-3 bg-gradient-to-r from-cyan-50 to-white rounded-lg border-l-2 border-l-cyan-400">
+              <p className="text-sm font-semibold mb-3 text-cyan-700">Communication</p>
+              {softSkills?.filter(skill => skill.type === 'communication' && skill.enabled !== false).map((skill, index) => (
+                <div key={index} className="flex items-center justify-between mb-2 p-2 bg-white rounded border border-cyan-100">
+                  <span className="text-sm font-medium text-gray-800">{skill.name}</span>
+                  <div className="flex">
+                    {renderStars(skill.level)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ),
+      technicalSkills: (
+        <Card key="technicalSkills" className="h-full border-t-4 border-t-slate-500 shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50">
+            <CardTitle className="flex items-center gap-2 text-slate-700">
+              <Code className="w-5 h-5" />
+              My Skills (Technical)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {technicalSkills?.filter(skill => skill.enabled !== false).map((skill, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-white rounded-lg border-l-2 border-l-slate-400 hover:shadow-sm transition-shadow">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{skill.icon}</span>
+                  <div>
+                    <span className="text-sm font-semibold text-gray-800">{skill.name}</span>
+                    {skill.verified && (
+                      <Badge className="ml-2 bg-emerald-500 hover:bg-emerald-500 text-white text-xs px-2 py-0">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Verified
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="flex">
+                  {renderStars(skill.level)}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ),
+      passport: (
+        <Card key="passport" className="h-full border-t-4 border-t-yellow-500 shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50">
+            <CardTitle className="flex items-center gap-2 text-yellow-700">
+              <Share className="w-5 h-5" />
+              Share Passport
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center p-6">
+              <div className="mb-4">
+                <Share className="w-16 h-16 mx-auto text-yellow-500" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Share Your Digital Passport</h3>
+              <p className="text-sm text-gray-600 mb-4">Generate a shareable link to showcase your skills and experience</p>
+              <Button className="bg-yellow-500 hover:bg-yellow-600 text-white font-medium">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Generate Share Link
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )
+    };
+
+    // Define card order based on active navigation item
+    const cardOrders = {
+      opportunities: ['opportunities', 'education', 'training', 'experience', 'softSkills', 'technicalSkills'],
+      skills: ['technicalSkills', 'softSkills', 'education', 'training', 'experience', 'opportunities'],
+      training: ['training', 'education', 'technicalSkills', 'softSkills', 'experience', 'opportunities'],
+      experience: ['experience', 'education', 'training', 'technicalSkills', 'softSkills', 'opportunities']
+    };
+
+    const order = cardOrders[activeNavItem] || cardOrders.opportunities;
+    console.log('Active nav item:', activeNavItem);
+    console.log('Card order:', order);
+    
+    return order.map((cardKey, index) => {
+      const card = allCards[cardKey];
+      if (!card) return null;
+      
+      // Add priority indicator for the first card
+      if (index === 0) {
+        return React.cloneElement(card, {
+          className: `${card.props.className} ring-2 ring-blue-400 ring-opacity-50`,
+          key: cardKey,
+          children: [
+            React.cloneElement(card.props.children[0], {
+              children: [
+                card.props.children[0].props.children,
+                <Badge key="priority" className="bg-blue-500 hover:bg-blue-500 text-white text-xs ml-2">
+                  ✨ Priority
+                </Badge>
+              ]
+            }),
+            ...card.props.children.slice(1)
+          ]
+        });
+      }
+      return card;
+    }).filter(Boolean);
   };
 
   return (
@@ -181,6 +507,43 @@ const Dashboard = () => {
           )}
         </div>
 
+        {/* Navigation Bar */}
+        <div className="mb-6">
+          <Card className="shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex flex-wrap gap-2 justify-center">
+                {[
+                  { id: 'opportunities', label: 'Opportunities', icon: ExternalLink },
+                  { id: 'skills', label: 'My Skills', icon: Code },
+                  { id: 'training', label: 'My Training', icon: Award },
+                  { id: 'experience', label: 'My Experience', icon: Users },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeNavItem === item.id;
+                  return (
+                    <Button
+                      key={item.id}
+                      variant={isActive ? "default" : "outline"}
+                      onClick={() => {
+                        console.log('Clicked nav item:', item.id);
+                        setActiveNavItem(item.id);
+                      }}
+                      className={`flex items-center gap-2 transition-all ${
+                        isActive
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md transform scale-105'
+                          : 'hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {item.label}
+                    </Button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* LEFT COLUMN - User Activity & Updates */}
@@ -195,7 +558,7 @@ const Dashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {recentUpdates.map((update, index) => (
+                {recentUpdates?.map((update, index) => (
                   <div key={index} className="flex items-start gap-3 p-3 bg-gradient-to-r from-blue-50 to-white rounded-lg border-l-2 border-l-blue-400">
                     <div className="w-2 h-2 bg-amber-500 rounded-full mt-2 flex-shrink-0" />
                     <div>
@@ -216,7 +579,7 @@ const Dashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {suggestions.map((suggestion, index) => (
+                {suggestions?.map((suggestion, index) => (
                   <div key={index} className="p-3 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-lg border-l-2 border-l-amber-500 hover:shadow-sm transition-shadow">
                     <p className="text-sm font-medium text-amber-900">{suggestion}</p>
                   </div>
@@ -226,261 +589,54 @@ const Dashboard = () => {
           </div>
 
           {/* RIGHT COLUMN - 6 Key Boxes */}
+          {/*
+            When 'My Skills' is selected in the nav, the 'My Skills (Technical)'
+            card will always be rendered first in the right column, followed by the rest.
+            This is controlled by the cardOrders object in renderCardsByPriority().
+          */}
           <div className="lg:col-span-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* 1. My Education - Multiple Entries */}
-              <Card className="h-full border-t-4 border-t-emerald-500 shadow-lg hover:shadow-xl transition-shadow">
-                <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50">
-                  <CardTitle className="flex items-center justify-between text-emerald-700">
-                    <div className="flex items-center gap-2">
-                      <Award className="w-5 h-5" />
-                      My Education
-                      <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                        {userData.education.length} Qualifications
-                      </Badge>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setActiveModal('education')}
-                      className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 p-1"
-                      title="Edit Education"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 max-h-80 overflow-y-auto">
-                  {userData.education.map((education, index) => (
-                    <div key={education.id} className={`p-4 rounded-lg border-l-4 ${
-                      education.status === 'ongoing' 
-                        ? 'border-l-blue-500 bg-blue-50' 
-                        : education.level === 'Bachelor\'s' 
-                          ? 'border-l-emerald-500 bg-emerald-50'
-                          : education.level === 'Certificate'
-                            ? 'border-l-amber-500 bg-amber-50'
-                            : 'border-l-gray-500 bg-gray-50'
-                    } hover:shadow-md transition-shadow`}>
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-800 text-sm">{education.degree}</h4>
-                          <p className="text-sm text-gray-600 font-medium">{education.university}</p>
-                        </div>
-                        <Badge className={`${
-                          education.status === 'ongoing' 
-                            ? 'bg-blue-500 hover:bg-blue-500' 
-                            : 'bg-emerald-500 hover:bg-emerald-500'
-                        } text-white text-xs`}>
-                          {education.status}
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div key={`level-${education.id}`}>
-                          <p className="text-gray-500 font-medium">Level</p>
-                          <p className="font-semibold text-gray-700">{education.level}</p>
-                        </div>
-                        <div key={`year-${education.id}`}>
-                          <p className="text-gray-500 font-medium">Year</p>
-                          <p className="font-semibold text-gray-700">{education.yearOfPassing}</p>
-                        </div>
-                        <div key={`grade-${education.id}`}>
-                          <p className="text-gray-500 font-medium">Grade</p>
-                          <p className="font-semibold text-gray-700">{education.cgpa}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="text-center mt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setActiveModal('education')}
-                      className="border-emerald-500 text-emerald-700 hover:bg-emerald-50"
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Manage Education
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* 2. My Training */}
-              <Card className="h-full border-t-4 border-t-purple-500 shadow-lg hover:shadow-xl transition-shadow">
-                <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50">
-                  <CardTitle className="flex items-center justify-between text-purple-700">
-                    <div className="flex items-center gap-2">
-                      <Code className="w-5 h-5" />
-                      My Training
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setActiveModal('training')}
-                      className="text-purple-600 hover:text-purple-700 hover:bg-purple-100 p-1"
-                      title="Edit Training"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {userData.training.slice(0, 2).map((training, index) => (
-                    <div key={index} className="space-y-3 p-3 bg-gradient-to-r from-purple-50 to-white rounded-lg border-l-2 border-l-purple-400">
-                      <div className="flex justify-between items-start">
-                        <p className="text-sm font-semibold text-gray-800">{training.course}</p>
-                        <Badge className={training.status === 'completed' 
-                          ? 'bg-emerald-500 hover:bg-emerald-500 text-white' 
-                          : 'bg-blue-500 hover:bg-blue-500 text-white'}>
-                          {training.status}
-                        </Badge>
-                      </div>
-                      <Progress value={training.progress} className="h-3 bg-purple-100" />
-                      <p className="text-xs text-purple-700 font-medium">{training.progress}% Complete</p>
-                    </div>
-                  ))}
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setActiveModal('training')}
-                    className="w-full border-purple-500 text-purple-700 hover:bg-purple-50 font-medium"
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit Training
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* 3. My Experience */}
-              <Card className="h-full border-t-4 border-t-indigo-500 shadow-lg hover:shadow-xl transition-shadow">
-                <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50">
-                  <CardTitle className="flex items-center justify-between text-indigo-700">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-5 h-5" />
-                      My Experience
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setActiveModal('experience')}
-                      className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 p-1"
-                      title="Edit Experience"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {userData.experience.slice(0, 2).map((exp, index) => (
-                    <div key={index} className="p-4 bg-gradient-to-r from-indigo-50 to-white rounded-lg border-l-4 border-l-indigo-400 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-semibold text-sm text-gray-800">{exp.role}</p>
-                          <p className="text-sm text-indigo-600 font-medium">{exp.organization}</p>
-                          <p className="text-xs text-gray-600 mt-1">{exp.duration}</p>
-                        </div>
-                        {exp.verified && (
-                          <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white">
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Verified
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* 4. Opportunities */}
-              <Card variant="orange" className="h-full border-t-4 border-t-rose-500 shadow-lg hover:shadow-xl transition-shadow">
-                <CardHeader className="bg-gradient-to-r from-rose-50 to-pink-50">
-                  <CardTitle className="flex items-center gap-2 text-rose-700">
-                    <ExternalLink className="w-5 h-5" />
-                    Opportunities
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {opportunities.slice(0, 2).map((opp, index) => (
-                    <div key={index} className="p-4 border-2 border-rose-100 bg-gradient-to-r from-rose-50 to-white rounded-lg hover:border-rose-200 transition-colors">
-                      <h4 className="font-semibold text-sm text-gray-800">{opp.title}</h4>
-                      <p className="text-sm text-rose-600 font-medium mb-2">{opp.company}</p>
-                      <div className="flex items-center justify-between">
-                        <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-100">{opp.type}</Badge>
-                        <Button size="sm" className="bg-rose-500 hover:bg-rose-600 text-white font-medium">
-                          Apply Now
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* 5. My Soft Skills */}
-              <Card className="h-full border-t-4 border-t-teal-500 shadow-lg hover:shadow-xl transition-shadow">
-                <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
-                  <CardTitle className="flex items-center gap-2 text-teal-700">
-                    <MessageCircle className="w-5 h-5" />
-                    My Soft Skills
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="p-3 bg-gradient-to-r from-teal-50 to-white rounded-lg border-l-2 border-l-teal-400">
-                    <p className="text-sm font-semibold mb-3 text-teal-700">Languages</p>
-                    {softSkills.filter(skill => skill.type === 'language').map((skill, index) => (
-                      <div key={index} className="flex items-center justify-between mb-2 p-2 bg-white rounded border border-teal-100">
-                        <span className="text-sm font-medium text-gray-800">{skill.name}</span>
-                        <div className="flex">
-                          {renderStars(skill.level)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="p-3 bg-gradient-to-r from-cyan-50 to-white rounded-lg border-l-2 border-l-cyan-400">
-                    <p className="text-sm font-semibold mb-3 text-cyan-700">Communication</p>
-                    {softSkills.filter(skill => skill.type === 'communication').map((skill, index) => (
-                      <div key={index} className="flex items-center justify-between mb-2 p-2 bg-white rounded border border-cyan-100">
-                        <span className="text-sm font-medium text-gray-800">{skill.name}</span>
-                        <div className="flex">
-                          {renderStars(skill.level)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* 6. My Technical Skills */}
-              <Card className="h-full border-t-4 border-t-slate-500 shadow-lg hover:shadow-xl transition-shadow">
-                <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50">
-                  <CardTitle className="flex items-center gap-2 text-slate-700">
-                    <Code className="w-5 h-5" />
-                    My Skills (Technical)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {technicalSkills.map((skill, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-white rounded-lg border-l-2 border-l-slate-400 hover:shadow-sm transition-shadow">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{skill.icon}</span>
-                        <div>
-                          <span className="text-sm font-semibold text-gray-800">{skill.name}</span>
-                          {skill.verified && (
-                            <Badge className="ml-2 bg-emerald-500 hover:bg-emerald-500 text-white text-xs px-2 py-0">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Verified
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex">
-                        {renderStars(skill.level)}
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+              {renderCardsByPriority()}
             </div>
           </div>
         </div>
+
+        {/* Edit Modals */}
+        {activeModal === 'education' && (
+          <EducationEditModal
+            data={userData.education}
+            onSave={(data) => handleSave('education', data)}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
+        
+        {activeModal === 'training' && (
+          <TrainingEditModal
+            data={userData.training}
+            onSave={(data) => handleSave('training', data)}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
+        
+        {activeModal === 'experience' && (
+          <ExperienceEditModal
+            data={userData.experience}
+            onSave={(data) => handleSave('experience', data)}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
+        
+        {activeModal === 'skills' && (
+          <SkillsEditModal
+            technicalSkills={userData.technicalSkills}
+            softSkills={userData.softSkills}
+            onSave={(technical, soft) => {
+              handleSave('technicalSkills', technical);
+              handleSave('softSkills', soft);
+            }}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
       </div>
     </div>
   );

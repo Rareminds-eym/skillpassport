@@ -9,7 +9,7 @@ const HeroSection = () => {
   return (
     <div className="bg-[#f6f7fd] py-8 px-6">
       <div className="max-w-7xl mx-auto">
-        <div className="rounded-3xl shadow-lg border border-[#f6e7c1] overflow-hidden bg-white relative">
+        <div className="rounded-3xl shadow-lg border border-[#f6e7c1] overflow-hidden bg-red-500 relative">
           <div className="absolute top-0 left-0 w-full h-1 bg-[#ffcb3c]" />
           <CardContent className="p-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
