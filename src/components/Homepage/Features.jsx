@@ -11,12 +11,12 @@ const Features = () => {
     >
       <div className="relative z-10 mx-auto max-w-7xl text-center">
         {/* Main Heading */}
-        <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-black leading-tight">
+        <h2 className="font-bold mb-6 text-black leading-tight">
           Move beyond attendance sheets and completion certificates.
         </h2>
 
         {/* Subheading */}
-        <p className="mx-auto mb-10 max-w-3xl text-base md:text-lg text-gray-600 leading-relaxed">
+        <p className="mx-auto mb-10 max-w-3xl text-gray-600 leading-relaxed">
           The Skill Passport captures and verifies every competency developed inside your organization, linking learning to performance and business results.
         </p>
 

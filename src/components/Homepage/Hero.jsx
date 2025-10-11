@@ -9,7 +9,7 @@ const Hero = () => {
       <div className="w-full px-8 py-16 lg:px-20">
         <div className="max-w-7xl">
           {/* Main Heading */}
-          <h1 className="text-black font-black mb-10 leading-tight text-4xl sm:text-5xl md:text-6xl lg:text-7xl">
+          <h1 className="text-black font-black mb-10 leading-tight text-hero">
             <span className="block">Verified Skills.</span>
             <span className="block">Visible Workforce.</span>
             <span className="relative inline-block">
@@ -22,7 +22,7 @@ const Hero = () => {
           </h1>
 
           {/* Subheading */}
-          <p className="text-black font-semibold mb-12 max-w-xl text-base md:text-xl leading-relaxed">
+          <p className="text-black font-semibold mb-12 max-w-xl text-subhero leading-relaxed">
             The Rareminds Skill Passport gives enterprises a single source of truth for employee
             capabilities — turning training outcomes into real-time talent intelligence.
           </p>
@@ -32,7 +32,7 @@ const Hero = () => {
             {/* Book a Demo group */}
             <div className="flex items-center gap-2">
               <button
-                className="h-12 px-7 rounded-full bg-[#e63b2e] text-white text-xs sm:text-sm font-extrabold uppercase tracking-wide shadow-[0_4px_16px_rgba(230,59,46,0.3)] hover:brightness-110"
+                className="h-12 px-7 rounded-full bg-[#e63b2e] text-white text-sm md:text-base font-extrabold uppercase tracking-wide shadow-[0_4px_16px_rgba(230,59,46,0.3)] hover:brightness-110"
               >
                 BOOK A DEMO
               </button>
@@ -47,7 +47,7 @@ const Hero = () => {
             {/* Explore Dashboard group */}
             <div className="flex items-center gap-2">
               <button
-                className="h-12 px-7 rounded-full bg-white text-black text-xs sm:text-sm font-extrabold uppercase tracking-wide border-2 border-black hover:bg-gray-50"
+                className="h-12 px-7 rounded-full bg-white text-black text-sm md:text-base font-extrabold uppercase tracking-wide border-2 border-black hover:bg-gray-50"
               >
                 EXPLORE DASHBOARD
               </button>

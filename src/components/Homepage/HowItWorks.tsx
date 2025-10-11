@@ -16,14 +16,14 @@ const StepBlock = ({
   reverse?: boolean;
 }) => {
   return (
-    <div className="grid md:grid-cols-2 gap-12 items-center">
+    <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
       {/* Image */}
       {reverse ? (
         <div className="flex justify-center md:order-1">
           <img
             src={img}
             alt={title}
-            className="w-full max-w-md object-contain drop-shadow-md"
+            className="w-full max-w-[220px] sm:max-w-xs md:max-w-md object-contain drop-shadow-md"
           />
         </div>
       ) : (
@@ -31,7 +31,7 @@ const StepBlock = ({
           <img
             src={img}
             alt={title}
-            className="w-full max-w-md object-contain drop-shadow-md"
+            className="w-full max-w-[220px] sm:max-w-xs md:max-w-md object-contain drop-shadow-md"
           />
         </div>
       )}
@@ -42,10 +42,10 @@ const StepBlock = ({
           reverse ? "md:order-2" : "md:order-1"
         }`}
       >
-        <h3 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#011938] mb-6">
+        <h3 className="font-bold text-[#011938] mb-4 text-lg sm:text-xl md:text-2xl">
           {title}
         </h3>
-        <p className="text-gray-700 text-base md:text-lg leading-relaxed max-w-xl">
+        <p className="text-gray-700 leading-relaxed max-w-xl text-sm sm:text-base">
           {desc}
         </p>
       </div>
@@ -58,10 +58,10 @@ export default function WorkSection() {
     <section className="relative py-20">
       <div className="max-w-7xl mx-auto px-6 lg:px-12">
         {/* Heading */}
-        <h2 className="text-center text-3xl md:text-4xl font-extrabold text-[#011938] mb-4">
+        <h2 className="text-center font-extrabold text-[#011938] mb-4 text-2xl sm:text-3xl md:text-4xl">
           How It Works
         </h2>
-        <p className="text-center text-gray-500 text-sm md:text-base mb-16">
+        <p className="text-center text-gray-500 mb-12 text-sm sm:text-base md:text-lg">
           The Rareminds Skill Passport transforms training outcomes into
           measurable skill intelligence through a simple yet powerful process —
           from learning to verification to employability.

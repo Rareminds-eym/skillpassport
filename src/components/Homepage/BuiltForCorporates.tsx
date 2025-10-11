@@ -55,10 +55,10 @@ const BuiltForCorporates = () => {
     <section className="relative w-full bg-white py-8">
       {/* Header Section */}
       <div className="container mx-auto px-4 text-center mb-2">
-        <h2 className="text-4xl md:text-5xl font-bold text-black mb-4">
+        <h2 className="font-bold text-black mb-4">
           Built for Corporates
         </h2>
-        <p className="text-lg md:text-xl text-black/70 max-w-2xl mx-auto">
+        <p className="text-black/70 max-w-2xl mx-auto">
           Enterprise-grade capabilities that scale with your organization
         </p>
       </div>
