@@ -21,9 +21,14 @@ const AdminDashboard = lazy(() => import('../pages/admin/Dashboard'));
 const ManageUsers = lazy(() => import('../pages/admin/ManageUsers'));
 const Reports = lazy(() => import('../pages/admin/Reports'));
 
-const RecruiterDashboard = lazy(() => import('../pages/recruitment/Dashboard'));
-const PostJob = lazy(() => import('../pages/recruitment/PostJob'));
-const ViewApplicants = lazy(() => import('../pages/recruitment/ViewApplicants'));
+// Recruiter pages
+const Overview = lazy(() => import('../pages/recruiter/Overview'));
+const TalentPool = lazy(() => import('../pages/recruiter/TalentPool'));
+const Pipelines = lazy(() => import('../pages/recruiter/Pipelines'));
+const Shortlists = lazy(() => import('../pages/recruiter/Shortlists'));
+const Interviews = lazy(() => import('../pages/recruiter/Interviews'));
+const OffersDecisions = lazy(() => import('../pages/recruiter/OffersDecisions'));
+const Analytics = lazy(() => import('../pages/recruiter/Analytics'));
 
 const StudentDashboard = lazy(() => import('../pages/student/Dashboard'));
 const Profile = lazy(() => import('../pages/student/Profile'));
@@ -66,10 +71,14 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route path="dashboard" element={<RecruiterDashboard />} />
-          <Route path="post-job" element={<PostJob />} />
-          <Route path="applicants" element={<ViewApplicants />} />
-          <Route path="" element={<Navigate to="/recruitment/dashboard" replace />} />
+          <Route path="overview" element={<Overview />} />
+          <Route path="talent-pool" element={<TalentPool />} />
+          <Route path="pipelines" element={<Pipelines />} />
+          <Route path="shortlists" element={<Shortlists />} />
+          <Route path="interviews" element={<Interviews />} />
+          <Route path="offers-decisions" element={<OffersDecisions />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="" element={<Navigate to="/recruitment/overview" replace />} />
         </Route>
 
         <Route
