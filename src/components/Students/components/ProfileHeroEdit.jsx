@@ -1,12 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GraduationCap, Briefcase, CreditCard, Award, Edit3, Plus } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Button } from './ui/button';
 import { studentData } from '../data/mockData';
+import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
 
 const ProfileHeroEdit = ({ onEditClick }) => {
+  // Get logged-in user's email from localStorage
+  const userEmail = localStorage.getItem('userEmail');
+  
+  console.log('🔍 ProfileHeroEdit - userEmail from localStorage:', userEmail);
+  
+  // Fetch real student data
+  const { studentData: realStudentData, loading, error } = useStudentDataByEmail(userEmail);
+  
+  console.log('🔍 ProfileHeroEdit - realStudentData:', realStudentData);
+  console.log('🔍 ProfileHeroEdit - loading:', loading);
+  console.log('🔍 ProfileHeroEdit - error:', error);
+  
+  // Use real data if available, otherwise fallback to mock data
+  const displayData = realStudentData || studentData;
+  
+  console.log('🔍 ProfileHeroEdit - displayData.name:', displayData?.name);
   const quickEditSections = [
     {
       id: 'education',
@@ -61,7 +78,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                     </div>
                   </div>
                   <div className="flex-1 pt-1">
-                    <h1 className="text-3xl font-bold text-[#23272e]">Sarah Johnson</h1>
+                    <h1 className="text-3xl font-bold text-[#23272e]">{displayData.name || 'Student Name'}</h1>
                   </div>
                 </div>
 
@@ -69,21 +86,21 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                 <div className="space-y-2 ml-1">
                   <div className="flex items-center gap-2 text-[#23272e]">
                     <Briefcase className="w-4 h-4" />
-                    <span className="font-medium">Stanford University</span>
+                    <span className="font-medium">{displayData.university || 'University'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[#23272e]">
                     <CreditCard className="w-4 h-4" />
-                    <span>Student ID: SU2024-8421</span>
+                    <span>Student ID: {displayData.passportId || displayData.studentId || 'N/A'}</span>
                   </div>
                 </div>
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-3 ml-1">
                   <Badge className="bg-[#e6edfd] text-[#4f46e5] border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-none">
-                    Computer Science
+                    {displayData.department || displayData.degree || 'Computer Science'}
                   </Badge>
                   <Badge className="bg-[#fbe7f7] text-[#c026d3] border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-none">
-                    Class of 2025
+                    {displayData.classYear || 'Class of 2025'}
                   </Badge>
                 </div>
 
@@ -127,7 +144,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       </div>
                     </div>
                     <p className="text-xs text-[#23272e] font-medium mt-2">
-                      PASSPORT-ID: SP-2024-8421
+                      PASSPORT-ID: {displayData.passportId || 'SP-2024-8421'}
                     </p>
                   </CardContent>
                 </Card>
@@ -136,12 +153,12 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 mt-2">
                     <span className="font-bold text-[#23272e]">Employability Score</span>
-                    <span className="ml-auto text-xl font-bold text-[#7f56d9]">78%</span>
+                    <span className="ml-auto text-xl font-bold text-[#7f56d9]">{displayData.employabilityScore || '78'}%</span>
                   </div>
                   <div className="relative h-2 bg-[#e6e6e6] rounded-full overflow-hidden">
                     <div 
                       className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#6d3eff] via-[#a685fa] to-[#ffcb3c] rounded-full transition-all duration-300"
-                      style={{ width: '78%' }}
+                      style={{ width: `${displayData.employabilityScore || 78}%` }}
                     />
                   </div>
                   <div className="flex justify-between text-xs text-[#23272e] mt-1">
