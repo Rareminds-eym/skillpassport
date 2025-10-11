@@ -25,11 +25,17 @@ export const AuthProvider = ({ children }) => {
   const login = (userData) => {
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
+    // Also save email separately for data fetching
+    if (userData.email) {
+      localStorage.setItem('userEmail', userData.email);
+      console.log('💾 Saved userEmail to localStorage:', userData.email);
+    }
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('userEmail');
   };
 
   const value = {
