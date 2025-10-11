@@ -14,17 +14,20 @@ import {
   Award,
   Users,
   Code,
-  MessageCircle
+  MessageCircle,
+  Loader2,
+  Database
 } from 'lucide-react';
 import { 
-  recentUpdates, 
-  suggestions, 
-  educationData, 
-  trainingData, 
-  experienceData, 
-  technicalSkills, 
-  softSkills, 
-  opportunities 
+  recentUpdates as mockRecentUpdates, 
+  suggestions as mockSuggestions, 
+  educationData as mockEducationData, 
+  trainingData as mockTrainingData, 
+  experienceData as mockExperienceData, 
+  technicalSkills as mockTechnicalSkills, 
+  softSkills as mockSoftSkills, 
+  opportunities as mockOpportunities,
+  studentData as mockStudentData
 } from '../data/mockData';
 import {
   EducationEditModal,
@@ -32,22 +35,92 @@ import {
   ExperienceEditModal,
   SkillsEditModal
 } from './ProfileEditModals';
+import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
+import { useAuth } from '../../../context/AuthContext';
 
 const Dashboard = () => {
   const [activeModal, setActiveModal] = useState(null);
+
+  // Get email from your custom auth
+  const { user } = useAuth();
+  const userEmail = user?.email;
+
+  // Fetch student data by EMAIL (from real Supabase table)
+  const {
+    studentData,
+    loading,
+    error,
+    refresh
+  } = useStudentDataByEmail(userEmail, true); // true = fallback to mock data
+
+  // Extract data with fallback to mock
+  const profile = studentData?.profile || mockStudentData;
+  const education = studentData?.education || mockEducationData;
+  const training = studentData?.training || mockTrainingData;
+  const experience = studentData?.experience || mockExperienceData;
+  const technicalSkills = studentData?.technicalSkills || mockTechnicalSkills;
+  const softSkills = studentData?.softSkills || mockSoftSkills;
+  const recentUpdates = studentData?.recentUpdates || mockRecentUpdates;
+  const suggestions = studentData?.suggestions || mockSuggestions;
+  const opportunities = studentData?.opportunities || mockOpportunities;
+
   const [userData, setUserData] = useState({
-    education: educationData,
-    training: trainingData,
-    experience: experienceData,
+    education: education,
+    training: training,
+    experience: experience,
     technicalSkills: technicalSkills,
     softSkills: softSkills
   });
 
-  const handleSave = (section, data) => {
+  // Update local state when Supabase data changes
+  React.useEffect(() => {
+    setUserData({
+      education: education,
+      training: training,
+      experience: experience,
+      technicalSkills: technicalSkills,
+      softSkills: softSkills
+    });
+  }, [studentData]);
+
+  const handleSave = async (section, data) => {
     setUserData(prev => ({
       ...prev,
       [section]: data
     }));
+    
+    // If connected to Supabase, save to database
+    if (currentUserId && studentData?.profile) {
+      try {
+        // Save each item that has an id
+        if (Array.isArray(data)) {
+          for (const item of data) {
+            if (item.id) {
+              switch (section) {
+                case 'education':
+                  await updateEducation(item.id, item);
+                  break;
+                case 'training':
+                  await updateTraining(item.id, item);
+                  break;
+                case 'experience':
+                  await updateExperience(item.id, item);
+                  break;
+                case 'technicalSkills':
+                  await updateTechnicalSkill(item.id, item);
+                  break;
+                case 'softSkills':
+                  await updateSoftSkill(item.id, item);
+                  break;
+              }
+            }
+          }
+        }
+        refresh(); // Refresh data after save
+      } catch (err) {
+        console.error('Error saving to Supabase:', err);
+      }
+    }
   };
 
   const renderStars = (level) => {
@@ -62,6 +135,52 @@ const Dashboard = () => {
   return (
     <div className="bg-gray-50 py-8 px-6">
       <div className="max-w-7xl mx-auto">
+        {/* Connection Status Banner */}
+        <div className="mb-6">
+          {loading ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+              <span className="text-sm font-medium text-blue-700">Loading data from Supabase...</span>
+            </div>
+          ) : error ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full" />
+                <span className="text-sm font-medium text-red-700">Using Mock Data (Supabase connection error)</span>
+              </div>
+              <p className="text-xs text-red-600 ml-5">{error}</p>
+            </div>
+          ) : studentData && studentData.profile ? (
+            // 🟢 CONNECTED STATE - Has real data
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Database className="w-5 h-5 text-green-600" />
+                <span className="text-sm font-medium text-green-700">
+                  Connected to Supabase ✓ (Real Data: {profile.name})
+                </span>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={refresh}
+                className="border-green-300 hover:bg-green-100"
+              >
+                Refresh
+              </Button>
+            </div>
+          ) : (
+            // 🟡 MOCK DATA STATE
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                <span className="text-sm font-medium text-yellow-700">
+                  Using Mock Data - Login with email: {userEmail || 'chinnuu116@gmail.com'}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* LEFT COLUMN - User Activity & Updates */}
@@ -157,15 +276,15 @@ const Dashboard = () => {
                         </Badge>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div>
+                        <div key={`level-${education.id}`}>
                           <p className="text-gray-500 font-medium">Level</p>
                           <p className="font-semibold text-gray-700">{education.level}</p>
                         </div>
-                        <div>
+                        <div key={`year-${education.id}`}>
                           <p className="text-gray-500 font-medium">Year</p>
                           <p className="font-semibold text-gray-700">{education.yearOfPassing}</p>
                         </div>
-                        <div>
+                        <div key={`grade-${education.id}`}>
                           <p className="text-gray-500 font-medium">Grade</p>
                           <p className="font-semibold text-gray-700">{education.cgpa}</p>
                         </div>
