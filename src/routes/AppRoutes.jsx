@@ -91,6 +91,7 @@ const AppRoutes = () => {
         >
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="profile/:email" element={<Profile />} />
           <Route path="applied-jobs" element={<AppliedJobs />} />
           <Route path="browse-jobs" element={<BrowseJobs />} />
           <Route path="" element={<Navigate to="/student/dashboard" replace />} />

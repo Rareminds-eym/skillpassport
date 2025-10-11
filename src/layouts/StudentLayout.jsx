@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useParams, useLocation } from 'react-router-dom';
 import Header from '../components/Students/components/Header';
 import ProfileHeroEdit from '../components/Students/components/ProfileHeroEdit';
 import Footer from '../components/Students/components/Footer';
@@ -21,6 +21,11 @@ import {
 const StudentLayout = () => {
   const [activeTab, setActiveTab] = useState('skills');
   const [activeModal, setActiveModal] = useState(null);
+  const location = useLocation();
+  
+  // Check if viewing someone else's profile
+  const isViewingOthersProfile = location.pathname.includes('/student/profile/');
+  
   const [userData, setUserData] = useState({
     education: educationData,
     training: trainingData,
@@ -49,52 +54,56 @@ const StudentLayout = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
-      <ProfileHeroEdit onEditClick={handleEditClick} />
+      {!isViewingOthersProfile && <ProfileHeroEdit onEditClick={handleEditClick} />}
       <main className="py-8 px-6">
         <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
       </main>
       <Footer />
       <Toaster />
 
-      {/* Edit Modals */}
-      <EducationEditModal
-        isOpen={activeModal === 'education'}
-        onClose={() => setActiveModal(null)}
-        data={userData.education}
-        onSave={(data) => handleSave('education', data)}
-      />
+      {/* Edit Modals - Only show if not viewing someone else's profile */}
+      {!isViewingOthersProfile && (
+        <>
+          <EducationEditModal
+            isOpen={activeModal === 'education'}
+            onClose={() => setActiveModal(null)}
+            data={userData.education}
+            onSave={(data) => handleSave('education', data)}
+          />
 
-      <TrainingEditModal
-        isOpen={activeModal === 'training'}
-        onClose={() => setActiveModal(null)}
-        data={userData.training}
-        onSave={(data) => handleSave('training', data)}
-      />
+          <TrainingEditModal
+            isOpen={activeModal === 'training'}
+            onClose={() => setActiveModal(null)}
+            data={userData.training}
+            onSave={(data) => handleSave('training', data)}
+          />
 
-      <ExperienceEditModal
-        isOpen={activeModal === 'experience'}
-        onClose={() => setActiveModal(null)}
-        data={userData.experience}
-        onSave={(data) => handleSave('experience', data)}
-      />
+          <ExperienceEditModal
+            isOpen={activeModal === 'experience'}
+            onClose={() => setActiveModal(null)}
+            data={userData.experience}
+            onSave={(data) => handleSave('experience', data)}
+          />
 
-      <SkillsEditModal
-        isOpen={activeModal === 'softSkills'}
-        onClose={() => setActiveModal(null)}
-        data={userData.softSkills}
-        title="Soft Skills"
-        type="Skill"
-        onSave={(data) => handleSave('softSkills', data)}
-      />
+          <SkillsEditModal
+            isOpen={activeModal === 'softSkills'}
+            onClose={() => setActiveModal(null)}
+            data={userData.softSkills}
+            title="Soft Skills"
+            type="Skill"
+            onSave={(data) => handleSave('softSkills', data)}
+          />
 
-      <SkillsEditModal
-        isOpen={activeModal === 'technicalSkills'}
-        onClose={() => setActiveModal(null)}
-        data={userData.technicalSkills}
-        title="Technical Skills"
-        type="Skill"
-        onSave={(data) => handleSave('technicalSkills', data)}
-      />
+          <SkillsEditModal
+            isOpen={activeModal === 'technicalSkills'}
+            onClose={() => setActiveModal(null)}
+            data={userData.technicalSkills}
+            title="Technical Skills"
+            type="Skill"
+            onSave={(data) => handleSave('technicalSkills', data)}
+          />
+        </>
+      )}
     </div>
   );
 };

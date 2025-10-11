@@ -13,7 +13,7 @@ const Card = React.forwardRef(({ className, variant = "purple", ...props }, ref)
     <div
       ref={ref}
       className={cn(
-        "rounded-xl border text-card-foreground shadow-md",
+        "rounded-xl border  shadow-md",
         variantClasses,
         className
       )}

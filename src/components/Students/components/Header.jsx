@@ -33,7 +33,7 @@ const Header = ({ activeTab, setActiveTab }) => {
             alt="RareMinds Logo"
             className="w-32 h-10 object-contain bg-white"
           />
-          <span className="hidden sm:inline text-xl font-bold text-purple-700 ml-2">Skill Passport</span>
+          <span className="hidden sm:inline text-xl font-bold text-red-500 ml-10 lg:ml-20">Skill Passport</span>
         </div>
 
         {/* Center Tabs - Desktop */}
@@ -43,9 +43,10 @@ const Header = ({ activeTab, setActiveTab }) => {
               key="dashboard"
               onClick={() => {
                 setActiveTab('dashboard');
+                localStorage.removeItem('dashboardActiveNav');
                 navigate('/student/dashboard');
               }}
-              className={`relative py-2 px-2 text-sm font-medium transition-all duration-200 text-purple-700 hover:text-amber-500 bg-transparent border-none outline-none ${activeTab === 'dashboard' ? 'font-semibold' : ''}`}
+              className={`relative py-2 px-2 text-sm font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none ${activeTab === 'dashboard' ? 'font-semibold' : ''}`}
             >
               Dashboard
               {activeTab === 'dashboard' && (
@@ -55,8 +56,15 @@ const Header = ({ activeTab, setActiveTab }) => {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`relative py-2 px-2 text-sm font-medium transition-all duration-200 text-purple-700 hover:text-amber-500 bg-transparent border-none outline-none ${activeTab === tab.id ? 'font-semibold' : ''}`}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  // Set dashboard nav state for specific tabs
+                  if (tab.id === 'skills' || tab.id === 'training' || tab.id === 'experience' || tab.id === 'opportunities') {
+                    localStorage.setItem('dashboardActiveNav', tab.id);
+                    navigate('/student/dashboard');
+                  }
+                }}
+                className={`relative py-2 px-2 text-sm font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none ${activeTab === tab.id ? 'font-semibold' : ''}`}
               >
                 {tab.label}
                 {activeTab === tab.id && (
@@ -87,7 +95,7 @@ const Header = ({ activeTab, setActiveTab }) => {
               <User className="w-6 h-6 text-purple-700" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-48 bg-white/80 backdrop-blur-md border border-gray-200 shadow-xl">
             <DropdownMenuItem 
               onClick={() => {
                 setActiveTab('profile');
@@ -117,10 +125,11 @@ const Header = ({ activeTab, setActiveTab }) => {
             key="dashboard"
             onClick={() => {
               setActiveTab('dashboard');
+              localStorage.removeItem('dashboardActiveNav');
               navigate('/student/dashboard');
               setMobileMenuOpen(false);
             }}
-            className={`block w-full text-left py-2 px-4 text-purple-700 hover:text-amber-500 font-medium ${activeTab === 'dashboard' ? 'font-semibold bg-purple-50' : ''}`}
+            className={`block w-full text-left py-2 px-4 text-black hover:text-amber-500 font-medium ${activeTab === 'dashboard' ? 'font-semibold bg-purple-50' : ''}`}
           >
             Dashboard
           </button>
@@ -129,9 +138,13 @@ const Header = ({ activeTab, setActiveTab }) => {
               key={tab.id}
               onClick={() => {
                 setActiveTab(tab.id);
+                if (tab.id === 'skills' || tab.id === 'training' || tab.id === 'experience' || tab.id === 'opportunities') {
+                  localStorage.setItem('dashboardActiveNav', tab.id);
+                  navigate('/student/dashboard');
+                }
                 setMobileMenuOpen(false);
               }}
-              className={`block w-full text-left py-2 px-4 text-purple-700 hover:text-amber-500 font-medium ${activeTab === tab.id ? 'font-semibold bg-purple-50' : ''}`}
+              className={`block w-full text-left py-2 px-4 text-black hover:text-amber-500 font-medium ${activeTab === tab.id ? 'font-semibold bg-purple-50' : ''}`}
             >
               {tab.label}
             </button>

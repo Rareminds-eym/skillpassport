@@ -1,4 +1,5 @@
-# Supabase Integration Guide for Skill Passport
+
+# Supabase Integration Guide for    Skill Passport
 
 This guide will help you connect your Student Dashboard to Supabase database.
 
