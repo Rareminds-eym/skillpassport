@@ -1,4 +1,4 @@
-import { Hero, Features, BusinessImpact, BuiltForCorporates, SecurityCompliance, CaseHighlights, FinalCTA } from '../../components/Homepage';
+import { Hero, Features, BusinessImpact, BuiltForCorporates, SecurityCompliance, CaseHighlights, FinalCTA, HowItWorks } from '../../components/Homepage';
 
 const Home = () => {
   return (
@@ -8,6 +8,7 @@ const Home = () => {
       <BusinessImpact />
       <BuiltForCorporates />
       <SecurityCompliance />
+      <HowItWorks/>
       <CaseHighlights />
       <FinalCTA />
     </div>
