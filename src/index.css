@@ -60,6 +60,18 @@ code {
   }
 }
 
+/* Fade In Animation for Case Studies */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Custom animations for the orbital timeline */
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -166,4 +178,101 @@ code {
 
 .text-white\/80 {
   color: rgba(255, 255, 255, 0.8);
+<<<<<<< HEAD
+} 
+
+
+
+.scroll-stack-scroller {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: visible;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: scroll-position;
 }
+
+.scroll-stack-inner {
+  padding: 20vh 5rem 50rem;
+  min-height: 100vh;
+}
+
+.scroll-stack-card-wrapper {
+  position: relative;
+}
+
+.scroll-stack-card {
+  transform-origin: top center;
+  will-change: transform, filter;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+  height: 20rem;
+  width: 100%;
+  margin: 30px 0;
+  padding: 3rem;
+  border-radius: 40px;
+  box-sizing: border-box;
+  /* Improve mobile performance */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  position: relative;
+}
+
+.scroll-stack-end {
+  width: 100%;
+  height: 1px;
+}
+
+/* Responsive typography scale */
+:root {
+  --fs-h1: clamp(2rem, 1.6rem + 2vw, 3rem);
+  --fs-h2: clamp(1.5rem, 1.2rem + 1.5vw, 2.25rem);
+  --fs-h3: clamp(1.25rem, 1rem + 1.2vw, 1.75rem);
+  --fs-h4: clamp(1.125rem, 0.95rem + 0.8vw, 1.5rem);
+  --fs-body: clamp(1rem, 0.95rem + 0.3vw, 1.125rem);
+}
+
+@layer base {
+  h1 {
+    @apply font-extrabold tracking-tight;
+    font-size: var(--fs-h1);
+    line-height: 1.1;
+  }
+  h2 {
+    @apply font-bold tracking-tight;
+    font-size: var(--fs-h2);
+    line-height: 1.2;
+  }
+  h3 {
+    @apply font-semibold;
+    font-size: var(--fs-h3);
+    line-height: 1.3;
+  }
+  h4 {
+    @apply font-semibold;
+    font-size: var(--fs-h4);
+    line-height: 1.35;
+  }
+  p {
+    font-size: var(--fs-body);
+    line-height: 1.7;
+  }
+}
+
+/* Optional typography helpers for special cases */
+.text-hero { font-size: clamp(2.25rem, 1.3rem + 3.2vw, 4rem); line-height: 1.05; }
+.text-subhero { font-size: clamp(1rem, 0.9rem + 0.8vw, 1.375rem); }
+.text-pill { font-size: clamp(0.875rem, 0.84rem + 0.2vw, 1rem); }
+.text-case-title { font-size: clamp(2rem, 1.2rem + 2.4vw, 3.5rem); line-height: 1.1; }
+.text-case-subtitle { font-size: clamp(1rem, 0.92rem + 0.7vw, 1.5rem); }
+/* Stat number sizing for mobile */
+.text-stat { font-size: clamp(2rem, 1.2rem + 3vw, 2.75rem); line-height: 1.1; }
+=======
+}
+>>>>>>> origin/main
