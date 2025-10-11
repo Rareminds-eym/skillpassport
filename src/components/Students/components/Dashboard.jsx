@@ -28,7 +28,7 @@ import {
   softSkills as mockSoftSkills, 
   opportunities as mockOpportunities,
   studentData as mockStudentData
-} from '../data/mockData';
+} from '../data/mockData'; // Removed mock data imports
 import {
   EducationEditModal,
   TrainingEditModal,
@@ -51,18 +51,19 @@ const Dashboard = () => {
     loading,
     error,
     refresh
-  } = useStudentDataByEmail(userEmail, true); // true = fallback to mock data
+  } = useStudentDataByEmail(userEmail, false); // no fallback to mock data
 
   // Extract data with fallback to mock
-  const profile = studentData?.profile || mockStudentData;
-  const education = studentData?.education || mockEducationData;
-  const training = studentData?.training || mockTrainingData;
-  const experience = studentData?.experience || mockExperienceData;
-  const technicalSkills = studentData?.technicalSkills || mockTechnicalSkills;
-  const softSkills = studentData?.softSkills || mockSoftSkills;
-  const recentUpdates = studentData?.recentUpdates || mockRecentUpdates;
-  const suggestions = studentData?.suggestions || mockSuggestions;
-  const opportunities = studentData?.opportunities || mockOpportunities;
+  // Extract data (no fallback)
+  const profile = studentData?.profile;
+  const education = studentData?.education;
+  const training = studentData?.training;
+  const experience = studentData?.experience;
+  const technicalSkills = studentData?.technicalSkills;
+  const softSkills = studentData?.softSkills;
+  const recentUpdates = studentData?.recentUpdates;
+  const suggestions = studentData?.suggestions;
+  const opportunities = studentData?.opportunities;
 
   const [userData, setUserData] = useState({
     education: education,
@@ -146,7 +147,7 @@ const Dashboard = () => {
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-2 h-2 bg-red-500 rounded-full" />
-                <span className="text-sm font-medium text-red-700">Using Mock Data (Supabase connection error)</span>
+                <span className="text-sm font-medium text-red-700">No student data found for this email.</span>
               </div>
               <p className="text-xs text-red-600 ml-5">{error}</p>
             </div>
@@ -169,12 +170,11 @@ const Dashboard = () => {
               </Button>
             </div>
           ) : (
-            // 🟡 MOCK DATA STATE
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 bg-yellow-500 rounded-full" />
                 <span className="text-sm font-medium text-yellow-700">
-                  Using Mock Data - Login with email: {userEmail || 'chinnuu116@gmail.com'}
+                  No student data found. Please check your email or contact support.
                 </span>
               </div>
             </div>

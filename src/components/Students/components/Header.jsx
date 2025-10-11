@@ -9,10 +9,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import { useAuth } from '../../../context/AuthContext'; // <-- Add this import
 
 const Header = ({ activeTab, setActiveTab }) => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { logout } = useAuth(); // <-- Use logout from context
   const tabs = [
     { id: 'skills', label: 'My Skills' },
     { id: 'training', label: 'My Training' },
@@ -101,7 +103,7 @@ const Header = ({ activeTab, setActiveTab }) => {
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600">
+            <DropdownMenuItem className="text-red-600" onClick={() => { logout(); navigate('/login/student'); }}>
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </DropdownMenuItem>
