@@ -16,7 +16,7 @@ import {
   CalendarDaysIcon,
   DocumentDuplicateIcon
 } from '@heroicons/react/24/outline';
-import { shortlistsData, candidates } from '../../data/sampleData';
+import { shortlistsData } from '../../data/sampleData';
 
 const StatusBadge = ({ status, shared, expiry }) => {
   const getStatusInfo = () => {
@@ -419,9 +419,8 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
 };
 
 const ShortlistCard = ({ shortlist, onShare, onExport, onView, onEdit, onDelete }) => {
-  const candidateDetails = shortlist.candidates.map(id => 
-    candidates.find(candidate => candidate.id === id)
-  ).filter(Boolean);
+  // We no longer depend on local candidates list. Show count only.
+  const candidateCount = Array.isArray(shortlist.candidates) ? shortlist.candidates.length : 0;
 
   const isExpired = shortlist.share_expiry && new Date(shortlist.share_expiry) < new Date();
   
@@ -495,23 +494,12 @@ const ShortlistCard = ({ shortlist, onShare, onExport, onView, onEdit, onDelete 
         </div>
       )}
 
-      {candidateDetails.length > 0 && (
+      {candidateCount > 0 && (
         <div className="mb-4">
-          <div className="flex -space-x-2">
-            {candidateDetails.slice(0, 3).map((candidate, index) => (
-              <div
-                key={candidate.id}
-                className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-xs font-medium text-primary-800 border-2 border-white"
-                title={candidate.name}
-              >
-                {candidate.name.split(' ').map(n => n[0]).join('')}
-              </div>
-            ))}
-            {candidateDetails.length > 3 && (
-              <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600 border-2 border-white">
-                +{candidateDetails.length - 3}
-              </div>
-            )}
+          <div className="flex items-center text-sm text-gray-600">
+            <span className="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-800">
+              {candidateCount} candidate{candidateCount === 1 ? '' : 's'}
+            </span>
           </div>
         </div>
       )}

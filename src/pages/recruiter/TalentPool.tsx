@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import {
   FunnelIcon,
   ViewColumnsIcon,
@@ -11,7 +12,7 @@ import {
   AdjustmentsHorizontalIcon,
   StarIcon
 } from '@heroicons/react/24/outline';
-import { candidates } from '../../data/sampleData';
+import { useStudents } from '../../hooks/useStudents';
 
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -159,7 +160,12 @@ const CandidateCard = ({ candidate, onViewProfile }) => {
   );
 };
 
-const TalentPool = ({ onViewProfile }) => {
+type RecruiterOutletContext = {
+  onViewProfile: (candidate: any) => void
+}
+
+const TalentPool = () => {
+  const { onViewProfile } = useOutletContext<RecruiterOutletContext>()
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
   const [showFilters, setShowFilters] = useState(true);
   const [filters, setFilters] = useState({
@@ -202,13 +208,15 @@ const TalentPool = ({ onViewProfile }) => {
     { value: 'third', label: 'Third Year', count: 67 }
   ];
 
+  const { students, loading, error } = useStudents()
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">
         <div className="flex items-center">
           <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
-          <span className="ml-2 text-sm text-gray-500">({candidates.length} candidates)</span>
+          <span className="ml-2 text-sm text-gray-500">({students.length} candidates)</span>
         </div>
         <div className="flex items-center space-x-2">
           <button
@@ -335,7 +343,7 @@ const TalentPool = ({ onViewProfile }) => {
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{candidates.length}</span> results
+                Showing <span className="font-medium">{students.length}</span> results
               </p>
               <select className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white">
                 <option>Sort by: Relevance</option>
@@ -350,13 +358,18 @@ const TalentPool = ({ onViewProfile }) => {
           <div className="flex-1 overflow-y-auto p-4">
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {candidates.map((candidate) => (
+                {loading && <div className="text-sm text-gray-500">Loading students...</div>}
+                {error && <div className="text-sm text-red-600">{error}</div>}
+                {!loading && students.map((candidate) => (
                   <CandidateCard
                     key={candidate.id}
-                    candidate={candidate}
+                    candidate={candidate as any}
                     onViewProfile={onViewProfile}
                   />
                 ))}
+                {!loading && students.length === 0 && !error && (
+                  <div className="text-sm text-gray-500">No students found.</div>
+                )}
               </div>
             ) : (
               <div className="bg-white shadow-sm rounded-lg border border-gray-200">
@@ -381,7 +394,7 @@ const TalentPool = ({ onViewProfile }) => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {candidates.map((candidate) => (
+                    {students.map((candidate) => (
                       <tr key={candidate.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -406,7 +419,7 @@ const TalentPool = ({ onViewProfile }) => {
                                 {skill}
                               </span>
                             ))}
-                            {candidate.skills.length > 3 && (
+                              {candidate.skills && candidate.skills.length > 3 && (
                               <span className="text-xs text-gray-500">+{candidate.skills.length - 3}</span>
                             )}
                           </div>
