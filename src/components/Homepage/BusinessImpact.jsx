@@ -38,7 +38,7 @@ const BusinessImpact = () => {
   ];
 
   return (
-    <section className="bg-black text-white px-5 py-14 sm:py-20">
+    <section className="relative bg-black text-white px-5 py-14 sm:py-20 -mt-8 sm:-mt-12 md:-mt-16 z-0">
       <div className="mx-auto max-w-7xl text-center">
         {/* Heading */}
         <h2 className="font-bold mb-4 text-white text-2xl sm:text-3xl md:text-4xl">
