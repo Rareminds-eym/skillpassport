@@ -78,7 +78,7 @@ const AppRoutes = () => {
           <Route path="interviews" element={<Interviews />} />
           <Route path="offers-decisions" element={<OffersDecisions />} />
           <Route path="analytics" element={<Analytics />} />
-          <Route path="" element={<Navigate to="/recruitment/overview" replace />} />
+          <Route path="*" element={<Navigate to="/recruitment/overview" replace />} />
         </Route>
 
         <Route

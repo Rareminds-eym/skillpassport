@@ -32,7 +32,7 @@ export default function LoginRecruiter() {
     // Simulate API / validation
     setTimeout(() => {
       login({ name: "Recruiter User", email, role: "recruiter" });
-      navigate("/recruitment/dashboard");
+      navigate("/recruitment");
       setLoading(false);
     }, 700);
   }
