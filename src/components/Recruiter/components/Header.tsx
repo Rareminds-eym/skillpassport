@@ -8,10 +8,12 @@ import {
 } from '@heroicons/react/24/outline'
 import { savedSearches } from '../../../data/sampleData'
 import { HeaderProps } from '../../../types/recruiter'
+import { useAuth } from '../../../context/AuthContext'
 
 const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [showSavedSearches, setShowSavedSearches] = useState<boolean>(false)
+  const { user } = useAuth()
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
@@ -96,7 +98,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
             <div className="relative">
               <button className="flex items-center space-x-3 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500">
                 <UserCircleIcon className="h-8 w-8 text-gray-400" />
-                <span className="hidden md:block text-gray-700 font-medium">Sarah Johnson</span>
+                <div className="hidden md:flex flex-col items-start">
+                  <span className="text-gray-700 font-medium">{user?.name || "Recruiter"}</span>
+                  <span className="text-xs text-gray-500">{user?.email}</span>
+                </div>
               </button>
             </div>
           </div>
