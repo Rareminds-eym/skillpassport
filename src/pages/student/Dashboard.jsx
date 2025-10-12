@@ -144,18 +144,18 @@ const StudentDashboard = () => {
       <Card key="opportunities" className="h-full border-2 border-[#FFB800] rounded-2xl shadow-none bg-white">
         <CardHeader className="bg-white rounded-t-2xl border-b-0">
           <CardTitle className="flex items-center gap-2 text-black text-lg font-bold">
-            <ExternalLink className="w-5 h-5 text-[#FFB800]" />
+            <ExternalLink className="w-5 h-5 text-blue-500" />
             Opportunities
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5 p-0">
           {(showAllOpportunities ? opportunities : opportunities.slice(0,2)).map((opp, idx) => (
-            <div key={opp.id || `${opp.title}-${opp.company}-${idx}`} className="bg-white rounded-xl border border-[#FFB800] px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'none'}}>
+            <div key={opp.id || `${opp.title}-${opp.company}-${idx}`} className="bg-white rounded-xl border border-blue-500 px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'none'}}>
               <h4 className="font-bold text-gray-900 text-base mb-1">{opp.title}</h4>
-              <p className="text-[#FFB800] text-base font-semibold mb-3">{opp.company}</p>
+              <p className="text-blue-500 text-base font-semibold mb-3">{opp.company}</p>
               <div className="flex items-center justify-between mt-2">
                 <span className="bg-gray-200 text-gray-800 px-3 py-1 rounded-lg text-xs font-semibold shadow-none">{opp.type}</span>
-                <Button size="sm" className="bg-[#FFB800] hover:bg-[#FFD54F] text-black font-semibold px-6 py-2 rounded-lg shadow-md transition-all" style={{boxShadow:'0 2px 6px 0 #f7e7b0'}}>
+                <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition-all" style={{boxShadow:'0 2px 6px 0 #f7e7b0'}}>
                   Apply Now
                 </Button>
               </div>
@@ -165,7 +165,7 @@ const StudentDashboard = () => {
             <Button
               variant="outline"
               onClick={() => setShowAllOpportunities((v) => !v)}
-              className="w-full border-2 border-[#FFB800] text-[#FFB800] hover:bg-yellow-50 font-semibold rounded-lg mt-2"
+              className="w-full border-2 border-blue-500 text-blue-500 hover:bg-blue-50 font-semibold rounded-lg mt-2"
             >
               {showAllOpportunities ? 'Show Less' : 'View All Opportunities'}
             </Button>
@@ -176,7 +176,7 @@ const StudentDashboard = () => {
     technicalSkills: (
       <Card key="technicalSkills" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
         <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0">
-          <CardTitle className="flex items-center gap-2 text-purple-700 text-lg font-semibold">
+          <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold">
             <Code className="w-5 h-5" />
             Technical Skills
           </CardTitle>
@@ -199,7 +199,7 @@ const StudentDashboard = () => {
             <Button
               variant="outline"
               onClick={() => setShowAllTechnicalSkills((v) => !v)}
-              className="w-full border-2 border-purple-400 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
+              className="w-full border-2 border-blue-400 text-blue-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
             >
               {showAllTechnicalSkills ? 'Show Less' : 'View All Technical Skills'}
             </Button>
@@ -210,7 +210,7 @@ const StudentDashboard = () => {
     education: (
       <Card key="education" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
         <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0">
-          <CardTitle className="flex items-center gap-2 text-purple-700 text-lg font-semibold">
+          <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold">
             <Award className="w-5 h-5" />
             My Education
             <span className="ml-auto">
@@ -250,7 +250,7 @@ const StudentDashboard = () => {
             <Button
               variant="outline"
               onClick={() => setShowAllEducation((v) => !v)}
-              className="w-full border-2 border-purple-400 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
+              className="w-full border-2 border-blue-400 text-blue-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
             >
               {showAllEducation ? 'Show Less' : 'View All Qualifications'}
             </Button>
@@ -261,7 +261,7 @@ const StudentDashboard = () => {
     training: (
       <Card key="training" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
         <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0">
-          <CardTitle className="flex items-center gap-2 text-purple-700 text-lg font-semibold">
+          <CardTitle className="flex items-center gap-2 text-blue-700  text-lg font-semibold">
             <Code className="w-5 h-5" />
             My Training
           </CardTitle>
@@ -276,14 +276,14 @@ const StudentDashboard = () => {
               <div className="w-full h-2 bg-purple-100 rounded-full overflow-hidden mb-1">
                 <div className="h-2 bg-black rounded-full transition-all duration-300" style={{ width: `${training.progress}%` }} />
               </div>
-              <span className="text-xs text-purple-600 font-semibold">{training.progress}% Complete</span>
+              <span className="text-xs text-blue-600 font-semibold">{training.progress}% Complete</span>
             </div>
           ))}
           {userData.training.filter(training => training.enabled !== false).length > 0 && (
             <Button
               variant="outline"
               onClick={() => setActiveModal('training')}
-              className="w-full border-2 border-purple-400 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
+              className="w-full border-2 border-blue-400 text-blue-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
             >
               View All Courses
             </Button>
@@ -294,7 +294,7 @@ const StudentDashboard = () => {
     experience: (
       <Card key="experience" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
         <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0">
-          <CardTitle className="flex items-center gap-2 text-purple-700 text-lg font-semibold">
+          <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold">
             <Users className="w-5 h-5" />
             My Experience
           </CardTitle>
@@ -321,7 +321,7 @@ const StudentDashboard = () => {
             <Button
               variant="outline"
               onClick={() => setShowAllExperience((v) => !v)}
-              className="w-full border-2 border-purple-400 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
+              className="w-full border-2 border-blue-400 text-blue-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
             >
               {showAllExperience ? 'Show Less' : 'View All Experience'}
             </Button>
@@ -332,7 +332,7 @@ const StudentDashboard = () => {
     softSkills: (
       <Card key="softSkills" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
         <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0">
-          <CardTitle className="flex items-center gap-2 text-purple-700 text-lg font-semibold">
+          <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold">
             <MessageCircle className="w-5 h-5" />
             My Soft Skills
           </CardTitle>
@@ -355,7 +355,7 @@ const StudentDashboard = () => {
             <Button
               variant="outline"
               onClick={() => setShowAllSoftSkills((v) => !v)}
-              className="w-full border-2 border-purple-400 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
+              className="w-full border-2 border-blue-400 text-blue-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
             >
               {showAllSoftSkills ? 'Show Less' : 'View All Soft Skills'}
             </Button>
@@ -393,9 +393,9 @@ const StudentDashboard = () => {
             React.cloneElement(card.props.children[0], {
               children: [
                 card.props.children[0].props.children,
-                <Badge key="priority" className="bg-blue-500 hover:bg-blue-500 text-white text-xs ml-2">
-                  ✨ Priority
-                </Badge>
+                // <Badge key="priority" className="bg-blue-500 hover:bg-blue-500 text-white text-xs ml-2">
+                //   ✨ Priority
+                // </Badge>
               ]
             }),
             ...card.props.children.slice(1)
@@ -410,7 +410,7 @@ const StudentDashboard = () => {
     <div className="bg-gray-50 py-8 px-6">
       <div className="max-w-7xl mx-auto">
         {/* Navigation Bar */}
-        <div className="mb-6">
+        {/* <div className="mb-6">
           <Card className="shadow-lg">
             <CardContent className="p-4">
               <div className="flex flex-wrap gap-2 justify-center">
@@ -444,7 +444,7 @@ const StudentDashboard = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </div> */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 

@@ -96,7 +96,7 @@ const Footer = () => {
             </h4>
             <div className="flex flex-wrap gap-3">
               <a 
-                href="https://linkedin.com" 
+                href="https://www.linkedin.com/company/rareminds/" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="group relative w-12 h-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:border-purple-400 transition-all duration-300 hover:scale-110"
@@ -106,7 +106,7 @@ const Footer = () => {
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-purple-500/0 group-hover:from-purple-500/20 group-hover:to-transparent rounded-xl transition-all duration-300"></div>
               </a>
               <a 
-                href="https://twitter.com" 
+                href="https://x.com/minds_rare" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="group relative w-12 h-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:border-blue-400 transition-all duration-300 hover:scale-110"
@@ -116,7 +116,7 @@ const Footer = () => {
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-blue-500/0 group-hover:from-blue-500/20 group-hover:to-transparent rounded-xl transition-all duration-300"></div>
               </a>
               <a 
-                href="https://youtube.com" 
+                href="https://www.youtube.com/channel/UClkBtwJsScYxFzNoFdlifeA" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="group relative w-12 h-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:border-red-400 transition-all duration-300 hover:scale-110"
@@ -126,7 +126,7 @@ const Footer = () => {
                 <div className="absolute inset-0 bg-gradient-to-br from-red-500/0 to-red-500/0 group-hover:from-red-500/20 group-hover:to-transparent rounded-xl transition-all duration-300"></div>
               </a>
               <a 
-                href="https://instagram.com" 
+                href="https://www.instagram.com/rareminds_eym/" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="group relative w-12 h-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:border-pink-400 transition-all duration-300 hover:scale-110"

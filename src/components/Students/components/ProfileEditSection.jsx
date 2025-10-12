@@ -125,8 +125,8 @@ const ProfileEditSection = ({ profileEmail }) => {
       title: 'My Education',
       icon: Award,
       description: 'Manage your academic qualifications - Add multiple degrees, certifications',
-      color: 'bg-gradient-to-br from-purple-50 to-violet-50 text-purple-700 border-purple-200',
-      buttonColor: 'bg-purple-600 hover:bg-purple-700',
+  color: 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-blue-200',
+      buttonColor: 'bg-blue-600 hover:bg-blue-700',
       data: userData.education,
       count: Array.isArray(userData.education) ? userData.education.filter(item => item.enabled !== false).length : 0
     },
@@ -135,8 +135,8 @@ const ProfileEditSection = ({ profileEmail }) => {
       title: 'My Training',
       icon: BookOpen,
       description: 'Add courses and certifications',
-      color: 'bg-gradient-to-br from-purple-50 to-violet-50 text-purple-700 border-purple-200',
-      buttonColor: 'bg-purple-600 hover:bg-purple-700',
+  color: 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-blue-200',
+      buttonColor: 'bg-blue-600 hover:bg-blue-700',
       data: userData.training,
       count: Array.isArray(userData.training) ? userData.training.filter(item => item.enabled !== false).length : 0
     },
@@ -145,8 +145,8 @@ const ProfileEditSection = ({ profileEmail }) => {
       title: 'My Experience',
       icon: Briefcase,
       description: 'Add internships and work experience',
-      color: 'bg-gradient-to-br from-purple-50 to-violet-50 text-purple-700 border-purple-200',
-      buttonColor: 'bg-purple-600 hover:bg-purple-700',
+  color: 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-blue-200',
+      buttonColor: 'bg-blue-600 hover:bg-blue-700',
       data: userData.experience,
       count: Array.isArray(userData.experience) ? userData.experience.filter(item => item.enabled !== false).length : 0
     },
@@ -155,8 +155,8 @@ const ProfileEditSection = ({ profileEmail }) => {
       title: 'My Soft Skills',
       icon: MessageCircle,
       description: 'Languages and communication skills',
-      color: 'bg-gradient-to-br from-purple-50 to-violet-50 text-purple-700 border-purple-200',
-      buttonColor: 'bg-purple-600 hover:bg-purple-700',
+  color: 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-blue-200',
+      buttonColor: 'bg-blue-600 hover:bg-blue-700',
       data: userData.softSkills,
       count: Array.isArray(userData.softSkills) ? userData.softSkills.filter(item => item.enabled !== false).length : 0
     },
@@ -165,8 +165,8 @@ const ProfileEditSection = ({ profileEmail }) => {
       title: 'My Skills (Technical)',
       icon: Code,
       description: 'Programming languages and technical skills',
-      color: 'bg-gradient-to-br from-purple-50 to-violet-50 text-purple-700 border-purple-200',
-      buttonColor: 'bg-purple-600 hover:bg-purple-700',
+  color: 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-blue-200',
+      buttonColor: 'bg-blue-600 hover:bg-blue-700',
       data: userData.technicalSkills,
       count: Array.isArray(userData.technicalSkills) ? userData.technicalSkills.length : 0
     }
@@ -177,7 +177,7 @@ const ProfileEditSection = ({ profileEmail }) => {
     return (
       <div className="bg-gray-50 py-8 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading your profile data...</p>
         </div>
       </div>
@@ -213,7 +213,7 @@ const ProfileEditSection = ({ profileEmail }) => {
           </p>
           
           {/* Database Connection Status - Only show for own profile */}
-          {isOwnProfile && (
+          {/* {isOwnProfile && (
             <>
               {userEmail && studentData?.profile ? (
                 <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-green-50 border border-green-200 rounded-full">
@@ -227,7 +227,7 @@ const ProfileEditSection = ({ profileEmail }) => {
                 </div>
               )}
             </>
-          )}
+          )} */}
         </div>
 
         {/* Quick Fix Notification - Only for own profile */}

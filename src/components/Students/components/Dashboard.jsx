@@ -216,16 +216,16 @@ const Dashboard = () => {
                 className="border-emerald-500 text-emerald-700 hover:bg-emerald-50"
               >
                 <Edit className="w-4 h-4 mr-2" />
-                Manage Education
+                Manage Educa
               </Button>
             </div>
           </CardContent>
         </Card>
       ),
       training: (
-        <Card key="training" className="h-full shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-purple-50 to-purple-100">
-          <CardHeader className="bg-gradient-to-r from-purple-100 to-purple-200 border-b border-purple-200">
-            <CardTitle className="flex items-center justify-between text-purple-800">
+        <Card key="training" className="h-full shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-[#5378f1]/10 to-[#5378f1]/20">
+          <CardHeader className="bg-gradient-to-r from-[#5378f1]/20 to-[#5378f1]/30 border-b border-[#5378f1]/30">
+            <CardTitle className="flex items-center justify-between text-[#5378f1]">
               <div className="flex items-center gap-2">
                 <Code className="w-5 h-5" />
                 My Training
@@ -234,32 +234,32 @@ const Dashboard = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => setActiveModal('training')}
-                className="text-purple-700 hover:text-purple-800 hover:bg-purple-200 p-1"
+                className="text-[#5378f1] hover:text-[#4267d9] hover:bg-[#5378f1]/20 p-1"
                 title="Edit Training"
               >
                 <Edit className="w-4 h-4" />
               </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 bg-gradient-to-br from-purple-25 to-purple-50">
+          <CardContent className="space-y-4 bg-gradient-to-br from-[#5378f1]/5 to-[#5378f1]/10">
             {userData.training?.filter(training => training.enabled !== false).slice(0, 2).map((training, index) => (
-              <div key={index} className="space-y-3 p-4 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg border border-purple-300 shadow-sm">
+              <div key={index} className="space-y-3 p-4 bg-gradient-to-br from-[#5378f1]/20 to-[#5378f1]/30 rounded-lg border border-[#5378f1]/40 shadow-sm">
                 <div className="flex justify-between items-start">
-                  <p className="text-sm font-semibold text-purple-900">{training.course}</p>
+                  <p className="text-sm font-semibold text-[#5378f1]">{training.course}</p>
                   <Badge className={training.status === 'completed' 
                     ? 'bg-emerald-500 hover:bg-emerald-500 text-white' 
-                    : 'bg-purple-500 hover:bg-purple-500 text-white'}>
+                    : 'bg-[#5378f1] hover:bg-[#4267d9] text-white'}>
                     {training.status}
                   </Badge>
                 </div>
-                <Progress value={training.progress} className="h-3 bg-purple-300" />
-                <p className="text-xs text-purple-800 font-medium">{training.progress}% Complete</p>
+                <Progress value={training.progress} className="h-3 bg-[#5378f1]/30" />
+                <p className="text-xs text-[#5378f1] font-medium">{training.progress}% Complete</p>
               </div>
             ))}
             <Button 
               variant="outline" 
               onClick={() => setActiveModal('training')}
-              className="w-full border-purple-500 text-purple-700 hover:bg-purple-100 hover:border-purple-600 font-medium bg-white/50"
+              className="w-full border-[#5378f1] text-[#5378f1] hover:bg-[#5378f1]/10 hover:border-[#4267d9] font-medium bg-white/50"
             >
               <Edit className="w-4 h-4 mr-2" />
               Edit Training
@@ -322,7 +322,7 @@ const Dashboard = () => {
                 <p className="text-sm text-[#FFB800] font-medium mb-2">{opp.company}</p>
                 <div className="flex items-center justify-between">
                   <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">{opp.type}</Badge>
-                  <Button size="sm" className="bg-[#FFB800] hover:bg-[#E5A600] text-black font-medium">
+                  <Button size="sm" className="bg-blue-300 hover:bg-[#E5A600] text-black font-medium">
                     Apply Now
                   </Button>
                 </div>
@@ -507,7 +507,7 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Navigation Bar */}
+        {/* Navigation Bar (commented out)
         <div className="mb-6">
           <Card className="shadow-lg">
             <CardContent className="p-4">
@@ -543,6 +543,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+        */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
@@ -550,7 +551,7 @@ const Dashboard = () => {
           <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-20">
             
             {/* Recent Updates */}
-            <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow">
+            <Card className="hover:shadow-xl transition-shadow">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
                 <CardTitle className="flex items-center gap-2 text-blue-700">
                   <Bell className="w-5 h-5" />
