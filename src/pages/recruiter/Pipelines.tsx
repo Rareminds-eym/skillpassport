@@ -10,7 +10,8 @@ import {
   XMarkIcon,
   ArrowRightIcon
 } from '@heroicons/react/24/outline';
-import { candidates, requisitions } from '../../data/sampleData';
+import { requisitions } from '../../data/sampleData';
+import { useStudents } from '../../hooks/useStudents';
 
 const KanbanColumn = ({ title, count, color, candidates, onCandidateMove, onCandidateView, selectedCandidates, onToggleSelect, onSendEmail }) => {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -34,7 +35,7 @@ const KanbanColumn = ({ title, count, color, candidates, onCandidateMove, onCand
       </div>
 
       <div className="space-y-3 max-h-96 overflow-y-auto">
-        {candidates.map((candidate) => (
+        {(candidates || []).map((candidate) => (
           <CandidateCard
             key={candidate.id}
             candidate={candidate}
@@ -191,14 +192,36 @@ const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, 
 
 const Pipelines = ({ onViewProfile }) => {
   const [selectedJob, setSelectedJob] = useState(requisitions[0]?.id || null);
+  const { students, loading, error } = useStudents();
   const [pipelineData, setPipelineData] = useState({
-    sourced: [candidates[0], candidates[1]],
-    screened: [candidates[2]],
+    sourced: [],
+    screened: [],
     interview_1: [],
     interview_2: [],
     offer: [],
     hired: []
   });
+
+  // Seed initial pipeline stages when students load
+  React.useEffect(() => {
+    if (!loading && students.length > 0) {
+      setPipelineData(prev => {
+        // Keep existing if already populated
+        if ((prev.sourced?.length || 0) > 0 || (prev.screened?.length || 0) > 0) return prev
+        const first = students[0] ? [students[0]] : []
+        const second = students[1] ? [students[1]] : []
+        const third = students[2] ? [students[2]] : []
+        return {
+          sourced: first.concat(second).filter(Boolean),
+          screened: third,
+          interview_1: [],
+          interview_2: [],
+          offer: [],
+          hired: []
+        }
+      })
+    }
+  }, [loading, students]);
   const [selectedCandidates, setSelectedCandidates] = useState([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
 
