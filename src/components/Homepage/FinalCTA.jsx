@@ -6,7 +6,7 @@ const FinalCTA = () => {
     <section
       className="relative grid place-content-center overflow-hidden px-4 py-20"
       style={{
-        background: 'radial-gradient(ellipse 80% 50% at 50% 100%, #9d4edd 0%, #5a189a 25%, #240046 50%, #10002b 75%, #000000 100%)'
+        background: 'radial-gradient(ellipse 100% 60% at 50% 100%, #e63946 0%, #d62828 20%, #9d0208 40%, #6a040f 60%, #370617 80%, #03071e 100%)'
       }}
     >
       <div className="relative z-10 flex flex-col items-center">
