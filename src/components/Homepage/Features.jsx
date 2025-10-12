@@ -1,50 +1,27 @@
 const Features = () => {
   return (
-    <section style={{ 
-      padding: '80px 20px', 
-      backgroundColor: '#ffffff',
-      backgroundImage: 'url(/assets/HomePage/Vector.svg)',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'bottom center',
-      backgroundSize: 'contain',
-      position: 'relative'
-    }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+    <section
+      className="relative px-5 py-16 sm:py-20 bg-white"
+      style={{
+        backgroundImage: 'url(/assets/HomePage/Vector.svg)',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'bottom center',
+        backgroundSize: 'contain'
+      }}
+    >
+      <div className="relative z-10 mx-auto max-w-7xl text-center">
         {/* Main Heading */}
-        <h2 style={{ 
-          fontSize: '40px', 
-          fontWeight: '700', 
-          marginBottom: '24px',
-          color: '#000',
-          lineHeight: '1.2'
-        }}>
+        <h2 className="font-bold mb-6 text-black leading-tight">
           Move beyond attendance sheets and completion certificates.
         </h2>
 
         {/* Subheading */}
-        <p style={{ 
-          fontSize: '20px', 
-          color: '#666',
-          marginBottom: '40px',
-          lineHeight: '1.6',
-          maxWidth: '900px',
-          margin: '0 auto 40px'
-        }}>
+        <p className="mx-auto mb-10 max-w-3xl text-gray-600 leading-relaxed">
           The Skill Passport captures and verifies every competency developed inside your organization, linking learning to performance and business results.
         </p>
 
         {/* CTA Button */}
-        <button style={{
-          backgroundColor: '#000',
-          color: '#d4af37',
-          padding: '16px 32px',
-          borderRadius: '9999px',
-          fontSize: '16px',
-          fontWeight: '600',
-          border: 'none',
-          cursor: 'pointer',
-          transition: 'all 0.2s'
-        }}>
+        <button className="rounded-full bg-black text-amber-400 px-6 py-4 text-sm md:text-base font-semibold transition-colors hover:bg-gray-900">
           From learning hours to skill power.
         </button>
       </div>

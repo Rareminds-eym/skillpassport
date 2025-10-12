@@ -245,7 +245,7 @@ const DashboardWithSupabase = ({ studentId }) => {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                {education.map((edu, idx) => (
+                {education.filter(edu => edu.enabled !== false).map((edu, idx) => (
                   <div key={edu.id || idx} className="border-l-4 border-blue-500 pl-4 py-2">
                     <h4 className="font-semibold">{edu.degree}</h4>
                     <p className="text-sm text-gray-600">{edu.university}</p>
@@ -278,7 +278,7 @@ const DashboardWithSupabase = ({ studentId }) => {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                {training.map((course, idx) => (
+                {training.filter(course => course.enabled !== false).map((course, idx) => (
                   <div key={course.id || idx} className="space-y-2">
                     <div className="flex items-center justify-between">
                       <h4 className="font-semibold">{course.course}</h4>
@@ -310,7 +310,7 @@ const DashboardWithSupabase = ({ studentId }) => {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                {experience.map((exp, idx) => (
+                {experience.filter(exp => exp.enabled !== false).map((exp, idx) => (
                   <div key={exp.id || idx} className="border-l-4 border-green-500 pl-4 py-2">
                     <div className="flex items-center gap-2">
                       <h4 className="font-semibold">{exp.role}</h4>
@@ -338,7 +338,7 @@ const DashboardWithSupabase = ({ studentId }) => {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {technicalSkills.map((skill, idx) => (
+                  {technicalSkills.filter(skill => skill.enabled !== false).map((skill, idx) => (
                     <Badge key={skill.id || idx} variant="secondary" className="text-sm px-3 py-1">
                       {skill.icon} {skill.name} 
                       <span className="ml-2 text-yellow-500">

@@ -8,7 +8,7 @@ const Card = React.forwardRef(({ className, variant = "purple", ...props }, ref)
   const variantClasses =
     variant === "orange"
       ? "border-amber-200 bg-[#fff9f0]"
-      : "border-purple-300 bg-[#faf6ff]";
+      : "border-blue-300 bg-[#faf6ff]";
   return (
     <div
       ref={ref}

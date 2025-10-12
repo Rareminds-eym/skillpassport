@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -10,6 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 
 export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
   const [educationList, setEducationList] = useState(data || []);
+
+  // Update internal state when data prop changes (Supabase data updates)
+  useEffect(() => {
+    setEducationList(data || []);
+  }, [data]);
   const [editingItem, setEditingItem] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState({
@@ -147,11 +152,11 @@ export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
                   : education.level === 'Certificate'
                     ? 'border-l-amber-500 bg-amber-50'
                     : 'border-l-gray-500 bg-gray-50'
-            } hover:shadow-md transition-shadow`}>
+            } hover:shadow-md transition-shadow ${education.enabled === false ? 'opacity-50' : 'opacity-100'}`}>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-semibold text-gray-800">{education.degree}</h4>
+                    <h4 className="font-semibold" style={{ color: '#6A0DAD' }}>{education.degree}</h4>
                     <Badge className={getLevelColor(education.level)}>
                       {education.level}
                     </Badge>
@@ -167,23 +172,23 @@ export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
                       </Badge>
                     )}
                   </div>
-                  <p className="text-sm font-medium text-gray-600">{education.university}</p>
+                  <p className="text-sm font-medium" style={{ color: '#6A0DAD' }}>{education.university}</p>
                   <div className="grid grid-cols-3 gap-2 text-xs mt-2">
                     <div>
-                      <span className="text-gray-500">Department:</span>
-                      <p className="font-medium">{education.department}</p>
+                      <span style={{ color: '#6A0DAD' }}>Department:</span>
+                      <p className="font-medium" style={{ color: '#6A0DAD' }}>{education.department}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Year:</span>
-                      <p className="font-medium">{education.yearOfPassing}</p>
+                      <span style={{ color: '#6A0DAD' }}>Year:</span>
+                      <p className="font-medium" style={{ color: '#6A0DAD' }}>{education.yearOfPassing}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Grade:</span>
-                      <p className="font-medium">{education.cgpa}</p>
+                      <span style={{ color: '#6A0DAD' }}>Grade:</span>
+                      <p className="font-medium" style={{ color: '#6A0DAD' }}>{education.cgpa}</p>
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1 items-center">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -193,12 +198,12 @@ export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
                     <Edit3 className="w-4 h-4" />
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant={education.enabled === false ? 'outline' : 'default'}
                     size="sm"
-                    onClick={() => deleteEducation(education.id)}
-                    className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                    onClick={() => setEducationList(educationList.map(edu => edu.id === education.id ? { ...edu, enabled: edu.enabled === false ? true : false } : edu))}
+                    className={education.enabled === false ? 'text-gray-500 border-gray-400' : 'bg-emerald-500 text-white'}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    {(education.enabled === undefined || education.enabled) ? 'Disable' : 'Enable'}
                   </Button>
                 </div>
               </div>
@@ -345,6 +350,11 @@ export const TrainingEditModal = ({ isOpen, onClose, data, onSave }) => {
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
 
+  // Update internal state when data prop changes (Supabase data updates)
+  useEffect(() => {
+    setCourses(data || []);
+  }, [data]);
+
   const addCourse = () => {
     if (newCourse.course.trim()) {
       setCourses([...courses, { ...newCourse, id: Date.now(), verified: false, processing: true }]);
@@ -377,11 +387,11 @@ export const TrainingEditModal = ({ isOpen, onClose, data, onSave }) => {
         </DialogHeader>
         <div className="space-y-4">
           {courses.map((course, index) => (
-            <div key={course.id || index} className="p-4 border rounded-lg space-y-2">
+            <div key={course.id || index} className={`p-4 border rounded-lg space-y-2 ${course.enabled === false ? 'opacity-50' : 'opacity-100'}`}>
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <h4 className="font-medium">{course.course}</h4>
-                  <p className="text-sm text-gray-600">Progress: {course.progress}%</p>
+                  <h4 className="font-medium" style={{ color: '#6A0DAD' }}>{course.course}</h4>
+                  <p className="text-sm" style={{ color: '#6A0DAD' }}>Progress: {course.progress}%</p>
                   <Badge variant={course.status === 'completed' ? 'default' : 'secondary'}>
                     {course.status}
                   </Badge>
@@ -393,12 +403,12 @@ export const TrainingEditModal = ({ isOpen, onClose, data, onSave }) => {
                   )}
                 </div>
                 <Button
-                  variant="ghost"
+                  variant={course.enabled === false ? 'outline' : 'default'}
                   size="sm"
-                  onClick={() => deleteCourse(course.id || index)}
-                  className="text-red-600 hover:text-red-800"
+                  onClick={() => setCourses(courses.map((c, i) => ((c.id !== undefined ? c.id : i) === (course.id !== undefined ? course.id : index) ? { ...c, enabled: c.enabled === false ? true : false } : c)))}
+                  className={course.enabled === false ? 'text-gray-500 border-gray-400' : 'bg-emerald-500 text-white'}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  {(course.enabled === undefined || course.enabled) ? 'Disable' : 'Enable'}
                 </Button>
               </div>
             </div>
@@ -451,6 +461,11 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
 
+  // Update internal state when data prop changes (Supabase data updates)
+  useEffect(() => {
+    setExperiences(data || []);
+  }, [data]);
+
   const addExperience = () => {
     if (newExp.role.trim() && newExp.organization.trim()) {
       setExperiences([...experiences, { ...newExp, id: Date.now(), verified: false, processing: true }]);
@@ -483,12 +498,12 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
         </DialogHeader>
         <div className="space-y-4">
           {experiences.map((exp, index) => (
-            <div key={exp.id || index} className="p-4 border rounded-lg">
+            <div key={exp.id || index} className={`p-4 border rounded-lg ${exp.enabled === false ? 'opacity-50' : 'opacity-100'}`}>
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <h4 className="font-medium">{exp.role}</h4>
-                  <p className="text-sm text-gray-600">{exp.organization}</p>
-                  <p className="text-xs text-gray-500">{exp.duration}</p>
+                  <h4 className="font-medium" style={{ color: '#6A0DAD' }}>{exp.role}</h4>
+                  <p className="text-sm" style={{ color: '#6A0DAD' }}>{exp.organization}</p>
+                  <p className="text-xs" style={{ color: '#6A0DAD' }}>{exp.duration}</p>
                   {exp.processing ? (
                     <Badge className="mt-2 bg-orange-100 text-orange-800">
                       <Clock className="w-3 h-3 mr-1" />
@@ -502,12 +517,12 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
                   )}
                 </div>
                 <Button
-                  variant="ghost"
+                  variant={exp.enabled === false ? 'outline' : 'default'}
                   size="sm"
-                  onClick={() => deleteExperience(exp.id || index)}
-                  className="text-red-600 hover:text-red-800"
+                  onClick={() => setExperiences(experiences.map((e, i) => ((e.id !== undefined ? e.id : i) === (exp.id !== undefined ? exp.id : index) ? { ...e, enabled: e.enabled === false ? true : false } : e)))}
+                  className={exp.enabled === false ? 'text-gray-500 border-gray-400' : 'bg-emerald-500 text-white'}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  {(exp.enabled === undefined || exp.enabled) ? 'Disable' : 'Enable'}
                 </Button>
               </div>
             </div>
@@ -570,6 +585,11 @@ export const SkillsEditModal = ({ isOpen, onClose, data, onSave, title, type }) 
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
 
+  // Update internal state when data prop changes (Supabase data updates)
+  useEffect(() => {
+    setSkills(data || []);
+  }, [data]);
+
   const addSkill = () => {
     if (newSkill.name.trim()) {
       setSkills([...skills, { ...newSkill, id: Date.now(), verified: false, processing: true }]);
@@ -620,11 +640,11 @@ export const SkillsEditModal = ({ isOpen, onClose, data, onSave, title, type }) 
         </DialogHeader>
         <div className="space-y-4">
           {skills.map((skill, index) => (
-            <div key={skill.id || index} className="p-4 border rounded-lg">
+            <div key={skill.id || index} className={`p-4 border rounded-lg ${skill.enabled === false ? 'opacity-50' : 'opacity-100'}`}>
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="font-medium">{skill.name}</span>
+                    <span className="font-medium" style={{ color: '#6A0DAD' }}>{skill.name}</span>
                     {skill.processing ? (
                       <Badge className="bg-orange-100 text-orange-800">
                         <Clock className="w-3 h-3 mr-1" />
@@ -642,12 +662,12 @@ export const SkillsEditModal = ({ isOpen, onClose, data, onSave, title, type }) 
                   </div>
                 </div>
                 <Button
-                  variant="ghost"
+                  variant={skill.enabled === false ? 'outline' : 'default'}
                   size="sm"
-                  onClick={() => deleteSkill(skill.id || index)}
-                  className="text-red-600 hover:text-red-800"
+                  onClick={() => setSkills(skills.map((s, i) => ((s.id !== undefined ? s.id : i) === (skill.id !== undefined ? skill.id : index) ? { ...s, enabled: s.enabled === false ? true : false } : s)))}
+                  className={skill.enabled === false ? 'text-gray-500 border-gray-400' : 'bg-emerald-500 text-white'}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  {(skill.enabled === undefined || skill.enabled) ? 'Disable' : 'Enable'}
                 </Button>
               </div>
             </div>

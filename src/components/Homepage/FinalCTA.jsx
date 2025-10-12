@@ -11,12 +11,12 @@ const FinalCTA = () => {
     >
       <div className="relative z-10 flex flex-col items-center">
         {/* Main Heading */}
-        <h1 className="max-w-5xl text-center text-5xl font-bold leading-tight text-white sm:text-6xl sm:leading-tight md:text-7xl md:leading-tight">
+        <h1 className="max-w-5xl text-center text-2xl font-bold leading-snug text-white sm:text-4xl sm:leading-tight md:text-5xl md:leading-tight lg:text-6xl lg:leading-tight">
           Make Every Skill Count.
         </h1>
         
         {/* Subheading */}
-        <p className="my-6 max-w-3xl text-center text-lg leading-relaxed text-gray-200 md:text-xl">
+        <p className="my-6 max-w-3xl text-center text-base leading-relaxed text-gray-200 sm:text-lg md:text-xl">
           Transform your workforce intelligence today with enterprise-grade skill validation
         </p>
         
@@ -24,7 +24,7 @@ const FinalCTA = () => {
         <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
           {/* Primary Button - Book a Corporate Demo */}
           <button
-            className="group flex items-center gap-2 rounded-full bg-white px-6 py-3 text-base font-bold text-black transition-all hover:bg-gray-100"
+            className="group flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-black transition-all hover:bg-gray-100 sm:px-6 sm:py-3 sm:text-base"
           >
             Book a Corporate Demo
             <FiArrowRight className="transition-transform group-hover:translate-x-1" />
@@ -32,7 +32,7 @@ const FinalCTA = () => {
 
           {/* Secondary Button - Request Enterprise Access */}
           <button
-            className="rounded-full border-2 border-white bg-transparent px-6 py-3 text-base font-bold text-white transition-all hover:bg-white/10"
+            className="rounded-full border border-white bg-transparent px-4 py-2 text-sm font-bold text-white transition-all hover:bg-white/10 sm:border-2 sm:px-6 sm:py-3 sm:text-base"
           >
             Request Enterprise Access
           </button>
