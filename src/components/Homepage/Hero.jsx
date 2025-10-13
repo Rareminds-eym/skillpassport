@@ -31,7 +31,7 @@ const Hero = () => {
       <div className="w-full px-6 sm:px-8 py-12 sm:py-16 lg:px-12 mt-5 sm:mt-0">
         <div className="max-w-3xl">
           {/* Main Heading */}
-          <h1 className="text-black font-black mb-4 mt-20 sm:mb-8 leading-tight text-[22px] sm:text-4xl md:text-5xl lg:text-6xl">
+          <h1 className="text-black font-black mb-4 mt-20 sm:mb-8 leading-tight text-[25px] sm:text-4xl md:text-5xl lg:text-6xl">
             <span className="block">Verified Skills.</span>
             <span className="block">Visible Workforce.</span>
             <span className="relative inline-block">
@@ -44,7 +44,7 @@ const Hero = () => {
           </h1>
 
           {/* Subheading */}
-          <p className="text-black font-medium mb-8 sm:mb-10 max-w-2xl text-[17px] sm:text-lg md:text-xl leading-relaxed">
+          <p className="text-black font-medium mb-8 sm:mb-10 max-w-2xl text-[16px] sm:text-lg md:text-xl leading-relaxed">
             The Rareminds Skill Passport gives enterprises a single source of truth for employee
             capabilities — turning training outcomes into real-time talent intelligence.
           </p>
