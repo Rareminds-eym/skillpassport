@@ -17,7 +17,7 @@ const Features = () => {
 
         {/* Subheading */}
         <p className="mx-auto mb-10 max-w-3xl text-gray-600 leading-relaxed">
-          The Skill Passport captures and verifies every competency developed inside your organization, linking learning to performance and business results.
+          The Skill Passport captures and verifies every competenc developed inside your organization, linking learning to performance and business results.
         </p>
 
         {/* CTA Button */}
