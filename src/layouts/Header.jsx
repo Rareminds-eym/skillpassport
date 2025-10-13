@@ -182,7 +182,7 @@ const Header = () => {
               onMouseLeave={() => setShowLoginDropdown(false)}
             >
               <button
-                className="flex items-center space-x-1 px-5 py-2.5 text-sm font-semibold text-red-600 bg-red-50 rounded-full hover:bg-red-100 transition-all duration-200 hover:shadow-md"
+                className="flex items-center space-x-1 px-5 py-2.5 text-sm font-extrabold text-white border-2 border-red-300 bg-gradient-to-r from-red-500  to-red-400 shadow-lg shadow-red-200 rounded-full hover:bg-red-100 transition-all duration-200 hover:shadow-md"
               >
                 <span>Login</span>
                 <ChevronDown className="w-4 h-4" />
