@@ -60,8 +60,8 @@ export default function LoginStudent() {
   };
 
   return (
-    <div className="min-h-screen flex items-center">
-      <div className="w-full mx-4 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 min-h-screen my-8">
+    <div className="flex items-center py-10 bg-white">
+      <div className="w-full mx-4 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-[700px] my-8">
         {/* LEFT SIDE with Background Image */}
         <div
           className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-cover bg-center"
@@ -214,12 +214,12 @@ export default function LoginStudent() {
                 >
                   Forgot password?
                 </a>
-                <a
+                {/* <a
                   href="/register-student"
                   className="text-[#1d8ad1] font-semibold hover:text-[#5378f1]"
                 >
                   Don’t have a Skill Passport? Register Now
-                </a>
+                </a> */}
               </div>
             </form>
           </div>
