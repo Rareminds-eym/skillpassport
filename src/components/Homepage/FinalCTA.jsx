@@ -63,7 +63,7 @@ const FinalCTA = () => {
     <section
       className="relative grid place-content-center overflow-hidden px-4 py-20"
       style={{
-        background: 'rgb(17, 24, 39)'
+        background: 'rgb(0, 0, 0)'
       }}
     >
       <GradientBars />
