@@ -12,7 +12,7 @@ const Home = () => {
       <BuiltForCorporates />
       <HowItWorks/>
       <CaseHighlights />
-       <SecurityCompliance />
+      <SecurityCompliance />
       <FinalCTA />
     </div>
   );
