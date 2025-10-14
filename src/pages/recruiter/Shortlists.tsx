@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   PlusIcon,
   ShareIcon,
@@ -16,7 +16,53 @@ import {
   CalendarDaysIcon,
   DocumentDuplicateIcon
 } from '@heroicons/react/24/outline';
-import { shortlistsData } from '../../data/sampleData';
+import { supabase } from '../../lib/supabaseClient';
+import { 
+  getShortlists, 
+  getShortlistCandidates, 
+  createShortlist,
+  updateShortlist,
+  deleteShortlist,
+  removeCandidateFromShortlist,
+  logExportActivity
+} from '../../services/shortlistService';
+
+// Define TypeScript interfaces for our data
+interface ShortlistCandidate {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  university?: string;
+  department?: string;
+  cgpa?: string;
+  year_of_passing?: string;
+  employability_score?: number;
+  photo?: string;
+  verified?: boolean;
+  added_at?: string;
+  notes?: string;
+  skills?: string[];
+  badges?: string[];
+}
+
+interface Shortlist {
+  id: string;
+  name: string;
+  description: string | null;
+  created_date: string;
+  created_by: string | null;
+  status: string;
+  candidates?: ShortlistCandidate[];
+  candidate_count?: number;
+  shared: boolean;
+  share_link: string | null;
+  share_expiry: string | null;
+  watermark: boolean;
+  tags: string[] | null;
+  include_pii: boolean;
+  notify_on_access: boolean;
+}
 
 const StatusBadge = ({ status, shared, expiry }) => {
   const getStatusInfo = () => {
@@ -50,20 +96,45 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
     notify_on_access: true
   });
 
-  const handleShare = () => {
-    const shareLink = `https://recruiterhub.com/shared/${shortlist.id}?token=${Math.random().toString(36).substr(2, 9)}`;
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + shareSettings.expiry_days);
-    
-    onShare({
-      ...shortlist,
-      shared: true,
-      share_link: shareLink,
-      share_expiry: expiryDate.toISOString(),
-      watermark: shareSettings.watermark
-    });
-    
-    onClose();
+  const handleShare = async () => {
+    try {
+      const shareToken = Math.random().toString(36).substr(2, 9);
+      const shareLink = `https://recruiterhub.com/shared/${shortlist.id}?token=${shareToken}`;
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + shareSettings.expiry_days);
+      
+      // Update the shortlist in Supabase using the service function
+      const { error } = await updateShortlist(shortlist.id, {
+        shared: true,
+        share_link: shareLink,
+        share_expiry: expiryDate.toISOString(),
+        watermark: shareSettings.watermark,
+        include_pii: shareSettings.include_pii,
+        notify_on_access: shareSettings.notify_on_access
+      });
+
+      if (error) throw error;
+
+      // Call the onShare callback with updated data
+      onShare({
+        ...shortlist,
+        shared: true,
+        share_link: shareLink,
+        share_expiry: expiryDate.toISOString(),
+        watermark: shareSettings.watermark,
+        include_pii: shareSettings.include_pii,
+        notify_on_access: shareSettings.notify_on_access
+      });
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(shareLink);
+      alert('Share link generated and copied to clipboard!');
+      
+      onClose();
+    } catch (error) {
+      console.error('Error sharing shortlist:', error);
+      alert('Failed to share shortlist. Please try again.');
+    }
   };
 
   if (!isOpen) return null;
@@ -167,9 +238,161 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
     watermark: true
   });
 
-  const handleExport = () => {
-    onExport(shortlist, exportSettings);
-    onClose();
+  // Helper function to generate CSV content
+  const generateCSV = (shortlist: Shortlist, settings: any) => {
+    const headers = ['Name', 'Department', 'University', 'CGPA', 'Year of Passing'];
+    
+    if (settings.include_pii) {
+      headers.push('Email', 'Phone');
+    }
+    
+    if (settings.include_scores) headers.push('Employability Score');
+    if (settings.include_skills) headers.push('Skills');
+    if (settings.include_badges) headers.push('Verified');
+    
+    let csvContent = headers.join(',') + '\n';
+    
+    (shortlist.candidates || []).forEach(candidate => {
+      const row = [
+        `"${candidate.name}"`,
+        `"${candidate.department || ''}"`,
+        `"${candidate.university || ''}"`,
+        `"${candidate.cgpa || ''}"`,
+        `"${candidate.year_of_passing || ''}"`
+      ];
+      
+      if (settings.include_pii) {
+        row.push(`"${candidate.email || ''}"`);
+        row.push(`"${candidate.phone || ''}"`);
+      }
+      
+      if (settings.include_scores) {
+        row.push(`"${candidate.employability_score || ''}"`);
+      }
+      
+      if (settings.include_skills) {
+        row.push(`"${(candidate.skills || []).join(', ')}"`);
+      }
+      
+      if (settings.include_badges) {
+        row.push(`"${candidate.verified ? 'Yes' : 'No'}"`);
+      }
+      
+      csvContent += row.join(',') + '\n';
+    });
+    
+    return csvContent;
+  };
+
+  // Helper function for PDF data (placeholder)
+  const generatePDFData = (shortlist: Shortlist, settings: any) => {
+    // This would be replaced with actual PDF generation logic
+    // For now, return a structured text representation
+    let content = `SHORTLIST EXPORT - ${shortlist.name}\n`;
+    content += `Generated on: ${new Date().toLocaleDateString()}\n`;
+    content += `Total Candidates: ${shortlist.candidates?.length || 0}\n\n`;
+    
+    (shortlist.candidates || []).forEach((candidate, index) => {
+      content += `Candidate ${index + 1}:\n`;
+      content += `Name: ${candidate.name}\n`;
+      content += `Department: ${candidate.department || 'N/A'}\n`;
+      content += `University: ${candidate.university || 'N/A'}\n`;
+      content += `CGPA: ${candidate.cgpa || 'N/A'}\n`;
+      
+      if (settings.include_pii) {
+        content += `Email: ${candidate.email || 'N/A'}\n`;
+        content += `Phone: ${candidate.phone || 'N/A'}\n`;
+      }
+      
+      if (settings.include_scores) {
+        content += `Employability Score: ${candidate.employability_score || 'N/A'}\n`;
+      }
+      
+      if (settings.include_skills && candidate.skills) {
+        content += `Skills: ${candidate.skills.join(', ')}\n`;
+      }
+      
+      if (settings.include_badges) {
+        content += `Verified: ${candidate.verified ? 'Yes' : 'No'}\n`;
+      }
+      
+      content += '\n';
+    });
+    
+    if (settings.watermark) {
+      content += '\n--- Exported from RecruiterHub ---\n';
+    }
+    
+    return content;
+  };
+
+  // Helper function to trigger file download
+  const downloadFile = (content: string, filename: string, format: string) => {
+    const blob = new Blob([content], { 
+      type: format === 'csv' ? 'text/csv' : 'application/pdf' 
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExport = async () => {
+    try {
+      // Fetch candidates for this shortlist
+      const { data: candidates, error: candidatesError } = await getShortlistCandidates(shortlist.id);
+      if (candidatesError) throw candidatesError;
+
+      // Create a shortlist object with candidates for export
+      const shortlistWithCandidates = {
+        ...shortlist,
+        candidates: candidates || []
+      };
+
+      // Prepare export data
+      const exportData = {
+        shortlist_id: shortlist.id,
+        shortlist_name: shortlist.name,
+        export_settings: exportSettings,
+        exported_at: new Date().toISOString(),
+        candidates_count: candidates?.length || 0
+      };
+
+      let exportContent = '';
+      let filename = `${shortlist.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`;
+
+      if (exportSettings.format === 'csv') {
+        exportContent = generateCSV(shortlistWithCandidates, exportSettings);
+        filename += '.csv';
+      } else if (exportSettings.format === 'pdf') {
+        // For PDF, we'll generate a downloadable link with the data
+        exportContent = generatePDFData(shortlistWithCandidates, exportSettings);
+        filename += '.pdf';
+        // In a real app, you would use a PDF generation library
+        // For now, we'll create a text file as a placeholder
+      }
+
+      // Create and trigger download
+      downloadFile(exportContent, filename, exportSettings.format);
+      
+      // Log export activity
+      await logExportActivity({
+        shortlist_id: shortlist.id,
+        export_format: exportSettings.format,
+        export_type: exportSettings.type,
+        include_pii: exportSettings.type === 'full_profile'
+      });
+
+      onExport(shortlist, exportSettings);
+      onClose();
+    } catch (error) {
+      console.error('Error exporting shortlist:', error);
+      alert('Failed to export shortlist. Please try again.');
+    }
   };
 
   if (!isOpen) return null;
@@ -329,22 +552,27 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
     tags: ''
   });
 
-  const handleCreate = () => {
-    const newShortlist = {
-      id: `sl_${Date.now()}`,
-      name: formData.name,
-      description: formData.description,
-      candidates: [],
-      created_date: new Date().toISOString(),
-      created_by: 'Current User',
-      shared: false,
-      tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-      status: 'active'
-    };
-    
-    onCreate(newShortlist);
-    setFormData({ name: '', description: '', tags: '' });
-    onClose();
+  const handleCreate = async () => {
+    try {
+      const newShortlistData = {
+        id: `sl_${Date.now()}`,
+        name: formData.name,
+        description: formData.description,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+      };
+      
+      // Insert into Supabase using service function
+      const { data: newShortlist, error } = await createShortlist(newShortlistData);
+
+      if (error) throw error;
+
+      onCreate(newShortlist);
+      setFormData({ name: '', description: '', tags: '' });
+      onClose();
+    } catch (error) {
+      console.error('Error creating shortlist:', error);
+      alert('Failed to create shortlist. Please try again.');
+    }
   };
 
   if (!isOpen) return null;
@@ -419,9 +647,7 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
 };
 
 const ShortlistCard = ({ shortlist, onShare, onExport, onView, onEdit, onDelete }) => {
-  // We no longer depend on local candidates list. Show count only.
-  const candidateCount = Array.isArray(shortlist.candidates) ? shortlist.candidates.length : 0;
-
+  const candidateCount = shortlist.candidate_count || 0;
   const isExpired = shortlist.share_expiry && new Date(shortlist.share_expiry) < new Date();
   
   return (
@@ -433,7 +659,7 @@ const ShortlistCard = ({ shortlist, onShare, onExport, onView, onEdit, onDelete 
           <div className="flex items-center mt-2 space-x-4 text-sm text-gray-500">
             <span className="flex items-center">
               <UserGroupIcon className="h-4 w-4 mr-1" />
-              {shortlist.candidates.length} candidates
+              {candidateCount} candidates
             </span>
             <span className="flex items-center">
               <CalendarDaysIcon className="h-4 w-4 mr-1" />
@@ -548,37 +774,100 @@ const ShortlistCard = ({ shortlist, onShare, onExport, onView, onEdit, onDelete 
 };
 
 const Shortlists = () => {
-  const [shortlists, setShortlists] = useState(shortlistsData);
-  const [selectedShortlist, setSelectedShortlist] = useState(null);
+  const [shortlists, setShortlists] = useState<Shortlist[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedShortlist, setSelectedShortlist] = useState<Shortlist | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  const handleShare = (updatedShortlist) => {
-    setShortlists(prev => prev.map(sl => 
-      sl.id === updatedShortlist.id ? updatedShortlist : sl
-    ));
-    
-    // Simulate copying link to clipboard
-    navigator.clipboard.writeText(updatedShortlist.share_link);
-    alert('Share link copied to clipboard!');
+  // Fetch shortlists from Supabase
+  const fetchShortlists = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await getShortlists();
+
+      if (error) throw error;
+
+      setShortlists(data || []);
+    } catch (error) {
+      console.error('Error fetching shortlists:', error);
+      alert('Failed to load shortlists');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleExport = (shortlist, settings) => {
-    // Simulate export functionality
-    const filename = `${shortlist.name.replace(/\s+/g, '_')}.${settings.format}`;
-    alert(`Exporting "${shortlist.name}" as ${settings.format.toUpperCase()}...\nFilename: ${filename}\nType: ${settings.type.replace('_', ' ')}`);
+  useEffect(() => {
+    fetchShortlists();
+  }, []);
+
+  const handleShare = async (updatedShortlist: Shortlist) => {
+    try {
+      // Refresh the shortlists to get the latest data
+      await fetchShortlists();
+      
+      // Find the updated shortlist to get the share link
+      const freshShortlist = shortlists.find(sl => sl.id === updatedShortlist.id);
+      
+      if (freshShortlist?.share_link) {
+        await navigator.clipboard.writeText(freshShortlist.share_link);
+        alert('Share link copied to clipboard!');
+      }
+    } catch (error) {
+      console.error('Error handling share:', error);
+      alert('Share link generated but failed to copy to clipboard.');
+    }
   };
 
-  const handleCreateShortlist = (newShortlist) => {
+  const handleExport = async (shortlist: Shortlist, settings: any) => {
+    try {
+      // Show loading or processing state
+      const processingMessage = `Preparing ${settings.format.toUpperCase()} export for "${shortlist.name}"...`;
+      console.log(processingMessage);
+      
+      // The actual export logic is handled in the ExportModal
+      // This function just logs the activity
+      
+      // Log the export activity using service function
+      await logExportActivity({
+        shortlist_id: shortlist.id,
+        export_format: settings.format,
+        export_type: settings.type,
+        include_pii: settings.include_pii
+      });
+      
+    } catch (error) {
+      console.error('Error logging export activity:', error);
+    }
+  };
+
+  const handleCreateShortlist = (newShortlist: Shortlist) => {
     setShortlists(prev => [newShortlist, ...prev]);
   };
 
-  const handleDelete = (shortlistId) => {
+  const handleDelete = async (shortlistId: string) => {
     if (confirm('Are you sure you want to delete this shortlist?')) {
-      setShortlists(prev => prev.filter(sl => sl.id !== shortlistId));
+      try {
+        const { error } = await deleteShortlist(shortlistId);
+
+        if (error) throw error;
+
+        setShortlists(prev => prev.filter(sl => sl.id !== shortlistId));
+      } catch (error) {
+        console.error('Error deleting shortlist:', error);
+        alert('Failed to delete shortlist. Please try again.');
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 flex justify-center items-center h-64">
+        <div className="text-lg text-gray-600">Loading shortlists...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 pb-20 md:pb-6">
@@ -648,7 +937,7 @@ const Shortlists = () => {
             <div className="ml-3">
               <p className="text-sm text-gray-600">Total Candidates</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {shortlists.reduce((sum, sl) => sum + sl.candidates.length, 0)}
+                {shortlists.reduce((sum, sl) => sum + (sl.candidates?.length || 0), 0)}
               </p>
             </div>
           </div>
@@ -656,30 +945,53 @@ const Shortlists = () => {
       </div>
 
       {/* Shortlists Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {shortlists.map(shortlist => (
-          <ShortlistCard
-            key={shortlist.id}
-            shortlist={shortlist}
-            onShare={(sl) => {
-              setSelectedShortlist(sl);
-              setShowShareModal(true);
-            }}
-            onExport={(sl) => {
-              setSelectedShortlist(sl);
-              setShowExportModal(true);
-            }}
-            onView={(sl) => {
-              // Navigate to shortlist detail view
-              alert(`Viewing shortlist: ${sl.name}`);
-            }}
-            onEdit={(sl) => {
-              alert(`Edit functionality for: ${sl.name}`);
-            }}
-            onDelete={handleDelete}
-          />
-        ))}
-      </div>
+      {shortlists.length === 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+          <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No shortlists yet</h3>
+          <p className="text-gray-600 mb-4">Create your first shortlist to get started</p>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Create Shortlist
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {shortlists.map(shortlist => (
+            <ShortlistCard
+              key={shortlist.id}
+              shortlist={shortlist}
+              onShare={(sl) => {
+                setSelectedShortlist(sl);
+                setShowShareModal(true);
+              }}
+              onExport={(sl) => {
+                setSelectedShortlist(sl);
+                setShowExportModal(true);
+              }}
+              onView={async (sl) => {
+                // Fetch candidates for this shortlist
+                try {
+                  const { data: candidates, error } = await getShortlistCandidates(sl.id);
+                  if (error) throw error;
+                  alert(`Viewing shortlist: ${sl.name}\nCandidates: ${candidates?.length || 0}`);
+                  // TODO: Navigate to detailed view with candidates
+                } catch (error) {
+                  console.error('Error fetching candidates:', error);
+                  alert('Failed to load candidates');
+                }
+              }}
+              onEdit={(sl) => {
+                alert(`Edit functionality for: ${sl.name}`);
+              }}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Modals */}
       <CreateShortlistModal

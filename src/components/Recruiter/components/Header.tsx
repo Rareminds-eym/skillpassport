@@ -9,13 +9,41 @@ import {
 import { savedSearches, recentActivity } from '../../../data/sampleData'
 import { HeaderProps } from '../../../types/recruiter'
 import { useAuth } from '../../../context/AuthContext'
+import { useSearch } from '../../../context/SearchContext'
 
 const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
-  const [searchQuery, setSearchQuery] = useState<string>('')
+  const { searchQuery, handleSearch: contextHandleSearch } = useSearch()
+  const [localSearchQuery, setLocalSearchQuery] = useState<string>(searchQuery || '')
   const [showSavedSearches, setShowSavedSearches] = useState<boolean>(false)
   const [showNotifications, setShowNotifications] = useState<boolean>(false)
   const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false)
   const { user, logout } = useAuth()
+  
+  // Handle search execution
+  const handleSearch = (query: string) => {
+    const trimmedQuery = query.trim();
+    contextHandleSearch(trimmedQuery);
+  };
+  
+  // Handle input change
+  const handleSearchChange = (value: string) => {
+    setLocalSearchQuery(value);
+  };
+  
+  // Handle Enter key press
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch(localSearchQuery);
+      setShowSavedSearches(false);
+    }
+  };
+  
+  // Handle saved search selection
+  const handleSavedSearchClick = (search: string) => {
+    setLocalSearchQuery(search);
+    setShowSavedSearches(false);
+    handleSearch(search);
+  };
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
@@ -53,12 +81,13 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
               </div>
               <input
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={localSearchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onKeyPress={handleKeyPress}
                 onFocus={() => setShowSavedSearches(true)}
                 onBlur={() => setTimeout(() => setShowSavedSearches(false), 200)}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-sm"
-                placeholder="Search candidates, skills, locations..."
+                placeholder="Search candidates, skills, locations... (Press Enter to search)"
               />
             </div>
             
@@ -73,10 +102,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
                     {savedSearches.map((search, index) => (
                       <button
                         key={index}
-                        onClick={() => {
-                          setSearchQuery(search)
-                          setShowSavedSearches(false)
-                        }}
+                        onClick={() => handleSavedSearchClick(search)}
                         className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
                       >
                         {search}

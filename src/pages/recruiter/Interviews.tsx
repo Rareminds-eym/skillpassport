@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CalendarDaysIcon,
   VideoCameraIcon,
@@ -18,7 +18,37 @@ import {
   PhoneIcon,
   EnvelopeIcon
 } from '@heroicons/react/24/outline';
-import { interviewsData } from '../../data/sampleData';
+import { supabase } from '../../lib/supabaseClient';
+import { createInterview } from '../../services/interviewService';
+
+// Define TypeScript interfaces
+interface Scorecard {
+  technical_skills: number | null;
+  communication: number | null;
+  problem_solving: number | null;
+  cultural_fit: number | null;
+  overall_rating: number | null;
+  notes: string;
+  recommendation: 'proceed' | 'maybe' | 'reject' | null;
+}
+
+interface Interview {
+  id: string;
+  candidate_name: string;
+  job_title: string;
+  interviewer: string;
+  date: string;
+  duration: number;
+  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'pending';
+  type: string;
+  meeting_type: string | null;
+  meeting_link: string | null;
+  reminders_sent: number;
+  scorecard: Scorecard | null;
+  completed_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -64,7 +94,7 @@ const getRecommendationColor = (recommendation) => {
 };
 
 const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
-  const [scorecard, setScorecard] = useState(interview?.scorecard || {
+  const [scorecard, setScorecard] = useState<Scorecard>(interview?.scorecard || {
     technical_skills: null,
     communication: null,
     problem_solving: null,
@@ -74,15 +104,40 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
     recommendation: null
   });
 
-  const handleSave = () => {
-    const updatedInterview = {
-      ...interview,
-      scorecard,
-      status: 'completed',
-      completed_date: new Date().toISOString()
-    };
-    onSave(updatedInterview);
-    onClose();
+  const handleSave = async () => {
+    try {
+      const overallRating = calculateOverallRating();
+      const updatedScorecard = {
+        ...scorecard,
+        overall_rating: overallRating ? parseFloat(overallRating) : null
+      };
+
+      // Update interview in Supabase
+      const { error } = await supabase
+        .from('interviews')
+        .update({
+          scorecard: updatedScorecard,
+          status: 'completed',
+          completed_date: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', interview.id);
+
+      if (error) throw error;
+
+      const updatedInterview = {
+        ...interview,
+        scorecard: updatedScorecard,
+        status: 'completed',
+        completed_date: new Date().toISOString()
+      };
+      
+      onSave(updatedInterview);
+      onClose();
+    } catch (error) {
+      console.error('Error saving scorecard:', error);
+      alert('Failed to save scorecard. Please try again.');
+    }
   };
 
   const calculateOverallRating = () => {
@@ -455,29 +510,94 @@ const CalendarView = ({ interviews, selectedDate, onDateSelect }) => {
 };
 
 const Interviews = () => {
-  const [interviews, setInterviews] = useState(interviewsData);
-  const [selectedInterview, setSelectedInterview] = useState(null);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
   const [showScorecardModal, setShowScorecardModal] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const handleSaveScorecard = (updatedInterview) => {
-    setInterviews(prev => prev.map(interview =>
-      interview.id === updatedInterview.id ? updatedInterview : interview
-    ));
+  // Fetch interviews from Supabase
+  const fetchInterviews = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('interviews')
+        .select('*')
+        .order('date', { ascending: true });
+
+      if (error) throw error;
+
+      // Ensure scorecard is always an object
+      const formattedData = data?.map(item => ({
+        ...item,
+        scorecard: item.scorecard || null
+      })) || [];
+
+      setInterviews(formattedData);
+    } catch (error) {
+      console.error('Error fetching interviews:', error);
+      alert('Failed to load interviews');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleJoinMeeting = (interview) => {
-    window.open(interview.meeting_link, '_blank');
+  useEffect(() => {
+    fetchInterviews();
+  }, []);
+
+  const handleSaveScorecard = async (updatedInterview: Interview) => {
+    try {
+      setInterviews(prev => prev.map(interview =>
+        interview.id === updatedInterview.id ? updatedInterview : interview
+      ));
+    } catch (error) {
+      console.error('Error updating interview:', error);
+    }
   };
 
-  const handleSendReminder = (interview) => {
-    setInterviews(prev => prev.map(int =>
-      int.id === interview.id 
-        ? { ...int, reminders_sent: int.reminders_sent + 1 }
-        : int
-    ));
-    alert(`Reminder sent to ${interview.candidate_name} and ${interview.interviewer}`);
+  const handleJoinMeeting = (interview: Interview) => {
+    if (interview.meeting_link) {
+      window.open(interview.meeting_link, '_blank');
+    }
+  };
+
+  const handleSendReminder = async (interview: Interview) => {
+    try {
+      // Update reminders count in database
+      const { error } = await supabase
+        .from('interviews')
+        .update({ 
+          reminders_sent: interview.reminders_sent + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', interview.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setInterviews(prev => prev.map(int =>
+        int.id === interview.id 
+          ? { ...int, reminders_sent: int.reminders_sent + 1 }
+          : int
+      ));
+
+      // Log reminder activity
+      await supabase
+        .from('interview_reminders')
+        .insert([{
+          interview_id: interview.id,
+          sent_to: `${interview.candidate_name}, ${interview.interviewer}`,
+          reminder_type: 'interview_reminder'
+        }]);
+
+      alert(`Reminder sent to ${interview.candidate_name} and ${interview.interviewer}`);
+    } catch (error) {
+      console.error('Error sending reminder:', error);
+      alert('Failed to send reminder. Please try again.');
+    }
   };
 
   const filteredInterviews = selectedDate 
@@ -498,6 +618,14 @@ const Interviews = () => {
   const pendingScoreCards = completedInterviews.filter(interview =>
     !interview.scorecard?.overall_rating
   );
+
+  if (loading) {
+    return (
+      <div className="p-6 flex justify-center items-center h-64">
+        <div className="text-lg text-gray-600">Loading interviews...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 pb-20 md:pb-6">
@@ -530,7 +658,10 @@ const Interviews = () => {
               Calendar
             </button>
           </div>
-          <button className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700">
+          <button 
+            onClick={() => setShowScheduleModal(true)}
+            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
+          >
             <PlusIcon className="h-4 w-4 mr-2" />
             Schedule Interview
           </button>
@@ -604,7 +735,7 @@ const Interviews = () => {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {selectedDate ? `Interviews on ${selectedDate.toLocaleDateString()}` : 'All Upcoming Interviews'}
+              {selectedDate ? `Interviews on ${selectedDate?.toLocaleDateString()}` : 'All Upcoming Interviews'}
             </h3>
             <div className="space-y-4">
               {(selectedDate ? filteredInterviews : upcomingInterviews).map(interview => (
@@ -657,6 +788,359 @@ const Interviews = () => {
         }}
         onSave={handleSaveScorecard}
       />
+
+      {/* Schedule Interview Modal */}
+      <ScheduleInterviewModal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        onSuccess={() => {
+          setShowScheduleModal(false);
+          fetchInterviews(); // Refresh interviews list
+        }}
+      />
+    </div>
+  );
+};
+
+const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [formData, setFormData] = useState({
+    candidate_name: '',
+    candidate_email: '',
+    candidate_phone: '',
+    job_title: '',
+    interviewer: '',
+    interviewer_email: '',
+    date: '',
+    time: '',
+    duration: 60,
+    type: 'Technical',
+    meeting_type: 'meet',
+    meeting_link: '',
+    meeting_notes: ''
+  });
+
+  const handleSchedule = async () => {
+    if (!formData.candidate_name || !formData.job_title || !formData.interviewer || !formData.date || !formData.time) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Combine date and time
+      const interviewDateTime = new Date(`${formData.date}T${formData.time}`);
+
+      const interviewData = {
+        id: `int_${Date.now()}`,
+        candidate_name: formData.candidate_name,
+        candidate_email: formData.candidate_email || null,
+        candidate_phone: formData.candidate_phone || null,
+        job_title: formData.job_title,
+        interviewer: formData.interviewer,
+        interviewer_email: formData.interviewer_email || null,
+        date: interviewDateTime.toISOString(),
+        duration: formData.duration,
+        status: 'scheduled',
+        type: formData.type,
+        meeting_type: formData.meeting_type,
+        meeting_link: formData.meeting_link || null,
+        meeting_notes: formData.meeting_notes || null
+      };
+
+      const { error } = await createInterview(interviewData);
+
+      if (error) {
+        throw new Error(error.message || 'Failed to schedule interview');
+      }
+
+      alert(`Interview scheduled for ${formData.candidate_name}!`);
+      onSuccess?.();
+      
+      // Reset form
+      setFormData({
+        candidate_name: '',
+        candidate_email: '',
+        candidate_phone: '',
+        job_title: '',
+        interviewer: '',
+        interviewer_email: '',
+        date: '',
+        time: '',
+        duration: 60,
+        type: 'Technical',
+        meeting_type: 'meet',
+        meeting_link: '',
+        meeting_notes: ''
+      });
+    } catch (err) {
+      console.error('Error scheduling interview:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  // Get tomorrow's date as minimum
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const minDate = tomorrow.toISOString().split('T')[0];
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Schedule New Interview</h3>
+              <p className="text-sm text-gray-500">Create a new interview appointment</p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {/* Candidate Details */}
+            <div className="border-b pb-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Candidate Information</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Candidate Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.candidate_name}
+                    onChange={(e) => setFormData({...formData, candidate_name: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="Jane Doe"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.candidate_email}
+                    onChange={(e) => setFormData({...formData, candidate_email: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="jane@email.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.candidate_phone}
+                    onChange={(e) => setFormData({...formData, candidate_phone: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="+1234567890"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Position <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.job_title}
+                    onChange={(e) => setFormData({...formData, job_title: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="Software Engineer"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Interviewer Details */}
+            <div className="border-b pb-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Interviewer Information</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Interviewer Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.interviewer}
+                    onChange={(e) => setFormData({...formData, interviewer: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="John Smith"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Interviewer Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.interviewer_email}
+                    onChange={(e) => setFormData({...formData, interviewer_email: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="john@company.com"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Schedule Details */}
+            <div className="border-b pb-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Schedule Details</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({...formData, date: e.target.value})}
+                    min={minDate}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Time <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => setFormData({...formData, time: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Duration
+                  </label>
+                  <select
+                    value={formData.duration}
+                    onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value={30}>30 minutes</option>
+                    <option value={45}>45 minutes</option>
+                    <option value={60}>1 hour</option>
+                    <option value={90}>1.5 hours</option>
+                    <option value={120}>2 hours</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Interview Type
+                  </label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => setFormData({...formData, type: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="Technical">Technical</option>
+                    <option value="HR">HR Round</option>
+                    <option value="Behavioral">Behavioral</option>
+                    <option value="Final">Final Round</option>
+                    <option value="Screening">Screening</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Meeting Details */}
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Meeting Details</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Platform
+                  </label>
+                  <select
+                    value={formData.meeting_type}
+                    onChange={(e) => setFormData({...formData, meeting_type: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="meet">Google Meet</option>
+                    <option value="teams">MS Teams</option>
+                    <option value="zoom">Zoom</option>
+                    <option value="phone">Phone Call</option>
+                    <option value="in-person">In-Person</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Meeting Link
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.meeting_link}
+                    onChange={(e) => setFormData({...formData, meeting_link: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="https://meet.google.com/abc-defg-hij"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Notes
+                  </label>
+                  <textarea
+                    value={formData.meeting_notes}
+                    onChange={(e) => setFormData({...formData, meeting_notes: e.target.value})}
+                    rows={2}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="Any additional notes..."
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSchedule}
+              disabled={loading}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Scheduling...
+                </>
+              ) : (
+                <>
+                  <CalendarDaysIcon className="h-4 w-4 mr-1" />
+                  Schedule Interview
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
