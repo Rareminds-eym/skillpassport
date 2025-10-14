@@ -212,8 +212,8 @@ export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
 
           {/* Add/Edit Form */}
           {isAdding ? (
-            <div className="p-4 border-2 border-dashed border-emerald-300 bg-emerald-50 rounded-lg space-y-4">
-              <h4 className="font-semibold text-emerald-700">
+            <div className="p-4 border-2 border-dashed border-blue-300 bg-blue-50 rounded-lg space-y-4">
+              <h4 className="font-semibold text-blue-700">
                 {editingItem ? 'Edit Education' : 'Add New Education'}
               </h4>
               
@@ -307,7 +307,7 @@ export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
               <div className="flex gap-2">
                 <Button 
                   onClick={saveEducation} 
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="bg-blue-400 hover:bg-blue-500 text-white"
                 >
                   {editingItem ? 'Update' : 'Add'} Education
                 </Button>
@@ -320,7 +320,7 @@ export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
             <Button
               onClick={startAdding}
               variant="outline"
-              className="w-full border-dashed border-emerald-500 text-emerald-700 hover:bg-emerald-50"
+              className="w-full border-dashed bg-blue-400 hover:bg-blue-50"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add New Education
@@ -333,7 +333,7 @@ export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
             </Button>
             <Button 
               onClick={handleSubmit} 
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="bg-blue-400 hover:bg-blue-500 text-white"
             >
               Save All Changes
             </Button>
@@ -422,7 +422,7 @@ export const TrainingEditModal = ({ isOpen, onClose, data, onSave }) => {
                 onChange={(e) => setNewCourse(prev => ({ ...prev, course: e.target.value }))}
               />
               <div className="flex gap-2">
-                <Button onClick={addCourse} size="sm" className="bg-[#6A0DAD] hover:bg-[#5A0B8F]">
+                <Button onClick={addCourse} size="sm" className="bg-blue-400 hover:bg-blue-600">
                   Add Course
                 </Button>
                 <Button onClick={() => setIsAdding(false)} variant="outline" size="sm">
@@ -445,7 +445,7 @@ export const TrainingEditModal = ({ isOpen, onClose, data, onSave }) => {
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} className="bg-[#6A0DAD] hover:bg-[#5A0B8F]">
+            <Button onClick={handleSubmit} className="bg-blue-400 hover:bg-blue-600">
               Save Changes
             </Button>
           </div>
@@ -546,7 +546,7 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
                 onChange={(e) => setNewExp(prev => ({ ...prev, duration: e.target.value }))}
               />
               <div className="flex gap-2">
-                <Button onClick={addExperience} size="sm" className="bg-[#6A0DAD] hover:bg-[#5A0B8F]">
+                <Button onClick={addExperience} size="sm" className="bg-blue-400 hover:bg-blue-500">
                   Add Experience
                 </Button>
                 <Button onClick={() => setIsAdding(false)} variant="outline" size="sm">
@@ -569,7 +569,7 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} className="bg-[#6A0DAD] hover:bg-[#5A0B8F]">
+            <Button onClick={handleSubmit} className="bg-blue-400 hover:bg-blue-500">
               Save Changes
             </Button>
           </div>
@@ -687,7 +687,7 @@ export const SkillsEditModal = ({ isOpen, onClose, data, onSave, title, type }) 
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button onClick={addSkill} size="sm" className="bg-[#6A0DAD] hover:bg-[#5A0B8F]">
+                <Button onClick={addSkill} size="sm" className="bg-blue-400 hover:bg-blue-500">
                   Add {type}
                 </Button>
                 <Button onClick={() => setIsAdding(false)} variant="outline" size="sm">
@@ -710,7 +710,7 @@ export const SkillsEditModal = ({ isOpen, onClose, data, onSave, title, type }) 
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} className="bg-[#6A0DAD] hover:bg-[#5A0B8F]">
+            <Button onClick={handleSubmit} className="bg-blue-400 hover:bg-blue-500">
               Save Changes
             </Button>
           </div>

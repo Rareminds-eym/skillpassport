@@ -38,59 +38,58 @@ export default function LoginRecruiter() {
   }
 
   return (
-    <div className="min-h-screen flex items-center">
-      <div className="w-full mx-4 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 min-h-screen my-8">
+    <div className="flex items-center py-10 bg-white">
+      <div className="w-full mx-4 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-[700px] my-8">
         {/* LEFT SIDE */}
-<div className="hidden lg:flex relative p-10 bg-gradient-to-br from-[#0a6aba] to-[#09277f] text-white flex-col justify-between rounded-3xl shadow-lg">
-  <div>
-    <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-      Hire Smarter. Trust Skills, Not Just Resumes.
-    </h2>
+        <div className="hidden lg:flex relative p-10 bg-gradient-to-br from-[#0a6aba] to-[#09277f] text-white flex-col justify-between rounded-3xl shadow-lg">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+              Hire Smarter. Trust Skills, Not Just Resumes.
+            </h2>
 
-    <p className="mt-4 text-[#edf2f9] max-w-xl">
-      Access verified Skill Passports of students across India & beyond.
-    </p>
-  </div>
+            <p className="mt-4 text-[#edf2f9] max-w-xl">
+              Access verified Skill Passports of students across India & beyond.
+            </p>
+          </div>
 
-  {/* Illustration + Floating Features */}
-  <div className="relative flex justify-start items-end h-full mt-12">
-    <img
-      src={loginIllustration}
-      alt="Recruiter illustration"
-      className="w-80 lg:w-[24rem] object-contain drop-shadow-xl -ml-10"
-    />
+          {/* Illustration + Floating Features */}
+          <div className="relative flex justify-start items-end h-full mt-12">
+            <img
+              src={loginIllustration}
+              alt="Recruiter illustration"
+              className="w-80 lg:w-[24rem] object-contain drop-shadow-xl -ml-10"
+            />
 
-    {/* Feature Cards */}
-    <motion.div
-      className="absolute top-1 lg:left-[8rem] xl:left-[12rem]"
-      animate={{ y: [0, -10, 0] }}
-      transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-    >
-      <FeatureCard title="Verified skills" Icon={CheckCircle} />
-    </motion.div>
+            {/* Feature Cards */}
+            <motion.div
+              className="absolute top-1 lg:left-[8rem] xl:left-[12rem]"
+              animate={{ y: [0, -10, 0] }}
+              transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+            >
+              <FeatureCard title="Verified skills" Icon={CheckCircle} />
+            </motion.div>
 
-    <motion.div
-      className="absolute top-40 lg:-right-8 xl:-right-4"
-      animate={{ y: [0, -12, 0] }}
-      transition={{
-        repeat: Infinity,
-        duration: 3.5,
-        ease: "easeInOut",
-      }}
-    >
-      <FeatureCard title="Faster hiring" Icon={Zap} />
-    </motion.div>
+            <motion.div
+              className="absolute top-40 lg:-right-8 xl:-right-4"
+              animate={{ y: [0, -12, 0] }}
+              transition={{
+                repeat: Infinity,
+                duration: 3.5,
+                ease: "easeInOut",
+              }}
+            >
+              <FeatureCard title="Faster hiring" Icon={Zap} />
+            </motion.div>
 
-    <motion.div
-      className="absolute bottom-8 lg:left-[8rem] xl:left-[12rem]"
-      animate={{ y: [0, -8, 0] }}
-      transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-    >
-      <FeatureCard title="AI recommendations" Icon={BarChart3} />
-    </motion.div>
-  </div>
-</div>
-
+            <motion.div
+              className="absolute bottom-8 lg:left-[8rem] xl:left-[12rem]"
+              animate={{ y: [0, -8, 0] }}
+              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+            >
+              <FeatureCard title="AI recommendations" Icon={BarChart3} />
+            </motion.div>
+          </div>
+        </div>
 
         {/* RIGHT SIDE (LOGIN BOX) */}
         <div className="flex items-center justify-center px-4 sm:px-8 md:px-12 py-8 bg-white rounded-none">
@@ -197,7 +196,7 @@ export default function LoginRecruiter() {
               </div>
 
               {/* CTA */}
-              <div className="text-center mt-6 text-sm">
+              {/* <div className="text-center mt-6 text-sm">
                 Not a partner yet?{" "}
                 <a
                   href="/register-recruiter"
@@ -205,7 +204,7 @@ export default function LoginRecruiter() {
                 >
                   Register as Recruiter
                 </a>
-              </div>
+              </div> */}
             </form>
           </div>
         </div>

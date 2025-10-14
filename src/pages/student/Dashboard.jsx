@@ -26,8 +26,7 @@ import {
   trainingData,
   experienceData,
   technicalSkills,
-  softSkills,
-  opportunities
+  softSkills
 } from '../../components/Students/data/mockData';
 import {
   EducationEditModal,
@@ -36,6 +35,9 @@ import {
   SkillsEditModal
 } from '../../components/Students/components/ProfileEditModals';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useOpportunities } from '../../hooks/useOpportunities';
+import { supabase } from '../../lib/supabaseClient';
+import SimpleOpportunitiesTest from '../../components/SimpleOpportunitiesTest';
 
 const StudentDashboard = () => {
   const location = useLocation();
@@ -94,6 +96,51 @@ const StudentDashboard = () => {
   // Fetch real student data
   const { studentData, loading, error } = useStudentDataByEmail(userEmail);
   
+  // Fetch opportunities data from Supabase
+  const { 
+    opportunities, 
+    loading: opportunitiesLoading, 
+    error: opportunitiesError,
+    refreshOpportunities 
+  } = useOpportunities({
+    fetchOnMount: true,
+    activeOnly: false, // Changed to false to see all opportunities
+    studentSkills: studentData?.technicalSkills?.map(skill => skill.name) || []
+  });
+
+  // Debug log for opportunities
+  useEffect(() => {
+    console.log('🔍 Dashboard: Opportunities state changed:', {
+      opportunities,
+      loading: opportunitiesLoading,
+      error: opportunitiesError,
+      count: opportunities?.length
+    });
+  }, [opportunities, opportunitiesLoading, opportunitiesError]);
+
+  // Direct Supabase test
+  useEffect(() => {
+    const testSupabaseDirectly = async () => {
+      try {
+        console.log('🧪 Testing Supabase connection directly...');
+        console.log('🔑 Environment vars:', {
+          url: import.meta.env.VITE_SUPABASE_URL ? 'Set' : 'Missing',
+          key: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Set' : 'Missing'
+        });
+        
+        const { data, error, count } = await supabase
+          .from('opportunities')
+          .select('*', { count: 'exact' });
+          
+        console.log('🧪 Direct test result:', { data, error, count });
+      } catch (err) {
+        console.error('🧪 Direct test error:', err);
+      }
+    };
+    
+    testSupabaseDirectly();
+  }, []);
+  
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
     education: educationData,
@@ -149,25 +196,59 @@ const StudentDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5 p-0">
-          {(showAllOpportunities ? opportunities : opportunities.slice(0,2)).map((opp, idx) => (
-            <div key={opp.id || `${opp.title}-${opp.company}-${idx}`} className="bg-white rounded-xl border border-blue-500 px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'none'}}>
-              <h4 className="font-bold text-gray-900 text-base mb-1">{opp.title}</h4>
-              <p className="text-blue-500 text-base font-semibold mb-3">{opp.company}</p>
-              <div className="flex items-center justify-between mt-2">
-                <span className="bg-gray-200 text-gray-800 px-3 py-1 rounded-lg text-xs font-semibold shadow-none">{opp.type}</span>
-                <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition-all" style={{boxShadow:'0 2px 6px 0 #f7e7b0'}}>
-                  Apply Now
-                </Button>
-              </div>
+          {opportunitiesLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
-          ))}
+          ) : opportunitiesError ? (
+            <div className="text-center py-8">
+              <p className="text-red-500 mb-2">Failed to load opportunities</p>
+              <Button 
+                onClick={refreshOpportunities}
+                size="sm" 
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                Retry
+              </Button>
+            </div>
+          ) : opportunities.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No opportunities available at the moment</p>
+            </div>
+          ) : (
+            (showAllOpportunities ? opportunities : opportunities.slice(0,2)).map((opp, idx) => (
+              <div key={opp.id || `${opp.title}-${opp.company_name}-${idx}`} className="bg-white rounded-xl border border-blue-500 px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'none'}}>
+                <h4 className="font-bold text-gray-900 text-base mb-1">{opp.title}</h4>
+                <p className="text-blue-500 text-base font-semibold mb-3">{opp.company_name}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="bg-gray-200 text-gray-800 px-3 py-1 rounded-lg text-xs font-semibold">{opp.employment_type}</span>
+                  {opp.application_link ? (
+                    <a 
+                      href={opp.application_link} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-block"
+                    >
+                      <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition-all" style={{boxShadow:'0 2px 6px 0 #f7e7b0'}}>
+                        Apply Now
+                      </Button>
+                    </a>
+                  ) : (
+                    <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition-all" style={{boxShadow:'0 2px 6px 0 #f7e7b0'}}>
+                      Apply Now
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
           {opportunities.length > 2 && (
             <Button
               variant="outline"
               onClick={() => setShowAllOpportunities((v) => !v)}
               className="w-full border-2 border-blue-500 text-blue-500 hover:bg-blue-50 font-semibold rounded-lg mt-2"
             >
-              {showAllOpportunities ? 'Show Less' : 'View All Opportunities'}
+              {showAllOpportunities ? 'Show Less' : `View All Opportunities (${opportunities.length})`}
             </Button>
           )}
         </CardContent>
@@ -448,6 +529,11 @@ const StudentDashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
+          {/* Simple Test Component */}
+          <div className="lg:col-span-3 mb-6">
+            <SimpleOpportunitiesTest />
+          </div>
+
           {/* LEFT COLUMN - User Activity & Updates - Only show for own profile */}
           {!isViewingOthersProfile && (
             <div className="lg:col-span-1 space-y-6">
@@ -455,9 +541,9 @@ const StudentDashboard = () => {
               {/* Sticky container for both cards */}
               <div className="sticky top-20 z-30 flex flex-col gap-6">
                 {/* Recent Updates */}
-                <Card
+                <div
                   ref={recentUpdatesRef}
-                  className={`border-2 border-[#2196F3] bg-white rounded-2xl shadow-none`}
+                  className={`bg-white rounded-2xl shadow-none`}
                 >
                   <CardHeader className="bg-[#F3F8FF] rounded-t-2xl border-b-0 px-6 py-4">
                     <CardTitle className="flex items-center gap-2 text-[#1976D2] text-lg font-bold">
@@ -491,7 +577,7 @@ const StudentDashboard = () => {
                       </Button>
                     )}
                   </CardContent>
-                </Card>
+                </div>
 
                 {/* Suggested Next Steps */}
                 <Card
