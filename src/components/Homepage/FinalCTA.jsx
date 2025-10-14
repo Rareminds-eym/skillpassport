@@ -18,12 +18,6 @@ const GradientBars = () => {
 
   return (
     <div className="absolute inset-0 z-0 overflow-hidden">
-      <style>{`
-        @keyframes pulseBar {
-          0%, 100% { transform: scaleY(var(--scale)) translateZ(0); }
-          50% { transform: scaleY(calc(var(--scale) * 1.1)) translateZ(0); }
-        }
-      `}</style>
       <div 
         className="flex h-full"
         style={{
@@ -45,15 +39,22 @@ const GradientBars = () => {
                 background: 'linear-gradient(to top, rgb(29, 138, 209), transparent)',
                 '--scale': height / 100,
                 transformOrigin: 'bottom',
-                animation: 'pulseBar 2s ease-in-out infinite alternate',
-                animationDelay: `${index * 0.1}s`,
                 outline: '1px solid rgba(0, 0, 0, 0)',
                 boxSizing: 'border-box',
+                transform: `scaleY(${height / 100})`,
               }}
             />
           );
         })}
       </div>
+      {/* White shade overlay at the top */}
+      <div 
+        className="absolute top-0 left-0 right-0 pointer-events-none"
+        style={{
+          height: '40%',
+          background: 'linear-gradient(to bottom, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.8) 30%, rgba(255, 255, 255, 0.4) 60%, transparent 100%)',
+        }}
+      />
     </div>
   );
 };
