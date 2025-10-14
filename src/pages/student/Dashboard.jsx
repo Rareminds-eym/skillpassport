@@ -455,9 +455,9 @@ const StudentDashboard = () => {
               {/* Sticky container for both cards */}
               <div className="sticky top-20 z-30 flex flex-col gap-6">
                 {/* Recent Updates */}
-                <Card
+                <div
                   ref={recentUpdatesRef}
-                  className={`border-2 border-[#2196F3] bg-white rounded-2xl shadow-none`}
+                  className={`bg-white rounded-2xl shadow-none`}
                 >
                   <CardHeader className="bg-[#F3F8FF] rounded-t-2xl border-b-0 px-6 py-4">
                     <CardTitle className="flex items-center gap-2 text-[#1976D2] text-lg font-bold">
@@ -491,7 +491,7 @@ const StudentDashboard = () => {
                       </Button>
                     )}
                   </CardContent>
-                </Card>
+                </div>
 
                 {/* Suggested Next Steps */}
                 <Card

@@ -94,7 +94,7 @@ const Header = ({ activeTab, setActiveTab }) => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="ml-2 w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center shadow-md hover:bg-yellow-500 transition-colors">
-              <User className="w-6 h-6 text-purple-700" />
+              <User className="w-6 h-6 text-white" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48 bg-white/80 backdrop-blur-md border border-gray-200 shadow-xl">

@@ -74,7 +74,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   return (
     <div className="bg-[#f6f7fd] py-8 px-6">
       <div className="max-w-7xl mx-auto">
-        <div className="rounded-3xl shadow-2xl border-2 border-yellow-400 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #ff4757 0%, #c23bdb 50%, #5f5cff 100%)' }}>
+        <div className="rounded-3xl shadow-2xl border-2 border-yellow-400 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #5f5cff 100%)' }}>
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 z-10" />
           <CardContent className="p-8 relative z-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start mt-5 md-mt-10 ">
