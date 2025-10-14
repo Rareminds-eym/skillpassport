@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   PlusIcon,
   EllipsisVerticalIcon,
@@ -8,12 +8,362 @@ import {
   EnvelopeIcon,
   PhoneIcon,
   XMarkIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  MagnifyingGlassIcon,
+  CheckIcon
 } from '@heroicons/react/24/outline';
-import { requisitions } from '../../data/sampleData';
 import { useStudents } from '../../hooks/useStudents';
+import { useRequisitions } from '../../hooks/useRequisitions';
+import { 
+  getRequisitions, 
+  getPipelineCandidatesByStage,
+  addCandidateToPipeline,
+  moveCandidateToStage,
+  updateNextAction
+} from '../../services/pipelineService';
 
-const KanbanColumn = ({ title, count, color, candidates, onCandidateMove, onCandidateView, selectedCandidates, onToggleSelect, onSendEmail }) => {
+// Add from Talent Pool Modal
+const AddFromTalentPoolModal = ({ isOpen, onClose, requisitionId, targetStage, onSuccess }) => {
+  const { students, loading: studentsLoading } = useStudents();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState(null);
+
+  const filteredStudents = students.filter(student =>
+    student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    student.dept?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    student.college?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleAddCandidates = async () => {
+    if (selectedStudents.length === 0) {
+      setError('Please select at least one candidate');
+      return;
+    }
+
+    setAdding(true);
+    setError(null);
+
+    try {
+      const results = await Promise.all(
+        selectedStudents.map(student =>
+          addCandidateToPipeline({
+            requisition_id: requisitionId,
+            student_id: student.id,
+            candidate_name: student.name,
+            candidate_email: student.email,
+            candidate_phone: student.phone,
+            stage: targetStage,
+            source: 'talent_pool'
+          })
+        )
+      );
+
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) {
+        const duplicates = errors.filter(e => e.error.message.includes('already'));
+        if (duplicates.length > 0) {
+          setError(`${duplicates.length} candidate(s) already in pipeline`);
+        } else {
+          throw new Error(errors[0].error.message);
+        }
+      }
+
+      const successCount = results.filter(r => !r.error).length;
+      if (successCount > 0) {
+        alert(`✅ Successfully added ${successCount} candidate(s) to pipeline!`);
+        onSuccess?.();
+        onClose();
+        setSelectedStudents([]);
+      }
+    } catch (err) {
+      console.error('Error adding candidates:', err);
+      setError(err.message);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const toggleStudent = (student) => {
+    setSelectedStudents(prev => {
+      const exists = prev.find(s => s.id === student.id);
+      if (exists) {
+        return prev.filter(s => s.id !== student.id);
+      }
+      return [...prev, student];
+    });
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Add Candidates from Talent Pool</h3>
+              <p className="text-sm text-gray-500">Select candidates to add to {targetStage} stage</p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+
+          {/* Search */}
+          <div className="mb-4">
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name, department, or college..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+          </div>
+
+          {/* Selected Count */}
+          {selectedStudents.length > 0 && (
+            <div className="mb-3 text-sm text-gray-600">
+              {selectedStudents.length} candidate(s) selected
+            </div>
+          )}
+
+          {/* Student List */}
+          <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-md">
+            {studentsLoading ? (
+              <div className="p-8 text-center text-gray-500">Loading candidates...</div>
+            ) : filteredStudents.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">No candidates found</div>
+            ) : (
+              <div className="divide-y divide-gray-200">
+                {filteredStudents.map(student => {
+                  const isSelected = selectedStudents.find(s => s.id === student.id);
+                  return (
+                    <div
+                      key={student.id}
+                      onClick={() => toggleStudent(student)}
+                      className={`p-3 cursor-pointer hover:bg-gray-50 ${
+                        isSelected ? 'bg-primary-50 border-l-4 border-l-primary-500' : ''
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={!!isSelected}
+                          onChange={() => {}}                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mr-3"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-900">{student.name}</h4>
+                              <p className="text-xs text-gray-500">{student.dept} • {student.college}</p>
+                            </div>
+                            <div className="flex items-center">
+                              <StarIcon className="h-4 w-4 text-yellow-400 fill-current mr-1" />
+                              <span className="text-sm font-medium">{student.ai_score_overall}</span>
+                            </div>
+                          </div>
+                          {student.skills && student.skills.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {student.skills.slice(0, 3).map((skill, idx) => (
+                                <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                  {skill}
+                                </span>
+                              ))}
+                              {student.skills.length > 3 && (
+                                <span className="text-xs text-gray-500">+{student.skills.length - 3} more</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 flex items-center justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              disabled={adding}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAddCandidates}
+              disabled={adding || selectedStudents.length === 0}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center"
+            >
+              {adding ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <CheckIcon className="h-4 w-4 mr-1" />
+                  Add {selectedStudents.length} Candidate{selectedStudents.length !== 1 ? 's' : ''}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Next Action Modal
+const NextActionModal = ({ isOpen, onClose, candidate, onSuccess }) => {
+  const [action, setAction] = useState('send_email');
+  const [date, setDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const actions = [
+    { value: 'send_email', label: 'Send Follow-up Email' },
+    { value: 'schedule_interview', label: 'Schedule Interview' },
+    { value: 'make_offer', label: 'Prepare Offer' },
+    { value: 'follow_up', label: 'General Follow-up' },
+    { value: 'review_application', label: 'Review Application' }
+  ];
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateNextAction(
+        candidate.id, // pipeline_candidates.id
+        action,
+        date || null,
+        notes || null
+      );
+
+      alert(`✅ Next action set: ${actions.find(a => a.value === action)?.label}`);
+      onSuccess?.();
+      onClose();
+      
+      // Reset form
+      setAction('send_email');
+      setDate('');
+      setNotes('');
+    } catch (error) {
+      console.error('Error setting next action:', error);
+      alert('Failed to set next action. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  // Get tomorrow as minimum date
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const minDate = tomorrow.toISOString().split('T')[0];
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Set Next Action</h3>
+              <p className="text-sm text-gray-500">{candidate?.candidate_name || candidate?.name}</p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {/* Action Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Action Type
+              </label>
+              <select
+                value={action}
+                onChange={(e) => setAction(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                {actions.map(act => (
+                  <option key={act.value} value={act.value}>{act.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Target Date (Optional)
+              </label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                min={minDate}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Notes (Optional)
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Add any notes about this action..."
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              disabled={saving}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving...' : 'Save Action'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const KanbanColumn = ({ title, count, color, candidates, onCandidateMove, onCandidateView, selectedCandidates, onToggleSelect, onSendEmail, onAddClick, onNextAction }) => {
   const [showAddForm, setShowAddForm] = useState(false);
 
   return (
@@ -44,6 +394,7 @@ const KanbanColumn = ({ title, count, color, candidates, onCandidateMove, onCand
             isSelected={selectedCandidates.includes(candidate.id)}
             onToggleSelect={onToggleSelect}
             onSendEmail={onSendEmail}
+            onNextAction={onNextAction}
           />
         ))}
         
@@ -58,7 +409,10 @@ const KanbanColumn = ({ title, count, color, candidates, onCandidateMove, onCand
                 <XMarkIcon className="h-4 w-4" />
               </button>
             </div>
-            <button className="w-full text-left text-sm text-primary-600 hover:text-primary-700">
+            <button 
+              onClick={onAddClick}
+              className="w-full text-left text-sm text-primary-600 hover:text-primary-700"
+            >
               + Add from talent pool
             </button>
           </div>
@@ -68,7 +422,7 @@ const KanbanColumn = ({ title, count, color, candidates, onCandidateMove, onCand
   );
 };
 
-const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, onSendEmail }) => {
+const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, onSendEmail, onNextAction }) => {
   const [showMoveMenu, setShowMoveMenu] = useState(false);
 
   const stages = [
@@ -163,16 +517,22 @@ const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, 
       {/* Skills */}
       <div className="mb-2">
         <div className="flex flex-wrap gap-1">
-          {candidate.skills.slice(0, 2).map((skill, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700"
-            >
-              {skill}
-            </span>
-          ))}
-          {candidate.skills.length > 2 && (
-            <span className="text-xs text-gray-500">+{candidate.skills.length - 2}</span>
+          {candidate.skills && candidate.skills.length > 0 ? (
+            <>
+              {candidate.skills.slice(0, 2).map((skill, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700"
+                >
+                  {skill}
+                </span>
+              ))}
+              {candidate.skills.length > 2 && (
+                <span className="text-xs text-gray-500">+{candidate.skills.length - 2}</span>
+              )}
+            </>
+          ) : (
+            <span className="text-xs text-gray-400 italic">No skills listed</span>
           )}
         </div>
       </div>
@@ -182,7 +542,10 @@ const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, 
         <span className="text-gray-500">
           {candidate.last_updated && `Updated ${new Date(candidate.last_updated).toLocaleDateString()}`}
         </span>
-        <button className="text-primary-600 hover:text-primary-700 font-medium">
+        <button 
+          onClick={() => onNextAction?.(candidate)}
+          className="text-primary-600 hover:text-primary-700 font-medium"
+        >
           Next Action
         </button>
       </div>
@@ -191,7 +554,10 @@ const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, 
 };
 
 const Pipelines = ({ onViewProfile }) => {
-  const [selectedJob, setSelectedJob] = useState(requisitions[0]?.id || null);
+  // Fetch requisitions from Supabase
+  const { requisitions, loading: requisitionsLoading, error: requisitionsError } = useRequisitions();
+  
+  const [selectedJob, setSelectedJob] = useState(null);
   const { students, loading, error } = useStudents();
   const [pipelineData, setPipelineData] = useState({
     sourced: [],
@@ -201,27 +567,69 @@ const Pipelines = ({ onViewProfile }) => {
     offer: [],
     hired: []
   });
+  
+  // Modal states
+  const [showAddFromTalentPool, setShowAddFromTalentPool] = useState(false);
+  const [addToStage, setAddToStage] = useState(null);
+  const [showNextActionModal, setShowNextActionModal] = useState(false);
+  const [selectedCandidateForAction, setSelectedCandidateForAction] = useState(null);
 
-  // Seed initial pipeline stages when students load
+  // Set initial selected job when requisitions load
   React.useEffect(() => {
-    if (!loading && students.length > 0) {
-      setPipelineData(prev => {
-        // Keep existing if already populated
-        if ((prev.sourced?.length || 0) > 0 || (prev.screened?.length || 0) > 0) return prev
-        const first = students[0] ? [students[0]] : []
-        const second = students[1] ? [students[1]] : []
-        const third = students[2] ? [students[2]] : []
-        return {
-          sourced: first.concat(second).filter(Boolean),
-          screened: third,
-          interview_1: [],
-          interview_2: [],
-          offer: [],
-          hired: []
-        }
-      })
+    if (!requisitionsLoading && requisitions.length > 0 && !selectedJob) {
+      setSelectedJob(requisitions[0].id);
     }
-  }, [loading, students]);
+  }, [requisitionsLoading, requisitions, selectedJob]);
+
+  // Fetch pipeline candidates when job changes
+  React.useEffect(() => {
+    if (selectedJob) {
+      loadPipelineCandidates();
+    }
+  }, [selectedJob]);
+
+  const loadPipelineCandidates = async () => {
+    if (!selectedJob) return;
+    
+    console.log('Loading pipeline candidates for job:', selectedJob);
+    const stages = ['sourced', 'screened', 'interview_1', 'interview_2', 'offer', 'hired'];
+    const newData = {};
+    
+    for (const stage of stages) {
+      const { data, error } = await getPipelineCandidatesByStage(selectedJob, stage);
+      console.log(`Stage ${stage}:`, { data, error });
+      
+      if (!error && data) {
+        // Map pipeline_candidates to match expected format
+        newData[stage] = data.map(pc => {
+          const mappedCandidate = {
+            id: pc.id,
+            name: pc.candidate_name || 'N/A',
+            email: pc.candidate_email || '',
+            phone: pc.candidate_phone || '',
+            dept: pc.students?.dept || 'N/A',
+            college: pc.students?.college || 'N/A',
+            location: pc.students?.location || 'N/A',
+            skills: Array.isArray(pc.students?.skills) ? pc.students.skills : [],
+            ai_score_overall: pc.students?.ai_score_overall || 0,
+            last_updated: pc.updated_at || pc.created_at,
+            student_id: pc.student_id
+          };
+          console.log('Mapped candidate:', mappedCandidate);
+          return mappedCandidate;
+        });
+      } else {
+        newData[stage] = [];
+        if (error) {
+          console.error(`Error loading ${stage} candidates:`, error);
+        }
+      }
+    }
+    
+    console.log('Final pipeline data:', newData);
+    setPipelineData(newData);
+  };
+
   const [selectedCandidates, setSelectedCandidates] = useState([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
 
@@ -236,29 +644,45 @@ const Pipelines = ({ onViewProfile }) => {
     { key: 'hired', label: 'Hired', color: 'bg-emerald-400' }
   ];
 
-  const handleCandidateMove = (candidateId, newStage) => {
-    setPipelineData(prev => {
-      const newData = { ...prev };
+  const handleCandidateMove = async (candidateId, newStage) => {
+    try {
+      // Update in Supabase
+      const result = await moveCandidateToStage(candidateId, newStage);
       
-      // Find and remove candidate from current stage
-      let candidateToMove = null;
-      Object.keys(newData).forEach(stage => {
-        newData[stage] = newData[stage].filter(candidate => {
-          if (candidate.id === candidateId) {
-            candidateToMove = candidate;
-            return false;
-          }
-          return true;
-        });
-      });
-
-      // Add candidate to new stage
-      if (candidateToMove && newData[newStage]) {
-        newData[newStage].push(candidateToMove);
+      if (result.error) {
+        alert('Failed to move candidate: ' + result.error.message);
+        return;
       }
+      
+      // Update local state
+      setPipelineData(prev => {
+        const newData = { ...prev };
+        
+        // Find and remove candidate from current stage
+        let candidateToMove = null;
+        Object.keys(newData).forEach(stage => {
+          newData[stage] = newData[stage].filter(candidate => {
+            if (candidate.id === candidateId) {
+              candidateToMove = candidate;
+              return false;
+            }
+            return true;
+          });
+        });
 
-      return newData;
-    });
+        // Add candidate to new stage
+        if (candidateToMove && newData[newStage]) {
+          newData[newStage].push(candidateToMove);
+        }
+
+        return newData;
+      });
+      
+      alert('✅ Candidate moved successfully!');
+    } catch (error) {
+      console.error('Error moving candidate:', error);
+      alert('Failed to move candidate. Please try again.');
+    }
   };
 
   const getTotalCandidates = () => {
@@ -429,6 +853,16 @@ const Pipelines = ({ onViewProfile }) => {
     
     alert(`📧 Email Sent to ${candidate.name}!\n\nSubject: ${subject}\n\nMessage: "${message}"\n\nEmail has been delivered successfully.`);
   };
+  
+  const handleAddFromTalentPool = (stage) => {
+    setAddToStage(stage);
+    setShowAddFromTalentPool(true);
+  };
+  
+  const handleNextAction = (candidate) => {
+    setSelectedCandidateForAction(candidate);
+    setShowNextActionModal(true);
+  };
 
   return (
     <div className="flex flex-col h-screen">
@@ -513,6 +947,8 @@ const Pipelines = ({ onViewProfile }) => {
               selectedCandidates={selectedCandidates}
               onToggleSelect={toggleCandidateSelection}
               onSendEmail={handleSendEmail}
+              onAddClick={() => handleAddFromTalentPool(stage.key)}
+              onNextAction={handleNextAction}
             />
           ))}
         </div>
@@ -584,6 +1020,22 @@ const Pipelines = ({ onViewProfile }) => {
           </div>
         </div>
       </div>
+      
+      {/* Modals */}
+      <AddFromTalentPoolModal
+        isOpen={showAddFromTalentPool}
+        onClose={() => setShowAddFromTalentPool(false)}
+        requisitionId={selectedJob}
+        targetStage={addToStage}
+        onSuccess={loadPipelineCandidates}
+      />
+      
+      <NextActionModal
+        isOpen={showNextActionModal}
+        onClose={() => setShowNextActionModal(false)}
+        candidate={selectedCandidateForAction}
+        onSuccess={loadPipelineCandidates}
+      />
     </div>
   );
 };

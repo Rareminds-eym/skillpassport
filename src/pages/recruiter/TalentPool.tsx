@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   FunnelIcon,
@@ -20,6 +20,7 @@ import {
 import { useStudents } from '../../hooks/useStudents';
 import { getShortlists, addCandidateToShortlist } from '../../services/shortlistService';
 import { createInterview } from '../../services/interviewService';
+import { useSearch } from '../../context/SearchContext';
 
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -621,6 +622,7 @@ type RecruiterOutletContext = {
 
 const TalentPool = () => {
   const { onViewProfile } = useOutletContext<RecruiterOutletContext>()
+  const { searchQuery } = useSearch();
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
   const [showFilters, setShowFilters] = useState(true);
   const [showShortlistModal, setShowShortlistModal] = useState(false);
@@ -666,7 +668,40 @@ const TalentPool = () => {
     { value: 'third', label: 'Third Year', count: 67 }
   ];
 
-  const { students, loading, error } = useStudents()
+  const { students, loading, error } = useStudents();
+
+  // Filter students based on search query
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery || searchQuery.trim() === '') {
+      return students;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    
+    return students.filter(student => {
+      // Search in name
+      if (student.name?.toLowerCase().includes(query)) return true;
+      
+      // Search in department
+      if (student.dept?.toLowerCase().includes(query)) return true;
+      
+      // Search in college
+      if (student.college?.toLowerCase().includes(query)) return true;
+      
+      // Search in location
+      if (student.location?.toLowerCase().includes(query)) return true;
+      
+      // Search in skills
+      if (student.skills?.some(skill => 
+        skill.toLowerCase().includes(query)
+      )) return true;
+      
+      // Search in email
+      if (student.email?.toLowerCase().includes(query)) return true;
+      
+      return false;
+    });
+  }, [students, searchQuery]);
 
   const handleShortlistClick = (candidate) => {
     setSelectedCandidate(candidate);
@@ -696,7 +731,15 @@ const TalentPool = () => {
       <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">
         <div className="flex items-center">
           <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
-          <span className="ml-2 text-sm text-gray-500">({students.length} candidates)</span>
+          <span className="ml-2 text-sm text-gray-500">
+            ({filteredStudents.length} {searchQuery ? 'matching' : ''} candidates
+            {searchQuery && students.length !== filteredStudents.length && ` of ${students.length} total`})
+          </span>
+          {searchQuery && (
+            <span className="ml-2 px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded-full">
+              Searching: "{searchQuery}"
+            </span>
+          )}
         </div>
         <div className="flex items-center space-x-2">
           <button
@@ -823,7 +866,8 @@ const TalentPool = () => {
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{students.length}</span> results
+                Showing <span className="font-medium">{filteredStudents.length}</span> result{filteredStudents.length !== 1 ? 's' : ''}
+                {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
               </p>
               <select className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white">
                 <option>Sort by: Relevance</option>
@@ -840,7 +884,7 @@ const TalentPool = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {loading && <div className="text-sm text-gray-500">Loading students...</div>}
                 {error && <div className="text-sm text-red-600">{error}</div>}
-                {!loading && students.map((candidate) => (
+                {!loading && filteredStudents.map((candidate) => (
                   <CandidateCard
                     key={candidate.id}
                     candidate={candidate as any}
@@ -849,8 +893,17 @@ const TalentPool = () => {
                     onScheduleInterview={handleScheduleInterviewClick}
                   />
                 ))}
-                {!loading && students.length === 0 && !error && (
-                  <div className="text-sm text-gray-500">No students found.</div>
+                {!loading && filteredStudents.length === 0 && !error && (
+                  <div className="col-span-full text-center py-8">
+                    <p className="text-sm text-gray-500">
+                      {searchQuery ? `No candidates found matching "${searchQuery}"` : 'No students found.'}
+                    </p>
+                    {searchQuery && (
+                      <p className="text-xs text-gray-400 mt-2">
+                        Try adjusting your search terms or clear the search to see all candidates.
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
@@ -876,7 +929,7 @@ const TalentPool = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {students.map((candidate) => (
+                    {filteredStudents.map((candidate) => (
                       <tr key={candidate.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
