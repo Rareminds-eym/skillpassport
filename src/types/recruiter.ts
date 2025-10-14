@@ -154,6 +154,46 @@ export interface AnalyticsMetrics {
   }
 }
 
+// Advanced Filter Types
+export interface AnalyticsFilters {
+  dateRange: {
+    preset?: '7d' | '30d' | '90d' | 'ytd' | 'custom'
+    startDate?: string
+    endDate?: string
+  }
+  departments: string[]
+  jobLevels: string[]
+  sources: string[]
+  skills: string[]
+  locations: string[]
+  recruiters: string[]
+}
+
+// Export Configuration Types
+export interface ExportConfig {
+  format: 'csv' | 'excel' | 'pdf'
+  sections: string[]
+  includeCharts: boolean
+  dateRange: {
+    start: string
+    end: string
+  }
+  filters?: AnalyticsFilters
+}
+
+export interface ScheduledReport {
+  id: string
+  name: string
+  frequency: 'daily' | 'weekly' | 'monthly'
+  recipients: string[]
+  sections: string[]
+  format: 'csv' | 'excel' | 'pdf'
+  nextRun: string
+  lastRun?: string
+  isActive: boolean
+  filters?: AnalyticsFilters
+}
+
 // Component Props Types
 export interface HeaderProps {
   onMenuToggle: () => void
