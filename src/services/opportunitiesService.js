@@ -172,11 +172,16 @@ export class OpportunitiesService {
     if (!opportunity) return null;
 
     try {
-      const skills = typeof opportunity.skills_required === 'string' 
-        ? JSON.parse(opportunity.skills_required)
-        : opportunity.skills_required || [];
+      console.log('🎨 Formatting opportunity:', opportunity);
+      
+      let skills = [];
+      if (opportunity.skills_required) {
+        skills = typeof opportunity.skills_required === 'string' 
+          ? JSON.parse(opportunity.skills_required)
+          : opportunity.skills_required;
+      }
 
-      return {
+      const formatted = {
         ...opportunity,
         skills_required: skills,
         deadline_formatted: opportunity.deadline 
@@ -190,8 +195,12 @@ export class OpportunitiesService {
           ? new Date(opportunity.deadline) > new Date()
           : true
       };
+      
+      console.log('✨ Formatted result:', formatted);
+      return formatted;
     } catch (error) {
-      console.error('Error formatting opportunity:', error);
+      console.error('❌ Error formatting opportunity:', error);
+      // Return minimal formatted data if parsing fails
       return {
         ...opportunity,
         skills_required: [],

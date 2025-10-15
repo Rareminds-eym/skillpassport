@@ -37,7 +37,6 @@ import {
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useOpportunities } from '../../hooks/useOpportunities';
 import { supabase } from '../../lib/supabaseClient';
-import SimpleOpportunitiesTest from '../../components/SimpleOpportunitiesTest';
 
 const StudentDashboard = () => {
   const location = useLocation();
@@ -196,6 +195,15 @@ const StudentDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5 p-0">
+          {(() => {
+            console.log('🎭 Rendering opportunities with:', {
+              loading: opportunitiesLoading,
+              error: opportunitiesError,
+              opportunities,
+              count: opportunities?.length
+            });
+            return null;
+          })()}
           {opportunitiesLoading ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -528,11 +536,6 @@ const StudentDashboard = () => {
         </div> */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* Simple Test Component */}
-          <div className="lg:col-span-3 mb-6">
-            <SimpleOpportunitiesTest />
-          </div>
 
           {/* LEFT COLUMN - User Activity & Updates - Only show for own profile */}
           {!isViewingOthersProfile && (
