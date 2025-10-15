@@ -34,7 +34,7 @@ const Header = ({ activeTab, setActiveTab }) => {
             alt="RareMinds Logo"
             className="w-32 h-10 object-contain bg-white"
           />
-          <span className="hidden sm:inline text-xl font-bold text-red-500 ml-10 lg:ml-20">Skill Passport</span>
+          {/* <span className="hidden sm:inline text-xl font-bold text-red-500 ml-10 lg:ml-20">Skill Passport</span> */}
         </div>
 
         {/* Center Tabs - Desktop */}
