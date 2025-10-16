@@ -628,80 +628,206 @@ const TalentPool = () => {
   const [showShortlistModal, setShowShortlistModal] = useState(false);
   const [showInterviewModal, setShowInterviewModal] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [sortBy, setSortBy] = useState('relevance');
   const [filters, setFilters] = useState({
     skills: [],
     courses: [],
     badges: [],
     locations: [],
-    years: []
+    years: [],
+    minScore: 0,
+    maxScore: 100
   });
-
-  const skillOptions = [
-    { value: 'python', label: 'Python', count: 45 },
-    { value: 'react', label: 'React', count: 32 },
-    { value: 'haccp', label: 'HACCP', count: 28 },
-    { value: 'excel', label: 'MS Excel', count: 67 },
-    { value: 'autocad', label: 'AutoCAD', count: 23 }
-  ];
-
-  const courseOptions = [
-    { value: 'gmp', label: 'GMP', count: 89 },
-    { value: 'fsqm', label: 'FSQM', count: 76 },
-    { value: 'mc', label: 'MC', count: 45 }
-  ];
-
-  const badgeOptions = [
-    { value: 'external_audited', label: 'External Audited', count: 12 },
-    { value: 'institution_verified', label: 'Institution Verified', count: 156 },
-    { value: 'self_verified', label: 'Self Verified', count: 234 }
-  ];
-
-  const locationOptions = [
-    { value: 'chennai', label: 'Chennai', count: 89 },
-    { value: 'coimbatore', label: 'Coimbatore', count: 67 },
-    { value: 'bangalore', label: 'Bangalore', count: 45 }
-  ];
-
-  const yearOptions = [
-    { value: 'final', label: 'Final Year', count: 123 },
-    { value: 'pre-final', label: 'Pre-Final Year', count: 89 },
-    { value: 'third', label: 'Third Year', count: 67 }
-  ];
 
   const { students, loading, error } = useStudents();
 
-  // Filter students based on search query
-  const filteredStudents = useMemo(() => {
-    if (!searchQuery || searchQuery.trim() === '') {
-      return students;
+  // Dynamically generate filter options from actual data
+  const skillOptions = useMemo(() => {
+    const skillCounts = {};
+    students.forEach(student => {
+      if (student.skills && Array.isArray(student.skills)) {
+        student.skills.forEach(skill => {
+          const normalizedSkill = skill.toLowerCase();
+          skillCounts[normalizedSkill] = (skillCounts[normalizedSkill] || 0) + 1;
+        });
+      }
+    });
+    return Object.entries(skillCounts)
+      .map(([skill, count]) => ({
+        value: skill,
+        label: skill.charAt(0).toUpperCase() + skill.slice(1),
+        count
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20); // Show top 20 skills
+  }, [students]);
+
+  const courseOptions = useMemo(() => {
+    const courseCounts = {};
+    students.forEach(student => {
+      if (student.dept) {
+        const normalizedCourse = student.dept.toLowerCase();
+        courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
+      }
+    });
+    return Object.entries(courseCounts)
+      .map(([course, count]) => ({
+        value: course,
+        label: course,
+        count
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [students]);
+
+  const badgeOptions = useMemo(() => {
+    const badgeCounts = {};
+    students.forEach(student => {
+      if (student.badges && Array.isArray(student.badges)) {
+        student.badges.forEach(badge => {
+          badgeCounts[badge] = (badgeCounts[badge] || 0) + 1;
+        });
+      }
+    });
+    return Object.entries(badgeCounts)
+      .map(([badge, count]) => ({
+        value: badge,
+        label: badge.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+        count
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [students]);
+
+  const locationOptions = useMemo(() => {
+    const locationCounts = {};
+    students.forEach(student => {
+      if (student.location) {
+        const normalizedLocation = student.location.toLowerCase();
+        locationCounts[normalizedLocation] = (locationCounts[normalizedLocation] || 0) + 1;
+      }
+    });
+    return Object.entries(locationCounts)
+      .map(([location, count]) => ({
+        value: location,
+        label: location.charAt(0).toUpperCase() + location.slice(1),
+        count
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [students]);
+
+  const yearOptions = useMemo(() => {
+    const yearCounts = {};
+    students.forEach(student => {
+      if (student.year) {
+        yearCounts[student.year] = (yearCounts[student.year] || 0) + 1;
+      }
+    });
+    return Object.entries(yearCounts)
+      .map(([year, count]) => ({
+        value: year,
+        label: year,
+        count
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [students]);
+
+  // Filter and sort students based on search query and filters
+  const filteredAndSortedStudents = useMemo(() => {
+    let result = students;
+
+    // Apply search query filter
+    if (searchQuery && searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(student => {
+        if (student.name?.toLowerCase().includes(query)) return true;
+        if (student.dept?.toLowerCase().includes(query)) return true;
+        if (student.college?.toLowerCase().includes(query)) return true;
+        if (student.location?.toLowerCase().includes(query)) return true;
+        if (student.skills?.some(skill => skill.toLowerCase().includes(query))) return true;
+        if (student.email?.toLowerCase().includes(query)) return true;
+        return false;
+      });
     }
 
-    const query = searchQuery.toLowerCase().trim();
-    
-    return students.filter(student => {
-      // Search in name
-      if (student.name?.toLowerCase().includes(query)) return true;
-      
-      // Search in department
-      if (student.dept?.toLowerCase().includes(query)) return true;
-      
-      // Search in college
-      if (student.college?.toLowerCase().includes(query)) return true;
-      
-      // Search in location
-      if (student.location?.toLowerCase().includes(query)) return true;
-      
-      // Search in skills
-      if (student.skills?.some(skill => 
-        skill.toLowerCase().includes(query)
-      )) return true;
-      
-      // Search in email
-      if (student.email?.toLowerCase().includes(query)) return true;
-      
-      return false;
+    // Apply skill filters
+    if (filters.skills.length > 0) {
+      result = result.filter(student =>
+        student.skills?.some(skill =>
+          filters.skills.includes(skill.toLowerCase())
+        )
+      );
+    }
+
+    // Apply course/department filters
+    if (filters.courses.length > 0) {
+      result = result.filter(student =>
+        filters.courses.includes(student.dept?.toLowerCase())
+      );
+    }
+
+    // Apply badge filters
+    if (filters.badges.length > 0) {
+      result = result.filter(student =>
+        student.badges?.some(badge =>
+          filters.badges.includes(badge)
+        )
+      );
+    }
+
+    // Apply location filters
+    if (filters.locations.length > 0) {
+      result = result.filter(student =>
+        filters.locations.includes(student.location?.toLowerCase())
+      );
+    }
+
+    // Apply year filters
+    if (filters.years.length > 0) {
+      result = result.filter(student =>
+        filters.years.includes(student.year)
+      );
+    }
+
+    // Apply AI score range filter
+    result = result.filter(student => {
+      const score = student.ai_score_overall || 0;
+      return score >= filters.minScore && score <= filters.maxScore;
     });
-  }, [students, searchQuery]);
+
+    // Apply sorting
+    const sortedResult = [...result];
+    switch (sortBy) {
+      case 'ai_score':
+        sortedResult.sort((a, b) => (b.ai_score_overall || 0) - (a.ai_score_overall || 0));
+        break;
+      case 'name':
+        sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        break;
+      case 'last_updated':
+        sortedResult.sort((a, b) => 
+          new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
+        );
+        break;
+      case 'relevance':
+      default:
+        // Keep original order for relevance (or could implement custom relevance scoring)
+        break;
+    }
+
+    return sortedResult;
+  }, [students, searchQuery, filters, sortBy]);
+
+  // Clear all filters
+  const handleClearFilters = () => {
+    setFilters({
+      skills: [],
+      courses: [],
+      badges: [],
+      locations: [],
+      years: [],
+      minScore: 0,
+      maxScore: 100
+    });
+  };
 
   const handleShortlistClick = (candidate) => {
     setSelectedCandidate(candidate);
@@ -732,8 +858,8 @@ const TalentPool = () => {
         <div className="flex items-center">
           <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
           <span className="ml-2 text-sm text-gray-500">
-            ({filteredStudents.length} {searchQuery ? 'matching' : ''} candidates
-            {searchQuery && students.length !== filteredStudents.length && ` of ${students.length} total`})
+            ({filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates
+            {(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`})
           </span>
           {searchQuery && (
             <span className="ml-2 px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded-full">
@@ -744,10 +870,15 @@ const TalentPool = () => {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 relative"
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
+            {(filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
+                {filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length}
+              </span>
+            )}
           </button>
           <div className="flex rounded-md shadow-sm">
             <button
@@ -781,7 +912,10 @@ const TalentPool = () => {
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-medium text-gray-900">Filters</h2>
-                <button className="text-sm text-primary-600 hover:text-primary-700">
+                <button 
+                  onClick={handleClearFilters}
+                  className="text-sm text-primary-600 hover:text-primary-700"
+                >
                   Clear all
                 </button>
               </div>
@@ -841,17 +975,30 @@ const TalentPool = () => {
                 <FilterSection title="AI Score Range">
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm text-gray-700 mb-1">Overall Score</label>
+                      <label className="block text-sm text-gray-700 mb-1">
+                        Min Score: {filters.minScore}
+                      </label>
                       <input
                         type="range"
                         min="0"
                         max="100"
+                        value={filters.minScore}
+                        onChange={(e) => setFilters({...filters, minScore: parseInt(e.target.value)})}
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                       />
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>0</span>
-                        <span>100</span>
-                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1">
+                        Max Score: {filters.maxScore}
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={filters.maxScore}
+                        onChange={(e) => setFilters({...filters, maxScore: parseInt(e.target.value)})}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                      />
                     </div>
                   </div>
                 </FilterSection>
@@ -866,14 +1013,18 @@ const TalentPool = () => {
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{filteredStudents.length}</span> result{filteredStudents.length !== 1 ? 's' : ''}
+                Showing <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
               </p>
-              <select className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white">
-                <option>Sort by: Relevance</option>
-                <option>Sort by: AI Score</option>
-                <option>Sort by: Last Updated</option>
-                <option>Sort by: Name</option>
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="relevance">Sort by: Relevance</option>
+                <option value="ai_score">Sort by: AI Score</option>
+                <option value="last_updated">Sort by: Last Updated</option>
+                <option value="name">Sort by: Name</option>
               </select>
             </div>
           </div>
@@ -884,7 +1035,7 @@ const TalentPool = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {loading && <div className="text-sm text-gray-500">Loading students...</div>}
                 {error && <div className="text-sm text-red-600">{error}</div>}
-                {!loading && filteredStudents.map((candidate) => (
+                {!loading && filteredAndSortedStudents.map((candidate) => (
                   <CandidateCard
                     key={candidate.id}
                     candidate={candidate as any}
@@ -893,15 +1044,23 @@ const TalentPool = () => {
                     onScheduleInterview={handleScheduleInterviewClick}
                   />
                 ))}
-                {!loading && filteredStudents.length === 0 && !error && (
+                {!loading && filteredAndSortedStudents.length === 0 && !error && (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500">
-                      {searchQuery ? `No candidates found matching "${searchQuery}"` : 'No students found.'}
+                      {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 
+                        ? 'No candidates match your current filters' 
+                        : 'No students found.'}
                     </p>
-                    {searchQuery && (
-                      <p className="text-xs text-gray-400 mt-2">
-                        Try adjusting your search terms or clear the search to see all candidates.
-                      </p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      Try adjusting your search terms or filters.
+                    </p>
+                    {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
+                      <button
+                        onClick={handleClearFilters}
+                        className="mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium"
+                      >
+                        Clear all filters
+                      </button>
                     )}
                   </div>
                 )}
@@ -929,7 +1088,7 @@ const TalentPool = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredStudents.map((candidate) => (
+                    {filteredAndSortedStudents.map((candidate) => (
                       <tr key={candidate.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
