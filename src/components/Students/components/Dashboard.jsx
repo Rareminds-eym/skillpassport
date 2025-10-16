@@ -322,7 +322,7 @@ const Dashboard = () => {
                 <p className="text-sm text-[#FFB800] font-medium mb-2">{opp.company}</p>
                 <div className="flex items-center justify-between">
                   <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">{opp.type}</Badge>
-                  <Button size="sm" className="bg-blue-300 hover:bg-[#E5A600] text-black font-medium">
+                  <Button size="sm" className="bg-blue- hover:bg-[#E5A600] text-black font-medium">
                     Apply Now
                   </Button>
                 </div>
@@ -555,7 +555,7 @@ const Dashboard = () => {
               <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
                 <CardTitle className="flex items-center gap-2 text-blue-700">
                   <Bell className="w-5 h-5" />
-                  Recent Updates
+                  Recent Upda
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">

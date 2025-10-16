@@ -162,7 +162,7 @@ const ProfileEditSection = ({ profileEmail }) => {
     },
     {
       id: 'technicalSkills',
-      title: 'My Skills (Technical)',
+      title: 'My Technical Skills',
       icon: Code,
       description: 'Programming languages and technical skills',
   color: 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-blue-200',

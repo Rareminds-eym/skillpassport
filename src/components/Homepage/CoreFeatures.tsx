@@ -67,7 +67,7 @@ const CoreFeatures = () => {
       ),
     },
     {
-      title: 'Competency Mapping',
+      title: 'Competenc Mapping',
       description: 'Align internal frameworks with industry standards.',
       icon: (
         <svg
