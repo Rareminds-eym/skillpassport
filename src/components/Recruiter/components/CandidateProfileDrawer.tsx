@@ -15,6 +15,8 @@ import {
   BriefcaseIcon,
   BeakerIcon
 } from '@heroicons/react/24/outline';
+import AddToShortlistModal from '../modals/AddToShortlistModal';
+import ScheduleInterviewModal from '../modals/ScheduleInterviewModal';
 
 const Badge = ({ type }) => {
   const badgeConfig = {
@@ -78,8 +80,50 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [notes, setNotes] = useState('');
   const [rating, setRating] = useState(0);
+  const [showShortlistModal, setShowShortlistModal] = useState(false);
+  const [showInterviewModal, setShowInterviewModal] = useState(false);
 
   if (!isOpen || !candidate) return null;
+
+  const modalCandidate = {
+    ...candidate,
+    name: (candidate as any).name || (candidate as any).candidate_name || '',
+    email: (candidate as any).email || (candidate as any).candidate_email || ''
+  };
+
+  // Parse profile data if it's a string/object and prepare helpers
+  let profileData: any = candidate;
+  let rawProfile: any = {};
+
+  if (candidate.profile && typeof candidate.profile === 'string') {
+    try {
+      rawProfile = JSON.parse(candidate.profile);
+      profileData = { ...candidate, ...rawProfile };
+    } catch (e) {
+      rawProfile = {};
+      profileData = candidate;
+    }
+  } else if (candidate.profile && typeof candidate.profile === 'object') {
+    rawProfile = candidate.profile;
+    profileData = { ...candidate, ...rawProfile };
+  }
+
+  const formatLabel = (key: string) => key
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/^\w/, (c) => c.toUpperCase());
+
+  const isPrimitive = (val: any) => val === null || ['string','number','boolean'].includes(typeof val);
+  const isEmpty = (v: any) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
+
+  // Build lists of fields from the JSONB profile
+  const knownComposite = new Set(['training','education','technicalSkills','softSkills','experience']);
+  const primitiveEntries = Object.entries(rawProfile || {})
+    .filter(([k,v]) => !knownComposite.has(k) && isPrimitive(v) && !isEmpty(v))
+    .sort(([a],[b]) => a.localeCompare(b));
+
+  const otherArrays = Object.entries(rawProfile || {})
+    .filter(([k,v]) => Array.isArray(v) && !knownComposite.has(k));
 
   const tabs = [
     { key: 'overview', label: 'Overview' },
@@ -103,26 +147,28 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center">
-                      <h2 className="text-xl font-semibold text-gray-900">{candidate.name}</h2>
+                      <h2 className="text-xl font-semibold text-gray-900">{profileData.name || candidate.name}</h2>
                       <div className="ml-3 flex items-center">
                         <StarIcon className="h-5 w-5 text-yellow-400 fill-current" />
-                        <span className="text-lg font-bold text-gray-900 ml-1">{candidate.ai_score_overall}</span>
+                        <span className="text-lg font-bold text-gray-900 ml-1">{candidate.ai_score_overall || 0}</span>
                         <span className="text-sm text-gray-600 ml-1">AI Score</span>
                       </div>
                     </div>
                     <div className="mt-2 flex items-center text-sm text-gray-600">
                       <AcademicCapIcon className="h-4 w-4 mr-1" />
-                      <span>{candidate.college} • {candidate.dept}</span>
+                      <span>{profileData.college_school_name || candidate.college} • {profileData.branch_field || candidate.dept}</span>
                     </div>
                     <div className="mt-1 flex items-center text-sm text-gray-600">
                       <MapPinIcon className="h-4 w-4 mr-1" />
-                      <span>{candidate.location} • {candidate.year}</span>
+                      <span>{profileData.district_name || candidate.location} • Age {profileData.age || 'N/A'}</span>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {candidate.badges.map((badge, index) => (
-                        <Badge key={index} type={badge} />
-                      ))}
-                    </div>
+                    {candidate.badges && candidate.badges.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {candidate.badges.map((badge, index) => (
+                          <Badge key={index} type={badge} />
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={onClose}
@@ -138,11 +184,11 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                 <div className="flex items-center space-x-4 text-sm">
                   <div className="flex items-center text-gray-600">
                     <PhoneIcon className="h-4 w-4 mr-1" />
-                    <span>{candidate.phone || '+91 XXXXX-XXXXX'}</span>
+                    <span>{profileData.contact_number || candidate.phone || 'Not provided'}</span>
                   </div>
                   <div className="flex items-center text-gray-600">
                     <EnvelopeIcon className="h-4 w-4 mr-1" />
-                    <span>{candidate.email}</span>
+                    <span>{profileData.email || candidate.email}</span>
                   </div>
                 </div>
               </div>
@@ -169,77 +215,200 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                     {/* Profile Info */}
                     <div>
                       <h3 className="text-lg font-medium text-gray-900 mb-4">Profile Information</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div><strong>Registration Number:</strong> {candidate.registration_number}</div>
-                        <div><strong>Date of Birth:</strong> {candidate.date_of_birth}</div>
-                        <div><strong>University:</strong> {candidate.university}</div>
-                        <div><strong>College/School:</strong> {candidate.college_school_name}</div>
-                        <div><strong>District:</strong> {candidate.district_name}</div>
-                        <div><strong>Course:</strong> {candidate.course}</div>
-                        <div><strong>Branch/Field:</strong> {candidate.branch_field}</div>
-                        <div><strong>Trainer:</strong> {candidate.trainer_name}</div>
-                        <div><strong>Alternate Contact:</strong> {candidate.alternate_number}</div>
-                        <div><strong>NM ID:</strong> {candidate.nm_id}</div>
-                        <div><strong>Skill:</strong> {candidate.skill}</div>
-                        <div><strong>Imported At:</strong> {candidate.imported_at}</div>
-                      </div>
-                    </div>
-
-                    {/* AI Scores */}
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">AI Readiness Summary</h3>
-                      <div className="space-y-3">
-                        <ProgressBar label="LSRW (Language Skills)" value={candidate.ai_scores?.lsrw || 0} />
-                        <ProgressBar label="Coding Ability" value={candidate.ai_scores?.coding || 0} />
-                        <ProgressBar label="Case Study Analysis" value={candidate.ai_scores?.case_study || 0} />
-                      </div>
-                    </div>
-
-                    {/* Skills */}
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">Core Skills</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {candidate.skills.map((skill, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Achievements */}
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">Key Achievements</h3>
-                      <div className="space-y-3">
-                        {candidate.hackathon && (
-                          <div className="flex items-center p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                            <TrophyIcon className="h-6 w-6 text-yellow-600 mr-3" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">
-                                Hackathon Rank #{candidate.hackathon.rank}
-                              </p>
-                              <p className="text-sm text-gray-600">{candidate.hackathon.event_id}</p>
+                      {primitiveEntries.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                          {primitiveEntries.map(([key, value]) => (
+                            <div key={key} className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">{formatLabel(key)}</span>
+                              <span className="font-medium text-gray-900 break-all">{String(value)}</span>
                             </div>
-                          </div>
-                        )}
-                        {candidate.internship && (
-                          <div className="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <BriefcaseIcon className="h-6 w-6 text-blue-600 mr-3" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">
-                                Internship at {candidate.internship.org}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                Rating: {candidate.internship.rating}/5.0
-                              </p>
+                          ))}
+                          {/* Composite summaries inside Profile Information */}
+                          {Array.isArray(profileData.education) && profileData.education.length > 0 && (
+                            <div className="flex flex-col col-span-1">
+                              <span className="text-gray-500 text-xs mb-1">Education</span>
+                              <span className="font-medium text-gray-900 break-all">
+                                {profileData.education.map((e: any) => e.degree || e.level || 'Education').join(', ')}
+                              </span>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                          {Array.isArray(profileData.training) && profileData.training.length > 0 && (
+                            <div className="flex flex-col col-span-1">
+                              <span className="text-gray-500 text-xs mb-1">Training</span>
+                              <span className="font-medium text-gray-900 break-all">
+                                {profileData.training.map((t: any) => t.course || t.skill || 'Training').join(', ')}
+                              </span>
+                            </div>
+                          )}
+                          {Array.isArray(profileData.technicalSkills) && profileData.technicalSkills.length > 0 && (
+                            <div className="flex flex-col col-span-1">
+                              <span className="text-gray-500 text-xs mb-1">Technical Skills</span>
+                              <span className="font-medium text-gray-900 break-all">
+                                {profileData.technicalSkills.map((s: any) => s.name).join(', ')}
+                              </span>
+                            </div>
+                          )}
+                          {Array.isArray(profileData.softSkills) && profileData.softSkills.length > 0 && (
+                            <div className="flex flex-col col-span-1">
+                              <span className="text-gray-500 text-xs mb-1">Soft Skills</span>
+                              <span className="font-medium text-gray-900 break-all">
+                                {profileData.softSkills.map((s: any) => s.name).join(', ')}
+                              </span>
+                            </div>
+                          )}
+                          {Array.isArray(profileData.experience) && profileData.experience.length > 0 && (
+                            <div className="flex flex-col col-span-1">
+                              <span className="text-gray-500 text-xs mb-1">Experience</span>
+                              <span className="font-medium text-gray-900 break-all">
+                                {profileData.experience.map((x: any) => [x.role, x.organization].filter(Boolean).join(' @ ')).join(', ')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No profile fields available</p>
+                      )}
                     </div>
+
+                    {/* Education */}
+                    {profileData.education && profileData.education.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Education</h3>
+                        <div className="space-y-3">
+                          {profileData.education.map((edu, index) => (
+                            <div key={index} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900">{edu.degree}</p>
+                                  <p className="text-sm text-gray-600 mt-1">{edu.university}</p>
+                                  <div className="flex items-center mt-2 text-sm text-gray-500">
+                                    <span className="mr-3">{edu.level}</span>
+                                    {edu.yearOfPassing && <span className="mr-3">• {edu.yearOfPassing}</span>}
+                                    {edu.cgpa && edu.cgpa !== 'N/A' && <span>• CGPA: {edu.cgpa}</span>}
+                                  </div>
+                                </div>
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  edu.status === 'ongoing' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                                }`}>
+                                  {edu.status}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Training */}
+                    {profileData.training && profileData.training.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Training & Courses</h3>
+                        <div className="space-y-3">
+                          {profileData.training.map((train, index) => (
+                            <div key={index} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900">{train.course}</p>
+                                  {train.skill && <p className="text-sm text-gray-600 mt-1">{train.skill}</p>}
+                                  {train.trainer && <p className="text-xs text-gray-500 mt-1">Trainer: {train.trainer}</p>}
+                                </div>
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  train.status === 'ongoing' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+                                }`}>
+                                  {train.status}
+                                </span>
+                              </div>
+                              {train.progress !== undefined && (
+                                <div className="mt-2">
+                                  <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                    <span>Progress</span>
+                                    <span>{train.progress}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div className="bg-primary-600 h-1.5 rounded-full" style={{ width: `${train.progress}%` }}></div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Technical Skills */}
+                    {profileData.technicalSkills && profileData.technicalSkills.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Technical Skills</h3>
+                        <div className="space-y-2">
+                          {profileData.technicalSkills.map((skill, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                              <div className="flex items-center">
+                                {skill.icon && <span className="mr-2">{skill.icon}</span>}
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">{skill.name}</p>
+                                  {skill.category && <p className="text-xs text-gray-500">{skill.category}</p>}
+                                </div>
+                              </div>
+                              <div className="flex items-center">
+                                <div className="flex">
+                                  {[...Array(5)].map((_, i) => (
+                                    <div key={i} className={`w-2 h-2 rounded-full mx-0.5 ${
+                                      i < skill.level ? 'bg-primary-600' : 'bg-gray-300'
+                                    }`}></div>
+                                  ))}
+                                </div>
+                                {skill.verified && (
+                                  <ShieldCheckIcon className="h-4 w-4 text-green-600 ml-2" />
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Soft Skills */}
+                    {profileData.softSkills && profileData.softSkills.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Soft Skills</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {profileData.softSkills.map((skill, index) => (
+                            <span
+                              key={index}
+                              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                            >
+                              {skill.name}
+                              <span className="ml-1 text-xs">({skill.level}/5)</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Experience */}
+                    {profileData.experience && profileData.experience.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Experience</h3>
+                        <div className="space-y-3">
+                          {profileData.experience.map((exp, index) => (
+                            <div key={index} className="flex items-start p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <BriefcaseIcon className="h-6 w-6 text-blue-600 mr-3 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">{exp.role}</p>
+                                <p className="text-sm text-gray-600 mt-1">{exp.organization}</p>
+                                {exp.duration && <p className="text-xs text-gray-500 mt-1">Duration: {exp.duration}</p>}
+                                {exp.verified && (
+                                  <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                    <ShieldCheckIcon className="h-3 w-3 mr-1" />
+                                    Verified
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -413,11 +582,15 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
               <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div className="flex space-x-3">
-                    <button className="inline-flex items-center px-4 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100">
+                    <button 
+                      onClick={() => setShowShortlistModal(true)}
+                      className="inline-flex items-center px-4 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100">
                       <BookmarkIcon className="h-4 w-4 mr-2" />
                       Add to Shortlist
                     </button>
-                    <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    <button 
+                      onClick={() => setShowInterviewModal(true)}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                       <CalendarDaysIcon className="h-4 w-4 mr-2" />
                       Schedule Interview
                     </button>
@@ -436,6 +609,20 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
               </div>
             </div>
           </div>
+          
+          {/* Modals */}
+          <AddToShortlistModal 
+            isOpen={showShortlistModal}
+            onClose={() => setShowShortlistModal(false)}
+            candidate={modalCandidate}
+            onSuccess={() => {}}
+          />
+          <ScheduleInterviewModal 
+            isOpen={showInterviewModal}
+            onClose={() => setShowInterviewModal(false)}
+            candidate={modalCandidate}
+            onSuccess={() => {}}
+          />
         </div>
       </div>
     </div>
