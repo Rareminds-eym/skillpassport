@@ -61,9 +61,14 @@ const Header = ({ activeTab, setActiveTab }) => {
                   setActiveTab(tab.id);
                   if (tab.id === 'share') {
                     setShowShareModal(true);
-                  } else if (tab.id === 'skills' || tab.id === 'training' || tab.id === 'experience' || tab.id === 'opportunities') {
-                    localStorage.setItem('dashboardActiveNav', tab.id);
-                    navigate('/student/dashboard');
+                  } else if (tab.id === 'skills') {
+                    navigate('/student/my-skills');
+                  } else if (tab.id === 'training') {
+                    navigate('/student/my-training');
+                  } else if (tab.id === 'experience') {
+                    navigate('/student/my-experience');
+                  } else if (tab.id === 'opportunities') {
+                    navigate('/student/opportunities');
                   }
                 }}
                 className={`relative py-2 px-2 text-sm font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none ${activeTab === tab.id ? 'font-semibold' : ''}`}
@@ -142,9 +147,14 @@ const Header = ({ activeTab, setActiveTab }) => {
                 setActiveTab(tab.id);
                 if (tab.id === 'share') {
                   setShowShareModal(true);
-                } else if (tab.id === 'skills' || tab.id === 'training' || tab.id === 'experience' || tab.id === 'opportunities') {
-                  localStorage.setItem('dashboardActiveNav', tab.id);
-                  navigate('/student/dashboard');
+                } else if (tab.id === 'skills') {
+                  navigate('/student/my-skills');
+                } else if (tab.id === 'training') {
+                  navigate('/student/my-training');
+                } else if (tab.id === 'experience') {
+                  navigate('/student/my-experience');
+                } else if (tab.id === 'opportunities') {
+                  navigate('/student/opportunities');
                 }
                 setMobileMenuOpen(false);
               }}
