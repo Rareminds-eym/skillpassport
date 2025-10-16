@@ -331,6 +331,45 @@ export const sendInterviewReminder = async (
   }
 };
 
+/**
+ * Send interview reminder via Edge Function
+ */
+export const sendReminder = async (interviewId: string, recipientEmail?: string, recipientName?: string) => {
+  try {
+    // Get interview details if email/name not provided
+    let email = recipientEmail;
+    let name = recipientName;
+    
+    if (!email || !name) {
+      const { data: interview, error } = await getInterviewById(interviewId);
+      if (error || !interview) {
+        return { data: null, error: 'Interview not found' };
+      }
+      email = email || interview.candidate_email;
+      name = name || interview.candidate_name;
+    }
+
+    if (!email || !name) {
+      return { data: null, error: 'Recipient email and name are required' };
+    }
+
+    // Call the Edge Function
+    const { data, error } = await supabase.functions.invoke('send-interview-reminder', {
+      body: {
+        interviewId,
+        recipientEmail: email,
+        recipientName: name
+      }
+    });
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error sending reminder:', error);
+    return { data: null, error };
+  }
+};
+
 // ==================== ANALYTICS & STATISTICS ====================
 
 /**

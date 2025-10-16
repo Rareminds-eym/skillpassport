@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   PlusIcon,
   ShareIcon,
@@ -26,6 +27,7 @@ import {
   removeCandidateFromShortlist,
   logExportActivity
 } from '../../services/shortlistService';
+import jsPDF from 'jspdf';
 
 // Define TypeScript interfaces for our data
 interface ShortlistCandidate {
@@ -88,6 +90,180 @@ const StatusBadge = ({ status, shared, expiry }) => {
   );
 };
 
+const ViewCandidatesModal = ({ shortlist, candidates, isOpen, onClose }) => {
+  if (!isOpen || !shortlist) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex-1">
+              <h3 className="text-lg font-medium text-gray-900">{shortlist.name}</h3>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-xs text-gray-500">
+                  Created {new Date(shortlist.created_date).toLocaleDateString()}
+                </span>
+                {shortlist.created_by && (
+                  <span className="text-xs text-gray-500">by {shortlist.created_by}</span>
+                )}
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                  shortlist.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {shortlist.status || 'active'}
+                </span>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+          
+          {shortlist.description && (
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-700">{shortlist.description}</p>
+            </div>
+          )}
+
+          {/* Tags */}
+          {shortlist.tags && shortlist.tags.length > 0 && (
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-2">
+                {shortlist.tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                  >
+                    <TagIcon className="h-3 w-3 mr-1" />
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sharing Status */}
+          {shortlist.shared && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center">
+                <ShareIcon className="h-4 w-4 text-green-600 mr-2" />
+                <span className="text-sm font-medium text-green-800">This shortlist is shared</span>
+              </div>
+              {shortlist.share_expiry && (
+                <p className="text-xs text-green-600 mt-1">
+                  Expires: {new Date(shortlist.share_expiry).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="mb-4 border-t pt-4">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Candidates ({candidates?.length || 0})</h4>
+          </div>
+
+          {/* Candidates List */}
+          {candidates && candidates.length > 0 ? (
+            <div className="max-h-96 overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Department
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      University
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      CGPA
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Score
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {candidates.map((candidate, index) => (
+                    <tr key={candidate.id || index} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-8 w-8">
+                            {candidate.photo ? (
+                              <img className="h-8 w-8 rounded-full" src={candidate.photo} alt="" />
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                <span className="text-xs font-medium text-gray-600">
+                                  {candidate.name?.charAt(0)?.toUpperCase() || '?'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-3">
+                            <div className="text-sm font-medium text-gray-900">{candidate.name}</div>
+                            {candidate.email && (
+                              <div className="text-xs text-gray-500">{candidate.email}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {candidate.department || 'N/A'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {candidate.university || 'N/A'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {candidate.cgpa || 'N/A'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {candidate.employability_score ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {candidate.employability_score}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-500">N/A</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {candidate.verified ? (
+                          <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <span className="text-xs text-gray-400">Unverified</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <UserGroupIcon className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+              <p>No candidates in this shortlist yet</p>
+            </div>
+          )}
+
+          <div className="mt-6 flex items-center justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
   const [shareSettings, setShareSettings] = useState({
     expiry_days: 30,
@@ -95,18 +271,23 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
     include_pii: false,
     notify_on_access: true
   });
+  const [shareLink, setShareLink] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleShare = async () => {
+  const generateLinkIfNeeded = async () => {
+    if (shareLink) return shareLink;
+    
     try {
+      setIsGenerating(true);
       const shareToken = Math.random().toString(36).substr(2, 9);
-      const shareLink = `https://recruiterhub.com/shared/${shortlist.id}?token=${shareToken}`;
+      const generatedLink = `https://recruiterhub.com/shared/${shortlist.id}?token=${shareToken}`;
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + shareSettings.expiry_days);
       
       // Update the shortlist in Supabase using the service function
       const { error } = await updateShortlist(shortlist.id, {
         shared: true,
-        share_link: shareLink,
+        share_link: generatedLink,
         share_expiry: expiryDate.toISOString(),
         watermark: shareSettings.watermark,
         include_pii: shareSettings.include_pii,
@@ -119,22 +300,92 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
       onShare({
         ...shortlist,
         shared: true,
-        share_link: shareLink,
+        share_link: generatedLink,
         share_expiry: expiryDate.toISOString(),
         watermark: shareSettings.watermark,
         include_pii: shareSettings.include_pii,
         notify_on_access: shareSettings.notify_on_access
       });
       
-      // Copy to clipboard
-      await navigator.clipboard.writeText(shareLink);
-      alert('Share link generated and copied to clipboard!');
-      
-      onClose();
+      setShareLink(generatedLink);
+      return generatedLink;
     } catch (error) {
       console.error('Error sharing shortlist:', error);
-      alert('Failed to share shortlist. Please try again.');
+      alert('Failed to generate share link. Please try again.');
+      return null;
+    } finally {
+      setIsGenerating(false);
     }
+  };
+
+  const handleCopyLink = async () => {
+    const link = await generateLinkIfNeeded();
+    if (!link) return;
+    
+    try {
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(link);
+        alert('Link copied to clipboard!');
+      } else {
+        // Fallback method for non-secure contexts
+        const textArea = document.createElement('textarea');
+        textArea.value = link;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+          document.execCommand('copy');
+          textArea.remove();
+          alert('Link copied to clipboard!');
+        } catch (err) {
+          console.error('Fallback copy failed:', err);
+          textArea.remove();
+          // Show the link for manual copying
+          prompt('Copy this link manually:', link);
+        }
+      }
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      // Last resort - show prompt for manual copy
+      prompt('Copy this link manually:', link);
+    }
+  };
+
+  const handleShareTelegram = async () => {
+    const link = await generateLinkIfNeeded();
+    if (!link) return;
+    
+    const text = `Check out this shortlist: ${shortlist.name}`;
+    const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleShareWhatsApp = async () => {
+    const link = await generateLinkIfNeeded();
+    if (!link) return;
+    
+    const text = `Check out this shortlist: ${shortlist.name}\n${link}`;
+    // Check if on mobile device
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const url = isMobile 
+      ? `whatsapp://send?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleShareEmail = async () => {
+    const link = await generateLinkIfNeeded();
+    if (!link) return;
+    
+    const subject = `Shortlist: ${shortlist.name}`;
+    const body = `Hi,\n\nI'd like to share this shortlist with you: ${shortlist.name}\n\nAccess it here: ${link}\n\nBest regards`;
+    const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoLink;
   };
 
   if (!isOpen) return null;
@@ -154,71 +405,98 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
           
           <div className="mb-4">
             <h4 className="font-medium text-gray-900">{shortlist.name}</h4>
-            <p className="text-sm text-gray-500">{shortlist.candidates.length} candidates</p>
+            <p className="text-sm text-gray-500">{shortlist.candidate_count || 0} candidates</p>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Link Expiry
-              </label>
-              <select
-                value={shareSettings.expiry_days}
-                onChange={(e) => setShareSettings({...shareSettings, expiry_days: parseInt(e.target.value)})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+
+          {/* Share Options */}
+          <div className="mt-6">
+            <p className="text-sm font-medium text-gray-700 mb-3">Share via:</p>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Copy Link Button */}
+              <button
+                onClick={handleCopyLink}
+                disabled={isGenerating}
+                className="flex items-center justify-center px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value={7}>7 days</option>
-                <option value={30}>30 days</option>
-                <option value={90}>90 days</option>
-                <option value={365}>1 year</option>
-              </select>
-            </div>
+                {isGenerating ? (
+                  <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <LinkIcon className="h-4 w-4 mr-2" />
+                )}
+                Copy Link
+              </button>
 
-            <div className="space-y-3">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={shareSettings.watermark}
-                  onChange={(e) => setShareSettings({...shareSettings, watermark: e.target.checked})}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">Add watermark to exports</span>
-              </label>
-              
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={shareSettings.include_pii}
-                  onChange={(e) => setShareSettings({...shareSettings, include_pii: e.target.checked})}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">Include personal information (email, phone)</span>
-              </label>
-              
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={shareSettings.notify_on_access}
-                  onChange={(e) => setShareSettings({...shareSettings, notify_on_access: e.target.checked})}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">Notify when someone accesses the link</span>
-              </label>
+              {/* Email Button */}
+              <button
+                onClick={handleShareEmail}
+                disabled={isGenerating}
+                className="flex items-center justify-center px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGenerating ? (
+                  <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                  </svg>
+                )}
+                Email
+              </button>
+
+              {/* WhatsApp Button */}
+              <button
+                onClick={handleShareWhatsApp}
+                disabled={isGenerating}
+                className="flex items-center justify-center px-4 py-3 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGenerating ? (
+                  <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                  </svg>
+                )}
+                WhatsApp
+              </button>
+
+              {/* Telegram Button */}
+              <button
+                onClick={handleShareTelegram}
+                disabled={isGenerating}
+                className="flex items-center justify-center px-4 py-3 text-sm font-medium text-white bg-blue-500 border border-transparent rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGenerating ? (
+                  <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.692-1.653-1.123-2.678-1.799-1.185-.781-.417-1.21.258-1.911.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.062 3.345-.479.329-.913.489-1.302.481-.428-.008-1.252-.241-1.865-.44-.752-.244-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635.099-.002.321.023.465.141.121.099.154.232.17.326.016.093.036.305.02.47z" />
+                  </svg>
+                )}
+                Telegram
+              </button>
             </div>
           </div>
 
-          <div className="mt-6 flex items-center justify-end space-x-3">
+          <div className="mt-6 flex items-center justify-end">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              disabled={isGenerating}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
             >
-              Cancel
-            </button>
-            <button
-              onClick={handleShare}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
-            >
-              Generate Share Link
+              {isGenerating ? 'Processing...' : 'Cancel'}
             </button>
           </div>
         </div>
@@ -240,43 +518,36 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
 
   // Helper function to generate CSV content
   const generateCSV = (shortlist: Shortlist, settings: any) => {
+    // Determine what to include based on export type
+    const isFullProfile = settings.type === 'full_profile';
+    
+    // Build headers based on export type
     const headers = ['Name', 'Department', 'University', 'CGPA', 'Year of Passing'];
     
-    if (settings.include_pii) {
+    if (isFullProfile) {
       headers.push('Email', 'Phone');
     }
     
-    if (settings.include_scores) headers.push('Employability Score');
-    if (settings.include_skills) headers.push('Skills');
-    if (settings.include_badges) headers.push('Verified');
+    headers.push('Employability Score', 'Verified');
     
     let csvContent = headers.join(',') + '\n';
     
     (shortlist.candidates || []).forEach(candidate => {
       const row = [
-        `"${candidate.name}"`,
-        `"${candidate.department || ''}"`,
-        `"${candidate.university || ''}"`,
-        `"${candidate.cgpa || ''}"`,
-        `"${candidate.year_of_passing || ''}"`
+        `"${candidate.name || 'N/A'}"`,
+        `"${candidate.department || 'N/A'}"`,
+        `"${candidate.university || 'N/A'}"`,
+        `"${candidate.cgpa || 'N/A'}"`,
+        `"${candidate.year_of_passing || 'N/A'}"`
       ];
       
-      if (settings.include_pii) {
-        row.push(`"${candidate.email || ''}"`);
-        row.push(`"${candidate.phone || ''}"`);
+      if (isFullProfile) {
+        row.push(`"${candidate.email || 'N/A'}"`);
+        row.push(`"${candidate.phone || 'N/A'}"`);
       }
       
-      if (settings.include_scores) {
-        row.push(`"${candidate.employability_score || ''}"`);
-      }
-      
-      if (settings.include_skills) {
-        row.push(`"${(candidate.skills || []).join(', ')}"`);
-      }
-      
-      if (settings.include_badges) {
-        row.push(`"${candidate.verified ? 'Yes' : 'No'}"`);
-      }
+      row.push(`"${candidate.employability_score || 'N/A'}"`);
+      row.push(`"${candidate.verified ? 'Yes' : 'No'}"`);
       
       csvContent += row.join(',') + '\n';
     });
@@ -284,46 +555,90 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
     return csvContent;
   };
 
-  // Helper function for PDF data (placeholder)
-  const generatePDFData = (shortlist: Shortlist, settings: any) => {
-    // This would be replaced with actual PDF generation logic
-    // For now, return a structured text representation
-    let content = `SHORTLIST EXPORT - ${shortlist.name}\n`;
-    content += `Generated on: ${new Date().toLocaleDateString()}\n`;
-    content += `Total Candidates: ${shortlist.candidates?.length || 0}\n\n`;
+  // Helper function for PDF generation using jsPDF
+  const generatePDF = (shortlist: Shortlist, settings: any) => {
+    const isFullProfile = settings.type === 'full_profile';
+    const doc = new jsPDF();
     
-    (shortlist.candidates || []).forEach((candidate, index) => {
-      content += `Candidate ${index + 1}:\n`;
-      content += `Name: ${candidate.name}\n`;
-      content += `Department: ${candidate.department || 'N/A'}\n`;
-      content += `University: ${candidate.university || 'N/A'}\n`;
-      content += `CGPA: ${candidate.cgpa || 'N/A'}\n`;
-      
-      if (settings.include_pii) {
-        content += `Email: ${candidate.email || 'N/A'}\n`;
-        content += `Phone: ${candidate.phone || 'N/A'}\n`;
-      }
-      
-      if (settings.include_scores) {
-        content += `Employability Score: ${candidate.employability_score || 'N/A'}\n`;
-      }
-      
-      if (settings.include_skills && candidate.skills) {
-        content += `Skills: ${candidate.skills.join(', ')}\n`;
-      }
-      
-      if (settings.include_badges) {
-        content += `Verified: ${candidate.verified ? 'Yes' : 'No'}\n`;
-      }
-      
-      content += '\n';
-    });
+    // Set font
+    doc.setFont('helvetica');
     
+    // Title
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`SHORTLIST EXPORT - ${shortlist.name}`, 14, 20);
+    
+    // Metadata
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text(`Total Candidates: ${shortlist.candidates?.length || 0}`, 14, 36);
+    doc.text(`Export Type: ${isFullProfile ? 'Full Profile' : 'Mini-Profile'}`, 14, 42);
+    
+    // Add watermark if enabled
     if (settings.watermark) {
-      content += '\n--- Exported from RecruiterHub ---\n';
+      doc.setFontSize(40);
+      doc.setTextColor(200, 200, 200);
+      doc.text('RecruiterHub', 105, 150, { angle: 45, align: 'center' });
+      doc.setTextColor(0, 0, 0);
     }
     
-    return content;
+    let yPos = 52;
+    const lineHeight = 6;
+    const pageHeight = doc.internal.pageSize.height;
+    
+    // Candidates
+    doc.setFontSize(10);
+    (shortlist.candidates || []).forEach((candidate, index) => {
+      // Check if we need a new page
+      if (yPos > pageHeight - 60) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      // Candidate header
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Candidate ${index + 1}:`, 14, yPos);
+      yPos += lineHeight;
+      
+      // Candidate details
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Name: ${candidate.name || 'N/A'}`, 20, yPos);
+      yPos += lineHeight;
+      doc.text(`Department: ${candidate.department || 'N/A'}`, 20, yPos);
+      yPos += lineHeight;
+      doc.text(`University: ${candidate.university || 'N/A'}`, 20, yPos);
+      yPos += lineHeight;
+      doc.text(`CGPA: ${candidate.cgpa || 'N/A'}`, 20, yPos);
+      yPos += lineHeight;
+      doc.text(`Year of Passing: ${candidate.year_of_passing || 'N/A'}`, 20, yPos);
+      yPos += lineHeight;
+      
+      if (isFullProfile) {
+        doc.text(`Email: ${candidate.email || 'N/A'}`, 20, yPos);
+        yPos += lineHeight;
+        doc.text(`Phone: ${candidate.phone || 'N/A'}`, 20, yPos);
+        yPos += lineHeight;
+      }
+      
+      doc.text(`Employability Score: ${candidate.employability_score || 'N/A'}`, 20, yPos);
+      yPos += lineHeight;
+      doc.text(`Verified: ${candidate.verified ? 'Yes' : 'No'}`, 20, yPos);
+      yPos += lineHeight + 3;
+    });
+    
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text('--- Exported from RecruiterHub ---', 105, pageHeight - 10, { align: 'center' });
+      doc.text(`Page ${i} of ${pageCount}`, 105, pageHeight - 5, { align: 'center' });
+      doc.setTextColor(0, 0, 0);
+    }
+    
+    return doc;
   };
 
   // Helper function to trigger file download
@@ -344,8 +659,23 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
   const handleExport = async () => {
     try {
       // Fetch candidates for this shortlist
+      console.log('Exporting shortlist:', shortlist);
+      console.log('Shortlist ID:', shortlist.id);
+      
       const { data: candidates, error: candidatesError } = await getShortlistCandidates(shortlist.id);
-      if (candidatesError) throw candidatesError;
+      if (candidatesError) {
+        console.error('Error fetching candidates:', candidatesError);
+        throw candidatesError;
+      }
+      
+      console.log('Fetched candidates for export:', candidates);
+      console.log('Number of candidates:', candidates?.length || 0);
+
+      // Check if there are no candidates
+      if (!candidates || candidates.length === 0) {
+        alert('No candidates found in this shortlist. Please add candidates before exporting.');
+        return;
+      }
 
       // Create a shortlist object with candidates for export
       const shortlistWithCandidates = {
@@ -368,16 +698,15 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
       if (exportSettings.format === 'csv') {
         exportContent = generateCSV(shortlistWithCandidates, exportSettings);
         filename += '.csv';
+        // Create and trigger download
+        downloadFile(exportContent, filename, exportSettings.format);
       } else if (exportSettings.format === 'pdf') {
-        // For PDF, we'll generate a downloadable link with the data
-        exportContent = generatePDFData(shortlistWithCandidates, exportSettings);
+        // Generate PDF using jsPDF
+        const pdfDoc = generatePDF(shortlistWithCandidates, exportSettings);
         filename += '.pdf';
-        // In a real app, you would use a PDF generation library
-        // For now, we'll create a text file as a placeholder
+        // Save the PDF
+        pdfDoc.save(filename);
       }
-
-      // Create and trigger download
-      downloadFile(exportContent, filename, exportSettings.format);
       
       // Log export activity
       await logExportActivity({
@@ -473,56 +802,6 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Include in Export</label>
-              <div className="space-y-2">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={exportSettings.include_skills}
-                    onChange={(e) => setExportSettings({...exportSettings, include_skills: e.target.checked})}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Skills & Competencies</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={exportSettings.include_badges}
-                    onChange={(e) => setExportSettings({...exportSettings, include_badges: e.target.checked})}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Verification Badges</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={exportSettings.include_scores}
-                    onChange={(e) => setExportSettings({...exportSettings, include_scores: e.target.checked})}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">AI Scores</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={exportSettings.include_evidence}
-                    onChange={(e) => setExportSettings({...exportSettings, include_evidence: e.target.checked})}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Evidence Links (Projects, Hackathons)</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={exportSettings.watermark}
-                    onChange={(e) => setExportSettings({...exportSettings, watermark: e.target.checked})}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Add watermark</span>
-                </label>
-              </div>
-            </div>
           </div>
 
           <div className="mt-6 flex items-center justify-end space-x-3">
@@ -537,6 +816,116 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
             >
               Export {exportSettings.format.toUpperCase()}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const EditShortlistModal = ({ shortlist, isOpen, onClose, onUpdate }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    tags: ''
+  });
+
+  // Initialize form data when modal opens or shortlist changes
+  useEffect(() => {
+    if (shortlist && isOpen) {
+      setFormData({
+        name: shortlist.name || '',
+        description: shortlist.description || '',
+        tags: Array.isArray(shortlist.tags) ? shortlist.tags.join(', ') : ''
+      });
+    }
+  }, [shortlist, isOpen]);
+
+  const handleUpdate = async () => {
+    try {
+      const updatedData = {
+        name: formData.name,
+        description: formData.description,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+      };
+      
+      // Update in Supabase using service function
+      const { data: updatedShortlist, error } = await updateShortlist(shortlist.id, updatedData);
+
+      if (error) throw error;
+
+      onUpdate(updatedShortlist);
+      onClose();
+    } catch (error) {
+      console.error('Error updating shortlist:', error);
+      alert('Failed to update shortlist. Please try again.');
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Edit Shortlist</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Shortlist Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                placeholder="e.g., FSQM Q4 Plant Quality Interns"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                rows={3}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                placeholder="Brief description of this shortlist..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tags (comma-separated)</label>
+              <input
+                type="text"
+                value={formData.tags}
+                onChange={(e) => setFormData({...formData, tags: e.target.value})}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                placeholder="FSQM, Q4, Plant Quality"
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleUpdate}
+              disabled={!formData.name}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              Update Shortlist
             </button>
           </div>
         </div>
@@ -774,12 +1163,16 @@ const ShortlistCard = ({ shortlist, onShare, onExport, onView, onEdit, onDelete 
 };
 
 const Shortlists = () => {
+  const navigate = useNavigate();
   const [shortlists, setShortlists] = useState<Shortlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedShortlist, setSelectedShortlist] = useState<Shortlist | null>(null);
+  const [selectedCandidates, setSelectedCandidates] = useState<ShortlistCandidate[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Fetch shortlists from Supabase
   const fetchShortlists = async () => {
@@ -846,6 +1239,12 @@ const Shortlists = () => {
     setShortlists(prev => [newShortlist, ...prev]);
   };
 
+  const handleUpdateShortlist = (updatedShortlist: Shortlist) => {
+    setShortlists(prev => prev.map(sl => 
+      sl.id === updatedShortlist.id ? { ...sl, ...updatedShortlist } : sl
+    ));
+  };
+
   const handleDelete = async (shortlistId: string) => {
     if (confirm('Are you sure you want to delete this shortlist?')) {
       try {
@@ -877,13 +1276,24 @@ const Shortlists = () => {
           <h1 className="text-2xl font-bold text-gray-900">Shortlists</h1>
           <p className="text-gray-600 mt-1">Manage and share candidate collections</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
-        >
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Create Shortlist
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => navigate('/recruitment/talent-pool')}
+            className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50"
+          >
+            <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Candidates
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Create Shortlist
+          </button>
+        </div>
       </div>
 
       {/* Statistics */}
@@ -937,7 +1347,7 @@ const Shortlists = () => {
             <div className="ml-3">
               <p className="text-sm text-gray-600">Total Candidates</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {shortlists.reduce((sum, sl) => sum + (sl.candidates?.length || 0), 0)}
+                {shortlists.reduce((sum, sl) => sum + (sl.candidate_count || 0), 0)}
               </p>
             </div>
           </div>
@@ -975,17 +1385,39 @@ const Shortlists = () => {
               onView={async (sl) => {
                 // Fetch candidates for this shortlist
                 try {
+                  console.log('=== VIEW BUTTON CLICKED ===');
+                  console.log('Shortlist data:', sl);
+                  console.log('Shortlist ID:', sl.id);
+                  console.log('Candidate count from list:', sl.candidate_count);
+                  
                   const { data: candidates, error } = await getShortlistCandidates(sl.id);
-                  if (error) throw error;
-                  alert(`Viewing shortlist: ${sl.name}\nCandidates: ${candidates?.length || 0}`);
-                  // TODO: Navigate to detailed view with candidates
+                  
+                  if (error) {
+                    console.error('Database error:', error);
+                    const errorMsg = typeof error === 'object' && error !== null && 'message' in error 
+                      ? (error as { message: string }).message 
+                      : String(error);
+                    
+                    alert(`Failed to load candidates: ${errorMsg}\n\nPlease check:\n1. Database tables exist\n2. RLS policies are configured\n3. Foreign keys are set up correctly`);
+                    return;
+                  }
+                  
+                  console.log('Candidates fetched successfully:', candidates);
+                  console.log('Number of candidates:', candidates?.length);
+                  
+                  // Open modal even if there are no candidates (empty state handled in modal)
+                  setSelectedShortlist(sl);
+                  setSelectedCandidates(candidates || []);
+                  setShowViewModal(true);
                 } catch (error) {
                   console.error('Error fetching candidates:', error);
-                  alert('Failed to load candidates');
+                  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                  alert(`Failed to load candidates: ${errorMessage}`);
                 }
               }}
               onEdit={(sl) => {
-                alert(`Edit functionality for: ${sl.name}`);
+                setSelectedShortlist(sl);
+                setShowEditModal(true);
               }}
               onDelete={handleDelete}
             />
@@ -998,6 +1430,17 @@ const Shortlists = () => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreate={handleCreateShortlist}
+      />
+
+      <ViewCandidatesModal
+        shortlist={selectedShortlist}
+        candidates={selectedCandidates}
+        isOpen={showViewModal}
+        onClose={() => {
+          setShowViewModal(false);
+          setSelectedShortlist(null);
+          setSelectedCandidates([]);
+        }}
       />
 
       <ShareModal
@@ -1018,6 +1461,16 @@ const Shortlists = () => {
           setSelectedShortlist(null);
         }}
         onExport={handleExport}
+      />
+
+      <EditShortlistModal
+        shortlist={selectedShortlist}
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedShortlist(null);
+        }}
+        onUpdate={handleUpdateShortlist}
       />
     </div>
   );
