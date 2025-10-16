@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit3, BookOpen, Code, Briefcase, MessageCircle, Award } from 'lucide-react';
+import { Edit3, BookOpen, Code, Briefcase, MessageCircle, Award, User } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
@@ -7,13 +7,15 @@ import {
   EducationEditModal,
   TrainingEditModal,
   ExperienceEditModal,
-  SkillsEditModal
+  SkillsEditModal,
+  PersonalInfoEditModal
 } from './ProfileEditModals';
 import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
 import { useAuth } from '../../../context/AuthContext';
 import DatabaseSaveVerification from './DatabaseSaveVerification';
 import StudentFindingDebug from './StudentFindingDebug';
 import QuickFix from './QuickFix';
+import PersonalInfoSummary from './PersonalInfoSummary';
 import {
   educationData,
   trainingData,
@@ -24,6 +26,8 @@ import {
 
 const ProfileEditSection = ({ profileEmail }) => {
   const [activeModal, setActiveModal] = useState(null);
+  const [expandedSection, setExpandedSection] = useState(null);
+  const [refreshCounter, setRefreshCounter] = useState(0);
   
   // Get user email from auth context
   const { user } = useAuth();
@@ -40,6 +44,8 @@ const ProfileEditSection = ({ profileEmail }) => {
     studentData,
     loading,
     error,
+    refresh,
+    updateProfile,
     updateEducation,
     updateTraining,
     updateExperience,
@@ -74,6 +80,11 @@ const ProfileEditSection = ({ profileEmail }) => {
   }, [studentData, education, training, experience, techSkills, soft]);
 
   const handleSave = async (section, data) => {
+    console.log(`🔵 handleSave called for section: ${section}`);
+    console.log(`🔵 Data to save:`, data);
+    console.log(`🔵 User email:`, userEmail);
+    console.log(`🔵 Display email:`, displayEmail);
+    
     setUserData(prev => ({
       ...prev,
       [section]: data
@@ -83,6 +94,8 @@ const ProfileEditSection = ({ profileEmail }) => {
     if (userEmail && studentData?.profile) {
       try {
         console.log(`🔄 ProfileEditSection: Saving ${section} data:`, data);
+        console.log(`🔄 User email:`, userEmail);
+        console.log(`🔄 Student data exists:`, !!studentData);
         
         let result;
         switch (section) {
@@ -101,6 +114,20 @@ const ProfileEditSection = ({ profileEmail }) => {
           case 'softSkills':
             result = await updateSoftSkills(data);
             break;
+          case 'personalInfo':
+            console.log('🔵 Calling updateProfile with:', data);
+            result = await updateProfile(data);
+            console.log('🔵 updateProfile result:', result);
+            // Refresh the data after updating personal info
+            if (result?.success) {
+              console.log('🔵 Update successful, refreshing data...');
+              await refresh();
+              setRefreshCounter(prev => prev + 1); // Force re-render of modal
+              console.log('🔵 Data refreshed successfully');
+            } else {
+              console.error('🔵 Update failed:', result?.error);
+            }
+            break;
           default:
             console.warn('Unknown section:', section);
             return;
@@ -116,10 +143,22 @@ const ProfileEditSection = ({ profileEmail }) => {
       }
     } else {
       console.warn('⚠️ ProfileEditSection: No user email or student data - saving locally only');
+      console.warn('   - userEmail:', userEmail);
+      console.warn('   - studentData?.profile:', studentData?.profile);
     }
   };
 
   const editSections = [
+    {
+      id: 'personalInfo',
+      title: 'Personal Information',
+      icon: User,
+      description: 'Manage your personal details, contact information, and educational background',
+      color: 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-blue-200',
+      buttonColor: 'bg-blue-600 hover:bg-blue-700',
+      data: studentData?.profile || {},
+      count: 1 // Always show as having data since it's basic profile info
+    },
     {
       id: 'education',
       title: 'My Education',
@@ -270,13 +309,25 @@ const ProfileEditSection = ({ profileEmail }) => {
                   <h3 className="font-bold text-gray-900 mb-2">{section.title}</h3>
                   <p className="text-sm text-gray-600 mb-4 leading-relaxed">{section.description}</p>
                   {isOwnProfile && (
-                    <Button
-                      onClick={() => setActiveModal(section.id)}
-                      className={`w-full ${section.buttonColor} text-white font-medium shadow-md hover:shadow-lg transition-all duration-200`}
-                    >
-                      <Edit3 className="w-4 h-4 mr-2" />
-                      {section.id === 'education' ? 'Manage Education' : 'Edit Details'}
-                    </Button>
+                    <div className="space-y-2">
+                      {section.id === 'personalInfo' && (
+                        <Button
+                          onClick={() => setExpandedSection(expandedSection === section.id ? null : section.id)}
+                          variant="outline"
+                          className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                        >
+                          <User className="w-4 h-4 mr-2" />
+                          {expandedSection === section.id ? 'Hide Details' : 'View Details'}
+                        </Button>
+                      )}
+                      <Button
+                        onClick={() => setActiveModal(section.id)}
+                        className={`w-full ${section.buttonColor} text-white font-medium shadow-md hover:shadow-lg transition-all duration-200`}
+                      >
+                        <Edit3 className="w-4 h-4 mr-2" />
+                        {section.id === 'education' ? 'Manage Education' : 'Edit Details'}
+                      </Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -284,9 +335,31 @@ const ProfileEditSection = ({ profileEmail }) => {
           })}
         </div>
 
+        {/* Expanded Section Details */}
+        {expandedSection === 'personalInfo' && (
+          <div className="mt-8">
+            <Card className="border-2 border-blue-200">
+              <CardContent className="p-6">
+                <PersonalInfoSummary 
+                  data={studentData?.profile} 
+                  isOwnProfile={isOwnProfile}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Modals - Only show if own profile */}
         {isOwnProfile && (
           <>
+            <PersonalInfoEditModal
+              key={`personal-${refreshCounter}`}
+              isOpen={activeModal === 'personalInfo'}
+              onClose={() => setActiveModal(null)}
+              data={studentData?.profile}
+              onSave={(data) => handleSave('personalInfo', data)}
+            />
+
             <EducationEditModal
               isOpen={activeModal === 'education'}
               onClose={() => setActiveModal(null)}
