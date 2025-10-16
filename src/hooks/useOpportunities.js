@@ -36,17 +36,9 @@ export const useOpportunities = (options = {}) => {
         filters
       });
 
-      let data = [];
-
-      if (studentSkills.length > 0) {
-        // Fetch opportunities matching student skills
-        console.log('🎯 Fetching matching opportunities for skills:', studentSkills);
-        data = await OpportunitiesService.getMatchingOpportunities(studentSkills);
-      } else {
-        // Always fetch all opportunities for now to debug
-        console.log('📋 Fetching all opportunities');
-        data = await OpportunitiesService.getAllOpportunities();
-      }
+      // Simplified: Always fetch all opportunities for now
+      console.log('📋 Fetching all opportunities');
+      const data = await OpportunitiesService.getAllOpportunities();
 
       console.log('📊 Raw data received:', data);
 
@@ -137,6 +129,7 @@ export const useOpportunities = (options = {}) => {
 
   // Fetch opportunities on mount if enabled
   useEffect(() => {
+    console.log('🚀 useOpportunities: Mount effect triggered', { fetchOnMount });
     if (fetchOnMount) {
       fetchOpportunities();
     }
@@ -144,6 +137,12 @@ export const useOpportunities = (options = {}) => {
 
   // Re-fetch when dependencies change
   useEffect(() => {
+    console.log('🔄 useOpportunities: Dependencies changed', {
+      filters,
+      studentSkills,
+      activeOnly,
+      fetchOnMount
+    });
     if (fetchOnMount) {
       fetchOpportunities();
     }
