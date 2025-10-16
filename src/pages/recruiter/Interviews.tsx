@@ -19,7 +19,7 @@ import {
   EnvelopeIcon
 } from '@heroicons/react/24/outline';
 import { supabase } from '../../lib/supabaseClient';
-import { createInterview } from '../../services/interviewService';
+import { createInterview, sendReminder } from '../../services/interviewService';
 
 // Define TypeScript interfaces
 interface Scorecard {
@@ -566,14 +566,8 @@ const Interviews = () => {
 
   const handleSendReminder = async (interview: Interview) => {
     try {
-      // Update reminders count in database
-      const { error } = await supabase
-        .from('interviews')
-        .update({ 
-          reminders_sent: interview.reminders_sent + 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', interview.id);
+      // Send reminder via Edge Function
+      const { data, error } = await sendReminder(interview.id);
 
       if (error) throw error;
 
@@ -584,16 +578,7 @@ const Interviews = () => {
           : int
       ));
 
-      // Log reminder activity
-      await supabase
-        .from('interview_reminders')
-        .insert([{
-          interview_id: interview.id,
-          sent_to: `${interview.candidate_name}, ${interview.interviewer}`,
-          reminder_type: 'interview_reminder'
-        }]);
-
-      alert(`Reminder sent to ${interview.candidate_name} and ${interview.interviewer}`);
+      alert(`Interview reminder sent successfully to ${interview.candidate_name}!`);
     } catch (error) {
       console.error('Error sending reminder:', error);
       alert('Failed to send reminder. Please try again.');

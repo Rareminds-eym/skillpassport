@@ -20,7 +20,6 @@ import {
   QrCode
 } from 'lucide-react';
 import {
-  recentUpdates,
   suggestions,
   educationData,
   trainingData,
@@ -36,8 +35,9 @@ import {
 } from '../../components/Students/components/ProfileEditModals';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useOpportunities } from '../../hooks/useOpportunities';
+import { useRecentUpdates } from '../../hooks/useRecentUpdates';
 import { supabase } from '../../lib/supabaseClient';
-import SimpleOpportunitiesTest from '../../components/SimpleOpportunitiesTest';
+import '../../utils/testRecentUpdates'; // Import test utility for debugging
 
 const StudentDashboard = () => {
   const location = useLocation();
@@ -84,17 +84,29 @@ const StudentDashboard = () => {
     }
   }, []);
   
-  // Get logged-in user's email from localStorage
+  // Use authenticated student data instead of localStorage
+  // Get user email from localStorage or context (customize as needed)
   const userEmail = localStorage.getItem('userEmail');
+
+  // Use the same hook as ProfileEditSection for fetching and updating
+  const {
+    studentData,
+    loading: authStudentLoading,
+    error: authStudentError,
+    refresh,
+    updateProfile,
+    updateEducation,
+    updateTraining,
+    updateExperience,
+    updateTechnicalSkills,
+    updateSoftSkills
+  } = useStudentDataByEmail(userEmail);
   
   // Generate QR code value once and keep it constant
   const qrCodeValue = React.useMemo(() => {
     const email = userEmail || 'student';
     return `${window.location.origin}/student/profile/${email}`;
   }, [userEmail]);
-  
-  // Fetch real student data
-  const { studentData, loading, error } = useStudentDataByEmail(userEmail);
   
   // Fetch opportunities data from Supabase
   const { 
@@ -105,8 +117,25 @@ const StudentDashboard = () => {
   } = useOpportunities({
     fetchOnMount: true,
     activeOnly: false, // Changed to false to see all opportunities
-    studentSkills: studentData?.technicalSkills?.map(skill => skill.name) || []
+    studentSkills: studentData?.profile?.technicalSkills?.map(skill => skill.name) || []
   });
+
+  // Fetch recent updates data from Supabase (now uses authenticated user)
+  const {
+    recentUpdates,
+    loading: recentUpdatesLoading,
+    error: recentUpdatesError,
+    refreshRecentUpdates
+  } = useRecentUpdates();
+
+  // Debug log for authentication and student data
+  useEffect(() => {
+    console.log('👤 Dashboard: Student data state changed:', {
+      studentData: studentData?.id,
+      loading: authStudentLoading,
+      error: authStudentError
+    });
+  }, [studentData, authStudentLoading, authStudentError]);
 
   // Debug log for opportunities
   useEffect(() => {
@@ -117,6 +146,17 @@ const StudentDashboard = () => {
       count: opportunities?.length
     });
   }, [opportunities, opportunitiesLoading, opportunitiesError]);
+
+  // Debug log for recent updates
+  useEffect(() => {
+    console.log('📢 Dashboard: Recent updates state changed:', {
+      recentUpdates,
+      loading: recentUpdatesLoading,
+      error: recentUpdatesError,
+      count: recentUpdates?.length,
+      userEmail
+    });
+  }, [recentUpdates, recentUpdatesLoading, recentUpdatesError, userEmail]);
 
   // Direct Supabase test
   useEffect(() => {
@@ -154,26 +194,61 @@ const StudentDashboard = () => {
   const [showAllOpportunities, setShowAllOpportunities] = useState(false);
   const [showAllSoftSkills, setShowAllSoftSkills] = useState(false);
   const [showAllTechnicalSkills, setShowAllTechnicalSkills] = useState(false);
+  const [showAllTraining, setShowAllTraining] = useState(false);
 
   // Update userData when real student data is loaded
   useEffect(() => {
     if (studentData) {
-      console.log('📊 Using real student data:', studentData.name);
       setUserData({
-        education: studentData.education || educationData,
-        training: studentData.training || trainingData,
-        experience: studentData.experience || experienceData,
-        technicalSkills: studentData.technicalSkills || technicalSkills,
-        softSkills: studentData.softSkills || softSkills
+        education: Array.isArray(studentData.education) ? studentData.education : [],
+        training: Array.isArray(studentData.training) ? studentData.training : [],
+        experience: Array.isArray(studentData.experience) ? studentData.experience : [],
+        technicalSkills: Array.isArray(studentData.technicalSkills) ? studentData.technicalSkills : [],
+        softSkills: Array.isArray(studentData.softSkills) ? studentData.softSkills : [],
       });
     }
   }, [studentData]);
 
-  const handleSave = (section, data) => {
+  // Save handler with DB update logic (like ProfileEditSection)
+  const handleSave = async (section, data) => {
     setUserData(prev => ({
       ...prev,
       [section]: data
     }));
+
+    // Save to Supabase if studentData exists
+    if (userEmail && studentData?.profile) {
+      try {
+        let result;
+        switch (section) {
+          case 'education':
+            result = await updateEducation(data);
+            break;
+          case 'training':
+            result = await updateTraining(data);
+            break;
+          case 'experience':
+            result = await updateExperience(data);
+            break;
+          case 'technicalSkills':
+            result = await updateTechnicalSkills(data);
+            break;
+          case 'softSkills':
+            result = await updateSoftSkills(data);
+            break;
+          case 'personalInfo':
+            result = await updateProfile(data);
+            break;
+          default:
+            return;
+        }
+        if (result?.success) {
+          await refresh();
+        }
+      } catch (err) {
+        // Optionally handle error
+      }
+    }
   };
 
   const renderStars = (level) => {
@@ -196,6 +271,15 @@ const StudentDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5 p-0">
+          {(() => {
+            console.log('🎭 Rendering opportunities with:', {
+              loading: opportunitiesLoading,
+              error: opportunitiesError,
+              opportunities,
+              count: opportunities?.length
+            });
+            return null;
+          })()}
           {opportunitiesLoading ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -256,17 +340,26 @@ const StudentDashboard = () => {
     ),
     technicalSkills: (
       <Card key="technicalSkills" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
-        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0">
-          <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold">
-            <Code className="w-5 h-5" />
-            Technical Skills
-          </CardTitle>
+        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0 flex items-center justify-between">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold m-0 p-0">
+              <Code className="w-5 h-5" />
+              <span>Technical Skills</span>
+            </CardTitle>
+            <button
+              className="p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300 ml-2"
+              title="Edit Technical Skills"
+              onClick={() => setActiveModal('technicalSkills')}
+            >
+              <Edit className="w-5 h-5 text-blue-600" />
+            </button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4 p-0">
-          {(showAllTechnicalSkills ? userData.technicalSkills.filter(skill => skill.enabled !== false) : userData.technicalSkills.filter(skill => skill.enabled !== false).slice(0,2)).map((skill, idx) => (
+          {(showAllTechnicalSkills ? userData.technicalSkills : userData.technicalSkills.slice(0,2)).map((skill, idx) => (
             <div key={skill.id || `tech-skill-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
               <div className="flex items-center justify-between">
-                <div key={`tech-skill-info-${skill.id}`}>
+                <div key={`tech-skill-info-${skill.id}`}> 
                   <h4 className="font-bold text-gray-900 text-base mb-1">{skill.name}</h4>
                   <p className="text-xs text-gray-600 font-medium">{skill.category}</p>
                 </div>
@@ -290,39 +383,48 @@ const StudentDashboard = () => {
     ),
     education: (
       <Card key="education" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
-        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0">
-          <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold">
-            <Award className="w-5 h-5" />
-            My Education
-            <span className="ml-auto">
-              <Badge className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm font-semibold shadow-none">
-                {userData.education.length} Qualifications
-              </Badge>
-            </span>
-          </CardTitle>
+        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0 flex items-center justify-between">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold m-0 p-0">
+              <Award className="w-5 h-5" />
+              <span>My Education</span>
+              <span className="ml-2">
+                <Badge className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm font-semibold shadow-none">
+                  {userData.education.length} Qualifications
+                </Badge>
+              </span>
+            </CardTitle>
+            <button
+              className="p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300 ml-2"
+              title="Edit Education"
+              onClick={() => setActiveModal('education')}
+            >
+              <Edit className="w-5 h-5 text-blue-600" />
+            </button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4 p-0">
-          {(showAllEducation ? userData.education.filter(education => education.enabled !== false) : userData.education.filter(education => education.enabled !== false).slice(0,2)).map((education, idx) => (
+          {(showAllEducation ? userData.education : userData.education.slice(0,2)).map((education, idx) => (
             <div key={education.id || `edu-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-bold text-gray-900 text-base mb-1">{education.degree}</h4>
-                  <p className="text-gray-600 text-sm font-medium mb-1">{education.university}</p>
+                  <h4 className="font-bold text-gray-900 text-base mb-1">{education.degree || 'N/A'}</h4>
+                  <p className="text-gray-600 text-sm font-medium mb-1">{education.university || 'N/A'}</p>
                 </div>
-                <Badge className={`rounded-md px-3 py-1 text-xs font-semibold shadow-none ${education.status === 'ongoing' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}`}>{education.status}</Badge>
+                <Badge className={`rounded-md px-3 py-1 text-xs font-semibold shadow-none ${education.status === 'ongoing' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}`}>{education.status || 'N/A'}</Badge>
               </div>
               <div className="flex gap-8 mt-1">
                 <div key={`edu-level-${education.id}`}>
                   <p className="text-gray-500 text-xs font-medium">Level</p>
-                  <p className="font-semibold text-gray-800 text-xs">{education.level}</p>
+                  <p className="font-semibold text-gray-800 text-xs">{education.level || 'N/A'}</p>
                 </div>
                 <div key={`edu-year-${education.id}`}>
                   <p className="text-gray-500 text-xs font-medium">Year</p>
-                  <p className="font-semibold text-gray-800 text-xs">{education.yearOfPassing}</p>
+                  <p className="font-semibold text-gray-800 text-xs">{education.yearOfPassing || 'N/A'}</p>
                 </div>
                 <div key={`edu-grade-${education.id}`}>
                   <p className="text-gray-500 text-xs font-medium">Grade</p>
-                  <p className="font-semibold text-gray-800 text-xs">{education.cgpa}</p>
+                  <p className="font-semibold text-gray-800 text-xs">{education.cgpa || 'N/A'}</p>
                 </div>
               </div>
             </div>
@@ -341,14 +443,23 @@ const StudentDashboard = () => {
     ),
     training: (
       <Card key="training" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
-        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0">
-          <CardTitle className="flex items-center gap-2 text-blue-700  text-lg font-semibold">
-            <Code className="w-5 h-5" />
-            My Training
-          </CardTitle>
+        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0 flex items-center justify-between">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold m-0 p-0">
+              <Code className="w-5 h-5" />
+              <span>My Training</span>
+            </CardTitle>
+            <button
+              className="p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300 ml-2"
+              title="Edit Training"
+              onClick={() => setActiveModal('training')}
+            >
+              <Edit className="w-5 h-5 text-blue-600" />
+            </button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4 p-0">
-          {userData.training.filter(training => training.enabled !== false).slice(0, 2).map((training, idx) => (
+          {(showAllTraining ? userData.training : userData.training.slice(0,2)).map((training, idx) => (
             <div key={training.id || `training-${training.course}-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
               <div className="flex items-center justify-between mb-1">
                 <span className="font-bold text-gray-900 text-base">{training.course}</span>
@@ -360,13 +471,13 @@ const StudentDashboard = () => {
               <span className="text-xs text-blue-600 font-semibold">{training.progress}% Complete</span>
             </div>
           ))}
-          {userData.training.filter(training => training.enabled !== false).length > 0 && (
+          {userData.training.length > 2 && (
             <Button
               variant="outline"
-              onClick={() => setActiveModal('training')}
+              onClick={() => setShowAllTraining((v) => !v)}
               className="w-full border-2 border-blue-400 text-blue-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
             >
-              View All Courses
+              {showAllTraining ? 'Show Less' : 'View All Courses'}
             </Button>
           )}
         </CardContent>
@@ -374,14 +485,23 @@ const StudentDashboard = () => {
     ),
     experience: (
       <Card key="experience" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
-        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0">
-          <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold">
-            <Users className="w-5 h-5" />
-            My Experience
-          </CardTitle>
+        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0 flex items-center justify-between">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold m-0 p-0">
+              <Users className="w-5 h-5" />
+              <span>My Experience</span>
+            </CardTitle>
+            <button
+              className="p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300 ml-2"
+              title="Edit Experience"
+              onClick={() => setActiveModal('experience')}
+            >
+              <Edit className="w-5 h-5 text-blue-600" />
+            </button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4 p-0">
-          {(showAllExperience ? userData.experience.filter(exp => exp.enabled !== false) : userData.experience.filter(exp => exp.enabled !== false).slice(0,2)).map((exp, idx) => (
+          {(showAllExperience ? userData.experience : userData.experience.slice(0,2)).map((exp, idx) => (
             <div key={exp.id || `${exp.role}-${exp.organization}-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
               <div className="flex items-center justify-between">
                 <div>
@@ -412,14 +532,23 @@ const StudentDashboard = () => {
     ),
     softSkills: (
       <Card key="softSkills" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
-        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0">
-          <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold">
-            <MessageCircle className="w-5 h-5" />
-            My Soft Skills
-          </CardTitle>
+        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0 flex items-center justify-between">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold m-0 p-0">
+              <MessageCircle className="w-5 h-5" />
+              <span>My Soft Skills</span>
+            </CardTitle>
+            <button
+              className="p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300 ml-2"
+              title="Edit Soft Skills"
+              onClick={() => setActiveModal('softSkills')}
+            >
+              <Edit className="w-5 h-5 text-blue-600" />
+            </button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4 p-0">
-          {(showAllSoftSkills ? userData.softSkills.filter(skill => skill.enabled !== false) : userData.softSkills.filter(skill => skill.enabled !== false).slice(0,2)).map((skill, idx) => (
+          {(showAllSoftSkills ? userData.softSkills : userData.softSkills.slice(0,2)).map((skill, idx) => (
             <div key={skill.id || `soft-skill-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
               <div className="flex items-center justify-between">
                 <div key={`skill-info-${skill.id}`}>
@@ -449,11 +578,11 @@ const StudentDashboard = () => {
   // Define card order based on active navigation item
   const cardOrders = {
     opportunities: isViewingOthersProfile 
-      ? ['education', 'training', 'experience', 'softSkills', 'technicalSkills'] 
+      ? ['opportunities', 'education', 'training', 'experience', 'softSkills', 'technicalSkills'] 
       : ['opportunities', 'education', 'training', 'experience', 'softSkills', 'technicalSkills'],
-    skills: ['technicalSkills', 'softSkills', 'education', 'training', 'experience', ...(isViewingOthersProfile ? [] : ['opportunities'])],
-    training: ['training', 'education', 'technicalSkills', 'softSkills', 'experience', ...(isViewingOthersProfile ? [] : ['opportunities'])],
-    experience: ['experience', 'education', 'training', 'technicalSkills', 'softSkills', ...(isViewingOthersProfile ? [] : ['opportunities'])]
+    skills: ['opportunities', 'technicalSkills', 'softSkills', 'education', 'training', 'experience'],
+    training: ['opportunities', 'training', 'education', 'technicalSkills', 'softSkills', 'experience'],
+    experience: ['opportunities', 'experience', 'education', 'training', 'technicalSkills', 'softSkills']
   };
 
   const renderCardsByPriority = () => {
@@ -529,11 +658,6 @@ const StudentDashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-          {/* Simple Test Component */}
-          <div className="lg:col-span-3 mb-6">
-            <SimpleOpportunitiesTest />
-          </div>
-
           {/* LEFT COLUMN - User Activity & Updates - Only show for own profile */}
           {!isViewingOthersProfile && (
             <div className="lg:col-span-1 space-y-6">
@@ -552,18 +676,39 @@ const StudentDashboard = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 px-0 py-4">
-                    {(showAllRecentUpdates || !recentUpdatesCollapsed
-                      ? recentUpdates
-                      : recentUpdates.slice(0, 1)
-                    ).map((update, idx) => (
-                      <div key={update.id || `update-${update.timestamp}-${idx}`} className="flex items-start gap-3 px-6 py-4 bg-white rounded-xl border-l-4 border-[#2196F3] mb-2">
-                        <div className="w-2 h-2 bg-[#FF9800] rounded-full mt-2 flex-shrink-0" />
-                        <div>
-                          <p className="text-base font-medium text-gray-900 mb-1">{update.message}</p>
-                          <p className="text-xs text-[#1976D2] font-medium">{update.timestamp}</p>
-                        </div>
+                    {recentUpdatesLoading ? (
+                      <div className="flex justify-center items-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#1976D2]"></div>
                       </div>
-                    ))}
+                    ) : recentUpdatesError ? (
+                      <div className="text-center py-8">
+                        <p className="text-red-500 mb-2">Failed to load recent updates</p>
+                        <Button 
+                          onClick={refreshRecentUpdates}
+                          size="sm" 
+                          className="bg-[#1976D2] hover:bg-blue-700 text-white"
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    ) : recentUpdates.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500">No recent updates available</p>
+                      </div>
+                    ) : (
+                      (showAllRecentUpdates || !recentUpdatesCollapsed
+                        ? recentUpdates
+                        : recentUpdates.slice(0, 1)
+                      ).map((update, idx) => (
+                        <div key={update.id || `update-${update.timestamp}-${idx}`} className="flex items-start gap-3 px-6 py-4 bg-white rounded-xl border-l-4 border-[#2196F3] mb-2">
+                          <div className="w-2 h-2 bg-[#FF9800] rounded-full mt-2 flex-shrink-0" />
+                          <div>
+                            <p className="text-base font-medium text-gray-900 mb-1">{update.message}</p>
+                            <p className="text-xs text-[#1976D2] font-medium">{update.timestamp}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
                     {recentUpdates.length > 1 && recentUpdatesCollapsed && !showAllRecentUpdates && (
                       <Button
                         variant="outline"
@@ -660,11 +805,11 @@ const StudentDashboard = () => {
         />
       )}
 
-      {activeModal === 'skills' && (
+      {activeModal === 'softSkills' && (
         <SkillsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={{ softSkills: userData.softSkills, technicalSkills: userData.technicalSkills }}
+          data={userData.softSkills}
           onSave={(data) => handleSave('softSkills', data)}
           title="Edit Soft Skills"
         />
@@ -674,7 +819,7 @@ const StudentDashboard = () => {
         <SkillsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={{ softSkills: userData.softSkills, technicalSkills: userData.technicalSkills }}
+          data={userData.technicalSkills}
           onSave={(data) => handleSave('technicalSkills', data)}
           title="Edit Technical Skills"
         />
@@ -682,5 +827,6 @@ const StudentDashboard = () => {
     </div>
   );
 };
+
 
 export default StudentDashboard;

@@ -469,24 +469,31 @@ export async function getOrCreateStudentByEmail(email, initialData = {}) {
 }
 export async function updateStudentByEmail(email, updates) {
   try {
-    console.log('💾 Updating student profile for:', email);
+    console.log('💾 updateStudentByEmail called');
+    console.log('   - Email:', email);
+    console.log('   - Updates:', updates);
 
     // Find student record using robust method
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
+      console.error('❌ Failed to find student:', findResult.error);
       return findResult;
     }
 
     const studentRecord = findResult.data;
+    console.log('✅ Found student record:', studentRecord.id);
+    
     const currentProfile = safeJSONParse(studentRecord.profile);
+    console.log('📋 Current profile:', currentProfile);
 
     // Merge updates into existing profile
     const updatedProfile = {
       ...currentProfile,
       ...updates
     };
-
-    console.log('💾 Updating profile with new data...');
+    
+    console.log('� Updated profile (merged):', updatedProfile);
+    console.log('💾 Saving to Supabase...');
 
     // Update using student ID (more reliable)
     const { data, error } = await supabase
@@ -497,18 +504,23 @@ export async function updateStudentByEmail(email, updates) {
       .single();
 
     if (error) {
-      console.error('❌ Error updating profile:', error);
+      console.error('❌ Supabase update error:', error);
       return { success: false, error: error.message };
     }
 
-    console.log('✅ Profile updated successfully');
+    console.log('✅ Supabase update successful');
+    console.log('📋 Returned data:', data);
+    
+    const transformedData = transformProfileData(data.profile, email);
+    console.log('📋 Transformed data:', transformedData);
+    
     return {
       success: true,
-      data: transformProfileData(data.profile, email)
+      data: transformedData
     };
 
   } catch (err) {
-    console.error('❌ Unexpected error:', err);
+    console.error('❌ Unexpected error in updateStudentByEmail:', err);
     return { success: false, error: err.message };
   }
 }

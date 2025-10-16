@@ -67,19 +67,26 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
   }, [email]);
 
   const refresh = async () => {
-    if (!email) return;
+    if (!email) {
+      console.warn('⚠️ refresh: No email provided');
+      return;
+    }
     
+    console.log('🔄 refresh: Fetching fresh data for:', email);
     setLoading(true);
     const result = await getStudentByEmail(email);
     
     if (result.success) {
+      console.log('✅ refresh: Fresh data loaded:', result.data);
       setStudentData(result.data);
       setError(null);
     } else {
+      console.error('❌ refresh: Error loading data:', result.error);
       setError(result.error);
     }
     
     setLoading(false);
+    console.log('🔄 refresh: Complete');
   };
 
   // Update functions that work with JSONB profile
