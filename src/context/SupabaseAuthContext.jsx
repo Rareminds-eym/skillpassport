@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../utils/api';
+import { supabase } from '../lib/supabaseClient';
 
 /**
  * Enhanced AuthContext with Supabase Integration
@@ -52,52 +52,58 @@ export const SupabaseAuthProvider = ({ children }) => {
   // Load user profile from students table
   const loadUserProfile = async (userId) => {
     try {
+      console.log('🔄 Loading user profile for user ID:', userId);
+      
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error loading user profile:', error);
+        console.error('❌ Error loading user profile:', error);
         return;
       }
 
-      setUserProfile(data);
+      if (data) {
+        console.log('✅ User profile loaded:', data);
+        setUserProfile(data);
+        // Also store email in localStorage for backward compatibility
+        localStorage.setItem('userEmail', data.email);
+      } else {
+        console.log('📝 No user profile found for user ID:', userId);
+      }
     } catch (error) {
-      console.error('Error loading user profile:', error);
+      console.error('❌ Error loading user profile:', error);
     }
   };
 
   // Sign up student
-  const signUp = async (email, password, studentData) => {
+  const signUp = async (email, password, studentData = {}) => {
     try {
+      console.log('🔄 Signing up user:', email);
+      
       // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            name: studentData.name || email
+          }
+        }
       });
 
       if (authError) throw authError;
 
-      if (authData.user) {
-        // Create student profile
-        const { error: profileError } = await supabase
-          .from('students')
-          .insert([{
-            id: authData.user.id,
-            email,
-            ...studentData
-          }]);
+      console.log('✅ Auth user created:', authData.user?.id);
 
-        if (profileError) throw profileError;
-
-        await loadUserProfile(authData.user.id);
-      }
+      // Note: Student profile will be created automatically via database trigger
+      // The trigger handles creating the students record when auth.users record is inserted
 
       return { data: authData, error: null };
     } catch (error) {
-      console.error('Sign up error:', error);
+      console.error('❌ Sign up error:', error);
       return { data: null, error };
     }
   };
@@ -105,6 +111,8 @@ export const SupabaseAuthProvider = ({ children }) => {
   // Sign in
   const signIn = async (email, password) => {
     try {
+      console.log('🔄 Signing in user:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -112,13 +120,15 @@ export const SupabaseAuthProvider = ({ children }) => {
 
       if (error) throw error;
 
+      console.log('✅ User signed in:', data.user?.id);
+
       if (data.user) {
         await loadUserProfile(data.user.id);
       }
 
       return { data, error: null };
     } catch (error) {
-      console.error('Sign in error:', error);
+      console.error('❌ Sign in error:', error);
       return { data: null, error };
     }
   };
@@ -126,12 +136,19 @@ export const SupabaseAuthProvider = ({ children }) => {
   // Sign out
   const signOut = async () => {
     try {
+      console.log('🔄 Signing out user');
+      
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
       setUserProfile(null);
+      // Clear localStorage
+      localStorage.removeItem('userEmail');
+      
+      console.log('✅ User signed out');
       return { error: null };
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('❌ Sign out error:', error);
       return { error };
     }
   };
@@ -141,19 +158,22 @@ export const SupabaseAuthProvider = ({ children }) => {
     try {
       if (!user) throw new Error('No user logged in');
 
+      console.log('🔄 Updating user profile:', updates);
+
       const { data, error } = await supabase
         .from('students')
         .update(updates)
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .select()
         .single();
 
       if (error) throw error;
 
+      console.log('✅ Profile updated:', data);
       setUserProfile(data);
       return { data, error: null };
     } catch (error) {
-      console.error('Update profile error:', error);
+      console.error('❌ Update profile error:', error);
       return { data: null, error };
     }
   };
