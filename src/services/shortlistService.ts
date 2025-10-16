@@ -133,37 +133,133 @@ export const deleteShortlist = async (shortlistId: string) => {
  */
 export const getShortlistCandidates = async (shortlistId: string) => {
   try {
+    console.log('Fetching candidates for shortlist ID:', shortlistId);
+    console.log('Shortlist ID type:', typeof shortlistId);
+    
+    // First, check if the shortlist exists
+    const { data: shortlistCheck, error: shortlistError } = await supabase
+      .from('shortlists')
+      .select('id, name, candidate_count')
+      .eq('id', shortlistId)
+      .single();
+    
+    console.log('Shortlist exists check:', shortlistCheck);
+    if (shortlistError) {
+      console.error('Error checking shortlist:', shortlistError);
+    }
+    
+    // Query the shortlist_candidates junction table
     const { data, error } = await supabase
       .from('shortlist_candidates')
       .select(`
-        *,
-        students (
-          id,
-          name,
-          email,
-          phone,
-          university,
-          department,
-          cgpa,
-          year_of_passing,
-          employability_score,
-          photo,
-          verified
-        )
+        id,
+        added_at,
+        notes,
+        student_id,
+        shortlist_id
       `)
       .eq('shortlist_id', shortlistId);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase query error:', error);
+      throw error;
+    }
 
-    // Format the data to return student objects with additional metadata
-    const formattedCandidates = data?.map(item => ({
-      ...item.students,
-      added_at: item.added_at,
-      notes: item.notes,
-      junction_id: item.id
-    })) || [];
+    console.log('Raw data from shortlist_candidates:', data);
+    console.log('Number of entries found:', data?.length || 0);
 
-    return { data: formattedCandidates, error: null };
+    // If there are candidates, fetch their student details
+    if (data && data.length > 0) {
+      const studentIds = data.map(item => item.student_id);
+      console.log('Student IDs to fetch:', studentIds);
+      
+      // Query students table with profile JSONB column
+      const { data: students, error: studentsError } = await supabase
+        .from('students')
+        .select('id, profile')
+        .in('id', studentIds);
+      
+      if (studentsError) {
+        console.error('Error fetching students:', studentsError);
+        throw studentsError;
+      }
+      
+      console.log('Students fetched:', students);
+      
+      // Merge student data with junction table metadata
+      // Extract data from profile JSONB column
+      const formattedCandidates = data.map(item => {
+        const student = students?.find(s => s.id === item.student_id);
+        if (!student) {
+          console.warn('Student not found for ID:', item.student_id);
+          return null;
+        }
+        
+        console.log('Processing student:', student.id);
+        console.log('Student profile:', student.profile);
+        console.log('Profile type:', typeof student.profile);
+        
+        // Extract data from profile JSONB
+        // Handle case where profile might be a string that needs parsing
+        let profile = student.profile;
+        if (typeof profile === 'string') {
+          try {
+            profile = JSON.parse(profile);
+          } catch (e) {
+            console.error('Error parsing profile JSON:', e);
+            profile = {};
+          }
+        }
+        profile = profile || {};
+        
+        console.log('Parsed profile:', profile);
+        
+        // Get education data - try to find the most recent or relevant entry
+        const educationArray = profile.education || [];
+        const education = educationArray.find(edu => edu.status === 'ongoing') || educationArray[0] || {};
+        console.log('Education entries:', educationArray);
+        console.log('Selected education entry:', education);
+        
+        // Extract CGPA - check multiple possible fields
+        let cgpa = 'N/A';
+        if (education.cgpa) {
+          cgpa = education.cgpa;
+        } else if (profile.cgpa) {
+          cgpa = profile.cgpa;
+        } else {
+          // Try to find any education entry with CGPA
+          const eduWithCgpa = educationArray.find(edu => edu.cgpa);
+          if (eduWithCgpa) cgpa = eduWithCgpa.cgpa;
+        }
+        
+        const formattedCandidate = {
+          id: student.id,
+          name: profile.name || profile.nm_id || 'Unknown',
+          email: profile.email || (profile.contact_number ? String(profile.contact_number) : 'N/A'),
+          phone: profile.contact_number ? String(profile.contact_number) : (profile.alternate_number ? String(profile.alternate_number) : 'N/A'),
+          university: education.university || profile.university || profile.college_school_name || 'N/A',
+          department: education.department || profile.branch_field || 'N/A',
+          cgpa: cgpa,
+          year_of_passing: education.yearOfPassing || education.year_of_passing || 'N/A',
+          employability_score: profile._ || profile.score || null,
+          photo: profile.photo || null,
+          verified: profile.verified || false,
+          added_at: item.added_at,
+          notes: item.notes,
+          junction_id: item.id
+        };
+        
+        console.log('Formatted candidate:', formattedCandidate);
+        return formattedCandidate;
+      }).filter(Boolean); // Filter out null entries
+      
+      console.log('Formatted candidates with student data:', formattedCandidates);
+      return { data: formattedCandidates, error: null };
+    }
+
+    console.log('No candidates found in shortlist_candidates table');
+    console.log('This could mean: 1) No candidates added yet, 2) Candidates stored differently, 3) ID mismatch');
+    return { data: [], error: null };
   } catch (error) {
     console.error('Error fetching shortlist candidates:', error);
     return { data: null, error };
