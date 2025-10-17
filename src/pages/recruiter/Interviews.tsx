@@ -16,7 +16,8 @@ import {
   PencilIcon,
   XMarkIcon,
   PhoneIcon,
-  EnvelopeIcon
+  EnvelopeIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 import { supabase } from '../../lib/supabaseClient';
 import { createInterview, sendReminder } from '../../services/interviewService';
@@ -30,6 +31,16 @@ interface Scorecard {
   overall_rating: number | null;
   notes: string;
   recommendation: 'proceed' | 'maybe' | 'reject' | null;
+}
+
+interface Candidate {
+  id: string;
+  name: string;
+  email: string;
+  contact_number: string;
+  profile: any;
+  university?: string;
+  course?: string;
 }
 
 interface Interview {
@@ -282,7 +293,7 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
 
 const InterviewCard = ({ interview, onViewScorecard, onEditScorecard, onJoinMeeting, onSendReminder }) => {
   const isCompleted = interview.status === 'completed';
-  const hasScorecard = interview.scorecard?.overall_rating !== null;
+  const hasScorecard = interview.scorecard?.overall_rating != null;
   
   const getCardColor = () => {
     if (interview.status === 'completed') {
@@ -509,8 +520,61 @@ const CalendarView = ({ interviews, selectedDate, onDateSelect }) => {
   );
 };
 
+const CandidateSearchDropdown = ({ 
+  candidates, 
+  searchTerm, 
+  onSearchChange, 
+  onCandidateSelect, 
+  isOpen, 
+  onBlur 
+}) => {
+  const filteredCandidates = candidates.filter(candidate =>
+    candidate.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search candidate by name..."
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+        />
+      </div>
+      
+      {isOpen && searchTerm && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          {filteredCandidates.length > 0 ? (
+            filteredCandidates.map(candidate => (
+              <button
+                key={candidate.id}
+                onClick={() => onCandidateSelect(candidate)}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+              >
+                <div className="font-medium text-gray-900">{candidate.name}</div>
+                <div className="text-xs text-gray-500">
+                  {candidate.email} • {candidate.contact_number}
+                </div>
+                {candidate.course && (
+                  <div className="text-xs text-gray-400">{candidate.course}</div>
+                )}
+              </button>
+            ))
+          ) : (
+            <div className="px-4 py-2 text-sm text-gray-500">No candidates found</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Interviews = () => {
   const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
   const [showScorecardModal, setShowScorecardModal] = useState(false);
@@ -518,7 +582,7 @@ const Interviews = () => {
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // Fetch interviews from Supabase
+  // Fetch interviews and candidates from Supabase
   const fetchInterviews = async () => {
     try {
       setLoading(true);
@@ -544,8 +608,41 @@ const Interviews = () => {
     }
   };
 
+  const fetchCandidates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .limit(100); // Limit to 100 candidates for performance
+
+      if (error) throw error;
+
+      // Transform candidate data to match our interface
+      const formattedCandidates = data?.map(candidate => {
+        const profile = typeof candidate.profile === 'string' 
+          ? JSON.parse(candidate.profile) 
+          : candidate.profile;
+        
+        return {
+          id: candidate.id,
+          name: profile?.name || 'Unknown',
+          email: candidate.email || profile?.email || '',
+          contact_number: profile?.contact_number || '',
+          profile: profile,
+          university: profile?.university,
+          course: profile?.course || (profile?.training && profile.training[0]?.course)
+        };
+      }) || [];
+
+      setCandidates(formattedCandidates);
+    } catch (error) {
+      console.error('Error fetching candidates:', error);
+    }
+  };
+
   useEffect(() => {
     fetchInterviews();
+    fetchCandidates();
   }, []);
 
   const handleSaveScorecard = async (updatedInterview: Interview) => {
@@ -782,14 +879,19 @@ const Interviews = () => {
           setShowScheduleModal(false);
           fetchInterviews(); // Refresh interviews list
         }}
+        candidates={candidates}
       />
     </div>
   );
 };
 
-const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
+const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [candidateSearch, setCandidateSearch] = useState('');
+  const [showCandidateDropdown, setShowCandidateDropdown] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  
   const [formData, setFormData] = useState({
     candidate_name: '',
     candidate_email: '',
@@ -805,6 +907,37 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
     meeting_link: '',
     meeting_notes: ''
   });
+
+  const handleCandidateSearch = (searchTerm) => {
+    setCandidateSearch(searchTerm);
+    setShowCandidateDropdown(true);
+    
+    // If search term is cleared, clear selected candidate
+    if (!searchTerm) {
+      setSelectedCandidate(null);
+      setFormData(prev => ({
+        ...prev,
+        candidate_name: '',
+        candidate_email: '',
+        candidate_phone: ''
+      }));
+    }
+  };
+
+  const handleCandidateSelect = (candidate) => {
+    setSelectedCandidate(candidate);
+    setCandidateSearch(candidate.name);
+    setShowCandidateDropdown(false);
+    
+    // Auto-fill candidate information
+    setFormData(prev => ({
+      ...prev,
+      candidate_name: candidate.name,
+      candidate_email: candidate.email,
+      candidate_phone: candidate.contact_number
+      
+    }));
+  };
 
   const handleSchedule = async () => {
     if (!formData.candidate_name || !formData.job_title || !formData.interviewer || !formData.date || !formData.time) {
@@ -861,6 +994,8 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
         meeting_link: '',
         meeting_notes: ''
       });
+      setCandidateSearch('');
+      setSelectedCandidate(null);
     } catch (err) {
       console.error('Error scheduling interview:', err);
       setError(err.message);
@@ -907,14 +1042,36 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Candidate Name <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={formData.candidate_name}
-                    onChange={(e) => setFormData({...formData, candidate_name: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Jane Doe"
+                  <CandidateSearchDropdown
+                    candidates={candidates}
+                    searchTerm={candidateSearch}
+                    onSearchChange={handleCandidateSearch}
+                    onCandidateSelect={handleCandidateSelect}
+                    isOpen={showCandidateDropdown}
+                    onBlur={() => setTimeout(() => setShowCandidateDropdown(false), 200)}
                   />
                 </div>
+                
+                {/* Auto-filled candidate information */}
+                {selectedCandidate && (
+                  <div className="col-span-3 grid grid-cols-2 gap-4 p-3 bg-blue-50 rounded-md">
+                    <div className="flex items-center text-sm text-blue-700">
+                      <EnvelopeIcon className="h-4 w-4 mr-2" />
+                      <span>{formData.candidate_email}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-blue-700">
+                      <PhoneIcon className="h-4 w-4 mr-2" />
+                      <span>{formData.candidate_phone}</span>
+                    </div>
+                    {selectedCandidate.university && (
+                      <div className="col-span-2 text-xs text-blue-600">
+                        {selectedCandidate.university}
+                        {selectedCandidate.course && ` • ${selectedCandidate.course}`}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Email
