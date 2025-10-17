@@ -3,7 +3,8 @@ import {
   BellIcon, 
   UserCircleIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
 import { recentActivity } from '../../../data/sampleData'
 import { HeaderProps } from '../../../types/recruiter'
@@ -12,7 +13,29 @@ import { useAuth } from '../../../context/AuthContext'
 const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
   const [showNotifications, setShowNotifications] = useState<boolean>(false)
   const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false)
+  const [localSearchQuery, setLocalSearchQuery] = useState<string>('')
+  const [showSavedSearches, setShowSavedSearches] = useState<boolean>(false)
   const { user, logout } = useAuth()
+
+  const savedSearches = ['Senior React Developer', 'UI/UX Designer', 'Full Stack Engineer']
+
+  const handleSearchChange = (value: string) => {
+    setLocalSearchQuery(value)
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      // Implement search logic here
+      console.log('Searching for:', localSearchQuery)
+    }
+  }
+
+  const handleSavedSearchClick = (search: string) => {
+    setLocalSearchQuery(search)
+    setShowSavedSearches(false)
+    // Implement search logic here
+    console.log('Searching for:', search)
+  }
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
@@ -42,8 +65,47 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
             </div>
           </div>
 
+          {/* Center - Search */}
+          <div className="flex-1 max-w-2xl mx-4 relative">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={localSearchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onKeyPress={handleKeyPress}
+                onFocus={() => setShowSavedSearches(true)}
+                onBlur={() => setTimeout(() => setShowSavedSearches(false), 200)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                placeholder="Search candidates, skills, locations... (Press Enter to search)"
+              />
+            </div>
+            
+            {showSavedSearches && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white shadow-lg border border-gray-200 rounded-lg z-50">
+                <div className="p-3">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                    Saved Searches
+                  </p>
+                  <div className="space-y-1">
+                    {savedSearches.map((search, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSavedSearchClick(search)}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
+                      >
+                        {search}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
-          {/* Right side - Notifications and Profile */}
+          {/* Right side */}
           <div className="flex items-center space-x-4">
             {/* Notifications */}
             <div className="relative">
