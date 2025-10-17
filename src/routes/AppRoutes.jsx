@@ -40,6 +40,7 @@ const Opportunities = lazy(() => import('../pages/student/Opportunities'));
 const MySkills = lazy(() => import('../pages/student/MySkills'));
 const MyTraining = lazy(() => import('../pages/student/MyTraining'));
 const MyExperience = lazy(() => import('../pages/student/MyExperience'));
+const DebugQRTest = lazy(() => import('../pages/DebugQRTest'));
 
 const AppRoutes = () => {
   return (
