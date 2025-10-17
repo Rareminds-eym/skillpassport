@@ -353,3 +353,72 @@ export const getAnalyticsKPIMetrics = async (
     return { data: null, error };
   }
 };
+
+export interface TopHiringCollege {
+  name: string;
+  count: number;
+  percentage: number;
+}
+
+// Get top hiring colleges from database
+export const getTopHiringColleges = async (
+  preset: FunnelRangePreset,
+  start?: string,
+  end?: string,
+  limit: number = 4
+): Promise<{ data: TopHiringCollege[] | null; error: any }> => {
+  try {
+    const { startDate, endDate } = buildDateRange(preset, start, end);
+
+    // Use RPC or direct query to get university counts from pipeline_candidates + students
+    // This mirrors: SELECT s.profile ->> 'university' AS university, COUNT(*) AS pipeline_count
+    //               FROM pipeline_candidates p JOIN students s ON s.id = p.student_id
+    //               GROUP BY s.profile ->> 'university' ORDER BY pipeline_count DESC LIMIT 4
+    
+    const { data: results, error: queryErr } = await supabase
+      .from('pipeline_candidates')
+      .select(`
+        student_id,
+        students!inner(
+          profile
+        )
+      `)
+      .gte('added_at', startDate)
+      .lte('added_at', endDate);
+
+    if (queryErr) throw queryErr;
+
+    if (!results || results.length === 0) {
+      return { data: [], error: null };
+    }
+
+    // Count universities from the joined data
+    const universityCounts: Record<string, number> = {};
+    let totalCount = 0;
+
+    results.forEach((row: any) => {
+      const university = row.students?.profile?.university || 
+                        row.students?.profile?.college || 
+                        'Unknown';
+      if (university && university !== 'Unknown') {
+        universityCounts[university] = (universityCounts[university] || 0) + 1;
+        totalCount += 1;
+      }
+    });
+
+    // Convert to array and sort by count
+    const collegesArray: TopHiringCollege[] = Object.entries(universityCounts)
+      .map(([name, count]) => ({
+        name,
+        count: count as number,
+        percentage: totalCount > 0 ? parseFloat(((count as number / totalCount) * 100).toFixed(1)) : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
+
+    return { data: collegesArray, error: null };
+  } catch (error) {
+    console.error('Error fetching top hiring colleges:', error);
+    return { data: null, error };
+  }
+};

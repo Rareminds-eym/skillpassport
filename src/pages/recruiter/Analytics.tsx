@@ -37,6 +37,7 @@ import ChartDownloadButton from '../../components/ChartDownloadButton';
 import { AnalyticsFilters } from '../../types/recruiter';
 import { useRecruitmentFunnel } from '../../hooks/useRecruitmentFunnel';
 import { useAnalyticsKPIs } from '../../hooks/useAnalyticsKPIs';
+import { useTopHiringColleges } from '../../hooks/useTopHiringColleges';
 import type { FunnelRangePreset } from '../../services/analyticsService';
 
 // Enhanced KPI Card with trend indicator
@@ -173,6 +174,14 @@ const Analytics: React.FC = () => {
     preset: funnelPreset,
     startDate: filters.dateRange.startDate || undefined,
     endDate: filters.dateRange.endDate || undefined,
+  });
+
+  // Live Top Hiring Colleges from DB
+  const { data: topColleges, isLoading: collegesLoading } = useTopHiringColleges({
+    preset: funnelPreset,
+    startDate: filters.dateRange.startDate || undefined,
+    endDate: filters.dateRange.endDate || undefined,
+    limit: 4,
   });
 
   const trendLabels = liveFunnel?.trendLabels || [];
@@ -630,28 +639,42 @@ const Analytics: React.FC = () => {
           {/* Top Hiring Colleges */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Top Hiring Colleges</h3>
-            <div className="space-y-3">
-              {periodData.geography.colleges.map((c: any, idx: number) => (
-                <div key={c.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
-                      {idx + 1}
+            {collegesLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-14 bg-gray-100 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : topColleges && topColleges.length > 0 ? (
+              <>
+                <div className="space-y-3">
+                  {topColleges.map((c, idx) => (
+                    <div key={c.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
+                          {idx + 1}
+                        </div>
+                        <span className="text-sm text-gray-700">{c.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 bg-gray-200 h-1.5 rounded-full">
+                          <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${c.percentage}%` }} />
+                        </div>
+                        <span className="text-sm font-bold text-gray-900 w-6 text-right">{c.count}</span>
+                      </div>
                     </div>
-                    <span className="text-sm text-gray-700">{c.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-16 bg-gray-200 h-1.5 rounded-full">
-                      <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${(c.count / periodData.funnel.hired) * 100}%` }} />
-                    </div>
-                    <span className="text-sm font-bold text-gray-900 w-6 text-right">{c.count}</span>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-blue-700 font-medium">Diversity Index</p>
-              <p className="text-sm text-blue-900 mt-1">Good distribution across 4 institutions</p>
-            </div>
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-blue-700 font-medium">Diversity Index</p>
+                  <p className="text-sm text-blue-900 mt-1">Good distribution across {topColleges.length} institutions</p>
+                </div>
+              </>
+            ) : (
+              <div className="p-6 text-center text-gray-500 text-sm">
+                No college data available for this period
+              </div>
+            )}
           </div>
         </div>
       </div>
