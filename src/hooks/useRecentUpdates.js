@@ -25,33 +25,13 @@ export const useRecentUpdates = () => {
       setLoading(true);
       setError(null);
 
-      console.log('📊 Fetching recent updates for authenticated user:', user.id);
+      console.log('� Fetching recent updates for authenticated user:', user.id);
 
-      // First, get the student_id for this user
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (studentError) {
-        console.error('❌ Error fetching student:', studentError);
-        throw studentError;
-      }
-
-      if (!studentData) {
-        console.log('⚠️ No student record found for user:', user.id);
-        setRecentUpdates([]);
-        return;
-      }
-
-      console.log('👤 Found student_id:', studentData.id);
-
-      // Fetch recent updates for this student
+      // Fetch recent updates for this authenticated user
       const { data: updatesData, error: updatesError } = await supabase
         .from('recent_updates')
         .select('*')
-        .eq('student_id', studentData.id)
+        .eq('user_id', user.id)
         .single();
 
       if (updatesError && updatesError.code !== 'PGRST116') { // PGRST116 = no rows found
@@ -59,46 +39,34 @@ export const useRecentUpdates = () => {
         throw updatesError;
       }
 
-      console.log('📢 Raw query result:', { 
-        updatesData, 
-        updatesError,
-        errorCode: updatesError?.code,
-        errorMessage: updatesError?.message
-      });
-
-      // Handle case when no row is found
-      if (updatesError && updatesError.code === 'PGRST116') {
-        console.log('⚠️ No recent_updates row found for user_id:', user.id);
-        setRecentUpdates([]);
-        return;
-      }
-
-      if (updatesData && updatesData.updates) {
-        console.log('📢 Updates column:', JSON.stringify(updatesData.updates, null, 2));
-        
-        // Check if updates is an object with an 'updates' array (nested)
-        if (updatesData.updates.updates && Array.isArray(updatesData.updates.updates)) {
-          console.log('✅ Found nested structure:', updatesData.updates.updates);
-          setRecentUpdates(updatesData.updates.updates);
-        } 
-        // Check if updates is directly an array
-        else if (Array.isArray(updatesData.updates)) {
-          console.log('✅ Found direct array:', updatesData.updates);
-          setRecentUpdates(updatesData.updates);
-        }
-        else {
-          console.log('⚠️ Unexpected structure. Type:', typeof updatesData.updates);
-          setRecentUpdates([]);
-        }
+      if (updatesData && updatesData.updates && updatesData.updates.updates) {
+        console.log('✅ Recent updates fetched:', updatesData.updates.updates);
+        setRecentUpdates(updatesData.updates.updates);
       } else {
-        console.log('📝 No updates column found');
-        setRecentUpdates([]);
+        console.log('📝 No recent updates found for user');
+        // Set default fallback updates if none exist
+        setRecentUpdates([
+          {
+            id: "default-1",
+            message: "Welcome to your dashboard!",
+            timestamp: "Just now",
+            type: "welcome"
+          }
+        ]);
       }
 
     } catch (err) {
       console.error('❌ Error in useRecentUpdates:', err);
       setError(err.message);
-      setRecentUpdates([]);
+      // Set fallback updates on error
+      setRecentUpdates([
+        {
+          id: "error-1",
+          message: "Unable to load recent updates",
+          timestamp: "Now",
+          type: "error"
+        }
+      ]);
     } finally {
       setLoading(false);
     }

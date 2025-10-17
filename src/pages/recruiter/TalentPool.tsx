@@ -625,7 +625,7 @@ const TalentPool = () => {
   const { onViewProfile } = useOutletContext<RecruiterOutletContext>()
   const { searchQuery, setSearchQuery } = useSearch();
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
   const [showShortlistModal, setShowShortlistModal] = useState(false);
   const [showInterviewModal, setShowInterviewModal] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
@@ -1082,29 +1082,24 @@ const TalentPool = () => {
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Results header */}
-<div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-  <div className="flex items-center justify-between">
-    <p className="text-sm text-gray-700">
-      Showing <span className="font-medium">{filteredAndSortedStudents.length}</span> candidate{filteredAndSortedStudents.length !== 1 ? 's' : ''}
-      {searchQuery && (
-        <span> for "<span className="font-medium">{searchQuery}</span>"</span>
-      )}
-      {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0 || filters.badges.length > 0 || filters.years.length > 0) && (
-        <span> with applied filters</span>
-      )}
-    </p>
-    <select 
-      value={sortBy}
-      onChange={(e) => setSortBy(e.target.value)}
-      className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-    >
-      <option value="relevance">Sort by: Relevance</option>
-      <option value="ai_score">Sort by: AI Score</option>
-      <option value="last_updated">Sort by: Last Updated</option>
-      <option value="name">Sort by: Name</option>
-    </select>
-  </div>
-</div>
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-700">
+                Showing <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
+                {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
+              </p>
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="relevance">Sort by: Relevance</option>
+                <option value="ai_score">Sort by: AI Score</option>
+                <option value="last_updated">Sort by: Last Updated</option>
+                <option value="name">Sort by: Name</option>
+              </select>
+            </div>
+          </div>
 
           {/* Results */}
           <div className="flex-1 overflow-y-auto p-4">

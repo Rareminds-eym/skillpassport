@@ -22,20 +22,22 @@ import {
   SkeletonChart,
   EmptyState,
   ExportButton,
-  RefreshButton,
   InfoIcon,
   DrillDownModal,
   SectionHeaderWithActions
 } from '../../components/Recruiter/components/AnalyticsComponents';
 import { TrendLineChart, AreaChart, ColumnChart, BarChart, ProgressRing, Sparkline as AdvancedSparkline } from '../../components/Recruiter/components/AdvancedCharts';
 import { exportSectionToCSV, exportComprehensiveAnalytics } from '../../utils/exportUtils';
-import { getDataForPeriod, getTrendLabels, getPeriodDisplayName } from '../../utils/mockDataGenerator';
+import { getDataForPeriod, getPeriodDisplayName } from '../../utils/mockDataGenerator';
 
 // Phase 1: Import new components
 import AdvancedFilters from '../../components/Recruiter/components/AdvancedFilters';
 import DateRangePicker from '../../components/Recruiter/components/DateRangePicker';
 import ChartDownloadButton from '../../components/ChartDownloadButton';
 import { AnalyticsFilters } from '../../types/recruiter';
+import { useRecruitmentFunnel } from '../../hooks/useRecruitmentFunnel';
+import { useAnalyticsKPIs } from '../../hooks/useAnalyticsKPIs';
+import type { FunnelRangePreset } from '../../services/analyticsService';
 
 // Enhanced KPI Card with trend indicator
 interface KpiCardProps {
@@ -51,6 +53,7 @@ interface KpiCardProps {
 const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon: Icon, iconColor, iconBg, trend, trendLabel }) => {
   const isPositive = trend && trend > 0;
   const isNegative = trend && trend < 0;
+  const showTrend = trend !== undefined && trend !== 0;
   
   return (
     <div className="group bg-white rounded-xl border border-gray-200/60 p-5 hover:shadow-lg hover:border-gray-300 transition-all duration-200 relative">
@@ -58,7 +61,7 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon: Icon, iconColor, 
         <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center shadow-sm`}>
           <Icon className={`h-6 w-6 ${iconColor}`} />
         </div>
-        {trend !== undefined && (
+        {showTrend && (
           <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg ${
             isPositive ? 'bg-green-50 text-green-700' : isNegative ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'
           }`}>
@@ -126,7 +129,6 @@ const Analytics: React.FC = () => {
     (searchParams.get('range') as any) || '30d'
   );
   const [loading, setLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(new Date());
   const [drillDownModal, setDrillDownModal] = useState<{ isOpen: boolean; title: string; data: any }>(
     { isOpen: false, title: '', data: null }
   );
@@ -149,149 +151,31 @@ const Analytics: React.FC = () => {
     recruiters: []
   });
 
-  // Get dynamic data based on selected period and filters
+  // Get dynamic data based on selected period and filters (for sections other than funnel)
   const periodData = useMemo(() => {
     const baseData = getDataForPeriod(range === 'custom' ? '30d' : range);
-    
-    // Apply filters to the data
-    const hasActiveFilters = 
-      filters.departments.length > 0 ||
-      filters.jobLevels.length > 0 ||
-      filters.sources.length > 0 ||
-      filters.skills.length > 0 ||
-      filters.locations.length > 0 ||
-      filters.recruiters.length > 0;
-    
-    if (!hasActiveFilters) {
-      return baseData;
-    }
-    
-    // Calculate filter reduction factor (simulate filtered data)
-    let reductionFactor = 1.0;
-    
-    // Each active filter category reduces the dataset
-    if (filters.departments.length > 0) {
-      reductionFactor *= (filters.departments.length / 6); // 6 total departments
-    }
-    if (filters.jobLevels.length > 0) {
-      reductionFactor *= (filters.jobLevels.length / 5); // 5 total levels
-    }
-    if (filters.sources.length > 0) {
-      reductionFactor *= (filters.sources.length / 7); // 7 total sources
-    }
-    if (filters.locations.length > 0) {
-      reductionFactor *= (filters.locations.length / 7); // 7 total locations
-    }
-    if (filters.skills.length > 0) {
-      reductionFactor *= (filters.skills.length / 10); // 10 total skills
-    }
-    if (filters.recruiters.length > 0) {
-      reductionFactor *= (filters.recruiters.length / 5); // 5 total recruiters
-    }
-    
-    // Ensure minimum reduction factor
-    reductionFactor = Math.max(0.1, Math.min(1.0, reductionFactor));
-    
-    // Apply reduction to funnel data
-    const filteredFunnel = {
-      sourced: Math.round(baseData.funnel.sourced * reductionFactor),
-      screened: Math.round(baseData.funnel.screened * reductionFactor),
-      interviewed: Math.round(baseData.funnel.interviewed * reductionFactor),
-      offered: Math.round(baseData.funnel.offered * reductionFactor),
-      hired: Math.round(baseData.funnel.hired * reductionFactor)
-    };
-    
-    // Filter geography data based on location filters
-    let filteredLocations = baseData.geography.locations;
-    if (filters.locations.length > 0) {
-      filteredLocations = baseData.geography.locations
-        .filter(loc => filters.locations.includes(loc.city))
-        .map(loc => ({
-          ...loc,
-          count: Math.round(loc.count * reductionFactor)
-        }));
-      
-      // Recalculate percentages
-      const total = filteredLocations.reduce((sum, loc) => sum + loc.count, 0);
-      filteredLocations = filteredLocations.map(loc => ({
-        ...loc,
-        percentage: total > 0 ? Math.round((loc.count / total) * 100) : 0
-      }));
-    } else {
-      filteredLocations = filteredLocations.map(loc => ({
-        ...loc,
-        count: Math.round(loc.count * reductionFactor)
-      }));
-    }
-    
-    // Apply reduction to colleges
-    const filteredColleges = baseData.geography.colleges.map(college => ({
-      ...college,
-      count: Math.round(college.count * reductionFactor)
-    }));
-    
-    // Filter attribution data based on sources
-    let filteredHackathons = baseData.attribution.hackathons;
-    let filteredCourses = baseData.attribution.courses;
-    
-    if (filters.sources.length > 0) {
-      if (filters.sources.includes('Hackathon')) {
-        filteredHackathons = filteredHackathons.map(h => ({
-          ...h,
-          applications: Math.round(h.applications * reductionFactor),
-          hires: Math.round(h.hires * reductionFactor)
-        }));
-      } else {
-        filteredHackathons = [];
-      }
-      
-      if (filters.sources.includes('Course Program')) {
-        filteredCourses = filteredCourses.map(c => ({
-          ...c,
-          applications: Math.round(c.applications * reductionFactor),
-          hires: Math.round(c.hires * reductionFactor)
-        }));
-      } else {
-        filteredCourses = [];
-      }
-    } else {
-      filteredHackathons = filteredHackathons.map(h => ({
-        ...h,
-        applications: Math.round(h.applications * reductionFactor),
-        hires: Math.round(h.hires * reductionFactor)
-      }));
-      filteredCourses = filteredCourses.map(c => ({
-        ...c,
-        applications: Math.round(c.applications * reductionFactor),
-        hires: Math.round(c.hires * reductionFactor)
-      }));
-    }
-    
-    // Apply reduction to trends
-    const filteredTrends = {
-      hires: baseData.trends.hires.map(v => Math.round(v * reductionFactor)),
-      applications: baseData.trends.applications.map(v => Math.round(v * reductionFactor)),
-      timeToHire: baseData.trends.timeToHire // Speed metrics don't change with filters
-    };
-    
-    return {
-      funnel: filteredFunnel,
-      speedMetrics: baseData.speedMetrics, // Speed metrics remain consistent
-      qualityMetrics: baseData.qualityMetrics, // Quality metrics remain consistent
-      geography: {
-        locations: filteredLocations,
-        colleges: filteredColleges
-      },
-      attribution: {
-        hackathons: filteredHackathons,
-        courses: filteredCourses
-      },
-      trends: filteredTrends
-    };
-  }, [range, filters]);
+    // NOTE: Keeping mock transformations for non-funnel sections to avoid regressions.
+    return baseData;
+  }, [range]);
   
-  const trendLabels = useMemo(() => getTrendLabels(range === 'custom' ? '30d' : range), [range]);
   const periodName = useMemo(() => getPeriodDisplayName(range === 'custom' ? '30d' : range), [range]);
+
+  // Live Funnel from DB via React Query + Realtime
+  const funnelPreset = (range as FunnelRangePreset) || '30d';
+  const { data: liveFunnel } = useRecruitmentFunnel({
+    preset: funnelPreset,
+    startDate: filters.dateRange.startDate || undefined,
+    endDate: filters.dateRange.endDate || undefined,
+  });
+
+  // Live KPI Metrics from DB
+  const { data: kpiMetrics, isLoading: kpiLoading } = useAnalyticsKPIs({
+    preset: funnelPreset,
+    startDate: filters.dateRange.startDate || undefined,
+    endDate: filters.dateRange.endDate || undefined,
+  });
+
+  const trendLabels = liveFunnel?.trendLabels || [];
 
   // Update URL when filters change
   useEffect(() => {
@@ -299,15 +183,6 @@ const Analytics: React.FC = () => {
     setSearchParams(params);
   }, [range, chartType]);
 
-  // Refresh data function
-  const handleRefresh = () => {
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLastUpdated(new Date());
-      setLoading(false);
-    }, 1000);
-  };
 
   // Drill-down handlers
   const handleDrillDown = (title: string, data: any) => {
@@ -353,46 +228,23 @@ const Analytics: React.FC = () => {
     }, 'excel');
   };
 
-  // Calculate funnel stages with dynamic conversions
+  // Calculate funnel stages from live data (without conversions)
   const funnelStages = useMemo(() => {
-    const { sourced, screened, interviewed, offered, hired } = periodData.funnel;
+    const sourced = liveFunnel?.sourced || 0;
+    const screened = liveFunnel?.screened || 0;
+    const interviewed = liveFunnel?.interviewed || 0;
+    const offered = liveFunnel?.offered || 0;
+    const hired = liveFunnel?.hired || 0;
     return [
       { key: 'sourced', label: 'Sourced', value: sourced, color: 'bg-gray-600' },
-      { 
-        key: 'screened', 
-        label: 'Screened', 
-        value: screened, 
-        color: 'bg-blue-500', 
-        conversion: sourced > 0 ? +((screened / sourced) * 100).toFixed(1) : 0 
-      },
-      { 
-        key: 'interviewed', 
-        label: 'Interviewed', 
-        value: interviewed, 
-        color: 'bg-yellow-500', 
-        conversion: screened > 0 ? +((interviewed / screened) * 100).toFixed(1) : 0 
-      },
-      { 
-        key: 'offered', 
-        label: 'Offered', 
-        value: offered, 
-        color: 'bg-green-500', 
-        conversion: interviewed > 0 ? +((offered / interviewed) * 100).toFixed(1) : 0 
-      },
-      { 
-        key: 'hired', 
-        label: 'Hired', 
-        value: hired, 
-        color: 'bg-purple-600', 
-        conversion: offered > 0 ? +((hired / offered) * 100).toFixed(1) : 0 
-      }
+      { key: 'screened', label: 'Screened', value: screened, color: 'bg-blue-500' },
+      { key: 'interviewed', label: 'Interviewed', value: interviewed, color: 'bg-yellow-500' },
+      { key: 'offered', label: 'Offered', value: offered, color: 'bg-green-500' },
+      { key: 'hired', label: 'Hired', value: hired, color: 'bg-purple-600' }
     ];
-  }, [periodData.funnel]);
+  }, [liveFunnel]);
 
-  const maxFunnel = Math.max(...funnelStages.map((s) => s.value));
-  const overallConversion = periodData.funnel.sourced > 0 
-    ? ((periodData.funnel.hired / periodData.funnel.sourced) * 100).toFixed(1)
-    : '0.0';
+  const maxFunnel = Math.max(1, ...funnelStages.map((s) => s.value));
 
   return (
     <div className="bg-gray-50 min-h-screen -m-6">
@@ -403,7 +255,6 @@ const Analytics: React.FC = () => {
             <h1 className="text-xl font-bold text-gray-900">Analytics Dashboard</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <RefreshButton onClick={handleRefresh} lastUpdated={lastUpdated} loading={loading} />
             
             {/* Phase 1: Date Range Picker */}
             <DateRangePicker
@@ -435,82 +286,68 @@ const Analytics: React.FC = () => {
       {/* Main Content Wrapper */}
       <div className="px-8 pt-4 pb-20 md:pb-6 space-y-5">
         {/* KPI Cards */}
-        {loading ? (
+        {loading || kpiLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div
-            onClick={() => handleDrillDown('Total Candidates', candidates)}
-            className="cursor-pointer hover:ring-2 hover:ring-primary-500 transition-all rounded-lg"
-          >
-            <KpiCard
-              title={
-                <div className="flex items-center gap-2">
-                  <span>Total Candidates</span>
-                  <InfoIcon content="Total number of candidates who entered the recruitment pipeline in the selected period" />
-                </div>
-              }
-              value={periodData.funnel.sourced}
-              icon={UsersIcon}
-              iconColor="text-blue-600"
-              iconBg="bg-blue-50"
-              trend={12}
-              trendLabel="from last period"
-            />
-          </div>
-          <div
-            onClick={() => handleDrillDown('Successful Hires', candidates.slice(0, periodData.funnel.hired))}
-            className="cursor-pointer hover:ring-2 hover:ring-primary-500 transition-all rounded-lg"
-          >
-            <KpiCard
-              title={
-                <div className="flex items-center gap-2">
-                  <span>Successful Hires</span>
-                  <InfoIcon content="Number of candidates successfully hired and onboarded" />
-                </div>
-              }
-              value={periodData.funnel.hired}
-              icon={CheckCircleIcon}
-              iconColor="text-green-600"
-              iconBg="bg-green-50"
-              trend={8}
-              trendLabel="from last period"
-            />
-          </div>
-          <div className="cursor-pointer hover:ring-2 hover:ring-primary-500 transition-all rounded-lg">
-            <KpiCard
-              title={
-                <div className="flex items-center gap-2">
-                  <span>Time to Hire</span>
-                  <InfoIcon content="Average number of days from candidate sourcing to hiring" />
-                </div>
-              }
-              value={`${periodData.speedMetrics.median_time_to_hire} days`}
-              icon={ClockIcon}
-              iconColor="text-indigo-600"
-              iconBg="bg-indigo-50"
-              trend={-15}
-              trendLabel="faster than last period"
-            />
-          </div>
-          <div className="cursor-pointer hover:ring-2 hover:ring-primary-500 transition-all rounded-lg">
-            <KpiCard
-              title={
-                <div className="flex items-center gap-2">
-                  <span>Quality Score</span>
-                  <InfoIcon content="Average AI-powered quality score of hired candidates" />
-                </div>
-              }
-              value={periodData.qualityMetrics.avg_ai_score_hired}
-              icon={StarIcon}
-              iconColor="text-yellow-600"
-              iconBg="bg-yellow-50"
-              trend={3}
-              trendLabel="from last period"
-            />
-          </div>
+          <KpiCard
+            title={
+              <div className="flex items-center gap-2">
+                <span>Total Candidates</span>
+                <InfoIcon content="Total number of candidates who entered the recruitment pipeline in the selected period" />
+              </div>
+            }
+            value={kpiMetrics?.totalCandidates ?? 0}
+            icon={UsersIcon}
+            iconColor="text-blue-600"
+            iconBg="bg-blue-50"
+            trend={kpiMetrics?.totalCandidatesTrend ?? 0}
+            trendLabel="from last period"
+          />
+          <KpiCard
+            title={
+              <div className="flex items-center gap-2">
+                <span>Successful Hires</span>
+                <InfoIcon content="Number of candidates successfully hired and onboarded" />
+              </div>
+            }
+            value={kpiMetrics?.successfulHires ?? 0}
+            icon={CheckCircleIcon}
+            iconColor="text-green-600"
+            iconBg="bg-green-50"
+            trend={kpiMetrics?.successfulHiresTrend ?? 0}
+            trendLabel="from last period"
+          />
+          <KpiCard
+            title={
+              <div className="flex items-center gap-2">
+                <span>Time to Hire</span>
+                <InfoIcon content="Average number of days from candidate sourcing to hiring" />
+              </div>
+            }
+            value={`${kpiMetrics?.timeToHire ?? 23} days`}
+            icon={ClockIcon}
+            iconColor="text-indigo-600"
+            iconBg="bg-indigo-50"
+            trend={kpiMetrics?.timeToHireTrend ?? 0}
+            trendLabel={kpiMetrics?.timeToHireTrend && kpiMetrics.timeToHireTrend < 0 ? 'faster than last period' : 'from last period'}
+          />
+          <KpiCard
+            title={
+              <div className="flex items-center gap-2">
+                <span>Quality Score</span>
+                <InfoIcon content="Average AI-powered quality score of hired candidates" />
+              </div>
+            }
+            value={kpiMetrics?.qualityScore ?? 85.2}
+            icon={StarIcon}
+            iconColor="text-yellow-600"
+            iconBg="bg-yellow-50"
+            trend={kpiMetrics?.qualityScoreTrend ?? 0}
+            trendLabel="from last period"
+          />
         </div>
       )}
 
@@ -592,21 +429,21 @@ const Analytics: React.FC = () => {
               {/* Render selected chart type */}
               {chartType === 'line' && (
                 <TrendLineChart 
-                  data={periodData.trends.hires}
+                  data={liveFunnel?.hiresTrend || []}
                   labels={trendLabels}
                   height={150}
                 />
               )}
               {chartType === 'area' && (
                 <AreaChart 
-                  data={periodData.trends.hires}
+                  data={liveFunnel?.hiresTrend || []}
                   labels={trendLabels}
                   height={150}
                 />
               )}
               {chartType === 'column' && (
                 <ColumnChart 
-                  data={periodData.trends.hires}
+                  data={liveFunnel?.hiresTrend || []}
                   labels={trendLabels}
                   height={150}
                 />
@@ -617,12 +454,7 @@ const Analytics: React.FC = () => {
                 <div key={stage.key}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">{stage.label}</span>
-                    <div className="flex items-center gap-3">
-                      {stage.conversion && (
-                        <span className="text-xs text-gray-500">{stage.conversion}% conversion</span>
-                      )}
-                      <span className="text-sm font-bold text-gray-900">{stage.value}</span>
-                    </div>
+                    <span className="text-sm font-bold text-gray-900">{stage.value}</span>
                   </div>
                   <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden">
                     <div
@@ -632,13 +464,6 @@ const Analytics: React.FC = () => {
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <p className="text-xs font-medium text-gray-600 mb-1 uppercase tracking-wide">Overall Conversion Rate</p>
-                <p className="text-3xl font-bold text-blue-600">{overallConversion}%</p>
-                <p className="text-xs text-gray-600 mt-1">From sourced to hired</p>
-              </div>
             </div>
           </div>
         </div>
@@ -914,14 +739,7 @@ const Analytics: React.FC = () => {
       {/* Executive Summary */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900 mb-6">Executive Summary</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-blue-100 mb-3">
-              <BoltIcon className="h-6 w-6 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 mb-1">{overallConversion}%</p>
-            <p className="text-xs font-medium text-gray-600">Overall Conversion</p>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
           <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-yellow-100 mb-3">
               <StarIcon className="h-6 w-6 text-yellow-600" />
