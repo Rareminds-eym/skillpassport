@@ -139,7 +139,7 @@ const StudentDashboard = () => {
   } = useRecentUpdatesLegacy();
 
   // Use legacy data if auth-based data is empty
-  const finalRecentUpdates = recentUpdates.length > 0 ? recentUpdates : recentUpdatesLegacy;
+  const finalRecentUpdates = (recentUpdates.length > 0 ? recentUpdates : recentUpdatesLegacy).filter(update => update && update.message);
   const finalLoading = recentUpdatesLoading || recentUpdatesLoadingLegacy;
   const finalError = recentUpdatesError || recentUpdatesErrorLegacy;
   const finalRefresh = () => {
@@ -781,7 +781,7 @@ const StudentDashboard = () => {
                           {(showAllRecentUpdates 
                             ? finalRecentUpdates
                             : finalRecentUpdates.slice(0, 5)
-                          ).map((update, idx) => (
+                          ).filter(update => update && update.message).map((update, idx) => (
                             <div key={update.id || `update-${update.timestamp}-${idx}`} className="flex items-start gap-3 px-6 py-4 bg-white rounded-xl border-l-4 border-[#2196F3] mb-2 hover:shadow-md transition-shadow">
                               <div className="w-2 h-2 bg-[#FF9800] rounded-full mt-2 flex-shrink-0" />
                               <div>
@@ -830,7 +830,7 @@ const StudentDashboard = () => {
                 </Card>
 
                 {/* Student QR Code */}
-                {userEmail && (
+                {/* {userEmail && (
                   <Card className="border-2 border-purple-500 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
                     <CardHeader className="pb-2">
                       <CardTitle className="flex items-center gap-2 text-white text-lg font-bold justify-center">
@@ -863,7 +863,7 @@ const StudentDashboard = () => {
                       </div>
                     </CardContent>
                   </Card>
-                )}
+                )} */}
               </div>
             </div>
           )}

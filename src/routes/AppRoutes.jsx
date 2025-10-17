@@ -41,6 +41,7 @@ const MySkills = lazy(() => import('../pages/student/MySkills'));
 const MyTraining = lazy(() => import('../pages/student/MyTraining'));
 const MyExperience = lazy(() => import('../pages/student/MyExperience'));
 const DebugQRTest = lazy(() => import('../pages/DebugQRTest'));
+const StudentPublicViewer = lazy(() => import('../components/Students/components/StudentPublicViewer'));
 
 const AppRoutes = () => {
   return (
@@ -55,6 +56,7 @@ const AppRoutes = () => {
           <Route path="/login/admin" element={<LoginAdmin />} />
           <Route path="/register" element={<Register />} />
           <Route path="/debug-qr" element={<DebugQRTest />} />
+          <Route path="/student/profile/:email" element={<StudentPublicViewer />} />
         </Route>
 
         <Route

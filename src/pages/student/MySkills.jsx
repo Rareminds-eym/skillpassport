@@ -79,7 +79,7 @@ const MySkills = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-8 flex flex-col items-center justify-center text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">My Skills</h1>
         <p className="text-gray-600">Showcase your technical and soft skills</p>
       </div>
@@ -125,7 +125,7 @@ const MySkills = () => {
                       {(showAllRecentUpdates 
                         ? finalRecentUpdates
                         : finalRecentUpdates.slice(0, 5)
-                      ).map((update, idx) => (
+                      ).filter(update => update && update.message).map((update, idx) => (
                         <div key={update.id || `update-${update.timestamp}-${idx}`} className="flex items-start gap-3 px-6 py-4 bg-white rounded-xl border-l-4 border-[#2196F3] mb-2 hover:shadow-md transition-shadow">
                           <div className="w-2 h-2 bg-[#FF9800] rounded-full mt-2 flex-shrink-0" />
                           <div>
@@ -260,33 +260,14 @@ const MySkills = () => {
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
             {softSkills.filter(skill => skill.enabled !== false).length > 0 ? (
-              <>
-                {/* Languages */}
-                <div className="p-3 bg-gradient-to-r from-teal-50 to-white rounded-lg border-l-2 border-l-teal-400">
-                  <p className="text-sm font-semibold mb-3 text-teal-700">Languages</p>
-                  {softSkills.filter(skill => skill.type === 'language' && skill.enabled !== false).map((skill, index) => (
-                    <div key={index} className="flex items-center justify-between mb-2 p-2 bg-white rounded border border-teal-100">
-                      <span className="text-sm font-medium text-gray-800">{skill.name}</span>
-                      <div className="flex">
-                        {renderStars(skill.level)}
-                      </div>
-                    </div>
-                  ))}
+              softSkills.filter(skill => skill.enabled !== false).map((skill, index) => (
+                <div key={index} className="p-3 bg-gradient-to-r from-teal-50 to-white rounded-lg border-l-2 border-l-teal-400 flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-800">{skill.name}</span>
+                  <div className="flex">
+                    {renderStars(skill.level)}
+                  </div>
                 </div>
-
-                {/* Communication */}
-                <div className="p-3 bg-gradient-to-r from-teal-50 to-white rounded-lg border-l-2 border-l-teal-400">
-                  <p className="text-sm font-semibold mb-3 text-teal-700">Communication</p>
-                  {softSkills.filter(skill => skill.type === 'communication' && skill.enabled !== false).map((skill, index) => (
-                    <div key={index} className="flex items-center justify-between mb-2 p-2 bg-white rounded border border-teal-100">
-                      <span className="text-sm font-medium text-gray-800">{skill.name}</span>
-                      <div className="flex">
-                        {renderStars(skill.level)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
+              ))
             ) : (
               <div className="text-center py-8">
                 <MessageCircle className="w-16 h-16 mx-auto text-gray-300 mb-4" />

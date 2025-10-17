@@ -110,7 +110,7 @@ const MyExperience = () => {
                       {(showAllRecentUpdates 
                         ? finalRecentUpdates
                         : finalRecentUpdates.slice(0, 5)
-                      ).map((update, idx) => (
+                      ).filter(update => update && update.message).map((update, idx) => (
                         <div key={update.id || `update-${update.timestamp}-${idx}`} className="flex items-start gap-3 px-6 py-4 bg-white rounded-xl border-l-4 border-[#2196F3] mb-2 hover:shadow-md transition-shadow">
                           <div className="w-2 h-2 bg-[#FF9800] rounded-full mt-2 flex-shrink-0" />
                           <div>

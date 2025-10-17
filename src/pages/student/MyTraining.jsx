@@ -66,11 +66,11 @@ const MyTraining = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Training</h1>
-          <p className="text-gray-600">Track your courses, certifications, and professional development</p>
-        </div>
+      <div className="mb-2 flex flex-col items-center text-center">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">My Training</h1>
+        <p className="text-gray-600">Track your courses, certifications, and professional development</p>
+      </div>
+      <div className="mb-8 flex justify-end">
         <Button 
           onClick={() => setActiveModal('training')} 
           className="bg-[#5378f1] hover:bg-[#4267d9]"
@@ -121,7 +121,7 @@ const MyTraining = () => {
                       {(showAllRecentUpdates 
                         ? finalRecentUpdates
                         : finalRecentUpdates.slice(0, 5)
-                      ).map((update, idx) => (
+                      ).filter(update => update && update.message).map((update, idx) => (
                         <div key={update.id || `update-${update.timestamp}-${idx}`} className="flex items-start gap-3 px-6 py-4 bg-white rounded-xl border-l-4 border-[#2196F3] mb-2 hover:shadow-md transition-shadow">
                           <div className="w-2 h-2 bg-[#FF9800] rounded-full mt-2 flex-shrink-0" />
                           <div>

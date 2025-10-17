@@ -12,7 +12,10 @@ import {
   Briefcase,
   Star,
   Code,
-  Heart
+  Heart,
+  BookOpen,
+  Calendar,
+  Users
 } from 'lucide-react';
 import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
 import { Badge } from './ui/badge';
@@ -181,62 +184,145 @@ const StudentPublicViewer = () => {
               <h2 className="text-2xl font-bold text-gray-900">Education</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Education Card 1 */}
-              <div className="bg-white rounded-2xl p-6 shadow-md border border-indigo-100">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
-                    <Award className="w-6 h-6 text-indigo-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Degree</p>
-                    <p className="text-lg font-bold text-gray-900">{education.degree || profile.degree || 'N/A'}</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Level</span>
-                    <Badge className="bg-indigo-500 text-white border-0">
-                      {education.level || profile.level || 'Undergraduate'}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Department</span>
-                    <span className="text-sm font-semibold text-gray-900">{education.department || profile.department || 'N/A'}</span>
-                  </div>
-                </div>
-              </div>
+            <div className="space-y-4">
+              {studentData.education?.filter(edu => edu.enabled !== false).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {studentData.education
+                    .filter(edu => edu.enabled !== false)
+                    .map((education, idx) => (
+                      <div 
+                        key={education.id || idx}
+                        className="bg-white rounded-2xl p-6 shadow-md border border-indigo-100 hover:shadow-lg transition-shadow"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-bold text-gray-900 mb-1">{education.degree}</h3>
+                            <p className="text-indigo-600 font-medium mb-2">{education.university || education.institution}</p>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge className={`${
+                                education.status === 'completed' 
+                                  ? 'bg-green-500 text-white' 
+                                  : education.status === 'ongoing'
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-indigo-500 text-white'
+                              } border-0`}>
+                                {education.level || 'Undergraduate'}
+                              </Badge>
+                              {education.status && (
+                                <Badge className={`${
+                                  education.status === 'completed'
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-amber-500 text-white'
+                                } border-0`}>
+                                  {education.status}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
+                            <GraduationCap className="w-6 h-6 text-indigo-600" />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Department</span>
+                            <span className="text-sm font-semibold text-gray-900">{education.department || 'N/A'}</span>
+                          </div>
+                          
+                          {education.yearOfPassing && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">Year of Passing</span>
+                              <span className="text-sm font-semibold text-gray-900">{education.yearOfPassing}</span>
+                            </div>
+                          )}
 
-              {/* Education Card 2 */}
-              <div className="bg-white rounded-2xl p-6 shadow-md border border-purple-100">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                    <Star className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Academic Performance</p>
-                    <p className="text-lg font-bold text-gray-900">Scores</p>
-                  </div>
+                          {education.cgpa && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">CGPA</span>
+                              <Badge className="bg-purple-500 text-white border-0">
+                                {education.cgpa}
+                              </Badge>
+                            </div>
+                          )}
+
+                          {education.achievements && education.achievements.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-xs text-gray-500 mb-2">Achievements:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {education.achievements.map((achievement, achievementIdx) => (
+                                  <span 
+                                    key={achievementIdx}
+                                    className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs font-medium"
+                                  >
+                                    {achievement}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                 </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Year of Passing</span>
-                    <span className="text-sm font-semibold text-gray-900">{education.yearOfPassing || profile.year_of_passing || 'N/A'}</span>
-                  </div>
-                  {(education.cgpa || profile.cgpa) && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">CGPA</span>
-                      <Badge className="bg-purple-500 text-white border-0 text-base">
-                        {education.cgpa || profile.cgpa}
-                      </Badge>
+              ) : (
+                // Fallback to profile data if no education array or show default card
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-2xl p-6 shadow-md border border-indigo-100">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
+                        <Award className="w-6 h-6 text-indigo-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Degree</p>
+                        <p className="text-lg font-bold text-gray-900">{profile.degree || 'Current Degree'}</p>
+                      </div>
                     </div>
-                  )}
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Institution</span>
-                    <span className="text-xs font-medium text-gray-700 text-right">{profile.university || 'N/A'}</span>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Level</span>
+                        <Badge className="bg-indigo-500 text-white border-0">
+                          {profile.level || 'Undergraduate'}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Department</span>
+                        <span className="text-sm font-semibold text-gray-900">{profile.department || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-6 shadow-md border border-purple-100">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                        <Star className="w-6 h-6 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Academic Performance</p>
+                        <p className="text-lg font-bold text-gray-900">Scores</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Year of Passing</span>
+                        <span className="text-sm font-semibold text-gray-900">{profile.year_of_passing || profile.yearOfPassing || 'N/A'}</span>
+                      </div>
+                      {profile.cgpa && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">CGPA</span>
+                          <Badge className="bg-purple-500 text-white border-0 text-base">
+                            {profile.cgpa}
+                          </Badge>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Institution</span>
+                        <span className="text-xs font-medium text-gray-700 text-right">{profile.university || 'N/A'}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
@@ -249,62 +335,227 @@ const StudentPublicViewer = () => {
 
             <div className="space-y-6">
               {/* Technical Skills */}
-              {studentData.technicalSkills?.length > 0 && (
+              {studentData.technicalSkills?.filter(skill => skill.enabled !== false).length > 0 && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
                   <div className="flex items-center gap-2 mb-4">
                     <Code className="w-5 h-5 text-blue-600" />
                     <h3 className="text-lg font-bold text-gray-900">Technical Skills</h3>
                     <Badge className="bg-blue-500 text-white border-0 ml-2">
-                      {studentData.technicalSkills.length}
+                      {studentData.technicalSkills.filter(skill => skill.enabled !== false).length}
                     </Badge>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {studentData.technicalSkills.map((skill, idx) => (
-                      <div 
-                        key={idx}
-                        className="bg-white border-2 border-blue-200 rounded-lg px-4 py-2 shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <span className="text-sm font-semibold text-blue-700">{skill.name}</span>
-                        {skill.proficiency && (
-                          <span className="text-xs text-gray-500 ml-2">• {skill.proficiency}</span>
-                        )}
-                      </div>
-                    ))}
+                    {studentData.technicalSkills
+                      .filter(skill => skill.enabled !== false)
+                      .map((skill, idx) => (
+                        <div 
+                          key={idx}
+                          className="bg-white border-2 border-blue-200 rounded-lg px-4 py-2 shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          <span className="text-sm font-semibold text-blue-700">{skill.name}</span>
+                          {skill.proficiency && (
+                            <span className="text-xs text-gray-500 ml-2">• {skill.proficiency}</span>
+                          )}
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}
 
               {/* Soft Skills */}
-              {studentData.softSkills?.length > 0 && (
+              {studentData.softSkills?.filter(skill => skill.enabled !== false).length > 0 && (
                 <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
                   <div className="flex items-center gap-2 mb-4">
                     <Heart className="w-5 h-5 text-purple-600" />
                     <h3 className="text-lg font-bold text-gray-900">Soft Skills</h3>
                     <Badge className="bg-purple-500 text-white border-0 ml-2">
-                      {studentData.softSkills.length}
+                      {studentData.softSkills.filter(skill => skill.enabled !== false).length}
                     </Badge>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {studentData.softSkills.map((skill, idx) => (
-                      <div 
-                        key={idx}
-                        className="bg-white border-2 border-purple-200 rounded-lg px-4 py-2 shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <span className="text-sm font-semibold text-purple-700">{skill.name}</span>
-                        {skill.proficiency && (
-                          <span className="text-xs text-gray-500 ml-2">• {skill.proficiency}</span>
-                        )}
-                      </div>
-                    ))}
+                    {studentData.softSkills
+                      .filter(skill => skill.enabled !== false)
+                      .map((skill, idx) => (
+                        <div 
+                          key={idx}
+                          className="bg-white border-2 border-purple-200 rounded-lg px-4 py-2 shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          <span className="text-sm font-semibold text-purple-700">{skill.name}</span>
+                          {skill.proficiency && (
+                            <span className="text-xs text-gray-500 ml-2">• {skill.proficiency}</span>
+                          )}
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}
 
               {/* No Skills Message */}
-              {(!studentData.technicalSkills?.length && !studentData.softSkills?.length) && (
+              {(!studentData.technicalSkills?.filter(skill => skill.enabled !== false).length && 
+                !studentData.softSkills?.filter(skill => skill.enabled !== false).length) && (
                 <div className="bg-gray-50 rounded-2xl p-8 text-center">
                   <Briefcase className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-600">No skills information available</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Section 4: Training */}
+          <div className="px-8 py-8 bg-gradient-to-br from-blue-50 to-cyan-50 border-b-2 border-gray-100">
+            <div className="flex items-center gap-2 mb-6">
+              <BookOpen className="w-6 h-6 text-blue-600" />
+              <h2 className="text-2xl font-bold text-gray-900">My Training</h2>
+            </div>
+
+            <div className="space-y-4">
+              {studentData.training?.filter(training => training.enabled !== false).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {studentData.training
+                    .filter(training => training.enabled !== false)
+                    .map((training, idx) => (
+                    <div 
+                      key={training.id || idx}
+                      className="bg-white rounded-2xl p-6 shadow-md border border-blue-100 hover:shadow-lg transition-shadow"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-bold text-gray-900 mb-2">{training.course || training.name}</h3>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Badge className={`${
+                              training.status === 'completed' 
+                                ? 'bg-green-500 text-white' 
+                                : training.status === 'ongoing'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-500 text-white'
+                            } border-0`}>
+                              {training.status || 'ongoing'}
+                            </Badge>
+                            {training.verified && (
+                              <CheckCircle className="w-4 h-4 text-green-500" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                          <BookOpen className="w-6 h-6 text-blue-600" />
+                        </div>
+                      </div>
+                      
+                      {training.progress !== undefined && (
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Progress</span>
+                            <span className="text-sm font-semibold text-blue-600">{training.progress}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full transition-all" 
+                              style={{ width: `${training.progress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
+
+                      {training.instructor && (
+                        <div className="mt-3 text-sm text-gray-600">
+                          <span className="font-medium">Instructor: </span>{training.instructor}
+                        </div>
+                      )}
+
+                      {training.startDate && (
+                        <div className="mt-2 flex items-center gap-1 text-sm text-gray-500">
+                          <Calendar className="w-4 h-4" />
+                          <span>Started: {new Date(training.startDate).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-blue-100">
+                  <BookOpen className="w-12 h-12 text-blue-400 mx-auto mb-3" />
+                  <p className="text-gray-600">No training information available</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Section 5: Experience */}
+          <div className="px-8 py-8 bg-gradient-to-br from-purple-50 to-indigo-50 border-b-2 border-gray-100">
+            <div className="flex items-center gap-2 mb-6">
+              <Users className="w-6 h-6 text-purple-600" />
+              <h2 className="text-2xl font-bold text-gray-900">My Experience</h2>
+            </div>
+
+            <div className="space-y-4">
+              {studentData.experience?.filter(experience => experience.enabled !== false).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {studentData.experience
+                    .filter(experience => experience.enabled !== false)
+                    .map((experience, idx) => (
+                    <div 
+                      key={experience.id || idx}
+                      className="bg-white rounded-2xl p-6 shadow-md border border-purple-100 hover:shadow-lg transition-shadow"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-bold text-gray-900 mb-1">{experience.role || experience.title}</h3>
+                          <p className="text-purple-600 font-medium mb-2">{experience.organization || experience.company}</p>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge className={`${
+                              experience.verified 
+                                ? 'bg-green-500 text-white' 
+                                : experience.processing
+                                ? 'bg-yellow-500 text-white'
+                                : 'bg-gray-500 text-white'
+                            } border-0`}>
+                              {experience.verified ? 'Verified' : experience.processing ? 'Processing' : 'Unverified'}
+                            </Badge>
+                            {experience.verified && (
+                              <CheckCircle className="w-4 h-4 text-green-500" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                          <Users className="w-6 h-6 text-purple-600" />
+                        </div>
+                      </div>
+                      
+                      {experience.duration && (
+                        <div className="mb-3 text-sm text-gray-600">
+                          <Calendar className="w-4 h-4 inline mr-1" />
+                          <span className="font-medium">Duration: </span>{experience.duration}
+                        </div>
+                      )}
+
+                      {experience.description && (
+                        <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+                          {experience.description}
+                        </div>
+                      )}
+
+                      {experience.skills && experience.skills.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-xs text-gray-500 mb-2">Skills Used:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {experience.skills.map((skill, skillIdx) => (
+                              <span 
+                                key={skillIdx}
+                                className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-medium"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-purple-100">
+                  <Users className="w-12 h-12 text-purple-400 mx-auto mb-3" />
+                  <p className="text-gray-600">No experience information available</p>
                 </div>
               )}
             </div>

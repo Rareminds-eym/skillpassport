@@ -17,6 +17,7 @@ import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useAuth } from '../../context/AuthContext';
 import { useRecentUpdates } from '../../hooks/useRecentUpdates';
 import { useRecentUpdatesLegacy } from '../../hooks/useRecentUpdatesLegacy';
+import { format } from 'timeago.js';
 import { 
   suggestions as mockSuggestions 
 } from '../../components/Students/data/mockData';
@@ -69,8 +70,8 @@ const Opportunities = () => {
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8 flex flex-col items-center justify-center text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Opportunities</h1>
-        <p className="text-gray-600">Explore internships and job openings that match your skills</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2 w-full flex justify-center items-center">Opportunities</h1>
+        <p className="text-gray-600 w-full flex justify-center items-center">Track your Opportunities, certifications, and professional development</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -114,12 +115,12 @@ const Opportunities = () => {
                       {(showAllRecentUpdates 
                         ? finalRecentUpdates
                         : finalRecentUpdates.slice(0, 5)
-                      ).map((update, idx) => (
+                      ).filter(update => update && update.message).map((update, idx) => (
                         <div key={update.id || `update-${update.timestamp}-${idx}`} className="flex items-start gap-3 px-6 py-4 bg-white rounded-xl border-l-4 border-[#2196F3] mb-2 hover:shadow-md transition-shadow">
                           <div className="w-2 h-2 bg-[#FF9800] rounded-full mt-2 flex-shrink-0" />
                           <div>
                             <p className="text-base font-medium text-gray-900 mb-1">{update.message}</p>
-                            <p className="text-xs text-[#1976D2] font-medium">{update.timestamp}</p>
+                            <p className="text-xs text-[#1976D2] font-medium">{update.timestamp ? format(update.timestamp) : ''}</p>
                           </div>
                         </div>
                       ))}

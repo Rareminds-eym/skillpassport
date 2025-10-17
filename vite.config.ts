@@ -23,9 +23,7 @@ export default defineConfig({
       'vscode-3e173968-b5c6-4add-bbe3-b1d06d0f0aa4.preview.emergentagent.com'
     ],
     hmr: {
-      host: 'vscode-3e173968-b5c6-4add-bbe3-b1d06d0f0aa4.preview.emergentagent.com',
-      protocol: 'wss',
-      clientPort: 443
+      port: 5173
     }
   },
 });
