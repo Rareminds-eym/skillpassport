@@ -7,9 +7,13 @@ import {
   ClockIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
-  XCircleIcon
+  XCircleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon
 } from '@heroicons/react/24/outline';
 import { getDashboardData } from '../../services/dashboardService';
+import ActivityFeed from '../../components/ActivityFeed';
+import { useRealtimeActivities } from '../../hooks/useRealtimeActivities';
 
 const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {
   const colorClasses = {
@@ -83,6 +87,13 @@ const Overview = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isActivityExpanded, setIsActivityExpanded] = useState(false);
+  
+  // Real-time activities hook
+  const { activities: realtimeActivities, isLoading: activitiesLoading } = useRealtimeActivities(15);
+  
+  // Show only 4 activities by default, all when expanded
+  const displayedActivities = isActivityExpanded ? realtimeActivities : realtimeActivities.slice(0, 4);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -384,43 +395,28 @@ const Overview = () => {
         {/* Right Column - Activity Feed */}
         <div className="space-y-6">
           <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
+            <button
+              onClick={() => setIsActivityExpanded(!isActivityExpanded)}
+              className="w-full px-6 py-4 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-colors text-left"
+            >
               <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
-            </div>
-            <div className="p-6">
-              <div className="flow-root">
-                <ul className="-mb-8">
-                  {(data.recentActivity || []).map((activity, activityIdx) => (
-                    <li key={activity.id}>
-                      <div className="relative pb-8">
-                        {activityIdx !== (data.recentActivity || []).length - 1 ? (
-                          <span
-                            className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
-                            aria-hidden="true"
-                          />
-                        ) : null}
-                        <div className="relative flex space-x-3">
-                          <div>
-                            <span className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center ring-8 ring-white">
-                              <UsersIcon className="h-4 w-4 text-primary-600" aria-hidden="true" />
-                            </span>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div>
-                              <div className="text-sm">
-                                <span className="font-medium text-gray-900">{activity.user}</span>
-                                <span className="text-gray-500"> {activity.action} </span>
-                                <span className="font-medium text-gray-900">{activity.candidate}</span>
-                              </div>
-                              <p className="mt-0.5 text-xs text-gray-500">{activity.timestamp}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-primary-600 font-medium">
+                  {isActivityExpanded ? 'Hide' : 'View All'}
+                </span>
+                {isActivityExpanded ? (
+                  <ChevronUpIcon className="h-5 w-5 text-gray-500" />
+                ) : (
+                  <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+                )}
               </div>
+            </button>
+            <div className="p-6">
+              <ActivityFeed 
+                activities={displayedActivities} 
+                loading={activitiesLoading}
+                showRealtimeIndicator={true}
+              />
             </div>
           </div>
         </div>

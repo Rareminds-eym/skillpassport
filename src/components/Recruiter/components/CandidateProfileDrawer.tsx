@@ -571,6 +571,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   const [rating, setRating] = useState(0);
   const [showShortlistModal, setShowShortlistModal] = useState(false);
   const [showInterviewModal, setShowInterviewModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
 
   if (!isOpen || !candidate) return null;
 
