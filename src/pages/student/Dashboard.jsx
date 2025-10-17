@@ -850,7 +850,11 @@ const StudentDashboard = () => {
                     </div>
                     <div className="mt-6 text-center">
                       <p className="text-white text-lg font-bold tracking-wide">
-                        PASSPORT-ID: {studentData?.passport_id || studentData?.id?.toUpperCase().slice(0, 8) || (userEmail ? userEmail.split('@')[0].toUpperCase().slice(0, 5) : 'STUDENT')}
+                        PASSPORT-ID: {
+                          studentData?.passport_id || 
+                          (studentData?.id ? studentData.id.toUpperCase().slice(0, 8) : null) || 
+                          (userEmail ? userEmail.split('@')[0].toUpperCase().slice(0, 5) : 'STUDENT')
+                        }
                       </p>
                       <p className="text-white/80 text-sm mt-2">
                         Scan to view your profile card
