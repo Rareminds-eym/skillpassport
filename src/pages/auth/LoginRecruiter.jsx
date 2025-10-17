@@ -15,10 +15,11 @@ import {
   AlertCircle,
 } from "lucide-react";
 import FeatureCard from "./components/FeatureCard";
+import { loginRecruiter } from "../../services/recruiterProfile";
 
 export default function LoginRecruiter() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState(""); // ignored, can be random
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -29,17 +30,29 @@ export default function LoginRecruiter() {
   const primary = "#0a6aba";
   const secondary = "#09277f";
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    // Simulated API login
-    setTimeout(() => {
-      login({ name: "Recruiter User", email, role: "recruiter" });
-      navigate("/recruitment");
+    const { success, data, error: errMsg } = await loginRecruiter(email, password);
+
+    if (!success) {
+      setError(errMsg || "Login failed");
       setLoading(false);
-    }, 700);
+      return;
+    }
+
+    // ✅ Save recruiter session in context
+    login({
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      role: "recruiter",
+    });
+
+    navigate("/recruitment");
+    setLoading(false);
   };
 
   const renderForm = (isLg) => (
@@ -90,7 +103,7 @@ export default function LoginRecruiter() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
+            placeholder="Enter any password"
             autoComplete="current-password"
             className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/80 lg:placeholder:text-gray-400 ${
               isLg
@@ -117,7 +130,6 @@ export default function LoginRecruiter() {
       {/* Buttons */}
       <div className="space-y-3">
         {isLg ? (
-          // Desktop button → recruiter gradient
           <button
             type="submit"
             disabled={loading}
@@ -129,7 +141,6 @@ export default function LoginRecruiter() {
             {loading ? "Signing in..." : "Login"}
           </button>
         ) : (
-          // Mobile button → brighter recruiter gradient
           <button
             type="submit"
             disabled={loading}
@@ -170,7 +181,7 @@ export default function LoginRecruiter() {
   return (
     <div className="flex items-center lg:py-10 bg-white">
       <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[700px] overflow-hidden">
-        {/* LEFT SIDE (Gradient + Illustration on lg) */}
+        {/* LEFT SIDE */}
         <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#0a6aba] to-[#09277f]">
           <div className="relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold leading-tight">
@@ -218,7 +229,7 @@ export default function LoginRecruiter() {
           </div>
         </div>
 
-        {/* RIGHT SIDE (Login Box) */}
+        {/* RIGHT SIDE */}
         <div className="relative flex items-center justify-center px-4 sm:px-8 md:px-12 py-10 lg:py-8">
           {/* Gradient bg for mobile/tablet */}
           <div
@@ -239,7 +250,7 @@ export default function LoginRecruiter() {
           {/* White bg for lg */}
           <div className="hidden lg:block absolute inset-0 bg-white" />
 
-          {/* -------- MOBILE/TABLET -------- */}
+          {/* MOBILE/TABLET */}
           <div className="relative w-full max-w-md lg:hidden">
             <div className="text-center mb-6">
               <h3 className="text-3xl font-bold text-white">Recruiter Login</h3>
@@ -254,12 +265,11 @@ export default function LoginRecruiter() {
                   <p className="text-sm text-red-700 break-words">{error}</p>
                 </div>
               )}
-
               {renderForm(false)}
             </div>
           </div>
 
-          {/* -------- DESKTOP -------- */}
+          {/* DESKTOP */}
           <div className="relative w-full max-w-md hidden lg:block">
             <div className="text-center mb-8">
               <h3 className="text-3xl font-bold text-[#000000]">

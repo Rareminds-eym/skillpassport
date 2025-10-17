@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -17,7 +18,9 @@ import {
   MessageCircle,
   Loader2,
   Database,
-  Share
+  Share,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { 
   recentUpdates as mockRecentUpdates, 
@@ -40,8 +43,10 @@ import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
 import { useAuth } from '../../../context/AuthContext';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [activeModal, setActiveModal] = useState(null);
   const [activeNavItem, setActiveNavItem] = useState('skills'); // Default to skills
+  const [showAllUpdates, setShowAllUpdates] = useState(false);
 
   // Get email from your custom auth
   const { user } = useAuth();
@@ -157,15 +162,17 @@ const Dashboard = () => {
                   {userData.education?.filter(education => education.enabled !== false).length || 0} Qualifications
                 </Badge>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveModal('education')}
-                className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 p-1"
-                title="Edit Education"
-              >
-                <Edit className="w-4 h-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveModal('education')}
+                  className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 p-1"
+                  title="Edit Education"
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 max-h-80 overflow-y-auto">
@@ -223,22 +230,38 @@ const Dashboard = () => {
         </Card>
       ),
       training: (
-        <Card key="training" className="h-full shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-[#5378f1]/10 to-[#5378f1]/20">
+        <Card key="training" className="h-full shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-[#5378f1]/10 to-[#5378f1]/20 cursor-pointer" onClick={() => navigate('/student/my-training')}>
           <CardHeader className="bg-gradient-to-r from-[#5378f1]/20 to-[#5378f1]/30 border-b border-[#5378f1]/30">
             <CardTitle className="flex items-center justify-between text-[#5378f1]">
               <div className="flex items-center gap-2">
                 <Code className="w-5 h-5" />
                 My Training
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveModal('training')}
-                className="text-[#5378f1] hover:text-[#4267d9] hover:bg-[#5378f1]/20 p-1"
-                title="Edit Training"
-              >
-                <Edit className="w-4 h-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveModal('training');
+                  }}
+                  className="text-[#5378f1] hover:text-[#4267d9] hover:bg-[#5378f1]/20 p-1"
+                  title="Edit Training"
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-[#5378f1] hover:text-[#4267d9] hover:bg-[#5378f1]/20 p-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate('/student/my-training');
+                  }}
+                >
+                  View All →
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 bg-gradient-to-br from-[#5378f1]/5 to-[#5378f1]/10">
@@ -268,22 +291,38 @@ const Dashboard = () => {
         </Card>
       ),
       experience: (
-        <Card key="experience" className="h-full border-t-4 border-t-indigo-500 shadow-lg hover:shadow-xl transition-shadow">
+        <Card key="experience" className="h-full border-t-4 border-t-indigo-500 shadow-lg hover:shadow-xl transition-shadow cursor-pointer" onClick={() => navigate('/student/my-experience')}>
           <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50">
             <CardTitle className="flex items-center justify-between text-indigo-700">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5" />
                 My Experience
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveModal('experience')}
-                className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 p-1"
-                title="Edit Experience"
-              >
-                <Edit className="w-4 h-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveModal('experience');
+                  }}
+                  className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 p-1"
+                  title="Edit Experience"
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 p-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate('/student/my-experience');
+                  }}
+                >
+                  View All →
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -308,11 +347,24 @@ const Dashboard = () => {
         </Card>
       ),
       opportunities: (
-  <Card key="opportunities" variant="orange" className="h-full border-2 border-[#FFB800] rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+  <Card key="opportunities" variant="orange" className="h-full border-2 border-[#FFB800] rounded-lg shadow-lg hover:shadow-xl transition-shadow cursor-pointer" onClick={() => navigate('/student/opportunities')}>
           <CardHeader className="bg-white">
-            <CardTitle className="flex items-center gap-2 text-gray-900">
-              <ExternalLink className="w-5 h-5 text-[#FFB800]" />
-              Opportunities
+            <CardTitle className="flex items-center justify-between text-gray-900">
+              <div className="flex items-center gap-2">
+                <ExternalLink className="w-5 h-5 text-[#FFB800]" />
+                Opportunities
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-[#FFB800] hover:text-[#E5A600] hover:bg-orange-50 p-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate('/student/opportunities');
+                }}
+              >
+                View All →
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -366,11 +418,24 @@ const Dashboard = () => {
         </Card>
       ),
       technicalSkills: (
-        <Card key="technicalSkills" className="h-full border-t-4 border-t-slate-500 shadow-lg hover:shadow-xl transition-shadow">
+        <Card key="technicalSkills" className="h-full border-t-4 border-t-slate-500 shadow-lg hover:shadow-xl transition-shadow cursor-pointer" onClick={() => navigate('/student/my-skills')}>
           <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50">
-            <CardTitle className="flex items-center gap-2 text-slate-700">
-              <Code className="w-5 h-5" />
-              My Skills (Technical)
+            <CardTitle className="flex items-center justify-between text-slate-700">
+              <div className="flex items-center gap-2">
+                <Code className="w-5 h-5" />
+                My Skills (Technical)
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-slate-600 hover:text-slate-700 hover:bg-slate-100 p-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate('/student/my-skills');
+                }}
+              >
+                View All →
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -555,11 +620,11 @@ const Dashboard = () => {
               <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
                 <CardTitle className="flex items-center gap-2 text-blue-700">
                   <Bell className="w-5 h-5" />
-                  Recent Upda
+                  Recent Updates
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {recentUpdates?.map((update, index) => (
+                {recentUpdates?.slice(0, showAllUpdates ? recentUpdates.length : 2).map((update, index) => (
                   <div key={index} className="flex items-start gap-3 p-3 bg-gradient-to-r from-blue-50 to-white rounded-lg border-l-2 border-l-blue-400">
                     <div className="w-2 h-2 bg-amber-500 rounded-full mt-2 flex-shrink-0" />
                     <div>
@@ -568,6 +633,26 @@ const Dashboard = () => {
                     </div>
                   </div>
                 ))}
+                {recentUpdates && recentUpdates.length > 2 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAllUpdates(!showAllUpdates)}
+                    className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  >
+                    {showAllUpdates ? (
+                      <>
+                        <ChevronUp className="w-4 h-4 mr-1" />
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4 mr-1" />
+                        See More ({recentUpdates.length - 2} more)
+                      </>
+                    )}
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
@@ -582,7 +667,9 @@ const Dashboard = () => {
               <CardContent className="space-y-3">
                 {suggestions?.map((suggestion, index) => (
                   <div key={index} className="p-3 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-lg border-l-2 border-l-amber-500 hover:shadow-sm transition-shadow">
-                    <p className="text-sm font-medium text-amber-900">{suggestion}</p>
+                    <p className="text-sm font-medium text-amber-900">
+                      {typeof suggestion === 'string' ? suggestion : suggestion.message}
+                    </p>
                   </div>
                 ))}
               </CardContent>

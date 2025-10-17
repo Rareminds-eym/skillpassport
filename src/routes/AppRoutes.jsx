@@ -35,6 +35,10 @@ const StudentDashboard = lazy(() => import('../pages/student/Dashboard'));
 const Profile = lazy(() => import('../pages/student/Profile'));
 const AppliedJobs = lazy(() => import('../pages/student/AppliedJobs'));
 const BrowseJobs = lazy(() => import('../pages/student/BrowseJobs'));
+const Opportunities = lazy(() => import('../pages/student/Opportunities'));
+const MySkills = lazy(() => import('../pages/student/MySkills'));
+const MyTraining = lazy(() => import('../pages/student/MyTraining'));
+const MyExperience = lazy(() => import('../pages/student/MyExperience'));
 
 const AppRoutes = () => {
   return (
@@ -72,6 +76,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
+          <Route path="profile" element={<RecruiterProfile />} />
           <Route path="overview" element={<Overview />} />
           <Route path="talent-pool" element={<TalentPool />} />
           <Route path="pipelines" element={<Pipelines />} />
@@ -96,6 +101,10 @@ const AppRoutes = () => {
           <Route path="profile/:email" element={<Profile />} />
           <Route path="applied-jobs" element={<AppliedJobs />} />
           <Route path="browse-jobs" element={<BrowseJobs />} />
+          <Route path="opportunities" element={<Opportunities />} />
+          <Route path="my-skills" element={<MySkills />} />
+          <Route path="my-training" element={<MyTraining />} />
+          <Route path="my-experience" element={<MyExperience />} />
           <Route path="" element={<Navigate to="/student/dashboard" replace />} />
         </Route>
 
