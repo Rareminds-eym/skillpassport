@@ -42,7 +42,7 @@ const RecruiterLayout = () => {
         showMobileMenu={showMobileMenu}
       />
 
-      <div className="flex h-screen pt-16">
+      <div className="flex h-screen pt-0">
         {/* Sidebar */}
         <Sidebar 
           activeTab={activeTab}

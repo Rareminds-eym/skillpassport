@@ -21,6 +21,7 @@ import { useStudents } from '../../hooks/useStudents';
 import { getShortlists, addCandidateToShortlist } from '../../services/shortlistService';
 import { createInterview } from '../../services/interviewService';
 import { useSearch } from '../../context/SearchContext';
+import SearchBar from '../../components/common/SearchBar';
 
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -622,7 +623,7 @@ type RecruiterOutletContext = {
 
 const TalentPool = () => {
   const { onViewProfile } = useOutletContext<RecruiterOutletContext>()
-  const { searchQuery } = useSearch();
+  const { searchQuery, setSearchQuery } = useSearch();
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
   const [showFilters, setShowFilters] = useState(false);
   const [showShortlistModal, setShowShortlistModal] = useState(false);
@@ -853,73 +854,128 @@ const TalentPool = () => {
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Header */}
-<div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">
-  <div className="flex items-center">
-    <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
-    <span className="ml-2 text-sm text-gray-500">
-      {(() => {
-        const totalCount = students.length;
-        const filteredCount = filteredAndSortedStudents.length;
-        const hasActiveSearch = searchQuery && searchQuery.trim() !== '';
-        const hasActiveFilters = filters.skills.length > 0 || 
-                               filters.courses.length > 0 || 
-                               filters.badges.length > 0 || 
-                               filters.locations.length > 0 || 
-                               filters.years.length > 0 ||
-                               filters.minScore > 0 || 
-                               filters.maxScore < 100;
+      {/* Header - responsive layout */}
+      {/* Desktop: single row with left text, centered search, right buttons */}
+      <div className="hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
+        {/* Left: title and counts (fixed width) */}
+        <div className="w-80 flex-shrink-0 pr-4 text-left">
+          <div className="inline-flex items-baseline">
+            <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
+            <span className="ml-2 text-sm text-gray-500">
+              ({filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`})
+            </span>
+          </div>
+        </div>
 
-        if (hasActiveSearch || hasActiveFilters) {
-          return `(${filteredCount} matching candidate${filteredCount !== 1 ? 's' : ''} of ${totalCount} total)`;
-        } else {
-          return `(${totalCount} candidate${totalCount !== 1 ? 's' : ''})`;
-        }
-      })()}
-    </span>
-    {searchQuery && (
-      <span className="ml-2 px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded-full">
-        Searching: "{searchQuery}"
-      </span>
-    )}
-  </div>
-  <div className="flex items-center space-x-2">
-    <button
-      onClick={() => setShowFilters(!showFilters)}
-      className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 relative"
-    >
-      <FunnelIcon className="h-4 w-4 mr-2" />
-      Filters
-      {(filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
-        <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
-          {filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length}
-        </span>
-      )}
-    </button>
-    <div className="flex rounded-md shadow-sm">
-      <button
-        onClick={() => setViewMode('grid')}
-        className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-          viewMode === 'grid'
-            ? 'bg-primary-50 border-primary-300 text-primary-700'
-            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-        }`}
-      >
-        <Squares2X2Icon className="h-4 w-4" />
-      </button>
-      <button
-        onClick={() => setViewMode('table')}
-        className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-          viewMode === 'table'
-            ? 'bg-primary-50 border-primary-300 text-primary-700'
-            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-        }`}
-      >
-        <TableCellsIcon className="h-4 w-4" />
-      </button>
-    </div>
-  </div>
-</div>
+        {/* Middle: centered search */}
+        <div className="flex-1 px-4">
+          <div className="max-w-xl mx-auto">
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search candidates by name, skill, college, location..."
+              size="md"
+            />
+          </div>
+        </div>
+
+        {/* Right: filter and view toggles (fixed width) */}
+        <div className="w-80 flex-shrink-0 pl-4 flex items-center justify-end space-x-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 relative"
+          >
+            <FunnelIcon className="h-4 w-4 mr-2" />
+            Filters
+            {(filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
+                {filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length}
+              </span>
+            )}
+          </button>
+          <div className="flex rounded-md shadow-sm">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+                viewMode === 'grid'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Squares2X2Icon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+                viewMode === 'table'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <TableCellsIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile/Tablet: stacked layout */}
+      <div className="lg:hidden p-4 bg-white border-b border-gray-200 space-y-4">
+        {/* Title and count */}
+        <div className="text-left">
+          <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
+          <span className="text-sm text-gray-500">
+            {filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`}
+          </span>
+        </div>
+
+        {/* Search bar */}
+        <div>
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search candidates..."
+            size="md"
+          />
+        </div>
+
+        {/* Filter and view toggles */}
+        <div className="flex items-center justify-between space-x-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 relative"
+          >
+            <FunnelIcon className="h-4 w-4 mr-2" />
+            Filters
+            {(filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
+                {filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length}
+              </span>
+            )}
+          </button>
+          <div className="flex rounded-md shadow-sm">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+                viewMode === 'grid'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Squares2X2Icon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+                viewMode === 'table'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <TableCellsIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Filters Sidebar */}

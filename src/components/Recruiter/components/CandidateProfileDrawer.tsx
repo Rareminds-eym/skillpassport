@@ -574,7 +574,6 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
 
-
   if (!isOpen || !candidate) return null;
 
   const modalCandidate = {

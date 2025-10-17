@@ -138,254 +138,301 @@ export const getDashboardKPIs = async () => {
 };
 
 /**
- * Get recent activity/audit logs from actual database changes only
+ * Get recent activity/audit logs from actual database changes
+ * Now tracks ALL activities from multiple tables in a unified timeline
  */
-export const getRecentActivity = async (limit = 10) => {
-  console.log('📜 Fetching recent activity from database (real changes only)...');
+export const getRecentActivity = async (limit = 15) => {
+  console.log('📜 Fetching recent activity from all tables...');
   try {
-    const activities = [];
+    const allActivities = [];
     
-    // Get all recent database activities from multiple tables
-    const dbActivities = [];
-    
-    // 1. Most recent student activity (1 record)
-    console.log('👥 Fetching most recent student activity...');
+    // 1. Pipeline Activities (stage changes, updates)
+    console.log('🔄 Fetching pipeline activities...');
     try {
-      const { data: recentStudent, error: studentsError } = await supabase
-        .from('students')
-        .select('id, name, email, createdAt, updatedAt')
+      const { data: pipelineActivities } = await supabase
+        .from('pipeline_activities')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (pipelineActivities?.length > 0) {
+        pipelineActivities.forEach(pa => {
+          let action = pa.activity_type;
+          let details = '';
+          
+          if (pa.from_stage && pa.to_stage) {
+            action = 'moved';
+            details = `from ${pa.from_stage} to ${pa.to_stage}`;
+          }
+          
+          allActivities.push({
+            id: `pipeline-activity-${pa.id}`,
+            user: pa.performed_by || 'Recruitment Team',
+            action: action,
+            details: details,
+            candidate: pa.activity_details?.candidate_name || 'Candidate',
+            timestamp: pa.created_at,
+            type: 'pipeline_activity',
+            metadata: pa.activity_details,
+            icon: 'pipeline'
+          });
+        });
+        console.log(`📋 Added ${pipelineActivities.length} pipeline activities`);
+      }
+    } catch (error) {
+      console.log('⚠️ Pipeline activities unavailable:', error.message);
+    }
+
+    // 2. Recruiter Activities (searches, views, etc.)
+    console.log('👁️ Fetching recruiter activities...');
+    try {
+      const { data: recruiterActivities } = await supabase
+        .from('recruiter_activities')
+        .select('*')
         .order('createdAt', { ascending: false })
-        .limit(1);
+        .limit(limit);
 
-      if (!studentsError && recentStudent?.length > 0) {
-        const student = recentStudent[0];
-        dbActivities.push({
-          id: `student-latest-${student.id}`,
-          user: 'System',
-          action: 'registered profile',
-          candidate: student.name || student.email || `Student ${student.id}`,
-          timestamp: student.createdAt,
-          type: 'registration',
-          realData: true,
-          table: 'students'
+      if (recruiterActivities?.length > 0) {
+        recruiterActivities.forEach(ra => {
+          allActivities.push({
+            id: `recruiter-activity-${ra.id}`,
+            user: ra.recruiterId || 'Recruiter',
+            action: ra.activityType,
+            candidate: ra.targetStudentId ? `Student ${ra.targetStudentId}` : 'Multiple candidates',
+            timestamp: ra.createdAt,
+            type: 'recruiter_activity',
+            metadata: ra.metadata,
+            searchCriteria: ra.searchCriteria,
+            icon: 'search'
+          });
         });
-        console.log('📋 Added latest student activity');
+        console.log(`📋 Added ${recruiterActivities.length} recruiter activities`);
       }
-    } catch (studentsError) {
-      console.log('⚠️ Students data unavailable:', studentsError.message);
+    } catch (error) {
+      console.log('⚠️ Recruiter activities unavailable:', error.message);
     }
-    
-    // 2. Most recent pipeline activity (1 record)
-    console.log('🔄 Fetching most recent pipeline activity...');
-    try {
-      const { data: pipelineActivity, error: pipelineError } = await supabase
-        .from('pipeline_candidates')
-        .select('id, candidate_name, stage, updated_at, created_at')
-        .order('updated_at', { ascending: false })
-        .limit(1);
 
-      if (!pipelineError && pipelineActivity?.length > 0) {
-        const pc = pipelineActivity[0];
-        dbActivities.push({
-          id: `pipeline-latest-${pc.id}`,
-          user: 'Recruitment Team',
-          action: `moved to ${pc.stage} stage`,
-          candidate: pc.candidate_name || 'Candidate',
-          timestamp: pc.updated_at || pc.created_at,
-          type: 'pipeline_move',
-          realData: true,
-          table: 'pipeline_candidates'
-        });
-        console.log('📋 Added latest pipeline activity');
-      }
-    } catch (pipelineError) {
-      console.log('⚠️ Pipeline activities unavailable:', pipelineError.message);
-    }
-    
-
-    // 3. Most recent interview activity (1 record)
-    console.log('📅 Fetching most recent interview activity...');
+    // 3. Shortlist Changes
+    console.log('📋 Fetching shortlist activities...');
     try {
-      const { data: interviews, error: interviewsError } = await supabase
-        .from('interviews')
-        .select('id, candidate_name, date, created_at, updated_at')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (!interviewsError && interviews?.length > 0) {
-        const interview = interviews[0];
-        dbActivities.push({
-          id: `interview-latest-${interview.id}`,
-          user: 'Interview Team',
-          action: `scheduled interview with`,
-          candidate: interview.candidate_name || 'Candidate',
-          timestamp: interview.created_at,
-          type: 'interview_scheduled',
-          realData: true,
-          table: 'interviews'
-        });
-        console.log('📋 Added latest interview activity');
-      }
-    } catch (interviewError) {
-      console.log('⚠️ Interview activities unavailable:', interviewError.message);
-    }
-    
-    // 4. Most recent shortlist activity (1 record)
-    console.log('📜 Fetching most recent shortlist activity...');
-    try {
-      const { data: shortlistCandidates, error: shortlistError } = await supabase
+      const { data: shortlistCandidates } = await supabase
         .from('shortlist_candidates')
-        .select('id, added_at, added_by, candidate_id')
+        .select(`
+          *,
+          shortlists(name),
+          students(id, profile)
+        `)
         .order('added_at', { ascending: false })
-        .limit(1);
+        .limit(limit);
 
-      if (!shortlistError && shortlistCandidates?.length > 0) {
-        const sc = shortlistCandidates[0];
-        dbActivities.push({
-          id: `shortlist-latest-${sc.id}`,
-          user: sc.added_by || 'Recruiter',
-          action: 'shortlisted',
-          candidate: `Candidate ${sc.candidate_id}`,
-          timestamp: sc.added_at,
-          type: 'shortlist',
-          realData: true,
-          table: 'shortlist_candidates'
+      if (shortlistCandidates?.length > 0) {
+        shortlistCandidates.forEach(sc => {
+          // Extract student name from profile JSON
+          let studentName = 'Student';
+          if (sc.students?.profile) {
+            try {
+              const profile = typeof sc.students.profile === 'string' 
+                ? JSON.parse(sc.students.profile) 
+                : sc.students.profile;
+              studentName = profile.name || `Student ${sc.student_id}`;
+            } catch (e) {
+              console.log('⚠️ Could not parse profile for student:', sc.student_id);
+              studentName = `Student ${sc.student_id}`;
+            }
+          } else {
+            studentName = `Student ${sc.student_id}`;
+          }
+          
+          allActivities.push({
+            id: `shortlist-${sc.id}`,
+            user: sc.added_by || 'Recruiter',
+            action: 'shortlisted',
+            candidate: studentName,
+            details: sc.shortlists?.name || 'to shortlist',
+            timestamp: sc.added_at,
+            type: 'shortlist',
+            notes: sc.notes,
+            icon: 'bookmark'
+          });
         });
-        console.log('📋 Added latest shortlist activity');
+        console.log(`📋 Added ${shortlistCandidates.length} shortlist activities`);
       }
-    } catch (shortlistError) {
-      console.log('⚠️ Shortlist activities unavailable:', shortlistError.message);
+    } catch (error) {
+      console.log('⚠️ Shortlist activities unavailable:', error.message);
     }
 
-    // 5. Most recent offers activity (1 record)
-    console.log('💼 Fetching most recent offers activity...');
+    // 4. Offers (created, updated, status changes)
+    console.log('💼 Fetching offer activities...');
     try {
-      const { data: offers, error: offersError } = await supabase
+      const { data: offers } = await supabase
         .from('offers')
-        .select('id, candidate_name, created_at, status')
-        .order('created_at', { ascending: false })
-        .limit(1);
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(limit);
 
-      if (!offersError && offers?.length > 0) {
-        const offer = offers[0];
-        dbActivities.push({
-          id: `offer-latest-${offer.id}`,
-          user: 'HR Team',
-          action: `extended offer to`,
-          candidate: offer.candidate_name || 'Candidate',
-          timestamp: offer.created_at,
-          type: 'offer_extended',
-          realData: true,
-          table: 'offers'
+      if (offers?.length > 0) {
+        offers.forEach(offer => {
+          const isNew = new Date(offer.inserted_at).getTime() === new Date(offer.updated_at).getTime();
+          const action = isNew ? 'extended offer to' : `updated offer status to ${offer.status}`;
+          
+          allActivities.push({
+            id: `offer-${offer.id}`,
+            user: 'HR Team',
+            action: action,
+            candidate: offer.candidate_name,
+            details: `${offer.job_title}${offer.offered_ctc ? ` - ${offer.offered_ctc}` : ''}`,
+            timestamp: offer.updated_at,
+            type: offer.status === 'accepted' ? 'offer_accepted' : 
+                  offer.status === 'rejected' ? 'offer_rejected' : 'offer',
+            metadata: {
+              status: offer.status,
+              expiryDate: offer.expiry_date,
+              offerDate: offer.offer_date
+            },
+            icon: 'document'
+          });
         });
-        console.log('📋 Added latest offer activity');
+        console.log(`📋 Added ${offers.length} offer activities`);
       }
-    } catch (offersError) {
-      console.log('⚠️ Offers activities unavailable:', offersError.message);
+    } catch (error) {
+      console.log('⚠️ Offer activities unavailable:', error.message);
     }
 
-    // 6. Most recent shortlists activity (1 record)
-    console.log('📝 Fetching most recent shortlists activity...');
+    // 5. Placements
+    console.log('🎯 Fetching placement activities...');
     try {
-      const { data: shortlists, error: shortlistsError } = await supabase
+      const { data: placements } = await supabase
+        .from('placements')
+        .select(`
+          *,
+          students(id, profile)
+        `)
+        .order('updatedAt', { ascending: false })
+        .limit(limit);
+
+      if (placements?.length > 0) {
+        for (const placement of placements) {
+          let action = 'placement';
+          if (placement.placementStatus === 'hired') action = 'hired';
+          if (placement.placementStatus === 'applied') action = 'applied';
+          
+          // Extract student name from profile JSON
+          let studentName = `Student ${placement.studentId}`;
+          if (placement.students?.profile) {
+            try {
+              const profile = typeof placement.students.profile === 'string' 
+                ? JSON.parse(placement.students.profile) 
+                : placement.students.profile;
+              studentName = profile.name || studentName;
+            } catch (e) {
+              console.log('⚠️ Could not parse profile for placement:', placement.studentId);
+            }
+          }
+          
+          allActivities.push({
+            id: `placement-${placement.id}`,
+            user: placement.recruiterId || 'Recruiter',
+            action: action,
+            candidate: studentName,
+            details: `${placement.jobTitle}${placement.salaryOffered ? ` - ₹${placement.salaryOffered}` : ''}`,
+            timestamp: placement.updatedAt,
+            type: 'placement',
+            metadata: placement.metadata,
+            icon: 'briefcase'
+          });
+        }
+        console.log(`📋 Added ${placements.length} placement activities`);
+      }
+    } catch (error) {
+      console.log('⚠️ Placement activities unavailable:', error.message);
+    }
+
+    // 6. Pipeline Candidates (new additions, stage changes)
+    console.log('🔄 Fetching pipeline candidate activities...');
+    try {
+      const { data: pipelineCandidates } = await supabase
+        .from('pipeline_candidates')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(limit);
+
+      if (pipelineCandidates?.length > 0) {
+        pipelineCandidates.forEach(pc => {
+          const isNew = new Date(pc.created_at).getTime() === new Date(pc.updated_at).getTime();
+          let action = isNew ? 'added to pipeline' : `moved to ${pc.stage}`;
+          
+          if (pc.status === 'rejected') {
+            action = 'rejected';
+          }
+          
+          allActivities.push({
+            id: `pipeline-candidate-${pc.id}`,
+            user: pc.stage_changed_by || pc.added_by || 'Recruitment Team',
+            action: action,
+            candidate: pc.candidate_name,
+            details: pc.rejection_reason || (pc.previous_stage ? `from ${pc.previous_stage}` : ''),
+            timestamp: pc.updated_at,
+            type: pc.status === 'rejected' ? 'candidate_rejected' : 'pipeline',
+            metadata: {
+              stage: pc.stage,
+              status: pc.status,
+              requisitionId: pc.requisition_id
+            },
+            icon: 'user-group'
+          });
+        });
+        console.log(`📋 Added ${pipelineCandidates.length} pipeline candidate activities`);
+      }
+    } catch (error) {
+      console.log('⚠️ Pipeline candidate activities unavailable:', error.message);
+    }
+
+    // 7. Shortlist Creation/Updates
+    console.log('📝 Fetching shortlist creation activities...');
+    try {
+      const { data: shortlists } = await supabase
         .from('shortlists')
-        .select('id, name, created_date, created_by')
-        .order('created_date', { ascending: false })
-        .limit(1);
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(limit);
 
-      if (!shortlistsError && shortlists?.length > 0) {
-        const shortlist = shortlists[0];
-        dbActivities.push({
-          id: `shortlists-latest-${shortlist.id}`,
-          user: shortlist.created_by || 'Recruiter',
-          action: `created shortlist`,
-          candidate: shortlist.name || 'New Shortlist',
-          timestamp: shortlist.created_date,
-          type: 'shortlist_created',
-          realData: true,
-          table: 'shortlists'
+      if (shortlists?.length > 0) {
+        shortlists.forEach(sl => {
+          const isNew = new Date(sl.created_date).getTime() === new Date(sl.updated_at).getTime();
+          const action = isNew ? 'created shortlist' : 'updated shortlist';
+          
+          allActivities.push({
+            id: `shortlist-created-${sl.id}`,
+            user: sl.created_by || 'Recruiter',
+            action: action,
+            candidate: sl.name,
+            details: sl.shared ? '(Shared)' : '',
+            timestamp: sl.updated_at,
+            type: 'shortlist_created',
+            metadata: {
+              status: sl.status,
+              shared: sl.shared,
+              tags: sl.tags
+            },
+            icon: 'folder'
+          });
         });
-        console.log('📋 Added latest shortlists activity');
+        console.log(`📋 Added ${shortlists.length} shortlist creation activities`);
       }
-    } catch (shortlistsError) {
-      console.log('⚠️ Shortlists activities unavailable:', shortlistsError.message);
-    }
-
-    // 7. Most recent applications activity (1 record)
-    console.log('📝 Fetching most recent applications activity...');
-    try {
-      const { data: applications, error: applicationsError } = await supabase
-        .from('applications')
-        .select('id, student_id, job_id, created_at, status')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (!applicationsError && applications?.length > 0) {
-        const application = applications[0];
-        dbActivities.push({
-          id: `application-latest-${application.id}`,
-          user: 'Student',
-          action: `applied for job`,
-          candidate: `Student ${application.student_id}`,
-          timestamp: application.created_at,
-          type: 'application_submitted',
-          realData: true,
-          table: 'applications'
-        });
-        console.log('📋 Added latest application activity');
-      }
-    } catch (applicationsError) {
-      console.log('⚠️ Applications activities unavailable:', applicationsError.message);
-    }
-
-    // 8. Most recent jobs activity (1 record)
-    console.log('💼 Fetching most recent jobs activity...');
-    try {
-      const { data: jobs, error: jobsError } = await supabase
-        .from('jobs')
-        .select('id, title, created_at, created_by')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (!jobsError && jobs?.length > 0) {
-        const job = jobs[0];
-        dbActivities.push({
-          id: `job-latest-${job.id}`,
-          user: job.created_by || 'HR Team',
-          action: `posted job`,
-          candidate: job.title || 'New Position',
-          timestamp: job.created_at,
-          type: 'job_posted',
-          realData: true,
-          table: 'jobs'
-        });
-        console.log('📋 Added latest job activity');
-      }
-    } catch (jobsError) {
-      console.log('⚠️ Jobs activities unavailable:', jobsError.message);
+    } catch (error) {
+      console.log('⚠️ Shortlist creation activities unavailable:', error.message);
     }
 
     // Sort all activities by timestamp (most recent first)
-    dbActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    allActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    // Format timestamps and take only the requested limit
-    const finalActivities = dbActivities.slice(0, limit).map(activity => ({
-      ...activity,
-      timestamp: new Date(activity.timestamp).toLocaleString('en-US', {
-        month: '2-digit',
-        day: '2-digit', 
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-      })
-    }));
-    
-    console.log(`✅ Recent activity fetched: ${finalActivities.length} real database activities`);
+    // Take only the requested limit
+    const recentActivities = allActivities.slice(0, limit);
+
+    console.log(`✅ Fetched ${recentActivities.length} total activities from all tables`);
     
     return {
-      data: finalActivities,
+      data: recentActivities,
       error: null
     };
   } catch (error) {

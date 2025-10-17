@@ -28,6 +28,7 @@ import {
   logExportActivity
 } from '../../services/shortlistService';
 import jsPDF from 'jspdf';
+import SearchBar from '../../components/common/SearchBar';
 
 // Define TypeScript interfaces for our data
 interface ShortlistCandidate {
@@ -1173,6 +1174,7 @@ const Shortlists = () => {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch shortlists from Supabase
   const fetchShortlists = async () => {
@@ -1260,6 +1262,19 @@ const Shortlists = () => {
     }
   };
 
+  // Filter shortlists based on search query
+  const filteredShortlists = shortlists.filter(shortlist => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      shortlist.name?.toLowerCase().includes(query) ||
+      shortlist.description?.toLowerCase().includes(query) ||
+      shortlist.created_by?.toLowerCase().includes(query) ||
+      shortlist.tags?.some(tag => tag.toLowerCase().includes(query))
+    );
+  });
+
   if (loading) {
     return (
       <div className="p-6 flex justify-center items-center h-64">
@@ -1269,30 +1284,87 @@ const Shortlists = () => {
   }
 
   return (
-    <div className="p-6 pb-20 md:pb-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Shortlists</h1>
-          <p className="text-gray-600 mt-1">Manage and share candidate collections</p>
+    <div className="p-4 md:p-6 pb-20 md:pb-6">
+      {/* Header - responsive layout */}
+      <div className="mb-6">
+        {/* Desktop: single row with left text, centered search, right buttons */}
+        <div className="hidden lg:flex items-center bg-white border border-gray-200 rounded-lg p-4">
+          {/* Left: title and subtitle (fixed width) */}
+          <div className="w-80 flex-shrink-0 pr-4 text-left">
+            <h1 className="text-xl font-semibold text-gray-900">Shortlists</h1>
+            <p className="text-sm text-gray-600 mt-0.5">Manage and share candidate collections</p>
+          </div>
+
+          {/* Middle: centered search */}
+          <div className="flex-1 px-4">
+            <div className="max-w-xl mx-auto">
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search shortlists by name, description, creator, or tags..."
+                size="md"
+              />
+            </div>
+          </div>
+
+          {/* Right: action buttons (fixed width) */}
+          <div className="w-80 flex-shrink-0 pl-4 flex items-center justify-end space-x-3">
+            <button
+              onClick={() => navigate('/recruitment/talent-pool')}
+              className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50"
+            >
+              <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Candidates
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Create Shortlist
+            </button>
+          </div>
         </div>
-        <div className="flex space-x-3">
-          <button
-            onClick={() => navigate('/recruitment/talent-pool')}
-            className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50"
-          >
-            <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Candidates
-          </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
-          >
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Create Shortlist
-          </button>
+
+        {/* Mobile/Tablet: stacked layout */}
+        <div className="lg:hidden space-y-4">
+          {/* Title and subtitle */}
+          <div className="text-left">
+            <h1 className="text-xl font-semibold text-gray-900">Shortlists</h1>
+            <p className="text-sm text-gray-600 mt-0.5">Manage and share candidate collections</p>
+          </div>
+
+          {/* Search bar */}
+          <div>
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search shortlists..."
+              size="md"
+            />
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => navigate('/recruitment/talent-pool')}
+              className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50"
+            >
+              <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Candidates
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Create Shortlist
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1305,7 +1377,7 @@ const Shortlists = () => {
             </div>
             <div className="ml-3">
               <p className="text-sm text-gray-600">Total Shortlists</p>
-              <p className="text-2xl font-semibold text-gray-900">{shortlists.length}</p>
+              <p className="text-2xl font-semibold text-gray-900">{filteredShortlists.length}{searchQuery && <span className="text-sm text-gray-500"> of {shortlists.length}</span>}</p>
             </div>
           </div>
         </div>
@@ -1355,8 +1427,21 @@ const Shortlists = () => {
       </div>
 
       {/* Shortlists Grid */}
-      {shortlists.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+      {filteredShortlists.length === 0 ? (
+        searchQuery ? (
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No shortlists found</h3>
+            <p className="text-gray-600 mb-4">No shortlists match your search "{searchQuery}"</p>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200"
+            >
+              Clear search
+          </button>
+        </div>
+        ) : shortlists.length === 0 ? (
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
           <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No shortlists yet</h3>
           <p className="text-gray-600 mb-4">Create your first shortlist to get started</p>
@@ -1367,10 +1452,11 @@ const Shortlists = () => {
             <PlusIcon className="h-4 w-4 mr-2" />
             Create Shortlist
           </button>
-        </div>
+          </div>
+        ) : null
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {shortlists.map(shortlist => (
+          {filteredShortlists.map(shortlist => (
             <ShortlistCard
               key={shortlist.id}
               shortlist={shortlist}
