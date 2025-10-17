@@ -97,6 +97,7 @@ const AppRoutes = () => {
           }
         >
           <Route path="dashboard" element={<StudentDashboard />} />
+          <Route path="dashboard/:id" element={<Profile />} />
           <Route path="profile" element={<Profile />} />
           <Route path="profile/:email" element={<Profile />} />
           <Route path="applied-jobs" element={<AppliedJobs />} />
