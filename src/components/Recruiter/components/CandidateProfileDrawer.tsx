@@ -591,6 +591,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
       rawProfile = JSON.parse(candidate.profile);
       profileData = { ...candidate, ...rawProfile };
     } catch (e) {
+      console.warn('Profile parsing failed, using fallback:', e);
       rawProfile = {};
       profileData = candidate;
     }
@@ -609,8 +610,14 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
 
   // Build lists of fields from the JSONB profile
   const knownComposite = new Set(['training','education','technicalSkills','softSkills','experience']);
+  // Fields to exclude from Profile Information display (metadata/internal fields)
+  const excludedFields = new Set([
+    '_', 'imported_at', 'contact_number_dial_code', 'id', 'student_id', 
+    'created_at', 'updated_at', 'last_updated'
+  ]);
+  
   const primitiveEntries = Object.entries(rawProfile || {})
-    .filter(([k,v]) => !knownComposite.has(k) && isPrimitive(v) && !isEmpty(v))
+    .filter(([k,v]) => !knownComposite.has(k) && !excludedFields.has(k) && isPrimitive(v) && !isEmpty(v))
     .sort(([a],[b]) => a.localeCompare(b));
 
   const otherArrays = Object.entries(rawProfile || {})
@@ -903,104 +910,362 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                   </div>
                 )}
 
-                {/* Existing tabs remain unchanged */}
+                {/* Projects Tab */}
                 {activeTab === 'projects' && (
                   <div className="p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Projects & Portfolio</h3>
                     <div className="space-y-4">
-                      {candidate.projects?.map((project, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">{project.title}</h4>
-                              <p className="text-sm text-gray-600 mt-1">{project.description}</p>
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {project.tech?.map((tech, techIndex) => (
-                                  <span
-                                    key={techIndex}
-                                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
-                                  >
-                                    {tech}
-                                  </span>
-                                ))}
+                      {profileData.projects && profileData.projects.length > 0 ? (
+                        profileData.projects.map((project: any, index: number) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center">
+                                  <h4 className="font-medium text-gray-900">{project.title || project.name || `Project ${index + 1}`}</h4>
+                                  {project.status && (
+                                    <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                                      project.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                                      project.status === 'ongoing' ? 'bg-blue-100 text-blue-800' : 
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {project.status}
+                                    </span>
+                                  )}
+                                </div>
+                                {project.description && (
+                                  <p className="text-sm text-gray-600 mt-2">{project.description}</p>
+                                )}
+                                {project.role && (
+                                  <p className="text-sm text-gray-500 mt-1"><span className="font-medium">Role:</span> {project.role}</p>
+                                )}
+                                {project.duration && (
+                                  <p className="text-sm text-gray-500 mt-1"><span className="font-medium">Duration:</span> {project.duration}</p>
+                                )}
+                                {(project.technologies || project.tech) && (
+                                  <div className="flex flex-wrap gap-1 mt-3">
+                                    {(project.technologies || project.tech).map((tech: string, techIndex: number) => (
+                                      <span
+                                        key={techIndex}
+                                        className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary-50 text-primary-700 border border-primary-200"
+                                      >
+                                        {tech}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {project.link && (
+                                  <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:text-primary-700 mt-2 inline-flex items-center">
+                                    View Project →
+                                  </a>
+                                )}
                               </div>
+                              <BeakerIcon className="h-6 w-6 text-gray-400 ml-4 flex-shrink-0" />
                             </div>
-                            <BeakerIcon className="h-6 w-6 text-gray-400 ml-4" />
                           </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-12">
+                          <BeakerIcon className="mx-auto h-12 w-12 text-gray-400" />
+                          <p className="text-gray-500 mt-2">No projects available</p>
+                          <p className="text-gray-400 text-sm mt-1">Student hasn't added any projects yet</p>
                         </div>
-                      )) || (
-                        <p className="text-gray-500 text-center py-8">No projects available</p>
                       )}
                     </div>
                   </div>
                 )}
 
-                {/* Other tabs unchanged */}
+                {/* Assessments Tab */}
                 {activeTab === 'assessments' && (
                   <div className="p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Assessments</h3>
-                    <p className="text-gray-500 text-center py-8">Assessment results will be displayed here</p>
-                  </div>
-                )}
-
-                {activeTab === 'certificates' && (
-                  <div className="p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Certificates</h3>
-                    <p className="text-gray-500 text-center py-8">Certificates will be displayed here</p>
-                  </div>
-                )}
-
-                {activeTab === 'verification' && (
-                  <div className="p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Verification Provenance</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Assessments & Test Scores</h3>
                     <div className="space-y-4">
-                      {candidate.badges.map((badge, index) => {
-                        const verificationInfo = {
-                          self_verified: {
-                            title: 'Self Verified',
-                            description: 'Student has self-declared this information',
-                            date: 'Sep 20, 2025',
-                            verifier: 'Student',
-                            status: 'pending'
-                          },
-                          institution_verified: {
-                            title: 'Institution Verified',
-                            description: 'Verified by college examination cell',
-                            date: 'Sep 25, 2025',
-                            verifier: 'College Exam Cell',
-                            status: 'verified'
-                          },
-                          external_audited: {
-                            title: 'External Audited',
-                            description: 'Third-party verification completed',
-                            date: 'Sep 28, 2025',
-                            verifier: 'External Auditor',
-                            status: 'audited'
-                          }
-                        };
-
-                        const info = verificationInfo[badge];
-                        const statusColors = {
-                          pending: 'text-yellow-600 bg-yellow-50 border-yellow-200',
-                          verified: 'text-blue-600 bg-blue-50 border-blue-200',
-                          audited: 'text-green-600 bg-green-50 border-green-200'
-                        };
-
-                        return (
-                          <div key={index} className={`border rounded-lg p-4 ${statusColors[info.status]}`}>
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h4 className="font-medium">{info.title}</h4>
-                                <p className="text-sm mt-1">{info.description}</p>
-                                <p className="text-xs mt-2">
-                                  Verified on {info.date} by {info.verifier}
-                                </p>
+                      {profileData.assessments && profileData.assessments.length > 0 ? (
+                        profileData.assessments.map((assessment: any, index: number) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-medium text-gray-900">{assessment.name || assessment.title || `Assessment ${index + 1}`}</h4>
+                                  {assessment.score && (
+                                    <span className="text-lg font-bold text-primary-600">{assessment.score}</span>
+                                  )}
+                                </div>
+                                {assessment.type && (
+                                  <p className="text-sm text-gray-500 mt-1">{assessment.type}</p>
+                                )}
+                                {assessment.date && (
+                                  <p className="text-xs text-gray-400 mt-1">Completed on: {assessment.date}</p>
+                                )}
+                                {assessment.percentile && (
+                                  <div className="mt-3">
+                                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                      <span>Percentile</span>
+                                      <span>{assessment.percentile}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                      <div className="bg-green-500 h-2 rounded-full" style={{ width: `${assessment.percentile}%` }}></div>
+                                    </div>
+                                  </div>
+                                )}
+                                {assessment.badge && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mt-2">
+                                    <TrophyIcon className="h-3 w-3 mr-1" />
+                                    {assessment.badge}
+                                  </span>
+                                )}
                               </div>
-                              <ShieldCheckIcon className="h-6 w-6" />
                             </div>
                           </div>
-                        );
-                      })}
+                        ))
+                      ) : (
+                        <div className="text-center py-12">
+                          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <p className="text-gray-500 mt-2">No assessments available</p>
+                          <p className="text-gray-400 text-sm mt-1">Assessment results will appear here once completed</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Certificates Tab */}
+                {activeTab === 'certificates' && (
+                  <div className="p-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Certificates & Credentials</h3>
+                    <div className="space-y-4">
+                      {profileData.certificates && profileData.certificates.length > 0 ? (
+                        profileData.certificates.map((cert: any, index: number) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                            <div className="flex items-start">
+                              <div className="flex-shrink-0">
+                                <div className="h-12 w-12 bg-primary-100 rounded-lg flex items-center justify-center">
+                                  <svg className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                  </svg>
+                                </div>
+                              </div>
+                              <div className="ml-4 flex-1">
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <h4 className="font-medium text-gray-900">{cert.name || cert.title || `Certificate ${index + 1}`}</h4>
+                                    {cert.issuer && (
+                                      <p className="text-sm text-gray-600 mt-1">Issued by: {cert.issuer}</p>
+                                    )}
+                                    {cert.issue_date && (
+                                      <p className="text-xs text-gray-500 mt-1">Issue Date: {cert.issue_date}</p>
+                                    )}
+                                    {cert.expiry_date && (
+                                      <p className="text-xs text-gray-500">Expires: {cert.expiry_date}</p>
+                                    )}
+                                    {cert.credential_id && (
+                                      <p className="text-xs text-gray-400 mt-2">ID: {cert.credential_id}</p>
+                                    )}
+                                  </div>
+                                  {cert.verified && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      <ShieldCheckIcon className="h-3 w-3 mr-1" />
+                                      Verified
+                                    </span>
+                                  )}
+                                </div>
+                                {cert.skills && cert.skills.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-3">
+                                    {cert.skills.map((skill: string, skillIndex: number) => (
+                                      <span key={skillIndex} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                        {skill}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {cert.url && (
+                                  <a href={cert.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:text-primary-700 mt-2 inline-flex items-center">
+                                    View Certificate →
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-12">
+                          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                          </svg>
+                          <p className="text-gray-500 mt-2">No certificates available</p>
+                          <p className="text-gray-400 text-sm mt-1">Certificates and credentials will appear here</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Verification Tab */}
+                {activeTab === 'verification' && (
+                  <div className="p-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Verification & Provenance</h3>
+                    
+                    {/* Verification Badges */}
+                    <div className="mb-6">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Verification Status</h4>
+                      <div className="space-y-3">
+                        {candidate.badges && candidate.badges.length > 0 ? (
+                          candidate.badges.map((badge: string, index: number) => {
+                            const verificationInfo: any = {
+                              self_verified: {
+                                title: 'Self Verified',
+                                description: 'Student has self-declared this information',
+                                date: profileData.imported_at || 'N/A',
+                                verifier: 'Student',
+                                status: 'pending',
+                                icon: '👤'
+                              },
+                              institution_verified: {
+                                title: 'Institution Verified',
+                                description: 'Verified by college/university',
+                                date: profileData.imported_at || 'N/A',
+                                verifier: profileData.college_school_name || 'Institution',
+                                status: 'verified',
+                                icon: '🎓'
+                              },
+                              external_audited: {
+                                title: 'External Audited',
+                                description: 'Third-party verification completed',
+                                date: profileData.imported_at || 'N/A',
+                                verifier: 'External Auditor',
+                                status: 'audited',
+                                icon: '✓'
+                              }
+                            };
+
+                            const info = verificationInfo[badge] || {
+                              title: badge,
+                              description: 'Verification status',
+                              date: 'N/A',
+                              verifier: 'System',
+                              status: 'pending',
+                              icon: '•'
+                            };
+                            
+                            const statusColors: any = {
+                              pending: 'bg-yellow-50 border-yellow-200',
+                              verified: 'bg-blue-50 border-blue-200',
+                              audited: 'bg-green-50 border-green-200'
+                            };
+
+                            return (
+                              <div key={index} className={`border rounded-lg p-4 ${statusColors[info.status]}`}>
+                                <div className="flex items-start justify-between">
+                                  <div className="flex items-start">
+                                    <div className="text-2xl mr-3">{info.icon}</div>
+                                    <div>
+                                      <h4 className="font-medium text-gray-900">{info.title}</h4>
+                                      <p className="text-sm text-gray-600 mt-1">{info.description}</p>
+                                      <div className="mt-2 text-xs text-gray-500">
+                                        <p>Verified by: {info.verifier}</p>
+                                        {info.date && info.date !== 'N/A' && (
+                                          <p>Date: {new Date(info.date).toLocaleDateString()}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <ShieldCheckIcon className={`h-6 w-6 flex-shrink-0 ${
+                                    info.status === 'verified' ? 'text-blue-600' :
+                                    info.status === 'audited' ? 'text-green-600' :
+                                    'text-yellow-600'
+                                  }`} />
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p className="text-sm text-gray-500">No verification badges available</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Verification Trail */}
+                    <div className="mt-8">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Verification Trail</h4>
+                      <div className="space-y-3">
+                        {/* Education Verification */}
+                        {profileData.education && profileData.education.length > 0 && (
+                          <div className="border border-gray-200 rounded-lg p-3">
+                            <div className="flex items-start">
+                              <AcademicCapIcon className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">Education Records</p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {profileData.education.length} education record(s) on file
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Source: {profileData.university || profileData.college_school_name || 'Institution'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Training Verification */}
+                        {profileData.training && profileData.training.length > 0 && (
+                          <div className="border border-gray-200 rounded-lg p-3">
+                            <div className="flex items-start">
+                              <BeakerIcon className="h-5 w-5 text-purple-600 mr-2 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">Training Records</p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {profileData.training.length} training program(s) documented
+                                </p>
+                                {profileData.trainer_name && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Trainer: {profileData.trainer_name}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Skills Verification */}
+                        {((profileData.technicalSkills && profileData.technicalSkills.length > 0) || 
+                          (profileData.softSkills && profileData.softSkills.length > 0)) && (
+                          <div className="border border-gray-200 rounded-lg p-3">
+                            <div className="flex items-start">
+                              <ShieldCheckIcon className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">Skills Assessment</p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {(profileData.technicalSkills?.length || 0) + (profileData.softSkills?.length || 0)} skill(s) verified
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Technical: {profileData.technicalSkills?.length || 0}, Soft: {profileData.softSkills?.length || 0}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Profile Import Info */}
+                        {profileData.imported_at && (
+                          <div className="border border-gray-200 rounded-lg p-3">
+                            <div className="flex items-start">
+                              <svg className="h-5 w-5 text-gray-600 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">Profile Import</p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  Last imported: {new Date(profileData.imported_at).toLocaleString()}
+                                </p>
+                                {profileData.nm_id && (
+                                  <p className="text-xs text-gray-500 mt-1">NM ID: {profileData.nm_id}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

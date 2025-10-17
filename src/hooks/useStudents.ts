@@ -42,6 +42,7 @@ export interface UICandidate {
   badges: string[]
   ai_score_overall: number
   last_updated?: string
+  profile?: any  // Original profile data for detailed view
 }
 
 function safeParseProfile(input: unknown): StudentProfile | null {
@@ -102,6 +103,7 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     badges: ['institution_verified'],
     ai_score_overall: 0,
     last_updated: row.updatedAt || profile.imported_at || row.createdAt,
+    profile: row.profile,  // Pass through original profile for drawer
   }
 }
 
