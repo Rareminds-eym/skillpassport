@@ -22,6 +22,7 @@ const ManageUsers = lazy(() => import('../pages/admin/ManageUsers'));
 const Reports = lazy(() => import('../pages/admin/Reports'));
 
 // Recruiter pages
+const RecruiterProfile = lazy(() => import('../pages/recruiter/Profile'));
 const Overview = lazy(() => import('../pages/recruiter/Overview'));
 const TalentPool = lazy(() => import('../pages/recruiter/TalentPool'));
 const Pipelines = lazy(() => import('../pages/recruiter/Pipelines'));

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { 
   BellIcon, 
   UserCircleIcon,
@@ -8,11 +9,14 @@ import {
 import { recentActivity } from '../../../data/sampleData'
 import { HeaderProps } from '../../../types/recruiter'
 import { useAuth } from '../../../context/AuthContext'
+import NotificationPanel from './NotificationPanel'
 
 const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
   const [showNotifications, setShowNotifications] = useState<boolean>(false)
   const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false)
+  const [unreadCount, setUnreadCount] = useState<number>(0)
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
