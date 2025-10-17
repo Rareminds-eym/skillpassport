@@ -830,8 +830,14 @@ const StudentDashboard = () => {
                 </Card>
 
                 {/* Student QR Code */}
-                {/* <Card className="border-2 border-purple-500 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
-                  <CardContent className="flex flex-col items-center justify-center py-8 px-6">
+                <Card className="border-2 border-purple-500 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-white text-lg font-bold justify-center">
+                      <QrCode className="w-5 h-5" />
+                      Your QR Profile
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col items-center justify-center py-6 px-6">
                     <div className="bg-white p-6 rounded-2xl shadow-xl">
                       <QRCodeSVG
                         value={qrCodeValue}
@@ -844,11 +850,14 @@ const StudentDashboard = () => {
                     </div>
                     <div className="mt-6 text-center">
                       <p className="text-white text-lg font-bold tracking-wide">
-                        PASSPORT-ID: SP-{userEmail ? userEmail.split('@')[0].toUpperCase().slice(0, 5) : '62111'}
+                        PASSPORT-ID: {studentData?.passport_id || studentData?.id?.toUpperCase().slice(0, 8) || (userEmail ? userEmail.split('@')[0].toUpperCase().slice(0, 5) : 'STUDENT')}
+                      </p>
+                      <p className="text-white/80 text-sm mt-2">
+                        Scan to view your profile card
                       </p>
                     </div>
                   </CardContent>
-                </Card> */}
+                </Card>
               </div>
             </div>
           )}
