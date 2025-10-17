@@ -34,9 +34,14 @@ const Activities = lazy(() => import('../pages/recruiter/Activities'));
 
 const StudentDashboard = lazy(() => import('../pages/student/Dashboard'));
 const Profile = lazy(() => import('../pages/student/Profile'));
+const MySkills = lazy(() => import('../pages/student/MySkills'));
+const MyTraining = lazy(() => import('../pages/student/MyTraining'));
+const MyExperience = lazy(() => import('../pages/student/MyExperience'));
+const Opportunities = lazy(() => import('../pages/student/Opportunities'));
 const AppliedJobs = lazy(() => import('../pages/student/AppliedJobs'));
 const BrowseJobs = lazy(() => import('../pages/student/BrowseJobs'));
-
+const DebugQRTest = lazy(() => import('../pages/DebugQRTest'));
+const StudentPublicViewer = lazy(() => import('../components/Students/components/StudentPublicViewer'));
 const AppRoutes = () => {
   return (
     <Suspense fallback={<Loader />}>
@@ -49,6 +54,8 @@ const AppRoutes = () => {
           <Route path="/login/recruiter" element={<LoginRecruiter />} />
           <Route path="/login/admin" element={<LoginAdmin />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/debug-qr" element={<DebugQRTest />} />
+          <Route path="/student/profile/:email" element={<StudentPublicViewer />} />
         </Route>
 
         <Route
@@ -93,8 +100,12 @@ const AppRoutes = () => {
           }
         >
           <Route path="dashboard" element={<StudentDashboard />} />
-          <Route path="profile" element={<Profile />} />
+          <Route path="dashboard/:id" element={<Profile />} />
           <Route path="profile/:email" element={<Profile />} />
+          <Route path="my-skills" element={<MySkills />} />
+          <Route path="my-training" element={<MyTraining />} />
+          <Route path="my-experience" element={<MyExperience />} />
+          <Route path="opportunities" element={<Opportunities />} />
           <Route path="applied-jobs" element={<AppliedJobs />} />
           <Route path="browse-jobs" element={<BrowseJobs />} />
           <Route path="" element={<Navigate to="/student/dashboard" replace />} />
