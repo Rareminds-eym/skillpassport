@@ -54,6 +54,7 @@ const AppRoutes = () => {
           <Route path="/login/recruiter" element={<LoginRecruiter />} />
           <Route path="/login/admin" element={<LoginAdmin />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/debug-qr" element={<DebugQRTest />} />
         </Route>
 
         <Route
