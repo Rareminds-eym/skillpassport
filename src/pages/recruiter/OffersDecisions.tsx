@@ -18,6 +18,7 @@ import {
   HandRaisedIcon
 } from '@heroicons/react/24/outline';
 import { offersData } from '../../data/sampleData';
+import SearchBar from '../../components/common/SearchBar';
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -395,6 +396,7 @@ const OffersDecisions = () => {
   const [offers, setOffers] = useState(offersData);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleCreateOffer = (newOffer) => {
     setOffers(prev => [newOffer, ...prev]);
@@ -424,9 +426,21 @@ const OffersDecisions = () => {
     }
   };
 
-  const filteredOffers = filterStatus === 'all' 
-    ? offers 
-    : offers.filter(offer => offer.status === filterStatus);
+  // Filter offers based on status and search query
+  const filteredOffers = offers.filter(offer => {
+    // Apply status filter
+    const matchesStatus = filterStatus === 'all' || offer.status === filterStatus;
+    
+    // Apply search filter
+    const matchesSearch = !searchQuery.trim() || 
+      offer.candidate_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      offer.job_title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      offer.template?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      offer.offered_ctc?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      offer.notes?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return matchesStatus && matchesSearch;
+  });
 
   const stats = {
     total: offers.length,
@@ -452,20 +466,70 @@ const OffersDecisions = () => {
     : 0;
 
   return (
-    <div className="p-6 pb-20 md:pb-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Offers & Decisions</h1>
-          <p className="text-gray-600 mt-1">Manage job offers and candidate responses</p>
+    <div className="p-4 md:p-6 pb-20 md:pb-6">
+      {/* Header - responsive layout */}
+      <div className="mb-6">
+        {/* Desktop: single row with left text, centered search, right buttons */}
+        <div className="hidden lg:flex items-center bg-white border border-gray-200 rounded-lg p-4">
+          {/* Left: title and subtitle (fixed width) */}
+          <div className="w-80 flex-shrink-0 pr-4 text-left">
+            <h1 className="text-xl font-semibold text-gray-900">Offers & Decisions</h1>
+            <p className="text-sm text-gray-600 mt-0.5">Manage job offers and candidate responses</p>
+          </div>
+
+          {/* Middle: centered search */}
+          <div className="flex-1 px-4">
+            <div className="max-w-xl mx-auto">
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search offers by candidate, job title, template, or CTC..."
+                size="md"
+              />
+            </div>
+          </div>
+
+          {/* Right: action button (fixed width) */}
+          <div className="w-80 flex-shrink-0 pl-4 flex items-center justify-end">
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Create Offer
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
-        >
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Create Offer
-        </button>
+
+        {/* Mobile/Tablet: stacked layout */}
+        <div className="lg:hidden space-y-4">
+          {/* Title and subtitle */}
+          <div className="text-left">
+            <h1 className="text-xl font-semibold text-gray-900">Offers & Decisions</h1>
+            <p className="text-sm text-gray-600 mt-0.5">Manage job offers and candidate responses</p>
+          </div>
+
+          {/* Search bar */}
+          <div>
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search offers..."
+              size="md"
+            />
+          </div>
+
+          {/* Action button */}
+          <div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="w-full inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Create Offer
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Statistics */}
@@ -477,7 +541,7 @@ const OffersDecisions = () => {
             </div>
             <div className="ml-3">
               <p className="text-xs text-gray-600">Total Offers</p>
-              <p className="text-xl font-semibold text-gray-900">{stats.total}</p>
+              <p className="text-xl font-semibold text-gray-900">{filteredOffers.length}{searchQuery && <span className="text-sm text-gray-500"> of {stats.total}</span>}</p>
             </div>
           </div>
         </div>
@@ -634,11 +698,22 @@ const OffersDecisions = () => {
           <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No offers found</h3>
           <p className="mt-1 text-sm text-gray-500">
-            {filterStatus === 'all' 
-              ? 'Get started by creating your first offer.'
-              : `No offers with status "${filterStatus}" found.`
-            }
+            {searchQuery ? (
+              <>No offers match your search "{searchQuery}" {filterStatus !== 'all' && `with status "${filterStatus}"`}</>
+            ) : filterStatus === 'all' ? (
+              'Get started by creating your first offer.'
+            ) : (
+              `No offers with status "${filterStatus}" found.`
+            )}
           </p>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="mt-3 inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200"
+            >
+              Clear search
+            </button>
+          )}
         </div>
       )}
 

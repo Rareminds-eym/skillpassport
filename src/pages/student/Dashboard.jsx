@@ -36,8 +36,10 @@ import {
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useOpportunities } from '../../hooks/useOpportunities';
 import { useRecentUpdates } from '../../hooks/useRecentUpdates';
+import { useRecentUpdatesLegacy } from '../../hooks/useRecentUpdatesLegacy'; // Legacy hook for backward compatibility
 import { supabase } from '../../lib/supabaseClient';
 import '../../utils/testRecentUpdates'; // Import test utility for debugging
+import { debugRecentUpdates } from '../../utils/debugRecentUpdates'; // Debug utility
 
 const StudentDashboard = () => {
   const location = useLocation();
@@ -128,6 +130,23 @@ const StudentDashboard = () => {
     refreshRecentUpdates
   } = useRecentUpdates();
 
+  // Fallback to legacy hook if Supabase Auth is not set up
+  const {
+    recentUpdates: recentUpdatesLegacy,
+    loading: recentUpdatesLoadingLegacy,
+    error: recentUpdatesErrorLegacy,
+    refreshRecentUpdates: refreshRecentUpdatesLegacy
+  } = useRecentUpdatesLegacy();
+
+  // Use legacy data if auth-based data is empty
+  const finalRecentUpdates = (recentUpdates.length > 0 ? recentUpdates : recentUpdatesLegacy).filter(update => update && update.message);
+  const finalLoading = recentUpdatesLoading || recentUpdatesLoadingLegacy;
+  const finalError = recentUpdatesError || recentUpdatesErrorLegacy;
+  const finalRefresh = () => {
+    refreshRecentUpdates();
+    refreshRecentUpdatesLegacy();
+  };
+
   // Debug log for authentication and student data
   useEffect(() => {
     console.log('👤 Dashboard: Student data state changed:', {
@@ -150,13 +169,63 @@ const StudentDashboard = () => {
   // Debug log for recent updates
   useEffect(() => {
     console.log('📢 Dashboard: Recent updates state changed:', {
-      recentUpdates,
-      loading: recentUpdatesLoading,
-      error: recentUpdatesError,
-      count: recentUpdates?.length,
+      recentUpdates: finalRecentUpdates,
+      loading: finalLoading,
+      error: finalError,
+      count: finalRecentUpdates?.length,
       userEmail
     });
-  }, [recentUpdates, recentUpdatesLoading, recentUpdatesError, userEmail]);
+  }, [finalRecentUpdates, finalLoading, finalError, userEmail]);
+
+  // Poll for new opportunities and refresh Recent Updates
+  useEffect(() => {
+    if (!userEmail || isViewingOthersProfile) return;
+
+    console.log('🔔 Setting up real-time subscription for opportunities...');
+
+    // Subscribe to real-time changes in opportunities table
+    const channel = supabase
+      .channel('opportunities-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'opportunities'
+        },
+        (payload) => {
+          console.log('🆕 New opportunity detected:', payload.new);
+          
+          // Refresh opportunities list
+          refreshOpportunities();
+          
+          // Refresh Recent Updates to show the new opportunity
+          setTimeout(() => {
+            console.log('🔄 Refreshing Recent Updates after new opportunity...');
+            finalRefresh();
+          }, 1000); // Small delay to ensure DB trigger has fired
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'opportunities'
+        },
+        (payload) => {
+          console.log('✏️ Opportunity updated:', payload.new);
+          refreshOpportunities();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      console.log('� Unsubscribing from opportunities changes...');
+      supabase.removeChannel(channel);
+    };
+  }, [userEmail, isViewingOthersProfile]);
 
   // Direct Supabase test
   useEffect(() => {
@@ -173,6 +242,9 @@ const StudentDashboard = () => {
           .select('*', { count: 'exact' });
           
         console.log('🧪 Direct test result:', { data, error, count });
+        
+        // Run debug for recent updates
+        await debugRecentUpdates();
       } catch (err) {
         console.error('🧪 Direct test error:', err);
       }
@@ -211,6 +283,7 @@ const StudentDashboard = () => {
 
   // Save handler with DB update logic (like ProfileEditSection)
   const handleSave = async (section, data) => {
+    // Immediately update UI
     setUserData(prev => ({
       ...prev,
       [section]: data
@@ -243,10 +316,15 @@ const StudentDashboard = () => {
             return;
         }
         if (result?.success) {
+          // Refresh from database to ensure sync
           await refresh();
+          
+          // Refresh Recent Updates to show the new activity
+          console.log('🔄 Refreshing Recent Updates after save...');
+          await finalRefresh();
         }
       } catch (err) {
-        // Optionally handle error
+        console.error('Error saving:', err);
       }
     }
   };
@@ -356,7 +434,7 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 p-0">
-          {(showAllTechnicalSkills ? userData.technicalSkills : userData.technicalSkills.slice(0,2)).map((skill, idx) => (
+          {(showAllTechnicalSkills ? userData.technicalSkills.filter(skill => skill.enabled !== false) : userData.technicalSkills.filter(skill => skill.enabled !== false).slice(0,2)).map((skill, idx) => (
             <div key={skill.id || `tech-skill-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
               <div className="flex items-center justify-between">
                 <div key={`tech-skill-info-${skill.id}`}> 
@@ -369,7 +447,7 @@ const StudentDashboard = () => {
               </div>
             </div>
           ))}
-          {userData.technicalSkills.length > 2 && (
+          {userData.technicalSkills.filter(skill => skill.enabled !== false).length > 2 && (
             <Button
               variant="outline"
               onClick={() => setShowAllTechnicalSkills((v) => !v)}
@@ -390,7 +468,7 @@ const StudentDashboard = () => {
               <span>My Education</span>
               <span className="ml-2">
                 <Badge className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm font-semibold shadow-none">
-                  {userData.education.length} Qualifications
+                  {userData.education.filter(education => education.enabled !== false).length} Qualifications
                 </Badge>
               </span>
             </CardTitle>
@@ -404,7 +482,7 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 p-0">
-          {(showAllEducation ? userData.education : userData.education.slice(0,2)).map((education, idx) => (
+          {(showAllEducation ? userData.education.filter(education => education.enabled !== false) : userData.education.filter(education => education.enabled !== false).slice(0,2)).map((education, idx) => (
             <div key={education.id || `edu-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
               <div className="flex items-center justify-between">
                 <div>
@@ -429,7 +507,7 @@ const StudentDashboard = () => {
               </div>
             </div>
           ))}
-          {userData.education.length > 2 && (
+          {userData.education.filter(education => education.enabled !== false).length > 2 && (
             <Button
               variant="outline"
               onClick={() => setShowAllEducation((v) => !v)}
@@ -459,7 +537,7 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 p-0">
-          {(showAllTraining ? userData.training : userData.training.slice(0,2)).map((training, idx) => (
+          {(showAllTraining ? userData.training.filter(training => training.enabled !== false) : userData.training.filter(training => training.enabled !== false).slice(0,2)).map((training, idx) => (
             <div key={training.id || `training-${training.course}-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
               <div className="flex items-center justify-between mb-1">
                 <span className="font-bold text-gray-900 text-base">{training.course}</span>
@@ -471,7 +549,7 @@ const StudentDashboard = () => {
               <span className="text-xs text-blue-600 font-semibold">{training.progress}% Complete</span>
             </div>
           ))}
-          {userData.training.length > 2 && (
+          {userData.training.filter(training => training.enabled !== false).length > 2 && (
             <Button
               variant="outline"
               onClick={() => setShowAllTraining((v) => !v)}
@@ -501,7 +579,7 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 p-0">
-          {(showAllExperience ? userData.experience : userData.experience.slice(0,2)).map((exp, idx) => (
+          {(showAllExperience ? userData.experience.filter(exp => exp.enabled !== false) : userData.experience.filter(exp => exp.enabled !== false).slice(0,2)).map((exp, idx) => (
             <div key={exp.id || `${exp.role}-${exp.organization}-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
               <div className="flex items-center justify-between">
                 <div>
@@ -518,7 +596,7 @@ const StudentDashboard = () => {
               </div>
             </div>
           ))}
-          {userData.experience.length > 2 && (
+          {userData.experience.filter(exp => exp.enabled !== false).length > 2 && (
             <Button
               variant="outline"
               onClick={() => setShowAllExperience((v) => !v)}
@@ -548,7 +626,7 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 p-0">
-          {(showAllSoftSkills ? userData.softSkills : userData.softSkills.slice(0,2)).map((skill, idx) => (
+          {(showAllSoftSkills ? userData.softSkills.filter(skill => skill.enabled !== false) : userData.softSkills.filter(skill => skill.enabled !== false).slice(0,2)).map((skill, idx) => (
             <div key={skill.id || `soft-skill-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
               <div className="flex items-center justify-between">
                 <div key={`skill-info-${skill.id}`}>
@@ -561,7 +639,7 @@ const StudentDashboard = () => {
               </div>
             </div>
           ))}
-          {userData.softSkills.length > 2 && (
+          {userData.softSkills.filter(skill => skill.enabled !== false).length > 2 && (
             <Button
               variant="outline"
               onClick={() => setShowAllSoftSkills((v) => !v)}
@@ -675,51 +753,56 @@ const StudentDashboard = () => {
                       Recent Updates
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4 px-0 py-4">
-                    {recentUpdatesLoading ? (
+                  <CardContent className="px-0 py-4">
+                    {finalLoading ? (
                       <div className="flex justify-center items-center py-8">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#1976D2]"></div>
                       </div>
-                    ) : recentUpdatesError ? (
+                    ) : finalError ? (
                       <div className="text-center py-8">
                         <p className="text-red-500 mb-2">Failed to load recent updates</p>
                         <Button 
-                          onClick={refreshRecentUpdates}
+                          onClick={finalRefresh}
                           size="sm" 
                           className="bg-[#1976D2] hover:bg-blue-700 text-white"
                         >
                           Retry
                         </Button>
                       </div>
-                    ) : recentUpdates.length === 0 ? (
+                    ) : finalRecentUpdates.length === 0 ? (
                       <div className="text-center py-8">
                         <p className="text-gray-500">No recent updates available</p>
                       </div>
                     ) : (
-                      (showAllRecentUpdates || !recentUpdatesCollapsed
-                        ? recentUpdates
-                        : recentUpdates.slice(0, 1)
-                      ).map((update, idx) => (
-                        <div key={update.id || `update-${update.timestamp}-${idx}`} className="flex items-start gap-3 px-6 py-4 bg-white rounded-xl border-l-4 border-[#2196F3] mb-2">
-                          <div className="w-2 h-2 bg-[#FF9800] rounded-full mt-2 flex-shrink-0" />
-                          <div>
-                            <p className="text-base font-medium text-gray-900 mb-1">{update.message}</p>
-                            <p className="text-xs text-[#1976D2] font-medium">{update.timestamp}</p>
-                          </div>
+                      <>
+                        <div 
+                          className={`space-y-2 ${showAllRecentUpdates ? 'max-h-96 overflow-y-auto pr-2 scroll-smooth recent-updates-scroll' : ''}`}
+                        >
+                          {(showAllRecentUpdates 
+                            ? finalRecentUpdates
+                            : finalRecentUpdates.slice(0, 5)
+                          ).filter(update => update && update.message).map((update, idx) => (
+                            <div key={update.id || `update-${update.timestamp}-${idx}`} className="flex items-start gap-3 px-6 py-4 bg-white rounded-xl border-l-4 border-[#2196F3] mb-2 hover:shadow-md transition-shadow">
+                              <div className="w-2 h-2 bg-[#FF9800] rounded-full mt-2 flex-shrink-0" />
+                              <div>
+                                <p className="text-base font-medium text-gray-900 mb-1">{update.message}</p>
+                                <p className="text-xs text-[#1976D2] font-medium">{update.timestamp}</p>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))
-                    )}
-                    {recentUpdates.length > 1 && recentUpdatesCollapsed && !showAllRecentUpdates && (
-                      <Button
-                        variant="outline"
-                        className="w-full border-2 border-[#2196F3] text-[#2196F3] hover:bg-blue-50 font-semibold rounded-lg mt-2"
-                        onClick={() => {
-                          setShowAllRecentUpdates(true);
-                          setRecentUpdatesSticky(false);
-                        }}
-                      >
-                        Show More
-                      </Button>
+                        {finalRecentUpdates.length > 5 && (
+                          <div className="px-6 mt-4">
+                            <Button
+                              variant="outline"
+                              className="w-full border-2 border-[#2196F3] text-[#2196F3] hover:bg-blue-50 font-semibold rounded-lg transition-colors"
+                              onClick={() => setShowAllRecentUpdates(!showAllRecentUpdates)}
+                            >
+                              {showAllRecentUpdates ? 'See Less' : 'See More'}
+                            </Button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </CardContent>
                 </div>
@@ -738,32 +821,49 @@ const StudentDashboard = () => {
                   <CardContent className="space-y-3">
                     {suggestions.map((suggestion, idx) => (
                       <div key={suggestion.id || `suggestion-${idx}`} className="p-3 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-lg border-l-2 border-l-amber-500 hover:shadow-sm transition-shadow">
-                        <p className="text-sm font-medium text-amber-900">{suggestion}</p>
+                        <p className="text-sm font-medium text-amber-900">
+                          {typeof suggestion === 'string' ? suggestion : suggestion.message || suggestion}
+                        </p>
                       </div>
                     ))}
                   </CardContent>
                 </Card>
 
                 {/* Student QR Code */}
-                {/* <Card className="border-2 border-purple-500 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
-                  <CardContent className="flex flex-col items-center justify-center py-8 px-6">
-                    <div className="bg-white p-6 rounded-2xl shadow-xl">
-                      <QRCodeSVG
-                        value={qrCodeValue}
-                        size={180}
-                        level="H"
-                        includeMargin={true}
-                        bgColor="#ffffff"
-                        fgColor="#000000"
-                      />
-                    </div>
-                    <div className="mt-6 text-center">
-                      <p className="text-white text-lg font-bold tracking-wide">
-                        PASSPORT-ID: SP-{userEmail ? userEmail.split('@')[0].toUpperCase().slice(0, 5) : '62111'}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card> */}
+                {/* {userEmail && (
+                  <Card className="border-2 border-purple-500 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-white text-lg font-bold justify-center">
+                        <QrCode className="w-5 h-5" />
+                        Your QR Profile
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-col items-center justify-center py-6 px-6">
+                      <div className="bg-white p-6 rounded-2xl shadow-xl">
+                        <QRCodeSVG
+                          value={qrCodeValue}
+                          size={180}
+                          level="H"
+                          includeMargin={true}
+                          bgColor="#ffffff"
+                          fgColor="#000000"
+                        />
+                      </div>
+                      <div className="mt-6 text-center">
+                        <p className="text-white text-lg font-bold tracking-wide">
+                          PASSPORT-ID: {
+                            studentData?.passport_id || 
+                            (studentData?.id ? studentData.id.toUpperCase().slice(0, 8) : null) || 
+                            (userEmail ? userEmail.split('@')[0].toUpperCase().slice(0, 5) : 'STUDENT')
+                          }
+                        </p>
+                        <p className="text-white/80 text-sm mt-2">
+                          Scan to view your profile card
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )} */}
               </div>
             </div>
           )}
