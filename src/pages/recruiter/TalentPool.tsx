@@ -625,7 +625,7 @@ const TalentPool = () => {
   const { onViewProfile } = useOutletContext<RecruiterOutletContext>()
   const { searchQuery, setSearchQuery } = useSearch();
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [showShortlistModal, setShowShortlistModal] = useState(false);
   const [showInterviewModal, setShowInterviewModal] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
