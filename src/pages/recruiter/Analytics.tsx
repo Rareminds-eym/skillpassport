@@ -35,9 +35,14 @@ import AdvancedFilters from '../../components/Recruiter/components/AdvancedFilte
 import DateRangePicker from '../../components/Recruiter/components/DateRangePicker';
 import ChartDownloadButton from '../../components/ChartDownloadButton';
 import { AnalyticsFilters } from '../../types/recruiter';
+
+// React Query Hooks
 import { useRecruitmentFunnel } from '../../hooks/useRecruitmentFunnel';
 import { useAnalyticsKPIs } from '../../hooks/useAnalyticsKPIs';
-import { useTopHiringColleges } from '../../hooks/useTopHiringColleges';
+import { useCoursePerformance } from '../../hooks/useCoursePerformance';
+import { useDiversityData } from '../../hooks/useDiversityData';
+import { useSpeedAnalytics } from '../../hooks/useSpeedAnalytics';
+import DiversityExportModal from '../../components/Recruiter/modals/DiversityExportModal';
 import type { FunnelRangePreset } from '../../services/analyticsService';
 
 // Enhanced KPI Card with trend indicator
@@ -130,12 +135,13 @@ const Analytics: React.FC = () => {
     (searchParams.get('range') as any) || '30d'
   );
   const [loading, setLoading] = useState(false);
-  const [drillDownModal, setDrillDownModal] = useState<{ isOpen: boolean; title: string; data: any }>(
-    { isOpen: false, title: '', data: null }
-  );
+  const [drillDownModal, setDrillDownModal] = useState<{ isOpen: boolean; title: string; data: any }>({
+    isOpen: false, title: '', data: null
+  });
   const [chartType, setChartType] = useState<'line' | 'area' | 'column'>(
     (searchParams.get('chart') as any) || 'line'
   );
+  const [diversityExportModalOpen, setDiversityExportModalOpen] = useState(false);
 
   // Phase 1: Advanced Filters State
   const [filters, setFilters] = useState<AnalyticsFilters>({
@@ -176,12 +182,34 @@ const Analytics: React.FC = () => {
     endDate: filters.dateRange.endDate || undefined,
   });
 
-  // Live Top Hiring Colleges from DB
-  const { data: topColleges, isLoading: collegesLoading } = useTopHiringColleges({
+  // Live Course Performance from DB
+  const { data: coursePerformance, isLoading: coursesLoading } = useCoursePerformance({
     preset: funnelPreset,
     startDate: filters.dateRange.startDate || undefined,
     endDate: filters.dateRange.endDate || undefined,
     limit: 4,
+  });
+
+  // Optimized Diversity Data (Geographic + Colleges) with shared WebSocket
+  const diversityData = useDiversityData({
+    preset: funnelPreset,
+    startDate: filters.dateRange.startDate || undefined,
+    endDate: filters.dateRange.endDate || undefined,
+    geoLimit: 4,
+    collegesLimit: 4,
+  });
+
+  // Destructure for easier access
+  const geographicData = diversityData.geographic.data;
+  const geoLoading = diversityData.geographic.isLoading;
+  const topColleges = diversityData.colleges.data;
+  const collegesLoading = diversityData.colleges.isLoading;
+
+  // Live Speed Analytics from DB
+  const { data: speedData, isLoading: speedLoading } = useSpeedAnalytics({
+    preset: funnelPreset,
+    startDate: filters.dateRange.startDate || undefined,
+    endDate: filters.dateRange.endDate || undefined,
   });
 
   const trendLabels = liveFunnel?.trendLabels || [];
@@ -254,6 +282,134 @@ const Analytics: React.FC = () => {
   }, [liveFunnel]);
 
   const maxFunnel = Math.max(1, ...funnelStages.map((s) => s.value));
+
+  // Generate dynamic Key Insights based on actual data
+  const keyInsights = useMemo(() => {
+    const insights: Array<{
+      type: 'success' | 'warning' | 'info';
+      text: string;
+      priority: number;
+    }> = [];
+
+    // Insight 1: Quality Score Performance
+    if (kpiMetrics?.qualityScore) {
+      if (kpiMetrics.qualityScore >= 85) {
+        insights.push({
+          type: 'success',
+          text: `High-quality talent pool with ${kpiMetrics.qualityScore} average quality score`,
+          priority: 1
+        });
+      } else if (kpiMetrics.qualityScore >= 75) {
+        insights.push({
+          type: 'info',
+          text: `Quality score of ${kpiMetrics.qualityScore} meets industry standards`,
+          priority: 2
+        });
+      } else {
+        insights.push({
+          type: 'warning',
+          text: `Quality score (${kpiMetrics.qualityScore}) below target - review screening criteria`,
+          priority: 1
+        });
+      }
+    }
+
+    // Insight 2: Speed Performance
+    if (speedData?.timeToHire) {
+      const industryAvg = 25;
+      if (speedData.timeToHire < industryAvg) {
+        const improvement = Math.round(((industryAvg - speedData.timeToHire) / industryAvg) * 100);
+        insights.push({
+          type: 'success',
+          text: `Hiring process is ${improvement}% faster than industry average (${speedData.timeToHire} vs ${industryAvg} days)`,
+          priority: 1
+        });
+      } else if (speedData.timeToHire > 30) {
+        insights.push({
+          type: 'warning',
+          text: `Time to hire (${speedData.timeToHire} days) exceeds target - identify bottlenecks`,
+          priority: 1
+        });
+      }
+    }
+
+    // Insight 3: Top Performing College
+    if (topColleges && topColleges.length > 0 && topColleges[0].count > 0) {
+      insights.push({
+        type: 'info',
+        text: `${topColleges[0].name} is top talent source with ${topColleges[0].count} candidates (${topColleges[0].percentage}%)`,
+        priority: 2
+      });
+    }
+
+    // Insight 4: Top Performing Course
+    if (coursePerformance && coursePerformance.length > 0 && coursePerformance[0].successRate > 0) {
+      const topCourse = coursePerformance[0];
+      insights.push({
+        type: 'success',
+        text: `Top performing course: ${topCourse.name} with ${topCourse.successRate}% success rate (${topCourse.hiredCandidates}/${topCourse.totalCandidates} hired)`,
+        priority: 2
+      });
+    }
+
+    // Insight 5: Geographic Diversity
+    if (geographicData && geographicData.length > 0) {
+      const totalCandidates = geographicData.reduce((sum, loc) => sum + loc.count, 0);
+      if (geographicData.length >= 3) {
+        insights.push({
+          type: 'success',
+          text: `Strong geographic diversity across ${geographicData.length} regions with ${totalCandidates} total candidates`,
+          priority: 2
+        });
+      } else if (geographicData[0] && geographicData[0].percentage > 60) {
+        insights.push({
+          type: 'info',
+          text: `High concentration in ${geographicData[0].city} (${geographicData[0].percentage}%) - consider expanding to other regions`,
+          priority: 3
+        });
+      }
+    }
+
+    // Insight 6: Hiring Momentum
+    if (kpiMetrics?.successfulHiresTrend && kpiMetrics.successfulHiresTrend !== 0) {
+      if (kpiMetrics.successfulHiresTrend > 10) {
+        insights.push({
+          type: 'success',
+          text: `Strong hiring momentum with ${Math.abs(kpiMetrics.successfulHiresTrend)}% increase in successful hires`,
+          priority: 1
+        });
+      } else if (kpiMetrics.successfulHiresTrend < -10) {
+        insights.push({
+          type: 'warning',
+          text: `Hiring declined by ${Math.abs(kpiMetrics.successfulHiresTrend)}% - review pipeline strategy`,
+          priority: 1
+        });
+      }
+    }
+
+    // Insight 7: Pipeline Growth
+    if (kpiMetrics?.totalCandidatesTrend && kpiMetrics.totalCandidatesTrend > 15) {
+      insights.push({
+        type: 'success',
+        text: `Pipeline growing rapidly with ${kpiMetrics.totalCandidatesTrend}% increase in candidates`,
+        priority: 2
+      });
+    }
+
+    // Insight 8: Speed Improvement
+    if (speedData?.fastestHire && speedData.fastestHire < 15) {
+      insights.push({
+        type: 'info',
+        text: `Fastest hire completed in just ${speedData.fastestHire} days - excellent process efficiency`,
+        priority: 3
+      });
+    }
+
+    // Sort by priority and return top 5 insights
+    return insights
+      .sort((a, b) => a.priority - b.priority)
+      .slice(0, 5);
+  }, [kpiMetrics, speedData, topColleges, coursePerformance, geographicData]);
 
   return (
     <div className="bg-gray-50 min-h-screen -m-6">
@@ -544,50 +700,84 @@ const Analytics: React.FC = () => {
           <ChartDownloadButton
             chartId="speed-analytics-section"
             chartName="Speed_Analytics"
-            data={[
-              { metric: 'Time to First Response', days: periodData.speedMetrics.median_time_to_first_response },
-              { metric: 'Time to Hire', days: periodData.speedMetrics.median_time_to_hire },
-              { metric: 'Interview to Offer', days: periodData.speedMetrics.avg_interview_to_offer },
-              { metric: 'Fastest Hire', days: periodData.speedMetrics.fastest_hire }
-            ]}
+            data={speedData ? [
+              { metric: 'Time to First Response', days: speedData.timeToFirstResponse },
+              { metric: 'Time to Hire', days: speedData.timeToHire },
+              { metric: 'Interview to Offer', days: speedData.interviewToOffer },
+              { metric: 'Fastest Hire', days: speedData.fastestHire }
+            ] : []}
             compact
           />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-blue-100 mb-3">
-              <ClockIcon className="h-7 w-7 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 mb-1">{periodData.speedMetrics.median_time_to_first_response} days</p>
-            <p className="text-xs font-medium text-gray-600">Time to First Response</p>
+        {speedLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-32 bg-gray-100 rounded-lg animate-pulse" />
+            ))}
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-green-100 mb-3">
-              <CheckCircleIcon className="h-7 w-7 text-green-600" />
+        ) : speedData ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-blue-100 mb-3">
+                  <ClockIcon className="h-7 w-7 text-blue-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mb-1">
+                  {speedData.timeToFirstResponse < 1 && speedData.timeToFirstResponse > 0
+                    ? `${Math.round(speedData.timeToFirstResponse * 24)} hrs`
+                    : `${speedData.timeToFirstResponse} days`}
+                </p>
+                <p className="text-xs font-medium text-gray-600">Time to First Response</p>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-green-100 mb-3">
+                  <CheckCircleIcon className="h-7 w-7 text-green-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mb-1">
+                  {speedData.timeToHire < 1 && speedData.timeToHire > 0
+                    ? `${Math.round(speedData.timeToHire * 24)} hrs`
+                    : `${speedData.timeToHire} days`}
+                </p>
+                <p className="text-xs font-medium text-gray-600">Time to Hire</p>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-yellow-100 mb-3">
+                  <CalendarIcon className="h-7 w-7 text-yellow-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mb-1">
+                  {speedData.interviewToOffer < 1 && speedData.interviewToOffer > 0
+                    ? `${Math.round(speedData.interviewToOffer * 24)} hrs`
+                    : `${speedData.interviewToOffer} days`}
+                </p>
+                <p className="text-xs font-medium text-gray-600">Interview to Offer</p>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-purple-100 mb-3">
+                  <BoltIcon className="h-7 w-7 text-purple-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mb-1">
+                  {speedData.fastestHire < 1 && speedData.fastestHire > 0
+                    ? `${Math.round(speedData.fastestHire * 24)} hrs`
+                    : `${speedData.fastestHire} days`}
+                </p>
+                <p className="text-xs font-medium text-gray-600">Fastest Hire</p>
+              </div>
             </div>
-            <p className="text-2xl font-bold text-gray-900 mb-1">{periodData.speedMetrics.median_time_to_hire} days</p>
-            <p className="text-xs font-medium text-gray-600">Time to Hire</p>
-          </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-yellow-100 mb-3">
-              <CalendarIcon className="h-7 w-7 text-yellow-600" />
+            <div className="mt-6 pt-6 border-t border-gray-200 flex items-center gap-2 text-sm">
+              <SparklesIcon className="h-5 w-5 text-green-600" />
+              <span className="text-gray-700">Process Efficiency</span>
+              <span className="font-semibold text-green-600">
+                {speedData.timeToHire < 25 
+                  ? `${Math.round(((25 - speedData.timeToHire) / 25) * 100)}% faster than industry average (25 days)`
+                  : 'Within industry average (25 days)'}
+              </span>
             </div>
-            <p className="text-2xl font-bold text-gray-900 mb-1">{periodData.speedMetrics.avg_interview_to_offer} days</p>
-            <p className="text-xs font-medium text-gray-600">Interview to Offer</p>
+          </>
+        ) : (
+          <div className="p-6 text-center text-gray-500 text-sm">
+            No speed data available for this period
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-purple-100 mb-3">
-              <BoltIcon className="h-7 w-7 text-purple-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 mb-1">{periodData.speedMetrics.fastest_hire} days</p>
-            <p className="text-xs font-medium text-gray-600">Fastest Hire</p>
-          </div>
-        </div>
-        <div className="mt-6 pt-6 border-t border-gray-200 flex items-center gap-2 text-sm">
-          <SparklesIcon className="h-5 w-5 text-green-600" />
-          <span className="text-gray-700">Process Efficiency</span>
-          <span className="font-semibold text-green-600">28% faster than industry average (25 days)</span>
-        </div>
+        )}
       </div>
 
       {/* Diversity & Geography Section */}
@@ -597,43 +787,64 @@ const Analytics: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">Diversity & Geography</h2>
             <p className="text-sm text-gray-600 mt-1">Understanding where your talent comes from</p>
           </div>
-          <ChartDownloadButton
-            chartId="geography-section"
-            chartName="Geography_Analysis"
-            data={periodData.geography}
-            compact
-          />
+          <button
+            onClick={() => setDiversityExportModalOpen(true)}
+            onMouseEnter={() => {
+              // Prefetch data on hover for faster modal rendering
+              if (!geographicData || !topColleges) {
+                diversityData.refetchAll();
+              }
+            }}
+            className="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Export Diversity & Geography"
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+          </button>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Geographic Distribution */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Geographic Distribution</h3>
-            <div className="space-y-4">
-              {periodData.geography.locations.map((l: any) => (
-                <div key={l.city}>
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <div className="flex items-center gap-2">
-                      <MapPinIcon className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-700">{l.city}</span>
+            {geoLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : geographicData && geographicData.length > 0 ? (
+              <>
+                <div className="space-y-4">
+                  {geographicData.map((l) => (
+                    <div key={l.city}>
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <div className="flex items-center gap-2">
+                          <MapPinIcon className="h-4 w-4 text-gray-400" />
+                          <span className="text-gray-700">{l.city}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-500">({l.percentage}%)</span>
+                          <span className="text-sm font-bold text-gray-900">{l.count}</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-100 h-2 rounded-full">
+                        <div
+                          className="bg-blue-500 h-2 rounded-full"
+                          style={{ width: `${l.percentage}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray-500">({l.percentage}%)</span>
-                      <span className="text-sm font-bold text-gray-900">{l.count}</span>
-                    </div>
-                  </div>
-                  <div className="w-full bg-gray-100 h-2 rounded-full">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full"
-                      style={{ width: `${l.percentage}%` }}
-                    />
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <p className="text-xs text-gray-500">Total Hires: <span className="font-bold text-gray-900">{periodData.funnel.hired}</span></p>
-            </div>
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-500">Total Candidates: <span className="font-bold text-gray-900">{geographicData.reduce((sum, l) => sum + l.count, 0)}</span></p>
+                </div>
+              </>
+            ) : (
+              <div className="p-6 text-center text-gray-500 text-sm">
+                No geographic data available for this period
+              </div>
+            )}
           </div>
 
           {/* Top Hiring Colleges */}
@@ -729,32 +940,44 @@ const Analytics: React.FC = () => {
           {/* Course Performance */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Course Performance</h3>
-            <div className="space-y-3">
-              {periodData.attribution.courses.map((c: any) => (
-                <div key={c.name} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <AcademicCapIcon className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium text-gray-900">{c.name}</span>
+            {coursesLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-24 bg-gray-100 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : coursePerformance && coursePerformance.length > 0 ? (
+              <div className="space-y-3">
+                {coursePerformance.map((c) => (
+                  <div key={c.name} className="p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <AcademicCapIcon className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-gray-900">{c.name}</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 mt-3">
+                      <div>
+                        <p className="text-xs text-gray-500">Candidates</p>
+                        <p className="text-lg font-bold text-gray-900">{c.totalCandidates}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Hired</p>
+                        <p className="text-lg font-bold text-green-600">{c.hiredCandidates}/{c.totalCandidates}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Success Rate</p>
+                        <p className="text-lg font-bold text-indigo-600">{c.successRate}%</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-3 mt-3">
-                    <div>
-                      <p className="text-xs text-gray-500">Candidates</p>
-                      <p className="text-lg font-bold text-gray-900">{c.applications}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Hires</p>
-                      <p className="text-lg font-bold text-green-600">{c.hires}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Success Rate</p>
-                      <p className="text-lg font-bold text-indigo-600">{((c.hires / c.applications) * 100).toFixed(1)}%</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center text-gray-500 text-sm">
+                No course data available for this period
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -790,41 +1013,44 @@ const Analytics: React.FC = () => {
       {/* Key Insights */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Key Insights</h2>
-        <ul className="space-y-3">
-          <li className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
-              <CheckCircleIcon className="h-4 w-4 text-green-600" />
-            </div>
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">{periodData.qualityMetrics.external_audited_percentage}% of hires are externally audited</span> (above industry average)
-            </p>
-          </li>
-          <li className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
-              <CheckCircleIcon className="h-4 w-4 text-green-600" />
-            </div>
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">18-day hiring process is 28% faster</span> than competitors
-            </p>
-          </li>
-          <li className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
-              <CheckCircleIcon className="h-4 w-4 text-green-600" />
-            </div>
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">Top performing course: GMP with 6.7% success rate</span>
-            </p>
-          </li>
-          <li className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
-              <CheckCircleIcon className="h-4 w-4 text-green-600" />
-            </div>
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">Geographic diversity across 4 major cities</span>
-            </p>
-          </li>
-        </ul>
+        {keyInsights.length > 0 ? (
+          <ul className="space-y-3">
+            {keyInsights.map((insight, index) => {
+              const iconBgColor = 
+                insight.type === 'success' ? 'bg-green-100' : 
+                insight.type === 'warning' ? 'bg-yellow-100' : 
+                'bg-blue-100';
+              const iconColor = 
+                insight.type === 'success' ? 'text-green-600' : 
+                insight.type === 'warning' ? 'text-yellow-600' : 
+                'text-blue-600';
+              
+              return (
+                <li key={index} className="flex items-start gap-3">
+                  <div className={`flex-shrink-0 w-6 h-6 rounded-full ${iconBgColor} flex items-center justify-center mt-0.5`}>
+                    <CheckCircleIcon className={`h-4 w-4 ${iconColor}`} />
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    <span className="font-semibold">{insight.text}</span>
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-500 text-center py-4">
+            No insights available yet. Data will appear as your pipeline grows.
+          </p>
+        )}
       </div>
+
+        {/* Diversity Export Modal */}
+        <DiversityExportModal
+          isOpen={diversityExportModalOpen}
+          onClose={() => setDiversityExportModalOpen(false)}
+          geographicData={geographicData}
+          collegesData={topColleges}
+        />
 
         {/* Drill-down Modal */}
         <DrillDownModal

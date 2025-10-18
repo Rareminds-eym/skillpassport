@@ -422,3 +422,294 @@ export const getTopHiringColleges = async (
     return { data: null, error };
   }
 };
+
+export interface CoursePerformance {
+  name: string;
+  totalCandidates: number;
+  hiredCandidates: number;
+  successRate: number; // percentage
+}
+
+// Get course performance from database
+export const getCoursePerformance = async (
+  preset: FunnelRangePreset,
+  start?: string,
+  end?: string,
+  limit: number = 4
+): Promise<{ data: CoursePerformance[] | null; error: any }> => {
+  try {
+    const { startDate, endDate } = buildDateRange(preset, start, end);
+
+    // Get all pipeline candidates with their courses
+    const { data: results, error: queryErr } = await supabase
+      .from('pipeline_candidates')
+      .select(`
+        id,
+        student_id,
+        stage,
+        status,
+        students!inner(
+          profile
+        )
+      `)
+      .gte('added_at', startDate)
+      .lte('added_at', endDate);
+
+    if (queryErr) throw queryErr;
+
+    if (!results || results.length === 0) {
+      return { data: [], error: null };
+    }
+
+    // Count total candidates and hired candidates per course
+    const courseStats: Record<string, { total: number; hired: number }> = {};
+
+    results.forEach((row: any) => {
+      const course = row.students?.profile?.course || 
+                     row.students?.profile?.program || 
+                     'Unknown';
+      
+      if (course && course !== 'Unknown') {
+        if (!courseStats[course]) {
+          courseStats[course] = { total: 0, hired: 0 };
+        }
+        
+        courseStats[course].total += 1;
+        
+        // Check if candidate is hired
+        const stage = (row.stage || '').toLowerCase();
+        if (stage === 'hired' && row.status !== 'rejected') {
+          courseStats[course].hired += 1;
+        }
+      }
+    });
+
+    // Convert to array and calculate success rate
+    const coursesArray: CoursePerformance[] = Object.entries(courseStats)
+      .map(([name, stats]) => ({
+        name,
+        totalCandidates: stats.total,
+        hiredCandidates: stats.hired,
+        successRate: stats.total > 0 ? parseFloat(((stats.hired / stats.total) * 100).toFixed(1)) : 0,
+      }))
+      .sort((a, b) => b.totalCandidates - a.totalCandidates) // Sort by total candidates
+      .slice(0, limit);
+
+    return { data: coursesArray, error: null };
+  } catch (error) {
+    console.error('Error fetching course performance:', error);
+    return { data: null, error };
+  }
+};
+
+export interface GeographicLocation {
+  city: string;
+  count: number;
+  percentage: number;
+}
+
+// Helper function to format district names (mimics SQL initcap and regexp_replace)
+const formatDistrictName = (district: string | null | undefined): string => {
+  if (!district) return 'Unknown';
+  
+  // Remove special characters and extra spaces (regexp_replace)
+  const cleaned = district.replace(/[^a-zA-Z0-9]+/g, ' ').trim();
+  
+  // Capitalize first letter of each word (initcap)
+  return cleaned
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
+// Get geographic distribution from database
+export const getGeographicDistribution = async (
+  preset: FunnelRangePreset,
+  start?: string,
+  end?: string,
+  limit: number = 4
+): Promise<{ data: GeographicLocation[] | null; error: any }> => {
+  try {
+    const { startDate, endDate } = buildDateRange(preset, start, end);
+
+    // This mirrors: SELECT initcap(regexp_replace(trim(s.profile ->> 'district_name'), '[^a-zA-Z0-9]+', ' ', 'g')) AS district,
+    //                      COUNT(*) AS pipeline_count
+    //               FROM pipeline_candidates p JOIN students s ON s.id = p.student_id
+    //               GROUP BY 1 ORDER BY pipeline_count DESC LIMIT 4
+    
+    const { data: results, error: queryErr } = await supabase
+      .from('pipeline_candidates')
+      .select(`
+        student_id,
+        students!inner(
+          profile
+        )
+      `)
+      .gte('added_at', startDate)
+      .lte('added_at', endDate);
+
+    if (queryErr) throw queryErr;
+
+    if (!results || results.length === 0) {
+      return { data: [], error: null };
+    }
+
+    // Count locations from the joined data
+    const locationCounts: Record<string, number> = {};
+    let totalCount = 0;
+
+    results.forEach((row: any) => {
+      const district = row.students?.profile?.district_name || 
+                       row.students?.profile?.city || 
+                       row.students?.profile?.location || 
+                       null;
+      
+      const formattedDistrict = formatDistrictName(district);
+      
+      if (formattedDistrict && formattedDistrict !== 'Unknown') {
+        locationCounts[formattedDistrict] = (locationCounts[formattedDistrict] || 0) + 1;
+        totalCount += 1;
+      }
+    });
+
+    // Convert to array and sort by count
+    const locationsArray: GeographicLocation[] = Object.entries(locationCounts)
+      .map(([city, count]) => ({
+        city,
+        count: count as number,
+        percentage: totalCount > 0 ? parseFloat(((count as number / totalCount) * 100).toFixed(1)) : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
+
+    return { data: locationsArray, error: null };
+  } catch (error) {
+    console.error('Error fetching geographic distribution:', error);
+    return { data: null, error };
+  }
+};
+
+export interface SpeedAnalytics {
+  timeToFirstResponse: number;  // Average days from added to first activity
+  timeToHire: number;           // Average days from added to hired
+  interviewToOffer: number;     // Average days from interview to offer
+  fastestHire: number;          // Minimum days to hire
+}
+
+// Helper: Calculate days between two dates
+const calculateDays = (startDate: string, endDate: string): number => {
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  const diffMs = end - start;
+  const days = diffMs / (1000 * 60 * 60 * 24);
+  
+  // If less than 1 day, return as fraction (e.g., 0.5 days = 12 hours)
+  // This gives more accurate metrics for same-day activities
+  return Math.max(0, Math.round(days * 10) / 10); // Round to 1 decimal
+};
+
+// Get speed analytics from database
+export const getSpeedAnalytics = async (
+  preset: FunnelRangePreset,
+  start?: string,
+  end?: string
+): Promise<{ data: SpeedAnalytics | null; error: any }> => {
+  try {
+    const { startDate, endDate } = buildDateRange(preset, start, end);
+
+    // Get all pipeline candidates in the period
+    const { data: candidates, error: candErr } = await supabase
+      .from('pipeline_candidates')
+      .select('id, added_at, stage, stage_changed_at')
+      .gte('added_at', startDate)
+      .lte('added_at', endDate);
+
+    if (candErr) throw candErr;
+
+    // Return null if no candidates found - let UI handle empty state
+    if (!candidates || candidates.length === 0) {
+      return { data: null, error: null };
+    }
+
+    // Get all activities for these candidates
+    const candidateIds = candidates.map(c => c.id);
+    const { data: activities, error: actErr } = await supabase
+      .from('pipeline_activities')
+      .select('pipeline_candidate_id, activity_type, from_stage, to_stage, created_at')
+      .in('pipeline_candidate_id', candidateIds)
+      .order('created_at', { ascending: true });
+
+    if (actErr) throw actErr;
+
+    // Calculate metrics
+    const firstResponseTimes: number[] = [];
+    const timeToHireDurations: number[] = [];
+    const interviewToOfferDurations: number[] = [];
+
+    candidates.forEach(candidate => {
+      const candidateActivities = (activities || []).filter(
+        (a: any) => a.pipeline_candidate_id === candidate.id
+      );
+
+      // 1. Time to First Response: days from added_at to first activity
+      if (candidateActivities.length > 0) {
+        const firstActivity = candidateActivities[0];
+        const days = calculateDays(candidate.added_at, firstActivity.created_at);
+        firstResponseTimes.push(days);
+      }
+
+      // 2. Time to Hire: days from added_at to hired stage
+      const hiredActivity = candidateActivities.find(
+        (a: any) => a.activity_type === 'stage_change' && a.to_stage === 'hired'
+      );
+      if (hiredActivity) {
+        const days = calculateDays(candidate.added_at, hiredActivity.created_at);
+        timeToHireDurations.push(days);
+      }
+
+      // 3. Interview to Offer: days from first interview stage to offer stage
+      const firstInterview = candidateActivities.find(
+        (a: any) => a.activity_type === 'stage_change' && 
+        (a.to_stage === 'interview_1' || a.to_stage === 'interview_2' || a.to_stage === 'interviewed')
+      );
+      const offerActivity = candidateActivities.find(
+        (a: any) => a.activity_type === 'stage_change' && 
+        (a.to_stage === 'offer' || a.to_stage === 'offered')
+      );
+      if (firstInterview && offerActivity) {
+        const days = calculateDays(firstInterview.created_at, offerActivity.created_at);
+        interviewToOfferDurations.push(days);
+      }
+    });
+
+    // Calculate averages and minimum
+    // Keep one decimal place to preserve fractional days (for hour conversion)
+    const avgTimeToFirstResponse = firstResponseTimes.length > 0
+      ? Math.round((firstResponseTimes.reduce((a, b) => a + b, 0) / firstResponseTimes.length) * 10) / 10
+      : 0;
+
+    const avgTimeToHire = timeToHireDurations.length > 0
+      ? Math.round((timeToHireDurations.reduce((a, b) => a + b, 0) / timeToHireDurations.length) * 10) / 10
+      : 0;
+
+    const avgInterviewToOffer = interviewToOfferDurations.length > 0
+      ? Math.round((interviewToOfferDurations.reduce((a, b) => a + b, 0) / interviewToOfferDurations.length) * 10) / 10
+      : 0;
+
+    const fastestHire = timeToHireDurations.length > 0
+      ? Math.round(Math.min(...timeToHireDurations) * 10) / 10
+      : 0;
+
+    const data: SpeedAnalytics = {
+      timeToFirstResponse: avgTimeToFirstResponse,
+      timeToHire: avgTimeToHire,
+      interviewToOffer: avgInterviewToOffer,
+      fastestHire: fastestHire
+    };
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching speed analytics:', error);
+    return { data: null, error };
+  }
+};
