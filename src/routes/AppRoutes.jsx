@@ -23,6 +23,7 @@ const Reports = lazy(() => import('../pages/admin/Reports'));
 
 // Recruiter pages
 const RecruiterProfile = lazy(() => import('../pages/recruiter/Profile'));
+const RecruiterSettings = lazy(() => import("../pages/recruiter/Settings"));
 const Overview = lazy(() => import('../pages/recruiter/Overview'));
 const TalentPool = lazy(() => import('../pages/recruiter/TalentPool'));
 const Pipelines = lazy(() => import('../pages/recruiter/Pipelines'));
@@ -88,6 +89,9 @@ const AppRoutes = () => {
           <Route path="offers-decisions" element={<OffersDecisions />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="activities" element={<Activities />} />
+           <Route path="profile" element={<RecruiterProfile />} />
+          <Route path="settings" element={<RecruiterSettings />} />
+
           <Route path="*" element={<Navigate to="/recruitment/overview" replace />} />
         </Route>
 

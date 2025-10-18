@@ -20,6 +20,7 @@ const navigationItems = [
   { name: 'Interviews', path: '/recruitment/interviews', icon: CalendarDaysIcon },
   { name: 'Offers & Decisions', path: '/recruitment/offers-decisions', icon: DocumentTextIcon },
   { name: 'Analytics', path: '/recruitment/analytics', icon: ChartBarIcon },
+  { name: 'Settings', path: '/recruitment/settings', icon: CogIcon }
 ];
 
 function classNames(...classes: string[]): string {
