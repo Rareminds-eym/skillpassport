@@ -1,9 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
-import { FunnelRangePreset, getTopHiringColleges } from '../services/analyticsService';
+import { FunnelRangePreset, getGeographicDistribution } from '../services/analyticsService';
 
-interface UseTopHiringCollegesOptions {
+interface UseGeographicDistributionOptions {
   preset: FunnelRangePreset;
   startDate?: string;
   endDate?: string;
@@ -11,22 +11,22 @@ interface UseTopHiringCollegesOptions {
   enabled?: boolean;
 }
 
-export const useTopHiringColleges = ({ 
+export const useGeographicDistribution = ({ 
   preset, 
   startDate, 
   endDate,
-  limit = 10,
+  limit = 4,
   enabled = true
-}: UseTopHiringCollegesOptions) => {
+}: UseGeographicDistributionOptions) => {
   const queryClient = useQueryClient();
   const channelRef = useRef<any>(null);
 
-  const queryKey = ['top-hiring-colleges', { preset, startDate, endDate, limit }];
+  const queryKey = ['geographic-distribution', { preset, startDate, endDate, limit }];
 
   // Memoized invalidation callback to prevent unnecessary re-subscriptions
   const invalidateQuery = useCallback(() => {
     queryClient.invalidateQueries({ 
-      queryKey: ['top-hiring-colleges'],
+      queryKey: ['geographic-distribution'],
       refetchType: 'active' // Only refetch active queries
     });
   }, [queryClient]);
@@ -34,7 +34,7 @@ export const useTopHiringColleges = ({
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      const { data, error } = await getTopHiringColleges(preset, startDate, endDate, limit);
+      const { data, error } = await getGeographicDistribution(preset, startDate, endDate, limit);
       if (error) throw error;
       return data;
     },
@@ -52,7 +52,7 @@ export const useTopHiringColleges = ({
     if (!enabled) return;
 
     // Use a stable channel name to avoid creating multiple channels
-    const channelName = 'top-hiring-colleges-realtime';
+    const channelName = 'geographic-distribution-realtime';
     
     // Check if channel already exists
     const existingChannel = supabase.getChannels().find(ch => ch.topic === channelName);
@@ -61,7 +61,7 @@ export const useTopHiringColleges = ({
       return;
     }
 
-    // Subscribe to pipeline changes for real-time updates
+    // Subscribe to pipeline changes for real-time updates via WebSocket
     const channel = supabase.channel(channelName)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'pipeline_candidates' }, 

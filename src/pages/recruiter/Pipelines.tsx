@@ -10,17 +10,21 @@ import {
   XMarkIcon,
   ArrowRightIcon,
   MagnifyingGlassIcon,
-  CheckIcon
+  CheckIcon,
+  BellIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline';
 import { useStudents } from '../../hooks/useStudents';
 import { useRequisitions } from '../../hooks/useRequisitions';
-import { 
-  getRequisitions, 
+import { useNotifications } from '../../hooks/useNotifications';
+import {
+  getRequisitions,
   getPipelineCandidatesByStage,
   addCandidateToPipeline,
   moveCandidateToStage,
   updateNextAction
 } from '../../services/pipelineService';
+import { createNotification } from "../../services/notificationService";
 
 // Add from Talent Pool Modal
 const AddFromTalentPoolModal = ({ isOpen, onClose, requisitionId, targetStage, onSuccess }) => {
@@ -71,8 +75,32 @@ const AddFromTalentPoolModal = ({ isOpen, onClose, requisitionId, targetStage, o
       }
 
       const successCount = results.filter(r => !r.error).length;
-      if (successCount > 0) {
+
+      let currentRecruiterId = null;
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          currentRecruiterId = user.id || user.recruiter_id;
+        }
+      } catch (e) {
+        console.warn('Failed to parse user from localStorage:', e);
+      }
+
+      if (successCount > 0 && currentRecruiterId) {
         alert(`✅ Successfully added ${successCount} candidate(s) to pipeline!`);
+
+        const notifResult = await createNotification(
+          currentRecruiterId,
+          targetStage === "sourced" ? "candidate_sourced" : "candidate_shortlisted", // ✅
+          "Candidate(s) Added to Pipeline",
+          `${successCount} candidate(s) were added to the ${targetStage} stage.`
+        );
+
+        if (!notifResult.success) {
+          console.warn('Notification failed:', notifResult.error);
+        }
+
         onSuccess?.();
         onClose();
         setSelectedStudents([]);
@@ -154,15 +182,14 @@ const AddFromTalentPoolModal = ({ isOpen, onClose, requisitionId, targetStage, o
                     <div
                       key={student.id}
                       onClick={() => toggleStudent(student)}
-                      className={`p-3 cursor-pointer hover:bg-gray-50 ${
-                        isSelected ? 'bg-primary-50 border-l-4 border-l-primary-500' : ''
-                      }`}
+                      className={`p-3 cursor-pointer hover:bg-gray-50 ${isSelected ? 'bg-primary-50 border-l-4 border-l-primary-500' : ''
+                        }`}
                     >
                       <div className="flex items-center">
                         <input
                           type="checkbox"
                           checked={!!isSelected}
-                          onChange={() => {}}                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mr-3"
+                          onChange={() => { }} className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mr-3"
                         />
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
@@ -250,17 +277,28 @@ const NextActionModal = ({ isOpen, onClose, candidate, onSuccess }) => {
     setSaving(true);
     try {
       await updateNextAction(
-        candidate.id, // pipeline_candidates.id
+        candidate.id,
         action,
         date || null,
         notes || null
       );
 
       alert(`✅ Next action set: ${actions.find(a => a.value === action)?.label}`);
+
+      const notifResult = await createNotification(
+        candidate.requisition_id || candidate.id, // Make sure requisition_id is available
+        "pipeline_stage_changed",
+        "Next Action Updated",
+        `Next action for ${candidate.candidate_name} set to ${actions.find(a => a.value === action)?.label}`
+      );
+
+      if (!notifResult.success) {
+        console.warn('Notification failed:', notifResult.error);
+      }
+
       onSuccess?.();
       onClose();
-      
-      // Reset form
+
       setAction('send_email');
       setDate('');
       setNotes('');
@@ -271,6 +309,7 @@ const NextActionModal = ({ isOpen, onClose, candidate, onSuccess }) => {
       setSaving(false);
     }
   };
+
 
   if (!isOpen) return null;
 
@@ -376,7 +415,7 @@ const KanbanColumn = ({ title, count, color, candidates, onCandidateMove, onCand
             {count}
           </span>
         </div>
-        <button 
+        <button
           onClick={() => setShowAddForm(true)}
           className="p-1 text-gray-400 hover:text-gray-600"
         >
@@ -397,19 +436,19 @@ const KanbanColumn = ({ title, count, color, candidates, onCandidateMove, onCand
             onNextAction={onNextAction}
           />
         ))}
-        
+
         {showAddForm && (
           <div className="border border-dashed border-gray-300 rounded-lg p-4 bg-white">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-600">Add candidate</span>
-              <button 
+              <button
                 onClick={() => setShowAddForm(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <XMarkIcon className="h-4 w-4" />
               </button>
             </div>
-            <button 
+            <button
               onClick={onAddClick}
               className="w-full text-left text-sm text-primary-600 hover:text-primary-700"
             >
@@ -429,7 +468,7 @@ const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, 
     'sourced',
     'screened',
     'interview_1',
-    'interview_2', 
+    'interview_2',
     'offer',
     'hired'
   ];
@@ -444,9 +483,8 @@ const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, 
   };
 
   return (
-    <div className={`bg-white border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow ${
-      isSelected ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
-    }`}>
+    <div className={`bg-white border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow ${isSelected ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
+      }`}>
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-start">
           <input
@@ -465,29 +503,29 @@ const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, 
           <StarIcon className="h-3 w-3 text-yellow-400 fill-current" />
           <span className="text-xs font-medium">{candidate.ai_score_overall}</span>
           <div className="relative">
-            <button 
+            <button
               onClick={() => setShowMoveMenu(!showMoveMenu)}
               className="p-1 text-gray-400 hover:text-gray-600"
             >
               <EllipsisVerticalIcon className="h-4 w-4" />
             </button>
-            
+
             {showMoveMenu && (
               <div className="absolute right-0 top-6 w-36 bg-white border border-gray-200 rounded-md shadow-lg z-10">
                 <div className="py-1">
-                  <button 
+                  <button
                     onClick={() => onView(candidate)}
                     className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
                     View Profile
                   </button>
-                  <button 
+                  <button
                     onClick={() => onSendEmail(candidate)}
                     className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
                     Send Email
                   </button>
-                  <button 
+                  <button
                     onClick={() => alert(`📞 Scheduling call with ${candidate.name}...\n\nThis would open a calendar interface to schedule a phone/video call.`)}
                     className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
@@ -542,7 +580,7 @@ const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, 
         <span className="text-gray-500">
           {candidate.last_updated && `Updated ${new Date(candidate.last_updated).toLocaleDateString()}`}
         </span>
-        <button 
+        <button
           onClick={() => onNextAction?.(candidate)}
           className="text-primary-600 hover:text-primary-700 font-medium"
         >
@@ -556,7 +594,7 @@ const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, 
 const Pipelines = ({ onViewProfile }) => {
   // Fetch requisitions from Supabase
   const { requisitions, loading: requisitionsLoading, error: requisitionsError } = useRequisitions();
-  
+
   const [selectedJob, setSelectedJob] = useState(null);
   const { students, loading, error } = useStudents();
   const [pipelineData, setPipelineData] = useState({
@@ -567,7 +605,25 @@ const Pipelines = ({ onViewProfile }) => {
     offer: [],
     hired: []
   });
-  
+
+  let currentRecruiterId = null;
+  try {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      currentRecruiterId = user.id || user.recruiter_id;
+    }
+  } catch (e) {
+    console.warn('Failed to parse user from localStorage:', e);
+  }
+
+  const {
+    items: notifications,
+    unreadCount,
+    markRead: markNotificationRead,
+    remove: removeNotification
+  } = useNotifications(currentRecruiterId);
+
   // Modal states
   const [showAddFromTalentPool, setShowAddFromTalentPool] = useState(false);
   const [addToStage, setAddToStage] = useState(null);
@@ -590,15 +646,15 @@ const Pipelines = ({ onViewProfile }) => {
 
   const loadPipelineCandidates = async () => {
     if (!selectedJob) return;
-    
+
     console.log('Loading pipeline candidates for job:', selectedJob);
     const stages = ['sourced', 'screened', 'interview_1', 'interview_2', 'offer', 'hired'];
     const newData = {};
-    
+
     for (const stage of stages) {
       const { data, error } = await getPipelineCandidatesByStage(selectedJob, stage);
       console.log(`Stage ${stage}:`, { data, error });
-      
+
       if (!error && data) {
         // Map pipeline_candidates to match expected format
         newData[stage] = data.map(pc => {
@@ -625,7 +681,7 @@ const Pipelines = ({ onViewProfile }) => {
         }
       }
     }
-    
+
     console.log('Final pipeline data:', newData);
     setPipelineData(newData);
   };
@@ -646,44 +702,74 @@ const Pipelines = ({ onViewProfile }) => {
 
   const handleCandidateMove = async (candidateId, newStage) => {
     try {
-      // Update in Supabase
       const result = await moveCandidateToStage(candidateId, newStage);
-      
+
       if (result.error) {
         alert('Failed to move candidate: ' + result.error.message);
         return;
       }
-      
+
+      let movedCandidate = null;
+
       // Update local state
       setPipelineData(prev => {
         const newData = { ...prev };
-        
-        // Find and remove candidate from current stage
-        let candidateToMove = null;
+
         Object.keys(newData).forEach(stage => {
           newData[stage] = newData[stage].filter(candidate => {
             if (candidate.id === candidateId) {
-              candidateToMove = candidate;
+              movedCandidate = candidate;
               return false;
             }
             return true;
           });
         });
 
-        // Add candidate to new stage
-        if (candidateToMove && newData[newStage]) {
-          newData[newStage].push(candidateToMove);
+        if (movedCandidate && newData[newStage]) {
+          newData[newStage].push({
+            ...movedCandidate,
+            last_updated: new Date().toISOString(),
+          });
         }
 
         return newData;
       });
-      
+
       alert('✅ Candidate moved successfully!');
+
+      // Create notification with proper error handling
+      if (movedCandidate && selectedJob) {
+        // Extract recruiter ID from the user object stored in localStorage
+        let notificationRecruiterId = null;
+        try {
+          const userStr = localStorage.getItem('user');
+          if (userStr) {
+            const user = JSON.parse(userStr);
+            notificationRecruiterId = user.id || user.recruiter_id;
+          }
+        } catch (e) {
+          console.warn('Failed to parse user from localStorage:', e);
+        }
+
+
+        const notifResult = await createNotification(
+          notificationRecruiterId,
+          "pipeline_stage_changed",
+          `Candidate moved to ${newStage}`,
+          `${movedCandidate.name} has been moved to the "${newStage}" stage.`
+        );
+
+        if (!notifResult.success) {
+          console.warn('Notification failed:', notifResult.error);
+        }
+      }
+
     } catch (error) {
       console.error('Error moving candidate:', error);
       alert('Failed to move candidate. Please try again.');
     }
   };
+
 
   const getTotalCandidates = () => {
     return Object.values(pipelineData).reduce((total, stage) => total + stage.length, 0);
@@ -703,18 +789,18 @@ const Pipelines = ({ onViewProfile }) => {
         .find(c => c.id === id);
       return candidate?.name;
     }).filter(Boolean);
-    
+
     if (candidateNames.length === 0) {
       alert('Please select candidates first');
       return;
     }
-    
+
     const emailSubject = `Update regarding ${selectedJobDetails?.title || 'Job Application'}`;
     const emailBody = `Dear Candidate,\n\nWe would like to update you on your application status for the position of ${selectedJobDetails?.title || 'the role'}.\n\nBest regards,\nRecruitment Team`;
-    
+
     // Simulate sending emails
     alert(`📧 Bulk Email Sent!\n\nRecipients: ${candidateNames.join(', ')}\nSubject: ${emailSubject}\n\nEmails have been queued for delivery.`);
-    
+
     setSelectedCandidates([]);
     setShowBulkActions(false);
   };
@@ -726,17 +812,17 @@ const Pipelines = ({ onViewProfile }) => {
         .find(c => c.id === id);
       return candidate?.name;
     }).filter(Boolean);
-    
+
     if (candidateNames.length === 0) {
       alert('Please select candidates first');
       return;
     }
-    
+
     const message = `Hi! This is an update regarding your application for ${selectedJobDetails?.title || 'the position'}. We will be in touch soon with next steps.`;
-    
+
     // Simulate sending WhatsApp messages
     alert(`📱 WhatsApp Messages Sent!\n\nRecipients: ${candidateNames.join(', ')}\nMessage: "${message}"\n\nMessages have been delivered.`);
-    
+
     setSelectedCandidates([]);
     setShowBulkActions(false);
   };
@@ -748,40 +834,44 @@ const Pipelines = ({ onViewProfile }) => {
         .find(c => c.id === id);
       return candidate?.name;
     }).filter(Boolean);
-    
+
     if (candidateNames.length === 0) {
       alert('Please select candidates first');
       return;
     }
-    
+
     const interviewer = prompt('Enter interviewer name:', 'Sarah Johnson');
     if (interviewer) {
       alert(`👤 Interviewer Assigned!\n\nCandidates: ${candidateNames.join(', ')}\nAssigned to: ${interviewer}\n\nInterview invitations will be sent shortly.`);
-      
+
       setSelectedCandidates([]);
       setShowBulkActions(false);
     }
   };
 
-  const handleBulkReject = () => {
+  const handleBulkReject = async () => {
     const candidateNames = selectedCandidates.map(id => {
       const candidate = Object.values(pipelineData)
         .flat()
         .find(c => c.id === id);
       return candidate?.name;
     }).filter(Boolean);
-    
+
     if (candidateNames.length === 0) {
       alert('Please select candidates first');
       return;
     }
-    
-    const confirmed = confirm(`⚠️ Bulk Reject Confirmation\n\nAre you sure you want to reject ${candidateNames.length} candidate(s)?\n\n${candidateNames.join(', ')}\n\nThis action cannot be undone.`);
-    
+
+    const confirmed = confirm(
+      `⚠️ Bulk Reject Confirmation\n\nAre you sure you want to reject ${candidateNames.length} candidate(s)?\n\n${candidateNames.join(', ')}\n\nThis action cannot be undone.`
+    );
+
     if (confirmed) {
-      const reason = prompt('Enter rejection reason (optional):', 'Thank you for your interest. We have decided to move forward with other candidates.');
-      
-      // Remove candidates from pipeline
+      const reason = prompt(
+        'Enter rejection reason (optional):',
+        'Thank you for your interest. We have decided to move forward with other candidates.'
+      );
+
       setPipelineData(prev => {
         const newData = { ...prev };
         selectedCandidates.forEach(candidateId => {
@@ -791,33 +881,46 @@ const Pipelines = ({ onViewProfile }) => {
         });
         return newData;
       });
-      
-      alert(`❌ Candidates Rejected\n\n${candidateNames.join(', ')} have been removed from the pipeline.\n\nRejection notifications will be sent.`);
-      
+
+      alert(
+        `❌ Candidates Rejected\n\n${candidateNames.join(', ')} have been removed from the pipeline.\n\nRejection notifications will be sent.`
+      );
+
+      const notifResult = await createNotification(
+        selectedJob ,
+        "candidate_rejected",
+        "Candidates Rejected",
+        `${candidateNames.length} candidate(s) were rejected from ${selectedJobDetails?.title || "pipeline"}.`
+      );
+
+      if (!notifResult.success) {
+        console.warn('Notification failed:', notifResult.error);
+      }
+
       setSelectedCandidates([]);
       setShowBulkActions(false);
     }
   };
 
   const handleExportPipeline = () => {
-    const allCandidates = Object.entries(pipelineData).flatMap(([stage, candidates]) => 
+    const allCandidates = Object.entries(pipelineData).flatMap(([stage, candidates]) =>
       candidates.map(candidate => ({ ...candidate, stage }))
     );
-    
+
     if (allCandidates.length === 0) {
       alert('No candidates in pipeline to export');
       return;
     }
-    
+
     const csvContent = [
       // CSV Header
       'Name,Department,College,Location,Stage,AI Score,Skills,Last Updated',
       // CSV Data
-      ...allCandidates.map(candidate => 
+      ...allCandidates.map(candidate =>
         `"${candidate.name}","${candidate.dept}","${candidate.college}","${candidate.location}","${candidate.stage}",${candidate.ai_score_overall},"${candidate.skills.join('; ')}","${new Date(candidate.last_updated).toLocaleDateString()}"`
       )
     ].join('\n');
-    
+
     // Create and download CSV file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -828,7 +931,7 @@ const Pipelines = ({ onViewProfile }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     alert(`📊 Pipeline Exported!\n\nFile: pipeline_${selectedJobDetails?.title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv\n\n${allCandidates.length} candidates exported successfully.`);
   };
 
@@ -841,7 +944,7 @@ const Pipelines = ({ onViewProfile }) => {
       const newSelection = prev.includes(candidateId)
         ? prev.filter(id => id !== candidateId)
         : [...prev, candidateId];
-      
+
       setShowBulkActions(newSelection.length > 0);
       return newSelection;
     });
@@ -850,15 +953,15 @@ const Pipelines = ({ onViewProfile }) => {
   const handleSendEmail = (candidate) => {
     const subject = `Update regarding ${selectedJobDetails?.title || 'your application'}`;
     const message = `Dear ${candidate.name},\n\nWe wanted to provide you with an update on your application for the ${selectedJobDetails?.title || 'position'}.\n\nYour application is currently in the review process and we will be in touch with next steps soon.\n\nBest regards,\nRecruitment Team`;
-    
+
     alert(`📧 Email Sent to ${candidate.name}!\n\nSubject: ${subject}\n\nMessage: "${message}"\n\nEmail has been delivered successfully.`);
   };
-  
+
   const handleAddFromTalentPool = (stage) => {
     setAddToStage(stage);
     setShowAddFromTalentPool(true);
   };
-  
+
   const handleNextAction = (candidate) => {
     setSelectedCandidateForAction(candidate);
     setShowNextActionModal(true);
@@ -878,7 +981,7 @@ const Pipelines = ({ onViewProfile }) => {
                 </p>
               )}
             </div>
-            <select 
+            <select
               value={selectedJob || ''}
               onChange={(e) => setSelectedJob(e.target.value)}
               className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -900,8 +1003,8 @@ const Pipelines = ({ onViewProfile }) => {
             </div>
             <div>
               <span className="font-medium">
-                {selectedJobDetails?.created_date ? 
-                  Math.floor((new Date() - new Date(selectedJobDetails.created_date)) / (1000 * 60 * 60 * 24)) 
+                {selectedJobDetails?.created_date ?
+                  Math.floor((new Date() - new Date(selectedJobDetails.created_date)) / (1000 * 60 * 60 * 24))
                   : 0
                 } days
               </span> aging
@@ -963,31 +1066,31 @@ const Pipelines = ({ onViewProfile }) => {
                 <span className="text-sm text-gray-600">
                   {selectedCandidates.length} selected - Bulk Actions:
                 </span>
-                <button 
+                <button
                   onClick={handleBulkEmail}
                   className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                 >
                   Send Email
                 </button>
-                <button 
+                <button
                   onClick={handleBulkWhatsApp}
                   className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                 >
                   WhatsApp Message
                 </button>
-                <button 
+                <button
                   onClick={handleAssignInterviewer}
                   className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                 >
                   Assign Interviewer
                 </button>
-                <button 
+                <button
                   onClick={handleBulkReject}
                   className="text-sm text-red-600 hover:text-red-700 font-medium"
                 >
                   Bulk Reject
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setSelectedCandidates([]);
                     setShowBulkActions(false);
@@ -1004,14 +1107,14 @@ const Pipelines = ({ onViewProfile }) => {
             )}
           </div>
           <div className="flex items-center space-x-3">
-            <button 
+            <button
               onClick={handleAddCandidates}
               className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               <UserIcon className="h-4 w-4 mr-2" />
               Add Candidates
             </button>
-            <button 
+            <button
               onClick={handleExportPipeline}
               className="inline-flex items-center px-3 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
             >
@@ -1020,7 +1123,7 @@ const Pipelines = ({ onViewProfile }) => {
           </div>
         </div>
       </div>
-      
+
       {/* Modals */}
       <AddFromTalentPoolModal
         isOpen={showAddFromTalentPool}
@@ -1029,7 +1132,7 @@ const Pipelines = ({ onViewProfile }) => {
         targetStage={addToStage}
         onSuccess={loadPipelineCandidates}
       />
-      
+
       <NextActionModal
         isOpen={showNextActionModal}
         onClose={() => setShowNextActionModal(false)}
