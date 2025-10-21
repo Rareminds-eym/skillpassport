@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   UsersIcon,
   BookmarkIcon,
@@ -14,6 +15,7 @@ import {
 import { getDashboardData } from '../../services/dashboardService';
 import ActivityFeed from '../../components/ActivityFeed';
 import { useRealtimeActivities } from '../../hooks/useRealtimeActivities';
+import { trackSearchUsage } from '../../services/savedSearchesService';
 
 const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {
   const colorClasses = {
@@ -53,7 +55,7 @@ const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {
   );
 };
 
-const AlertCard = ({ type, title, message, time, urgent = false }) => {
+const AlertCard = ({ type, title, message, time, urgent = false, action, onActionClick }) => {
   const getIcon = () => {
     switch (type) {
       case 'warning':
@@ -76,7 +78,17 @@ const AlertCard = ({ type, title, message, time, urgent = false }) => {
         <div className="ml-3 flex-1">
           <p className="text-sm font-medium text-gray-900">{title}</p>
           <p className="mt-1 text-sm text-gray-600">{message}</p>
-          <p className="mt-2 text-xs text-gray-500">{time}</p>
+          <div className="mt-2 flex items-center justify-between">
+            <p className="text-xs text-gray-500">{time}</p>
+            {action && onActionClick && (
+              <button
+                onClick={onActionClick}
+                className="text-xs font-medium text-primary-600 hover:text-primary-700"
+              >
+                {action}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -84,6 +96,7 @@ const AlertCard = ({ type, title, message, time, urgent = false }) => {
 };
 
 const Overview = () => {
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -94,6 +107,109 @@ const Overview = () => {
   
   // Show only 4 activities by default, all when expanded
   const displayedActivities = isActivityExpanded ? realtimeActivities : realtimeActivities.slice(0, 4);
+  
+  // Handle quick search click
+  const handleQuickSearchClick = async (search) => {
+    try {
+      // Track search usage if it has an ID
+      if (search.id && !search.id.startsWith('default-')) {
+        await trackSearchUsage(search.id);
+      }
+      
+      // Navigate to talent pool with search criteria
+      const searchCriteria = search.search_criteria || {};
+      const params = new URLSearchParams();
+      
+      if (searchCriteria.query) {
+        params.append('q', searchCriteria.query);
+      }
+      if (searchCriteria.skills && searchCriteria.skills.length > 0) {
+        params.append('skills', searchCriteria.skills.join(','));
+      }
+      if (searchCriteria.location) {
+        params.append('location', searchCriteria.location);
+      }
+      if (searchCriteria.experience) {
+        params.append('experience', searchCriteria.experience);
+      }
+      
+      navigate(`/recruitment/talent-pool?${params.toString()}`);
+    } catch (error) {
+      console.error('Error handling quick search:', error);
+      // Navigate anyway even if tracking fails
+      navigate('/recruitment/talent-pool');
+    }
+  };
+  
+  // Handle alert action clicks
+  const handleAlertAction = (alert) => {
+    // Route based on alert source and ID
+    const alertId = alert.id || alert;
+    const source = alert.source;
+    
+    // Handle by source
+    if (source === 'talent_pool' || alertId.startsWith('talent-pool')) {
+      if (alertId.includes('unverified')) {
+        navigate('/recruitment/talent-pool?verified=false');
+      } else if (alertId.includes('incomplete')) {
+        navigate('/recruitment/talent-pool?filter=incomplete');
+      } else {
+        navigate('/recruitment/talent-pool');
+      }
+    } else if (source === 'shortlists' || alertId.startsWith('shortlist')) {
+      if (alertId.includes('empty')) {
+        navigate('/recruitment/shortlists?filter=empty');
+      } else {
+        navigate('/recruitment/shortlists');
+      }
+    } else if (source === 'interviews' || alertId.startsWith('interview')) {
+      if (alertId.includes('upcoming')) {
+        navigate('/recruitment/interviews?upcoming=true');
+      } else if (alertId.includes('scorecard') || alertId.includes('pending')) {
+        navigate('/recruitment/interviews?status=completed&feedback=pending');
+      } else if (alertId.includes('positive') || alertId.includes('feedback')) {
+        navigate('/recruitment/interviews?feedback=positive');
+      } else {
+        navigate('/recruitment/interviews');
+      }
+    } else if (source === 'offers' || alertId.startsWith('offer')) {
+      if (alertId.includes('expiring')) {
+        navigate('/recruitment/offers-decisions?status=expiring');
+      } else if (alertId.includes('accepted')) {
+        navigate('/recruitment/offers-decisions?status=accepted');
+      } else {
+        navigate('/recruitment/offers-decisions');
+      }
+    } else if (source === 'pipelines' || alertId.startsWith('pipeline')) {
+      if (alertId.includes('stalled')) {
+        navigate('/recruitment/pipelines?filter=stalled');
+      } else if (alertId.includes('overdue')) {
+        navigate('/recruitment/pipelines?filter=overdue');
+      } else if (alertId.includes('bottleneck')) {
+        navigate('/recruitment/pipelines');
+      } else {
+        navigate('/recruitment/pipelines');
+      }
+    } else {
+      // Fallback for legacy alert IDs
+      switch (alertId) {
+        case 'verification-pending':
+          navigate('/recruitment/talent-pool?verification=pending');
+          break;
+        case 'expiring-offers':
+          navigate('/recruitment/offers-decisions?status=expiring');
+          break;
+        case 'positive-feedback':
+          navigate('/recruitment/interviews?feedback=positive');
+          break;
+        case 'upcoming-interviews':
+          navigate('/recruitment/interviews?upcoming=true');
+          break;
+        default:
+          console.log('No action defined for alert:', alertId);
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -302,7 +418,12 @@ const Overview = () => {
             </div>
             <div className="p-6 space-y-4">
               {alerts.map((alert) => (
-                <AlertCard key={alert.id} {...alert} />
+                <AlertCard 
+                  key={alert.id} 
+                  {...alert}
+                  action="View Details"
+                  onActionClick={() => handleAlertAction(alert)}
+                />
               ))}
             </div>
           </div>
@@ -314,14 +435,22 @@ const Overview = () => {
             </div>
             <div className="p-6">
               <div className="flex flex-wrap gap-2">
-                {(data.savedSearches || []).map((search, index) => (
-                  <button
-                    key={index}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200"
-                  >
-                    {search}
-                  </button>
-                ))}
+                {(data.savedSearches || []).map((search, index) => {
+                  const searchName = typeof search === 'string' ? search : search.name;
+                  const searchObj = typeof search === 'string' 
+                    ? { id: `search-${index}`, name: search, search_criteria: { query: search } }
+                    : search;
+                  
+                  return (
+                    <button
+                      key={searchObj.id || index}
+                      onClick={() => handleQuickSearchClick(searchObj)}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200 transition-colors cursor-pointer"
+                    >
+                      {searchName}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
