@@ -40,6 +40,7 @@ import { useRecentUpdatesLegacy } from '../../hooks/useRecentUpdatesLegacy'; // 
 import { supabase } from '../../lib/supabaseClient';
 import '../../utils/testRecentUpdates'; // Import test utility for debugging
 import { debugRecentUpdates } from '../../utils/debugRecentUpdates'; // Debug utility
+import '../../utils/simpleDebug'; // Simple debug utility
 
 const StudentDashboard = () => {
   const location = useLocation();
@@ -243,8 +244,9 @@ const StudentDashboard = () => {
           
         console.log('🧪 Direct test result:', { data, error, count });
         
-        // Run debug for recent updates
-        await debugRecentUpdates();
+        // Run debug for recent updates (commented out to prevent automatic execution)
+        // await debugRecentUpdates();
+        console.log('ℹ️ To debug recent updates, run: await window.debugRecentUpdates() in console');
       } catch (err) {
         console.error('🧪 Direct test error:', err);
       }
