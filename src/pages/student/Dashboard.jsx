@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { Button } from '../../components/Students/components/ui/button';
 import { Badge } from '../../components/Students/components/ui/badge';
-import { Progress } from '../../components/Students/components/ui/progress';
-import { QRCodeSVG } from 'qrcode.react';
 import {
   Bell,
   TrendingUp,
@@ -37,9 +35,7 @@ import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useOpportunities } from '../../hooks/useOpportunities';
 import { useRecentUpdates } from '../../hooks/useRecentUpdates';
 import { supabase } from '../../lib/supabaseClient';
-import '../../utils/testRecentUpdates'; // Import test utility for debugging
-import { debugRecentUpdates } from '../../utils/debugRecentUpdates'; // Debug utility
-import '../../utils/simpleDebug'; // Simple debug utility
+// Debug utilities removed for production cleanliness
 
 const StudentDashboard = () => {
   const location = useLocation();
@@ -331,14 +327,18 @@ const StudentDashboard = () => {
   // Card components for dynamic ordering
   const allCards = {
     opportunities: (
-      <Card key="opportunities" className="h-full border-2 border-[#FFB800] rounded-2xl shadow-none bg-white">
-        <CardHeader className="bg-white rounded-t-2xl border-b-0">
-          <CardTitle className="flex items-center gap-2 text-black text-lg font-bold">
-            <ExternalLink className="w-5 h-5 text-blue-500" />
-            Opportunities
+      <Card key="opportunities" className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md">
+        <CardHeader className="px-6 py-4 border-b border-gray-100">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <ExternalLink className="w-5 h-5 text-blue-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-900">Opportunities</span>
+            </div>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-5 p-0">
+        <CardContent className="p-6 space-y-3">
           {(() => {
             console.log('🎭 Rendering opportunities with:', {
               loading: opportunitiesLoading,
@@ -350,30 +350,30 @@ const StudentDashboard = () => {
           })()}
           {opportunitiesLoading ? (
             <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : opportunitiesError ? (
             <div className="text-center py-8">
-              <p className="text-red-500 mb-2">Failed to load opportunities</p>
+              <p className="text-red-600 mb-3 font-medium">Failed to load opportunities</p>
               <Button 
                 onClick={refreshOpportunities}
                 size="sm" 
-                className="bg-blue-500 hover:bg-blue-600 text-white"
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all"
               >
                 Retry
               </Button>
             </div>
           ) : opportunities.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">No opportunities available at the moment</p>
+              <p className="text-slate-500 font-medium">No opportunities available at the moment</p>
             </div>
           ) : (
             (showAllOpportunities ? opportunities : opportunities.slice(0,2)).map((opp, idx) => (
-              <div key={opp.id || `${opp.title}-${opp.company_name}-${idx}`} className="bg-white rounded-xl border border-blue-500 px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'none'}}>
-                <h4 className="font-bold text-gray-900 text-base mb-1">{opp.title}</h4>
-                <p className="text-blue-500 text-base font-semibold mb-3">{opp.company_name}</p>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="bg-gray-200 text-gray-800 px-3 py-1 rounded-lg text-xs font-semibold">{opp.employment_type}</span>
+              <div key={opp.id || `${opp.title}-${opp.company_name}-${idx}`} className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all">
+                <h4 className="font-semibold text-gray-900 text-base mb-1">{opp.title}</h4>
+                <p className="text-blue-600 text-sm font-medium mb-3">{opp.company_name}</p>
+                <div className="flex items-center justify-between">
+                  <Badge className="bg-gray-200 text-gray-700 hover:bg-gray-200 text-xs font-medium px-3 py-1">{opp.employment_type}</Badge>
                   {opp.application_link ? (
                     <a 
                       href={opp.application_link} 
@@ -381,12 +381,12 @@ const StudentDashboard = () => {
                       rel="noopener noreferrer"
                       className="inline-block"
                     >
-                      <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition-all" style={{boxShadow:'0 2px 6px 0 #f7e7b0'}}>
+                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors">
                         Apply Now
                       </Button>
                     </a>
                   ) : (
-                    <Button size="sm" className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition-all" style={{boxShadow:'0 2px 6px 0 #f7e7b0'}}>
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors">
                       Apply Now
                     </Button>
                   )}
@@ -398,7 +398,7 @@ const StudentDashboard = () => {
             <Button
               variant="outline"
               onClick={() => setShowAllOpportunities((v) => !v)}
-              className="w-full border-2 border-blue-500 text-blue-500 hover:bg-blue-50 font-semibold rounded-lg mt-2"
+              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
             >
               {showAllOpportunities ? 'Show Less' : `View All Opportunities (${opportunities.length})`}
             </Button>
@@ -407,28 +407,30 @@ const StudentDashboard = () => {
       </Card>
     ),
     technicalSkills: (
-      <Card key="technicalSkills" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
-        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0 flex items-center justify-between">
+      <Card key="technicalSkills" className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md">
+        <CardHeader className="px-6 py-4 border-b border-gray-100">
           <div className="flex items-center w-full justify-between">
-            <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold m-0 p-0">
-              <Code className="w-5 h-5" />
-              <span>Technical Skills</span>
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Code className="w-5 h-5 text-blue-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-900">Technical Skills</span>
             </CardTitle>
             <button
-              className="p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300 ml-2"
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
               title="Edit Technical Skills"
               onClick={() => setActiveModal('technicalSkills')}
             >
-              <Edit className="w-5 h-5 text-blue-600" />
+              <Edit className="w-4 h-4 text-gray-600" />
             </button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 p-0">
+        <CardContent className="p-6 space-y-3">
           {(showAllTechnicalSkills ? userData.technicalSkills.filter(skill => skill.enabled !== false) : userData.technicalSkills.filter(skill => skill.enabled !== false).slice(0,2)).map((skill, idx) => (
-            <div key={skill.id || `tech-skill-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
+            <div key={skill.id || `tech-skill-${idx}`} className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all">
               <div className="flex items-center justify-between">
                 <div key={`tech-skill-info-${skill.id}`}> 
-                  <h4 className="font-bold text-gray-900 text-base mb-1">{skill.name}</h4>
+                  <h4 className="font-semibold text-gray-900 text-base mb-1">{skill.name}</h4>
                   <p className="text-xs text-gray-600 font-medium">{skill.category}</p>
                 </div>
                 <div key={`tech-skill-stars-${skill.id}`} className="flex gap-1">
@@ -441,7 +443,7 @@ const StudentDashboard = () => {
             <Button
               variant="outline"
               onClick={() => setShowAllTechnicalSkills((v) => !v)}
-              className="w-full border-2 border-blue-400 text-blue-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
+              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
             >
               {showAllTechnicalSkills ? 'Show Less' : 'View All Technical Skills'}
             </Button>
@@ -450,49 +452,49 @@ const StudentDashboard = () => {
       </Card>
     ),
     education: (
-      <Card key="education" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
-        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0 flex items-center justify-between">
+      <Card key="education" className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md">
+        <CardHeader className="px-6 py-4 border-b border-gray-100">
           <div className="flex items-center w-full justify-between">
-            <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold m-0 p-0">
-              <Award className="w-5 h-5" />
-              <span>My Education</span>
-              <span className="ml-2">
-                <Badge className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm font-semibold shadow-none">
-                  {userData.education.filter(education => education.enabled !== false).length} Qualifications
-                </Badge>
-              </span>
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Award className="w-5 h-5 text-blue-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-900">My Education</span>
+              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
+                {userData.education.filter(education => education.enabled !== false).length}
+              </Badge>
             </CardTitle>
             <button
-              className="p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300 ml-2"
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
               title="Edit Education"
               onClick={() => setActiveModal('education')}
             >
-              <Edit className="w-5 h-5 text-blue-600" />
+              <Edit className="w-4 h-4 text-gray-600" />
             </button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 p-0">
+        <CardContent className="p-6 space-y-3">
           {(showAllEducation ? userData.education.filter(education => education.enabled !== false) : userData.education.filter(education => education.enabled !== false).slice(0,2)).map((education, idx) => (
-            <div key={education.id || `edu-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
-              <div className="flex items-center justify-between">
+            <div key={education.id || `edu-${idx}`} className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all">
+              <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h4 className="font-bold text-gray-900 text-base mb-1">{education.degree || 'N/A'}</h4>
-                  <p className="text-gray-600 text-sm font-medium mb-1">{education.university || 'N/A'}</p>
+                  <h4 className="font-semibold text-gray-900 text-base mb-0.5">{education.degree || 'N/A'}</h4>
+                  <p className="text-gray-600 text-sm">{education.university || 'N/A'}</p>
                 </div>
-                <Badge className={`rounded-md px-3 py-1 text-xs font-semibold shadow-none ${education.status === 'ongoing' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}`}>{education.status || 'N/A'}</Badge>
+                <Badge className={`px-2.5 py-1 text-xs font-medium rounded-md ${education.status === 'ongoing' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>{education.status || 'N/A'}</Badge>
               </div>
-              <div className="flex gap-8 mt-1">
+              <div className="flex gap-6 text-xs">
                 <div key={`edu-level-${education.id}`}>
-                  <p className="text-gray-500 text-xs font-medium">Level</p>
-                  <p className="font-semibold text-gray-800 text-xs">{education.level || 'N/A'}</p>
+                  <p className="text-gray-500 mb-0.5">Level</p>
+                  <p className="font-medium text-gray-900">{education.level || 'N/A'}</p>
                 </div>
                 <div key={`edu-year-${education.id}`}>
-                  <p className="text-gray-500 text-xs font-medium">Year</p>
-                  <p className="font-semibold text-gray-800 text-xs">{education.yearOfPassing || 'N/A'}</p>
+                  <p className="text-gray-500 mb-0.5">Year</p>
+                  <p className="font-medium text-gray-900">{education.yearOfPassing || 'N/A'}</p>
                 </div>
                 <div key={`edu-grade-${education.id}`}>
-                  <p className="text-gray-500 text-xs font-medium">Grade</p>
-                  <p className="font-semibold text-gray-800 text-xs">{education.cgpa || 'N/A'}</p>
+                  <p className="text-gray-500 mb-0.5">Grade</p>
+                  <p className="font-medium text-gray-900">{education.cgpa || 'N/A'}</p>
                 </div>
               </div>
             </div>
@@ -501,7 +503,7 @@ const StudentDashboard = () => {
             <Button
               variant="outline"
               onClick={() => setShowAllEducation((v) => !v)}
-              className="w-full border-2 border-blue-400 text-blue-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
+              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
             >
               {showAllEducation ? 'Show Less' : 'View All Qualifications'}
             </Button>
@@ -510,40 +512,42 @@ const StudentDashboard = () => {
       </Card>
     ),
     training: (
-      <Card key="training" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
-        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0 flex items-center justify-between">
+      <Card key="training" className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md">
+        <CardHeader className="px-6 py-4 border-b border-gray-100">
           <div className="flex items-center w-full justify-between">
-            <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold m-0 p-0">
-              <Code className="w-5 h-5" />
-              <span>My Training</span>
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Code className="w-5 h-5 text-blue-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-900">My Training</span>
             </CardTitle>
             <button
-              className="p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300 ml-2"
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
               title="Edit Training"
               onClick={() => setActiveModal('training')}
             >
-              <Edit className="w-5 h-5 text-blue-600" />
+              <Edit className="w-4 h-4 text-gray-600" />
             </button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 p-0">
+        <CardContent className="p-6 space-y-3">
           {(showAllTraining ? userData.training.filter(training => training.enabled !== false) : userData.training.filter(training => training.enabled !== false).slice(0,2)).map((training, idx) => (
-            <div key={training.id || `training-${training.course}-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-gray-900 text-base">{training.course}</span>
-                <Badge className={`rounded-md px-3 py-1 text-xs font-semibold shadow-none ${training.status === 'completed' ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'}`}>{training.status}</Badge>
+            <div key={training.id || `training-${training.course}-${idx}`} className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-semibold text-gray-900 text-base">{training.course}</span>
+                <Badge className={`px-2.5 py-1 text-xs font-medium rounded-md ${training.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{training.status}</Badge>
               </div>
-              <div className="w-full h-2 bg-purple-100 rounded-full overflow-hidden mb-1">
-                <div className="h-2 bg-black rounded-full transition-all duration-300" style={{ width: `${training.progress}%` }} />
+              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-2">
+                <div className="h-2 bg-blue-600 rounded-full transition-all duration-300" style={{ width: `${training.progress}%` }} />
               </div>
-              <span className="text-xs text-blue-600 font-semibold">{training.progress}% Complete</span>
+              <span className="text-xs text-gray-600 font-medium">{training.progress}% Complete</span>
             </div>
           ))}
           {userData.training.filter(training => training.enabled !== false).length > 2 && (
             <Button
               variant="outline"
               onClick={() => setShowAllTraining((v) => !v)}
-              className="w-full border-2 border-blue-400 text-blue-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
+              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
             >
               {showAllTraining ? 'Show Less' : 'View All Courses'}
             </Button>
@@ -552,34 +556,36 @@ const StudentDashboard = () => {
       </Card>
     ),
     experience: (
-      <Card key="experience" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
-        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0 flex items-center justify-between">
+      <Card key="experience" className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md">
+        <CardHeader className="px-6 py-4 border-b border-gray-100">
           <div className="flex items-center w-full justify-between">
-            <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold m-0 p-0">
-              <Users className="w-5 h-5" />
-              <span>My Experience</span>
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-900">My Experience</span>
             </CardTitle>
             <button
-              className="p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300 ml-2"
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
               title="Edit Experience"
               onClick={() => setActiveModal('experience')}
             >
-              <Edit className="w-5 h-5 text-blue-600" />
+              <Edit className="w-4 h-4 text-gray-600" />
             </button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 p-0">
+        <CardContent className="p-6 space-y-3">
           {(showAllExperience ? userData.experience.filter(exp => exp.enabled !== false) : userData.experience.filter(exp => exp.enabled !== false).slice(0,2)).map((exp, idx) => (
-            <div key={exp.id || `${exp.role}-${exp.organization}-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
+            <div key={exp.id || `${exp.role}-${exp.organization}-${idx}`} className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-gray-900 text-base mb-1">{exp.role}</p>
-                  <p className="text-gray-600 text-sm font-medium mb-1">{exp.organization}</p>
-                  <p className="text-xs text-gray-500">{exp.duration}</p>
+                  <p className="font-semibold text-gray-900 text-base mb-1">{exp.role}</p>
+                  <p className="text-blue-600 text-sm font-medium mb-1">{exp.organization}</p>
+                  <p className="text-xs text-gray-600">{exp.duration}</p>
                 </div>
                 {exp.verified && (
-                  <Badge className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-xs font-semibold shadow-none">
-                    <CheckCircle className="w-3 h-3 mr-1" />
+                  <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
                     Verified
                   </Badge>
                 )}
@@ -590,7 +596,7 @@ const StudentDashboard = () => {
             <Button
               variant="outline"
               onClick={() => setShowAllExperience((v) => !v)}
-              className="w-full border-2 border-blue-400 text-blue-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
+              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
             >
               {showAllExperience ? 'Show Less' : 'View All Experience'}
             </Button>
@@ -599,29 +605,31 @@ const StudentDashboard = () => {
       </Card>
     ),
     softSkills: (
-      <Card key="softSkills" className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
-        <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0 flex items-center justify-between">
+      <Card key="softSkills" className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md">
+        <CardHeader className="px-6 py-4 border-b border-gray-100">
           <div className="flex items-center w-full justify-between">
-            <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold m-0 p-0">
-              <MessageCircle className="w-5 h-5" />
-              <span>My Soft Skills</span>
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <MessageCircle className="w-5 h-5 text-blue-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-900">My Soft Skills</span>
             </CardTitle>
             <button
-              className="p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300 ml-2"
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
               title="Edit Soft Skills"
               onClick={() => setActiveModal('softSkills')}
             >
-              <Edit className="w-5 h-5 text-blue-600" />
+              <Edit className="w-4 h-4 text-gray-600" />
             </button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 p-0">
+        <CardContent className="p-6 space-y-3">
           {(showAllSoftSkills ? userData.softSkills.filter(skill => skill.enabled !== false) : userData.softSkills.filter(skill => skill.enabled !== false).slice(0,2)).map((skill, idx) => (
-            <div key={skill.id || `soft-skill-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
+            <div key={skill.id || `soft-skill-${idx}`} className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all">
               <div className="flex items-center justify-between">
                 <div key={`skill-info-${skill.id}`}>
-                  <h4 className="font-bold text-gray-900 text-base mb-1">{skill.name}</h4>
-                  <p className="text-xs text-gray-600 font-medium">{skill.description}</p>
+                  <h4 className="font-semibold text-gray-900 text-base mb-1">{skill.name}</h4>
+                  <p className="text-xs text-gray-600">{skill.description}</p>
                 </div>
                 <div key={`skill-stars-${skill.id}`} className="flex gap-1">
                   {renderStars(skill.level)}
@@ -633,7 +641,7 @@ const StudentDashboard = () => {
             <Button
               variant="outline"
               onClick={() => setShowAllSoftSkills((v) => !v)}
-              className="w-full border-2 border-blue-400 text-blue-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
+              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
             >
               {showAllSoftSkills ? 'Show Less' : 'View All Soft Skills'}
             </Button>
@@ -685,7 +693,7 @@ const StudentDashboard = () => {
   };
 
   return (
-    <div className="bg-gray-50 py-8 px-6">
+    <div className="min-h-screen bg-[#F8FAFC] py-8 px-6">
       <div className="max-w-7xl mx-auto">
         {/* Navigation Bar */}
         {/* <div className="mb-6">
@@ -724,7 +732,7 @@ const StudentDashboard = () => {
           </Card>
         </div> */}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
           {/* LEFT COLUMN - User Activity & Updates - Only show for own profile */}
           {!isViewingOthersProfile && (
@@ -735,33 +743,35 @@ const StudentDashboard = () => {
                 {/* Recent Updates */}
                 <div
                   ref={recentUpdatesRef}
-                  className={`bg-white rounded-2xl shadow-none`}
+                  className="bg-white rounded-xl border border-gray-200 shadow-sm"
                 >
-                  <CardHeader className="bg-[#F3F8FF] rounded-t-2xl border-b-0 px-6 py-4">
-                    <CardTitle className="flex items-center gap-2 text-[#1976D2] text-lg font-bold">
-                      <Bell className="w-5 h-5 text-[#1976D2]" />
-                      Recent Updates
+                  <CardHeader className="px-6 py-4 border-b border-gray-100">
+                    <CardTitle className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <Bell className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <span className="text-lg font-semibold text-gray-900">Recent Updates</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="px-0 py-4 gap-2">
+                  <CardContent className="p-6">
                     {recentUpdatesLoading ? (
                       <div className="flex justify-center items-center py-8">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#1976D2]"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                       </div>
                     ) : recentUpdatesError ? (
                       <div className="text-center py-8">
-                        <p className="text-red-500 mb-2">Failed to load recent updates</p>
+                        <p className="text-red-600 mb-3 font-medium">Failed to load recent updates</p>
                         <Button 
                           onClick={refreshRecentUpdates}
                           size="sm" 
-                          className="bg-[#1976D2] hover:bg-blue-700 text-white"
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors"
                         >
                           Retry
                         </Button>
                       </div>
                     ) : recentUpdates.length === 0 ? (
                       <div className="text-center py-8">
-                        <p className="text-gray-500">No recent updates available</p>
+                        <p className="text-gray-500 font-medium">No recent updates available</p>
                       </div>
                     ) : (
                       <>
@@ -772,20 +782,20 @@ const StudentDashboard = () => {
                             ? recentUpdates
                             : recentUpdates.slice(0, 5)
                           ).filter(update => update && update.message).map((update, idx) => (
-                            <div key={update.id || `update-${update.timestamp}-${idx}`} className="flex items-start gap-3 px-6 py-4 bg-white rounded-xl border-l-4 border-[#2196F3] mb-2 hover:shadow-md transition-shadow">
-                              <div className="w-2 h-2 bg-[#FF9800] rounded-full mt-2 flex-shrink-0" />
-                              <div>
-                                <p className="text-base font-medium text-gray-900 mb-1">{update.message}</p>
-                                <p className="text-xs text-[#1976D2] font-medium">{update.timestamp}</p>
+                            <div key={update.id || `update-${update.timestamp}-${idx}`} className="p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all flex items-start gap-3">
+                              <div className="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900 mb-0.5">{update.message}</p>
+                                <p className="text-xs text-gray-600">{update.timestamp}</p>
                               </div>
                             </div>
                           ))}
                         </div>
                         {recentUpdates.length > 5 && (
-                          <div className="px-6 mt-4">
+                          <div className="mt-3">
                             <Button
                               variant="outline"
-                              className="w-full border-2 border-[#2196F3] text-[#2196F3] hover:bg-blue-50 font-semibold rounded-lg transition-colors"
+                              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
                               onClick={() => setShowAllRecentUpdates(!showAllRecentUpdates)}
                             >
                               {showAllRecentUpdates ? 'See Less' : 'See More'}
@@ -800,18 +810,20 @@ const StudentDashboard = () => {
                 {/* Suggested Next Steps */}
                 <Card
                   ref={suggestedNextStepsRef}
-                  className="border-l-4 border-l-amber-500 shadow-lg hover:shadow-xl transition-shadow"
+                  className="bg-white rounded-xl border border-gray-200 shadow-sm"
                 >
-                  <CardHeader className="bg-gradient-to-r from-amber-50 to-yellow-50">
-                    <CardTitle className="flex items-center gap-2 text-amber-700">
-                      <TrendingUp className="w-5 h-5" />
-                      Suggested Next Steps
+                  <CardHeader className="px-6 py-4 border-b border-gray-100">
+                    <CardTitle className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <span className="text-lg font-semibold text-gray-900">Suggested Next Steps</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="p-6 space-y-2">
                     {suggestions.map((suggestion, idx) => (
-                      <div key={suggestion.id || `suggestion-${idx}`} className="p-3 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-lg border-l-2 border-l-amber-500 hover:shadow-sm transition-shadow">
-                        <p className="text-sm font-medium text-amber-900">
+                      <div key={suggestion.id || `suggestion-${idx}`} className="p-3 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-all">
+                        <p className="text-sm font-medium text-gray-900">
                           {typeof suggestion === 'string' ? suggestion : suggestion.message || suggestion}
                         </p>
                       </div>
@@ -860,7 +872,7 @@ const StudentDashboard = () => {
 
           {/* RIGHT COLUMN - 6 Key Boxes with Dynamic Ordering */}
           <div className={isViewingOthersProfile ? "lg:col-span-3" : "lg:col-span-2"}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {renderCardsByPriority()}
             </div>
           </div>

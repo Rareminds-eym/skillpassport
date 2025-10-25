@@ -37,6 +37,7 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: 'training', label: 'My Training' },
     { id: 'experience', label: 'My Experience' },
     { id: 'opportunities', label: 'Opportunities' },
+    { id: 'applications', label: 'Applications' },
     { id: 'share', label: 'Share Passport' }
   ];
 
@@ -85,6 +86,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate('/student/my-experience');
                   } else if (tab.id === 'opportunities') {
                     navigate('/student/opportunities');
+                  } else if (tab.id === 'applications') {
+                    navigate('/student/applications');
                   }
                 }}
                 className={`relative py-2 px-2 text-sm font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none ${activeTab === tab.id ? 'font-semibold' : ''}`}
@@ -171,6 +174,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                   navigate('/student/my-experience');
                 } else if (tab.id === 'opportunities') {
                   navigate('/student/opportunities');
+                } else if (tab.id === 'applications') {
+                  navigate('/student/applications');
                 }
                 setMobileMenuOpen(false);
               }}

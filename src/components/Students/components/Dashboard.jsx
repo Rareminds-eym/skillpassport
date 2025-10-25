@@ -48,7 +48,7 @@ const Dashboard = () => {
   const [activeNavItem, setActiveNavItem] = useState('skills'); // Default to skills
   const [showAllUpdates, setShowAllUpdates] = useState(false);
 
-  // Get email from your custom auth
+  // Get student ID and email from your custom auth
   const { user } = useAuth();
   const userEmail = user?.email;
 
@@ -72,7 +72,7 @@ const Dashboard = () => {
   const experience = studentData?.experience || mockExperienceData;
   const technicalSkills = studentData?.technicalSkills || mockTechnicalSkills;
   const softSkills = studentData?.softSkills || mockSoftSkills;
-  const recentUpdates = studentData?.recentUpdates || mockRecentUpdates;
+  const recentUpdates = mockRecentUpdates;
   const suggestions = studentData?.suggestions || mockSuggestions;
   const opportunities = studentData?.opportunities || mockOpportunities;
 
@@ -616,43 +616,27 @@ const Dashboard = () => {
           <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-20">
             
             {/* Recent Updates */}
-            <Card className="hover:shadow-xl transition-shadow">
+            <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
                 <CardTitle className="flex items-center gap-2 text-blue-700">
                   <Bell className="w-5 h-5" />
                   Recent Updates
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {recentUpdates?.slice(0, showAllUpdates ? recentUpdates.length : 2).map((update, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 bg-gradient-to-r from-blue-50 to-white rounded-lg border-l-2 border-l-blue-400">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full mt-2 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{update.message}</p>
-                      <p className="text-xs text-blue-600 font-medium">{update.timestamp}</p>
-                    </div>
+              <CardContent className="space-y-3">
+                {recentUpdates?.slice(0, showAllUpdates ? recentUpdates.length : 4).map((update, index) => (
+                  <div key={index} className="p-3 bg-gradient-to-r from-blue-50 to-white rounded-lg border-l-2 border-l-blue-400 hover:shadow-sm transition-shadow">
+                    <p className="text-sm text-blue-900">{update.message}</p>
+                    <p className="text-xs text-blue-600 mt-1">{update.timestamp}</p>
                   </div>
                 ))}
-                {recentUpdates && recentUpdates.length > 2 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowAllUpdates(!showAllUpdates)}
-                    className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                  >
-                    {showAllUpdates ? (
-                      <>
-                        <ChevronUp className="w-4 h-4 mr-1" />
-                        Show Less
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="w-4 h-4 mr-1" />
-                        See More ({recentUpdates.length - 2} more)
-                      </>
-                    )}
-                  </Button>
-                )}
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowAllUpdates(!showAllUpdates)}
+                  className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                >
+                  {showAllUpdates ? 'Show Less' : 'View All Updates'}
+                </Button>
               </CardContent>
             </Card>
 
