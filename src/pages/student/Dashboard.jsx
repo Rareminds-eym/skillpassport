@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { Button } from '../../components/Students/components/ui/button';
@@ -36,10 +36,10 @@ import {
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useOpportunities } from '../../hooks/useOpportunities';
 import { useRecentUpdates } from '../../hooks/useRecentUpdates';
-import { useRecentUpdatesLegacy } from '../../hooks/useRecentUpdatesLegacy'; // Legacy hook for backward compatibility
 import { supabase } from '../../lib/supabaseClient';
 import '../../utils/testRecentUpdates'; // Import test utility for debugging
 import { debugRecentUpdates } from '../../utils/debugRecentUpdates'; // Debug utility
+import '../../utils/simpleDebug'; // Simple debug utility
 
 const StudentDashboard = () => {
   const location = useLocation();
@@ -56,6 +56,7 @@ const StudentDashboard = () => {
   // Intersection observer for Suggested Next Steps and Recent Updates
   const recentUpdatesRef = React.useRef(null);
   const suggestedNextStepsRef = React.useRef(null);
+
 
   useEffect(() => {
     if (!recentUpdatesRef.current || !suggestedNextStepsRef.current) return;
@@ -110,6 +111,11 @@ const StudentDashboard = () => {
     return `${window.location.origin}/student/profile/${email}`;
   }, [userEmail]);
   
+  // Memoize studentSkills to prevent infinite re-renders
+  const studentSkills = useMemo(() => {
+    return studentData?.profile?.technicalSkills?.map(skill => skill.name) || [];
+  }, [studentData?.profile?.technicalSkills]);
+  
   // Fetch opportunities data from Supabase
   const { 
     opportunities, 
@@ -119,33 +125,16 @@ const StudentDashboard = () => {
   } = useOpportunities({
     fetchOnMount: true,
     activeOnly: false, // Changed to false to see all opportunities
-    studentSkills: studentData?.profile?.technicalSkills?.map(skill => skill.name) || []
+    studentSkills: studentSkills
   });
 
-  // Fetch recent updates data from Supabase (now uses authenticated user)
+  // Fetch recent updates data from Supabase (real-time - no dummy data)
   const {
     recentUpdates,
     loading: recentUpdatesLoading,
     error: recentUpdatesError,
     refreshRecentUpdates
   } = useRecentUpdates();
-
-  // Fallback to legacy hook if Supabase Auth is not set up
-  const {
-    recentUpdates: recentUpdatesLegacy,
-    loading: recentUpdatesLoadingLegacy,
-    error: recentUpdatesErrorLegacy,
-    refreshRecentUpdates: refreshRecentUpdatesLegacy
-  } = useRecentUpdatesLegacy();
-
-  // Use legacy data if auth-based data is empty
-  const finalRecentUpdates = (recentUpdates.length > 0 ? recentUpdates : recentUpdatesLegacy).filter(update => update && update.message);
-  const finalLoading = recentUpdatesLoading || recentUpdatesLoadingLegacy;
-  const finalError = recentUpdatesError || recentUpdatesErrorLegacy;
-  const finalRefresh = () => {
-    refreshRecentUpdates();
-    refreshRecentUpdatesLegacy();
-  };
 
   // Debug log for authentication and student data
   useEffect(() => {
@@ -169,13 +158,13 @@ const StudentDashboard = () => {
   // Debug log for recent updates
   useEffect(() => {
     console.log('📢 Dashboard: Recent updates state changed:', {
-      recentUpdates: finalRecentUpdates,
-      loading: finalLoading,
-      error: finalError,
-      count: finalRecentUpdates?.length,
+      recentUpdates,
+      loading: recentUpdatesLoading,
+      error: recentUpdatesError,
+      count: recentUpdates?.length,
       userEmail
     });
-  }, [finalRecentUpdates, finalLoading, finalError, userEmail]);
+  }, [recentUpdates, recentUpdatesLoading, recentUpdatesError, userEmail]);
 
   // Poll for new opportunities and refresh Recent Updates
   useEffect(() => {
@@ -202,7 +191,7 @@ const StudentDashboard = () => {
           // Refresh Recent Updates to show the new opportunity
           setTimeout(() => {
             console.log('🔄 Refreshing Recent Updates after new opportunity...');
-            finalRefresh();
+            refreshRecentUpdates();
           }, 1000); // Small delay to ensure DB trigger has fired
         }
       )
@@ -243,8 +232,9 @@ const StudentDashboard = () => {
           
         console.log('🧪 Direct test result:', { data, error, count });
         
-        // Run debug for recent updates
-        await debugRecentUpdates();
+        // Run debug for recent updates (commented out to prevent automatic execution)
+        // await debugRecentUpdates();
+        console.log('ℹ️ To debug recent updates, run: await window.debugRecentUpdates() in console');
       } catch (err) {
         console.error('🧪 Direct test error:', err);
       }
@@ -321,7 +311,7 @@ const StudentDashboard = () => {
           
           // Refresh Recent Updates to show the new activity
           console.log('🔄 Refreshing Recent Updates after save...');
-          await finalRefresh();
+          refreshRecentUpdates();
         }
       } catch (err) {
         console.error('Error saving:', err);
@@ -753,23 +743,23 @@ const StudentDashboard = () => {
                       Recent Updates
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="px-0 py-4">
-                    {finalLoading ? (
+                  <CardContent className="px-0 py-4 gap-2">
+                    {recentUpdatesLoading ? (
                       <div className="flex justify-center items-center py-8">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#1976D2]"></div>
                       </div>
-                    ) : finalError ? (
+                    ) : recentUpdatesError ? (
                       <div className="text-center py-8">
                         <p className="text-red-500 mb-2">Failed to load recent updates</p>
                         <Button 
-                          onClick={finalRefresh}
+                          onClick={refreshRecentUpdates}
                           size="sm" 
                           className="bg-[#1976D2] hover:bg-blue-700 text-white"
                         >
                           Retry
                         </Button>
                       </div>
-                    ) : finalRecentUpdates.length === 0 ? (
+                    ) : recentUpdates.length === 0 ? (
                       <div className="text-center py-8">
                         <p className="text-gray-500">No recent updates available</p>
                       </div>
@@ -779,8 +769,8 @@ const StudentDashboard = () => {
                           className={`space-y-2 ${showAllRecentUpdates ? 'max-h-96 overflow-y-auto pr-2 scroll-smooth recent-updates-scroll' : ''}`}
                         >
                           {(showAllRecentUpdates 
-                            ? finalRecentUpdates
-                            : finalRecentUpdates.slice(0, 5)
+                            ? recentUpdates
+                            : recentUpdates.slice(0, 5)
                           ).filter(update => update && update.message).map((update, idx) => (
                             <div key={update.id || `update-${update.timestamp}-${idx}`} className="flex items-start gap-3 px-6 py-4 bg-white rounded-xl border-l-4 border-[#2196F3] mb-2 hover:shadow-md transition-shadow">
                               <div className="w-2 h-2 bg-[#FF9800] rounded-full mt-2 flex-shrink-0" />
@@ -791,7 +781,7 @@ const StudentDashboard = () => {
                             </div>
                           ))}
                         </div>
-                        {finalRecentUpdates.length > 5 && (
+                        {recentUpdates.length > 5 && (
                           <div className="px-6 mt-4">
                             <Button
                               variant="outline"
