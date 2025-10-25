@@ -17,11 +17,13 @@ import {
   VideoCameraIcon,
   PhoneIcon
 } from '@heroicons/react/24/outline';
+import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import { useStudents } from '../../hooks/useStudents';
 import { getShortlists, addCandidateToShortlist } from '../../services/shortlistService';
 import { createInterview } from '../../services/interviewService';
 import { useSearch } from '../../context/SearchContext';
 import SearchBar from '../../components/common/SearchBar';
+import { createSavedSearch } from '../../services/savedSearchesService';
 
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -505,6 +507,185 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
   );
 };
 
+const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) => {
+  const [searchName, setSearchName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Auto-generate search name based on filters
+      const nameParts = [];
+      if (searchQuery) nameParts.push(searchQuery);
+      if (filters.skills.length > 0) nameParts.push(filters.skills.slice(0, 2).join(', '));
+      if (filters.locations.length > 0) nameParts.push(filters.locations[0]);
+      
+      const autoName = nameParts.length > 0 
+        ? nameParts.join(' - ').slice(0, 50)
+        : 'My Search';
+      setSearchName(autoName);
+      setError(null);
+    }
+  }, [isOpen, searchQuery, filters]);
+
+  const handleSave = async () => {
+    if (!searchName.trim()) {
+      setError('Please enter a name for this search');
+      return;
+    }
+
+    // Check if there's anything to save
+    const hasFilters = filters.skills.length > 0 || 
+                       filters.courses.length > 0 || 
+                       filters.badges.length > 0 ||
+                       filters.locations.length > 0 || 
+                       filters.years.length > 0 ||
+                       filters.minScore !== 0 || 
+                       filters.maxScore !== 100;
+    
+    if (!searchQuery && !hasFilters) {
+      setError('Please add search terms or filters before saving');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Build search criteria object
+      const searchCriteria: any = {};
+      
+      if (searchQuery) searchCriteria.query = searchQuery;
+      if (filters.skills.length > 0) searchCriteria.skills = filters.skills;
+      if (filters.courses.length > 0) searchCriteria.courses = filters.courses;
+      if (filters.badges.length > 0) searchCriteria.badges = filters.badges;
+      if (filters.locations.length > 0) searchCriteria.locations = filters.locations;
+      if (filters.years.length > 0) searchCriteria.years = filters.years;
+      if (filters.minScore !== 0) searchCriteria.minScore = filters.minScore;
+      if (filters.maxScore !== 100) searchCriteria.maxScore = filters.maxScore;
+
+      const { data, error } = await createSavedSearch(
+        searchName.trim(),
+        searchCriteria,
+        'current-user' // Replace with actual user ID when auth is implemented
+      );
+
+      if (error) {
+        throw new Error(error.message || 'Failed to save search');
+      }
+
+      onSuccess?.();
+      onClose();
+    } catch (err: any) {
+      console.error('Error saving search:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Save Search</h3>
+              <p className="text-sm text-gray-500 mt-1">Save your current search and filters for quick access</p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+
+          {/* Search Preview */}
+          <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
+            <p className="text-xs font-medium text-gray-700 mb-2">What will be saved:</p>
+            <div className="space-y-1">
+              {searchQuery && (
+                <p className="text-xs text-gray-600">• Search: "{searchQuery}"</p>
+              )}
+              {filters.skills.length > 0 && (
+                <p className="text-xs text-gray-600">• Skills: {filters.skills.join(', ')}</p>
+              )}
+              {filters.courses.length > 0 && (
+                <p className="text-xs text-gray-600">• Courses: {filters.courses.join(', ')}</p>
+              )}
+              {filters.locations.length > 0 && (
+                <p className="text-xs text-gray-600">• Locations: {filters.locations.join(', ')}</p>
+              )}
+              {filters.badges.length > 0 && (
+                <p className="text-xs text-gray-600">• Badges: {filters.badges.length} selected</p>
+              )}
+              {filters.years.length > 0 && (
+                <p className="text-xs text-gray-600">• Years: {filters.years.join(', ')}</p>
+              )}
+              {(filters.minScore !== 0 || filters.maxScore !== 100) && (
+                <p className="text-xs text-gray-600">• Score Range: {filters.minScore}-{filters.maxScore}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Search Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+              placeholder="e.g., React Developers in Bangalore"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              maxLength={100}
+            />
+            <p className="text-xs text-gray-500 mt-1">{searchName.length}/100 characters</p>
+          </div>
+
+          <div className="flex items-center justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={loading || !searchName.trim()}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center"
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <BookmarkSolidIcon className="h-4 w-4 mr-1" />
+                  Save Search
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const BadgeComponent = ({ badges }) => {
   const badgeConfig = {
     self_verified: { color: 'bg-gray-100 text-gray-800', label: 'Self' },
@@ -628,6 +809,7 @@ const TalentPool = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showShortlistModal, setShowShortlistModal] = useState(false);
   const [showInterviewModal, setShowInterviewModal] = useState(false);
+  const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [sortBy, setSortBy] = useState('relevance');
   const [filters, setFilters] = useState({
@@ -852,6 +1034,15 @@ const TalentPool = () => {
     setSelectedCandidate(null);
   };
 
+  const handleSaveSearchClick = () => {
+    setShowSaveSearchModal(true);
+  };
+
+  const handleSaveSearchSuccess = () => {
+    alert('Search saved successfully! You can now access it from the Overview page.');
+    setShowSaveSearchModal(false);
+  };
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header - responsive layout */}
@@ -881,6 +1072,15 @@ const TalentPool = () => {
 
         {/* Right: filter and view toggles (fixed width) */}
         <div className="w-80 flex-shrink-0 pl-4 flex items-center justify-end space-x-2">
+          {/* Save Search Button */}
+          <button
+            onClick={handleSaveSearchClick}
+            className="inline-flex items-center px-3 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
+            title="Save current search and filters"
+          >
+            <BookmarkSolidIcon className="h-4 w-4 mr-2" />
+            Search
+          </button>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 relative"
@@ -938,8 +1138,15 @@ const TalentPool = () => {
           />
         </div>
 
-        {/* Filter and view toggles */}
-        <div className="flex items-center justify-between space-x-2">
+        {/* Save Search and Filter toggles */}
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handleSaveSearchClick}
+            className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
+          >
+            <BookmarkSolidIcon className="h-4 w-4 mr-2" />
+            Save
+          </button>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 relative"
@@ -1253,6 +1460,15 @@ const TalentPool = () => {
         }}
         candidate={selectedCandidate}
         onSuccess={handleInterviewSuccess}
+      />
+
+      {/* Save Search Modal */}
+      <SaveSearchModal
+        isOpen={showSaveSearchModal}
+        onClose={() => setShowSaveSearchModal(false)}
+        searchQuery={searchQuery}
+        filters={filters}
+        onSuccess={handleSaveSearchSuccess}
       />
     </div>
   );
