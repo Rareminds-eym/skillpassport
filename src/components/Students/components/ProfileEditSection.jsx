@@ -214,10 +214,10 @@ const ProfileEditSection = ({ profileEmail }) => {
   // Show loading state
   if (loading) {
     return (
-      <div className="bg-gray-50 py-8 px-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 py-12 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your profile data...</p>
+          <div className="animate-spin rounded-full h-14 w-14 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
+          <p className="mt-6 text-gray-700 font-medium text-lg">Loading your profile...</p>
         </div>
       </div>
     );
@@ -239,16 +239,20 @@ const ProfileEditSection = ({ profileEmail }) => {
   }
 
   return (
-    <div className="bg-gray-50 py-8 px-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {isOwnProfile ? 'Edit Your Profile' : `${studentData?.profile?.name || 'Student'}'s Profile`}
-          </h2>
-          <p className="text-gray-600">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100/60 backdrop-blur-sm text-blue-700 rounded-full text-sm font-semibold mb-6 shadow-sm">
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+            Professional Profile
+          </div>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-5 tracking-tight">
+            {isOwnProfile ? 'Your Profile' : studentData?.profile?.name || 'Student Profile'}
+          </h1>
+          <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
             {isOwnProfile 
-              ? 'Click on any section below to add or update your details' 
-              : 'View student profile information'}
+              ? 'Manage your professional information and showcase your skills, experience, and achievements.' 
+              : 'Comprehensive profile overview with skills, experience, and qualifications.'}
           </p>
           
           {/* Database Connection Status - Only show for own profile */}
@@ -294,27 +298,33 @@ const ProfileEditSection = ({ profileEmail }) => {
           {editSections.map((section) => {
             const IconComponent = section.icon;
             return (
-              <Card key={section.id} className={`hover:shadow-xl transition-all duration-300 ${isOwnProfile ? 'cursor-pointer hover:scale-105' : ''} border-2 ${section.color.split('text-')[0]}`}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-12 h-12 rounded-lg ${section.color} flex items-center justify-center shadow-md`}>
-                      <IconComponent className="w-6 h-6" />
+              <Card 
+                key={section.id} 
+                className={`group relative overflow-hidden bg-white/80 backdrop-blur-sm border-2 ${section.color.split('text-')[0]} shadow-lg hover:shadow-2xl transition-all duration-500 ${isOwnProfile ? 'cursor-pointer hover:scale-[1.03] hover:-translate-y-1' : ''}`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent pointer-events-none"></div>
+                <CardContent className="relative p-7">
+                  <div className="flex items-start justify-between mb-5">
+                    <div className={`w-14 h-14 rounded-xl ${section.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                      <IconComponent className="w-7 h-7" />
                     </div>
                     {section.count > 0 && (
-                      <Badge className="bg-amber-100 text-amber-700 font-semibold">
-                        {section.count} items
+                      <Badge className="bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 font-semibold px-3 py-1.5 shadow-sm">
+                        {section.count}
                       </Badge>
                     )}
                   </div>
-                  <h3 className="font-bold text-gray-900 mb-2">{section.title}</h3>
-                  <p className="text-sm text-gray-600 mb-4 leading-relaxed">{section.description}</p>
+                  <div className="mb-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2.5 group-hover:text-gray-800 transition-colors">{section.title}</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed">{section.description}</p>
+                  </div>
                   {isOwnProfile && (
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {section.id === 'personalInfo' && (
                         <Button
                           onClick={() => setExpandedSection(expandedSection === section.id ? null : section.id)}
                           variant="outline"
-                          className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                          className="w-full border-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 font-medium"
                         >
                           <User className="w-4 h-4 mr-2" />
                           {expandedSection === section.id ? 'Hide Details' : 'View Details'}
@@ -322,10 +332,10 @@ const ProfileEditSection = ({ profileEmail }) => {
                       )}
                       <Button
                         onClick={() => setActiveModal(section.id)}
-                        className={`w-full ${section.buttonColor} text-white font-medium shadow-md hover:shadow-lg transition-all duration-200`}
+                        className={`w-full ${section.buttonColor} text-white font-semibold shadow-md hover:shadow-xl transition-all duration-300`}
                       >
                         <Edit3 className="w-4 h-4 mr-2" />
-                        {section.id === 'education' ? 'Manage Education' : 'Edit Details'}
+                        {section.id === 'personalInfo' ? 'Edit Profile' : 'Manage'}
                       </Button>
                     </div>
                   )}
@@ -337,9 +347,15 @@ const ProfileEditSection = ({ profileEmail }) => {
 
         {/* Expanded Section Details */}
         {expandedSection === 'personalInfo' && (
-          <div className="mt-8">
-            <Card className="border-2 border-blue-200">
-              <CardContent className="p-6">
+          <div className="mt-10">
+            <Card className="border-2 border-blue-100 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 shadow-xl">
+              <CardContent className="p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">Personal Information</h2>
+                </div>
                 <PersonalInfoSummary 
                   data={studentData?.profile} 
                   isOwnProfile={isOwnProfile}

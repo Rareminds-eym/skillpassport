@@ -33,7 +33,7 @@ import {
 } from '../../components/Students/components/ProfileEditModals';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useOpportunities } from '../../hooks/useOpportunities';
-import { useRecentUpdates } from '../../hooks/useRecentUpdates';
+import { useStudentRealtimeActivities } from '../../hooks/useStudentRealtimeActivities';
 import { supabase } from '../../lib/supabaseClient';
 // Debug utilities removed for production cleanliness
 
@@ -124,13 +124,14 @@ const StudentDashboard = () => {
     studentSkills: studentSkills
   });
 
-  // Fetch recent updates data from Supabase (real-time - no dummy data)
+  // Fetch recent updates data from recruitment tables (student-specific)
   const {
-    recentUpdates,
-    loading: recentUpdatesLoading,
-    error: recentUpdatesError,
-    refreshRecentUpdates
-  } = useRecentUpdates();
+    activities: recentUpdates,
+    isLoading: recentUpdatesLoading,
+    isError: recentUpdatesError,
+    refetch: refreshRecentUpdates,
+    isConnected: realtimeConnected
+  } = useStudentRealtimeActivities(userEmail, 10);
 
   // Debug log for authentication and student data
   useEffect(() => {
@@ -781,15 +782,49 @@ const StudentDashboard = () => {
                           {(showAllRecentUpdates 
                             ? recentUpdates
                             : recentUpdates.slice(0, 5)
-                          ).filter(update => update && update.message).map((update, idx) => (
-                            <div key={update.id || `update-${update.timestamp}-${idx}`} className="p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all flex items-start gap-3">
-                              <div className="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0" />
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900 mb-0.5">{update.message}</p>
-                                <p className="text-xs text-gray-600">{update.timestamp}</p>
+                          ).map((update, idx) => {
+                            // Format the message from activity structure
+                            const message = update.message || 
+                              `${update.user} ${update.action} ${update.candidate}`;
+                            
+                            // Determine color based on activity type
+                            const getActivityColor = (type) => {
+                              switch(type) {
+                                case 'shortlist_added': return 'bg-yellow-50 border-yellow-300';
+                                case 'offer_extended': return 'bg-green-50 border-green-300';
+                                case 'offer_accepted': return 'bg-emerald-50 border-emerald-300';
+                                case 'placement_hired': return 'bg-purple-50 border-purple-300';
+                                case 'stage_change': return 'bg-indigo-50 border-indigo-300';
+                                case 'application_rejected': return 'bg-red-50 border-red-300';
+                                default: return 'bg-gray-50 border-gray-200';
+                              }
+                            };
+                            
+                            return (
+                              <div 
+                                key={update.id || `update-${update.timestamp}-${idx}`} 
+                                className={`p-3 rounded-lg border hover:shadow-sm transition-all flex items-start gap-3 ${getActivityColor(update.type)}`}
+                              >
+                                <div className="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0" />
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900 mb-0.5">
+                                    {update.user && <span className="text-blue-700">{update.user}</span>}
+                                    {update.action && <span className="text-gray-700"> {update.action} </span>}
+                                    {update.candidate && <span className="font-semibold">{update.candidate}</span>}
+                                    {update.message && <span className="text-gray-700">{update.message}</span>}
+                                  </p>
+                                  {update.details && (
+                                    <p className="text-xs text-gray-600 mb-1">{update.details}</p>
+                                  )}
+                                  <p className="text-xs text-gray-500">
+                                    {typeof update.timestamp === 'string' && update.timestamp.includes('ago') 
+                                      ? update.timestamp 
+                                      : new Date(update.timestamp).toLocaleString()}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                         {recentUpdates.length > 5 && (
                           <div className="mt-3">
