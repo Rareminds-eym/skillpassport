@@ -15,6 +15,7 @@ import {
 const navigationItems = [
   { name: 'Overview', path: '/recruitment/overview', icon: HomeIcon },
   { name: 'Talent Pool', path: '/recruitment/talent-pool', icon: UsersIcon },
+  { name: 'Requisition', path: '/recruitment/requisition', icon: BriefcaseIcon},
   { name: 'Pipelines', path: '/recruitment/pipelines', icon: RectangleStackIcon },
   { name: 'Shortlists', path: '/recruitment/shortlists', icon: BookmarkIcon },
   { name: 'Interviews', path: '/recruitment/interviews', icon: CalendarDaysIcon },
