@@ -19,10 +19,14 @@ import {
   CalendarIcon
 } from '@heroicons/react/24/outline';
 import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
+import { supabase } from '../../lib/supabaseClient'; // Adjust path to your Supabase client
 
-interface Requisition {
+interface Opportunity {
   id: string;
   job_title: string;
+  title: string; // Keep for backward compatibility
+  company_name: string;
+  company_logo?: string;
   department: string;
   location: string;
   employment_type: 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
@@ -42,10 +46,17 @@ interface Requisition {
   created_by: string;
   created_at: string;
   updated_at: string;
+  mode?: string;
+  stipend_or_salary?: string;
+  experience_required?: string;
+  skills_required?: any[];
+  application_link?: string;
+  deadline?: string;
+  is_active?: boolean;
 }
 
 const Requisitions = () => {
-  const [requisitions, setRequisitions] = useState<Requisition[]>([]);
+  const [requisitions, setRequisitions] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -54,86 +65,106 @@ const Requisitions = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showApplicationsModal, setShowApplicationsModal] = useState(false);
   const [showMessagesModal, setShowMessagesModal] = useState(false);
-  const [selectedRequisition, setSelectedRequisition] = useState<Requisition | null>(null);
+  const [selectedRequisition, setSelectedRequisition] = useState<Opportunity | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  // Load requisitions (mock data for now)
+  // Load requisitions from Supabase
   useEffect(() => {
     loadRequisitions();
   }, []);
 
   const loadRequisitions = async () => {
     setLoading(true);
-    // Mock data - replace with actual API call
-    setTimeout(() => {
-      setRequisitions([
-        {
-          id: 'req_001',
-          job_title: 'Senior Full Stack Developer',
-          department: 'Engineering',
-          location: 'Bangalore',
-          employment_type: 'Full-time',
-          experience_level: 'Senior',
-          salary_range_min: 1500000,
-          salary_range_max: 2500000,
-          status: 'open',
-          posted_date: '2025-01-15',
-          closing_date: '2025-02-28',
-          description: 'We are looking for an experienced Full Stack Developer...',
-          requirements: ['5+ years experience', 'React, Node.js', 'SQL/NoSQL databases'],
-          responsibilities: ['Design and implement features', 'Code reviews', 'Mentor junior developers'],
-          benefits: ['Health insurance', 'Remote work', 'Learning budget'],
-          applications_count: 45,
-          messages_count: 12,
-          views_count: 320,
-          created_by: 'recruiter@company.com',
-          created_at: '2025-01-15T10:00:00Z',
-          updated_at: '2025-01-15T10:00:00Z'
-        },
-        {
-          id: 'req_002',
-          job_title: 'Product Manager',
-          department: 'Product',
-          location: 'Remote',
-          employment_type: 'Full-time',
-          experience_level: 'Mid',
-          salary_range_min: 1200000,
-          salary_range_max: 1800000,
-          status: 'open',
-          posted_date: '2025-01-18',
-          closing_date: '2025-02-20',
-          description: 'Join our product team to shape the future...',
-          requirements: ['3+ years PM experience', 'Agile methodology', 'Stakeholder management'],
-          responsibilities: ['Define product roadmap', 'Coordinate with teams', 'Analyze metrics'],
-          applications_count: 28,
-          messages_count: 7,
-          views_count: 180,
-          created_by: 'recruiter@company.com',
-          created_at: '2025-01-18T10:00:00Z',
-          updated_at: '2025-01-18T10:00:00Z'
-        },
-        {
-          id: 'req_003',
-          job_title: 'Data Science Intern',
-          department: 'Data',
-          location: 'Hyderabad',
-          employment_type: 'Internship',
-          experience_level: 'Entry',
-          status: 'draft',
-          posted_date: '2025-01-20',
-          description: 'Summer internship program for data science enthusiasts...',
-          requirements: ['Python, R', 'Machine Learning basics', 'Currently pursuing degree'],
-          responsibilities: ['Data analysis', 'Model building', 'Report generation'],
-          applications_count: 0,
-          messages_count: 0,
-          views_count: 0,
-          created_by: 'recruiter@company.com',
-          created_at: '2025-01-20T10:00:00Z',
-          updated_at: '2025-01-20T10:00:00Z'
-        }
-      ]);
+    try {
+      const { data, error } = await supabase
+        .from('opportunities')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading opportunities:', error);
+        return;
+      }
+
+      // Transform the data to match our interface
+      const transformedData: Opportunity[] = (data || []).map(opp => ({
+        ...opp,
+        job_title: opp.title || opp.job_title || '',
+        requirements: opp.requirements || [],
+        responsibilities: opp.responsibilities || [],
+        benefits: opp.benefits || [],
+        applications_count: opp.applications_count || 0,
+        messages_count: opp.messages_count || 0,
+        views_count: opp.views_count || 0,
+        employment_type: (opp.employment_type as any) || 'Full-time',
+        experience_level: (opp.experience_level as any) || 'Mid',
+        status: (opp.status as any) || 'draft'
+      }));
+
+      setRequisitions(transformedData);
+    } catch (error) {
+      console.error('Error loading requisitions:', error);
+    } finally {
       setLoading(false);
-    }, 800);
+    }
+  };
+
+  const createRequisition = async (requisitionData: any): Promise<Opportunity> => {
+    const { data, error } = await supabase
+      .from('opportunities')
+      .insert([{
+        title: requisitionData.job_title,
+        job_title: requisitionData.job_title,
+        company_name: 'Your Company', // Set appropriate company name
+        department: requisitionData.department,
+        location: requisitionData.location,
+        employment_type: requisitionData.employment_type,
+        experience_level: requisitionData.experience_level,
+        salary_range_min: requisitionData.salary_range_min,
+        salary_range_max: requisitionData.salary_range_max,
+        status: requisitionData.status,
+        description: requisitionData.description,
+        requirements: requisitionData.requirements,
+        responsibilities: requisitionData.responsibilities,
+        benefits: requisitionData.benefits,
+        applications_count: 0,
+        messages_count: 0,
+        views_count: 0,
+        created_by: 'current-user', // Set actual user
+        posted_date: new Date().toISOString(),
+        is_active: requisitionData.status === 'open'
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  };
+
+  const updateRequisition = async (id: string, updates: any): Promise<Opportunity> => {
+    const { data, error } = await supabase
+      .from('opportunities')
+      .update({
+        ...updates,
+        title: updates.job_title,
+        updated_at: new Date().toISOString(),
+        is_active: updates.status === 'open'
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  };
+
+  const deleteRequisition = async (id: string) => {
+    const { error } = await supabase
+      .from('opportunities')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
   };
 
   const filteredRequisitions = requisitions.filter(req => {
@@ -166,16 +197,28 @@ const Requisitions = () => {
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this requisition?')) {
-      setRequisitions(prev => prev.filter(r => r.id !== id));
+      try {
+        await deleteRequisition(id);
+        setRequisitions(prev => prev.filter(r => r.id !== id));
+      } catch (error) {
+        console.error('Error deleting requisition:', error);
+        alert('Error deleting requisition');
+      }
     }
   };
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    setRequisitions(prev => prev.map(r => 
-      r.id === id ? { ...r, status: newStatus as any } : r
-    ));
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const updated = await updateRequisition(id, { status: newStatus });
+      setRequisitions(prev => prev.map(r => 
+        r.id === id ? { ...r, ...updated } : r
+      ));
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Error updating status');
+    }
   };
 
   return (
@@ -427,9 +470,15 @@ const Requisitions = () => {
       {showCreateModal && (
         <CreateRequisitionModal
           onClose={() => setShowCreateModal(false)}
-          onSuccess={(newReq) => {
-            setRequisitions(prev => [newReq, ...prev]);
-            setShowCreateModal(false);
+          onSuccess={async (newReqData) => {
+            try {
+              const newReq = await createRequisition(newReqData);
+              setRequisitions(prev => [newReq, ...prev]);
+              setShowCreateModal(false);
+            } catch (error) {
+              console.error('Error creating requisition:', error);
+              alert('Error creating requisition');
+            }
           }}
         />
       )}
@@ -441,10 +490,16 @@ const Requisitions = () => {
             setShowEditModal(false);
             setSelectedRequisition(null);
           }}
-          onSuccess={(updated) => {
-            setRequisitions(prev => prev.map(r => r.id === updated.id ? updated : r));
-            setShowEditModal(false);
-            setSelectedRequisition(null);
+          onSuccess={async (updatedData) => {
+            try {
+              const updated = await updateRequisition(selectedRequisition.id, updatedData);
+              setRequisitions(prev => prev.map(r => r.id === updated.id ? updated : r));
+              setShowEditModal(false);
+              setSelectedRequisition(null);
+            } catch (error) {
+              console.error('Error updating requisition:', error);
+              alert('Error updating requisition');
+            }
           }}
         />
       )}
@@ -482,7 +537,7 @@ const Requisitions = () => {
   );
 };
 
-// Requisition Card Component
+// Requisition Card Component (unchanged)
 const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange, onViewApplications, onViewMessages, getStatusBadge, getStatusIcon }: any) => {
   const [showMenu, setShowMenu] = useState(false);
 
@@ -598,7 +653,7 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
   );
 };
 
-// Modal Components (simplified - you'll expand these)
+// Modal Components (unchanged - they already work with the interface)
 const CreateRequisitionModal = ({ onClose, onSuccess }: any) => {
   const [formData, setFormData] = useState({
     job_title: '',
@@ -614,24 +669,19 @@ const CreateRequisitionModal = ({ onClose, onSuccess }: any) => {
     status: 'draft'
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newReq: Requisition = {
-      id: `req_${Date.now()}`,
-      ...formData,
-      salary_range_min: formData.salary_range_min ? parseInt(formData.salary_range_min) : undefined,
-      salary_range_max: formData.salary_range_max ? parseInt(formData.salary_range_max) : undefined,
-      requirements: formData.requirements.split('\n').filter(r => r.trim()),
-      responsibilities: formData.responsibilities.split('\n').filter(r => r.trim()),
-      applications_count: 0,
-      messages_count: 0,
-      views_count: 0,
-      posted_date: new Date().toISOString(),
-      created_by: 'current-user',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    } as any;
-    onSuccess(newReq);
+    try {
+      await onSuccess({
+        ...formData,
+        salary_range_min: formData.salary_range_min ? parseInt(formData.salary_range_min) : undefined,
+        salary_range_max: formData.salary_range_max ? parseInt(formData.salary_range_max) : undefined,
+        requirements: formData.requirements.split('\n').filter(r => r.trim()),
+        responsibilities: formData.responsibilities.split('\n').filter(r => r.trim()),
+      });
+    } catch (error) {
+      console.error('Error in form submission:', error);
+    }
   };
 
   return (
@@ -833,7 +883,231 @@ const CreateRequisitionModal = ({ onClose, onSuccess }: any) => {
 };
 
 const EditRequisitionModal = ({ requisition, onClose, onSuccess }: any) => {
-  return <CreateRequisitionModal onClose={onClose} onSuccess={onSuccess} />;
+  const [formData, setFormData] = useState({
+    job_title: requisition.job_title,
+    department: requisition.department,
+    location: requisition.location,
+    employment_type: requisition.employment_type,
+    experience_level: requisition.experience_level,
+    salary_range_min: requisition.salary_range_min?.toString() || '',
+    salary_range_max: requisition.salary_range_max?.toString() || '',
+    description: requisition.description,
+    requirements: requisition.requirements?.join('\n') || '',
+    responsibilities: requisition.responsibilities?.join('\n') || '',
+    status: requisition.status
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await onSuccess({
+        ...formData,
+        salary_range_min: formData.salary_range_min ? parseInt(formData.salary_range_min) : undefined,
+        salary_range_max: formData.salary_range_max ? parseInt(formData.salary_range_max) : undefined,
+        requirements: formData.requirements.split('\n').filter(r => r.trim()),
+        responsibilities: formData.responsibilities.split('\n').filter(r => r.trim()),
+      });
+    } catch (error) {
+      console.error('Error in form submission:', error);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-semibold text-gray-900">Edit Job Requisition</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XCircleIcon className="h-6 w-6" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Job Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.job_title}
+                  onChange={(e) => setFormData({...formData, job_title: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="e.g., Senior Full Stack Developer"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Department <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.department}
+                  onChange={(e) => setFormData({...formData, department: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="e.g., Engineering"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Location <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.location}
+                  onChange={(e) => setFormData({...formData, location: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="e.g., Bangalore, Remote"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Employment Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.employment_type}
+                  onChange={(e) => setFormData({...formData, employment_type: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="Full-time">Full-time</option>
+                  <option value="Part-time">Part-time</option>
+                  <option value="Contract">Contract</option>
+                  <option value="Internship">Internship</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Experience Level <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.experience_level}
+                  onChange={(e) => setFormData({...formData, experience_level: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="Entry">Entry Level</option>
+                  <option value="Mid">Mid Level</option>
+                  <option value="Senior">Senior Level</option>
+                  <option value="Lead">Lead/Principal</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="open">Open</option>
+                  <option value="on_hold">On Hold</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Salary Range Min (₹)
+                </label>
+                <input
+                  type="number"
+                  value={formData.salary_range_min}
+                  onChange={(e) => setFormData({...formData, salary_range_min: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="e.g., 1500000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Salary Range Max (₹)
+                </label>
+                <input
+                  type="number"
+                  value={formData.salary_range_max}
+                  onChange={(e) => setFormData({...formData, salary_range_max: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="e.g., 2500000"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Job Description <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                required
+                rows={4}
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Describe the role and responsibilities..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Requirements <span className="text-xs text-gray-500">(one per line)</span>
+              </label>
+              <textarea
+                rows={4}
+                value={formData.requirements}
+                onChange={(e) => setFormData({...formData, requirements: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="5+ years experience&#10;React, Node.js expertise&#10;Team leadership"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Responsibilities <span className="text-xs text-gray-500">(one per line)</span>
+              </label>
+              <textarea
+                rows={4}
+                value={formData.responsibilities}
+                onChange={(e) => setFormData({...formData, responsibilities: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Design and implement features&#10;Code reviews&#10;Mentor team members"
+              />
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-6 border-t">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700"
+              >
+                Update Requisition
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const ViewRequisitionModal = ({ requisition, onClose }: any) => {
@@ -854,7 +1128,7 @@ const ViewRequisitionModal = ({ requisition, onClose }: any) => {
             <div>
               <h3 className="font-semibold mb-2">Requirements</h3>
               <ul className="list-disc list-inside space-y-1">
-                {requisition.requirements.map((req: string, idx: number) => (
+                {requisition.requirements?.map((req: string, idx: number) => (
                   <li key={idx} className="text-gray-700">{req}</li>
                 ))}
               </ul>
@@ -862,7 +1136,7 @@ const ViewRequisitionModal = ({ requisition, onClose }: any) => {
             <div>
               <h3 className="font-semibold mb-2">Responsibilities</h3>
               <ul className="list-disc list-inside space-y-1">
-                {requisition.responsibilities.map((resp: string, idx: number) => (
+                {requisition.responsibilities?.map((resp: string, idx: number) => (
                   <li key={idx} className="text-gray-700">{resp}</li>
                 ))}
               </ul>
