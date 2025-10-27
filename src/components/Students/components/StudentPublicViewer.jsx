@@ -21,6 +21,10 @@ import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 import { useNavigate, useParams } from "react-router-dom";
 import { useToast } from "../../../hooks/use-toast";
 import { useAuth } from "../../../context/AuthContext";
+import {
+  generateResumePDF,
+  prepareStudentDataForResume,
+} from "./Generateresumepdf";
 
 function safeParse(jsonLike) {
   if (!jsonLike) return {};
@@ -168,6 +172,8 @@ export default function StudentPublicViewerModern() {
   const parsedProfile = safeParse(raw?.profile);
   const profile = { ...(raw || {}), ...(parsedProfile || {}) };
   const [showShareModal, setShowShareModal] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
   const technicalSkills = (
     raw?.technicalSkills ||
     parsedProfile.technicalSkills ||
@@ -302,6 +308,421 @@ export default function StudentPublicViewerModern() {
       </div>
     );
   }
+  //  const dummyStudentData = {
+  //   idx: 0,
+  //   id: "009466e7-2e55-4700-9480-e086dcae62d4",
+  //   universityId: "fdba4612-5249-4257-87e1-dc4858151ee8",
+  //   email: "john.doe@example.com",
+  //   createdAt: "2025-01-15 08:18:39.762908+00",
+  //   updatedAt: "2025-01-18 08:18:09.259467+00",
+
+  //   // Profile as JSON string (like in your DB)
+  //   profile: JSON.stringify({
+  //     name: "John Michael Doe",
+  //     age: 24,
+  //     email: "john.doe@example.com",
+  //     contact_number: "+91 9876543210",
+  //     alternate_number: "+91 8765432109",
+  //     contact_number_dial_code: "91",
+  //     district_name: "Bangalore Urban",
+  //     city: "Bangalore",
+  //     country: "India",
+  //     date_of_birth: "2000-05-15",
+
+  //     // Education info
+  //     university: "University of Bangalore",
+  //     college_school_name: "ABC Engineering College",
+  //     branch_field: "Computer Science Engineering",
+  //     registration_number: "CS2021001234",
+  //     course: "Bachelor of Technology",
+
+  //     // Professional info
+  //     title: "Full Stack Developer",
+  //     summary: "Passionate software engineer with 2+ years of experience in building scalable web applications using modern technologies. Strong problem-solving skills and expertise in React, Node.js, and cloud platforms.",
+
+  //     // Skills - Technical
+  //     technicalSkills: [
+  //       {
+  //         id: 1,
+  //         name: "React.js",
+  //         level: 5,
+  //         category: "Frontend Development",
+  //         verified: true,
+  //         enabled: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 2,
+  //         name: "Node.js",
+  //         level: 4,
+  //         category: "Backend Development",
+  //         verified: true,
+  //         enabled: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 3,
+  //         name: "Python",
+  //         level: 4,
+  //         category: "Programming Languages",
+  //         verified: true,
+  //         enabled: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 4,
+  //         name: "MongoDB",
+  //         level: 4,
+  //         category: "Databases",
+  //         verified: true,
+  //         enabled: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 5,
+  //         name: "Docker",
+  //         level: 3,
+  //         category: "DevOps",
+  //         verified: false,
+  //         enabled: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 6,
+  //         name: "AWS",
+  //         level: 3,
+  //         category: "Cloud Platforms",
+  //         verified: false,
+  //         enabled: true,
+  //         processing: true
+  //       },
+  //       {
+  //         id: 7,
+  //         name: "TypeScript",
+  //         level: 4,
+  //         category: "Programming Languages",
+  //         verified: true,
+  //         enabled: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 8,
+  //         name: "Git",
+  //         level: 5,
+  //         category: "Version Control",
+  //         verified: true,
+  //         enabled: true,
+  //         processing: false
+  //       }
+  //     ],
+
+  //     // Skills - Soft
+  //     softSkills: [
+  //       {
+  //         id: 1,
+  //         name: "Communication",
+  //         level: 5,
+  //         type: "communication",
+  //         description: "Effective communication skills",
+  //         verified: true,
+  //         enabled: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 2,
+  //         name: "Team Leadership",
+  //         level: 4,
+  //         type: "leadership",
+  //         description: "Strong team leadership abilities",
+  //         verified: true,
+  //         enabled: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 3,
+  //         name: "Problem Solving",
+  //         level: 5,
+  //         type: "analytical",
+  //         description: "Excellent problem-solving skills",
+  //         verified: true,
+  //         enabled: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 4,
+  //         name: "Time Management",
+  //         level: 4,
+  //         type: "organizational",
+  //         description: "Effective time management",
+  //         verified: false,
+  //         enabled: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 5,
+  //         name: "Adaptability",
+  //         level: 5,
+  //         type: "behavioral",
+  //         description: "Quick to adapt to new situations",
+  //         verified: true,
+  //         enabled: true,
+  //         processing: false
+  //       }
+  //     ],
+
+  //     // Education
+  //     education: [
+  //       {
+  //         id: 1,
+  //         level: "Bachelor's",
+  //         degree: "Bachelor of Technology in Computer Science",
+  //         university: "University of Bangalore",
+  //         institution: "ABC Engineering College",
+  //         department: "Computer Science & Engineering",
+  //         cgpa: "8.9/10.0",
+  //         yearOfPassing: "2023",
+  //         status: "completed",
+  //         enabled: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 2,
+  //         level: "Higher Secondary",
+  //         degree: "12th Grade - Science",
+  //         university: "State Board",
+  //         institution: "XYZ High School",
+  //         cgpa: "92%",
+  //         yearOfPassing: "2019",
+  //         status: "completed",
+  //         enabled: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 3,
+  //         level: "Secondary",
+  //         degree: "10th Grade",
+  //         university: "State Board",
+  //         institution: "XYZ High School",
+  //         cgpa: "95%",
+  //         yearOfPassing: "2017",
+  //         status: "completed",
+  //         enabled: false, // This one won't show in PDF
+  //         processing: false
+  //       }
+  //     ],
+
+  //     // Work Experience
+  //     experience: [
+  //       {
+  //         id: 1,
+  //         role: "Full Stack Developer",
+  //         organization: "Tech Solutions Pvt Ltd",
+  //         company: "Tech Solutions Pvt Ltd",
+  //         duration: "2023 - Present",
+  //         description: "Led development of multiple client-facing web applications using React and Node.js. Implemented RESTful APIs and microservices architecture. Collaborated with cross-functional teams to deliver high-quality software solutions. Mentored junior developers and conducted code reviews.",
+  //         enabled: true,
+  //         verified: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 2,
+  //         role: "Software Development Intern",
+  //         organization: "Innovation Labs",
+  //         company: "Innovation Labs",
+  //         duration: "2022 - 2023",
+  //         description: "Developed and maintained web applications using React and Express.js. Participated in agile development processes and daily stand-ups. Contributed to code optimization and performance improvements. Worked on database design and implementation.",
+  //         enabled: true,
+  //         verified: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 3,
+  //         role: "Frontend Developer Intern",
+  //         organization: "StartUp XYZ",
+  //         company: "StartUp XYZ",
+  //         duration: "2021 - 2022",
+  //         description: "Built responsive user interfaces using React and modern CSS frameworks. Integrated third-party APIs and services. Participated in UI/UX design discussions and implementation.",
+  //         enabled: true,
+  //         verified: false,
+  //         processing: false
+  //       }
+  //     ],
+
+  //     // Training - Mix of completed and ongoing
+  //     training: [
+  //       {
+  //         id: 1,
+  //         course: "Advanced React & Redux",
+  //         name: "Advanced React & Redux",
+  //         trainer: "John Smith",
+  //         instructor: "John Smith",
+  //         provider: "Udemy",
+  //         status: "completed", // This will show in PDF
+  //         progress: 100,
+  //         enabled: true,
+  //         verified: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 2,
+  //         course: "AWS Certified Solutions Architect",
+  //         name: "AWS Certified Solutions Architect",
+  //         trainer: "Amazon Web Services",
+  //         instructor: "AWS Training Team",
+  //         provider: "AWS",
+  //         status: "completed", // This will show in PDF
+  //         progress: 100,
+  //         enabled: true,
+  //         verified: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 3,
+  //         course: "Docker & Kubernetes Masterclass",
+  //         name: "Docker & Kubernetes Masterclass",
+  //         trainer: "DevOps Academy",
+  //         instructor: "Mike Johnson",
+  //         provider: "DevOps Academy",
+  //         status: "ongoing", // This will NOT show in PDF
+  //         progress: 65,
+  //         enabled: true,
+  //         verified: false,
+  //         processing: true
+  //       },
+  //       {
+  //         id: 4,
+  //         course: "Machine Learning Fundamentals",
+  //         name: "Machine Learning Fundamentals",
+  //         trainer: "Andrew Ng",
+  //         instructor: "Andrew Ng",
+  //         provider: "Coursera",
+  //         status: "completed", // This will show in PDF
+  //         progress: 100,
+  //         enabled: true,
+  //         verified: true,
+  //         processing: false
+  //       },
+  //       {
+  //         id: 5,
+  //         course: "Python for Data Science",
+  //         name: "Python for Data Science",
+  //         trainer: "Data Science Institute",
+  //         status: "ongoing", // This will NOT show in PDF
+  //         progress: 40,
+  //         enabled: true,
+  //         verified: false,
+  //         processing: true
+  //       }
+  //     ],
+
+  //     // Certificates - Separate section
+  //     certificates: [
+  //       {
+  //         id: 1,
+  //         name: "AWS Certified Developer - Associate",
+  //         title: "AWS Certified Developer - Associate",
+  //         issuer: "Amazon Web Services",
+  //         provider: "AWS",
+  //         organization: "Amazon Web Services",
+  //         date: "December 2024",
+  //         year: "2024",
+  //         enabled: true,
+  //         verified: true
+  //       },
+  //       {
+  //         id: 2,
+  //         name: "MongoDB Certified Developer",
+  //         title: "MongoDB Certified Developer",
+  //         issuer: "MongoDB Inc.",
+  //         provider: "MongoDB University",
+  //         organization: "MongoDB Inc.",
+  //         date: "September 2024",
+  //         year: "2024",
+  //         enabled: true,
+  //         verified: true
+  //       },
+  //       {
+  //         id: 3,
+  //         name: "React Professional Certification",
+  //         title: "React Professional Certification",
+  //         issuer: "Meta",
+  //         provider: "Meta",
+  //         organization: "Meta (Facebook)",
+  //         date: "June 2024",
+  //         year: "2024",
+  //         enabled: true,
+  //         verified: true
+  //       },
+  //       {
+  //         id: 4,
+  //         name: "Google Cloud Fundamentals",
+  //         title: "Google Cloud Fundamentals",
+  //         issuer: "Google Cloud",
+  //         provider: "Google",
+  //         date: "March 2024",
+  //         year: "2024",
+  //         enabled: false, // This won't show
+  //         verified: false
+  //       }
+  //     ],
+
+  //     // Languages
+  //     languages: [
+  //       "English (Fluent)",
+  //       "Hindi (Fluent)",
+  //       "Kannada (Native)",
+  //       "Tamil (Intermediate)"
+  //     ],
+
+  //     // Interests
+  //     interest: [
+  //       { id: 1, name: "Open Source Contribution", hobbie: "Open Source Contribution" },
+  //       { id: 2, name: "Technology Blogging", hobbie: "Technology Blogging" },
+  //       { id: 3, name: "Competitive Programming", hobbie: "Competitive Programming" },
+  //       { id: 4, name: "Photography", hobbie: "Photography" },
+  //       { id: 5, name: "Travel", hobbie: "Travel" },
+  //       { id: 6, name: "Reading Tech Books", hobbie: "Reading Tech Books" }
+  //     ],
+
+  //     // Links (optional)
+  //     linkedin: "linkedin.com/in/johndoe",
+  //     github: "github.com/johndoe",
+  //     portfolio: "johndoe.dev",
+
+  //     // Optional image (you can add a real URL or leave empty)
+  //     image: "https://plus.unsplash.com/premium_photo-1664474619075-644dd191935f?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=2069" // Leave empty or add profile photo URL
+  //   })
+  // };
+  const handleDownloadResume = async () => {
+    try {
+      // 🔹 Use real data fetched by hook
+      const resumeData = {
+        ...studentData,
+        profile: studentData.profile, // keep same JSON string
+      };
+
+      setDownloading(true);
+      try {
+        await generateResumePDF(resumeData);
+      } finally {
+        setDownloading(false);
+      }
+
+      toast({
+        title: "Resume downloaded",
+        description: `${
+          profile.name || "Student"
+        }'s resume generated successfully.`,
+      });
+    } catch (error) {
+      console.error("Error generating resume:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate resume. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -435,32 +856,18 @@ export default function StudentPublicViewerModern() {
                     {/* Wrapper for next two buttons on mobile */}
                     <div className="mt-2 flex w-full sm:w-auto gap-3 justify-between sm:mt-0">
                       <button
-                        onClick={() => {
-                          if (profile.resumeUrl) {
-                            window.open(profile.resumeUrl, "_blank");
-                            toast({
-                              title: "Resume opened",
-                              description:
-                                "The student’s resume has been opened in a new tab.",
-                            });
-                          } else {
-                            toast({
-                              title: "No Resume Found",
-                              description:
-                                "This student has not uploaded a resume yet.",
-                              variant: "destructive",
-                            });
-                          }
-                        }}
-                        className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                          profile.resumeUrl
-                            ? "bg-white hover:bg-gray-50 border-2 border-gray-200"
-                            : "opacity-50 cursor-not-allowed bg-gray-100 border-2 border-gray-200"
-                        }`}
-                        disabled={!profile.resumeUrl}
+                        onClick={handleDownloadResume}
+                        disabled={downloading}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border-2 border-gray-200 hover:bg-gray-50"
                       >
-                        <Download className="w-4 h-4" />
-                        Resume
+                        {downloading ? (
+                          <span className="animate-pulse">Generating...</span>
+                        ) : (
+                          <>
+                            <Download className="w-4 h-4" />
+                            Resume
+                          </>
+                        )}
                       </button>
 
                       <button
