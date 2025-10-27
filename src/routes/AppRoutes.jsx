@@ -40,9 +40,11 @@ const MySkills = lazy(() => import('../pages/student/MySkills'));
 const MyTraining = lazy(() => import('../pages/student/MyTraining'));
 const MyExperience = lazy(() => import('../pages/student/MyExperience'));
 const Opportunities = lazy(() => import('../pages/student/Opportunities'));
+const SavedJobs = lazy(() => import('../pages/student/SavedJobs'));
 const Applications = lazy(() => import('../pages/student/Applications'));
 const AppliedJobs = lazy(() => import('../pages/student/AppliedJobs'));
 const BrowseJobs = lazy(() => import('../pages/student/BrowseJobs'));
+const StudentAnalytics = lazy(() => import('../pages/student/Analytics'));
 const DebugQRTest = lazy(() => import('../pages/DebugQRTest'));
 const StudentPublicViewer = lazy(() => import('../components/Students/components/StudentPublicViewer'));
 const Settings = lazy(() => import('../pages/student/Settings'));
@@ -116,10 +118,15 @@ const AppRoutes = () => {
           <Route path="my-training" element={<MyTraining />} />
           <Route path="my-experience" element={<MyExperience />} />
           <Route path="opportunities" element={<Opportunities />} />
+          <Route path="saved-jobs" element={<SavedJobs />} />
           <Route path="applications" element={<Applications />} />
           <Route path="applied-jobs" element={<AppliedJobs />} />
           <Route path="browse-jobs" element={<BrowseJobs />} />
+<<<<<<< Updated upstream
           <Route path="settings" element={<Settings />} />
+=======
+          <Route path="analytics" element={<StudentAnalytics />} />
+>>>>>>> Stashed changes
           <Route path="" element={<Navigate to="/student/dashboard" replace />} />
         </Route>
 

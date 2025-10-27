@@ -14,89 +14,112 @@ import {
   TrendingUp,
   MessageSquare
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import AppliedJobsService from '../../services/appliedJobsService';
 
 const Applications = () => {
+  // Get user context
+  const { user } = useAuth();
+  // Get user email from localStorage (same as Dashboard)
+  const userEmail = localStorage.getItem('userEmail') || user?.email;
+  
+  // Use the hook to get student data by email (consistent with Dashboard)
+  const { studentData } = useStudentDataByEmail(userEmail);
+  
+  // Get student ID - prioritize user.id for immediate availability, then studentData
+  const studentId = user?.id || studentData?.id;
+  
   const [applications, setApplications] = useState([]);
   const [filteredApplications, setFilteredApplications] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock data - replace with API call
+  // Debug logging
   useEffect(() => {
-    setTimeout(() => {
-      const mockApplications = [
-        {
-          id: 1,
-          jobTitle: 'Frontend Developer',
-          company: 'Tech Corp',
-          location: 'San Francisco, CA',
-          salary: '$80k - $120k',
-          appliedDate: '2025-10-15',
-          status: 'under_review',
-          logo: 'https://via.placeholder.com/48',
-          type: 'Full-time',
-          level: 'Mid-level',
-          lastUpdate: '2 days ago'
-        },
-        {
-          id: 2,
-          jobTitle: 'UX Designer',
-          company: 'Design Studio',
-          location: 'Remote',
-          salary: '$70k - $100k',
-          appliedDate: '2025-10-12',
-          status: 'interview_scheduled',
-          logo: 'https://via.placeholder.com/48',
-          type: 'Contract',
-          level: 'Senior',
-          lastUpdate: '1 week ago'
-        },
-        {
-          id: 3,
-          jobTitle: 'Backend Engineer',
-          company: 'StartupXYZ',
-          location: 'New York, NY',
-          salary: '$90k - $130k',
-          appliedDate: '2025-10-08',
-          status: 'rejected',
-          logo: 'https://via.placeholder.com/48',
-          type: 'Full-time',
-          level: 'Junior',
-          lastUpdate: '3 weeks ago'
-        },
-        {
-          id: 4,
-          jobTitle: 'Full Stack Developer',
-          company: 'Innovation Labs',
-          location: 'Austin, TX',
-          salary: '$85k - $115k',
-          appliedDate: '2025-10-20',
-          status: 'accepted',
-          logo: 'https://via.placeholder.com/48',
-          type: 'Full-time',
-          level: 'Mid-level',
-          lastUpdate: '1 day ago'
-        },
-        {
-          id: 5,
-          jobTitle: 'Product Designer',
-          company: 'Creative Agency',
-          location: 'Los Angeles, CA',
-          salary: '$75k - $105k',
-          appliedDate: '2025-10-18',
-          status: 'pending',
-          logo: 'https://via.placeholder.com/48',
-          type: 'Part-time',
-          level: 'Entry',
-          lastUpdate: '5 days ago'
-        }
-      ];
-      setApplications(mockApplications);
-      setFilteredApplications(mockApplications);
-      setLoading(false);
-    }, 800);
-  }, []);
+    console.log('🔍 Applications Debug:', {
+      user,
+      userEmail,
+      studentData,
+      studentId,
+      hasUser: !!user,
+      userId: user?.id,
+      studentDataId: studentData?.id
+    });
+  }, [user, userEmail, studentData, studentId]);
+
+  // Fetch applications from database
+  useEffect(() => {
+    const fetchApplications = async () => {
+      // Don't try to fetch if we don't have student data yet
+      if (!studentId && !studentData) {
+        // Still loading user data
+        return;
+      }
+      
+      if (!studentId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const data = await AppliedJobsService.getStudentApplications(studentId);
+        
+        // Transform database data to match component structure
+        const transformedApplications = data.map(app => ({
+          id: app.id,
+          jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
+          company: app.opportunity?.company_name || 'N/A',
+          location: app.opportunity?.location || 'N/A',
+          salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
+            ? `$${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - $${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
+            : 'Not specified',
+          appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          status: app.application_status,
+          logo: app.opportunity?.company_logo,
+          type: app.opportunity?.employment_type || 'N/A',
+          level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
+          lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
+          opportunityId: app.opportunity_id
+        }));
+
+        setApplications(transformedApplications);
+        setFilteredApplications(transformedApplications);
+      } catch (err) {
+        console.error('Error fetching applications:', err);
+        setError(err.message || 'Failed to load applications');
+        setApplications([]);
+        setFilteredApplications([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchApplications();
+  }, [studentId]);
+
+  // Helper function to format last update time
+  const formatLastUpdate = (dateString) => {
+    if (!dateString) return 'Recently';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 14) return '1 week ago';
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    if (diffDays < 60) return '1 month ago';
+    return `${Math.floor(diffDays / 30)} months ago`;
+  };
 
   useEffect(() => {
     let filtered = applications;
@@ -117,16 +140,23 @@ const Applications = () => {
 
   const getStatusConfig = (status) => {
     const configs = {
-      pending: {
-        label: 'Pending',
+      applied: {
+        label: 'Applied',
         icon: Clock,
-        color: 'text-gray-700',
-        bg: 'bg-gray-50',
-        border: 'border-gray-300'
+        color: 'text-blue-700',
+        bg: 'bg-blue-50',
+        border: 'border-blue-300'
+      },
+      viewed: {
+        label: 'Viewed',
+        icon: Eye,
+        color: 'text-purple-700',
+        bg: 'bg-purple-50',
+        border: 'border-purple-300'
       },
       under_review: {
         label: 'Under Review',
-        icon: Eye,
+        icon: Clock,
         color: 'text-slate-700',
         bg: 'bg-slate-50',
         border: 'border-slate-300'
@@ -137,6 +167,20 @@ const Applications = () => {
         color: 'text-indigo-700',
         bg: 'bg-indigo-50',
         border: 'border-indigo-200'
+      },
+      interviewed: {
+        label: 'Interviewed',
+        icon: CheckCircle2,
+        color: 'text-cyan-700',
+        bg: 'bg-cyan-50',
+        border: 'border-cyan-200'
+      },
+      offer_received: {
+        label: 'Offer Received',
+        icon: TrendingUp,
+        color: 'text-green-700',
+        bg: 'bg-green-50',
+        border: 'border-green-200'
       },
       accepted: {
         label: 'Accepted',
@@ -151,9 +195,16 @@ const Applications = () => {
         color: 'text-gray-600',
         bg: 'bg-gray-50',
         border: 'border-gray-300'
+      },
+      withdrawn: {
+        label: 'Withdrawn',
+        icon: XCircle,
+        color: 'text-orange-600',
+        bg: 'bg-orange-50',
+        border: 'border-orange-300'
       }
     };
-    return configs[status] || configs.pending;
+    return configs[status] || configs.applied;
   };
 
   const stats = [
@@ -169,6 +220,30 @@ const Applications = () => {
         <div className="flex flex-col items-center space-y-4">
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-slate-700"></div>
           <p className="text-gray-600 font-medium">Loading applications...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Applications</h2>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!studentId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Briefcase className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Please Log In</h2>
+          <p className="text-gray-600">You need to be logged in to view your applications.</p>
         </div>
       </div>
     );
@@ -231,12 +306,16 @@ const Applications = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all appearance-none bg-white cursor-pointer min-w-[200px]"
               >
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
+              <option value="all">All Status</option>
+                <option value="applied">Applied</option>
+                <option value="viewed">Viewed</option>
                 <option value="under_review">Under Review</option>
                 <option value="interview_scheduled">Interview Scheduled</option>
+                <option value="interviewed">Interviewed</option>
+                <option value="offer_received">Offer Received</option>
                 <option value="accepted">Accepted</option>
                 <option value="rejected">Rejected</option>
+                <option value="withdrawn">Withdrawn</option>
               </select>
             </div>
           </div>

@@ -119,6 +119,8 @@ export async function getStudentByEmail(email) {
       const profileData = safeJSONParse(data.profile);
       
       const transformedData = transformProfileData(profileData, email);
+      // Add the database ID to the transformed data
+      transformedData.id = data.id;
       console.log('📋 Transformed data:', transformedData);
       return {
         success: true,
@@ -153,6 +155,8 @@ export async function getStudentByEmail(email) {
       console.log('✅ Student found by manual search:', matchingStudent.profile?.name || matchingStudent.profile);
       const profileData = safeJSONParse(matchingStudent.profile);
       const transformedData = transformProfileData(profileData, email);
+      // Add the database ID to the transformed data
+      transformedData.id = matchingStudent.id;
       return {
         success: true,
         data: transformedData,
