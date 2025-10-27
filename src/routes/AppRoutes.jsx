@@ -45,6 +45,8 @@ const AppliedJobs = lazy(() => import('../pages/student/AppliedJobs'));
 const BrowseJobs = lazy(() => import('../pages/student/BrowseJobs'));
 const DebugQRTest = lazy(() => import('../pages/DebugQRTest'));
 const StudentPublicViewer = lazy(() => import('../components/Students/components/StudentPublicViewer'));
+const Settings = lazy(() => import('../pages/student/Settings'));
+
 const AppRoutes = () => {
   return (
     <Suspense fallback={<Loader />}>
@@ -117,6 +119,7 @@ const AppRoutes = () => {
           <Route path="applications" element={<Applications />} />
           <Route path="applied-jobs" element={<AppliedJobs />} />
           <Route path="browse-jobs" element={<BrowseJobs />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="" element={<Navigate to="/student/dashboard" replace />} />
         </Route>
 
