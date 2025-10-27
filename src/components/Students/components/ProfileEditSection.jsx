@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit3, BookOpen, Code, Briefcase, MessageCircle, Award, User } from 'lucide-react';
+import { Edit3, BookOpen, Code, Briefcase, MessageCircle, Award, User, Upload } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
@@ -16,6 +16,9 @@ import DatabaseSaveVerification from './DatabaseSaveVerification';
 import StudentFindingDebug from './StudentFindingDebug';
 import QuickFix from './QuickFix';
 import PersonalInfoSummary from './PersonalInfoSummary';
+import ResumeParser from './ResumeParser';
+import ResumeParserTester from './ResumeParserTester';
+import { mergeResumeData } from '../../../services/resumeParserService';
 import {
   educationData,
   trainingData,
@@ -28,6 +31,8 @@ const ProfileEditSection = ({ profileEmail }) => {
   const [activeModal, setActiveModal] = useState(null);
   const [expandedSection, setExpandedSection] = useState(null);
   const [refreshCounter, setRefreshCounter] = useState(0);
+  const [showResumeParser, setShowResumeParser] = useState(false);
+  const [showTester, setShowTester] = useState(false);
   
   // Get user email from auth context
   const { user } = useAuth();
@@ -148,6 +153,77 @@ const ProfileEditSection = ({ profileEmail }) => {
     }
   };
 
+  const handleResumeDataExtracted = async (parsedData) => {
+    console.log('📄 Resume data extracted:', parsedData);
+    
+    try {
+      // Merge parsed data with existing profile data
+      const currentProfile = studentData?.profile || {};
+      const mergedData = mergeResumeData(currentProfile, parsedData);
+      
+      console.log('🔀 Merged resume data:', mergedData);
+      
+      // Update profile with merged data
+      if (userEmail && studentData?.profile) {
+        // Update personal info
+        await handleSave('personalInfo', {
+          name: mergedData.name,
+          email: mergedData.email,
+          contact_number: mergedData.contact_number,
+          age: mergedData.age,
+          date_of_birth: mergedData.date_of_birth,
+          college_school_name: mergedData.college_school_name,
+          university: mergedData.university,
+          registration_number: mergedData.registration_number,
+          district_name: mergedData.district_name,
+          branch_field: mergedData.branch_field,
+          trainer_name: mergedData.trainer_name,
+          nm_id: mergedData.nm_id,
+          course: mergedData.course,
+          alternate_number: mergedData.alternate_number,
+          contact_number_dial_code: mergedData.contact_number_dial_code,
+          skill: mergedData.skill
+        });
+        
+        // Update education if present
+        if (mergedData.education && mergedData.education.length > 0) {
+          await handleSave('education', mergedData.education);
+        }
+        
+        // Update training if present
+        if (mergedData.training && mergedData.training.length > 0) {
+          await handleSave('training', mergedData.training);
+        }
+        
+        // Update experience if present
+        if (mergedData.experience && mergedData.experience.length > 0) {
+          await handleSave('experience', mergedData.experience);
+        }
+        
+        // Update technical skills if present
+        if (mergedData.technicalSkills && mergedData.technicalSkills.length > 0) {
+          await handleSave('technicalSkills', mergedData.technicalSkills);
+        }
+        
+        // Update soft skills if present
+        if (mergedData.softSkills && mergedData.softSkills.length > 0) {
+          await handleSave('softSkills', mergedData.softSkills);
+        }
+        
+        // Refresh the data
+        await refresh();
+        setRefreshCounter(prev => prev + 1);
+        
+        console.log('✅ Resume data successfully saved to database');
+      }
+      
+      // Close the resume parser modal
+      setShowResumeParser(false);
+    } catch (error) {
+      console.error('❌ Error saving resume data:', error);
+    }
+  };
+
   const editSections = [
     {
       id: 'personalInfo',
@@ -254,6 +330,31 @@ const ProfileEditSection = ({ profileEmail }) => {
               ? 'Manage your professional information and showcase your skills, experience, and achievements.' 
               : 'Comprehensive profile overview with skills, experience, and qualifications.'}
           </p>
+          
+          {/* Resume Upload Button - Only show for own profile */}
+          {isOwnProfile && (
+            <div className="mt-6 space-y-3">
+              <div className="flex gap-3 justify-center">
+                <Button
+                  onClick={() => setShowResumeParser(true)}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  <Upload className="w-5 h-5 mr-2" />
+                  Upload Resume & Auto-Fill Profile
+                </Button>
+                <Button
+                  onClick={() => setShowTester(true)}
+                  variant="outline"
+                  className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                >
+                  Test Mode
+                </Button>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                Upload your resume to automatically extract and fill your profile information
+              </p>
+            </div>
+          )}
           
           {/* Database Connection Status - Only show for own profile */}
           {/* {isOwnProfile && (
@@ -415,6 +516,22 @@ const ProfileEditSection = ({ profileEmail }) => {
               onSave={(data) => handleSave('technicalSkills', data)}
             />
           </>
+        )}
+
+        {/* Resume Parser Modal */}
+        {showResumeParser && (
+          <ResumeParser
+            onDataExtracted={handleResumeDataExtracted}
+            onClose={() => setShowResumeParser(false)}
+          />
+        )}
+
+        {/* Resume Parser Tester Modal */}
+        {showTester && (
+          <ResumeParserTester
+            userId={user?.id}
+            onClose={() => setShowTester(false)}
+          />
         )}
       </div>
     </div>
