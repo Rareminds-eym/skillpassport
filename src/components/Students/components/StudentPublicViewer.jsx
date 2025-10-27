@@ -15,9 +15,10 @@ import {
   GraduationCap,
   TrendingUp,
   Share2,
+  ArrowLeftIcon,
 } from "lucide-react";
 import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useToast } from "../../../hooks/use-toast";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -157,7 +158,7 @@ function Donut({ value }) {
 
 export default function StudentPublicViewerModern() {
   const { user } = useAuth();
-
+  // const navigate = useNavigate();
   const { toast } = useToast();
   const { email } = useParams();
   const { studentData, loading, error } = useStudentDataByEmail(email);
@@ -280,8 +281,13 @@ export default function StudentPublicViewerModern() {
       setShowShareModal(true);
     }
   };
-  // ✅ Simple Recruiter Access Check
-  if (!user || user.role !== "recruiter") {
+
+  if (
+    !user ||
+    (user.role?.toLowerCase() === "student" && user.email !== email) ||
+    (user.role?.toLowerCase() !== "student" &&
+      user.role?.toLowerCase() !== "recruiter")
+  ) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6">
         <div className="bg-white p-10 max-w-md text-center border border-gray-200">
@@ -299,12 +305,73 @@ export default function StudentPublicViewerModern() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-indigo-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600 mx-auto mb-4" />
-          <p className="text-gray-700 font-medium text-lg">Loading profile…</p>
+      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-purple-50/30 py-10 px-4 animate-pulse">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Header Skeleton */}
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8 flex flex-col md:flex-row items-center md:items-start gap-6">
+            {/* Avatar */}
+            <div className="w-28 h-28 rounded-xl bg-gray-200"></div>
+
+            {/* Info */}
+            <div className="flex-1 space-y-3 w-full">
+              <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+              <div className="flex gap-3 mt-4">
+                <div className="h-10 bg-gray-200 rounded-xl w-24"></div>
+                <div className="h-10 bg-gray-200 rounded-xl w-24"></div>
+                <div className="h-10 bg-gray-200 rounded-xl w-24"></div>
+              </div>
+            </div>
+
+            {/* Donut Placeholder */}
+            <div className="hidden sm:block w-28 h-28 bg-gray-100 rounded-full border border-gray-200"></div>
+          </div>
+
+          {/* Layout Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Sidebar Skeleton */}
+            <aside className="lg:col-span-4 xl:col-span-3">
+              <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 space-y-4">
+                <div className="h-5 bg-gray-200 rounded w-1/3"></div>
+                <div className="space-y-4">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-9 h-9 bg-gray-200 rounded-lg"></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                        <div className="h-3 bg-gray-100 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </aside>
+
+            {/* Main Content Skeleton */}
+            <section className="lg:col-span-8 xl:col-span-9 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
+              {/* Tabs */}
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((t) => (
+                  <div
+                    key={t}
+                    className="h-9 w-20 bg-gray-200 rounded-xl"
+                  ></div>
+                ))}
+              </div>
+
+              {/* Content Cards */}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                {[...Array(6)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-gray-100 h-32 rounded-2xl border border-gray-200"
+                  ></div>
+                ))}
+              </div>
+            </section>
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
