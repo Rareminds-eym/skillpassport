@@ -1,0 +1,326 @@
+import { supabase } from '../lib/supabaseClient';
+
+/**
+ * Service for managing job applications
+ */
+export class AppliedJobsService {
+  /**
+   * Apply to a job opportunity
+   * @param {string} studentId - Student's UUID
+   * @param {number} opportunityId - Opportunity's ID
+   * @returns {Promise<Object>} Application result
+   */
+  static async applyToJob(studentId, opportunityId) {
+    try {
+      console.log('🚀 Applying to job:', { studentId, opportunityId });
+
+      // Check if already applied
+      const { data: existing, error: checkError } = await supabase
+        .from('applied_jobs')
+        .select('id')
+        .eq('student_id', studentId)
+        .eq('opportunity_id', opportunityId)
+        .single();
+
+      if (existing) {
+        console.log('⚠️ Already applied to this job');
+        return {
+          success: false,
+          message: 'You have already applied to this job',
+          data: existing
+        };
+      }
+
+      // Insert application
+      const { data, error } = await supabase
+        .from('applied_jobs')
+        .insert([
+          {
+            student_id: studentId,
+            opportunity_id: opportunityId,
+            application_status: 'applied'
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error applying to job:', error);
+        throw error;
+      }
+
+      console.log('✅ Successfully applied to job:', data);
+
+      return {
+        success: true,
+        message: 'Application submitted successfully!',
+        data
+      };
+    } catch (error) {
+      console.error('❌ Error in applyToJob:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to submit application',
+        error
+      };
+    }
+  }
+
+  /**
+   * Check if student has already applied to a job
+   * @param {string} studentId - Student's UUID
+   * @param {number} opportunityId - Opportunity's ID
+   * @returns {Promise<boolean>} True if already applied
+   */
+  static async hasApplied(studentId, opportunityId) {
+    try {
+      const { data, error } = await supabase
+        .from('applied_jobs')
+        .select('id')
+        .eq('student_id', studentId)
+        .eq('opportunity_id', opportunityId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('Error checking application status:', error);
+        return false;
+      }
+
+      return !!data;
+    } catch (error) {
+      console.error('Error in hasApplied:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get all applications for a student
+   * @param {string} studentId - Student's UUID
+   * @param {Object} options - Query options
+   * @returns {Promise<Array>} List of applications
+   */
+  static async getStudentApplications(studentId, options = {}) {
+    try {
+      let query = supabase
+        .from('applied_jobs')
+        .select(`
+          *,
+          opportunity:opportunities (
+            id,
+            job_title,
+            title,
+            company_name,
+            company_logo,
+            location,
+            employment_type,
+            salary_range_min,
+            salary_range_max,
+            mode,
+            department
+          )
+        `)
+        .eq('student_id', studentId);
+
+      // Apply filters
+      if (options.status) {
+        query = query.eq('application_status', options.status);
+      }
+
+      if (options.limit) {
+        query = query.limit(options.limit);
+      }
+
+      // Sort by applied date (most recent first)
+      query = query.order('applied_at', { ascending: false });
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching applications:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getStudentApplications:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get application statistics for a student
+   * @param {string} studentId - Student's UUID
+   * @returns {Promise<Object>} Application statistics
+   */
+  static async getApplicationStats(studentId) {
+    try {
+      const { data, error } = await supabase
+        .from('applied_jobs')
+        .select('application_status')
+        .eq('student_id', studentId);
+
+      if (error) throw error;
+
+      const stats = {
+        total: data.length,
+        applied: 0,
+        viewed: 0,
+        under_review: 0,
+        interview_scheduled: 0,
+        interviewed: 0,
+        offer_received: 0,
+        accepted: 0,
+        rejected: 0,
+        withdrawn: 0
+      };
+
+      data.forEach(app => {
+        if (stats.hasOwnProperty(app.application_status)) {
+          stats[app.application_status]++;
+        }
+      });
+
+      return stats;
+    } catch (error) {
+      console.error('Error in getApplicationStats:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update application status
+   * @param {number} applicationId - Application ID
+   * @param {string} status - New status
+   * @returns {Promise<Object>} Updated application
+   */
+  static async updateApplicationStatus(applicationId, status) {
+    try {
+      const updateData = {
+        application_status: status,
+        updated_at: new Date().toISOString()
+      };
+
+      // Add timestamp for specific statuses
+      if (status === 'viewed') {
+        updateData.viewed_at = new Date().toISOString();
+      } else if (status === 'interview_scheduled') {
+        updateData.interview_scheduled_at = new Date().toISOString();
+      }
+
+      const { data, error } = await supabase
+        .from('applied_jobs')
+        .update(updateData)
+        .eq('id', applicationId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      console.error('Error updating application status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Withdraw application
+   * @param {number} applicationId - Application ID
+   * @param {string} studentId - Student UUID (for verification)
+   * @returns {Promise<Object>} Result
+   */
+  static async withdrawApplication(applicationId, studentId) {
+    try {
+      const { data, error } = await supabase
+        .from('applied_jobs')
+        .update({
+          application_status: 'withdrawn',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', applicationId)
+        .eq('student_id', studentId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        message: 'Application withdrawn successfully',
+        data
+      };
+    } catch (error) {
+      console.error('Error withdrawing application:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to withdraw application',
+        error
+      };
+    }
+  }
+
+  /**
+   * Delete application completely
+   * @param {number} applicationId - Application ID
+   * @param {string} studentId - Student UUID (for verification)
+   * @returns {Promise<Object>} Result
+   */
+  static async deleteApplication(applicationId, studentId) {
+    try {
+      const { error } = await supabase
+        .from('applied_jobs')
+        .delete()
+        .eq('id', applicationId)
+        .eq('student_id', studentId);
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        message: 'Application deleted successfully'
+      };
+    } catch (error) {
+      console.error('Error deleting application:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to delete application',
+        error
+      };
+    }
+  }
+
+  /**
+   * Get recent applications (last 30 days)
+   * @param {string} studentId - Student's UUID
+   * @returns {Promise<Array>} Recent applications
+   */
+  static async getRecentApplications(studentId) {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data, error } = await supabase
+        .from('applied_jobs')
+        .select(`
+          *,
+          opportunity:opportunities (
+            job_title,
+            company_name,
+            company_logo
+          )
+        `)
+        .eq('student_id', studentId)
+        .gte('applied_at', thirtyDaysAgo.toISOString())
+        .order('applied_at', { ascending: false });
+
+      if (error) throw error;
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getRecentApplications:', error);
+      throw error;
+    }
+  }
+}
+
+export default AppliedJobsService;
