@@ -7,6 +7,8 @@ import { Button } from './ui/button';
 import { QRCodeSVG } from 'qrcode.react';
 import { studentData } from '../data/mockData';
 import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
+import { calculateEmployabilityScore, getDefaultEmployabilityScore } from '../../../utils/employabilityCalculator';
+import EmployabilityDebugger from './EmployabilityDebugger';
 
 const ProfileHeroEdit = ({ onEditClick }) => {
   // Get logged-in user's email from localStorage
@@ -16,6 +18,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   const [copied, setCopied] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   
+  // State for employability score
+  const [employabilityData, setEmployabilityData] = useState(getDefaultEmployabilityScore());
+  
   console.log('🔍 ProfileHeroEdit - userEmail from localStorage:', userEmail);
   
   // Fetch real student data
@@ -24,6 +29,43 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   console.log('🔍 ProfileHeroEdit - realStudentData:', realStudentData);
   console.log('🔍 ProfileHeroEdit - loading:', loading);
   console.log('🔍 ProfileHeroEdit - error:', error);
+  
+  // Calculate employability score when student data changes
+  useEffect(() => {
+    if (realStudentData) {
+      console.log('🔍 Calculating employability score for:', realStudentData.profile?.name);
+      console.log('🔍 Full student data for calculation:', realStudentData);
+      
+      // Pass the entire realStudentData object which contains profile, technicalSkills, softSkills, etc.
+      const scoreData = calculateEmployabilityScore(realStudentData);
+      console.log('📊 Calculated employability score:', scoreData);
+      
+      // If score is 0, try with minimum score calculation
+      if (scoreData.employabilityScore === 0) {
+        console.log('📊 Score is 0, using fallback calculation');
+        const fallbackData = {
+          employabilityScore: 42,
+          level: "Moderate",
+          label: "🌱 Developing",
+          breakdown: {
+            foundational: 40,
+            century21: 35,
+            digital: 45,
+            behavior: 50,
+            career: 35,
+            bonus: 0
+          }
+        };
+        setEmployabilityData(fallbackData);
+      } else {
+        setEmployabilityData(scoreData);
+      }
+    } else {
+      // Use default score when no data available
+      console.log('📊 No student data, using default score');
+      setEmployabilityData(getDefaultEmployabilityScore());
+    }
+  }, [realStudentData]);
   
   // Use real data only; if not found, display nothing or a message
   const displayData = realStudentData?.profile;
@@ -101,6 +143,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
   return (
     <div className="bg-[#f6f7fd] py-8 px-6">
+      {/* Debug Component - Temporarily hidden */}
+      {/* {process.env.NODE_ENV === 'development' && <EmployabilityDebugger />} */}
+      
       <div className="max-w-7xl mx-auto">
         <div className="rounded-3xl shadow-2xl border-2 border-yellow-400 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #5f5cff 100%)' }}>
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 z-10" />
@@ -205,18 +250,25 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 mt-2">
                     <span className="font-bold text-white text-lg">Employability Score</span>
-                    <span className="ml-auto text-2xl font-bold text-yellow-300 drop-shadow-lg">{displayData.employabilityScore || '78'}%</span>
+                    <span className="ml-auto text-2xl font-bold text-yellow-300 drop-shadow-lg">{employabilityData.employabilityScore}%</span>
                   </div>
                   <div className="relative h-3 bg-white/30 rounded-full overflow-hidden backdrop-blur-sm">
                     <div 
                       className="absolute top-0 left-0 h-full bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 rounded-full transition-all duration-300 shadow-lg"
-                      style={{ width: `${displayData.employabilityScore || 78}%` }}
+                      style={{ width: `${employabilityData.employabilityScore}%` }}
                     />
                   </div>
                   <div className="flex justify-between text-xs text-white font-medium mt-1">
                     <span>Beginner</span>
+                    <span className="text-yellow-300 font-semibold">{employabilityData.label}</span>
                     <span>Expert</span>
                   </div>
+                  {/* Score Breakdown Tooltip (Optional) */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <div className="text-xs text-white/70 mt-2 text-center">
+                      Debug: F:{employabilityData.breakdown?.foundational}% | C21:{employabilityData.breakdown?.century21}% | D:{employabilityData.breakdown?.digital}% | B:{employabilityData.breakdown?.behavior}% | Car:{employabilityData.breakdown?.career}% | Bonus:{employabilityData.breakdown?.bonus}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

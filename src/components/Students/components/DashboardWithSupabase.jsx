@@ -171,7 +171,7 @@ const DashboardWithSupabase = ({ studentId }) => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-sm">Employability Score</p>
+                  <p className="text-blue-100 text-sm">Employability Sre</p>
                   <h3 className="text-3xl font-bold mt-1">
                     {profile.employability_score || profile.employabilityScore || 0}%
                   </h3>
