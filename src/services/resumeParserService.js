@@ -49,6 +49,13 @@ export const parseResumeWithAI = async (resumeText) => {
       return result;
     } catch (aiError) {
       console.error('❌ AI parsing failed:', aiError.message);
+      
+      // Special handling for rate limits
+      if (aiError.message === 'RATE_LIMIT_EXCEEDED') {
+        console.log('📄 OpenRouter rate limit exceeded. Using enhanced regex-based parser...');
+        return parseFallback(resumeText);
+      }
+      
       console.log('📄 Falling back to regex-based parser...');
       return parseFallback(resumeText);
     }
