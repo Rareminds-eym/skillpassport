@@ -175,6 +175,70 @@ export interface AnalyticsFilters {
   recruiters: string[]
 }
 
+// Requisition Filter Types
+export interface RequisitionFilters {
+  dateRange: {
+    preset?: '7d' | '30d' | '90d' | 'ytd' | 'custom'
+    startDate?: string
+    endDate?: string
+  }
+  status: string[]
+  departments: string[]
+  locations: string[]
+  employmentTypes: string[]
+  experienceLevels: string[]
+  salaryRange: {
+    min?: number
+    max?: number
+  }
+  applicationCountRange?: string // 'all' | '0-5' | '5-20' | '20-50' | '50+'
+}
+
+// Pipeline Filter Types
+export interface PipelineFilters {
+  stages: string[] // 'sourced', 'screened', 'interview_1', 'interview_2', 'offer', 'hired'
+  skills: string[]
+  departments: string[]
+  locations: string[]
+  sources: string[] // 'talent_pool', 'direct_application', 'referral'
+  aiScoreRange: {
+    min?: number
+    max?: number
+  }
+  nextActionTypes: string[] // 'send_email', 'schedule_interview', etc.
+  hasNextAction: boolean | null // true = has action, false = no action, null = all
+  assignedTo: string[]
+  dateAdded: {
+    preset?: '7d' | '30d' | '90d' | 'custom'
+    startDate?: string
+    endDate?: string
+  }
+  lastUpdated: {
+    preset?: '7d' | '30d' | '90d' | 'custom'
+    startDate?: string
+    endDate?: string
+  }
+}
+
+// Pipeline Sort Types
+export type PipelineSortField = 
+  | 'candidate_name' 
+  | 'ai_score' 
+  | 'added_at' 
+  | 'updated_at' 
+  | 'next_action_date'
+  | 'stage_changed_at'
+  | 'source'
+  | 'department'
+  | 'location';
+
+export type SortDirection = 'asc' | 'desc';
+
+export interface PipelineSortOptions {
+  field: PipelineSortField;
+  direction: SortDirection;
+}
+
 // Export Configuration Types
 export interface ExportConfig {
   format: 'csv' | 'excel' | 'pdf'

@@ -147,63 +147,31 @@ const Overview = () => {
     const alertId = alert.id || alert;
     const source = alert.source;
     
-    // Handle by source
+    // Handle by source - navigate to basic pages without advanced filters
     if (source === 'talent_pool' || alertId.startsWith('talent-pool')) {
-      if (alertId.includes('unverified')) {
-        navigate('/recruitment/talent-pool?verified=false');
-      } else if (alertId.includes('incomplete')) {
-        navigate('/recruitment/talent-pool?filter=incomplete');
-      } else {
-        navigate('/recruitment/talent-pool');
-      }
+      navigate('/recruitment/talent-pool');
     } else if (source === 'shortlists' || alertId.startsWith('shortlist')) {
-      if (alertId.includes('empty')) {
-        navigate('/recruitment/shortlists?filter=empty');
-      } else {
-        navigate('/recruitment/shortlists');
-      }
+      navigate('/recruitment/shortlists');
     } else if (source === 'interviews' || alertId.startsWith('interview')) {
-      if (alertId.includes('upcoming')) {
-        navigate('/recruitment/interviews?upcoming=true');
-      } else if (alertId.includes('scorecard') || alertId.includes('pending')) {
-        navigate('/recruitment/interviews?status=completed&feedback=pending');
-      } else if (alertId.includes('positive') || alertId.includes('feedback')) {
-        navigate('/recruitment/interviews?feedback=positive');
-      } else {
-        navigate('/recruitment/interviews');
-      }
+      navigate('/recruitment/interviews');
     } else if (source === 'offers' || alertId.startsWith('offer')) {
-      if (alertId.includes('expiring')) {
-        navigate('/recruitment/offers-decisions?status=expiring');
-      } else if (alertId.includes('accepted')) {
-        navigate('/recruitment/offers-decisions?status=accepted');
-      } else {
-        navigate('/recruitment/offers-decisions');
-      }
+      navigate('/recruitment/offers-decisions');
     } else if (source === 'pipelines' || alertId.startsWith('pipeline')) {
-      if (alertId.includes('stalled')) {
-        navigate('/recruitment/pipelines?filter=stalled');
-      } else if (alertId.includes('overdue')) {
-        navigate('/recruitment/pipelines?filter=overdue');
-      } else if (alertId.includes('bottleneck')) {
-        navigate('/recruitment/pipelines');
-      } else {
-        navigate('/recruitment/pipelines');
-      }
+      navigate('/recruitment/pipelines');
     } else {
-      // Fallback for legacy alert IDs
+      // Fallback for legacy alert IDs - navigate to basic pages
       switch (alertId) {
         case 'verification-pending':
-          navigate('/recruitment/talent-pool?verification=pending');
+          navigate('/recruitment/talent-pool');
           break;
         case 'expiring-offers':
-          navigate('/recruitment/offers-decisions?status=expiring');
+          navigate('/recruitment/offers-decisions');
           break;
         case 'positive-feedback':
-          navigate('/recruitment/interviews?feedback=positive');
+          navigate('/recruitment/interviews');
           break;
         case 'upcoming-interviews':
-          navigate('/recruitment/interviews?upcoming=true');
+          navigate('/recruitment/interviews');
           break;
         default:
           console.log('No action defined for alert:', alertId);

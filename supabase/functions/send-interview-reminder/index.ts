@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -190,10 +190,19 @@ async function sendEmail(
   // You can integrate with services like SendGrid, Resend, or others
   
   if (emailService === 'resend') {
+    const resendApiKey = Deno.env.get('Emails') || Deno.env.get('RESEND_API_KEY');
+    
+    if (!resendApiKey) {
+      console.error('Emails/RESEND_API_KEY is not configured');
+      throw new Error('Email service not configured. Please set Emails or RESEND_API_KEY in Supabase settings.');
+    }
+    
+    console.log('Sending email via Resend to:', to);
+    
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
+        'Authorization': `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -206,10 +215,14 @@ async function sendEmail(
     });
     
     if (!response.ok) {
-      throw new Error(`Resend API error: ${response.statusText}`);
+      const errorData = await response.text();
+      console.error('Resend API error:', response.status, errorData);
+      throw new Error(`Resend API error: ${response.statusText} - ${errorData}`);
     }
     
-    return await response.json();
+    const result = await response.json();
+    console.log('Resend API response:', result);
+    return result;
   }
   
   // Fallback to console log for testing
@@ -279,7 +292,10 @@ Deno.serve(async (req) => {
     const emailTemplate = createEmailTemplate(recipientName, emailDetails);
 
     // Send email
-    const emailService = Deno.env.get('EMAIL_SERVICE') || 'console'; // Default to console for testing
+    const emailService = Deno.env.get('EMAIL_SERVICE') || 'resend'; // Default to resend
+    console.log('Email service configured:', emailService);
+    console.log('Sending email to:', recipientEmail);
+    
     const emailResult = await sendEmail(
       recipientEmail,
       emailTemplate.subject,
@@ -287,6 +303,8 @@ Deno.serve(async (req) => {
       emailTemplate.text,
       emailService
     );
+    
+    console.log('Email sent successfully:', emailResult);
 
     // Log reminder in database
     const { error: logError } = await supabase

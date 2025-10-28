@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   DocumentTextIcon,
   ClockIcon,
@@ -21,6 +21,8 @@ import {
   ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import { useOffers, Offer } from '../../hooks/useOffers.ts';
+import OfferAdvancedFilters, { OfferFilters, OfferSortOptions } from '../../components/Recruiter/filters/OfferAdvancedFilters';
+import OfferSortButton from '../../components/Recruiter/filters/OfferSortButton';
 const Toast = ({
   show,
   message,
@@ -1298,6 +1300,13 @@ const OfferCard = ({
 
 
 const OffersDecisions = () => {
+  // Filter and sort state
+  const [filters, setFilters] = useState<OfferFilters>({});
+  const [sort, setSort] = useState<OfferSortOptions>({
+    field: 'inserted_at',
+    direction: 'desc'
+  });
+
   const {
     offers,
     loading,
@@ -1307,7 +1316,7 @@ const OffersDecisions = () => {
     withdrawOffer,
     extendOfferExpiry,
     refreshOffers
-  } = useOffers();
+  } = useOffers(filters, sort);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -1322,6 +1331,25 @@ const OffersDecisions = () => {
     message: string;
     type: 'success' | 'error' | 'info';
   }>({ show: false, message: '', type: 'success' });
+
+  // Extract available filter options from offers
+  const availableTemplates = useMemo(() => 
+    [...new Set(offers.map(o => o.template).filter(Boolean))].sort() as string[],
+    [offers]
+  );
+
+  const availableSentVia = useMemo(() => 
+    [...new Set(offers.map(o => o.sent_via).filter(Boolean))].sort() as string[],
+    [offers]
+  );
+
+  const availableBenefits = useMemo(() => {
+    const benefits = new Set<string>();
+    offers.forEach(o => {
+      if (o.benefits) o.benefits.forEach(b => benefits.add(b));
+    });
+    return Array.from(benefits).sort();
+  }, [offers]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ show: true, message, type });
@@ -1446,13 +1474,33 @@ const handleItemsPerPageChange = (value: number) => {
           <h1 className="text-2xl font-bold text-gray-900">Offers & Decisions</h1>
           <p className="text-gray-600 mt-1">Manage job offers and candidate responses</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
-        >
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Create Offer
-        </button>
+        <div className="flex items-center gap-3">
+          <OfferAdvancedFilters
+            filters={filters}
+            sort={sort}
+            onFiltersChange={setFilters}
+            onSortChange={setSort}
+            onReset={() => {
+              setFilters({});
+              setSort({ field: 'inserted_at', direction: 'desc' });
+            }}
+            availableTemplates={availableTemplates}
+            availableSentVia={availableSentVia}
+            availableBenefits={availableBenefits}
+          />
+          <OfferSortButton
+            sort={sort}
+            onSortChange={setSort}
+            onReset={() => setSort({ field: 'inserted_at', direction: 'desc' })}
+          />
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Create Offer
+          </button>
+        </div>
       </div>
 
       {/* Statistics */}
