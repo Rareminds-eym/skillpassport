@@ -284,10 +284,18 @@ CRITICAL INSTRUCTIONS:
 1. Extract ONLY the person's actual name for the "name" field (e.g., "John Doe", "P. Durkadevi")
 2. DO NOT put the entire resume text in any single field
 3. Parse each section carefully and place data in the correct fields
-4. For arrays (education, experience, skills, etc.), create separate objects for each item
+4. For arrays (education, experience, projects, skills, certificates), create separate objects for each item
 5. Generate unique numeric IDs for each array item (use sequential numbers like 1, 2, 3)
 6. If a field is not found in the resume, use an empty string "" or empty array []
-7. Look for sections like EDUCATION, EXPERIENCE, SKILLS, CERTIFICATES and parse them accordingly
+7. Look for sections like EDUCATION, EXPERIENCE, PROJECTS, SKILLS, CERTIFICATES and parse them accordingly
+
+IMPORTANT SECTIONS:
+- education: Parse degrees, universities, years, CGPA
+- experience: Parse job titles, companies, durations
+- projects: Parse project titles, descriptions, technologies used, links
+- technicalSkills: Parse programming languages, frameworks, tools
+- softSkills: Parse communication, teamwork, leadership skills
+- certificates: Parse certifications with issuers, credential IDs, dates
 
 EXAMPLE:
 If resume says "EDUCATION: B.Sc Computer Science, MIT University, 2024"
@@ -311,16 +319,17 @@ JSON STRUCTURE:
   "trainer_name": "",
   "nm_id": "",
   "course": "",
+  "skill": "",
   "training": [],
   "education": [],
   "experience": [],
+  "projects": [],
   "technicalSkills": [],
   "softSkills": [],
   "certificates": [],
   "alternate_number": "",
   "contact_number_dial_code": "",
-  "imported_at": "",
-  "skill": ""
+  "imported_at": ""
 }
 
 Resume Text:
@@ -373,6 +382,159 @@ ${resumeText}
   } catch (error) {
     console.error('OpenAI API error:', error);
     throw new Error('Failed to parse resume with OpenAI API');
+  }
+};
+
+/**
+ * Parse resume using OpenRouter API
+ */
+const parseWithOpenRouter = async (resumeText) => {
+  const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+  
+  const prompt = `
+You are an expert resume parsing assistant. Your task is to carefully analyze the resume text and extract specific information into structured JSON format.
+
+CRITICAL INSTRUCTIONS:
+1. Extract ONLY the person's actual name for the "name" field (e.g., "John Doe", "P. Durkadevi")
+2. DO NOT put the entire resume text in any single field
+3. Parse each section carefully and place data in the correct array
+4. For arrays (education, experience, projects, skills, certificates), create separate objects for each item
+5. Generate unique numeric IDs for each array item
+6. If a field is not found, use empty string "" or empty array []
+7. Look for EDUCATION, EXPERIENCE, PROJECTS, SKILLS, CERTIFICATES sections
+
+IMPORTANT SECTIONS:
+- education: Parse degrees, universities, years, CGPA, departments
+- experience: Parse job titles, companies, durations, descriptions
+- projects: Parse project titles, descriptions, technologies/tech stack, links (GitHub, demo, website)
+- technicalSkills: Parse programming languages, frameworks, tools, technologies
+- softSkills: Parse communication, teamwork, leadership, problem-solving skills
+- certificates: Parse certifications with issuers, credential IDs, issue dates, links
+- training: Parse courses, workshops, training programs
+
+EXAMPLE FOR PROJECTS:
+Input: "AI-Based Career Counseling System | Jan 2024 – Mar 2024
+SkillEco
+Developed an AI-powered platform using React, Node.js, Express.js, PostgreSQL, OpenAI API
+Link: https://career-ai.skill-eco.io"
+
+Output: {
+  "id": 1,
+  "title": "AI-Based Career Counseling System",
+  "organization": "SkillEco",
+  "duration": "Jan 2024 – Mar 2024",
+  "description": "Developed an AI-powered platform that provides personalized career guidance",
+  "technologies": ["React", "Node.js", "Express.js", "PostgreSQL", "OpenAI API"],
+  "link": "https://career-ai.skill-eco.io",
+  "status": "Completed"
+}
+
+Return ONLY valid JSON (no markdown blocks, no explanation).
+
+JSON STRUCTURE:
+{
+  "name": "",
+  "email": "",
+  "contact_number": "",
+  "age": "",
+  "date_of_birth": "",
+  "college_school_name": "",
+  "university": "",
+  "registration_number": "",
+  "district_name": "",
+  "branch_field": "",
+  "trainer_name": "",
+  "nm_id": "",
+  "course": "",
+  "skill": "",
+  "training": [],
+  "education": [],
+  "experience": [],
+  "projects": [],
+  "technicalSkills": [],
+  "softSkills": [],
+  "certificates": [],
+  "alternate_number": "",
+  "contact_number_dial_code": "",
+  "imported_at": ""
+}
+
+Resume Text:
+"""
+${resumeText}
+"""
+`;
+
+  try {
+    console.log('🤖 Calling OpenRouter API for resume parsing...');
+    console.log('📝 Resume text length:', resumeText.length);
+    
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': window.location.origin,
+        'X-Title': 'Resume Parser'
+      },
+      body: JSON.stringify({
+        model: 'z-ai/glm-4.5-air:free',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a resume parsing assistant. Extract information from resumes and return ONLY valid JSON. Do not include markdown code blocks or explanations.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 4096
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenRouter API error:', errorText);
+      throw new Error(`OpenRouter API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const generatedText = data.choices[0].message.content;
+    
+    console.log('🤖 OpenRouter raw response:', generatedText.substring(0, 500));
+    
+    // Extract JSON from the response - handle markdown code blocks
+    let jsonText = generatedText;
+    
+    // Remove markdown code blocks if present
+    jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    
+    // Extract JSON object
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('❌ No JSON found in response:', generatedText);
+      throw new Error('Failed to extract JSON from AI response');
+    }
+    
+    console.log('📝 Extracted JSON text:', jsonMatch[0].substring(0, 300));
+    
+    const parsedData = JSON.parse(jsonMatch[0]);
+    
+    console.log('✅ Parsed data:', parsedData);
+    
+    // Validate that name field doesn't contain entire resume
+    if (parsedData.name && parsedData.name.length > 100) {
+      console.warn('⚠️ Name field too long, attempting to extract actual name...');
+      parsedData.name = extractNameFromText(parsedData.name);
+    }
+    
+    // Add unique IDs and timestamps
+    return addMetadata(parsedData);
+  } catch (error) {
+    console.error('OpenRouter API error:', error);
+    throw new Error('Failed to parse resume with OpenRouter API');
   }
 };
 
