@@ -55,7 +55,9 @@ const ProfileEditSection = ({ profileEmail }) => {
     updateTraining,
     updateExperience,
     updateTechnicalSkills,
-    updateSoftSkills
+    updateSoftSkills,
+    updateProjects,
+    updateCertificates
   } = useStudentDataByEmail(displayEmail);
 
   // Extract data from Supabase or use fallback
