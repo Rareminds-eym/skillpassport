@@ -1156,6 +1156,7 @@ export const mergeResumeData = (existingData, parsedData) => {
     education: mergeArrays(existingData.education, parsedData.education, 'degree'),
     training: mergeArrays(existingData.training, parsedData.training, 'course'),
     experience: mergeArrays(existingData.experience, parsedData.experience, 'organization'),
+    projects: mergeArrays(existingData.projects, parsedData.projects, 'title'),
     technicalSkills: mergeArrays(existingData.technicalSkills, parsedData.technicalSkills, 'name'),
     softSkills: mergeArrays(existingData.softSkills, parsedData.softSkills, 'name'),
     certificates: mergeArrays(existingData.certificates, parsedData.certificates, 'title'),
