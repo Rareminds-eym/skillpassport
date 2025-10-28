@@ -497,6 +497,13 @@ ${resumeText}
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenRouter API error:', errorText);
+      
+      // Handle rate limiting (429) - fall back to regex parser
+      if (response.status === 429) {
+        console.warn('⚠️ OpenRouter API rate limit reached. Using fallback parser...');
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
+      
       throw new Error(`OpenRouter API error: ${response.status}`);
     }
 
