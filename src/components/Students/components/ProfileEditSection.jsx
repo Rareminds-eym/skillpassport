@@ -200,6 +200,18 @@ const ProfileEditSection = ({ profileEmail }) => {
           await handleSave('experience', mergedData.experience);
         }
         
+        // Update projects if present
+        if (mergedData.projects && mergedData.projects.length > 0) {
+          console.log('📦 Saving projects:', mergedData.projects);
+          await handleSave('projects', mergedData.projects);
+        }
+        
+        // Update certificates if present
+        if (mergedData.certificates && mergedData.certificates.length > 0) {
+          console.log('📜 Saving certificates:', mergedData.certificates);
+          await handleSave('certificates', mergedData.certificates);
+        }
+        
         // Update technical skills if present
         if (mergedData.technicalSkills && mergedData.technicalSkills.length > 0) {
           await handleSave('technicalSkills', mergedData.technicalSkills);
