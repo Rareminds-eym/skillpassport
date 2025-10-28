@@ -605,10 +605,7 @@ if (profile.image) {
 
       const projectLink = [
         project.link,
-        project.demoLink,
-        project.demo,
         project.github,
-        project.url
       ]
         .map(value => (typeof value === "string" ? value.trim() : value))
         .find(value => typeof value === "string" && value.length > 0);
