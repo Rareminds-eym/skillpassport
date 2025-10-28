@@ -578,13 +578,10 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
 
   if (!isOpen || !candidate) return null;
 
-  const modalCandidate = {
-    ...candidate,
-    name: (candidate as any).name || (candidate as any).candidate_name || '',
-    email: (candidate as any).email || (candidate as any).candidate_email || ''
-  };
+  const candidateName = (candidate as any).name || (candidate as any).candidate_name || '';
+  const candidateEmail = (candidate as any).email || (candidate as any).candidate_email || '';
 
-  const qrCodeValue = `${window.location.origin}/student/profile/${modalCandidate.email}`;
+  const qrCodeValue = `${window.location.origin}/student/profile/${candidateEmail}`;
 
   // Parse profile data if it's a string/object and prepare helpers
   let profileData: any = candidate;
@@ -604,16 +601,45 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
     profileData = { ...candidate, ...rawProfile };
   }
 
+  const projectsData = Array.isArray((candidate as any).projects) ? (candidate as any).projects : [];
+  const certificatesData = Array.isArray((candidate as any).certificates) ? (candidate as any).certificates : [];
+  const assessmentsData = Array.isArray((candidate as any).assessments) ? (candidate as any).assessments : [];
+
+  const verifiedProjects = projectsData.filter((project: any) => project?.verified === true || project?.status === 'verified');
+  const verifiedCertificates = certificatesData.filter((certificate: any) => certificate?.verified === true || certificate?.status === 'verified');
+
+  profileData = {
+    ...profileData,
+    projects: verifiedProjects,
+    certificates: verifiedCertificates,
+    assessments: assessmentsData
+  };
+
+  const modalCandidate = {
+    ...candidate,
+    name: candidateName,
+    email: candidateEmail,
+    projects: verifiedProjects,
+    certificates: verifiedCertificates,
+    assessments: assessmentsData
+  };
+
   const formatLabel = (key: string) => key
     .replace(/_/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/^\w/, (c) => c.toUpperCase());
 
+  const formatDateValue = (value: any) => {
+    if (!value) return '';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString();
+  };
+
   const isPrimitive = (val: any) => val === null || ['string', 'number', 'boolean'].includes(typeof val);
   const isEmpty = (v: any) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
 
   // Build lists of fields from the JSONB profile
-  const knownComposite = new Set(['training', 'education', 'technicalSkills', 'softSkills', 'experience']);
+  const knownComposite = new Set(['training', 'education', 'technicalSkills', 'softSkills', 'experience', 'projects', 'certificates', 'assessments']);
   // Fields to exclude from Profile Information display (metadata/internal fields)
   const excludedFields = new Set([
     '_', 'imported_at', 'contact_number_dial_code', 'id', 'student_id',
@@ -941,52 +967,76 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Projects & Portfolio</h3>
                     <div className="space-y-4">
                       {profileData.projects && profileData.projects.length > 0 ? (
-                        profileData.projects.map((project: any, index: number) => (
-                          <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center">
-                                  <h4 className="font-medium text-gray-900">{project.title || project.name || `Project ${index + 1}`}</h4>
-                                  {project.status && (
-                                    <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${project.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                      project.status === 'ongoing' ? 'bg-blue-100 text-blue-800' :
-                                        'bg-gray-100 text-gray-800'
-                                      }`}>
-                                      {project.status}
-                                    </span>
-                                  )}
-                                </div>
-                                {project.description && (
-                                  <p className="text-sm text-gray-600 mt-2">{project.description}</p>
-                                )}
-                                {project.role && (
-                                  <p className="text-sm text-gray-500 mt-1"><span className="font-medium">Role:</span> {project.role}</p>
-                                )}
-                                {project.duration && (
-                                  <p className="text-sm text-gray-500 mt-1"><span className="font-medium">Duration:</span> {project.duration}</p>
-                                )}
-                                {(project.technologies || project.tech) && (
-                                  <div className="flex flex-wrap gap-1 mt-3">
-                                    {(project.technologies || project.tech).map((tech: string, techIndex: number) => (
-                                      <span
-                                        key={techIndex}
-                                        className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary-50 text-primary-700 border border-primary-200"
-                                      >
-                                        {tech}
+                        profileData.projects.map((project: any, index: number) => {
+                          // Handle multiple possible field names for tech stack
+                          const techStack = project.technologies || project.tech || project.techStack || project.skills || [];
+                          const statusText = project.status ? project.status.charAt(0).toUpperCase() + project.status.slice(1) : 'Status Unknown';
+
+                          return (
+                            <div key={project.id || index} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center">
+                                    <h4 className="font-medium text-gray-900">{project.title || project.name || `Project ${index + 1}`}</h4>
+                                    {project.status && (
+                                      <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${project.status.toLowerCase() === 'completed' ? 'bg-green-100 text-green-800' :
+                                        project.status.toLowerCase() === 'ongoing' ? 'bg-blue-100 text-blue-800' :
+                                          'bg-gray-100 text-gray-800'
+                                        }`}>
+                                        {statusText}
                                       </span>
-                                    ))}
+                                    )}
                                   </div>
-                                )}
-                                {project.link && (
-                                  <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:text-primary-700 mt-2 inline-flex items-center">
-                                    View Project →
-                                  </a>
-                                )}
+                                  {project.organization && (
+                                    <p className="text-sm text-gray-500 mt-1">
+                                      <span className="font-medium">Organization:</span> {project.organization}
+                                    </p>
+                                  )}
+                                  {project.description && (
+                                    <p className="text-sm text-gray-600 mt-2">{project.description}</p>
+                                  )}
+                                  {project.role && (
+                                    <p className="text-sm text-gray-500 mt-1"><span className="font-medium">Role:</span> {project.role}</p>
+                                  )}
+                                  {project.duration && (
+                                    <p className="text-sm text-gray-500 mt-1"><span className="font-medium">Duration:</span> {project.duration}</p>
+                                  )}
+                                  {project.verifiedAt && (
+                                    <p className="text-xs text-green-600 mt-1">Verified on: {formatDateValue(project.verifiedAt || project.updatedAt || project.createdAt)}</p>
+                                  )}
+                                  {techStack.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-3">
+                                      {techStack.map((tech: string, techIndex: number) => (
+                                        <span
+                                          key={techIndex}
+                                          className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary-50 text-primary-700 border border-primary-200"
+                                        >
+                                          {tech}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-3 mt-3">
+                                    {project.link && (
+                                      <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:text-primary-700 inline-flex items-center">
+                                        View Project →
+                                      </a>
+                                    )}
+                                    {/* {project.github && (
+                                      <a href={project.github} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-gray-800 inline-flex items-center">
+                                        <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                                          <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+                                        </svg>
+                                        GitHub
+                                      </a>
+                                    )} */}
+                                  </div>
+                                </div>
+                                <BeakerIcon className="h-6 w-6 text-gray-400 ml-4 flex-shrink-0" />
                               </div>
-                              <BeakerIcon className="h-6 w-6 text-gray-400 ml-4 flex-shrink-0" />
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : (
                         <div className="text-center py-12">
                           <BeakerIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -1061,7 +1111,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                     <div className="space-y-4">
                       {profileData.certificates && profileData.certificates.length > 0 ? (
                         profileData.certificates.map((cert: any, index: number) => (
-                          <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                          <div key={cert.id || index} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
                             <div className="flex items-start">
                               <div className="flex-shrink-0">
                                 <div className="h-12 w-12 bg-primary-100 rounded-lg flex items-center justify-center">
@@ -1073,27 +1123,58 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                               <div className="ml-4 flex-1">
                                 <div className="flex items-start justify-between">
                                   <div>
-                                    <h4 className="font-medium text-gray-900">{cert.name || cert.title || `Certificate ${index + 1}`}</h4>
-                                    {cert.issuer && (
-                                      <p className="text-sm text-gray-600 mt-1">Issued by: {cert.issuer}</p>
-                                    )}
-                                    {cert.issue_date && (
-                                      <p className="text-xs text-gray-500 mt-1">Issue Date: {cert.issue_date}</p>
-                                    )}
+                                    <h4 className="font-medium text-gray-900">
+                                      {cert.title || cert.name || `Certificate ${index + 1}`}
+                                    </h4>
+
+                                    {/* Row 2: Issued by + Issue Date */}
+                                    <div className="flex justify-between">
+                                      {cert.issuer && (
+                                        <p className="text-sm text-gray-600 mt-1">Issued by: {cert.issuer}</p>
+                                      )}
+                                      {cert.issuedOn && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          Issue Date: {cert.issuedOn}
+                                        </p>
+                                      )}
+                                    </div>
+
                                     {cert.expiry_date && (
                                       <p className="text-xs text-gray-500">Expires: {cert.expiry_date}</p>
                                     )}
-                                    {cert.credential_id && (
-                                      <p className="text-xs text-gray-400 mt-2">ID: {cert.credential_id}</p>
+                                    {cert.credentialId && (
+                                      <p className="text-xs text-gray-400 mt-2">ID: {cert.credentialId}</p>
+                                    )}
+
+                                    {cert.level && (
+                                      <p className="text-xs text-gray-700 mt-2 flex items-center gap-1">
+                                        <span className="font-medium">Level:</span>
+                                        <span className="inline-block w-auto px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                          {cert.level}
+                                        </span>
+                                      </p>
                                     )}
                                   </div>
-                                  {cert.verified && (
+
+                                  {(cert.verified || cert.status === "verified") && (
                                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                       <ShieldCheckIcon className="h-3 w-3 mr-1" />
                                       Verified
                                     </span>
                                   )}
+                                  {cert.status === "pending" && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                      Pending
+                                    </span>
+                                  )}
                                 </div>
+
+                                {cert.verifiedAt && (
+                                  <p className="text-xs text-green-600 mt-2">Verified on: {formatDateValue(cert.verifiedAt)}</p>
+                                )}
+                                {cert.description && (
+                                  <p className="text-sm text-gray-600 mt-2">{cert.description}</p>
+                                )}
                                 {cert.skills && cert.skills.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-3">
                                     {cert.skills.map((skill: string, skillIndex: number) => (
@@ -1103,8 +1184,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                     ))}
                                   </div>
                                 )}
-                                {cert.url && (
-                                  <a href={cert.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:text-primary-700 mt-2 inline-flex items-center">
+                                {cert.link && (
+                                  <a href={cert.link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:text-primary-700 mt-2 inline-flex items-center">
                                     View Certificate →
                                   </a>
                                 )}
@@ -1415,14 +1496,14 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
       <ExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
-        candidate={candidate}
+        candidate={modalCandidate}
       />
 
       {/* Message Modal */}
       <MessageModal
         isOpen={showMessageModal}
         onClose={() => setShowMessageModal(false)}
-        candidate={candidate}
+        candidate={modalCandidate}
       />
     </div>
   );

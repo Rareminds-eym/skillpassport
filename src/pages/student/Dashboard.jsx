@@ -644,10 +644,7 @@ const StudentDashboard = () => {
                 : [];
               const projectLink = [
                 project.link,
-                project.demoLink,
-                project.demo,
                 project.github,
-                project.url,
               ]
                 .map((value) =>
                   typeof value === "string" ? value.trim() : value

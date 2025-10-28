@@ -1216,10 +1216,7 @@ export default function StudentPublicViewerModern() {
                           : [];
                         const projectLink =
                           project.link ||
-                          project.demoLink ||
-                          project.demo ||
-                          project.github ||
-                          project.url;
+                          project.github;
                         return (
                           <div
                             key={project.id || index}

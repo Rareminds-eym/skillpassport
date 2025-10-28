@@ -23,12 +23,15 @@ export interface Candidate {
     expected?: string
   }
   availability?: string
-  profile?: any  // JSONB profile data from database
-  badges?: string[]  // Verification badges
-  ai_score_overall?: number  // AI scoring
-  college?: string  // College name
-  dept?: string  // Department
-  last_updated?: string  // Last updated timestamp
+  profile?: any
+  badges?: string[]
+  ai_score_overall?: number
+  college?: string
+  dept?: string
+  last_updated?: string
+  projects?: any[]
+  certificates?: any[]
+  assessments?: any[]
 }
 
 // Job/Requisition Types

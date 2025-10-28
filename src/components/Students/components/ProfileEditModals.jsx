@@ -829,13 +829,7 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
       duration: project.duration || project.timeline || project.period || "",
       status: project.status || "",
       description: project.description || "",
-      link:
-        project.link ||
-        project.demoLink ||
-        project.demo ||
-        project.github ||
-        project.url ||
-        "",
+      link: project.link || project.github,
       techInput: extractTech(project).join(", "),
     });
     setEditingIndex(index);
@@ -851,8 +845,7 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
         typeof value === "string" ? value.trim() : value,
       ])
     );
-    const normalizedLink =
-      typeof trimmed.link === "string" ? trimmed.link : "";
+    const normalizedLink = typeof trimmed.link === "string" ? trimmed.link : "";
     return {
       ...existing,
       ...trimmed,
@@ -862,10 +855,7 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
       status: trimmed.status || existing.status || "",
       description: trimmed.description || existing.description || "",
       link: normalizedLink,
-      demoLink: normalizedLink,
-      demo: normalizedLink,
       github: normalizedLink,
-      url: normalizedLink,
       tech: techArray,
       technologies: techArray,
       techStack: techArray,
@@ -893,26 +883,45 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
                 ...(proj || {}),
                 ...prepareProject(formData, proj),
                 enabled: proj?.enabled === false ? false : true,
+
+                // 🔁 Verification reset logic
+                verified: false,
+                processing: true,
+                verifiedAt: null,
+
+                updatedAt: new Date().toISOString(),
               }
             : proj
         )
       );
+
+      toast({
+        title: "Project Updated",
+        description:
+          "Changes detected — verification will be reprocessed by the system.",
+      });
     } else {
+      // 🆕 new project
       setProjectsList((prev) => [
         ...prev,
         {
           ...newProject,
           id: Date.now(),
           enabled: true,
+          verified: false,
           processing: true,
+          verifiedAt: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       ]);
-    }
 
-    toast({
-      title: editingIndex !== null ? "Project Updated" : "Project Added",
-      description: "Your project details are being processed for verification.",
-    });
+      toast({
+        title: "Project Added",
+        description:
+          "Your project details are being processed for verification.",
+      });
+    }
 
     setIsAdding(false);
     resetForm();
@@ -1293,6 +1302,7 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
   };
 
   const saveCertificate = () => {
+    // 1️⃣ Validation
     if (!formData.title.trim()) {
       toast({
         title: "Missing title",
@@ -1312,6 +1322,7 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
       return;
     }
 
+    // 2️⃣ Clean up whitespace in all string fields
     const formatted = Object.fromEntries(
       Object.entries(formData).map(([key, value]) => [
         key,
@@ -1319,6 +1330,7 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
       ])
     );
 
+    // 3️⃣ Update existing certificate
     if (editingIndex !== null) {
       setCertificates((prev) =>
         prev.map((cert, idx) =>
@@ -1326,32 +1338,53 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
             ? {
                 ...(cert || {}),
                 ...formatted,
-                status: cert?.status || "pending",
                 enabled: cert?.enabled === false ? false : true,
+
+                // 🔁 Re-verification reset logic:
+                verified: false,
+                verifiedAt: null,
+                processing: true,
+                status: "pending",
+
+                // ⏱ Update timestamp
+                updatedAt: new Date().toISOString(),
               }
             : cert
         )
       );
-    } else {
+
+      toast({
+        title: "Certificate Updated",
+        description:
+          "Changes detected — verification will be reprocessed by the system.",
+      });
+    }
+
+    // 4️⃣ Add new certificate
+    else {
       setCertificates((prev) => [
         ...prev,
         {
           ...formatted,
-          status: "pending",
           id: Date.now(),
           enabled: true,
+          status: "pending",
+          verified: false,
+          verifiedAt: null,
           processing: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       ]);
+
+      toast({
+        title: "Certificate Added",
+        description:
+          "Your certificate details are being processed for verification.",
+      });
     }
 
-    toast({
-      title:
-        editingIndex !== null ? "Certificate Updated" : "Certificate Added",
-      description:
-        "Your certificate details are being processed for verification.",
-    });
-
+    // 5️⃣ Reset UI state
     setIsAdding(false);
     resetForm();
   };
