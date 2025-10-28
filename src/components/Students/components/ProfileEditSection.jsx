@@ -115,6 +115,12 @@ const ProfileEditSection = ({ profileEmail }) => {
           case 'experience':
             result = await updateExperience(data);
             break;
+          case 'projects':
+            result = await updateProjects(data);
+            break;
+          case 'certificates':
+            result = await updateCertificates(data);
+            break;
           case 'technicalSkills':
             result = await updateTechnicalSkills(data);
             break;
