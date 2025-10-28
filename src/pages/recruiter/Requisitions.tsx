@@ -16,10 +16,15 @@ import {
   DocumentTextIcon,
   MapPinIcon,
   CurrencyDollarIcon,
-  CalendarIcon
+  CalendarIcon,
+  ArrowsUpDownIcon,
+  ChevronUpIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
-import { supabase } from '../../lib/supabaseClient'; // Adjust path to your Supabase client
+import { supabase } from '../../lib/supabaseClient';
+import AdvancedRequisitionFilters from '../../components/Recruiter/components/AdvancedRequisitionFilters';
+import { RequisitionFilters } from '../../types/recruiter';
 
 interface Opportunity {
   id: string;
@@ -67,19 +72,106 @@ const Requisitions = () => {
   const [showMessagesModal, setShowMessagesModal] = useState(false);
   const [selectedRequisition, setSelectedRequisition] = useState<Opportunity | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  
+  // Sorting State
+  const [sortField, setSortField] = useState<string>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // Advanced Filters State
+  const [advancedFilters, setAdvancedFilters] = useState<RequisitionFilters>({
+    dateRange: {},
+    status: [],
+    departments: [],
+    locations: [],
+    employmentTypes: [],
+    experienceLevels: [],
+    salaryRange: {},
+    applicationCountRange: 'all'
+  });
 
   // Load requisitions from Supabase
   useEffect(() => {
     loadRequisitions();
-  }, []);
+  }, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection]);
 
   const loadRequisitions = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Build Supabase query with SQL-optimized filters
+      let query = supabase
         .from('opportunities')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
+
+      // Apply search query filter (case-insensitive)
+      if (searchQuery) {
+        query = query.or(`title.ilike.%${searchQuery}%,department.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`);
+      }
+
+      // Apply basic status filter
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+
+      // Apply advanced filters with SQL optimization
+      if (advancedFilters.status.length > 0) {
+        query = query.in('status', advancedFilters.status);
+      }
+
+      if (advancedFilters.departments.length > 0) {
+        query = query.in('department', advancedFilters.departments);
+      }
+
+      if (advancedFilters.locations.length > 0) {
+        query = query.in('location', advancedFilters.locations);
+      }
+
+      if (advancedFilters.employmentTypes.length > 0) {
+        query = query.in('employment_type', advancedFilters.employmentTypes);
+      }
+
+      if (advancedFilters.experienceLevels.length > 0) {
+        query = query.in('experience_level', advancedFilters.experienceLevels);
+      }
+
+      // Salary range filters
+      if (advancedFilters.salaryRange.min) {
+        query = query.gte('salary_range_min', advancedFilters.salaryRange.min);
+      }
+      if (advancedFilters.salaryRange.max) {
+        query = query.lte('salary_range_max', advancedFilters.salaryRange.max);
+      }
+
+      // Application count filter with smart ranges
+      if (advancedFilters.applicationCountRange && advancedFilters.applicationCountRange !== 'all') {
+        const rangeMap: Record<string, { min: number; max: number | null }> = {
+          '0': { min: 0, max: 0 },
+          '1-5': { min: 1, max: 5 },
+          '6-20': { min: 6, max: 20 },
+          '21-50': { min: 21, max: 50 },
+          '50+': { min: 51, max: null },
+        };
+        
+        const range = rangeMap[advancedFilters.applicationCountRange];
+        if (range) {
+          query = query.gte('applications_count', range.min);
+          if (range.max !== null) {
+            query = query.lte('applications_count', range.max);
+          }
+        }
+      }
+
+      // Date range filters
+      if (advancedFilters.dateRange.startDate) {
+        query = query.gte('posted_date', advancedFilters.dateRange.startDate);
+      }
+      if (advancedFilters.dateRange.endDate) {
+        query = query.lte('posted_date', advancedFilters.dateRange.endDate);
+      }
+
+      // Apply sorting (SQL-optimized)
+      query = query.order(sortField, { ascending: sortDirection === 'asc' });
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error loading opportunities:', error);
@@ -167,16 +259,21 @@ const Requisitions = () => {
     if (error) throw error;
   };
 
-  const filteredRequisitions = requisitions.filter(req => {
-    const matchesSearch = searchQuery === '' || 
-      req.job_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.location.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  // All filtering now happens in SQL query for better performance
+  const filteredRequisitions = requisitions;
+
+  const handleResetFilters = () => {
+    setAdvancedFilters({
+      dateRange: {},
+      status: [],
+      departments: [],
+      locations: [],
+      employmentTypes: [],
+      experienceLevels: [],
+      salaryRange: {},
+      applicationCountRange: 'all'
+    });
+  };
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -221,6 +318,26 @@ const Requisitions = () => {
     }
   };
 
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, default to descending
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) {
+      return <ArrowsUpDownIcon className="h-4 w-4 text-gray-400" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ChevronUpIcon className="h-4 w-4 text-primary-600" />
+      : <ChevronDownIcon className="h-4 w-4 text-primary-600" />;
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -254,6 +371,31 @@ const Requisitions = () => {
             />
           </div>
           
+          {/* Results Count & Sort Info */}
+          {filteredRequisitions.length > 0 && (
+            <div className="hidden md:flex items-center px-3 py-2 bg-gray-100 rounded-md text-xs text-gray-600">
+              <span className="font-medium">{filteredRequisitions.length}</span>
+              <span className="mx-1">results</span>
+              {sortField && (
+                <>
+                  <span className="mx-1">•</span>
+                  <span>sorted by</span>
+                  <span className="ml-1 font-medium">
+                    {sortField === 'job_title' ? 'Job Title' :
+                     sortField === 'created_at' ? 'Created Date' :
+                     sortField === 'posted_date' ? 'Posted Date' :
+                     sortField === 'applications_count' ? 'Applications' :
+                     sortField === 'department' ? 'Department' :
+                     sortField === 'location' ? 'Location' :
+                     sortField === 'salary_range_min' ? 'Salary' :
+                     sortField}
+                  </span>
+                  {sortDirection === 'asc' ? <ChevronUpIcon className="h-3 w-3 ml-1" /> : <ChevronDownIcon className="h-3 w-3 ml-1" />}
+                </>
+              )}
+            </div>
+          )}
+          
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -265,6 +407,50 @@ const Requisitions = () => {
             <option value="on_hold">On Hold</option>
             <option value="closed">Closed</option>
           </select>
+
+          <AdvancedRequisitionFilters
+            filters={advancedFilters}
+            onFiltersChange={setAdvancedFilters}
+            onReset={handleResetFilters}
+            onApply={loadRequisitions}
+          />
+
+          {/* Sorting Dropdown */}
+          <div className="relative">
+            <select
+              value={`${sortField}-${sortDirection}`}
+              onChange={(e) => {
+                const [field, direction] = e.target.value.split('-');
+                setSortField(field);
+                setSortDirection(direction as 'asc' | 'desc');
+              }}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white text-sm"
+            >
+              <optgroup label="Date">
+                <option value="created_at-desc">Newest First</option>
+                <option value="created_at-asc">Oldest First</option>
+                <option value="posted_date-desc">Recently Posted</option>
+                <option value="posted_date-asc">Oldest Posted</option>
+              </optgroup>
+              <optgroup label="Applications">
+                <option value="applications_count-desc">Most Applications</option>
+                <option value="applications_count-asc">Least Applications</option>
+              </optgroup>
+              <optgroup label="Alphabetical">
+                <option value="job_title-asc">Job Title (A-Z)</option>
+                <option value="job_title-desc">Job Title (Z-A)</option>
+                <option value="department-asc">Department (A-Z)</option>
+                <option value="department-desc">Department (Z-A)</option>
+                <option value="location-asc">Location (A-Z)</option>
+                <option value="location-desc">Location (Z-A)</option>
+              </optgroup>
+              <optgroup label="Salary">
+                <option value="salary_range_min-desc">Highest Salary</option>
+                <option value="salary_range_min-asc">Lowest Salary</option>
+              </optgroup>
+            </select>
+            <ArrowsUpDownIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+          </div>
 
           <div className="flex gap-2">
             <button
@@ -352,23 +538,59 @@ const Requisitions = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Job Title
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('job_title')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Job Title
+                      {getSortIcon('job_title')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Department
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('department')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Department
+                      {getSortIcon('department')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('location')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Location
+                      {getSortIcon('location')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Status
+                      {getSortIcon('status')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Applications
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('applications_count')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Applications
+                      {getSortIcon('applications_count')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Posted
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('posted_date')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Posted
+                      {getSortIcon('posted_date')}
+                    </div>
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
