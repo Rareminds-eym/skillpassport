@@ -55,7 +55,9 @@ const ProfileEditSection = ({ profileEmail }) => {
     updateTraining,
     updateExperience,
     updateTechnicalSkills,
-    updateSoftSkills
+    updateSoftSkills,
+    updateProjects,
+    updateCertificates
   } = useStudentDataByEmail(displayEmail);
 
   // Extract data from Supabase or use fallback
@@ -112,6 +114,12 @@ const ProfileEditSection = ({ profileEmail }) => {
             break;
           case 'experience':
             result = await updateExperience(data);
+            break;
+          case 'projects':
+            result = await updateProjects(data);
+            break;
+          case 'certificates':
+            result = await updateCertificates(data);
             break;
           case 'technicalSkills':
             result = await updateTechnicalSkills(data);
@@ -198,6 +206,18 @@ const ProfileEditSection = ({ profileEmail }) => {
         // Update experience if present
         if (mergedData.experience && mergedData.experience.length > 0) {
           await handleSave('experience', mergedData.experience);
+        }
+        
+        // Update projects if present
+        if (mergedData.projects && mergedData.projects.length > 0) {
+          console.log('📦 Saving projects:', mergedData.projects);
+          await handleSave('projects', mergedData.projects);
+        }
+        
+        // Update certificates if present
+        if (mergedData.certificates && mergedData.certificates.length > 0) {
+          console.log('📜 Saving certificates:', mergedData.certificates);
+          await handleSave('certificates', mergedData.certificates);
         }
         
         // Update technical skills if present
@@ -342,13 +362,14 @@ const ProfileEditSection = ({ profileEmail }) => {
                   <Upload className="w-5 h-5 mr-2" />
                   Upload Resume & Auto-Fill Profile
                 </Button>
-                <Button
+                {/* Test Mode Button - Commented out since main parser now has all features */}
+                {/* <Button
                   onClick={() => setShowTester(true)}
                   variant="outline"
                   className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
                 >
                   Test Mode
-                </Button>
+                </Button> */}
               </div>
               <p className="text-sm text-gray-500 mt-2">
                 Upload your resume to automatically extract and fill your profile information
@@ -523,16 +544,17 @@ const ProfileEditSection = ({ profileEmail }) => {
           <ResumeParser
             onDataExtracted={handleResumeDataExtracted}
             onClose={() => setShowResumeParser(false)}
+            userEmail={userEmail}
           />
         )}
 
-        {/* Resume Parser Tester Modal */}
-        {showTester && (
+        {/* Resume Parser Tester Modal - Commented out since main parser has all features */}
+        {/* {showTester && (
           <ResumeParserTester
             userId={user?.id}
             onClose={() => setShowTester(false)}
           />
-        )}
+        )} */}
       </div>
     </div>
   );
