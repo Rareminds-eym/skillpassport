@@ -16,6 +16,8 @@ import {
   TrendingUp,
   Share2,
   ArrowLeftIcon,
+  ExternalLink,
+  FolderGit2,
 } from "lucide-react";
 import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 import { useNavigate, useParams } from "react-router-dom";
@@ -174,41 +176,69 @@ export default function StudentPublicViewerModern() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  const technicalSkills = (
-    raw?.technicalSkills ||
-    parsedProfile.technicalSkills ||
-    raw?.profile?.technicalSkills ||
-    []
+  const pickArray = (...sources) => {
+    for (const src of sources) {
+      if (Array.isArray(src)) return src;
+    }
+    return [];
+  };
+
+  const technicalSkills = pickArray(
+    raw?.technicalSkills,
+    parsedProfile.technicalSkills,
+    raw?.profile?.technicalSkills,
+    parsedProfile.profile?.technicalSkills,
+    raw?.profile?.profile?.technicalSkills,
+    parsedProfile.profile?.profile?.technicalSkills
   ).filter((s) => s && s.enabled !== false);
-  const softSkills = (
-    raw?.softSkills ||
-    parsedProfile.softSkills ||
-    raw?.profile?.softSkills ||
-    []
+  const softSkills = pickArray(
+    raw?.softSkills,
+    parsedProfile.softSkills,
+    raw?.profile?.softSkills,
+    parsedProfile.profile?.softSkills,
+    raw?.profile?.profile?.softSkills,
+    parsedProfile.profile?.profile?.softSkills
   ).filter((s) => s && s.enabled !== false);
-  const education = (
-    raw?.education ||
-    parsedProfile.education ||
-    raw?.profile?.education ||
-    []
+  const education = pickArray(
+    raw?.education,
+    parsedProfile.education,
+    raw?.profile?.education,
+    parsedProfile.profile?.education,
+    raw?.profile?.profile?.education,
+    parsedProfile.profile?.profile?.education
   ).filter((e) => e && e.enabled !== false);
-  const training = (
-    raw?.training ||
-    parsedProfile.training ||
-    raw?.profile?.training ||
-    []
+  const training = pickArray(
+    raw?.training,
+    parsedProfile.training,
+    raw?.profile?.training,
+    parsedProfile.profile?.training,
+    raw?.profile?.profile?.training,
+    parsedProfile.profile?.profile?.training
   ).filter((t) => t && t.enabled !== false);
-  const experience = (
-    raw?.experience ||
-    parsedProfile.experience ||
-    raw?.profile?.experience ||
-    []
+  const experience = pickArray(
+    raw?.experience,
+    parsedProfile.experience,
+    raw?.profile?.experience,
+    parsedProfile.profile?.experience,
+    raw?.profile?.profile?.experience,
+    parsedProfile.profile?.profile?.experience
   ).filter((x) => x && x.enabled !== false);
-  const certificates =
-    raw?.certificates ||
-    parsedProfile.certificates ||
-    raw?.profile?.certificates ||
-    [];
+  const projects = pickArray(
+    raw?.projects,
+    parsedProfile.projects,
+    raw?.profile?.projects,
+    parsedProfile.profile?.projects,
+    raw?.profile?.profile?.projects,
+    parsedProfile.profile?.profile?.projects
+  ).filter((x) => x && x.enabled !== false);
+  const certificates = pickArray(
+    raw?.certificates,
+    parsedProfile.certificates,
+    raw?.profile?.certificates,
+    parsedProfile.profile?.certificates,
+    raw?.profile?.profile?.certificates,
+    parsedProfile.profile?.profile?.certificates
+  ).filter((x) => x && x.enabled !== false);
 
   useEffect(() => {
     document.title = `${
@@ -243,6 +273,7 @@ export default function StudentPublicViewerModern() {
 
   const tabs = [
     "Overview",
+    "Projects",
     "Experience",
     "Education",
     "Certificates",
@@ -1153,6 +1184,112 @@ export default function StudentPublicViewerModern() {
                 </div>
               )}
 
+              {activeTab === "Projects" && (
+                <section className="p-4">
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center">
+                      <FolderGit2 className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
+                      Projects
+                    </h2>
+                  </div>
+
+                  {projects.length === 0 ? (
+                    <div className="text-center py-8">
+                      <FolderGit2 className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                      <p className="text-gray-400 text-sm font-medium">
+                        No projects added yet
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-5">
+                      {projects.map((project, index) => {
+                        const techList = Array.isArray(project.tech)
+                          ? project.tech
+                          : Array.isArray(project.technologies)
+                          ? project.technologies
+                          : Array.isArray(project.techStack)
+                          ? project.techStack
+                          : Array.isArray(project.skills)
+                          ? project.skills
+                          : [];
+                        const projectLink =
+                          project.link ||
+                          project.demoLink ||
+                          project.demo ||
+                          project.github ||
+                          project.url;
+                        return (
+                          <div
+                            key={project.id || index}
+                            className="group relative pl-6 py-5 border-l-2 border-indigo-100 hover:border-indigo-300 transition-all rounded-xl"
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <h3 className="text-base sm:text-lg font-semibold text-gray-900 leading-snug">
+                                  {project.title || project.name || "Untitled Project"}
+                                </h3>
+                                {(project.organization || project.company || project.client) && (
+                                  <p className="text-sm text-indigo-600 font-medium">
+                                    {project.organization || project.company || project.client}
+                                  </p>
+                                )}
+                              </div>
+                              {(project.duration || project.timeline || project.period) && (
+                                <div className="text-xs sm:text-sm font-semibold text-gray-600 whitespace-nowrap">
+                                  {project.duration || project.timeline || project.period}
+                                </div>
+                              )}
+                            </div>
+                            {project.description && (
+                              <p className="text-sm text-gray-700 leading-relaxed mt-3">
+                                {project.description}
+                              </p>
+                            )}
+                            <div className="flex flex-wrap items-center gap-2 mt-3">
+                              {project.status && (
+                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  {project.status}
+                                </span>
+                              )}
+                              {project.role && (
+                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                  {project.role}
+                                </span>
+                              )}
+                            </div>
+                            {techList.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-3">
+                                {techList.map((tech, techIndex) => (
+                                  <span
+                                    key={`${project.id || index}-tech-${techIndex}`}
+                                    className="px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-medium"
+                                  >
+                                    {tech}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {projectLink && (
+                              <a
+                                href={projectLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 mt-3"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                                View Project
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              )}
+
               {/* Experience Tab */}
               {activeTab === "Experience" && (
                 <section className="p-4">
@@ -1341,44 +1478,76 @@ export default function StudentPublicViewerModern() {
 
                   <div className="space-y-4">
                     {certificates.length ? (
-                      certificates.map((c, i) => (
-                        <div
-                          key={i}
-                          className="group relative pl-4 sm:pl-6 py-3 border-l-2 border-amber-100 hover:border-amber-300 transition-all"
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                            {/* Left - Certificate Info */}
-                            <div className="min-w-0 flex-1">
-                              <h3 className="text-base font-semibold text-gray-900 leading-snug">
-                                {c.title ||
-                                  c.name ||
-                                  c.cert ||
-                                  "Untitled Certificate"}
-                              </h3>
-                              <p className="text-sm text-amber-700 font-medium mt-0.5">
-                                {c.issuer ||
-                                  c.issuer_name ||
-                                  c.institution ||
-                                  "Unknown Issuer"}
-                              </p>
-                            </div>
-
-                            {/* Right - Date */}
-                            {(c.year || c.date) && (
-                              <div className="text-xs sm:text-sm font-semibold text-gray-600 whitespace-nowrap">
-                                {c.year || c.date}
+                      certificates.map((c, i) => {
+                        const certificateDate = c.issuedOn || c.date || c.year;
+                        const certificateLink =
+                          c.link ||
+                          c.url ||
+                          c.certificateUrl ||
+                          c.credentialUrl ||
+                          c.viewUrl;
+                        return (
+                          <div
+                            key={c.id || i}
+                            className="group relative pl-4 sm:pl-6 py-3 border-l-2 border-amber-100 hover:border-amber-300 transition-all"
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <h3 className="text-base font-semibold text-gray-900 leading-snug">
+                                  {c.title ||
+                                    c.name ||
+                                    c.cert ||
+                                    "Untitled Certificate"}
+                                </h3>
+                                <p className="text-sm text-amber-700 font-medium mt-0.5">
+                                  {c.issuer ||
+                                    c.issuer_name ||
+                                    c.institution ||
+                                    "Unknown Issuer"}
+                                </p>
                               </div>
+                              {certificateDate && (
+                                <div className="text-xs sm:text-sm font-semibold text-gray-600 whitespace-nowrap">
+                                  {certificateDate}
+                                </div>
+                              )}
+                            </div>
+                            {c.description && (
+                              <p className="text-sm text-gray-700 leading-relaxed mt-3">
+                                {c.description}
+                              </p>
+                            )}
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              {(c.level || c.category) && (
+                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                  {c.level || c.category}
+                                </span>
+                              )}
+                              {c.status && (
+                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                  {c.status}
+                                </span>
+                              )}
+                              {c.credentialId && (
+                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200">
+                                  ID: {c.credentialId}
+                                </span>
+                              )}
+                            </div>
+                            {certificateLink && (
+                              <a
+                                href={certificateLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 mt-3"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                                View Credential
+                              </a>
                             )}
                           </div>
-
-                          {/* Additional Info (optional display for clarity) */}
-                          {c.category || c.level ? (
-                            <p className="text-xs text-gray-500 mt-1">
-                              {c.category || c.level}
-                            </p>
-                          ) : null}
-                        </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <div className="text-center py-8">
                         <Award className="w-10 h-10 text-gray-300 mx-auto mb-2" />
