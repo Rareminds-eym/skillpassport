@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   HomeIcon,
@@ -9,13 +9,23 @@ import {
   CalendarDaysIcon,
   DocumentTextIcon,
   ChartBarIcon,
-  CogIcon
+  CogIcon,
+  ChevronDownIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 
 const navigationItems = [
   { name: 'Overview', path: '/recruitment/overview', icon: HomeIcon },
   { name: 'Talent Pool', path: '/recruitment/talent-pool', icon: UsersIcon },
-  { name: 'Requisition', path: '/recruitment/requisition', icon: BriefcaseIcon},
+  { 
+    name: 'Requisition', 
+    path: '/recruitment/requisition', 
+    icon: BriefcaseIcon,
+    subItems: [
+      { name: 'Job Requisitions', path: '/recruitment/requisition' },
+      { name: 'Applicants List', path: '/recruitment/requisition/applicants' }
+    ]
+  },
   { name: 'Pipelines', path: '/recruitment/pipelines', icon: RectangleStackIcon },
   { name: 'Shortlists', path: '/recruitment/shortlists', icon: BookmarkIcon },
   { name: 'Interviews', path: '/recruitment/interviews', icon: CalendarDaysIcon },
@@ -37,6 +47,15 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMenu }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [openSubmenus, setOpenSubmenus] = useState<{ [key: string]: boolean }>({});
+
+  const toggleSubmenu = (itemName: string) => {
+    setOpenSubmenus(prev => ({
+      ...prev,
+      [itemName]: !prev[itemName]
+    }));
+  };
+
   return (
     <>
       {/* Desktop sidebar */}
@@ -45,30 +64,63 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
           <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
             <nav className="mt-14 flex-1 space-y-1 px-2">
               {navigationItems.map((item) => (
-                <button
-                  key={item.name}
-                  onClick={() => {
-                    setActiveTab(item.name.toLowerCase().replace(/ /g, '_'));
-                    navigate(item.path);
-                  }}
-                  className={classNames(
-                    location.pathname === item.path
-                      ? 'bg-primary-50 border-r-2 border-primary-500 text-primary-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                    'group flex w-full items-center px-2 py-2 text-sm font-medium rounded-l-md'
-                  )}
-                >
-                  <item.icon
+                <div key={item.name}>
+                  <button
+                    onClick={() => {
+                      if (item.subItems) {
+                        toggleSubmenu(item.name);
+                      } else {
+                        setActiveTab(item.name.toLowerCase().replace(/ /g, '_'));
+                        navigate(item.path);
+                      }
+                    }}
                     className={classNames(
-                      location.pathname === item.path
-                        ? 'text-primary-500'
-                        : 'text-gray-400 group-hover:text-gray-500',
-                      'mr-3 flex-shrink-0 h-6 w-6'
+                      location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+                        ? 'bg-primary-50 border-r-2 border-primary-500 text-primary-700'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                      'group flex w-full items-center px-2 py-2 text-sm font-medium rounded-l-md'
                     )}
-                    aria-hidden="true"
-                  />
-                  {item.name}
-                </button>
+                  >
+                    <item.icon
+                      className={classNames(
+                        location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+                          ? 'text-primary-500'
+                          : 'text-gray-400 group-hover:text-gray-500',
+                        'mr-3 flex-shrink-0 h-6 w-6'
+                      )}
+                      aria-hidden="true"
+                    />
+                    <span className="flex-1 text-left">{item.name}</span>
+                    {item.subItems && (
+                      openSubmenus[item.name] ? (
+                        <ChevronDownIcon className="h-4 w-4" />
+                      ) : (
+                        <ChevronRightIcon className="h-4 w-4" />
+                      )
+                    )}
+                  </button>
+                  {item.subItems && openSubmenus[item.name] && (
+                    <div className="ml-11 mt-1 space-y-1">
+                      {item.subItems.map((subItem) => (
+                        <button
+                          key={subItem.name}
+                          onClick={() => {
+                            setActiveTab(subItem.name.toLowerCase().replace(/ /g, '_'));
+                            navigate(subItem.path);
+                          }}
+                          className={classNames(
+                            location.pathname === subItem.path
+                              ? 'bg-primary-50 text-primary-700'
+                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                            'group flex w-full items-center px-2 py-2 text-sm rounded-l-md'
+                          )}
+                        >
+                          {subItem.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
             </nav>
           </div>
@@ -85,30 +137,63 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
                 <div className="flex flex-1 flex-col pt-5 pb-4">
                   <nav className="mt-5 flex-1 space-y-1 px-2">
                     {navigationItems.map((item) => (
-                      <button
-                        key={item.name}
-                        onClick={() => {
-                          setActiveTab(item.name.toLowerCase().replace(/ /g, '_'));
-                          navigate(item.path);
-                        }}
-                        className={classNames(
-                          location.pathname === item.path
-                            ? 'bg-primary-50 border-r-2 border-primary-500 text-primary-700'
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                          'group flex w-full items-center px-2 py-2 text-sm font-medium rounded-l-md'
-                        )}
-                      >
-                        <item.icon
+                      <div key={item.name}>
+                        <button
+                          onClick={() => {
+                            if (item.subItems) {
+                              toggleSubmenu(item.name);
+                            } else {
+                              setActiveTab(item.name.toLowerCase().replace(/ /g, '_'));
+                              navigate(item.path);
+                            }
+                          }}
                           className={classNames(
-                            location.pathname === item.path
-                              ? 'text-primary-500'
-                              : 'text-gray-400 group-hover:text-gray-500',
-                            'mr-3 flex-shrink-0 h-6 w-6'
+                            location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+                              ? 'bg-primary-50 border-r-2 border-primary-500 text-primary-700'
+                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                            'group flex w-full items-center px-2 py-2 text-sm font-medium rounded-l-md'
                           )}
-                          aria-hidden="true"
-                        />
-                        {item.name}
-                      </button>
+                        >
+                          <item.icon
+                            className={classNames(
+                              location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+                                ? 'text-primary-500'
+                                : 'text-gray-400 group-hover:text-gray-500',
+                              'mr-3 flex-shrink-0 h-6 w-6'
+                            )}
+                            aria-hidden="true"
+                          />
+                          <span className="flex-1 text-left">{item.name}</span>
+                          {item.subItems && (
+                            openSubmenus[item.name] ? (
+                              <ChevronDownIcon className="h-4 w-4" />
+                            ) : (
+                              <ChevronRightIcon className="h-4 w-4" />
+                            )
+                          )}
+                        </button>
+                        {item.subItems && openSubmenus[item.name] && (
+                          <div className="ml-11 mt-1 space-y-1">
+                            {item.subItems.map((subItem) => (
+                              <button
+                                key={subItem.name}
+                                onClick={() => {
+                                  setActiveTab(subItem.name.toLowerCase().replace(/ /g, '_'));
+                                  navigate(subItem.path);
+                                }}
+                                className={classNames(
+                                  location.pathname === subItem.path
+                                    ? 'bg-primary-50 text-primary-700'
+                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                                  'group flex w-full items-center px-2 py-2 text-sm rounded-l-md'
+                                )}
+                              >
+                                {subItem.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </nav>
                 </div>

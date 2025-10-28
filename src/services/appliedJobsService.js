@@ -321,6 +321,147 @@ export class AppliedJobsService {
       throw error;
     }
   }
+
+  /**
+   * Get all applicants for recruiter (with student and opportunity details)
+   * @param {Object} options - Query options
+   * @returns {Promise<Array>} List of all applicants
+   */
+  static async getAllApplicants(options = {}) {
+    try {
+      // First, fetch all applied jobs
+      let query = supabase
+        .from('applied_jobs')
+        .select('*');
+
+      // Apply filters if provided
+      if (options.status) {
+        query = query.eq('application_status', options.status);
+      }
+
+      if (options.opportunityId) {
+        query = query.eq('opportunity_id', options.opportunityId);
+      }
+
+      if (options.limit) {
+        query = query.limit(options.limit);
+      }
+
+      // Sort by applied date (most recent first)
+      query = query.order('applied_at', { ascending: false });
+
+      const { data: appliedJobs, error } = await query;
+
+      if (error) {
+        console.error('Error fetching applied jobs:', error);
+        throw error;
+      }
+
+      if (!appliedJobs || appliedJobs.length === 0) {
+        return [];
+      }
+
+      // Fetch student details for all applicants
+      const studentIds = [...new Set(appliedJobs.map(job => job.student_id))];
+      const { data: students, error: studentsError } = await supabase
+        .from('students')
+        .select('id, profile')
+        .in('id', studentIds);
+
+      if (studentsError) {
+        console.error('Error fetching students:', studentsError);
+      }
+
+      // Fetch opportunity details for all jobs
+      const opportunityIds = [...new Set(appliedJobs.map(job => job.opportunity_id))];
+      const { data: opportunities, error: opportunitiesError } = await supabase
+        .from('opportunities')
+        .select('*')
+        .in('id', opportunityIds);
+
+      if (opportunitiesError) {
+        console.error('Error fetching opportunities:', opportunitiesError);
+      }
+
+      // Create lookup maps - Extract data from profile JSONB
+      const studentMap = (students || []).reduce((acc, student) => {
+        const profile = student.profile || {};
+        acc[student.id] = {
+          id: student.id,
+          name: profile.name || 'Unknown',
+          email: profile.email || '',
+          phone: profile.contact_number ? String(profile.contact_number) : '',
+          photo: profile.photo || null,
+          department: profile.branch_field || '',
+          university: profile.university || '',
+          cgpa: profile.cgpa || '',
+          year_of_passing: profile.year_of_passing || '',
+          verified: student.verified || false,
+          employability_score: student.employability_score || 0,
+          district: profile.district_name || '',
+          college: profile.college_school_name || '',
+          course: profile.course || '',
+          skill: profile.skill || ''
+        };
+        return acc;
+      }, {});
+
+      const opportunityMap = (opportunities || []).reduce((acc, opp) => {
+        acc[opp.id] = opp;
+        return acc;
+      }, {});
+
+      // Combine all data
+      const result = appliedJobs.map(job => ({
+        ...job,
+        student: studentMap[job.student_id] || null,
+        opportunity: opportunityMap[job.opportunity_id] || null
+      }));
+
+      return result;
+    } catch (error) {
+      console.error('Error in getAllApplicants:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get applicant statistics for recruiter
+   * @returns {Promise<Object>} Applicant statistics
+   */
+  static async getApplicantStats() {
+    try {
+      const { data, error } = await supabase
+        .from('applied_jobs')
+        .select('application_status');
+
+      if (error) throw error;
+
+      const stats = {
+        total: data.length,
+        applied: 0,
+        viewed: 0,
+        under_review: 0,
+        interview_scheduled: 0,
+        interviewed: 0,
+        offer_received: 0,
+        accepted: 0,
+        rejected: 0,
+        withdrawn: 0
+      };
+
+      data.forEach(app => {
+        if (stats.hasOwnProperty(app.application_status)) {
+          stats[app.application_status]++;
+        }
+      });
+
+      return stats;
+    } catch (error) {
+      console.error('Error in getApplicantStats:', error);
+      throw error;
+    }
+  }
 }
 
 export default AppliedJobsService;
