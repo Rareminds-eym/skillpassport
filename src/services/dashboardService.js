@@ -298,7 +298,53 @@ export const getRecentActivity = async (limit = 15) => {
       console.log('⚠️ Offer activities unavailable:', error.message);
     }
 
-    // 5. Placements
+    // 5. Interviews (scheduled, completed, cancelled)
+    console.log('📅 Fetching interview activities...');
+    try {
+      const { data: interviews } = await supabase
+        .from('interviews')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(limit);
+
+      if (interviews?.length > 0) {
+        interviews.forEach(interview => {
+          let action = 'scheduled interview with';
+          if (interview.status === 'completed') action = 'completed interview with';
+          if (interview.status === 'cancelled') action = 'cancelled interview with';
+          if (interview.status === 'rescheduled') action = 'rescheduled interview with';
+          
+          const interviewDate = new Date(interview.date);
+          const dateStr = interviewDate.toLocaleDateString();
+          const timeStr = interview.scheduled_time || '';
+          
+          allActivities.push({
+            id: `interview-${interview.id}`,
+            user: interview.interviewer_name || interview.created_by || 'Recruiter',
+            action: action,
+            candidate: interview.candidate_name,
+            details: `${interview.interview_type || 'Interview'} on ${dateStr}${timeStr ? ` at ${timeStr}` : ''}`,
+            timestamp: interview.updated_at,
+            type: interview.status === 'completed' ? 'interview_completed' : 
+                  interview.status === 'cancelled' ? 'interview_cancelled' : 'interview',
+            metadata: {
+              status: interview.status,
+              date: interview.date,
+              scheduledTime: interview.scheduled_time,
+              interviewType: interview.interview_type,
+              location: interview.location,
+              meetingLink: interview.meeting_link
+            },
+            icon: 'calendar'
+          });
+        });
+        console.log(`📋 Added ${interviews.length} interview activities`);
+      }
+    } catch (error) {
+      console.log('⚠️ Interview activities unavailable:', error.message);
+    }
+
+    // 6. Placements
     console.log('🎯 Fetching placement activities...');
     try {
       const { data: placements } = await supabase
@@ -347,7 +393,7 @@ export const getRecentActivity = async (limit = 15) => {
       console.log('⚠️ Placement activities unavailable:', error.message);
     }
 
-    // 6. Pipeline Candidates (new additions, stage changes)
+    // 7. Pipeline Candidates (new additions, stage changes)
     console.log('🔄 Fetching pipeline candidate activities...');
     try {
       const { data: pipelineCandidates } = await supabase
@@ -387,7 +433,7 @@ export const getRecentActivity = async (limit = 15) => {
       console.log('⚠️ Pipeline candidate activities unavailable:', error.message);
     }
 
-    // 7. Shortlist Creation/Updates
+    // 8. Shortlist Creation/Updates
     console.log('📝 Fetching shortlist creation activities...');
     try {
       const { data: shortlists } = await supabase
