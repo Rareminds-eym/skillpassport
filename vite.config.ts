@@ -15,7 +15,7 @@ export default defineConfig({
   },
    server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: 3000,
     allowedHosts: [
       'localhost',
       '127.0.0.1',
@@ -23,7 +23,7 @@ export default defineConfig({
       'vscode-3e173968-b5c6-4add-bbe3-b1d06d0f0aa4.preview.emergentagent.com'
     ],
     hmr: {
-      port: 5173
+      port: 3000
     }
   },
 });
