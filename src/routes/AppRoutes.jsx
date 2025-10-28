@@ -26,6 +26,7 @@ const RecruiterProfile = lazy(() => import('../pages/recruiter/Profile'));
 const RecruiterSettings = lazy(() => import("../pages/recruiter/Settings"));
 const Overview = lazy(() => import('../pages/recruiter/Overview'));
 const Requisitions = lazy(() => import('../pages/recruiter/Requisitions'));
+const ApplicantsList = lazy(() => import('../pages/recruiter/ApplicantsList'));
 const TalentPool = lazy(() => import('../pages/recruiter/TalentPool'));
 const Pipelines = lazy(() => import('../pages/recruiter/Pipelines'));
 const Shortlists = lazy(() => import('../pages/recruiter/Shortlists'));
@@ -90,6 +91,7 @@ const AppRoutes = () => {
           <Route path="overview" element={<Overview />} />
           <Route path="talent-pool" element={<TalentPool />} />
           <Route path="requisition" element={<Requisitions />} />
+          <Route path="requisition/applicants" element={<ApplicantsList />} />
           <Route path="pipelines" element={<Pipelines />} />
           <Route path="shortlists" element={<Shortlists />} />
           <Route path="interviews" element={<Interviews />} />

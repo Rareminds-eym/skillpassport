@@ -61,14 +61,20 @@ export const getRequisitionsWithStats = async () => {
 
 /**
  * Get all pipeline candidates for a requisition
+ * If requisitionId is empty, fetch all candidates from all requisitions
  */
-export const getPipelineCandidates = async (requisitionId: string) => {
+export const getPipelineCandidates = async (requisitionId?: string) => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('pipeline_candidates_detailed')
-      .select('*')
-      .eq('requisition_id', requisitionId)
-      .order('added_at', { ascending: false });
+      .select('*');
+    
+    // Only filter by requisition_id if provided
+    if (requisitionId) {
+      query = query.eq('requisition_id', requisitionId);
+    }
+    
+    const { data, error } = await query.order('added_at', { ascending: false });
 
     if (error) throw error;
     return { data, error: null };
