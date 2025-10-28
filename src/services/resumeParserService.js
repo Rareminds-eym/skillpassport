@@ -971,7 +971,8 @@ const addMetadata = (parsedData) => {
     parsedData.education = parsedData.education.map((item, index) => ({
       ...item,
       id: item.id || Date.now() + index,
-      enabled: true
+      enabled: true,
+      processing: true
     }));
   }
   
@@ -979,7 +980,8 @@ const addMetadata = (parsedData) => {
     parsedData.training = parsedData.training.map((item, index) => ({
       ...item,
       id: item.id || Date.now() + index + 1000,
-      enabled: true
+      enabled: true,
+      processing: true
     }));
   }
   
@@ -987,36 +989,73 @@ const addMetadata = (parsedData) => {
     parsedData.experience = parsedData.experience.map((item, index) => ({
       ...item,
       id: item.id || Date.now() + index + 2000,
-      enabled: true
+      enabled: true,
+      processing: true
     }));
+  }
+  
+  if (Array.isArray(parsedData.projects)) {
+    parsedData.projects = parsedData.projects.map((item, index) => {
+      // Normalize tech stack fields - combine into all possible field names
+      const allTech = [
+        ...(item.technologies || []),
+        ...(item.techStack || []),
+        ...(item.tech || []),
+        ...(item.skills || [])
+      ].filter((v, i, a) => a.indexOf(v) === i); // Remove duplicates
+      
+      return {
+        ...item,
+        id: item.id || Date.now() + index + 3000,
+        enabled: true,
+        processing: true,
+        // Include all tech field variations for compatibility
+        technologies: allTech,
+        techStack: allTech,
+        tech: allTech,
+        skills: allTech,
+        url: item.url || item.link || '',
+        demoLink: item.demoLink || item.demo || '',
+        status: item.status || 'Completed'
+      };
+    });
   }
   
   if (Array.isArray(parsedData.technicalSkills)) {
     parsedData.technicalSkills = parsedData.technicalSkills.map((item, index) => ({
       ...item,
-      id: item.id || Date.now() + index + 3000,
-      enabled: true
+      id: item.id || Date.now() + index + 4000,
+      enabled: true,
+      processing: true
     }));
   }
   
   if (Array.isArray(parsedData.softSkills)) {
     parsedData.softSkills = parsedData.softSkills.map((item, index) => ({
       ...item,
-      id: item.id || Date.now() + index + 4000,
-      enabled: true
+      id: item.id || Date.now() + index + 5000,
+      enabled: true,
+      processing: true
     }));
   }
   
   if (Array.isArray(parsedData.certificates)) {
     parsedData.certificates = parsedData.certificates.map((item, index) => ({
       ...item,
-      id: item.id || Date.now() + index + 5000,
-      enabled: true
+      id: item.id || Date.now() + index + 6000,
+      enabled: true,
+      processing: true,
+      status: item.status || 'pending'
     }));
   }
   
   // Add imported_at timestamp
   parsedData.imported_at = timestamp;
+  
+  // Ensure projects array exists even if empty
+  if (!parsedData.projects) {
+    parsedData.projects = [];
+  }
   
   return parsedData;
 };
