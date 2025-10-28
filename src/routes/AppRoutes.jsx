@@ -122,11 +122,8 @@ const AppRoutes = () => {
           <Route path="applications" element={<Applications />} />
           <Route path="applied-jobs" element={<AppliedJobs />} />
           <Route path="browse-jobs" element={<BrowseJobs />} />
-<<<<<<< Updated upstream
           <Route path="settings" element={<Settings />} />
-=======
           <Route path="analytics" element={<StudentAnalytics />} />
->>>>>>> Stashed changes
           <Route path="" element={<Navigate to="/student/dashboard" replace />} />
         </Route>
 

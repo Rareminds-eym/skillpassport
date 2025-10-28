@@ -104,6 +104,15 @@ export const generateResumePDF = async (studentData) => {
     }
   }
 
+  const resolveArray = (...candidates) => {
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate) && candidate.length > 0) {
+        return candidate;
+      }
+    }
+    return [];
+  };
+
   // Clear page background
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, pageW, pageH, "F");
@@ -513,6 +522,135 @@ if (profile.image) {
     }
   }
 
+  const projectData = resolveArray(
+    profile.projects,
+    studentData.projects,
+    profile.profile?.projects,
+    studentData.profile?.projects,
+    studentData.profile?.profile?.projects
+  ).filter(project => project && project.enabled !== false);
+
+  if (projectData.length > 0) {
+    addMainSection("Projects");
+
+    projectData.forEach((project, idx) => {
+      if (idx > 0) checkPageBreak(35);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(...textDark);
+      const projectTitle =
+        project.title ||
+        project.name ||
+        project.projectTitle ||
+        "Project";
+      doc.text(projectTitle, mainX, yMain);
+
+      const projectDuration =
+        project.duration ||
+        project.timeline ||
+        project.period ||
+        project.date ||
+        project.year;
+      if (projectDuration) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(...textLight);
+        doc.text(projectDuration, pageW - margin, yMain, { align: "right" });
+      }
+
+      const projectOrganization =
+        project.organization ||
+        project.company ||
+        project.client ||
+        project.role;
+      if (projectOrganization) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(...accentColor);
+        doc.text(projectOrganization, mainX, yMain + 5);
+        yMain += 11;
+      } else {
+        yMain += 8;
+      }
+
+      const projectDescription =
+        project.description ||
+        project.summary ||
+        project.details ||
+        project.responsibility;
+      if (projectDescription) {
+        addBulletPoints(projectDescription);
+      }
+
+      const techList = Array.isArray(project.tech)
+        ? project.tech
+        : Array.isArray(project.technologies)
+        ? project.technologies
+        : Array.isArray(project.techStack)
+        ? project.techStack
+        : Array.isArray(project.skills)
+        ? project.skills
+        : [];
+
+      if (techList.length > 0) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(...textLight);
+        const techText = `Technologies: ${techList.join(", ")}`;
+        const techLines = doc.splitTextToSize(techText, mainWidth);
+        doc.text(techLines, mainX, yMain);
+        yMain += techLines.length * 4 + 2;
+      }
+
+      const projectLink = [
+        project.link,
+        project.demoLink,
+        project.demo,
+        project.github,
+        project.url
+      ]
+        .map(value => (typeof value === "string" ? value.trim() : value))
+        .find(value => typeof value === "string" && value.length > 0);
+
+      if (projectLink) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(...textMedium);
+        
+        // Add "Link:" prefix
+        doc.text("Link: ", mainX, yMain);
+        const prefixWidth = doc.getTextWidth("Link: ");
+        
+        // Display clean link text in accent color
+        doc.setTextColor(...accentColor);
+        const linkText = projectLink.replace(/^https?:\/\/(www\.)?/, "");
+        const linkLines = doc.splitTextToSize(linkText, mainWidth - prefixWidth);
+        
+        // Make it clickable with proper URL
+        const fullUrl = projectLink.startsWith('http') ? projectLink : `https://${projectLink}`;
+        doc.textWithLink(linkLines[0], mainX + prefixWidth, yMain, { url: fullUrl });
+        
+        // Add underline to indicate it's a link
+        doc.setDrawColor(...accentColor);
+        doc.setLineWidth(0.2);
+        const textWidth = doc.getTextWidth(linkLines[0]);
+        doc.line(mainX + prefixWidth, yMain + 0.5, mainX + prefixWidth + textWidth, yMain + 0.5);
+        
+        // If text wraps to multiple lines, add remaining lines without link
+        if (linkLines.length > 1) {
+          for (let i = 1; i < linkLines.length; i++) {
+            doc.text(linkLines[i], mainX + prefixWidth, yMain + (i * 4));
+          }
+        }
+        
+        yMain += linkLines.length * 4 + 2;
+      }
+
+      yMain += 4;
+    });
+  }
+
   // Education
   if (profile.education && Array.isArray(profile.education)) {
     const edus = profile.education.filter(e => e && e.enabled !== false);
@@ -563,37 +701,63 @@ if (profile.image) {
     }
   }
 
-  // Certificates Section (separate from training)
-  if (profile.certificates && Array.isArray(profile.certificates) && profile.certificates.length > 0) {
-    const certs = profile.certificates.filter(c => c && c.enabled !== false);
-    if (certs.length > 0) {
-      addMainSection("Certificates");
-      
-      certs.forEach((cert, idx) => {
-        if (idx > 0) checkPageBreak(20);
-        
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.setTextColor(...textDark);
-        doc.text(cert.name || cert.title || cert.course, mainX, yMain);
-        
-        if (cert.issuer || cert.provider || cert.organization) {
-          doc.setFont("helvetica", "italic");
-          doc.setFontSize(9);
-          doc.setTextColor(...textLight);
-          doc.text(cert.issuer || cert.provider || cert.organization, mainX, yMain + 4.5);
-        }
-        
-        if (cert.date || cert.year) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(8.5);
-          doc.setTextColor(...textLight);
-          doc.text(cert.date || cert.year, pageW - margin, yMain + 4.5, { align: "right" });
-        }
-        
-        yMain += 12;
-      });
-    }
+  const certificateData = resolveArray(
+    profile.certificates,
+    studentData.certificates,
+    profile.profile?.certificates,
+    studentData.profile?.certificates,
+    studentData.profile?.profile?.certificates
+  ).filter(cert => cert && cert.enabled !== false);
+
+  if (certificateData.length > 0) {
+    addMainSection("Certificates");
+
+    certificateData.forEach((cert, idx) => {
+      if (idx > 0) checkPageBreak(20);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(...textDark);
+      doc.text(cert.name || cert.title || cert.course || "Certificate", mainX, yMain);
+
+      const issuer = cert.issuer || cert.provider || cert.organization;
+      if (issuer) {
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(9);
+        doc.setTextColor(...textLight);
+        doc.text(issuer, mainX, yMain + 4.5);
+      }
+
+      const issuedDate =
+        cert.date ||
+        cert.year ||
+        cert.issued_on ||
+        cert.issuedOn ||
+        cert.completionDate;
+      if (issuedDate) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(...textLight);
+        doc.text(issuedDate, pageW - margin, yMain + 4.5, { align: "right" });
+      }
+
+      yMain += 12;
+
+      if (cert.description) {
+        addBulletPoints(cert.description);
+      }
+
+      const credentialId = cert.credentialId || cert.certificateId || cert.credential_id;
+      if (credentialId) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(...textLight);
+        doc.text(`Credential ID: ${credentialId}`, mainX, yMain);
+        yMain += 6;
+      }
+
+      yMain += 4;
+    });
   }
 
   // Training Section - ONLY COMPLETED

@@ -1,22 +1,7 @@
-<<<<<<< Updated upstream
-import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  User,
-  ChevronDown,
-  LogOut,
-  Settings,
-  Edit3,
-  Copy,
-  Check,
-} from "lucide-react";
-import { Button } from "./ui/button";
-=======
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, ChevronDown, LogOut, Settings, Edit3, Copy, Check, Bookmark } from 'lucide-react';
 import { Button } from './ui/button';
->>>>>>> Stashed changes
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,14 +33,6 @@ const Header = ({ activeTab, setActiveTab }) => {
   };
 
   const tabs = [
-<<<<<<< Updated upstream
-    { id: "skills", label: "My Skills" },
-    { id: "training", label: "My Training" },
-    { id: "experience", label: "My Experience" },
-    { id: "opportunities", label: "Opportunities" },
-    { id: "applications", label: "Applications" },
-    { id: "share", label: "Share Passport" },
-=======
     { id: 'skills', label: 'My Skills' },
     { id: 'training', label: 'My Training' },
     { id: 'experience', label: 'My Experience' },
@@ -63,7 +40,6 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: 'applications', label: 'Applications' },
     { id: 'analytics', label: 'Analytics' },
     { id: 'share', label: 'Share Passport' }
->>>>>>> Stashed changes
   ];
 
   return (
@@ -105,18 +81,6 @@ const Header = ({ activeTab, setActiveTab }) => {
                   setActiveTab(tab.id);
                   if (tab.id === "share") {
                     setShowShareModal(true);
-<<<<<<< Updated upstream
-                  } else if (tab.id === "skills") {
-                    navigate("/student/my-skills");
-                  } else if (tab.id === "training") {
-                    navigate("/student/my-training");
-                  } else if (tab.id === "experience") {
-                    navigate("/student/my-experience");
-                  } else if (tab.id === "opportunities") {
-                    navigate("/student/opportunities");
-                  } else if (tab.id === "applications") {
-                    navigate("/student/applications");
-=======
                   } else if (tab.id === 'skills') {
                     navigate('/student/my-skills');
                   } else if (tab.id === 'training') {
@@ -129,7 +93,6 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate('/student/applications');
                   } else if (tab.id === 'analytics') {
                     navigate('/student/analytics');
->>>>>>> Stashed changes
                   }
                 }}
                 className={`relative py-2 px-2 text-sm font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none ${
@@ -189,15 +152,6 @@ const Header = ({ activeTab, setActiveTab }) => {
               <Edit3 className="w-4 h-4 mr-2" />
               Edit Profile
             </DropdownMenuItem>
-<<<<<<< Updated upstream
-            <DropdownMenuItem
-              onClick={() => {
-                setActiveTab("settings");
-                navigate("/student/settings");
-              }}
-              className="cursor-pointer"
-            >
-=======
             <DropdownMenuItem 
               onClick={() => {
                 setActiveTab('saved-jobs');
@@ -208,8 +162,13 @@ const Header = ({ activeTab, setActiveTab }) => {
               <Bookmark className="w-4 h-4 mr-2" />
               Saved Jobs
             </DropdownMenuItem>
-            <DropdownMenuItem>
->>>>>>> Stashed changes
+            <DropdownMenuItem
+              onClick={() => {
+                setActiveTab('settings');
+                navigate('/student/settings');
+              }}
+              className="cursor-pointer"
+            >
               <Settings className="w-4 h-4 mr-2" />
               Settings
             </DropdownMenuItem>
@@ -251,18 +210,6 @@ const Header = ({ activeTab, setActiveTab }) => {
                 setActiveTab(tab.id);
                 if (tab.id === "share") {
                   setShowShareModal(true);
-<<<<<<< Updated upstream
-                } else if (tab.id === "skills") {
-                  navigate("/student/my-skills");
-                } else if (tab.id === "training") {
-                  navigate("/student/my-training");
-                } else if (tab.id === "experience") {
-                  navigate("/student/my-experience");
-                } else if (tab.id === "opportunities") {
-                  navigate("/student/opportunities");
-                } else if (tab.id === "applications") {
-                  navigate("/student/applications");
-=======
                 } else if (tab.id === 'skills') {
                   navigate('/student/my-skills');
                 } else if (tab.id === 'training') {
@@ -275,7 +222,6 @@ const Header = ({ activeTab, setActiveTab }) => {
                   navigate('/student/applications');
                 } else if (tab.id === 'analytics') {
                   navigate('/student/analytics');
->>>>>>> Stashed changes
                 }
                 setMobileMenuOpen(false);
               }}

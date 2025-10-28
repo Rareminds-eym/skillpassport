@@ -287,6 +287,21 @@ function transformProfileData(profile, email) {
         description: 'Works well in teams'
       }
     ],
+
+    projects: Array.isArray(profile.projects)
+      ? profile.projects
+      : Array.isArray(profile.profile?.projects)
+        ? profile.profile.projects
+        : Array.isArray(profile.profile?.profile?.projects)
+          ? profile.profile.profile.projects
+          : [],
+    certificates: Array.isArray(profile.certificates)
+      ? profile.certificates
+      : Array.isArray(profile.profile?.certificates)
+        ? profile.profile.certificates
+        : Array.isArray(profile.profile?.profile?.certificates)
+          ? profile.profile.profile.certificates
+          : [],
     
     // Recent updates
     recentUpdates: [
@@ -495,8 +510,47 @@ export async function updateStudentByEmail(email, updates) {
       ...currentProfile,
       ...updates
     };
+
+    const nestedSyncKeys = ['projects', 'certificates'];
+    if (updatedProfile && typeof updatedProfile === 'object') {
+      if (updatedProfile.profile && typeof updatedProfile.profile === 'object') {
+        let outerProfile = updatedProfile.profile;
+        let outerChanged = false;
+        nestedSyncKeys.forEach((key) => {
+          if (updates[key] !== undefined) {
+            if (!outerChanged) {
+              outerProfile = { ...outerProfile };
+              outerChanged = true;
+            }
+            outerProfile[key] = updates[key];
+          }
+        });
+        if (outerChanged) {
+          updatedProfile.profile = outerProfile;
+        }
+        if (outerProfile.profile && typeof outerProfile.profile === 'object') {
+          let innerProfile = outerProfile.profile;
+          let innerChanged = false;
+          nestedSyncKeys.forEach((key) => {
+            if (updates[key] !== undefined) {
+              if (!innerChanged) {
+                innerProfile = { ...innerProfile };
+                innerChanged = true;
+              }
+              innerProfile[key] = updates[key];
+            }
+          });
+          if (innerChanged) {
+            updatedProfile.profile = {
+              ...updatedProfile.profile,
+              profile: innerProfile,
+            };
+          }
+        }
+      }
+    }
     
-    console.log('� Updated profile (merged):', updatedProfile);
+    console.log('  Updated profile (merged):', updatedProfile);
     console.log('💾 Saving to Supabase...');
 
     // Update using student ID (more reliable)
@@ -841,6 +895,99 @@ export async function updateSoftSkillsByEmail(email, skillsData) {
     };
   } catch (err) {
     console.error('❌ Error updating soft skills:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+
+/**
+ * Update projects array in student profile
+ */
+export async function updateProjectsByEmail(email, projectsData) {
+  try {
+    console.log('🚀 Updating projects for:', email);
+    
+    // Find student record
+    const findResult = await findStudentByEmail(email);
+    if (!findResult.success) {
+      return findResult;
+    }
+
+    const studentRecord = findResult.data;
+    const currentProfile = safeJSONParse(studentRecord.profile);
+    
+    const updatedProfile = {
+      ...currentProfile,
+      projects: projectsData
+    };
+
+    console.log('💾 Updating profile with new projects data...');
+
+    const { data, error } = await supabase
+      .from('students')
+      .update({ profile: updatedProfile })
+      .eq('id', studentRecord.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error updating projects:', error);
+      throw error;
+    }
+
+    console.log('✅ Projects updated successfully');
+    return {
+      success: true,
+      data: transformProfileData(data.profile, email)
+    };
+  } catch (err) {
+    console.error('❌ Error updating projects:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Update certificates array in student profile
+ */
+export async function updateCertificatesByEmail(email, certificatesData) {
+  try {
+    console.log('📜 Updating certificates for:', email);
+    
+    // Find student record
+    const findResult = await findStudentByEmail(email);
+    if (!findResult.success) {
+      return findResult;
+    }
+
+    const studentRecord = findResult.data;
+    const currentProfile = safeJSONParse(studentRecord.profile);
+    
+    const updatedProfile = {
+      ...currentProfile,
+      certificates: certificatesData
+    };
+
+    console.log('💾 Updating profile with new certificates data...');
+
+    const { data, error } = await supabase
+      .from('students')
+      .update({ profile: updatedProfile })
+      .eq('id', studentRecord.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error updating certificates:', error);
+      throw error;
+    }
+
+    console.log('✅ Certificates updated successfully');
+    return {
+      success: true,
+      data: transformProfileData(data.profile, email)
+    };
+  } catch (err) {
+    console.error('❌ Error updating certificates:', err);
     return { success: false, error: err.message };
   }
 }
