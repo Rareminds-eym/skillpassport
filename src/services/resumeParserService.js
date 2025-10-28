@@ -11,7 +11,9 @@
 export const parseResumeWithAI = async (resumeText) => {
   try {
     // Check if we have an API key configured
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || 
+                   import.meta.env.VITE_OPENAI_API_KEY || 
+                   import.meta.env.VITE_OPENROUTER_API_KEY;
     
     if (!apiKey) {
       console.warn('⚠️ No AI API key configured. Using fallback parser.');
@@ -24,6 +26,8 @@ export const parseResumeWithAI = async (resumeText) => {
       // Determine which API to use
       if (import.meta.env.VITE_GEMINI_API_KEY) {
         result = await parseWithGemini(resumeText);
+      } else if (import.meta.env.VITE_OPENROUTER_API_KEY) {
+        result = await parseWithOpenRouter(resumeText);
       } else if (import.meta.env.VITE_OPENAI_API_KEY) {
         result = await parseWithOpenAI(resumeText);
       }
@@ -33,7 +37,8 @@ export const parseResumeWithAI = async (resumeText) => {
         result.education?.length > 0 ||
         result.experience?.length > 0 ||
         result.technicalSkills?.length > 0 ||
-        result.softSkills?.length > 0
+        result.softSkills?.length > 0 ||
+        result.projects?.length > 0
       );
       
       if (!hasData) {
