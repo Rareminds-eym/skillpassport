@@ -66,29 +66,32 @@ const parseWithGemini = async (resumeText) => {
   
   const prompt = `Extract information from this resume and return ONLY a valid JSON object.
 
-RULES:
-- name: Extract ONLY the person's full name (usually at the top, like "P. Durkadevi" or "John Doe")
-- email: Extract the email address
-- contact_number: Extract phone number with country code if available
-- university: Extract main university name from education section
-- education: Array of degrees with {id, degree, university, department, yearOfPassing, cgpa, level, status}
-- experience: Array of work experiences with {id, organization, role, duration, verified}
-- technicalSkills: Array of technical/hard skills with {id, name, category, level, verified}
-- softSkills: Array of soft skills with {id, name, type, level, description}
-- certificates: Array of certifications with {id, title, issuer, level, issuedOn, credentialId}
+CRITICAL RULES:
+- name: Extract ONLY the person's full name (2-4 words like "P. Durkadevi" or "John Doe")
+- DO NOT dump entire resume text into any single field
+- Parse each section (education, experience, projects, skills, certificates) into separate array items
+- Each array item should be a separate object with its own fields
+- Generate unique numeric IDs for each item (use timestamp-based IDs)
+
+SECTIONS TO PARSE:
+1. education: Degrees and academic qualifications
+2. training: Courses, workshops, training programs
+3. experience: Work experience, internships, jobs
+4. projects: Personal or professional projects with tech stack and description
+5. technicalSkills: Programming languages, frameworks, tools
+6. softSkills: Communication, teamwork, leadership, etc.
+7. certificates: Professional certifications with credential IDs
 
 IMPORTANT: 
-- The "name" field should ONLY contain 2-4 words (the person's name)
-- DO NOT include contact info, skills, or other resume content in the name field
-- If you cannot find a specific field, leave it as empty string "" or empty array []
-- Generate simple numeric IDs starting from 1
+- The "name" field should ONLY contain the person's name (2-4 words max)
+- DO NOT include contact info, skills, or resume content in the name field
+- For projects: extract title, organization, duration, description, technologies/tech stack, links
+- For certificates: extract title, issuer, credential ID, issue date, description, link
+- If a field is not found, use empty string "" or empty array []
 
 Example for name field:
 ✓ CORRECT: "P. Durkadevi"
 ✗ WRONG: "CONTACT EMAIL john@email.com PHONE..."
-
-Resume Text:
-${resumeText}
 
 Return ONLY the JSON object (no markdown, no explanation):
 
@@ -106,23 +109,24 @@ Return ONLY the JSON object (no markdown, no explanation):
   "trainer_name": "",
   "nm_id": "",
   "course": "",
+  "skill": "",
   "training": [
     {
-      "id": "",
+      "id": 1,
       "skill": "",
       "course": "",
-      "status": "",
+      "status": "ongoing",
       "trainer": "",
       "progress": 0
     }
   ],
   "education": [
     {
-      "id": "",
+      "id": 1,
       "cgpa": "",
-      "level": "",
+      "level": "Bachelor's",
       "degree": "",
-      "status": "",
+      "status": "completed",
       "department": "",
       "university": "",
       "yearOfPassing": ""
@@ -130,47 +134,66 @@ Return ONLY the JSON object (no markdown, no explanation):
   ],
   "experience": [
     {
-      "id": "",
+      "id": 1,
       "organization": "",
       "role": "",
       "duration": "",
       "verified": false
     }
   ],
+  "projects": [
+    {
+      "id": 1,
+      "title": "",
+      "organization": "",
+      "duration": "",
+      "description": "",
+      "technologies": [],
+      "techStack": [],
+      "tech": [],
+      "skills": [],
+      "link": "",
+      "url": "",
+      "github": "",
+      "demo": "",
+      "demoLink": "",
+      "status": "Completed"
+    }
+  ],
   "technicalSkills": [
     {
-      "id": "",
+      "id": 1,
       "name": "",
       "category": "",
-      "level": 0,
+      "level": 3,
       "verified": false
     }
   ],
   "softSkills": [
     {
-      "id": "",
+      "id": 1,
       "name": "",
       "type": "",
-      "level": 0,
+      "level": 3,
       "description": ""
     }
   ],
   "certificates": [
     {
-      "id": "",
+      "id": 1,
       "title": "",
       "issuer": "",
-      "level": "",
+      "level": "Professional",
       "issuedOn": "",
       "credentialId": "",
       "link": "",
-      "description": ""
+      "description": "",
+      "status": "pending"
     }
   ],
   "alternate_number": "",
   "contact_number_dial_code": "",
-  "imported_at": "",
-  "skill": ""
+  "imported_at": ""
 }
 
 Resume Text:
