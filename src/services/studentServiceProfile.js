@@ -505,11 +505,20 @@ export async function updateStudentByEmail(email, updates) {
     const currentProfile = safeJSONParse(studentRecord.profile);
     console.log('📋 Current profile:', currentProfile);
 
-    // Merge updates into existing profile
+    // Merge updates into existing profile AT THE ROOT LEVEL
+    // This ensures fields like 'name' are stored at profile.name, not profile.profile.name
     const updatedProfile = {
       ...currentProfile,
       ...updates
     };
+    
+    console.log('📋 Updated profile (root level merge):', updatedProfile);
+    
+    // Log the specific fields being updated
+    console.log('🔍 Checking updated fields:');
+    console.log('   - name:', updatedProfile.name);
+    console.log('   - email:', updatedProfile.email);
+    console.log('   - university:', updatedProfile.university);
 
     const nestedSyncKeys = ['projects', 'certificates'];
     if (updatedProfile && typeof updatedProfile === 'object') {
@@ -550,7 +559,7 @@ export async function updateStudentByEmail(email, updates) {
       }
     }
     
-    console.log('  Updated profile (merged):', updatedProfile);
+    console.log('📋 Final profile to save:', JSON.stringify(updatedProfile).substring(0, 300));
     console.log('💾 Saving to Supabase...');
 
     // Update using student ID (more reliable)

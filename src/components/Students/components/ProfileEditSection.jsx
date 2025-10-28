@@ -362,13 +362,14 @@ const ProfileEditSection = ({ profileEmail }) => {
                   <Upload className="w-5 h-5 mr-2" />
                   Upload Resume & Auto-Fill Profile
                 </Button>
-                <Button
+                {/* Test Mode Button - Commented out since main parser now has all features */}
+                {/* <Button
                   onClick={() => setShowTester(true)}
                   variant="outline"
                   className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
                 >
                   Test Mode
-                </Button>
+                </Button> */}
               </div>
               <p className="text-sm text-gray-500 mt-2">
                 Upload your resume to automatically extract and fill your profile information
@@ -543,16 +544,17 @@ const ProfileEditSection = ({ profileEmail }) => {
           <ResumeParser
             onDataExtracted={handleResumeDataExtracted}
             onClose={() => setShowResumeParser(false)}
+            userEmail={userEmail}
           />
         )}
 
-        {/* Resume Parser Tester Modal */}
-        {showTester && (
+        {/* Resume Parser Tester Modal - Commented out since main parser has all features */}
+        {/* {showTester && (
           <ResumeParserTester
             userId={user?.id}
             onClose={() => setShowTester(false)}
           />
-        )}
+        )} */}
       </div>
     </div>
   );

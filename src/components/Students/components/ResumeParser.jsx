@@ -1,20 +1,56 @@
 import React, { useState } from 'react';
-import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X, Database } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
+import { Badge } from './ui/badge';
 import { parseResumeWithAI } from '../../../services/resumeParserService';
+import { supabase } from '../../../utils/api';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
 // Configure PDF.js worker - using local worker file from node_modules
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
-const ResumeParser = ({ onDataExtracted, onClose }) => {
+const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
   const [file, setFile] = useState(null);
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [extractedData, setExtractedData] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveResult, setSaveResult] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+
+  // Handle editing extracted data
+  const handleFieldEdit = (field, value) => {
+    setExtractedData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleArrayItemEdit = (arrayName, index, field, value) => {
+    setExtractedData(prev => ({
+      ...prev,
+      [arrayName]: prev[arrayName].map((item, i) => 
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
+  };
+
+  const handleArrayItemDelete = (arrayName, index) => {
+    setExtractedData(prev => ({
+      ...prev,
+      [arrayName]: prev[arrayName].filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleArrayItemAdd = (arrayName, newItem) => {
+    setExtractedData(prev => ({
+      ...prev,
+      [arrayName]: [...(prev[arrayName] || []), newItem]
+    }));
+  };
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -157,10 +193,12 @@ const ResumeParser = ({ onDataExtracted, onClose }) => {
     setParsing(true);
     setError(null);
     setSuccess(false);
+    setSaveResult(null);
 
     try {
       // Extract text from file
       const resumeText = await extractTextFromFile(file);
+      console.log('📄 Resume text extracted:', resumeText.substring(0, 200));
       
       if (!resumeText || resumeText.trim().length === 0) {
         throw new Error('Could not extract text from file');
@@ -168,6 +206,7 @@ const ResumeParser = ({ onDataExtracted, onClose }) => {
 
       // Parse resume using AI
       const parsedData = await parseResumeWithAI(resumeText);
+      console.log('🤖 AI parsed data:', parsedData);
       
       if (!parsedData) {
         throw new Error('Failed to parse resume data');
@@ -176,10 +215,6 @@ const ResumeParser = ({ onDataExtracted, onClose }) => {
       setExtractedData(parsedData);
       setSuccess(true);
       
-      // Call parent callback with extracted data
-      if (onDataExtracted) {
-        onDataExtracted(parsedData);
-      }
     } catch (err) {
       console.error('Resume parsing error:', err);
       setError(err.message || 'Failed to parse resume. Please try again.');
@@ -188,10 +223,119 @@ const ResumeParser = ({ onDataExtracted, onClose }) => {
     }
   };
 
-  const handleApplyData = () => {
-    if (extractedData && onDataExtracted) {
-      onDataExtracted(extractedData);
-      setSuccess(true);
+  // Save to database
+  const handleSaveToDatabase = async () => {
+    if (!extractedData) {
+      setError('No data to save');
+      return;
+    }
+
+    // Use email from extracted data if userEmail is not available
+    const emailToUse = userEmail || extractedData.email;
+    
+    if (!emailToUse) {
+      setError('No email available for saving');
+      return;
+    }
+
+    setSaving(true);
+    setSaveResult(null);
+
+    try {
+      console.log('💾 Saving to database...');
+      console.log('Email:', emailToUse);
+
+      // Get current student data by email (from JSONB profile column)
+      const { data: currentStudent, error: fetchError } = await supabase
+        .from('students')
+        .select('profile, id')
+        .eq('profile->>email', emailToUse)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        // PGRST116 = no rows found, which is okay - we'll create a new record
+        throw new Error(`Error fetching current data: ${fetchError.message}`);
+      }
+
+      console.log('📊 Current profile data:', currentStudent?.profile);
+
+      // Merge extracted data with current profile
+      const updatedProfile = {
+        ...(currentStudent?.profile || {}),
+        name: extractedData.name || currentStudent?.profile?.name,
+        email: extractedData.email || currentStudent?.profile?.email,
+        contact_number: extractedData.contact_number,
+        age: extractedData.age,
+        date_of_birth: extractedData.date_of_birth,
+        college_school_name: extractedData.college_school_name,
+        university: extractedData.university,
+        registration_number: extractedData.registration_number,
+        district_name: extractedData.district_name,
+        branch_field: extractedData.branch_field,
+        trainer_name: extractedData.trainer_name,
+        nm_id: extractedData.nm_id,
+        course: extractedData.course,
+        alternate_number: extractedData.alternate_number,
+        contact_number_dial_code: extractedData.contact_number_dial_code,
+        skill: extractedData.skill,
+        
+        // Arrays - merge with existing
+        education: extractedData.education || currentStudent?.profile?.education || [],
+        training: extractedData.training || currentStudent?.profile?.training || [],
+        experience: extractedData.experience || currentStudent?.profile?.experience || [],
+        technicalSkills: extractedData.technicalSkills || currentStudent?.profile?.technicalSkills || [],
+        softSkills: extractedData.softSkills || currentStudent?.profile?.softSkills || [],
+        certificates: extractedData.certificates || currentStudent?.profile?.certificates || [],
+        projects: extractedData.projects || currentStudent?.profile?.projects || [],
+        
+        // Metadata
+        resumeImportedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      console.log('🔄 Updated profile to save:', updatedProfile);
+
+      if (currentStudent?.id) {
+        // Update existing student using student ID
+        const { data: savedData, error: updateError } = await supabase
+          .from('students')
+          .update({ profile: updatedProfile })
+          .eq('id', currentStudent.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          throw new Error(`Error saving data: ${updateError.message}`);
+        }
+
+        console.log('✅ Data updated successfully:', savedData);
+        setSaveResult({ success: true, message: 'Profile updated successfully!' });
+      } else {
+        // Create new student record
+        const { data: newStudent, error: insertError } = await supabase
+          .from('students')
+          .insert([{ profile: updatedProfile }])
+          .select()
+          .single();
+
+        if (insertError) {
+          throw new Error(`Error creating profile: ${insertError.message}`);
+        }
+
+        console.log('✅ New profile created successfully:', newStudent);
+        setSaveResult({ success: true, message: 'Profile created successfully!' });
+      }
+      
+      // Call parent callback with extracted data
+      if (onDataExtracted) {
+        onDataExtracted(extractedData);
+      }
+
+    } catch (err) {
+      console.error('❌ Save error:', err);
+      setSaveResult({ success: false, message: err.message });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -266,38 +410,502 @@ const ResumeParser = ({ onDataExtracted, onClose }) => {
             </div>
           )}
 
+          {/* Save Result Message */}
+          {saveResult && (
+            <div className={`${saveResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'} border rounded-lg p-4 mb-6 flex items-start gap-3`}>
+              {saveResult.success ? (
+                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1">
+                <p className={`${saveResult.success ? 'text-green-800' : 'text-red-800'} font-medium`}>
+                  {saveResult.success ? 'Saved!' : 'Error'}
+                </p>
+                <p className={`${saveResult.success ? 'text-green-600' : 'text-red-600'} text-sm`}>
+                  {saveResult.message}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Extracted Data Preview */}
           {extractedData && (
-            <div className="mb-6 bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
-              <h3 className="font-semibold text-gray-900 mb-3">Extracted Data Preview:</h3>
-              <div className="space-y-2 text-sm">
-                {extractedData.name && (
-                  <p><span className="font-medium">Name:</span> {extractedData.name}</p>
-                )}
-                {extractedData.email && (
-                  <p><span className="font-medium">Email:</span> {extractedData.email}</p>
-                )}
-                {extractedData.contact_number && (
-                  <p><span className="font-medium">Phone:</span> {extractedData.contact_number}</p>
-                )}
+            <div className="mb-6 bg-gray-50 rounded-lg p-4 max-h-[500px] overflow-y-auto">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-semibold text-gray-900">✅ Extracted Data - {editMode ? 'Edit Mode' : 'Review Mode'}:</h3>
+                <Button
+                  onClick={() => setEditMode(!editMode)}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs px-3 py-1"
+                >
+                  {editMode ? '👁️ View' : '✏️ Edit'}
+                </Button>
+              </div>
+              <div className="space-y-3 text-sm">
+                {/* Personal Info */}
+                <div className="bg-white p-3 rounded border">
+                  <h4 className="font-medium text-gray-700 mb-2">Personal Information:</h4>
+                  <div className="space-y-2 text-xs">
+                    {editMode ? (
+                      <>
+                        <div>
+                          <label className="font-medium block mb-1">Name:</label>
+                          <input
+                            type="text"
+                            value={extractedData.name || ''}
+                            onChange={(e) => handleFieldEdit('name', e.target.value)}
+                            className="w-full px-2 py-1 border rounded text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-medium block mb-1">Email:</label>
+                          <input
+                            type="email"
+                            value={extractedData.email || ''}
+                            onChange={(e) => handleFieldEdit('email', e.target.value)}
+                            className="w-full px-2 py-1 border rounded text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-medium block mb-1">Phone:</label>
+                          <input
+                            type="text"
+                            value={extractedData.contact_number || ''}
+                            onChange={(e) => handleFieldEdit('contact_number', e.target.value)}
+                            className="w-full px-2 py-1 border rounded text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-medium block mb-1">University:</label>
+                          <input
+                            type="text"
+                            value={extractedData.university || ''}
+                            onChange={(e) => handleFieldEdit('university', e.target.value)}
+                            className="w-full px-2 py-1 border rounded text-xs"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p><span className="font-medium">Name:</span> {extractedData.name || '(empty)'}</p>
+                        <p><span className="font-medium">Email:</span> {extractedData.email || '(empty)'}</p>
+                        <p><span className="font-medium">Phone:</span> {extractedData.contact_number || '(empty)'}</p>
+                        <p><span className="font-medium">University:</span> {extractedData.university || '(empty)'}</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Education */}
                 {extractedData.education && extractedData.education.length > 0 && (
-                  <p><span className="font-medium">Education:</span> {extractedData.education.length} entries found</p>
+                  <div className="bg-white p-3 rounded border">
+                    <h4 className="font-medium text-gray-700 mb-2">Education ({extractedData.education.length}):</h4>
+                    {extractedData.education.map((edu, idx) => (
+                      <div key={idx} className="text-xs mb-3 pl-3 border-l-2 border-blue-300">
+                        {editMode ? (
+                          <div className="space-y-1">
+                            <input
+                              type="text"
+                              value={edu.degree || ''}
+                              onChange={(e) => handleArrayItemEdit('education', idx, 'degree', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs font-medium"
+                              placeholder="Degree"
+                            />
+                            <input
+                              type="text"
+                              value={edu.university || ''}
+                              onChange={(e) => handleArrayItemEdit('education', idx, 'university', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                              placeholder="University"
+                            />
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={edu.yearOfPassing || ''}
+                                onChange={(e) => handleArrayItemEdit('education', idx, 'yearOfPassing', e.target.value)}
+                                className="flex-1 px-2 py-1 border rounded text-xs"
+                                placeholder="Year"
+                              />
+                              <input
+                                type="text"
+                                value={edu.cgpa || ''}
+                                onChange={(e) => handleArrayItemEdit('education', idx, 'cgpa', e.target.value)}
+                                className="flex-1 px-2 py-1 border rounded text-xs"
+                                placeholder="CGPA"
+                              />
+                            </div>
+                            <button
+                              onClick={() => handleArrayItemDelete('education', idx)}
+                              className="text-red-600 hover:text-red-800 text-xs mt-1"
+                            >
+                              ❌ Delete
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="font-medium">{edu.degree || '(no degree)'}</p>
+                            <p className="text-gray-600">{edu.university || '(no university)'}</p>
+                            <p className="text-gray-500">{edu.yearOfPassing || '(no year)'} | CGPA: {edu.cgpa || 'N/A'}</p>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
+                
+                {/* Experience */}
                 {extractedData.experience && extractedData.experience.length > 0 && (
-                  <p><span className="font-medium">Experience:</span> {extractedData.experience.length} entries found</p>
+                  <div className="bg-white p-3 rounded border">
+                    <h4 className="font-medium text-gray-700 mb-2">Experience ({extractedData.experience.length}):</h4>
+                    {extractedData.experience.map((exp, idx) => (
+                      <div key={idx} className="text-xs mb-3 pl-3 border-l-2 border-green-300">
+                        {editMode ? (
+                          <div className="space-y-1">
+                            <input
+                              type="text"
+                              value={exp.role || ''}
+                              onChange={(e) => handleArrayItemEdit('experience', idx, 'role', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs font-medium"
+                              placeholder="Role"
+                            />
+                            <input
+                              type="text"
+                              value={exp.organization || ''}
+                              onChange={(e) => handleArrayItemEdit('experience', idx, 'organization', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                              placeholder="Organization"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs text-gray-600">From Date</label>
+                                <input
+                                  type="month"
+                                  value={exp.startDate || ''}
+                                  onChange={(e) => handleArrayItemEdit('experience', idx, 'startDate', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded text-xs"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-600">To Date</label>
+                                <input
+                                  type="month"
+                                  value={exp.endDate || ''}
+                                  onChange={(e) => handleArrayItemEdit('experience', idx, 'endDate', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded text-xs"
+                                  placeholder="or 'Present'"
+                                />
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleArrayItemDelete('experience', idx)}
+                              className="text-red-600 hover:text-red-800 text-xs mt-1"
+                            >
+                              ❌ Delete
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="font-medium">{exp.role || '(no role)'}</p>
+                            <p className="text-gray-600">{exp.organization || '(no organization)'}</p>
+                            <p className="text-gray-500">
+                              {exp.startDate || exp.endDate ? (
+                                `${exp.startDate ? new Date(exp.startDate + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : '?'} - ${exp.endDate ? new Date(exp.endDate + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : 'Present'}`
+                              ) : (
+                                exp.duration || '(no duration)'
+                              )}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
+                
+                {/* Projects */}
+                {extractedData.projects && extractedData.projects.length > 0 && (
+                  <div className="bg-white p-3 rounded border">
+                    <h4 className="font-medium text-gray-700 mb-2">Projects ({extractedData.projects.length}):</h4>
+                    {extractedData.projects.map((proj, idx) => (
+                      <div key={idx} className="text-xs mb-3 pl-3 border-l-2 border-purple-300">
+                        {editMode ? (
+                          <div className="space-y-1">
+                            <input
+                              type="text"
+                              value={proj.title || ''}
+                              onChange={(e) => handleArrayItemEdit('projects', idx, 'title', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs font-medium"
+                              placeholder="Project Title"
+                            />
+                            <input
+                              type="text"
+                              value={proj.organization || ''}
+                              onChange={(e) => handleArrayItemEdit('projects', idx, 'organization', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                              placeholder="Organization"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs text-gray-600">From Date</label>
+                                <input
+                                  type="month"
+                                  value={proj.startDate || ''}
+                                  onChange={(e) => handleArrayItemEdit('projects', idx, 'startDate', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded text-xs"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-600">To Date</label>
+                                <input
+                                  type="month"
+                                  value={proj.endDate || ''}
+                                  onChange={(e) => handleArrayItemEdit('projects', idx, 'endDate', e.target.value)}
+                                  className="w-full px-2 py-1 border rounded text-xs"
+                                  placeholder="or 'Present'"
+                                />
+                              </div>
+                            </div>
+                            <textarea
+                              value={proj.description || ''}
+                              onChange={(e) => handleArrayItemEdit('projects', idx, 'description', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                              placeholder="Project Description"
+                              rows="2"
+                            />
+                            <input
+                              type="text"
+                              value={(proj.technologies || []).join(', ')}
+                              onChange={(e) => handleArrayItemEdit('projects', idx, 'technologies', e.target.value.split(',').map(t => t.trim()).filter(t => t))}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                              placeholder="Technologies (comma-separated: React, Node.js, Python)"
+                            />
+                            <input
+                              type="text"
+                              value={proj.link || ''}
+                              onChange={(e) => handleArrayItemEdit('projects', idx, 'link', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                              placeholder="Project Link (optional)"
+                            />
+                            <button
+                              onClick={() => handleArrayItemDelete('projects', idx)}
+                              className="text-red-600 hover:text-red-800 text-xs mt-1"
+                            >
+                              ❌ Delete
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="font-medium">{proj.title || '(no title)'}</p>
+                            {proj.organization && <p className="text-gray-600">{proj.organization}</p>}
+                            <p className="text-gray-600">
+                              {proj.startDate || proj.endDate ? (
+                                `${proj.startDate ? new Date(proj.startDate + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : '?'} - ${proj.endDate ? new Date(proj.endDate + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : 'Present'}`
+                              ) : (
+                                proj.duration || '(no duration)'
+                              )}
+                            </p>
+                            {proj.description && <p className="text-gray-500 mt-1">{proj.description}</p>}
+                            {proj.technologies && proj.technologies.length > 0 ? (
+                              <p className="text-gray-500">Tech: {proj.technologies.join(', ')}</p>
+                            ) : (
+                              <p className="text-red-500">⚠️ No technologies extracted</p>
+                            )}
+                            {proj.link && <p className="text-blue-500 text-xs">🔗 {proj.link}</p>}
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Technical Skills */}
                 {extractedData.technicalSkills && extractedData.technicalSkills.length > 0 && (
-                  <p><span className="font-medium">Technical Skills:</span> {extractedData.technicalSkills.length} skills found</p>
+                  <div className="bg-white p-3 rounded border">
+                    <h4 className="font-medium text-gray-700 mb-2">Technical Skills ({extractedData.technicalSkills.length}):</h4>
+                    {editMode ? (
+                      <div className="space-y-2">
+                        {extractedData.technicalSkills.map((skill, idx) => (
+                          <div key={idx} className="flex gap-2 items-start">
+                            <input
+                              type="text"
+                              value={skill.name || ''}
+                              onChange={(e) => handleArrayItemEdit('technicalSkills', idx, 'name', e.target.value)}
+                              className="flex-1 px-2 py-1 border rounded text-xs"
+                              placeholder="Skill Name"
+                            />
+                            <input
+                              type="text"
+                              value={skill.category || ''}
+                              onChange={(e) => handleArrayItemEdit('technicalSkills', idx, 'category', e.target.value)}
+                              className="w-32 px-2 py-1 border rounded text-xs"
+                              placeholder="Category"
+                            />
+                            <select
+                              value={skill.level || 3}
+                              onChange={(e) => handleArrayItemEdit('technicalSkills', idx, 'level', parseInt(e.target.value))}
+                              className="w-20 px-2 py-1 border rounded text-xs"
+                            >
+                              <option value="1">Beginner</option>
+                              <option value="2">Basic</option>
+                              <option value="3">Intermediate</option>
+                              <option value="4">Advanced</option>
+                              <option value="5">Expert</option>
+                            </select>
+                            <button
+                              onClick={() => handleArrayItemDelete('technicalSkills', idx)}
+                              className="text-red-600 hover:text-red-800 text-xs px-1"
+                            >
+                              ❌
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {extractedData.technicalSkills.map((skill, idx) => (
+                          <span key={idx} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            {skill.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Soft Skills */}
+                {extractedData.softSkills && extractedData.softSkills.length > 0 && (
+                  <div className="bg-white p-3 rounded border">
+                    <h4 className="font-medium text-gray-700 mb-2">Soft Skills ({extractedData.softSkills.length}):</h4>
+                    {editMode ? (
+                      <div className="space-y-2">
+                        {extractedData.softSkills.map((skill, idx) => (
+                          <div key={idx} className="flex gap-2 items-start">
+                            <input
+                              type="text"
+                              value={skill.name || ''}
+                              onChange={(e) => handleArrayItemEdit('softSkills', idx, 'name', e.target.value)}
+                              className="flex-1 px-2 py-1 border rounded text-xs"
+                              placeholder="Skill Name"
+                            />
+                            <input
+                              type="text"
+                              value={skill.type || ''}
+                              onChange={(e) => handleArrayItemEdit('softSkills', idx, 'type', e.target.value)}
+                              className="w-28 px-2 py-1 border rounded text-xs"
+                              placeholder="Type"
+                            />
+                            <select
+                              value={skill.level || 3}
+                              onChange={(e) => handleArrayItemEdit('softSkills', idx, 'level', parseInt(e.target.value))}
+                              className="w-20 px-2 py-1 border rounded text-xs"
+                            >
+                              <option value="1">Beginner</option>
+                              <option value="2">Basic</option>
+                              <option value="3">Intermediate</option>
+                              <option value="4">Advanced</option>
+                              <option value="5">Expert</option>
+                            </select>
+                            <button
+                              onClick={() => handleArrayItemDelete('softSkills', idx)}
+                              className="text-red-600 hover:text-red-800 text-xs px-1"
+                            >
+                              ❌
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {extractedData.softSkills.map((skill, idx) => (
+                          <span key={idx} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                            {skill.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Certificates */}
+                {extractedData.certificates && extractedData.certificates.length > 0 && (
+                  <div className="bg-white p-3 rounded border">
+                    <h4 className="font-medium text-gray-700 mb-2">Certificates ({extractedData.certificates.length}):</h4>
+                    {extractedData.certificates.map((cert, idx) => (
+                      <div key={idx} className="text-xs mb-3 pl-3 border-l-2 border-yellow-300">
+                        {editMode ? (
+                          <div className="space-y-1">
+                            <input
+                              type="text"
+                              value={cert.title || ''}
+                              onChange={(e) => handleArrayItemEdit('certificates', idx, 'title', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs font-medium"
+                              placeholder="Certificate Title"
+                            />
+                            <input
+                              type="text"
+                              value={cert.issuer || ''}
+                              onChange={(e) => handleArrayItemEdit('certificates', idx, 'issuer', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                              placeholder="Issuer/Organization"
+                            />
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Issue Date</label>
+                              <input
+                                type="month"
+                                value={cert.issuedOn || ''}
+                                onChange={(e) => handleArrayItemEdit('certificates', idx, 'issuedOn', e.target.value)}
+                                className="w-full px-2 py-1 border rounded text-xs"
+                              />
+                            </div>
+                            <input
+                              type="text"
+                              value={cert.credentialId || ''}
+                              onChange={(e) => handleArrayItemEdit('certificates', idx, 'credentialId', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                              placeholder="Credential ID (optional)"
+                            />
+                            <input
+                              type="text"
+                              value={cert.link || ''}
+                              onChange={(e) => handleArrayItemEdit('certificates', idx, 'link', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                              placeholder="Certificate Link (optional)"
+                            />
+                            <button
+                              onClick={() => handleArrayItemDelete('certificates', idx)}
+                              className="text-red-600 hover:text-red-800 text-xs mt-1"
+                            >
+                              ❌ Delete
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="font-medium">{cert.title || '(no title)'}</p>
+                            <p className="text-gray-600">
+                              {cert.issuer || '(no issuer)'} | {
+                                cert.issuedOn ? 
+                                  new Date(cert.issuedOn + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : 
+                                  '(no date)'
+                              }
+                            </p>
+                            {cert.credentialId && <p className="text-gray-500">ID: {cert.credentialId}</p>}
+                            {cert.link && <p className="text-blue-500">🔗 {cert.link}</p>}
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 mb-4">
             <Button
               onClick={handleParse}
-              disabled={!file || parsing}
+              disabled={!file || parsing || saving}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
             >
               {parsing ? (
@@ -313,26 +921,46 @@ const ResumeParser = ({ onDataExtracted, onClose }) => {
               )}
             </Button>
             
+            {extractedData && (
+              <Button
+                onClick={handleSaveToDatabase}
+                disabled={saving || parsing}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving to Database...
+                  </>
+                ) : (
+                  <>
+                    <Database className="w-4 h-4 mr-2" />
+                    Save to Database
+                  </>
+                )}
+              </Button>
+            )}
+            
             {onClose && (
               <Button
                 onClick={onClose}
                 variant="outline"
-                disabled={parsing}
+                disabled={parsing || saving}
                 className="px-6"
               >
-                Cancel
+                {saveResult?.success ? 'Done' : 'Cancel'}
               </Button>
             )}
           </div>
 
           {/* Information */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-semibold text-blue-900 mb-2 text-sm">How it works:</h4>
+          <div className="p-4 bg-blue-50 rounded-lg">
+            <h4 className="font-semibold text-blue-900 mb-2 text-sm">📋 How it works:</h4>
             <ul className="text-xs text-blue-800 space-y-1">
-              <li>1. Upload your resume in PDF, DOC, DOCX, or TXT format</li>
-              <li>2. Our AI will extract information from your resume</li>
-              <li>3. Review the extracted data and make any necessary adjustments</li>
-              <li>4. Your profile will be automatically updated with the parsed information</li>
+              <li>✅ <strong>Step 1:</strong> Upload your resume (PDF, DOC, DOCX, or TXT)</li>
+              <li>✅ <strong>Step 2:</strong> Click "Parse Resume" to extract data</li>
+              <li>✅ <strong>Step 3:</strong> Review the extracted data in the preview</li>
+              <li>✅ <strong>Step 4:</strong> Click "Save to Database" to update your profile</li>
             </ul>
           </div>
         </CardContent>

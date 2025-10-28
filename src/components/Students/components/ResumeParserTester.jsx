@@ -205,8 +205,16 @@ const ResumeParserTester = ({ userId, onClose }) => {
 
   // Save to database
   const handleSaveToDatabase = async () => {
-    if (!extractedData || !userId) {
-      setError('No data to save or user not authenticated');
+    if (!extractedData) {
+      setError('No data to save');
+      return;
+    }
+
+    // Use email from extracted data if userId is not available
+    const emailToUse = extractedData.email || userId;
+    
+    if (!emailToUse) {
+      setError('No email or user ID available');
       return;
     }
 
@@ -215,16 +223,17 @@ const ResumeParserTester = ({ userId, onClose }) => {
 
     try {
       console.log('💾 Saving to database...');
-      console.log('User ID:', userId);
+      console.log('Email:', emailToUse);
 
-      // Get current student data
+      // Get current student data by email (from JSONB profile column)
       const { data: currentStudent, error: fetchError } = await supabase
         .from('students')
         .select('profile')
-        .eq('user_id', userId)
+        .eq('profile->>email', emailToUse)
         .single();
 
-      if (fetchError) {
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        // PGRST116 = no rows found, which is okay - we'll create a new record
         throw new Error(`Error fetching current data: ${fetchError.message}`);
       }
 
@@ -265,11 +274,11 @@ const ResumeParserTester = ({ userId, onClose }) => {
 
       console.log('🔄 Updated profile to save:', updatedProfile);
 
-      // Update in database
+      // Update in database using email from profile
       const { data: savedData, error: updateError } = await supabase
         .from('students')
         .update({ profile: updatedProfile })
-        .eq('user_id', userId)
+        .eq('profile->>email', emailToUse)
         .select()
         .single();
 
