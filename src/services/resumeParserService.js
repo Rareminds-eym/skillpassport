@@ -1350,9 +1350,9 @@ const parseCertificates = (section) => {
       if (dateMatch) {
         issuedOn = dateMatch[0];
         // Title is everything before the date
-        title = line.substring(0, dateMatch.index).trim();
+        title = title.substring(0, dateMatch.index).trim();
         // Issuer might be between title and date or after date
-        const afterDate = line.substring(dateMatch.index + dateMatch[0].length).trim();
+        const afterDate = title.substring(dateMatch.index + dateMatch[0].length).trim();
         if (afterDate) {
           issuer = afterDate;
         }
