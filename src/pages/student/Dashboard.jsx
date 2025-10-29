@@ -43,6 +43,7 @@ import {
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useOpportunities } from "../../hooks/useOpportunities";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
+import { useAIJobMatching } from "../../hooks/useAIJobMatching";
 import { supabase } from "../../lib/supabaseClient";
 // Debug utilities removed for production cleanliness
 
