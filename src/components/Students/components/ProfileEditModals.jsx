@@ -1866,6 +1866,13 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
     branch_field: "",
     registration_number: "",
     nm_id: "",
+    github_link: "",
+    portfolio_link: "",
+    linkedin_link: "",
+    twitter_link: "",
+    instagram_link: "",
+    facebook_link: "",
+    other_social_links: [],
   });
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
@@ -1918,6 +1925,14 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
         return nmId;
       };
 
+      const getGithubLink = () => data.github_link || data.githubLink || "";
+      const getPortfolioLink = () => data.portfolio_link || data.portfolioLink || "";
+      const getLinkedinLink = () => data.linkedin_link || data.linkedinLink || "";
+      const getTwitterLink = () => data.twitter_link || data.twitterLink || "";
+      const getInstagramLink = () => data.instagram_link || data.instagramLink || "";
+      const getFacebookLink = () => data.facebook_link || data.facebookLink || "";
+      const getOtherSocialLinks = () => data.other_social_links || data.otherSocialLinks || [];
+
       const formValues = {
         name: getName(),
         age: getAge(),
@@ -1932,6 +1947,13 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
         branch_field: getBranch(),
         registration_number: getRegistration(),
         nm_id: getNmId(),
+        github_link: getGithubLink(),
+        portfolio_link: getPortfolioLink(),
+        linkedin_link: getLinkedinLink(),
+        twitter_link: getTwitterLink(),
+        instagram_link: getInstagramLink(),
+        facebook_link: getFacebookLink(),
+        other_social_links: getOtherSocialLinks(),
       };
 
       console.log("📝 Form values extracted:", formValues);
@@ -2194,6 +2216,80 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
                     ℹ️ This is a system-generated ID and cannot be modified
                   </p>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Social Media Links */}
+          <div className="border-t pt-4">
+            <h3 className="text-lg font-semibold mb-3 text-gray-800">
+              Social Media & Professional Links
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="github_link">GitHub Profile</Label>
+                <Input
+                  id="github_link"
+                  type="url"
+                  value={formData.github_link}
+                  onChange={(e) => handleInputChange("github_link", e.target.value)}
+                  placeholder="https://github.com/yourusername"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="portfolio_link">Portfolio Website</Label>
+                <Input
+                  id="portfolio_link"
+                  type="url"
+                  value={formData.portfolio_link}
+                  onChange={(e) => handleInputChange("portfolio_link", e.target.value)}
+                  placeholder="https://yourportfolio.com"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="linkedin_link">LinkedIn Profile</Label>
+                <Input
+                  id="linkedin_link"
+                  type="url"
+                  value={formData.linkedin_link}
+                  onChange={(e) => handleInputChange("linkedin_link", e.target.value)}
+                  placeholder="https://linkedin.com/in/yourusername"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="twitter_link">Twitter/X Profile</Label>
+                <Input
+                  id="twitter_link"
+                  type="url"
+                  value={formData.twitter_link}
+                  onChange={(e) => handleInputChange("twitter_link", e.target.value)}
+                  placeholder="https://twitter.com/yourusername"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="instagram_link">Instagram Profile</Label>
+                <Input
+                  id="instagram_link"
+                  type="url"
+                  value={formData.instagram_link}
+                  onChange={(e) => handleInputChange("instagram_link", e.target.value)}
+                  placeholder="https://instagram.com/yourusername"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="facebook_link">Facebook Profile</Label>
+                <Input
+                  id="facebook_link"
+                  type="url"
+                  value={formData.facebook_link}
+                  onChange={(e) => handleInputChange("facebook_link", e.target.value)}
+                  placeholder="https://facebook.com/yourusername"
+                />
               </div>
             </div>
           </div>

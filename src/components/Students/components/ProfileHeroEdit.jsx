@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GraduationCap, Briefcase, CreditCard, Award, Edit3, Plus, Copy, Share2, Check } from 'lucide-react';
+import { GraduationCap, Briefcase, CreditCard, Award, Edit3, Plus, Copy, Share2, Check, Github, Globe, Linkedin, Twitter, Instagram, Facebook } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
@@ -69,6 +69,21 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   
   // Use real data only; if not found, display nothing or a message
   const displayData = realStudentData?.profile;
+  
+  // Debug: Log the display data to see what we have
+  useEffect(() => {
+    if (displayData) {
+      console.log('🔍 ProfileHeroEdit - displayData:', displayData);
+      console.log('🔍 Social Links Check:', {
+        github: displayData.github_link,
+        portfolio: displayData.portfolio_link,
+        linkedin: displayData.linkedin_link,
+        twitter: displayData.twitter_link,
+        instagram: displayData.instagram_link,
+        facebook: displayData.facebook_link
+      });
+    }
+  }, [displayData]);
   
   // Generate QR code value once and keep it constant
   const qrCodeValue = React.useMemo(() => {
@@ -190,6 +205,103 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                     {displayData.classYear || 'Class of 2025'}
                   </Badge>
                 </div>
+
+                {/* Social Media Links - Modern Design */}
+                {(displayData.github_link || displayData.portfolio_link || displayData.linkedin_link || 
+                  displayData.twitter_link || displayData.instagram_link || displayData.facebook_link) && (
+                  <div className="ml-1 space-y-3 mt-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+                      <span className="text-xs font-medium text-white/80 px-2">Connect With Me</span>
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {displayData.github_link && (
+                        <a
+                          href={displayData.github_link.startsWith('http') ? displayData.github_link : `https://${displayData.github_link}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group relative overflow-hidden flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-700 hover:to-gray-800 text-white rounded-xl text-xs font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105 border border-gray-700 hover:border-gray-600"
+                          title="GitHub Profile"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                          <Github className="w-4 h-4 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
+                          <span className="relative z-10">GitHub</span>
+                        </a>
+                      )}
+                      
+                      {displayData.portfolio_link && (
+                        <a
+                          href={displayData.portfolio_link.startsWith('http') ? displayData.portfolio_link : `https://${displayData.portfolio_link}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group relative overflow-hidden flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl text-xs font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-blue-500/50 hover:scale-105 border border-blue-400"
+                          title="Portfolio Website"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                          <Globe className="w-4 h-4 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
+                          <span className="relative z-10">Portfolio</span>
+                        </a>
+                      )}
+                      
+                      {displayData.linkedin_link && (
+                        <a
+                          href={displayData.linkedin_link.startsWith('http') ? displayData.linkedin_link : `https://${displayData.linkedin_link}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group relative overflow-hidden flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-xs font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-blue-600/50 hover:scale-105 border border-blue-500"
+                          title="LinkedIn Profile"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                          <Linkedin className="w-4 h-4 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
+                          <span className="relative z-10">LinkedIn</span>
+                        </a>
+                      )}
+                      
+                      {displayData.twitter_link && (
+                        <a
+                          href={displayData.twitter_link.startsWith('http') ? displayData.twitter_link : `https://${displayData.twitter_link}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group relative overflow-hidden flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-black to-gray-900 hover:from-gray-900 hover:to-black text-white rounded-xl text-xs font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105 border border-gray-700"
+                          title="Twitter/X Profile"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                          <Twitter className="w-4 h-4 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
+                          <span className="relative z-10">Twitter</span>
+                        </a>
+                      )}
+                      
+                      {displayData.instagram_link && (
+                        <a
+                          href={displayData.instagram_link.startsWith('http') ? displayData.instagram_link : `https://${displayData.instagram_link}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group relative overflow-hidden flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-pink-500 via-purple-500 to-orange-500 hover:from-pink-600 hover:via-purple-600 hover:to-orange-600 text-white rounded-xl text-xs font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-pink-500/50 hover:scale-105 border border-pink-400"
+                          title="Instagram Profile"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                          <Instagram className="w-4 h-4 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
+                          <span className="relative z-10">Instagram</span>
+                        </a>
+                      )}
+                      
+                      {displayData.facebook_link && (
+                        <a
+                          href={displayData.facebook_link.startsWith('http') ? displayData.facebook_link : `https://${displayData.facebook_link}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group relative overflow-hidden flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white rounded-xl text-xs font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-blue-700/50 hover:scale-105 border border-blue-600"
+                          title="Facebook Profile"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                          <Facebook className="w-4 h-4 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
+                          <span className="relative z-10">Facebook</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Removed Quick Edit Buttons Section */}
               </div>

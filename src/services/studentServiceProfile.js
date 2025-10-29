@@ -228,6 +228,14 @@ function transformProfileData(profile, email) {
       district: profile.district_name || '',
       college: profile.college_school_name || '',
       registrationNumber: profile.registration_number,
+      // Social Media Links
+      github_link: profile.github_link || '',
+      portfolio_link: profile.portfolio_link || '',
+      linkedin_link: profile.linkedin_link || '',
+      twitter_link: profile.twitter_link || '',
+      instagram_link: profile.instagram_link || '',
+      facebook_link: profile.facebook_link || '',
+      other_social_links: profile.other_social_links || [],
     },
     
     // Education - Build from imported data OR use existing from profile
