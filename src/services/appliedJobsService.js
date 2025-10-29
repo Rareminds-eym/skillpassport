@@ -12,18 +12,15 @@ export class AppliedJobsService {
    */
   static async applyToJob(studentId, opportunityId) {
     try {
-      console.log('🚀 Applying to job:', { studentId, opportunityId });
-
       // Check if already applied
-      const { data: existing, error: checkError } = await supabase
+      const { data: existing } = await supabase
         .from('applied_jobs')
         .select('id')
         .eq('student_id', studentId)
         .eq('opportunity_id', opportunityId)
-        .single();
+        .maybeSingle();
 
       if (existing) {
-        console.log('⚠️ Already applied to this job');
         return {
           success: false,
           message: 'You have already applied to this job',
@@ -34,22 +31,15 @@ export class AppliedJobsService {
       // Insert application
       const { data, error } = await supabase
         .from('applied_jobs')
-        .insert([
-          {
-            student_id: studentId,
-            opportunity_id: opportunityId,
-            application_status: 'applied'
-          }
-        ])
+        .insert([{
+          student_id: studentId,
+          opportunity_id: opportunityId,
+          application_status: 'applied'
+        }])
         .select()
         .single();
 
-      if (error) {
-        console.error('❌ Error applying to job:', error);
-        throw error;
-      }
-
-      console.log('✅ Successfully applied to job:', data);
+      if (error) throw error;
 
       return {
         success: true,
@@ -57,7 +47,7 @@ export class AppliedJobsService {
         data
       };
     } catch (error) {
-      console.error('❌ Error in applyToJob:', error);
+      console.error('Error in applyToJob:', error);
       return {
         success: false,
         message: error.message || 'Failed to submit application',
@@ -74,17 +64,12 @@ export class AppliedJobsService {
    */
   static async hasApplied(studentId, opportunityId) {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('applied_jobs')
         .select('id')
         .eq('student_id', studentId)
         .eq('opportunity_id', opportunityId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.error('Error checking application status:', error);
-        return false;
-      }
+        .maybeSingle();
 
       return !!data;
     } catch (error) {
@@ -116,29 +101,19 @@ export class AppliedJobsService {
             salary_range_min,
             salary_range_max,
             mode,
-            department
+            department,
+            recruiter_id,
+            experience_level
           )
         `)
-        .eq('student_id', studentId);
+        .eq('student_id', studentId)
+        .order('applied_at', { ascending: false });
 
-      // Apply filters
-      if (options.status) {
-        query = query.eq('application_status', options.status);
-      }
-
-      if (options.limit) {
-        query = query.limit(options.limit);
-      }
-
-      // Sort by applied date (most recent first)
-      query = query.order('applied_at', { ascending: false });
+      if (options.status) query = query.eq('application_status', options.status);
+      if (options.limit) query = query.limit(options.limit);
 
       const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching applications:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       return data || [];
     } catch (error) {
@@ -161,8 +136,14 @@ export class AppliedJobsService {
 
       if (error) throw error;
 
-      const stats = {
-        total: data.length,
+      const stats = data.reduce((acc, app) => {
+        acc.total++;
+        if (acc.hasOwnProperty(app.application_status)) {
+          acc[app.application_status]++;
+        }
+        return acc;
+      }, {
+        total: 0,
         applied: 0,
         viewed: 0,
         under_review: 0,
@@ -172,12 +153,6 @@ export class AppliedJobsService {
         accepted: 0,
         rejected: 0,
         withdrawn: 0
-      };
-
-      data.forEach(app => {
-        if (stats.hasOwnProperty(app.application_status)) {
-          stats[app.application_status]++;
-        }
       });
 
       return stats;
@@ -195,17 +170,11 @@ export class AppliedJobsService {
    */
   static async updateApplicationStatus(applicationId, status) {
     try {
-      const updateData = {
-        application_status: status,
-        updated_at: new Date().toISOString()
-      };
+      const now = new Date().toISOString();
+      const updateData = { application_status: status, updated_at: now };
 
-      // Add timestamp for specific statuses
-      if (status === 'viewed') {
-        updateData.viewed_at = new Date().toISOString();
-      } else if (status === 'interview_scheduled') {
-        updateData.interview_scheduled_at = new Date().toISOString();
-      }
+      if (status === 'viewed') updateData.viewed_at = now;
+      else if (status === 'interview_scheduled') updateData.interview_scheduled_at = now;
 
       const { data, error } = await supabase
         .from('applied_jobs')
@@ -215,7 +184,6 @@ export class AppliedJobsService {
         .single();
 
       if (error) throw error;
-
       return data;
     } catch (error) {
       console.error('Error updating application status:', error);
@@ -243,19 +211,10 @@ export class AppliedJobsService {
         .single();
 
       if (error) throw error;
-
-      return {
-        success: true,
-        message: 'Application withdrawn successfully',
-        data
-      };
+      return { success: true, message: 'Application withdrawn successfully', data };
     } catch (error) {
       console.error('Error withdrawing application:', error);
-      return {
-        success: false,
-        message: error.message || 'Failed to withdraw application',
-        error
-      };
+      return { success: false, message: error.message || 'Failed to withdraw application', error };
     }
   }
 
@@ -274,18 +233,10 @@ export class AppliedJobsService {
         .eq('student_id', studentId);
 
       if (error) throw error;
-
-      return {
-        success: true,
-        message: 'Application deleted successfully'
-      };
+      return { success: true, message: 'Application deleted successfully' };
     } catch (error) {
       console.error('Error deleting application:', error);
-      return {
-        success: false,
-        message: error.message || 'Failed to delete application',
-        error
-      };
+      return { success: false, message: error.message || 'Failed to delete application', error };
     }
   }
 
@@ -301,20 +252,12 @@ export class AppliedJobsService {
 
       const { data, error } = await supabase
         .from('applied_jobs')
-        .select(`
-          *,
-          opportunity:opportunities (
-            job_title,
-            company_name,
-            company_logo
-          )
-        `)
+        .select('*, opportunity:opportunities(job_title, company_name, company_logo)')
         .eq('student_id', studentId)
         .gte('applied_at', thirtyDaysAgo.toISOString())
         .order('applied_at', { ascending: false });
 
       if (error) throw error;
-
       return data || [];
     } catch (error) {
       console.error('Error in getRecentApplications:', error);
@@ -437,8 +380,14 @@ export class AppliedJobsService {
 
       if (error) throw error;
 
-      const stats = {
-        total: data.length,
+      return data.reduce((acc, app) => {
+        acc.total++;
+        if (acc.hasOwnProperty(app.application_status)) {
+          acc[app.application_status]++;
+        }
+        return acc;
+      }, {
+        total: 0,
         applied: 0,
         viewed: 0,
         under_review: 0,
@@ -448,15 +397,7 @@ export class AppliedJobsService {
         accepted: 0,
         rejected: 0,
         withdrawn: 0
-      };
-
-      data.forEach(app => {
-        if (stats.hasOwnProperty(app.application_status)) {
-          stats[app.application_status]++;
-        }
       });
-
-      return stats;
     } catch (error) {
       console.error('Error in getApplicantStats:', error);
       throw error;

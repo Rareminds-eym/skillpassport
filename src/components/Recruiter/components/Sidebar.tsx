@@ -11,7 +11,8 @@ import {
   ChartBarIcon,
   CogIcon,
   ChevronDownIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  EnvelopeIcon
 } from '@heroicons/react/24/outline';
 
 const navigationItems = [
@@ -30,6 +31,7 @@ const navigationItems = [
   { name: 'Shortlists', path: '/recruitment/shortlists', icon: BookmarkIcon },
   { name: 'Interviews', path: '/recruitment/interviews', icon: CalendarDaysIcon },
   { name: 'Offers & Decisions', path: '/recruitment/offers-decisions', icon: DocumentTextIcon },
+  { name: 'Messages', path: '/recruitment/messages', icon: EnvelopeIcon },
   { name: 'Analytics', path: '/recruitment/analytics', icon: ChartBarIcon },
   { name: 'Settings', path: '/recruitment/settings', icon: CogIcon }
 ];
