@@ -17,18 +17,14 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import AppliedJobsService from '../../services/appliedJobsService';
+import { MessageModal } from '../../components/messaging/MessageModal';
+import useMessageNotifications from '../../hooks/useMessageNotifications';
 
 const Applications = () => {
-  // Get user context
   const { user } = useAuth();
-  // Get user email from localStorage (same as Dashboard)
   const userEmail = localStorage.getItem('userEmail') || user?.email;
-  
-  // Use the hook to get student data by email (consistent with Dashboard)
   const { studentData } = useStudentDataByEmail(userEmail);
-  
-  // Get student ID - prioritize user.id for immediate availability, then studentData
-  const studentId = user?.id || studentData?.id;
+  const studentId = studentData?.id || user?.id;
   
   const [applications, setApplications] = useState([]);
   const [filteredApplications, setFilteredApplications] = useState([]);
@@ -36,29 +32,17 @@ const Applications = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [messageModalOpen, setMessageModalOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState(null);
+  
+  useMessageNotifications({
+    userId: studentId,
+    userType: 'student',
+    enabled: !!studentId
+  });
 
-  // Debug logging
-  useEffect(() => {
-    console.log('🔍 Applications Debug:', {
-      user,
-      userEmail,
-      studentData,
-      studentId,
-      hasUser: !!user,
-      userId: user?.id,
-      studentDataId: studentData?.id
-    });
-  }, [user, userEmail, studentData, studentId]);
-
-  // Fetch applications from database
   useEffect(() => {
     const fetchApplications = async () => {
-      // Don't try to fetch if we don't have student data yet
-      if (!studentId && !studentData) {
-        // Still loading user data
-        return;
-      }
-      
       if (!studentId) {
         setLoading(false);
         return;
@@ -67,12 +51,11 @@ const Applications = () => {
       try {
         setLoading(true);
         setError(null);
-        
         const data = await AppliedJobsService.getStudentApplications(studentId);
         
-        // Transform database data to match component structure
         const transformedApplications = data.map(app => ({
           id: app.id,
+          studentId: app.student_id,
           jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
           company: app.opportunity?.company_name || 'N/A',
           location: app.opportunity?.location || 'N/A',
@@ -85,7 +68,8 @@ const Applications = () => {
           type: app.opportunity?.employment_type || 'N/A',
           level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
           lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
-          opportunityId: app.opportunity_id
+          opportunityId: app.opportunity_id,
+          recruiterId: app.opportunity?.recruiter_id || null
         }));
 
         setApplications(transformedApplications);
@@ -93,8 +77,6 @@ const Applications = () => {
       } catch (err) {
         console.error('Error fetching applications:', err);
         setError(err.message || 'Failed to load applications');
-        setApplications([]);
-        setFilteredApplications([]);
       } finally {
         setLoading(false);
       }
@@ -103,14 +85,9 @@ const Applications = () => {
     fetchApplications();
   }, [studentId]);
 
-  // Helper function to format last update time
   const formatLastUpdate = (dateString) => {
     if (!dateString) return 'Recently';
-    
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil(Math.abs(new Date() - new Date(dateString)) / (1000 * 60 * 60 * 24));
     
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return '1 day ago';
@@ -400,7 +377,14 @@ const Applications = () => {
                           <Eye className="w-4 h-4" />
                           View Details
                         </button>
-                        <button className="flex-1 lg:flex-none px-4 py-2 bg-white border-2 border-gray-300 hover:border-slate-700 text-gray-700 hover:text-slate-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                        <button 
+                          onClick={() => {
+                            setSelectedApplication(app);
+                            setMessageModalOpen(true);
+                          }}
+                          disabled={!app.recruiterId || !app.studentId}
+                          className="flex-1 lg:flex-none px-4 py-2 bg-white border-2 border-gray-300 hover:border-slate-700 text-gray-700 hover:text-slate-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                           <MessageSquare className="w-4 h-4" />
                           Message
                         </button>
@@ -413,6 +397,25 @@ const Applications = () => {
           )}
         </div>
       </div>
+      
+      {/* Message Modal */}
+      {selectedApplication && selectedApplication.recruiterId && selectedApplication.studentId && (
+        <MessageModal
+          isOpen={messageModalOpen}
+          onClose={() => {
+            setMessageModalOpen(false);
+            setSelectedApplication(null);
+          }}
+          studentId={selectedApplication.studentId}
+          recruiterId={selectedApplication.recruiterId}
+          studentName={studentData?.name || studentData?.profile?.name || 'Student'}
+          applicationId={selectedApplication.id}
+          opportunityId={selectedApplication.opportunityId}
+          jobTitle={selectedApplication.jobTitle}
+          currentUserId={studentId}
+          currentUserType="student"
+        />
+      )}
     </div>
   );
 };

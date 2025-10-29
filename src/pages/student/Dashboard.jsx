@@ -51,6 +51,9 @@ import { useOpportunities } from "../../hooks/useOpportunities";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
 import { useAIJobMatching } from "../../hooks/useAIJobMatching";
 import { supabase } from "../../lib/supabaseClient";
+import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
+import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
+import { Toaster } from "react-hot-toast";
 // Debug utilities removed for production cleanliness
 
 const StudentDashboard = () => {
@@ -119,6 +122,25 @@ const StudentDashboard = () => {
     updateProjects,
     updateCertificates,
   } = useStudentDataByEmail(userEmail);
+
+  // Get student ID for messaging
+  const studentId = studentData?.id;
+
+  // Setup message notifications with hot-toast
+  useStudentMessageNotifications({
+    studentId,
+    enabled: !!studentId && !isViewingOthersProfile,
+    playSound: true,
+    onMessageReceived: () => {
+      // Refresh Recent Updates to show new message activity
+      setTimeout(() => {
+        refreshRecentUpdates();
+      }, 1000);
+    }
+  });
+
+  // Get unread message count with realtime updates
+  const { unreadCount } = useStudentUnreadCount(studentId, !!studentId && !isViewingOthersProfile);
 
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
@@ -1274,6 +1296,20 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-8 px-6">
+      {/* Hot-toast notification container */}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          style: {
+            zIndex: 9999,
+          },
+          duration: 5000,
+        }}
+        containerStyle={{
+          zIndex: 9999,
+        }}
+      />
+      
       <div className="max-w-7xl mx-auto">
         {/* Navigation Bar */}
         {/* <div className="mb-6">
@@ -1324,13 +1360,21 @@ const StudentDashboard = () => {
                   className="bg-white rounded-xl border border-gray-200 shadow-sm"
                 >
                   <CardHeader className="px-6 py-4 border-b border-gray-100">
-                    <CardTitle className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                        <Bell className="w-5 h-5 text-blue-600" />
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                          <Bell className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <span className="text-lg font-semibold text-gray-900">
+                          Recent Updates
+                        </span>
                       </div>
-                      <span className="text-lg font-semibold text-gray-900">
-                        Recent Updates
-                      </span>
+                      {unreadCount > 0 && (
+                        <Badge className="bg-red-500 hover:bg-red-500 text-white px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          {unreadCount} {unreadCount === 1 ? 'message' : 'messages'}
+                        </Badge>
+                      )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-6">
