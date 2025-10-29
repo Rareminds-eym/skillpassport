@@ -24,7 +24,16 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
  */
 export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
   try {
+    // Get student identifier for logging and caching
+    const studentId = studentProfile?.id || studentProfile?.email || studentProfile?.profile?.email || 'unknown';
+    const studentEmail = studentProfile?.email || studentProfile?.profile?.email || 'unknown@email.com';
+    
     console.log('🤖 AI Job Matching: Starting analysis...');
+    console.log('👤 Matching for Student:', {
+      id: studentId,
+      email: studentEmail,
+      name: studentProfile?.name || studentProfile?.profile?.name || 'Unknown'
+    });
     console.log('📊 Student Profile received:', {
       hasProfile: !!studentProfile,
       profileKeys: studentProfile ? Object.keys(studentProfile) : [],
@@ -32,6 +41,17 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       nestedProfileKeys: studentProfile?.profile ? Object.keys(studentProfile.profile) : []
     });
     console.log('💼 Total Opportunities:', opportunities?.length || 0);
+    
+    // Create cache key specific to this student and opportunities
+    const opportunitiesHash = opportunities.map(o => o.id).sort().join(',');
+    const cacheKey = `${studentId}_${opportunitiesHash}_${topN}`;
+    
+    // Check cache
+    const cached = matchCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log('✅ Using cached matches for student:', studentEmail);
+      return cached.matches;
+    }
 
     // Validate inputs
     if (!studentProfile) {
@@ -67,6 +87,7 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     });
     
     // Prepare opportunities data for AI analysis
+    // Note: skills_required, requirements, responsibilities are JSONB fields from database
     const opportunitiesData = opportunities.map(opp => ({
       id: opp.id,
       job_title: opp.job_title || opp.title,
@@ -77,6 +98,7 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       mode: opp.mode,
       experience_level: opp.experience_level,
       experience_required: opp.experience_required,
+      // JSONB fields - already parsed as JS objects/arrays from Supabase
       skills_required: opp.skills_required,
       requirements: opp.requirements,
       responsibilities: opp.responsibilities,
@@ -90,7 +112,9 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
 
     console.log('🚀 Sending request to OpenRouter...');
     console.log('🔑 API Key present:', !!OPENAI_API_KEY);
-    console.log('📧 User identifier:', studentProfile?.email || studentProfile?.profile?.email || 'anonymous');
+    console.log('📧 Matching for student:', studentEmail);
+    console.log('🎯 Student Department:', studentData.department);
+    console.log('🛠️ Student Skills:', studentData.technical_skills.map(s => s.name).join(', '));
 
     // Call OpenAI API via OpenRouter
     const requestBody = {
@@ -189,6 +213,13 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       });
       
       console.log('✨ Returning fallback matches:', enrichedFallbackMatches.length);
+      
+      // Cache fallback matches too
+      matchCache.set(cacheKey, {
+        matches: enrichedFallbackMatches,
+        timestamp: Date.now()
+      });
+      
       return enrichedFallbackMatches;
     }
 
@@ -201,7 +232,25 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       };
     }).filter(match => match.opportunity); // Filter out any matches without opportunity data
 
+    // Warning: Check for cross-field matching (low scores might indicate database issue)
+    const averageScore = enrichedMatches.reduce((sum, m) => sum + m.match_score, 0) / enrichedMatches.length;
+    if (averageScore < 40) {
+      console.warn('⚠️ WARNING: Low average match score (' + averageScore.toFixed(1) + '%)');
+      console.warn('📌 Student field:', studentData.department);
+      console.warn('📌 Student skills:', studentData.technical_skills.map(s => s.name).join(', '));
+      console.warn('📌 Matched jobs:', enrichedMatches.map(m => m.job_title).join(', '));
+      console.warn('💡 Possible issue: No jobs in database match the student\'s field. Consider adding more diverse opportunities.');
+    }
+
     console.log('✨ Final Enriched Matches:', enrichedMatches);
+    console.log('💾 Caching matches for student:', studentEmail);
+    
+    // Cache the results
+    matchCache.set(cacheKey, {
+      matches: enrichedMatches,
+      timestamp: Date.now()
+    });
+    
     return enrichedMatches;
 
   } catch (error) {
@@ -331,6 +380,45 @@ function extractStudentData(studentProfile) {
 }
 
 /**
+ * Format JSONB field for AI prompt
+ * Handles arrays, objects, and strings from JSONB fields
+ * @param {*} field - JSONB field value (can be array, object, string, or null)
+ * @param {string} type - Type hint ('array', 'object', 'string')
+ * @returns {string} Formatted string for prompt
+ */
+function formatJSONBField(field, type = 'array') {
+  if (!field) return 'Not specified';
+  
+  // If it's already a string, return it
+  if (typeof field === 'string') return field;
+  
+  // If it's an array
+  if (Array.isArray(field)) {
+    if (field.length === 0) return 'None';
+    // Join array items with commas
+    return field.map(item => {
+      if (typeof item === 'string') return item;
+      if (typeof item === 'object' && item !== null) {
+        // Handle objects in array (e.g., {skill: "JavaScript", level: "intermediate"})
+        return Object.values(item).join(': ');
+      }
+      return String(item);
+    }).join(', ');
+  }
+  
+  // If it's an object
+  if (typeof field === 'object' && field !== null) {
+    // Convert object to readable format
+    return Object.entries(field)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join(', ');
+  }
+  
+  // Fallback to JSON.stringify for complex structures
+  return JSON.stringify(field);
+}
+
+/**
  * Create AI matching prompt
  * @param {Object} studentData - Extracted student data
  * @param {Array} opportunities - Job opportunities
@@ -383,9 +471,9 @@ ${idx + 1}. ID: ${opp.id}
    Employment Type: ${opp.employment_type}
    Location: ${opp.location} (${opp.mode || 'Not specified'})
    Experience Level: ${opp.experience_level || opp.experience_required || 'Not specified'}
-   Skills Required: ${JSON.stringify(opp.skills_required)}
-   Requirements: ${JSON.stringify(opp.requirements)}
-   Responsibilities: ${JSON.stringify(opp.responsibilities)}
+   Skills Required: ${formatJSONBField(opp.skills_required, 'array')}
+   Requirements: ${formatJSONBField(opp.requirements, 'array')}
+   Responsibilities: ${formatJSONBField(opp.responsibilities, 'array')}
    Description: ${opp.description?.substring(0, 200) || 'N/A'}
    Salary/Stipend: ${opp.stipend_or_salary || 'Not disclosed'}
    Deadline: ${opp.deadline || 'Open'}
@@ -396,30 +484,82 @@ ${idx + 1}. ID: ${opp.id}
 **TASK:**
 Analyze the student profile against ALL ${opportunities.length} job opportunities and select the TOP ${topN} BEST MATCHES.
 
-**YOUR GOAL: ALWAYS RETURN ${topN} JOBS - Never return empty results!**
+**CRITICAL INSTRUCTIONS:**
+
+1. **FIELD MATCH IS MANDATORY FOR SCORES ABOVE 50%**
+   - A student from Food Science/Botany/Quality Management CANNOT get >50% match for Developer/IT jobs
+   - A student from Computer Science CANNOT get >50% match for Food Safety/Agriculture jobs
+   - Cross-field matching is ONLY allowed if match score is ≤40%
+
+2. **STRICT SCORING RULES:**
+   - 80-100%: Perfect field match + has 80%+ required skills
+   - 60-79%: Same field + has 50-79% required skills
+   - 40-59%: Related field OR transferable domain skills
+   - 20-39%: Different field but entry-level learning opportunity
+   - Below 20%: Completely mismatched - DO NOT RECOMMEND
+
+3. **EXAMPLES OF CORRECT MATCHING:**
+   - Food Science student with HACCP → Food Safety Quality Analyst (90%)
+   - Food Science student with HACCP → Quality Control Inspector (85%)
+   - Food Science student with HACCP → Developer Job (MAX 30% - wrong field!)
+   - Computer Science student → Software Developer (90%)
+   - Computer Science student → Food Safety Job (MAX 25% - wrong field!)
+
+4. **IF NO GOOD MATCHES EXIST:**
+   - If all jobs are in different fields, assign scores ≤35%
+   - Be HONEST in match_reason: "This job is in a different field..."
+   - Clearly state in recommendation: "Consider exploring jobs in your field (Food Science/Quality)"
+
+**YOUR GOAL:**
+Return ${topN} jobs, but BE HONEST about poor matches. Low scores (20-35%) are acceptable when no good matches exist!**
 
 **CRITICAL MATCHING RULES:**
-1. **RESPECT THE STUDENT'S FIELD FIRST**: Match jobs to their educational background and course!
-   - Food Science/Quality Management student → Food Safety, Quality Analyst, QC jobs
-   - Botany student → Agriculture, Food, Research, Lab jobs
-   - Computer Science student → Software, Developer, IT jobs
+1. **FIELD ALIGNMENT IS MOST IMPORTANT (60% of score)**
+   - Food Science/Quality Management/Botany → Food Safety, Quality Analyst, QC, Agriculture, Research
+   - Computer Science/IT → Software, Developer, IT Support, Web Development
+   - Mechanical/Electrical → Engineering, Manufacturing, Design
+   - NEVER give high scores (>50%) to jobs outside student's field!
    
-2. **DON'T MISMATCH FIELDS**: 
-   - Don't suggest Developer jobs to non-technical students unless they have programming skills
-   - Don't suggest Food Safety jobs to IT students
+2. **RECOGNIZE DOMAIN-SPECIFIC SKILLS**: 
+   - HACCP, Food Safety, Quality Management, Sampling, Inspection → FOOD/QC ROLES
+   - JavaScript, React, Python, Git → DEVELOPER/IT ROLES
+   - These are NOT transferable across fields!
    
-3. **Consider Domain Skills**: Skills like "Sampling", "Inspection", "Quality Management" are VALUABLE - match to QA/QC/Food Safety roles!
+3. **BE STRICT ABOUT MISMATCHES**: 
+   - Food Science student → Developer job = MAX 30% (different field)
+   - Developer → Food Safety job = MAX 25% (different field)
+   - Only allow cross-field if it's entry-level general role (admin, sales, etc.)
 
-**MATCHING STRATEGY (in priority order):**
-1. **Field/Domain Match (80-100% score)**: Jobs in SAME field as student's department/course
-2. **Related Field (60-79% score)**: Jobs in adjacent/related industries  
-3. **Transferable Skills (40-59% score)**: Jobs where student's domain skills transfer
-4. **Entry Level General (30-39% score)**: Only if no relevant jobs exist
+**MATCHING STRATEGY (in strict priority order):**
+1. **Perfect Field Match (75-100% score)**: Job department/field EXACTLY matches student's education
+   - Food Safety job for Food Science student
+   - Developer job for CS student
+   
+2. **Related Field Match (50-74% score)**: Job is in adjacent/complementary field
+   - Agriculture/Research for Botany student
+   - QA/Testing for CS student with no coding preference
+   
+3. **Transferable Skills (30-49% score)**: Different field but some skills apply
+   - Entry-level analyst role for any background
+   - General business roles
+   
+4. **Learning Opportunity (20-29% score)**: Completely different field
+   - ONLY if no relevant jobs exist
+   - MUST clearly state "This is not in your field"
 
-**MATCHING CRITERIA:**
-1. **Field & Domain Alignment (50% weight)**: Does the job match student's educational field and course?
-2. **Skills Match (30% weight)**: Student's actual skills (technical AND domain skills like Quality, Sampling, etc.)
-3. **Industry Alignment (15% weight)**: Same or related industry
+**SCORING CRITERIA:**
+1. **Field & Department Match (60% weight)** - MOST IMPORTANT!
+2. **Skills Match (25% weight)** - Domain-specific skills must match
+3. **Industry Alignment (10% weight)** - Same or related industry
+4. **Experience Level (5% weight)** - Appropriate for student's level
+
+**STRICT SCORING GUIDELINES:**
+- **90-100%**: Perfect match - Same field + student has 80%+ required skills
+- **75-89%**: Strong match - Same field + student has 60-79% required skills  
+- **50-74%**: Good match - Related field OR same field with 40-59% skills
+- **30-49%**: Weak match - Different field but transferable skills
+- **20-29%**: Poor match - Different field, entry-level opportunity only
+- **Below 20%**: DO NOT RECOMMEND - Completely unsuitable
 4. **Experience Level (5% weight)**: Appropriate for student's level
 
 **SCORING GUIDELINES:**
@@ -431,12 +571,30 @@ Analyze the student profile against ALL ${opportunities.length} job opportunitie
 - **Below 30%**: Only if no better options exist
 
 **IMPORTANT RULES:**
-1. **MUST return exactly ${topN} jobs** - Never return empty array
-2. If perfect matches don't exist, find the BEST available matches
-3. Consider related technologies (e.g., if job needs React and student knows Angular, that's related)
-4. Consider transferable skills (e.g., problem-solving, coding, analysis)
-5. Look at the student's projects and training to find relevant experience
-6. Be creative but honest in matching
+1. **BE HONEST ABOUT POOR MATCHES**
+   - If no jobs match the student's field, assign low scores (20-35%)
+   - Clearly state in match_reason: "This position is in a different field (IT/Development) than your background (Food Science/Botany)"
+   - In recommendation, suggest: "Consider exploring opportunities in Food Safety, Quality Control, or Agriculture that match your qualifications"
+
+2. **NEVER INFLATE SCORES**
+   - A Food Science student CANNOT get >35% for a Developer job
+   - A CS student CANNOT get >30% for a Food Safety job
+   - Be realistic and helpful, not misleading
+
+3. **FIELD-SPECIFIC EXAMPLES:**
+   - Student: Food Science, Skills: HACCP, Quality Management
+     * Food Safety Quality Analyst → Score: 90-95% (Perfect match!)
+     * Quality Control Inspector → Score: 85-90% (Excellent match!)
+     * Developer → Score: MAX 25% (Wrong field - DO NOT recommend unless no other options)
+   
+   - Student: Computer Science, Skills: JavaScript, React
+     * Software Developer → Score: 90-95% (Perfect match!)
+     * Frontend Developer → Score: 85-90% (Excellent match!)
+     * Food Safety → Score: MAX 20% (Wrong field - DO NOT recommend unless no other options)
+
+4. **CROSS-FIELD MATCHING IS RARE**
+   - Only valid for: HR, Admin, Sales, Customer Service (general roles)
+   - Technical roles (Developer, QA Inspector, etc.) REQUIRE matching education
 
 **OUTPUT FORMAT:**
 Return ONLY a valid JSON array with exactly ${topN} matches, ordered by match score (highest first).

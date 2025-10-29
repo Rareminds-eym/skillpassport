@@ -28,6 +28,14 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         setError(null);
 
         console.log('🎯 useAIJobMatching: Starting job matching for student');
+        console.log('👤 Student Profile:', {
+          id: studentProfile?.id,
+          email: studentProfile?.email,
+          name: studentProfile?.name,
+          department: studentProfile?.department,
+          hasProfile: !!studentProfile?.profile,
+          profileDept: studentProfile?.profile?.branch_field || studentProfile?.profile?.department
+        });
 
         // Fetch all active opportunities
         const opportunities = await OpportunitiesService.getAllOpportunities();
@@ -76,7 +84,17 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
     };
 
     fetchMatches();
-  }, [studentProfile?.id, enabled, topN]); // Re-run when student profile changes
+  }, [
+    studentProfile?.id, 
+    studentProfile?.email,
+    studentProfile?.department,
+    studentProfile?.profile?.department,
+    studentProfile?.profile?.branch_field,
+    JSON.stringify(studentProfile?.profile?.technicalSkills || []),
+    JSON.stringify(studentProfile?.profile?.technical_skills || []),
+    enabled, 
+    topN
+  ]); // Re-run when student profile or key fields change
 
   /**
    * Manually refresh job matches
