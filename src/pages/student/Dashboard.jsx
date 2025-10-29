@@ -168,6 +168,14 @@ const StudentDashboard = () => {
     studentSkills: studentSkills,
   });
 
+  // AI Job Matching - Get top 3 matched jobs for student
+  const {
+    matchedJobs,
+    loading: matchingLoading,
+    error: matchingError,
+    refreshMatches,
+  } = useAIJobMatching(studentData, !isViewingOthersProfile, 3);
+
   // Fetch recent updates data from recruitment tables (student-specific)
   const {
     activities: recentUpdates,
