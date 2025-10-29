@@ -6,6 +6,15 @@
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 const OPENAI_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
+// Rate limiting configuration
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY = 1000; // 1 second
+const MAX_RETRY_DELAY = 10000; // 10 seconds
+
+// Cache for AI responses (simple in-memory cache)
+const matchCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 /**
  * Match student profile with opportunities using AI
  * @param {Object} studentProfile - Student profile data with skills, education, training, experience
