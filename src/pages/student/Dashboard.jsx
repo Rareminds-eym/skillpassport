@@ -23,6 +23,12 @@ import {
   QrCode,
   FolderGit2,
   Medal,
+  Briefcase,
+  MapPin,
+  Clock,
+  Building2,
+  Sparkles,
+  Target,
 } from "lucide-react";
 import {
   suggestions,
