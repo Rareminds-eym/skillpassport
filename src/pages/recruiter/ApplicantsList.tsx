@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import AppliedJobsService from '../../services/appliedJobsService';
 import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, FunnelIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { MessageModal } from '../../components/messaging/MessageModal';
+import useMessageNotifications from '../../hooks/useMessageNotifications';
+import { useAuth } from '../../context/AuthContext';
 
 interface Student {
   id: string;
@@ -42,6 +45,7 @@ interface Applicant {
 }
 
 const ApplicantsList: React.FC = () => {
+  const { user } = useAuth();
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,6 +54,24 @@ const ApplicantsList: React.FC = () => {
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'rating'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  
+  // Message modal state
+  const [messageModalOpen, setMessageModalOpen] = useState(false);
+  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
+  
+  // Get recruiter ID from auth context
+  const recruiterId = user?.id;
+  
+  // Enable real-time message notifications
+  useMessageNotifications({
+    userId: recruiterId,
+    userType: 'recruiter',
+    enabled: true,
+    onMessageReceived: (message) => {
+      console.log('New message received:', message);
+      // Optionally refresh conversations or update UI
+    }
+  });
 
   useEffect(() => {
     fetchApplicants();
@@ -200,6 +222,7 @@ const ApplicantsList: React.FC = () => {
   }
 
   return (
+    <>
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -374,7 +397,21 @@ const ApplicantsList: React.FC = () => {
                           <EyeIcon className="h-4 w-4" />
                         </button>
                         <button
-                          className="p-2 text-green-600 border border-green-600 rounded hover:bg-green-50 transition-colors"
+                          onClick={() => {
+                            if (!recruiterId) {
+                              alert('Please wait, loading user data...');
+                              return;
+                            }
+                            console.log('Opening message modal with:', {
+                              studentId: applicant.student_id,
+                              recruiterId,
+                              applicationId: applicant.id
+                            });
+                            setSelectedApplicant(applicant);
+                            setMessageModalOpen(true);
+                          }}
+                          disabled={!recruiterId}
+                          className="p-2 text-green-600 border border-green-600 rounded hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Send Message"
                         >
                           <ChatBubbleLeftIcon className="h-4 w-4" />
@@ -430,6 +467,26 @@ const ApplicantsList: React.FC = () => {
       )}
       </div>
     </div>
+    
+    {/* Message Modal */}
+    {selectedApplicant && recruiterId && (
+      <MessageModal
+        isOpen={messageModalOpen}
+        onClose={() => {
+          setMessageModalOpen(false);
+          setSelectedApplicant(null);
+        }}
+        studentId={selectedApplicant.student_id}
+        recruiterId={recruiterId}
+        studentName={selectedApplicant.student?.name || 'Candidate'}
+        applicationId={selectedApplicant.id}
+        opportunityId={selectedApplicant.opportunity_id}
+        jobTitle={selectedApplicant.opportunity?.job_title || selectedApplicant.opportunity?.title}
+        currentUserId={recruiterId}
+        currentUserType="recruiter"
+      />
+    )}
+    </>
   );
 };
 

@@ -25,6 +25,7 @@ import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
 import { supabase } from '../../lib/supabaseClient';
 import AdvancedRequisitionFilters from '../../components/Recruiter/components/AdvancedRequisitionFilters';
 import { RequisitionFilters } from '../../types/recruiter';
+import { useAuth } from '../../context/AuthContext';
 
 interface Opportunity {
   id: string;
@@ -61,6 +62,7 @@ interface Opportunity {
 }
 
 const Requisitions = () => {
+  const { user } = useAuth();
   const [requisitions, setRequisitions] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -222,7 +224,7 @@ const Requisitions = () => {
         applications_count: 0,
         messages_count: 0,
         views_count: 0,
-        created_by: 'current-user', // Set actual user
+        created_by: user?.id,
         posted_date: new Date().toISOString(),
         is_active: requisitionData.status === 'open'
       }])

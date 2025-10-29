@@ -24,6 +24,7 @@ import { createInterview } from '../../services/interviewService';
 import { useSearch } from '../../context/SearchContext';
 import SearchBar from '../../components/common/SearchBar';
 import { createSavedSearch } from '../../services/savedSearchesService';
+import { useAuth } from '../../context/AuthContext';
 
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -508,6 +509,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
 };
 
 const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) => {
+  const { user } = useAuth();
   const [searchName, setSearchName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -567,7 +569,7 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
       const { data, error } = await createSavedSearch(
         searchName.trim(),
         searchCriteria,
-        'current-user' // Replace with actual user ID when auth is implemented
+        user?.id
       );
 
       if (error) {
