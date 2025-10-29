@@ -1342,11 +1342,11 @@ const parseCertificates = (section) => {
       // Check for bullet points in the title
       const bulletMatch = line.match(/^[•\-\*]\s*(.+)/);
       if (bulletMatch) {
-        line = bulletMatch[1];
+        title = bulletMatch[1];
       }
       
       // Try to extract date
-      const dateMatch = line.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}/i);
+      const dateMatch = title.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}/i);
       if (dateMatch) {
         issuedOn = dateMatch[0];
         // Title is everything before the date
