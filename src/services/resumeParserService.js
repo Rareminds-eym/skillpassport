@@ -1335,24 +1335,25 @@ const parseCertificates = (section) => {
       
       // Parse the new certificate line
       // Try to extract: Title | Issuer | Date
-      let title = line;
+      let certLine = line;
       let issuer = '';
       let issuedOn = '';
       
       // Check for bullet points in the title
       const bulletMatch = line.match(/^[•\-\*]\s*(.+)/);
       if (bulletMatch) {
-        line = bulletMatch[1];
+        certLine = bulletMatch[1];
       }
       
       // Try to extract date
-      const dateMatch = line.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}/i);
+      const dateMatch = certLine.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}/i);
+      let title = certLine;
       if (dateMatch) {
         issuedOn = dateMatch[0];
         // Title is everything before the date
-        title = line.substring(0, dateMatch.index).trim();
+        title = certLine.substring(0, dateMatch.index).trim();
         // Issuer might be between title and date or after date
-        const afterDate = line.substring(dateMatch.index + dateMatch[0].length).trim();
+        const afterDate = certLine.substring(dateMatch.index + dateMatch[0].length).trim();
         if (afterDate) {
           issuer = afterDate;
         }
