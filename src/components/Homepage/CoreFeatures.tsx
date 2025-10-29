@@ -2953,59 +2953,68 @@
 // export default CoreFeatures;
 
 
-import React from "react";
-import {
-  FaUserCog,
-  FaProjectDiagram,
-  FaCertificate,
-  FaUsers,
-  FaChartBar,
-} from "react-icons/fa";
+import React, {useEffect} from "react";
+import { FiCheckCircle, FiUsers, FiTrendingUp, FiShield, FiGitBranch } from "react-icons/fi";
 
 const CoreFeatures: React.FC = () => {
+   useEffect(() => {
+    const lines = document.querySelectorAll<SVGPathElement | SVGLineElement>(
+      ".animated-draw"
+    );
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("animate-now");
+          } else {
+            entry.target.classList.remove("animate-now");
+          }
+        });
+      },
+      { threshold: 0.3 } // Trigger when 30% visible
+    );
+
+    lines.forEach((line) => observer.observe(line));
+
+    return () => observer.disconnect();
+  }, []);
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-white py-16 overflow-hidden">
       {/* === Inline Animation Styles === */}
-      <style>{`
-        @keyframes drawLine {
-          0% {
-            stroke-dashoffset: var(--path-length);
-          }
-          50% {
-            stroke-dashoffset: 0;
-          }
-          100% {
-            stroke-dashoffset: var(--path-length);
-          }
-        }
-        .card-hover {
-  transition: all 0.1s ease;
-}
+     <style>{`
+  @keyframes drawLine {
+    0% { stroke-dashoffset: var(--path-length); }
+    100% { stroke-dashoffset: 0; }
+  }
 
-.card-hover:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-  border-color: #d4af37;
-}
-        .animated-draw {
-          stroke: black;
-          stroke-width: 1;
-          fill: none;
-          stroke-dasharray: var(--path-length);
-          stroke-dashoffset: var(--path-length);
-          animation: drawLine 6s ease-in-out infinite;
-        }
+  .animated-draw {
+    stroke: black;
+    stroke-width: 1;
+    fill: none;
+    stroke-dasharray: var(--path-length);
+    stroke-dashoffset: var(--path-length);
+    transition: stroke-dashoffset 1s ease;
+  }
 
-        .delay-1 { animation-delay: 0s; }
-        .delay-2 { animation-delay: 0.8s; }
-        .delay-3 { animation-delay: 1.6s; }
-        .delay-4 { animation-delay: 2.4s; }
-        .delay-5 { animation-delay: 3.2s; }
+  .animate-now {
+    animation: drawLine 3s ease-in-out forwards;
+  }
 
-        @media (max-width: 768px) {
-          .desktop-diagram { display: none; }
-        }
-      `}</style>
+  .card-hover {
+    transition: all 0.1s ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    border-color: #d4af37;
+  }
+
+  @media (max-width: 768px) {
+    .desktop-diagram { display: none; }
+  }
+`}</style>
 
       {/* ===== Heading Section ===== */}
       <div className="text-center mb-20 px-4 -mt-4 sm:mt-10">
@@ -3051,7 +3060,7 @@ const CoreFeatures: React.FC = () => {
               />
             </svg>
 
-            <div className="relative bg-gradient-to-tr from-[#d4af37] to-[#f0d77a] rounded-[55px] h-[88px] top-3 flex items-center justify-center shadow-md card-hover">
+            <div className="relative bg-gradient-to-tr bg-[#D4AF37] rounded-[55px] h-[88px] top-3 flex items-center justify-center shadow-md card-hover">
               <div className="text-center text-white font-semibold">
                 <div className="text-[22px] leading-none">Our</div>
                 <div className="text-[22px] leading-none">Core Features</div>
@@ -3064,8 +3073,8 @@ const CoreFeatures: React.FC = () => {
         <div className="absolute top-[3%] left-1/2 -translate-x-1/2">
           <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
             w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
-            from-[#f6efd9] to-[#e8dcc0] flex items-center justify-center shadow-md">
-            <FaUserCog className="text-black text-3xl" />
+            bg-neutral-950  flex items-center justify-center shadow-md">
+            <FiCheckCircle className="text-yellow-500 text-3xl" />
           </div>
           <div className="w-[300px] bg-white border-2 border-black rounded-2xl 
             p-4 shadow-md text-center card-hover">
@@ -3090,8 +3099,8 @@ const CoreFeatures: React.FC = () => {
         <div className="absolute top-[22%] left-[9%]">
           <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
             w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
-            from-[#f6efd9] to-[#e8dcc0] flex items-center justify-center shadow-md">
-            <FaProjectDiagram className="text-black text-3xl" />
+            bg-neutral-950  flex items-center justify-center shadow-md">
+            <FiUsers className="text-yellow-500 text-3xl" />
           </div>
           <div className="w-[300px] bg-white border-2 border-black rounded-2xl 
             p-4 shadow-md text-center card-hover">
@@ -3120,8 +3129,8 @@ const CoreFeatures: React.FC = () => {
         <div className="absolute top-[22%] right-[9%]">
           <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
             w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
-            from-[#f6efd9] to-[#e8dcc0] flex items-center justify-center shadow-md">
-            <FaCertificate className="text-black text-3xl" />
+            bg-neutral-950  flex items-center justify-center shadow-md">
+            <FiTrendingUp className="text-yellow-500 text-3xl" />
           </div>
           <div className="w-[300px] bg-white border-2 border-black rounded-2xl 
             p-4 shadow-md text-center card-hover">
@@ -3150,8 +3159,8 @@ const CoreFeatures: React.FC = () => {
         <div className="absolute bottom-[20%] left-[9%]">
           <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
             w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
-            from-[#f6efd9] to-[#e8dcc0] flex items-center justify-center shadow-md">
-            <FaUsers className="text-black text-3xl" />
+             bg-neutral-950  flex items-center justify-center shadow-md">
+            <FiShield className="text-yellow-500 text-3xl" />
           </div>
           <div className="w-[300px] bg-white border-2 border-black rounded-2xl 
             p-4 shadow-md text-center card-hover">
@@ -3182,8 +3191,8 @@ const CoreFeatures: React.FC = () => {
           <div className="-mb-2">
             <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
               w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
-              from-[#f6efd9] to-[#e8dcc0] flex items-center justify-center shadow-md">
-              <FaChartBar className="text-black text-2xl" />
+               bg-neutral-950  flex items-center justify-center shadow-md">
+              <FiGitBranch className="text-yellow-500 text-2xl" />
             </div>
             <div className="w-[300px] bg-white border-2 border-black rounded-2xl 
               p-4 shadow-md text-center card-hover">
@@ -3217,34 +3226,34 @@ const CoreFeatures: React.FC = () => {
 <div className="flex flex-col items-center justify-center space-y-12 px-6 md:hidden">
   {[
     {
-      icon: <FaUserCog className="text-black text-2xl" />,
+      icon: <FiCheckCircle className="text-yellow-500 text-2xl" />,
       title: "Skill Validation Engine",
       desc: "Authenticates skills via structured assessment data.",
     },
     {
-      icon: <FaProjectDiagram className="text-black text-2xl" />,
+      icon: <FiUsers className="text-yellow-500 text-2xl" />,
       title: "Enterprise APIs",
       desc: "Integrate and scale across locations and departments.",
     },
     {
-      icon: <FaCertificate className="text-black text-2xl" />,
+      icon: <FiShield className="text-yellow-500 text-2xl" />,
       title: "Digital Badging & Certificates",
       desc: "Tamper-proof and shareable proof of competence.",
     },
     {
-      icon: <FaUsers className="text-black text-2xl" />,
+      icon: <FiTrendingUp className="text-yellow-500 text-2xl" />,
       title: "Competency Mapping",
       desc: "Align internal frameworks with industry standards.",
     },
     {
-      icon: <FaChartBar className="text-black text-2xl" />,
+      icon: <FiGitBranch className="text-yellow-500text-2xl" />,
       title: "Analytics Dashboard",
       desc: "Visualize training ROI and identify skill gaps.",
     },
   ].map((item, i) => (
     <div key={i} className="relative flex flex-col items-center">
       {/* === Icon above card === */}
-      <div className="absolute -top-[37px] w-[60px] h-[60px] rounded-xl bg-gradient-to-tr from-[#f6efd9] to-[#e8dcc0] flex items-center justify-center shadow-md">
+      <div className="absolute -top-[37px] w-[60px] h-[60px] rounded-xl bg-gradient-to-tr bg-neutral-950 flex items-center justify-center shadow-md">
         {item.icon}
       </div>
 
