@@ -9,7 +9,14 @@ import {
   GraduationCap,
   Building,
   Calendar,
-  Hash
+  Hash,
+  Github,
+  Globe,
+  Linkedin,
+  Twitter,
+  Instagram,
+  Facebook,
+  Link as LinkIcon
 } from 'lucide-react';
 
 const PersonalInfoSummary = ({ data, isOwnProfile = true }) => {
@@ -87,7 +94,55 @@ const PersonalInfoSummary = ({ data, isOwnProfile = true }) => {
   // Filter out items with no value
   const displayItems = infoItems.filter(item => item.value && item.value.toString().trim() !== '');
 
-  if (displayItems.length === 0) {
+  // Social media links
+  const socialLinks = [
+    {
+      icon: Github,
+      label: 'GitHub',
+      value: data.github_link || data.githubLink,
+      color: 'text-gray-700',
+      bgColor: 'bg-gray-100'
+    },
+    {
+      icon: Globe,
+      label: 'Portfolio',
+      value: data.portfolio_link || data.portfolioLink,
+      color: 'text-blue-700',
+      bgColor: 'bg-blue-100'
+    },
+    {
+      icon: Linkedin,
+      label: 'LinkedIn',
+      value: data.linkedin_link || data.linkedinLink,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100'
+    },
+    {
+      icon: Twitter,
+      label: 'Twitter/X',
+      value: data.twitter_link || data.twitterLink,
+      color: 'text-sky-600',
+      bgColor: 'bg-sky-100'
+    },
+    {
+      icon: Instagram,
+      label: 'Instagram',
+      value: data.instagram_link || data.instagramLink,
+      color: 'text-pink-600',
+      bgColor: 'bg-pink-100'
+    },
+    {
+      icon: Facebook,
+      label: 'Facebook',
+      value: data.facebook_link || data.facebookLink,
+      color: 'text-blue-800',
+      bgColor: 'bg-blue-100'
+    }
+  ];
+
+  const displaySocialLinks = socialLinks.filter(link => link.value && link.value.toString().trim() !== '');
+
+  if (displayItems.length === 0 && displaySocialLinks.length === 0) {
     return (
       <Card className="border-2 border-dashed border-blue-200 bg-blue-50">
         <CardContent className="p-6 text-center">
@@ -137,6 +192,45 @@ const PersonalInfoSummary = ({ data, isOwnProfile = true }) => {
           );
         })}
       </div>
+
+      {/* Social Media Links Section - Enhanced Design */}
+      {displaySocialLinks.length > 0 && (
+        <div className="border-t border-blue-200 pt-6 mt-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-300 to-transparent"></div>
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <LinkIcon className="w-5 h-5 text-blue-600" />
+              Social & Professional Links
+            </h3>
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-300 to-transparent"></div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {displaySocialLinks.map((link, index) => {
+              const IconComponent = link.icon;
+              return (
+                <a
+                  key={index}
+                  href={link.value.startsWith('http') ? link.value : `https://${link.value}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`group relative overflow-hidden flex items-center space-x-3 p-4 rounded-xl border border-blue-200 hover:border-blue-400 transition-all duration-300 hover:shadow-lg hover:scale-105 ${link.bgColor}`}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300 ${link.bgColor} ${link.color} group-hover:scale-110`}>
+                    <IconComponent className="w-5 h-5 group-hover:rotate-12 transition-all duration-300" />
+                  </div>
+                  <div className="flex-1 min-w-0 relative z-10">
+                    <p className={`text-sm font-bold ${link.color} group-hover:underline`}>
+                      {link.label}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">View Profile</p>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Additional Info Badge */}
       {data.imported_at && (
