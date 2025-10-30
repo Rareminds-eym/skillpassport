@@ -524,6 +524,6 @@ export default function UnifiedSignup() {
           </div>
         </div>
       </div>
-    </div>
+    </div> // end of return
   );
 }
