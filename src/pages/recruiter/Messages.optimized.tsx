@@ -19,44 +19,97 @@ import { useMessages } from '../../hooks/useMessages';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../../context/AuthContext';
 import { useGlobalPresence } from '../../context/GlobalPresenceContext';
-import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 
+// Constants
+const AVATAR_BG_COLOR = '3B82F6';
+const MESSAGE_PREVIEW_LENGTH = 50;
+const QUERY_STALE_TIME = 30000; // 30 seconds
+const QUERY_GC_TIME = 5 * 60 * 1000; // 5 minutes
+const ACTIVE_CONVERSATIONS_REFETCH_INTERVAL = 10000; // 10 seconds
+const ARCHIVED_CONVERSATIONS_REFETCH_INTERVAL = 15000; // 15 seconds
+
+// Types
+interface Contact {
+  id: string;
+  name: string;
+  role: string;
+  avatar: string;
+  lastMessage: string;
+  time: string;
+  unread: number;
+  online: boolean;
+  studentId: string;
+  applicationId: string;
+  opportunityId: string;
+}
+
+// Helper functions
+const safeFormatTime = (timestamp: string | null): string => {
+  if (!timestamp) return 'No messages';
+  try {
+    return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+  } catch {
+    return timestamp;
+  }
+};
+
+const parseProfile = (profile: any): any => {
+  if (!profile || typeof profile === 'object') return profile || {};
+  try {
+    return JSON.parse(profile);
+  } catch {
+    return {};
+  }
+};
+
 const Messages = () => {
+  // State
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showMenu, setShowMenu] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  
+  // Refs
   const menuRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const markedAsReadRef = useRef<Set<string>>(new Set());
   
-  // Get recruiter ID from auth
+  // Auth
   const { user } = useAuth();
   const recruiterId = user?.id;
   const recruiterName = user?.name || 'Recruiter';
   const queryClient = useQueryClient();
   
   // Fetch active conversations
-  const { data: activeConversations = [], isLoading: loadingActive, refetch: refetchActive } = useQuery({
+  const { 
+    data: activeConversations = [], 
+    isLoading: loadingActive, 
+    refetch: refetchActive 
+  } = useQuery({
     queryKey: ['recruiter-conversations', recruiterId, 'active'],
     queryFn: async () => {
       if (!recruiterId) return [];
       return await MessageService.getUserConversations(recruiterId, 'recruiter', false);
     },
     enabled: !!recruiterId,
-    staleTime: 60000, // Cache valid for 60 seconds
-    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    refetchInterval: false, // Disable polling - rely on real-time updates
-    refetchOnWindowFocus: true, // Refetch on window focus only
-    refetchOnMount: 'always', // Always refetch on mount to get fresh data
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    refetchInterval: ACTIVE_CONVERSATIONS_REFETCH_INTERVAL,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
-  // Fetch archived conversations count - always fetch for the badge
-  const { data: archivedConversations = [], isLoading: loadingArchived, refetch: refetchArchived } = useQuery({
+  // Fetch archived conversations
+  const { 
+    data: archivedConversations = [], 
+    isLoading: loadingArchived, 
+    refetch: refetchArchived 
+  } = useQuery({
     queryKey: ['recruiter-conversations', recruiterId, 'archived'],
     queryFn: async () => {
       if (!recruiterId) return [];
@@ -64,11 +117,11 @@ const Messages = () => {
       return allConversations.filter(conv => conv.status === 'archived');
     },
     enabled: !!recruiterId,
-    staleTime: 60000, // Cache valid for 60 seconds
-    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    refetchInterval: false, // Disable polling - rely on real-time updates
-    refetchOnWindowFocus: true, // Refetch on window focus only
-    refetchOnMount: 'always', // Always refetch on mount to get fresh data
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+    refetchInterval: ARCHIVED_CONVERSATIONS_REFETCH_INTERVAL,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const conversations = showArchived ? archivedConversations : activeConversations;
@@ -80,22 +133,8 @@ const Messages = () => {
     enabled: !!selectedConversationId,
   });
 
-  // Use shared global presence context (no duplicate subscription)
-  const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
-
-  // Presence tracking for current conversation (for chat header)
-  const { isUserOnline, getUserStatus, onlineUsers } = useRealtimePresence({
-    channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
-    userPresence: {
-      userId: recruiterId || '',
-      userName: recruiterName,
-      userType: 'recruiter',
-      status: 'online',
-      lastSeen: new Date().toISOString(),
-      conversationId: selectedConversationId || undefined
-    },
-    enabled: !!selectedConversationId && !!recruiterId
-  });
+  // Global presence tracking - Use shared context
+  const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
 
   // Typing indicators
   const { setTyping, getTypingText, isAnyoneTyping } = useTypingIndicator({
@@ -111,37 +150,11 @@ const Messages = () => {
     showToast: true,
     enabled: !!recruiterId
   });
-
-  // Subscribe to conversation updates for real-time unread count changes
-  useEffect(() => {
-    if (!recruiterId) return;
-    
-    const subscription = MessageService.subscribeToUserConversations(
-      recruiterId,
-      'recruiter',
-      () => {
-        // Invalidate conversation queries and unread count for sidebar badge
-        queryClient.invalidateQueries({ 
-          queryKey: ['recruiter-conversations', recruiterId],
-          refetchType: 'active'
-        });
-        queryClient.invalidateQueries({ 
-          queryKey: ['recruiter-unread-count', recruiterId],
-          refetchType: 'active'
-        });
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [recruiterId, queryClient]);
   
-  // Mark messages as read when conversation is selected (with debounce)
+  // Mark messages as read when conversation is selected
   useEffect(() => {
     if (!selectedConversationId || !recruiterId) return;
     
-    // Get current conversations
     const conversation = activeConversations.find(c => c.id === selectedConversationId);
     const hasUnread = conversation?.recruiter_unread_count > 0;
     
@@ -151,29 +164,14 @@ const Messages = () => {
     if (markedAsReadRef.current.has(markKey)) return;
     markedAsReadRef.current.add(markKey);
     
-    // Optimistically update the UI immediately
-    queryClient.setQueryData<typeof activeConversations>(
-      ['recruiter-conversations', recruiterId, 'active'],
-      (oldData) => {
-        if (!oldData) return oldData;
-        return oldData.map(conv => 
-          conv.id === selectedConversationId 
-            ? { ...conv, recruiter_unread_count: 0 }
-            : conv
-        );
-      }
-    );
-    
-    // Mark the database update
     MessageService.markConversationAsRead(selectedConversationId, recruiterId)
+      .then(() => refetchActive())
       .catch(err => {
         console.error('Failed to mark as read:', err);
         markedAsReadRef.current.delete(markKey);
-        // Revert optimistic update on error
-        refetchActive();
       });
-  }, [selectedConversationId, recruiterId, activeConversations, queryClient, refetchActive]);
-  
+  }, [selectedConversationId, recruiterId, activeConversations, refetchActive]);
+
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -184,7 +182,13 @@ const Messages = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-  // Handle archive/unarchive with optimistic updates
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Handle archive/unarchive
   const handleToggleArchive = useCallback(async (conversationId: string, isArchiving: boolean) => {
     setShowMenu(null);
     setIsTransitioning(true);
@@ -201,7 +205,7 @@ const Messages = () => {
       
       await Promise.all([refetchActive(), refetchArchived()]);
     } catch (error) {
-      console.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error);
+      console.error(`Failed to ${isArchiving ? 'archive' : 'unarchive'} conversation:`, error);
       refetchActive();
       refetchArchived();
     } finally {
@@ -209,19 +213,9 @@ const Messages = () => {
     }
   }, [selectedConversationId, refetchActive, refetchArchived]);
   
-  // Transform and filter conversations - memoized for performance
-  // Include onlineUsers as dependency so contacts update when presence changes
-  const filteredContacts = useMemo(() => {
-    const parseProfile = (profile: any) => {
-      if (!profile || typeof profile === 'object') return profile || {};
-      try {
-        return JSON.parse(profile);
-      } catch {
-        return {};
-      }
-    };
-
-    const contacts = conversations.map(conv => {
+  // Transform and filter conversations
+  const filteredContacts = useMemo<Contact[]>(() => {
+    const contacts: Contact[] = conversations.map(conv => {
       const profile = parseProfile(conv.student?.profile);
       const studentName = profile?.name || conv.student?.email || 'Student';
       const opportunityTitle = conv.opportunity?.title || 'No job specified';
@@ -233,13 +227,11 @@ const Messages = () => {
         id: conv.id,
         name: studentName,
         role: opportunityDetails,
-                      avatar: profile?.profilePicture || 
-                        `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=3B82F6&color=fff`,
-                      lastMessage: conv.last_message_preview || 'No messages yet',
-                      online: isUserOnlineGlobal(conv.student_id),
-        time: conv.last_message_at 
-          ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
-          : 'No messages',
+        avatar: profile?.profilePicture || 
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=${AVATAR_BG_COLOR}&color=fff`,
+        lastMessage: conv.last_message_preview || 'No messages yet',
+        online: isUserOnlineGlobal(conv.student_id),
+        time: safeFormatTime(conv.last_message_at),
         unread: conv.recruiter_unread_count || 0,
         studentId: conv.student_id,
         applicationId: conv.application_id,
@@ -247,22 +239,37 @@ const Messages = () => {
       };
     });
 
-    if (!searchQuery) return contacts;
+    if (!searchQuery.trim()) return contacts;
     
     const query = searchQuery.toLowerCase();
     return contacts.filter(c => 
       c.name.toLowerCase().includes(query) || c.role.toLowerCase().includes(query)
     );
-  }, [conversations, searchQuery, globalOnlineUsers, isUserOnlineGlobal]);
+  }, [conversations, searchQuery, isUserOnlineGlobal]);
 
   const currentChat = useMemo(() => 
     filteredContacts.find(c => c.id === selectedConversationId),
     [filteredContacts, selectedConversationId]
   );
 
+  // Transform messages for display
+  const displayMessages = useMemo(() => 
+    messages.map(msg => ({
+      id: msg.id,
+      text: msg.message_text,
+      sender: msg.sender_type === 'recruiter' ? 'me' : 'them',
+      time: safeFormatTime(msg.created_at),
+      status: msg.is_read ? 'read' : 'delivered'
+    })),
+    [messages]
+  );
+
+  // Handle message send
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !currentChat || !recruiterId) return;
+    
+    const trimmedInput = messageInput.trim();
+    if (!trimmedInput || !currentChat || !recruiterId || isSending) return;
     
     try {
       await sendMessage({
@@ -270,30 +277,30 @@ const Messages = () => {
         senderType: 'recruiter',
         receiverId: currentChat.studentId,
         receiverType: 'student',
-        messageText: messageInput,
+        messageText: trimmedInput,
         applicationId: currentChat.applicationId,
         opportunityId: currentChat.opportunityId
       });
       
-      // Send notification broadcast to student
-      try {
-        await sendNotification(currentChat.studentId, {
-          title: 'New Message from Recruiter',
-          message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
-          type: 'message',
-          link: `/student/messages?conversation=${selectedConversationId}`
-        });
-      } catch (notifError) {
-        console.warn('Could not send notification:', notifError);
-      }
+      // Send notification (non-blocking)
+      sendNotification(currentChat.studentId, {
+        title: 'New Message from Recruiter',
+        message: trimmedInput.length > MESSAGE_PREVIEW_LENGTH 
+          ? `${trimmedInput.substring(0, MESSAGE_PREVIEW_LENGTH)}...` 
+          : trimmedInput,
+        type: 'message',
+        link: `/student/messages?conversation=${selectedConversationId}`
+      }).catch(err => console.warn('Notification failed:', err));
       
       setMessageInput('');
       setTyping(false);
-      // Don't refetch - real-time updates will handle it
+      refetchActive();
+      inputRef.current?.focus();
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Failed to send message:', error);
+      // TODO: Show error toast to user
     }
-  }, [messageInput, currentChat, recruiterId, sendMessage, sendNotification, selectedConversationId, setTyping, refetchActive]);
+  }, [messageInput, currentChat, recruiterId, isSending, sendMessage, sendNotification, selectedConversationId, setTyping, refetchActive]);
 
   // Handle typing in input
   const handleInputChange = useCallback((value: string) => {
@@ -301,22 +308,15 @@ const Messages = () => {
     setTyping(value.length > 0);
   }, [setTyping]);
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // Handle keyboard shortcuts
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage(e);
+    }
+  }, [handleSendMessage]);
 
-  const displayMessages = useMemo(() => 
-    messages.map(msg => ({
-      id: msg.id,
-      text: msg.message_text,
-      sender: msg.sender_type === 'recruiter' ? 'me' : 'them',
-      time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
-      status: msg.is_read ? 'read' : 'delivered'
-    })),
-    [messages]
-  );
-
+  // Render status icon
   const renderStatusIcon = useCallback((status: string) => (
     <div className="flex">
       <CheckIcon className={`w-3 h-3 ${status === 'read' ? 'text-blue-500' : 'text-gray-400'}`} />
@@ -324,7 +324,7 @@ const Messages = () => {
     </div>
   ), []);
   
-  // Show loading state
+  // Loading state
   if (loadingConversations || !recruiterId) {
     return (
       <div className="flex h-[calc(100vh-180px)] bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 items-center justify-center">
@@ -350,7 +350,7 @@ const Messages = () => {
                 <button
                   onClick={() => setShowArchived(false)}
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  title="Back to messages"
+                  aria-label="Back to messages"
                 >
                   <ChevronLeftIcon className="w-5 h-5 text-gray-700" />
                 </button>
@@ -360,20 +360,21 @@ const Messages = () => {
               </h1>
             </div>
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent focus:bg-white transition-all text-sm"
+                aria-label="Search conversations"
               />
             </div>
           </div>
 
           {/* Contacts List */}
           <div className="flex-1 overflow-y-auto relative">
-            {/* Archived Button - WhatsApp Style */}
+            {/* Archived Button */}
             {!showArchived && !loadingArchived && archivedConversations.length > 0 && (
               <button
                 onClick={() => {
@@ -382,6 +383,7 @@ const Messages = () => {
                   setTimeout(() => setIsTransitioning(false), 300);
                 }}
                 className="w-full px-6 py-4 flex items-center justify-between border-b border-gray-200 hover:bg-gray-50 transition-colors group"
+                aria-label={`View ${archivedConversations.length} archived conversations`}
               >
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center">
@@ -398,7 +400,7 @@ const Messages = () => {
               </button>
             )}
 
-            {/* Loading indicator during transition */}
+            {/* Loading indicator */}
             {isTransitioning && (
               <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 pointer-events-none">
                 <div className="w-8 h-8 border-3 border-primary-600 border-t-transparent rounded-full animate-spin" />
@@ -444,12 +446,14 @@ const Messages = () => {
                   <button
                     onClick={() => setSelectedConversationId(contact.id)}
                     className="flex-1 px-6 py-4 flex items-center gap-4 transition-all text-left"
+                    aria-label={`Open conversation with ${contact.name}`}
                   >
                     <div className="relative flex-shrink-0">
                       <img
                         src={contact.avatar}
-                        alt={contact.name}
+                        alt=""
                         className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm"
+                        loading="lazy"
                       />
                       {contact.online && (
                         <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
@@ -486,12 +490,11 @@ const Messages = () => {
                         setShowMenu(showMenu === contact.id ? null : contact.id);
                       }}
                       className="p-2 hover:bg-gray-200 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                      title="More options"
+                      aria-label="More options"
                     >
                       <EllipsisVerticalIcon className="w-5 h-5 text-gray-600" />
                     </button>
                     
-                    {/* Dropdown Menu */}
                     {showMenu === contact.id && (
                       <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                         <button
@@ -529,7 +532,7 @@ const Messages = () => {
                   <div className="relative">
                     <img
                       src={currentChat.avatar}
-                      alt={currentChat.name}
+                      alt=""
                       className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md"
                     />
                     {currentChat.online && (
@@ -551,13 +554,22 @@ const Messages = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="p-3 hover:bg-gray-100 rounded-full transition-colors" title="Voice Call">
+                  <button 
+                    className="p-3 hover:bg-gray-100 rounded-full transition-colors" 
+                    aria-label="Voice call"
+                  >
                     <PhoneIcon className="w-5 h-5 text-gray-700" />
                   </button>
-                  <button className="p-3 hover:bg-gray-100 rounded-full transition-colors" title="Video Call">
+                  <button 
+                    className="p-3 hover:bg-gray-100 rounded-full transition-colors" 
+                    aria-label="Video call"
+                  >
                     <VideoCameraIcon className="w-5 h-5 text-gray-700" />
                   </button>
-                  <button className="p-3 hover:bg-gray-100 rounded-full transition-colors" title="More">
+                  <button 
+                    className="p-3 hover:bg-gray-100 rounded-full transition-colors" 
+                    aria-label="More options"
+                  >
                     <EllipsisVerticalIcon className="w-5 h-5 text-gray-700" />
                   </button>
                 </div>
@@ -565,12 +577,6 @@ const Messages = () => {
 
               {/* Messages Area */}
               <div className="flex-1 overflow-y-auto px-8 py-6 bg-gray-50 space-y-4">
-                {/* Online users indicator */}
-                {onlineUsers.length > 1 && (
-                  <div className="text-center text-xs text-gray-500 mb-2">
-                    {onlineUsers.length} users online in this conversation
-                  </div>
-                )}
                 {loadingMessages ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
@@ -616,7 +622,7 @@ const Messages = () => {
                       </div>
                     </div>
                   ))
-                )}
+                )
                 
                 {/* Typing indicator */}
                 {isAnyoneTyping && (
@@ -643,31 +649,29 @@ const Messages = () => {
                   <button
                     type="button"
                     className="p-3 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
-                    title="Attach file"
+                    aria-label="Attach file"
                   >
                     <PaperClipIcon className="w-6 h-6 text-gray-500" />
                   </button>
                   <div className="flex-1 relative">
                     <textarea
+                      ref={inputRef}
                       value={messageInput}
                       onChange={(e) => handleInputChange(e.target.value)}
                       onFocus={() => setTyping(true)}
                       onBlur={() => setTyping(false)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage(e);
-                        }
-                      }}
+                      onKeyDown={handleKeyDown}
                       placeholder="Type your message..."
                       className="w-full pl-5 pr-14 py-4 border-2 border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none text-sm bg-white transition-all"
                       rows={1}
                       style={{ minHeight: '52px', maxHeight: '120px' }}
+                      disabled={isSending}
+                      aria-label="Message input"
                     />
                     <button
                       type="button"
                       className="absolute right-4 bottom-3.5 p-2 hover:bg-gray-100 rounded-full transition-colors"
-                      title="Emoji"
+                      aria-label="Add emoji"
                     >
                       <FaceSmileIcon className="w-6 h-6 text-gray-400" />
                     </button>
@@ -676,7 +680,7 @@ const Messages = () => {
                     type="submit"
                     disabled={!messageInput.trim() || isSending}
                     className="p-4 bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-lg"
-                    title="Send"
+                    aria-label="Send message"
                   >
                     {isSending ? (
                       <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -721,4 +725,3 @@ const Messages = () => {
 };
 
 export default Messages;
-

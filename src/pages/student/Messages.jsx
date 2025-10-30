@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   Search, 
   Send, 
@@ -17,20 +17,32 @@ import MessageService from '../../services/messageService';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useRealtimePresence } from '../../hooks/useRealtimePresence';
+import { useTypingIndicator } from '../../hooks/useTypingIndicator';
+import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 
 const Messages = () => {
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const messagesEndRef = useRef(null);
+  const markedAsReadRef = useRef(new Set());
   
   // Get student data - same approach as Applications page
   const { user } = useAuth();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;
+  const studentName = studentData?.profile?.name || user?.name || 'Student';
   
   // Fetch conversations
-  const { conversations, isLoading: loadingConversations } = useStudentConversations(
+  const { 
+    conversations, 
+    isLoading: loadingConversations, 
+    refetch: refetchConversations,
+    clearUnreadCount
+  } = useStudentConversations(
     studentId,
     !!studentId
   );
@@ -53,13 +65,91 @@ const Messages = () => {
     enabled: !!selectedConversationId,
     enableRealtime: true
   });
+
+  // Use shared global presence context (no duplicate subscription)
+  const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
+
+  // Presence tracking for current conversation (for chat header)
+  const { isUserOnline, getUserStatus, onlineUsers } = useRealtimePresence({
+    channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
+    userPresence: {
+      userId: studentId || '',
+      userName: studentName,
+      userType: 'student',
+      status: 'online',
+      lastSeen: new Date().toISOString(),
+      conversationId: selectedConversationId || undefined
+    },
+    enabled: !!selectedConversationId && !!studentId
+  });
+
+  // Typing indicators
+  const { setTyping, getTypingText, isAnyoneTyping } = useTypingIndicator({
+    conversationId: selectedConversationId || '',
+    currentUserId: studentId || '',
+    currentUserName: studentName,
+    enabled: !!selectedConversationId && !!studentId
+  });
+
+  // Notification broadcasts
+  const { sendNotification } = useNotificationBroadcast({
+    userId: studentId || '',
+    showToast: true,
+    enabled: !!studentId
+  });
   
   // Mark messages as read when conversation is selected
   useEffect(() => {
-    if (selectedConversationId && studentId) {
-      MessageService.markConversationAsRead(selectedConversationId, studentId);
+    if (!selectedConversationId || !studentId) {
+      console.log('⚠️ [Student] Skipping mark-as-read: no conversation or studentId');
+      return;
     }
-  }, [selectedConversationId, studentId]);
+    
+    const conversation = conversations.find(c => c.id === selectedConversationId);
+    console.log('🔍 [Student] Selected conversation:', {
+      id: selectedConversationId,
+      found: !!conversation,
+      unreadCount: conversation?.student_unread_count
+    });
+    
+    const hasUnread = conversation?.student_unread_count > 0;
+    
+    // Only mark as read if there are actually unread messages
+    if (!hasUnread) {
+      console.log('ℹ️ [Student] No unread messages, skipping');
+      return;
+    }
+    
+    // Prevent duplicate marking
+    const markKey = `${selectedConversationId}-${conversation?.student_unread_count}`;
+    if (markedAsReadRef.current.has(markKey)) {
+      console.log('⚠️ [Student] Already marked this conversation state, skipping');
+      return;
+    }
+    markedAsReadRef.current.add(markKey);
+    
+    console.log('📖 [Student] Marking conversation as read:', selectedConversationId);
+    
+    // Optimistically clear the unread count immediately in UI (instant feedback)
+    if (clearUnreadCount) {
+      clearUnreadCount(selectedConversationId);
+    } else {
+      console.error('❌ [Student] clearUnreadCount function not available!');
+    }
+    
+    // Mark as read in database - no debounce since we already prevent duplicates
+    MessageService.markConversationAsRead(selectedConversationId, studentId)
+      .then(() => {
+        console.log('✅ [Student] Marked as read successfully');
+      })
+      .catch(err => {
+        console.error('❌ [Student] Failed to mark as read:', err);
+        // Remove from marked set so it can be retried
+        markedAsReadRef.current.delete(markKey);
+        // Refetch to revert optimistic update
+        refetchConversations();
+      });
+  }, [selectedConversationId, studentId, conversations, clearUnreadCount, refetchConversations]);
 
   // Helper to safely parse profile JSONB
   const parseProfile = (profile) => {
@@ -76,7 +166,8 @@ const Messages = () => {
   };
   
   // Transform conversations for display
-  const contacts = conversations.map(conv => {
+  // Recalculate when onlineUsers changes to update presence indicators
+  const contacts = useMemo(() => conversations.map(conv => {
     const recruiter = conv.recruiter;
     const recruiterName = recruiter?.name || 'Recruiter';
     const recruiterEmail = recruiter?.email || '';
@@ -113,12 +204,12 @@ const Messages = () => {
       lastMessage: conv.last_message_preview || 'No messages yet',
       time: timeDisplay,
       unread: conv.student_unread_count || 0,
-      online: false, // You can add online status tracking later
+      online: isUserOnlineGlobal(conv.recruiter_id),
       recruiterId: conv.recruiter_id,
       applicationId: conv.application_id,
       opportunityId: conv.opportunity_id
     };
-  });
+  }), [conversations, globalOnlineUsers, isUserOnlineGlobal]);
   
   // Filter contacts based on search
   const filteredContacts = contacts.filter(contact =>
@@ -144,12 +235,37 @@ const Messages = () => {
           applicationId: currentChat.applicationId,
           opportunityId: currentChat.opportunityId
         });
+        
+        // Send notification broadcast to recruiter
+        try {
+          await sendNotification(currentChat.recruiterId, {
+            title: 'New Message from Student',
+            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            type: 'message',
+            link: `/recruiter/messages?conversation=${selectedConversationId}`
+          });
+        } catch (notifError) {
+          console.warn('Could not send notification:', notifError);
+        }
+        
         setMessageInput('');
+        setTyping(false);
       } catch (error) {
         console.error('Error sending message:', error);
       }
     }
   };
+
+  // Handle typing in input
+  const handleInputChange = useCallback((value) => {
+    setMessageInput(value);
+    setTyping(value.length > 0);
+  }, [setTyping]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const getStatusIcon = (status) => {
     if (status === 'read') {
@@ -278,7 +394,14 @@ const Messages = () => {
                 <div>
                   <h3 className="font-semibold text-gray-900">{currentChat.name}</h3>
                   <p className="text-xs text-gray-500">
-                    {currentChat.online ? 'Active now' : 'Offline'}
+                    {currentChat.online ? (
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                        Online
+                      </span>
+                    ) : (
+                      'Offline'
+                    )}
                   </p>
                 </div>
               </div>
@@ -298,6 +421,12 @@ const Messages = () => {
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+              {/* Online users indicator */}
+              {onlineUsers.length > 1 && (
+                <div className="text-center text-xs text-gray-500 mb-2">
+                  {onlineUsers.length} users online
+                </div>
+              )}
               {loadingMessages ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="w-8 h-8 text-red-500 animate-spin" />
@@ -330,8 +459,26 @@ const Messages = () => {
                     </div>
                   </div>
                   ))}
+                  
+                  {/* Typing indicator */}
+                  {isAnyoneTyping && (
+                    <div className="flex justify-start">
+                      <div className="bg-white border border-gray-200 rounded-2xl px-4 py-2.5 shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="flex gap-1">
+                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                          <span className="text-xs text-gray-500 italic">{getTypingText()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
+              
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Message Input */}
@@ -348,7 +495,9 @@ const Messages = () => {
                   <input
                     type="text"
                     value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                    onFocus={() => setTyping(true)}
+                    onBlur={() => setTyping(false)}
                     placeholder="Type a message..."
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
                   />

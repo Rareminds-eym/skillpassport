@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import MessageService, { Message } from '../services/messageService';
 import { useMessageStore } from '../stores/useMessageStore';
 import { supabase } from '../lib/supabaseClient';
@@ -257,6 +257,8 @@ export const useStudentUnreadCount = (studentId: string | null, enabled = true) 
  */
 export const useStudentConversations = (studentId: string | null, enabled = true) => {
   const { setConversations, setIsLoadingConversations } = useMessageStore();
+  const queryClient = useQueryClient();
+  const [updateTrigger, setUpdateTrigger] = useState(0);
   
   const {
     data: conversations = [],
@@ -270,7 +272,8 @@ export const useStudentConversations = (studentId: string | null, enabled = true
       setIsLoadingConversations(true);
       try {
         const convs = await MessageService.getUserConversations(studentId, 'student');
-        setConversations(convs);
+        // Don't sync to zustand here - it conflicts with optimistic updates
+        // setConversations(convs);
         return convs;
       } finally {
         setIsLoadingConversations(false);
@@ -278,8 +281,49 @@ export const useStudentConversations = (studentId: string | null, enabled = true
     },
     enabled: enabled && !!studentId,
     staleTime: 60000, // 1 minute
-    refetchOnWindowFocus: true
+    refetchOnWindowFocus: true,
+    refetchInterval: false // Disable polling - use real-time instead
   });
+  
+  /**
+   * Optimistically clear unread count for a conversation
+   * This makes the UI feel instant when marking messages as read
+   */
+  const clearUnreadCount = useCallback((conversationId: string) => {
+    console.log('📦 [Student Optimistic] Clearing unread count for:', conversationId);
+    
+    // Get current data from React Query cache
+    const currentConversations = queryClient.getQueryData<any[]>(
+      ['student-conversations', studentId]
+    ) || [];
+    
+    console.log('📊 Current conversations in cache:', currentConversations.length);
+    
+    const optimisticConversations = currentConversations.map(conv => {
+      if (conv.id === conversationId) {
+        console.log('✅ Found conversation, clearing unread from', conv.student_unread_count, 'to 0');
+        return { ...conv, student_unread_count: 0 };
+      }
+      return conv;
+    });
+    
+    // Update React Query cache immediately
+    queryClient.setQueryData(
+      ['student-conversations', studentId],
+      optimisticConversations
+    );
+    
+    // Force re-render by invalidating without refetching
+    queryClient.invalidateQueries({
+      queryKey: ['student-conversations', studentId],
+      refetchType: 'none'
+    });
+    
+    // Trigger state update to force re-render
+    setUpdateTrigger(prev => prev + 1);
+    
+    console.log('✅ [Student Optimistic] Cache updated and invalidated - UI should re-render');
+  }, [studentId, queryClient]);
 
   // Realtime subscription for conversation updates
   useEffect(() => {
@@ -307,11 +351,19 @@ export const useStudentConversations = (studentId: string | null, enabled = true
     };
   }, [studentId, enabled, refetch]);
 
+  // Force conversations to be reactive to optimistic updates
+  const reactiveConversations = useMemo(() => {
+    // Re-compute when updateTrigger changes
+    const cached = queryClient.getQueryData<any[]>(['student-conversations', studentId]) || [];
+    return cached;
+  }, [queryClient, studentId, updateTrigger, conversations]);
+
   return {
-    conversations,
+    conversations: reactiveConversations,
     isLoading,
     error,
-    refetch
+    refetch,
+    clearUnreadCount
   };
 };
 
