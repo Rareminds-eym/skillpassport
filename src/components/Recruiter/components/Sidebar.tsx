@@ -44,9 +44,10 @@ interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   showMobileMenu: boolean;
+  unreadMessagesCount?: number;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMenu }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMenu, unreadMessagesCount = 0 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<{ [key: string]: boolean }>({});
@@ -93,6 +94,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
                       aria-hidden="true"
                     />
                     <span className="flex-1 text-left">{item.name}</span>
+                    {item.name === 'Messages' && unreadMessagesCount > 0 && (
+                      <span className="ml-auto mr-2 min-w-[20px] h-5 px-1.5 bg-primary-600 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                        {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+                      </span>
+                    )}
                     {item.subItems && (
                       openSubmenus[item.name] ? (
                         <ChevronDownIcon className="h-4 w-4" />
@@ -166,6 +172,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
                             aria-hidden="true"
                           />
                           <span className="flex-1 text-left">{item.name}</span>
+                          {item.name === 'Messages' && unreadMessagesCount > 0 && (
+                            <span className="ml-auto mr-2 min-w-[20px] h-5 px-1.5 bg-primary-600 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                              {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+                            </span>
+                          )}
                           {item.subItems && (
                             openSubmenus[item.name] ? (
                               <ChevronDownIcon className="h-4 w-4" />

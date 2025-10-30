@@ -250,9 +250,10 @@ export class MessageService {
     userId: string
   ): Promise<void> {
     try {
-      console.log('📖 Marking conversation as read:', conversationId);
+      console.log('📖 Marking conversation as read:', conversationId, 'for user:', userId);
 
-      const { error } = await supabase
+      // Mark messages as read
+      const { data: updatedMessages, error: messageError } = await supabase
         .from('messages')
         .update({ 
           is_read: true, 
@@ -260,11 +261,36 @@ export class MessageService {
         })
         .eq('conversation_id', conversationId)
         .eq('receiver_id', userId)
-        .eq('is_read', false);
+        .eq('is_read', false)
+        .select();
       
-      if (error) throw error;
+      if (messageError) throw messageError;
       
-      console.log('✅ Conversation marked as read');
+      console.log('✅ Marked', updatedMessages?.length || 0, 'messages as read');
+      
+      // Update the conversation's unread count to 0
+      // Determine if this is a student or recruiter based on the receiver_id matching
+      const { data: conversation } = await supabase
+        .from('conversations')
+        .select('student_id, recruiter_id')
+        .eq('id', conversationId)
+        .single();
+      
+      if (conversation) {
+        const isStudent = conversation.student_id === userId;
+        const updateField = isStudent ? 'student_unread_count' : 'recruiter_unread_count';
+        
+        const { error: convError } = await supabase
+          .from('conversations')
+          .update({ [updateField]: 0 })
+          .eq('id', conversationId);
+        
+        if (convError) {
+          console.warn('⚠️ Could not update conversation unread count:', convError);
+        } else {
+          console.log('✅ Updated conversation unread count to 0');
+        }
+      }
     } catch (error) {
       console.error('❌ Error marking conversation as read:', error);
       throw error;
@@ -346,6 +372,49 @@ export class MessageService {
       console.error('❌ Error fetching unread count:', error);
       return 0;
     }
+  }
+
+  /**
+   * Subscribe to conversation list updates (real-time)
+   * Listens for changes in unread counts, new messages, etc.
+   */
+  static subscribeToUserConversations(
+    userId: string,
+    userType: 'student' | 'recruiter',
+    onUpdate: (conversation: Conversation) => void
+  ) {
+    const column = userType === 'student' ? 'student_id' : 'recruiter_id';
+    console.log('🔔 Subscribing to conversation updates for:', userId);
+
+    return supabase
+      .channel(`user-conversations:${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'conversations',
+          filter: `${column}=eq.${userId}`
+        },
+        (payload) => {
+          console.log('📊 Conversation updated:', payload.new);
+          onUpdate(payload.new as Conversation);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'conversations',
+          filter: `${column}=eq.${userId}`
+        },
+        (payload) => {
+          console.log('🆕 New conversation:', payload.new);
+          onUpdate(payload.new as Conversation);
+        }
+      )
+      .subscribe();
   }
 
   /**

@@ -148,8 +148,8 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
         }
       );
       
-      // Refetch to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+      // Don't invalidate - real-time subscription will handle updates
+      // queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
     },
   });
 
