@@ -129,7 +129,7 @@ export default function UnifiedSignup() {
   };
 
   return (
-    <div className="flex items-center lg:py-10 bg-white">
+    <div className="flex items-center lg:py-8 bg-white">
       <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[700px] overflow-hidden">
         {/* LEFT SIDE */}
         {activeTab === "student" ? (
@@ -236,7 +236,7 @@ export default function UnifiedSignup() {
         )}
 
         {/* RIGHT SIDE */}
-        <div className="relative flex items-center justify-center px-4 sm:px-8 md:px-12 py-10 lg:py-8">
+        <div className="relative flex items-center justify-center px-4 sm:px-8 md:px-12 py-8 lg:py-8">
           {/* Gradient bg for mobile/tablet */}
           <div
             className="absolute inset-0 lg:hidden"
@@ -334,7 +334,7 @@ export default function UnifiedSignup() {
           <div className="relative w-full max-w-md hidden lg:block">
             {/* Tabs */}
             {currentStep === 1 && (
-              <div className="flex space-x-4 mb-8" style={{ position: 'relative', top: '-120px' }}>
+              <div className="flex space-x-4 mb-16 sticky top-[40px] bg-white z-20 py-4 shadow-sm">
                 {[
                   { id: "student", label: "Student", Icon: GraduationCap },
                   { id: "recruiter", label: "Recruiter", Icon: Briefcase },
