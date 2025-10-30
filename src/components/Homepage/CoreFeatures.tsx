@@ -376,7 +376,7 @@ const CoreFeatures: React.FC = () => {
       desc: "Align internal frameworks with industry standards.",
     },
     {
-      icon: <FiGitBranch className="text-yellow-500text-2xl" />,
+      icon: <FiGitBranch className="text-yellow-500 text-2xl" />,
       title: "Analytics Dashboard",
       desc: "Visualize training ROI and identify skill gaps.",
     },
