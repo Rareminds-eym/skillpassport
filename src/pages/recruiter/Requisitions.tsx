@@ -16,10 +16,16 @@ import {
   DocumentTextIcon,
   MapPinIcon,
   CurrencyDollarIcon,
-  CalendarIcon
+  CalendarIcon,
+  ArrowsUpDownIcon,
+  ChevronUpIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
-import { supabase } from '../../lib/supabaseClient'; // Adjust path to your Supabase client
+import { supabase } from '../../lib/supabaseClient';
+import AdvancedRequisitionFilters from '../../components/Recruiter/components/AdvancedRequisitionFilters';
+import { RequisitionFilters } from '../../types/recruiter';
+import { useAuth } from '../../context/AuthContext';
 
 interface Opportunity {
   id: string;
@@ -56,6 +62,7 @@ interface Opportunity {
 }
 
 const Requisitions = () => {
+  const { user } = useAuth();
   const [requisitions, setRequisitions] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,19 +74,106 @@ const Requisitions = () => {
   const [showMessagesModal, setShowMessagesModal] = useState(false);
   const [selectedRequisition, setSelectedRequisition] = useState<Opportunity | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  
+  // Sorting State
+  const [sortField, setSortField] = useState<string>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // Advanced Filters State
+  const [advancedFilters, setAdvancedFilters] = useState<RequisitionFilters>({
+    dateRange: {},
+    status: [],
+    departments: [],
+    locations: [],
+    employmentTypes: [],
+    experienceLevels: [],
+    salaryRange: {},
+    applicationCountRange: 'all'
+  });
 
   // Load requisitions from Supabase
   useEffect(() => {
     loadRequisitions();
-  }, []);
+  }, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection]);
 
   const loadRequisitions = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Build Supabase query with SQL-optimized filters
+      let query = supabase
         .from('opportunities')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
+
+      // Apply search query filter (case-insensitive)
+      if (searchQuery) {
+        query = query.or(`title.ilike.%${searchQuery}%,department.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`);
+      }
+
+      // Apply basic status filter
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+
+      // Apply advanced filters with SQL optimization
+      if (advancedFilters.status.length > 0) {
+        query = query.in('status', advancedFilters.status);
+      }
+
+      if (advancedFilters.departments.length > 0) {
+        query = query.in('department', advancedFilters.departments);
+      }
+
+      if (advancedFilters.locations.length > 0) {
+        query = query.in('location', advancedFilters.locations);
+      }
+
+      if (advancedFilters.employmentTypes.length > 0) {
+        query = query.in('employment_type', advancedFilters.employmentTypes);
+      }
+
+      if (advancedFilters.experienceLevels.length > 0) {
+        query = query.in('experience_level', advancedFilters.experienceLevels);
+      }
+
+      // Salary range filters
+      if (advancedFilters.salaryRange.min) {
+        query = query.gte('salary_range_min', advancedFilters.salaryRange.min);
+      }
+      if (advancedFilters.salaryRange.max) {
+        query = query.lte('salary_range_max', advancedFilters.salaryRange.max);
+      }
+
+      // Application count filter with smart ranges
+      if (advancedFilters.applicationCountRange && advancedFilters.applicationCountRange !== 'all') {
+        const rangeMap: Record<string, { min: number; max: number | null }> = {
+          '0': { min: 0, max: 0 },
+          '1-5': { min: 1, max: 5 },
+          '6-20': { min: 6, max: 20 },
+          '21-50': { min: 21, max: 50 },
+          '50+': { min: 51, max: null },
+        };
+        
+        const range = rangeMap[advancedFilters.applicationCountRange];
+        if (range) {
+          query = query.gte('applications_count', range.min);
+          if (range.max !== null) {
+            query = query.lte('applications_count', range.max);
+          }
+        }
+      }
+
+      // Date range filters
+      if (advancedFilters.dateRange.startDate) {
+        query = query.gte('posted_date', advancedFilters.dateRange.startDate);
+      }
+      if (advancedFilters.dateRange.endDate) {
+        query = query.lte('posted_date', advancedFilters.dateRange.endDate);
+      }
+
+      // Apply sorting (SQL-optimized)
+      query = query.order(sortField, { ascending: sortDirection === 'asc' });
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error loading opportunities:', error);
@@ -130,7 +224,7 @@ const Requisitions = () => {
         applications_count: 0,
         messages_count: 0,
         views_count: 0,
-        created_by: 'current-user', // Set actual user
+        created_by: user?.id,
         posted_date: new Date().toISOString(),
         is_active: requisitionData.status === 'open'
       }])
@@ -167,16 +261,21 @@ const Requisitions = () => {
     if (error) throw error;
   };
 
-  const filteredRequisitions = requisitions.filter(req => {
-    const matchesSearch = searchQuery === '' || 
-      req.job_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.location.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  // All filtering now happens in SQL query for better performance
+  const filteredRequisitions = requisitions;
+
+  const handleResetFilters = () => {
+    setAdvancedFilters({
+      dateRange: {},
+      status: [],
+      departments: [],
+      locations: [],
+      employmentTypes: [],
+      experienceLevels: [],
+      salaryRange: {},
+      applicationCountRange: 'all'
+    });
+  };
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -221,6 +320,26 @@ const Requisitions = () => {
     }
   };
 
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, default to descending
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) {
+      return <ArrowsUpDownIcon className="h-4 w-4 text-gray-400" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ChevronUpIcon className="h-4 w-4 text-primary-600" />
+      : <ChevronDownIcon className="h-4 w-4 text-primary-600" />;
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -254,6 +373,31 @@ const Requisitions = () => {
             />
           </div>
           
+          {/* Results Count & Sort Info */}
+          {filteredRequisitions.length > 0 && (
+            <div className="hidden md:flex items-center px-3 py-2 bg-gray-100 rounded-md text-xs text-gray-600">
+              <span className="font-medium">{filteredRequisitions.length}</span>
+              <span className="mx-1">results</span>
+              {sortField && (
+                <>
+                  <span className="mx-1">•</span>
+                  <span>sorted by</span>
+                  <span className="ml-1 font-medium">
+                    {sortField === 'job_title' ? 'Job Title' :
+                     sortField === 'created_at' ? 'Created Date' :
+                     sortField === 'posted_date' ? 'Posted Date' :
+                     sortField === 'applications_count' ? 'Applications' :
+                     sortField === 'department' ? 'Department' :
+                     sortField === 'location' ? 'Location' :
+                     sortField === 'salary_range_min' ? 'Salary' :
+                     sortField}
+                  </span>
+                  {sortDirection === 'asc' ? <ChevronUpIcon className="h-3 w-3 ml-1" /> : <ChevronDownIcon className="h-3 w-3 ml-1" />}
+                </>
+              )}
+            </div>
+          )}
+          
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -265,6 +409,50 @@ const Requisitions = () => {
             <option value="on_hold">On Hold</option>
             <option value="closed">Closed</option>
           </select>
+
+          <AdvancedRequisitionFilters
+            filters={advancedFilters}
+            onFiltersChange={setAdvancedFilters}
+            onReset={handleResetFilters}
+            onApply={loadRequisitions}
+          />
+
+          {/* Sorting Dropdown */}
+          <div className="relative">
+            <select
+              value={`${sortField}-${sortDirection}`}
+              onChange={(e) => {
+                const [field, direction] = e.target.value.split('-');
+                setSortField(field);
+                setSortDirection(direction as 'asc' | 'desc');
+              }}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white text-sm"
+            >
+              <optgroup label="Date">
+                <option value="created_at-desc">Newest First</option>
+                <option value="created_at-asc">Oldest First</option>
+                <option value="posted_date-desc">Recently Posted</option>
+                <option value="posted_date-asc">Oldest Posted</option>
+              </optgroup>
+              <optgroup label="Applications">
+                <option value="applications_count-desc">Most Applications</option>
+                <option value="applications_count-asc">Least Applications</option>
+              </optgroup>
+              <optgroup label="Alphabetical">
+                <option value="job_title-asc">Job Title (A-Z)</option>
+                <option value="job_title-desc">Job Title (Z-A)</option>
+                <option value="department-asc">Department (A-Z)</option>
+                <option value="department-desc">Department (Z-A)</option>
+                <option value="location-asc">Location (A-Z)</option>
+                <option value="location-desc">Location (Z-A)</option>
+              </optgroup>
+              <optgroup label="Salary">
+                <option value="salary_range_min-desc">Highest Salary</option>
+                <option value="salary_range_min-asc">Lowest Salary</option>
+              </optgroup>
+            </select>
+            <ArrowsUpDownIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+          </div>
 
           <div className="flex gap-2">
             <button
@@ -352,23 +540,59 @@ const Requisitions = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Job Title
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('job_title')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Job Title
+                      {getSortIcon('job_title')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Department
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('department')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Department
+                      {getSortIcon('department')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('location')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Location
+                      {getSortIcon('location')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Status
+                      {getSortIcon('status')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Applications
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('applications_count')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Applications
+                      {getSortIcon('applications_count')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Posted
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('posted_date')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Posted
+                      {getSortIcon('posted_date')}
+                    </div>
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -1149,19 +1373,315 @@ const ViewRequisitionModal = ({ requisition, onClose }: any) => {
 };
 
 const ApplicationsModal = ({ requisition, onClose }: any) => {
+  const [applications, setApplications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+
+  useEffect(() => {
+    loadApplications();
+  }, [requisition.id]);
+
+  const loadApplications = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('applied_jobs')
+        .select(`
+          id,
+          application_status,
+          applied_at,
+          viewed_at,
+          interview_scheduled_at,
+          updated_at,
+          students (
+            id,
+            email,
+            profile
+          )
+        `)
+        .eq('opportunity_id', requisition.id)
+        .order('applied_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading applications:', error);
+        return;
+      }
+
+      setApplications(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      applied: 'bg-blue-100 text-blue-800',
+      viewed: 'bg-gray-100 text-gray-800',
+      under_review: 'bg-yellow-100 text-yellow-800',
+      interview_scheduled: 'bg-purple-100 text-purple-800',
+      interviewed: 'bg-indigo-100 text-indigo-800',
+      offer_received: 'bg-green-100 text-green-800',
+      accepted: 'bg-green-200 text-green-900',
+      rejected: 'bg-red-100 text-red-800',
+      withdrawn: 'bg-gray-200 text-gray-600'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInHours < 24) {
+      return 'Today';
+    } else if (diffInDays === 1) {
+      return 'Yesterday';
+    } else if (diffInDays < 7) {
+      return `${diffInDays} days ago`;
+    } else {
+      return formatDate(dateString);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onClose}></div>
-        <div className="relative bg-white rounded-lg max-w-6xl w-full p-6">
+        <div className="relative bg-white rounded-lg max-w-6xl w-full p-6 max-h-[90vh] overflow-y-auto">
           <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
             <XCircleIcon className="h-6 w-6" />
           </button>
-          <h2 className="text-2xl font-bold mb-4">Applications for {requisition.job_title}</h2>
-          <p className="text-gray-600 mb-4">{requisition.applications_count} applications received</p>
-          <div className="text-center py-12 text-gray-500">
-            Applications list will be displayed here
-          </div>
+          <h2 className="text-2xl font-bold mb-2">Applications for {requisition.job_title}</h2>
+          <p className="text-gray-600 mb-6">{applications.length} applications received</p>
+          
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading applications...</p>
+            </div>
+          ) : applications.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <UsersIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <p>No applications received yet</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Candidate
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Position
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Applied
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Experience
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Rating
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {applications.map((app) => {
+                    const profile = app.students?.profile || {};
+                    const relativeTime = formatRelativeTime(app.applied_at);
+                    
+                    return (
+                      <tr key={app.id} className="hover:bg-gray-50 transition-colors">
+                        {/* Candidate */}
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-3">
+                            <div className="flex-shrink-0">
+                              <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                                <span className="text-primary-600 font-semibold text-sm">
+                                  {(profile.name || 'N/A').charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {profile.name || 'Unknown Candidate'}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {profile.email || app.students?.email || 'N/A'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        
+                        {/* Position */}
+                        <td className="px-4 py-4">
+                          <div className="text-sm text-gray-900 font-medium">
+                            {profile.branch_field || profile.course || 'N/A'}
+                          </div>
+                        </td>
+                        
+                        {/* Status */}
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(app.application_status)}`}>
+                            <ClockIcon className="h-3 w-3 mr-1" />
+                            {app.application_status.replace('_', ' ')}
+                          </span>
+                        </td>
+                        
+                        {/* Applied */}
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {relativeTime}
+                        </td>
+                        
+                        {/* Experience */}
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {profile.course || 'N/A'}
+                        </td>
+                        
+                        {/* Rating */}
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <svg
+                                key={star}
+                                className={`h-5 w-5 ${
+                                  star <= 4 ? 'text-yellow-400' : 'text-gray-300'
+                                }`}
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                            ))}
+                          </div>
+                        </td>
+                        
+                        {/* Actions */}
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => setSelectedStudent({ ...app, profile })}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-md border border-blue-600 transition-colors"
+                              title="View Details"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-md border border-red-600 transition-colors"
+                              title="Reject"
+                            >
+                              <XCircleIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Student Detail Modal */}
+          {selectedStudent && (
+            <div className="fixed inset-0 z-60 overflow-y-auto" onClick={() => setSelectedStudent(null)}>
+              <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20">
+                <div className="fixed inset-0 bg-gray-900 bg-opacity-75"></div>
+                <div className="relative bg-white rounded-lg max-w-3xl w-full p-6" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => setSelectedStudent(null)}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                  >
+                    <XCircleIcon className="h-6 w-6" />
+                  </button>
+                  <h3 className="text-2xl font-bold mb-6">{selectedStudent.profile.name || 'Candidate Details'}</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500">Passport ID</label>
+                        <p className="mt-1 text-gray-900">{selectedStudent.profile.nm_id || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500">Registration Number</label>
+                        <p className="mt-1 text-gray-900">{selectedStudent.profile.registration_number || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500">Date of Birth</label>
+                        <p className="mt-1 text-gray-900">{selectedStudent.profile.date_of_birth || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500">Age</label>
+                        <p className="mt-1 text-gray-900">{selectedStudent.profile.age || 'N/A'}</p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Course</label>
+                      <p className="mt-1 text-gray-900">{selectedStudent.profile.course || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Branch/Field</label>
+                      <p className="mt-1 text-gray-900">{selectedStudent.profile.branch_field || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Skills</label>
+                      <p className="mt-1 text-gray-900">{selectedStudent.profile.skill || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Alternate Contact</label>
+                      <p className="mt-1 text-gray-900">{selectedStudent.profile.alternate_number || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Application Status</label>
+                      <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedStudent.application_status)}`}>
+                        {selectedStudent.application_status.replace('_', ' ').toUpperCase()}
+                      </span>
+                    </div>
+                    
+                    <div className="pt-4 border-t flex space-x-3">
+                      <button
+                        onClick={() => window.open(`mailto:${selectedStudent.profile.email}`, '_blank')}
+                        className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                      >
+                        Send Email
+                      </button>
+                      <button
+                        onClick={() => setSelectedStudent(null)}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -40,26 +40,147 @@ export interface OfferStats {
   avgCTC: string;
 }
 
+export interface OfferFilters {
+  status?: string[];
+  candidateName?: string;
+  jobTitle?: string;
+  ctcBandMin?: number;
+  ctcBandMax?: number;
+  offeredCtcMin?: number;
+  offeredCtcMax?: number;
+  offerDateFrom?: string;
+  offerDateTo?: string;
+  expiryDateFrom?: string;
+  expiryDateTo?: string;
+  templates?: string[];
+  sentVia?: string[];
+  benefits?: string[];
+}
+
+export interface OfferSortOptions {
+  field: 'inserted_at' | 'updated_at' | 'offer_date' | 'expiry_date' | 'candidate_name' | 'job_title' | 'offered_ctc' | 'status' | 'template' | 'response_date';
+  direction: 'asc' | 'desc';
+  nullsPosition?: 'first' | 'last'; // Where to place NULL values
+  secondarySort?: {
+    field: 'inserted_at' | 'updated_at' | 'offer_date' | 'expiry_date' | 'candidate_name' | 'job_title';
+    direction: 'asc' | 'desc';
+  };
+}
+
 // -------------------- HOOK --------------------
-export const useOffers = () => {
+export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
   const { user } = useAuth();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch all offers
-  const fetchOffers = async () => {
+  // Fetch offers with SQL-optimized filtering
+  const fetchOffers = async (currentFilters?: OfferFilters, currentSort?: OfferSortOptions) => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from("offers")
-        .select("*")
-        .order("inserted_at", { ascending: false });
+      // Start building the query
+      let query = supabase.from("offers").select("*");
+
+      // Apply filters at SQL level for optimization
+      if (currentFilters) {
+        // Status filter (array)
+        if (currentFilters.status && currentFilters.status.length > 0) {
+          query = query.in('status', currentFilters.status);
+        }
+
+        // Candidate name search (case-insensitive)
+        if (currentFilters.candidateName) {
+          query = query.ilike('candidate_name', `%${currentFilters.candidateName}%`);
+        }
+
+        // Job title search (case-insensitive)
+        if (currentFilters.jobTitle) {
+          query = query.ilike('job_title', `%${currentFilters.jobTitle}%`);
+        }
+
+        // Offer date range
+        if (currentFilters.offerDateFrom) {
+          query = query.gte('offer_date', currentFilters.offerDateFrom);
+        }
+        if (currentFilters.offerDateTo) {
+          query = query.lte('offer_date', currentFilters.offerDateTo);
+        }
+
+        // Expiry date range
+        if (currentFilters.expiryDateFrom) {
+          query = query.gte('expiry_date', currentFilters.expiryDateFrom);
+        }
+        if (currentFilters.expiryDateTo) {
+          query = query.lte('expiry_date', currentFilters.expiryDateTo);
+        }
+
+        // Templates filter (array)
+        if (currentFilters.templates && currentFilters.templates.length > 0) {
+          query = query.in('template', currentFilters.templates);
+        }
+
+        // Sent via filter (array)
+        if (currentFilters.sentVia && currentFilters.sentVia.length > 0) {
+          query = query.in('sent_via', currentFilters.sentVia);
+        }
+
+        // Note: CTC range and benefits filtering will be done client-side
+        // as they require parsing string values or array contains operations
+      }
+
+      // Apply sorting with advanced options
+      const sortField = currentSort?.field || 'inserted_at';
+      const sortDirection = currentSort?.direction || 'desc';
+      const nullsPosition = currentSort?.nullsPosition || 'last';
+      
+      // Apply primary sort with nulls handling
+      query = query.order(sortField, { 
+        ascending: sortDirection === 'asc',
+        nullsFirst: nullsPosition === 'first'
+      });
+      
+      // Apply secondary sort for tie-breaking (improves user experience)
+      if (currentSort?.secondarySort) {
+        query = query.order(currentSort.secondarySort.field, {
+          ascending: currentSort.secondarySort.direction === 'asc'
+        });
+      } else {
+        // Default secondary sort by inserted_at for consistent ordering
+        if (sortField !== 'inserted_at') {
+          query = query.order('inserted_at', { ascending: false });
+        }
+      }
+
+      const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
-      setOffers(data || []);
+      
+      // Client-side filtering for complex conditions
+      let filteredData = data || [];
+      
+      if (currentFilters) {
+        // CTC range filtering (client-side due to string parsing)
+        if (currentFilters.offeredCtcMin !== undefined || currentFilters.offeredCtcMax !== undefined) {
+          filteredData = filteredData.filter(offer => {
+            if (!offer.offered_ctc) return false;
+            const ctcValue = parseFloat(offer.offered_ctc.replace(/[^\d.]/g, "") || "0");
+            if (currentFilters.offeredCtcMin !== undefined && ctcValue < currentFilters.offeredCtcMin) return false;
+            if (currentFilters.offeredCtcMax !== undefined && ctcValue > currentFilters.offeredCtcMax) return false;
+            return true;
+          });
+        }
+
+        // Benefits filtering (client-side for array contains)
+        if (currentFilters.benefits && currentFilters.benefits.length > 0) {
+          filteredData = filteredData.filter(offer => 
+            offer.benefits && offer.benefits.some(b => currentFilters.benefits!.includes(b))
+          );
+        }
+      }
+
+      setOffers(filteredData);
     } catch (err: any) {
       console.error("Error fetching offers:", err);
       setError(err.message || "Failed to fetch offers");
@@ -279,10 +400,11 @@ export const useOffers = () => {
     };
   }, [offers]);
 
-  // Load offers once on mount
+  // Load offers on mount and when filters/sort change
   useEffect(() => {
-    fetchOffers();
-  }, []);
+    fetchOffers(filters, sort);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, sort]);
 
   return {
     offers,

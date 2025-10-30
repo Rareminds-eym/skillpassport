@@ -61,14 +61,20 @@ export const getRequisitionsWithStats = async () => {
 
 /**
  * Get all pipeline candidates for a requisition
+ * If requisitionId is empty, fetch all candidates from all requisitions
  */
-export const getPipelineCandidates = async (requisitionId: string) => {
+export const getPipelineCandidates = async (requisitionId?: string) => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('pipeline_candidates_detailed')
-      .select('*')
-      .eq('requisition_id', requisitionId)
-      .order('added_at', { ascending: false });
+      .select('*');
+    
+    // Only filter by requisition_id if provided
+    if (requisitionId) {
+      query = query.eq('requisition_id', requisitionId);
+    }
+    
+    const { data, error } = await query.order('added_at', { ascending: false });
 
     if (error) throw error;
     return { data, error: null };
@@ -98,6 +104,196 @@ export const getPipelineCandidatesByStage = async (requisitionId: string, stage:
     return { data, error: null };
   } catch (error) {
     console.error('Error fetching pipeline candidates by stage:', error);
+    return { data: null, error };
+  }
+};
+
+/**
+ * Get pipeline candidates with advanced filters and sorting (SQL-optimized)
+ */
+export const getPipelineCandidatesWithFilters = async (
+  requisitionId: string,
+  filters: {
+    stages?: string[]
+    skills?: string[]
+    departments?: string[]
+    locations?: string[]
+    sources?: string[]
+    aiScoreRange?: { min?: number; max?: number }
+    nextActionTypes?: string[]
+    hasNextAction?: boolean | null
+    assignedTo?: string[]
+    dateAdded?: { startDate?: string; endDate?: string }
+    lastUpdated?: { startDate?: string; endDate?: string }
+  },
+  sortOptions?: {
+    field: string
+    direction: 'asc' | 'desc'
+  }
+) => {
+  try {
+    // Start with base query
+    let query = supabase
+      .from('pipeline_candidates')
+      .select(`
+        *,
+        students (*)
+      `)
+      .eq('requisition_id', requisitionId)
+      .eq('status', 'active');
+
+    // Apply stage filters
+    if (filters.stages && filters.stages.length > 0) {
+      query = query.in('stage', filters.stages);
+    }
+
+    // Apply source filters
+    if (filters.sources && filters.sources.length > 0) {
+      query = query.in('source', filters.sources);
+    }
+
+    // Apply next action filters
+    if (filters.nextActionTypes && filters.nextActionTypes.length > 0) {
+      query = query.in('next_action', filters.nextActionTypes);
+    }
+
+    // Filter by has next action
+    if (filters.hasNextAction === true) {
+      query = query.not('next_action', 'is', null);
+    } else if (filters.hasNextAction === false) {
+      query = query.is('next_action', null);
+    }
+
+    // Apply assigned to filters
+    if (filters.assignedTo && filters.assignedTo.length > 0) {
+      query = query.in('assigned_to', filters.assignedTo);
+    }
+
+    // Apply date added filters
+    if (filters.dateAdded?.startDate) {
+      query = query.gte('added_at', filters.dateAdded.startDate);
+    }
+    if (filters.dateAdded?.endDate) {
+      query = query.lte('added_at', filters.dateAdded.endDate);
+    }
+
+    // Apply last updated filters
+    if (filters.lastUpdated?.startDate) {
+      query = query.gte('updated_at', filters.lastUpdated.startDate);
+    }
+    if (filters.lastUpdated?.endDate) {
+      query = query.lte('updated_at', filters.lastUpdated.endDate);
+    }
+
+    // Apply sorting (default to updated_at desc)
+    if (sortOptions) {
+      const { field, direction } = sortOptions;
+      const ascending = direction === 'asc';
+
+      // Map sort fields to database columns
+      switch (field) {
+        case 'candidate_name':
+          query = query.order('candidate_name', { ascending });
+          break;
+        case 'added_at':
+          query = query.order('added_at', { ascending });
+          break;
+        case 'updated_at':
+          query = query.order('updated_at', { ascending });
+          break;
+        case 'next_action_date':
+          query = query.order('next_action_date', { ascending, nullsFirst: !ascending });
+          break;
+        case 'stage_changed_at':
+          query = query.order('stage_changed_at', { ascending });
+          break;
+        case 'source':
+          query = query.order('source', { ascending });
+          break;
+        default:
+          query = query.order('updated_at', { ascending: false });
+      }
+    } else {
+      query = query.order('updated_at', { ascending: false });
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    // Apply client-side filters for student data (skills, department, location, AI score)
+    let filteredData = data || [];
+
+    // Filter by skills (check if student has any of the selected skills)
+    if (filters.skills && filters.skills.length > 0) {
+      filteredData = filteredData.filter(candidate => {
+        const studentSkills = candidate.students?.skills || [];
+        return filters.skills.some(skill => 
+          studentSkills.some((s: string) => s.toLowerCase().includes(skill.toLowerCase()))
+        );
+      });
+    }
+
+    // Filter by department
+    if (filters.departments && filters.departments.length > 0) {
+      filteredData = filteredData.filter(candidate => {
+        const dept = candidate.students?.dept || '';
+        return filters.departments.includes(dept);
+      });
+    }
+
+    // Filter by location
+    if (filters.locations && filters.locations.length > 0) {
+      filteredData = filteredData.filter(candidate => {
+        const location = candidate.students?.location || '';
+        return filters.locations.includes(location);
+      });
+    }
+
+    // Filter by AI score range
+    if (filters.aiScoreRange) {
+      filteredData = filteredData.filter(candidate => {
+        const score = candidate.students?.ai_score_overall || 0;
+        const meetsMin = filters.aiScoreRange.min ? score >= filters.aiScoreRange.min : true;
+        const meetsMax = filters.aiScoreRange.max ? score <= filters.aiScoreRange.max : true;
+        return meetsMin && meetsMax;
+      });
+    }
+
+    // Apply client-side sorting for student-related fields
+    if (sortOptions && ['ai_score', 'department', 'location'].includes(sortOptions.field)) {
+      const { field, direction } = sortOptions;
+      const multiplier = direction === 'asc' ? 1 : -1;
+
+      filteredData.sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        switch (field) {
+          case 'ai_score':
+            aValue = a.students?.ai_score_overall || 0;
+            bValue = b.students?.ai_score_overall || 0;
+            return (aValue - bValue) * multiplier;
+          
+          case 'department':
+            aValue = (a.students?.dept || '').toLowerCase();
+            bValue = (b.students?.dept || '').toLowerCase();
+            return aValue.localeCompare(bValue) * multiplier;
+          
+          case 'location':
+            aValue = (a.students?.location || '').toLowerCase();
+            bValue = (b.students?.location || '').toLowerCase();
+            return aValue.localeCompare(bValue) * multiplier;
+          
+          default:
+            return 0;
+        }
+      });
+    }
+
+    return { data: filteredData, error: null };
+  } catch (error) {
+    console.error('Error fetching pipeline candidates with filters:', error);
     return { data: null, error };
   }
 };

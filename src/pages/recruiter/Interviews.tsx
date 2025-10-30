@@ -524,7 +524,8 @@ const CandidateSearchDropdown = ({
   onSearchChange,
   onCandidateSelect,
   isOpen,
-  onBlur
+  onBlur,
+  onFocus
 }) => {
   const filteredCandidates = candidates.filter(candidate =>
     candidate.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -538,6 +539,7 @@ const CandidateSearchDropdown = ({
           type="text"
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
+          onFocus={onFocus}
           placeholder="Search candidate by name..."
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
@@ -575,6 +577,8 @@ const Interviews = () => {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [candidatesLoading, setCandidatesLoading] = useState(false);
+  const [candidatesLoaded, setCandidatesLoaded] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
   const [showScorecardModal, setShowScorecardModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -625,39 +629,56 @@ const Interviews = () => {
   };
 
   const fetchCandidates = async () => {
+    // Prevent duplicate fetches
+    if (candidatesLoaded || candidatesLoading) return;
+    
     try {
+      setCandidatesLoading(true);
       const { data, error } = await supabase
         .from('students')
-        .select('*')
-        .limit(100);
+        .select('*');
 
       if (error) throw error;
+
+      console.log('Raw students data:', data); // Debug log
 
       const formattedCandidates = data?.map(candidate => {
         const profile = typeof candidate.profile === 'string'
           ? JSON.parse(candidate.profile)
           : candidate.profile;
 
+        const candidateName = profile?.name || candidate.name || profile?.fullName || 'Unknown';
+        
+        console.log('Formatted candidate:', { // Debug log
+          id: candidate.id,
+          name: candidateName,
+          rawProfile: profile
+        });
+
         return {
           id: candidate.id,
-          name: profile?.name || 'Unknown',
+          name: candidateName,
           email: candidate.email || profile?.email || '',
-          contact_number: profile?.contact_number || '',
+          contact_number: profile?.contact_number || profile?.phone || '',
           profile: profile,
           university: profile?.university,
           course: profile?.course || (profile?.training && profile.training[0]?.course)
         };
       }) || [];
 
+      console.log('All formatted candidates:', formattedCandidates); // Debug log
       setCandidates(formattedCandidates);
+      setCandidatesLoaded(true);
     } catch (error) {
       console.error('Error fetching candidates:', error);
+    } finally {
+      setCandidatesLoading(false);
     }
   };
 
   useEffect(() => {
     fetchInterviews();
-    fetchCandidates();
+    // ⚡ Candidates data only fetched when schedule modal opens - performance optimization
   }, []);
 
   // ✅ Handle saving scorecard with notification
@@ -694,9 +715,13 @@ const Interviews = () => {
   // ✅ Handle sending reminder with notification
   const handleSendReminder = async (interview: Interview) => {
     try {
+      console.log('Sending reminder for interview:', interview);
       const { data, error } = await sendReminder(interview.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Reminder error received:', error);
+        throw error;
+      }
 
       setInterviews(prev => prev.map(int =>
         int.id === interview.id
@@ -718,7 +743,8 @@ const Interviews = () => {
       }
     } catch (error) {
       console.error('Error sending reminder:', error);
-      alert('Failed to send reminder. Please try again.');
+      const errorMessage = error?.message || error?.error?.message || 'Unknown error';
+      alert(`Failed to send reminder: ${errorMessage}\n\nCheck console for details.`);
     }
   };
 
@@ -918,18 +944,27 @@ const Interviews = () => {
           fetchInterviews();
         }}
         candidates={candidates}
+        onOpen={fetchCandidates}
+        candidatesLoading={candidatesLoading}
       />
     </div>
   );
 };
 
-const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates }) => {
+const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen, candidatesLoading }) => {
   const { user } = useAuth(); // ✅ Get auth user
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [candidateSearch, setCandidateSearch] = useState('');
   const [showCandidateDropdown, setShowCandidateDropdown] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+
+  // ⚡ Lazy load candidates when modal opens
+  useEffect(() => {
+    if (isOpen && onOpen) {
+      onOpen();
+    }
+  }, [isOpen, onOpen]);
 
   const [formData, setFormData] = useState({
     candidate_name: '',
@@ -1114,6 +1149,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates }) => {
                     onSearchChange={handleCandidateSearch}
                     onCandidateSelect={handleCandidateSelect}
                     isOpen={showCandidateDropdown}
+                    onFocus={() => setShowCandidateDropdown(true)}
                     onBlur={() => setTimeout(() => setShowCandidateDropdown(false), 200)}
                   />
                 </div>

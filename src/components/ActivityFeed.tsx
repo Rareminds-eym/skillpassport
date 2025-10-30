@@ -10,7 +10,8 @@ import {
   ArrowRightIcon,
   CheckCircleIcon,
   XCircleIcon,
-  TrashIcon
+  TrashIcon,
+  CalendarIcon
 } from '@heroicons/react/24/outline';
 
 // Format relative time (e.g., "2 hours ago")
@@ -64,6 +65,11 @@ const getActivityIcon = (iconType, type) => {
     case 'delete':
     case 'deletion':
       return <TrashIcon className={iconClass} />;
+    case 'calendar':
+    case 'interview':
+    case 'interview_completed':
+    case 'interview_cancelled':
+      return <CalendarIcon className={iconClass} />;
     default:
       return <UserPlusIcon className={iconClass} />;
   }
@@ -91,6 +97,12 @@ const getActivityColor = (type) => {
       return 'bg-gray-100 text-gray-600 ring-gray-50';
     case 'deletion':
       return 'bg-red-100 text-red-600 ring-red-50';
+    case 'interview':
+      return 'bg-indigo-100 text-indigo-600 ring-indigo-50';
+    case 'interview_completed':
+      return 'bg-green-100 text-green-600 ring-green-50';
+    case 'interview_cancelled':
+      return 'bg-orange-100 text-orange-600 ring-orange-50';
     default:
       return 'bg-primary-100 text-primary-600 ring-primary-50';
   }
@@ -181,6 +193,8 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
   
   const filteredActivities = filter === 'all' 
     ? activities 
+    : filter === 'interview'
+    ? activities.filter(a => a.type === 'interview' || a.type === 'interview_completed' || a.type === 'interview_cancelled' || a.icon === 'calendar')
     : activities.filter(a => a.type === filter || a.icon === filter);
 
   if (loading && activities.length === 0) {
@@ -213,31 +227,21 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
 
   return (
     <div className="flow-root">
-      {/* Filter and Real-time Indicator */}
-      <div className="mb-4 flex items-center justify-between gap-3">
+      {/* Filter */}
+      <div className="mb-4">
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="block flex-1 rounded-md border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          className="block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
         >
           <option value="all">All Activities</option>
           <option value="shortlist">Shortlists</option>
+          <option value="interview">Interviews</option>
           <option value="offer">Offers</option>
           <option value="placement">Placements</option>
           <option value="pipeline">Pipeline Changes</option>
           <option value="recruiter_activity">Recruiter Actions</option>
         </select>
-        
-        {/* Real-time indicator */}
-        {showRealtimeIndicator && (
-          <div className="flex items-center gap-1.5 text-xs text-green-600">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-            <span>Live</span>
-          </div>
-        )}
       </div>
 
       {/* Activity List */}

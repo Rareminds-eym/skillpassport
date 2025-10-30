@@ -41,6 +41,7 @@ import {
 } from './ProfileEditModals';
 import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
 import { useAuth } from '../../../context/AuthContext';
+import { useStudentRealtimeActivities } from '../../../hooks/useStudentRealtimeActivities';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ const Dashboard = () => {
   const [activeNavItem, setActiveNavItem] = useState('skills'); // Default to skills
   const [showAllUpdates, setShowAllUpdates] = useState(false);
 
-  // Get email from your custom auth
+  // Get student ID and email from your custom auth
   const { user } = useAuth();
   const userEmail = user?.email;
 
@@ -65,6 +66,13 @@ const Dashboard = () => {
     updateSoftSkills
   } = useStudentDataByEmail(userEmail, false); // no fallback to mock data
 
+  // Fetch real-time student activities (replaces mock recentUpdates)
+  const { 
+    activities: recentActivities, 
+    isLoading: activitiesLoading,
+    isError: activitiesError
+  } = useStudentRealtimeActivities(userEmail, 10);
+
   // Extract data with fallback to mock data
   const profile = studentData?.profile;
   const education = studentData?.education || mockEducationData;
@@ -72,7 +80,10 @@ const Dashboard = () => {
   const experience = studentData?.experience || mockExperienceData;
   const technicalSkills = studentData?.technicalSkills || mockTechnicalSkills;
   const softSkills = studentData?.softSkills || mockSoftSkills;
-  const recentUpdates = studentData?.recentUpdates || mockRecentUpdates;
+  
+  // Use real activities instead of mock data
+  const recentUpdates = recentActivities.length > 0 ? recentActivities : mockRecentUpdates;
+  
   const suggestions = studentData?.suggestions || mockSuggestions;
   const opportunities = studentData?.opportunities || mockOpportunities;
 
@@ -616,39 +627,87 @@ const Dashboard = () => {
           <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-20">
             
             {/* Recent Updates */}
-            <Card className="hover:shadow-xl transition-shadow">
+            <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
                 <CardTitle className="flex items-center gap-2 text-blue-700">
                   <Bell className="w-5 h-5" />
                   Recent Updates
+                  {recentActivities.length > 0 && (
+                    <Badge className="bg-blue-500 text-white text-xs ml-2">
+                      {recentActivities.length}
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {recentUpdates?.slice(0, showAllUpdates ? recentUpdates.length : 2).map((update, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 bg-gradient-to-r from-blue-50 to-white rounded-lg border-l-2 border-l-blue-400">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full mt-2 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{update.message}</p>
-                      <p className="text-xs text-blue-600 font-medium">{update.timestamp}</p>
-                    </div>
+              <CardContent className="space-y-3">
+                {activitiesLoading && recentActivities.length === 0 ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-600 mr-2" />
+                    <span className="text-sm text-gray-600">Loading activities...</span>
                   </div>
-                ))}
-                {recentUpdates && recentUpdates.length > 2 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                ) : recentActivities.length === 0 ? (
+                  <div className="text-center py-6">
+                    <Bell className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No recent activities yet</p>
+                    <p className="text-xs text-gray-400 mt-1">Recruiters' actions will appear here</p>
+                  </div>
+                ) : (
+                  recentUpdates?.slice(0, showAllUpdates ? recentUpdates.length : 4).map((update, index) => {
+                    // Format the activity message
+                    const message = update.message || 
+                      `${update.user} ${update.action} ${update.candidate}`;
+                    const timestamp = update.timestamp;
+                    
+                    // Determine color based on activity type
+                    const getActivityColor = (type) => {
+                      switch(type) {
+                        case 'shortlist_added': return 'from-yellow-50 to-white border-l-yellow-400';
+                        case 'offer_extended': return 'from-green-50 to-white border-l-green-400';
+                        case 'offer_accepted': return 'from-emerald-50 to-white border-l-emerald-400';
+                        case 'placement_hired': return 'from-purple-50 to-white border-l-purple-400';
+                        case 'stage_change': return 'from-indigo-50 to-white border-l-indigo-400';
+                        case 'application_rejected': return 'from-red-50 to-white border-l-red-400';
+                        default: return 'from-blue-50 to-white border-l-blue-400';
+                      }
+                    };
+                    
+                    return (
+                      <div 
+                        key={update.id || index} 
+                        className={`p-3 bg-gradient-to-r ${getActivityColor(update.type)} rounded-lg border-l-2 hover:shadow-sm transition-shadow`}
+                      >
+                        <p className="text-sm text-gray-900 font-medium">
+                          {update.user && <span className="text-blue-700">{update.user}</span>}
+                          {update.action && <span className="text-gray-600"> {update.action} </span>}
+                          {update.candidate && <span className="font-semibold">{update.candidate}</span>}
+                        </p>
+                        {update.details && (
+                          <p className="text-xs text-gray-600 mt-1">{update.details}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {typeof timestamp === 'string' && timestamp.includes('ago') 
+                            ? timestamp 
+                            : new Date(timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    );
+                  })
+                )}
+                {recentActivities.length > 4 && (
+                  <Button 
+                    variant="outline" 
                     onClick={() => setShowAllUpdates(!showAllUpdates)}
-                    className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
                   >
                     {showAllUpdates ? (
                       <>
-                        <ChevronUp className="w-4 h-4 mr-1" />
+                        <ChevronUp className="w-4 h-4 mr-2" />
                         Show Less
                       </>
                     ) : (
                       <>
-                        <ChevronDown className="w-4 h-4 mr-1" />
-                        See More ({recentUpdates.length - 2} more)
+                        <ChevronDown className="w-4 h-4 mr-2" />
+                        View All Updates ({recentActivities.length})
                       </>
                     )}
                   </Button>

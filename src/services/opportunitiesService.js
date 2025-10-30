@@ -10,24 +10,15 @@ export class OpportunitiesService {
    */
   static async getAllOpportunities() {
     try {
-      console.log('🔍 OpportunitiesService: Fetching all opportunities...');
-      
       const { data, error } = await supabase
         .from('opportunities')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('❌ OpportunitiesService Error:', error);
-        throw error;
-      }
-
-      console.log('✅ OpportunitiesService: Successfully fetched', data?.length || 0, 'opportunities');
-      console.log('📊 Raw data:', data);
-
+      if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('❌ Error in getAllOpportunities:', error);
+      console.error('Error in getAllOpportunities:', error);
       throw error;
     }
   }
@@ -45,36 +36,17 @@ export class OpportunitiesService {
     try {
       let query = supabase
         .from('opportunities')
-        .select('*');
+        .select('*')
+        .order('deadline', { ascending: true })
+        .order('created_at', { ascending: false });
 
-      // Apply filters if provided
-      if (filters.employment_type) {
-        query = query.eq('employment_type', filters.employment_type);
-      }
-
-      if (filters.location) {
-        query = query.ilike('location', `%${filters.location}%`);
-      }
-
-      if (filters.mode) {
-        query = query.eq('mode', filters.mode);
-      }
-
-      // Apply limit if provided
-      if (filters.limit) {
-        query = query.limit(filters.limit);
-      }
-
-      // Order by deadline (closest first) and creation date
-      query = query.order('deadline', { ascending: true })
-                   .order('created_at', { ascending: false });
+      if (filters.employment_type) query = query.eq('employment_type', filters.employment_type);
+      if (filters.location) query = query.ilike('location', `%${filters.location}%`);
+      if (filters.mode) query = query.eq('mode', filters.mode);
+      if (filters.limit) query = query.limit(filters.limit);
 
       const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching filtered opportunities:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       return data || [];
     } catch (error) {
@@ -90,22 +62,16 @@ export class OpportunitiesService {
    */
   static async getMatchingOpportunities(studentSkills = []) {
     try {
-      if (!studentSkills.length) {
-        return await this.getAllOpportunities();
-      }
+      if (!studentSkills.length) return await this.getAllOpportunities();
 
       const { data, error } = await supabase
         .from('opportunities')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching opportunities for matching:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      // Filter opportunities that match student skills
-      const matchingOpportunities = data?.filter(opportunity => {
+      return data?.filter(opportunity => {
         if (!opportunity.skills_required) return false;
         
         try {
@@ -113,20 +79,16 @@ export class OpportunitiesService {
             ? JSON.parse(opportunity.skills_required)
             : opportunity.skills_required;
 
-          // Check if any of the student's skills match the required skills
           return requiredSkills.some(skill => 
             studentSkills.some(studentSkill => 
               studentSkill.toLowerCase().includes(skill.toLowerCase()) ||
               skill.toLowerCase().includes(studentSkill.toLowerCase())
             )
           );
-        } catch (parseError) {
-          console.warn('Error parsing skills_required:', parseError);
+        } catch {
           return false;
         }
       }) || [];
-
-      return matchingOpportunities;
     } catch (error) {
       console.error('Error in getMatchingOpportunities:', error);
       throw error;
@@ -139,26 +101,16 @@ export class OpportunitiesService {
    */
   static async getActiveOpportunities() {
     try {
-      const currentDate = new Date().toISOString();
-      console.log('🔍 OpportunitiesService: Fetching active opportunities after', currentDate);
-      
       const { data, error } = await supabase
         .from('opportunities')
         .select('*')
-        .gte('deadline', currentDate)
+        .gte('deadline', new Date().toISOString())
         .order('deadline', { ascending: true });
 
-      if (error) {
-        console.error('❌ OpportunitiesService Error (active):', error);
-        throw error;
-      }
-
-      console.log('✅ OpportunitiesService: Found', data?.length || 0, 'active opportunities');
-      console.log('📊 Active opportunities data:', data);
-
+      if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('❌ Error in getActiveOpportunities:', error);
+      console.error('Error in getActiveOpportunities:', error);
       throw error;
     }
   }
@@ -172,16 +124,13 @@ export class OpportunitiesService {
     if (!opportunity) return null;
 
     try {
-      console.log('🎨 Formatting opportunity:', opportunity);
-      
-      let skills = [];
-      if (opportunity.skills_required) {
-        skills = typeof opportunity.skills_required === 'string' 
+      const skills = opportunity.skills_required
+        ? (typeof opportunity.skills_required === 'string' 
           ? JSON.parse(opportunity.skills_required)
-          : opportunity.skills_required;
-      }
+          : opportunity.skills_required)
+        : [];
 
-      const formatted = {
+      return {
         ...opportunity,
         skills_required: skills,
         deadline_formatted: opportunity.deadline 
@@ -195,12 +144,8 @@ export class OpportunitiesService {
           ? new Date(opportunity.deadline) > new Date()
           : true
       };
-      
-      console.log('✨ Formatted result:', formatted);
-      return formatted;
     } catch (error) {
-      console.error('❌ Error formatting opportunity:', error);
-      // Return minimal formatted data if parsing fails
+      console.error('Error formatting opportunity:', error);
       return {
         ...opportunity,
         skills_required: [],
