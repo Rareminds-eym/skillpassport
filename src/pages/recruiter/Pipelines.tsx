@@ -20,11 +20,15 @@ import { useNotifications } from '../../hooks/useNotifications';
 import {
   getRequisitions,
   getPipelineCandidatesByStage,
+  getPipelineCandidatesWithFilters,
   addCandidateToPipeline,
   moveCandidateToStage,
   updateNextAction
 } from '../../services/pipelineService';
 import { createNotification } from "../../services/notificationService";
+import PipelineAdvancedFilters from '../../components/Recruiter/components/PipelineAdvancedFilters';
+import PipelineSortMenu from '../../components/Recruiter/components/PipelineSortMenu';
+import { PipelineFilters, PipelineSortOptions } from '../../types/recruiter';
 
 // Add from Talent Pool Modal
 const AddFromTalentPoolModal = ({ isOpen, onClose, requisitionId, targetStage, onSuccess }) => {
@@ -630,6 +634,27 @@ const Pipelines = ({ onViewProfile }) => {
   const [showNextActionModal, setShowNextActionModal] = useState(false);
   const [selectedCandidateForAction, setSelectedCandidateForAction] = useState(null);
 
+  // Filter states
+  const [filters, setFilters] = useState<PipelineFilters>({
+    stages: [],
+    skills: [],
+    departments: [],
+    locations: [],
+    sources: [],
+    aiScoreRange: {},
+    nextActionTypes: [],
+    hasNextAction: null,
+    assignedTo: [],
+    dateAdded: { preset: undefined, startDate: undefined, endDate: undefined },
+    lastUpdated: { preset: undefined, startDate: undefined, endDate: undefined }
+  });
+
+  // Sort states
+  const [sortOptions, setSortOptions] = useState<PipelineSortOptions>({
+    field: 'updated_at',
+    direction: 'desc'
+  });
+
   // Set initial selected job when requisitions load
   React.useEffect(() => {
     if (!requisitionsLoading && requisitions.length > 0 && !selectedJob) {
@@ -637,53 +662,136 @@ const Pipelines = ({ onViewProfile }) => {
     }
   }, [requisitionsLoading, requisitions, selectedJob]);
 
-  // Fetch pipeline candidates when job changes
+  // Fetch pipeline candidates when job, filters, or sort changes
   React.useEffect(() => {
     if (selectedJob) {
       loadPipelineCandidates();
     }
-  }, [selectedJob]);
+  }, [selectedJob, filters, sortOptions]);
 
   const loadPipelineCandidates = async () => {
     if (!selectedJob) return;
 
-    console.log('Loading pipeline candidates for job:', selectedJob);
-    const stages = ['sourced', 'screened', 'interview_1', 'interview_2', 'offer', 'hired'];
-    const newData = {};
+    console.log('Loading pipeline candidates for job:', selectedJob, 'with filters:', filters, 'and sort:', sortOptions);
+    
+    // Check if any filters are active
+    const hasActiveFilters = 
+      filters.stages.length > 0 ||
+      filters.skills.length > 0 ||
+      filters.departments.length > 0 ||
+      filters.locations.length > 0 ||
+      filters.sources.length > 0 ||
+      filters.aiScoreRange.min !== undefined ||
+      filters.aiScoreRange.max !== undefined ||
+      filters.nextActionTypes.length > 0 ||
+      filters.hasNextAction !== null ||
+      filters.assignedTo.length > 0;
 
-    for (const stage of stages) {
-      const { data, error } = await getPipelineCandidatesByStage(selectedJob, stage);
-      console.log(`Stage ${stage}:`, { data, error });
-
+    if (hasActiveFilters) {
+      // Use filtered query with sorting
+      const { data, error } = await getPipelineCandidatesWithFilters(selectedJob, filters, sortOptions);
+      
       if (!error && data) {
-        // Map pipeline_candidates to match expected format
-        newData[stage] = data.map(pc => {
-          const mappedCandidate = {
-            id: pc.id,
-            name: pc.candidate_name || 'N/A',
-            email: pc.candidate_email || '',
-            phone: pc.candidate_phone || '',
-            dept: pc.students?.dept || 'N/A',
-            college: pc.students?.college || 'N/A',
-            location: pc.students?.location || 'N/A',
-            skills: Array.isArray(pc.students?.skills) ? pc.students.skills : [],
-            ai_score_overall: pc.students?.ai_score_overall || 0,
-            last_updated: pc.updated_at || pc.created_at,
-            student_id: pc.student_id
-          };
-          console.log('Mapped candidate:', mappedCandidate);
-          return mappedCandidate;
+        // Group by stage
+        const stages = ['sourced', 'screened', 'interview_1', 'interview_2', 'offer', 'hired'];
+        const newData = {};
+        
+        stages.forEach(stage => {
+          newData[stage] = data
+            .filter(pc => pc.stage === stage)
+            .map(pc => ({
+              id: pc.id,
+              name: pc.candidate_name || 'N/A',
+              email: pc.candidate_email || '',
+              phone: pc.candidate_phone || '',
+              dept: pc.students?.dept || 'N/A',
+              college: pc.students?.college || 'N/A',
+              location: pc.students?.location || 'N/A',
+              skills: Array.isArray(pc.students?.skills) ? pc.students.skills : [],
+              ai_score_overall: pc.students?.ai_score_overall || 0,
+              last_updated: pc.updated_at || pc.created_at,
+              student_id: pc.student_id
+            }));
         });
+        
+        console.log('Filtered pipeline data:', newData);
+        setPipelineData(newData);
       } else {
-        newData[stage] = [];
-        if (error) {
-          console.error(`Error loading ${stage} candidates:`, error);
+        console.error('Error loading filtered candidates:', error);
+      }
+    } else {
+      // Use original stage-by-stage query (no filters, but apply sorting)
+      const stages = ['sourced', 'screened', 'interview_1', 'interview_2', 'offer', 'hired'];
+      const newData = {};
+
+      // If custom sort is applied, fetch all and sort
+      if (sortOptions.field !== 'updated_at' || sortOptions.direction !== 'desc') {
+        const { data: allData, error: allError } = await getPipelineCandidatesWithFilters(
+          selectedJob, 
+          { stages: [], skills: [], departments: [], locations: [], sources: [], aiScoreRange: {}, nextActionTypes: [], hasNextAction: null, assignedTo: [], dateAdded: {}, lastUpdated: {} },
+          sortOptions
+        );
+
+        if (!allError && allData) {
+          stages.forEach(stage => {
+            newData[stage] = allData
+              .filter(pc => pc.stage === stage)
+              .map(pc => ({
+                id: pc.id,
+                name: pc.candidate_name || 'N/A',
+                email: pc.candidate_email || '',
+                phone: pc.candidate_phone || '',
+                dept: pc.students?.dept || 'N/A',
+                college: pc.students?.college || 'N/A',
+                location: pc.students?.location || 'N/A',
+                skills: Array.isArray(pc.students?.skills) ? pc.students.skills : [],
+                ai_score_overall: pc.students?.ai_score_overall || 0,
+                last_updated: pc.updated_at || pc.created_at,
+                student_id: pc.student_id
+              }));
+          });
+        }
+
+        console.log('Sorted pipeline data:', newData);
+        setPipelineData(newData);
+        return;
+      }
+
+      // Default behavior - stage by stage
+      for (const stage of stages) {
+        const { data, error } = await getPipelineCandidatesByStage(selectedJob, stage);
+        console.log(`Stage ${stage}:`, { data, error });
+
+        if (!error && data) {
+          // Map pipeline_candidates to match expected format
+          newData[stage] = data.map(pc => {
+            const mappedCandidate = {
+              id: pc.id,
+              name: pc.candidate_name || 'N/A',
+              email: pc.candidate_email || '',
+              phone: pc.candidate_phone || '',
+              dept: pc.students?.dept || 'N/A',
+              college: pc.students?.college || 'N/A',
+              location: pc.students?.location || 'N/A',
+              skills: Array.isArray(pc.students?.skills) ? pc.students.skills : [],
+              ai_score_overall: pc.students?.ai_score_overall || 0,
+              last_updated: pc.updated_at || pc.created_at,
+              student_id: pc.student_id
+            };
+            console.log('Mapped candidate:', mappedCandidate);
+            return mappedCandidate;
+          });
+        } else {
+          newData[stage] = [];
+          if (error) {
+            console.error(`Error loading ${stage} candidates:`, error);
+          }
         }
       }
-    }
 
-    console.log('Final pipeline data:', newData);
-    setPipelineData(newData);
+      console.log('Final pipeline data:', newData);
+      setPipelineData(newData);
+    }
   };
 
   const [selectedCandidates, setSelectedCandidates] = useState([]);
@@ -967,6 +1075,22 @@ const Pipelines = ({ onViewProfile }) => {
     setShowNextActionModal(true);
   };
 
+  const handleResetFilters = () => {
+    setFilters({
+      stages: [],
+      skills: [],
+      departments: [],
+      locations: [],
+      sources: [],
+      aiScoreRange: {},
+      nextActionTypes: [],
+      hasNextAction: null,
+      assignedTo: [],
+      dateAdded: { preset: undefined, startDate: undefined, endDate: undefined },
+      lastUpdated: { preset: undefined, startDate: undefined, endDate: undefined }
+    });
+  };
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
@@ -1013,9 +1137,10 @@ const Pipelines = ({ onViewProfile }) => {
         </div>
       </div>
 
-      {/* Pipeline Stats */}
+      {/* Pipeline Stats & Filters */}
       <div className="bg-gray-50 border-b border-gray-200 px-6 py-3">
-        <div className="flex items-center space-x-6 text-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-6 text-sm">
           <div className="flex items-center">
             <span className="text-gray-600">Conversion:</span>
             <span className="ml-2 font-medium">
@@ -1031,6 +1156,18 @@ const Pipelines = ({ onViewProfile }) => {
             <span className="font-medium">
               Offer → Hired ({getConversionRate('offer', 'hired')}%)
             </span>
+          </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <PipelineSortMenu
+              sortOptions={sortOptions}
+              onSortChange={setSortOptions}
+            />
+            <PipelineAdvancedFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              onReset={handleResetFilters}
+            />
           </div>
         </div>
       </div>

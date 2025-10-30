@@ -15,7 +15,10 @@ import {
   CheckCircleIcon,
   XMarkIcon,
   CalendarDaysIcon,
-  DocumentDuplicateIcon
+  DocumentDuplicateIcon,
+  ArrowsUpDownIcon,
+  ChevronUpIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import { supabase } from '../../lib/supabaseClient';
 import { 
@@ -29,6 +32,7 @@ import {
 } from '../../services/shortlistService';
 import jsPDF from 'jspdf';
 import SearchBar from '../../components/common/SearchBar';
+import AdvancedShortlistFilters, { ShortlistFilters } from '../../components/Recruiter/components/AdvancedShortlistFilters';
 
 // Define TypeScript interfaces for our data
 interface ShortlistCandidate {
@@ -1226,16 +1230,133 @@ const Shortlists = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Advanced Filters
+  const [advancedFilters, setAdvancedFilters] = useState<ShortlistFilters>({
+    dateRange: {},
+    status: [],
+    shared: 'all',
+    tags: [],
+    createdBy: [],
+    candidateCountRange: 'all'
+  });
 
-  // Fetch shortlists from Supabase
+  type ShortlistSortField = 'created_date' | 'name' | 'candidate_count' | 'shared' | 'share_expiry';
+  const [sortField, setSortField] = useState<ShortlistSortField>('created_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Fetch shortlists from Supabase with SQL-optimized filters
   const fetchShortlists = async () => {
     try {
       setLoading(true);
-      const { data, error } = await getShortlists();
 
+      const buildQuery = (from: 'shortlists_with_counts' | 'shortlists') => {
+        const baseSelect = from === 'shortlists' 
+          ? '*, shortlist_candidates(count)'
+          : '*';
+        let query = supabase.from(from).select(baseSelect as any);
+
+        // Search (server-side for name/description/creator)
+        if (searchQuery) {
+          const q = searchQuery.trim();
+          query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%,created_by.ilike.%${q}%`);
+        }
+
+        // Status filter
+        if (advancedFilters.status.length > 0) {
+          query = query.in('status', advancedFilters.status);
+        }
+
+        // Sharing filter
+        if (advancedFilters.shared === 'shared') {
+          query = query.eq('shared', true);
+        } else if (advancedFilters.shared === 'private') {
+          query = query.eq('shared', false);
+        }
+
+        // Tags (match any)
+        if (advancedFilters.tags.length > 0) {
+          // overlaps (ov) operator
+          // @ts-ignore - overlaps is supported by postgrest-js
+          query = (query as any).overlaps('tags', advancedFilters.tags);
+        }
+
+        // Created By
+        if (advancedFilters.createdBy.length > 0) {
+          query = query.in('created_by', advancedFilters.createdBy);
+        }
+
+        // Date range
+        if (advancedFilters.dateRange.startDate) {
+          query = query.gte('created_date', advancedFilters.dateRange.startDate);
+        }
+        if (advancedFilters.dateRange.endDate) {
+          query = query.lte('created_date', advancedFilters.dateRange.endDate);
+        }
+
+        // Candidate count range (only available on view)
+        if (from === 'shortlists_with_counts' && advancedFilters.candidateCountRange !== 'all') {
+          const map: Record<string, { min: number; max: number | null }> = {
+            '0': { min: 0, max: 0 },
+            '1-5': { min: 1, max: 5 },
+            '6-20': { min: 6, max: 20 },
+            '21-50': { min: 21, max: 50 },
+            '50+': { min: 51, max: null },
+            'all': { min: 0, max: null }
+          };
+          const r = map[advancedFilters.candidateCountRange];
+          if (r) {
+            // @ts-ignore candidate_count exists on the view
+            query = query.gte('candidate_count', r.min);
+            if (r.max !== null) {
+              // @ts-ignore
+              query = query.lte('candidate_count', r.max);
+            }
+          }
+        }
+
+        // Ordering
+        const asc = sortDirection === 'asc';
+        if (sortField === 'candidate_count') {
+          // Only order in SQL if view is used (field exists)
+          if (from === 'shortlists_with_counts') {
+            // @ts-ignore
+            query = query.order('candidate_count', { ascending: asc });
+          }
+        } else if (sortField === 'share_expiry') {
+          // Handle nulls last when sorting by expiry
+          // @ts-ignore
+          query = query.order('share_expiry', { ascending: asc, nullsFirst: !asc });
+        } else {
+          query = query.order(sortField, { ascending: asc });
+        }
+        return query;
+      };
+
+      // Try the optimized view first, fall back to base table if not available
+      let usingView = true;
+      let { data, error } = await buildQuery('shortlists_with_counts');
+      if (error) {
+        usingView = false;
+        ({ data, error } = await buildQuery('shortlists'));
+      }
       if (error) throw error;
 
-      setShortlists(data || []);
+      const rows = (data as any[]) || [];
+      const formatted = rows.map((item) => ({
+        ...item,
+        candidate_count: item.candidate_count ?? (item.shortlist_candidates?.[0]?.count ?? 0)
+      }));
+
+      // If ordering by candidate_count and we couldn't use view, sort on client
+      if (!usingView && sortField === 'candidate_count') {
+        formatted.sort((a: any, b: any) => {
+          const diff = (a.candidate_count || 0) - (b.candidate_count || 0);
+          return sortDirection === 'asc' ? diff : -diff;
+        });
+      }
+
+      setShortlists(formatted);
     } catch (error) {
       console.error('Error fetching shortlists:', error);
       alert('Failed to load shortlists');
@@ -1246,7 +1367,7 @@ const Shortlists = () => {
 
   useEffect(() => {
     fetchShortlists();
-  }, []);
+  }, [searchQuery, advancedFilters, sortField, sortDirection]);
 
   const handleShare = async (updatedShortlist: Shortlist) => {
     try {
@@ -1347,19 +1468,59 @@ const Shortlists = () => {
           </div>
 
           {/* Middle: centered search */}
-          <div className="flex-1 px-4">
-            <div className="max-w-xl mx-auto">
+          <div className="flex-1 px-4 flex items-center gap-3">
+            <div className="max-w-xl flex-1">
               <SearchBar
                 value={searchQuery}
                 onChange={setSearchQuery}
-                placeholder="Search shortlists by name, description, creator, or tags..."
+                placeholder="Search shortlists by name, description, or creator..."
                 size="md"
               />
             </div>
+            <AdvancedShortlistFilters
+              filters={advancedFilters}
+              onFiltersChange={setAdvancedFilters}
+              onReset={() => setAdvancedFilters({ dateRange: {}, status: [], shared: 'all', tags: [], createdBy: [], candidateCountRange: 'all' })}
+              onApply={fetchShortlists}
+            />
+            {/* Sorting Dropdown */}
+            <div className="relative">
+              <select
+                value={`${sortField}-${sortDirection}`}
+                onChange={(e) => {
+                  const [field, direction] = e.target.value.split('-');
+                  setSortField(field as any);
+                  setSortDirection(direction as 'asc' | 'desc');
+                }}
+                className="pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white text-sm"
+              >
+                <optgroup label="Date">
+                  <option value="created_date-desc">Newest First</option>
+                  <option value="created_date-asc">Oldest First</option>
+                </optgroup>
+                <optgroup label="Alphabetical">
+                  <option value="name-asc">Name (A-Z)</option>
+                  <option value="name-desc">Name (Z-A)</option>
+                </optgroup>
+                <optgroup label="Candidates">
+                  <option value="candidate_count-desc">Most Candidates</option>
+                  <option value="candidate_count-asc">Fewest Candidates</option>
+                </optgroup>
+                <optgroup label="Sharing">
+                  <option value="shared-desc">Shared First</option>
+                  <option value="shared-asc">Private First</option>
+                </optgroup>
+                <optgroup label="Expiry">
+                  <option value="share_expiry-asc">Expiring Soon</option>
+                  <option value="share_expiry-desc">Expiring Last</option>
+                </optgroup>
+              </select>
+              <ArrowsUpDownIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
           </div>
 
-          {/* Right: action buttons (fixed width) */}
-          <div className="w-80 flex-shrink-0 pl-4 flex items-center justify-end space-x-3">
+          {/* Right: action buttons */}
+          <div className="flex-shrink-0 pl-4 flex items-center justify-end space-x-3">
             <button
               onClick={() => navigate('/recruitment/talent-pool')}
               className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50"
@@ -1387,14 +1548,53 @@ const Shortlists = () => {
             <p className="text-sm text-gray-600 mt-0.5">Manage and share candidate collections</p>
           </div>
 
-          {/* Search bar */}
-          <div>
+          {/* Search + Advanced Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Search shortlists..."
               size="md"
             />
+            <AdvancedShortlistFilters
+              filters={advancedFilters}
+              onFiltersChange={setAdvancedFilters}
+              onReset={() => setAdvancedFilters({ dateRange: {}, status: [], shared: 'all', tags: [], createdBy: [], candidateCountRange: 'all' })}
+              onApply={fetchShortlists}
+            />
+            <div className="relative">
+              <select
+                value={`${sortField}-${sortDirection}`}
+                onChange={(e) => {
+                  const [field, direction] = e.target.value.split('-');
+                  setSortField(field as any);
+                  setSortDirection(direction as 'asc' | 'desc');
+                }}
+                className="pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white text-sm"
+              >
+                <optgroup label="Date">
+                  <option value="created_date-desc">Newest First</option>
+                  <option value="created_date-asc">Oldest First</option>
+                </optgroup>
+                <optgroup label="Alphabetical">
+                  <option value="name-asc">Name (A-Z)</option>
+                  <option value="name-desc">Name (Z-A)</option>
+                </optgroup>
+                <optgroup label="Candidates">
+                  <option value="candidate_count-desc">Most Candidates</option>
+                  <option value="candidate_count-asc">Fewest Candidates</option>
+                </optgroup>
+                <optgroup label="Sharing">
+                  <option value="shared-desc">Shared First</option>
+                  <option value="shared-asc">Private First</option>
+                </optgroup>
+                <optgroup label="Expiry">
+                  <option value="share_expiry-asc">Expiring Soon</option>
+                  <option value="share_expiry-desc">Expiring Last</option>
+                </optgroup>
+              </select>
+              <ArrowsUpDownIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
           </div>
 
           {/* Action buttons */}
