@@ -11,11 +11,16 @@ import StudentLayout from '../layouts/StudentLayout';
 const Home = lazy(() => import('../pages/homepage/Home'));
 const About = lazy(() => import('../pages/homepage/About'));
 const Contact = lazy(() => import('../pages/homepage/Contact'));
+const SubscriptionPlans = lazy(() => import('../pages/subscription/SubscriptionPlans'));
 
 const LoginStudent = lazy(() => import('../pages/auth/LoginStudent'));
 const LoginRecruiter = lazy(() => import('../pages/auth/LoginRecruiter'));
 const LoginAdmin = lazy(() => import('../pages/auth/LoginAdmin'));
 const Register = lazy(() => import('../pages/auth/Register'));
+const SignupStudent = lazy(() => import('../pages/auth/SignupStudent'));
+const SignupRecruiter = lazy(() => import('../pages/auth/SignupRecruiter'));
+const SignupSchool = lazy(() => import('../pages/auth/SignupSchool'));
+const SignupUniversity = lazy(() => import('../pages/auth/SignupUniversity'));
 
 const AdminDashboard = lazy(() => import('../pages/admin/Dashboard'));
 const ManageUsers = lazy(() => import('../pages/admin/ManageUsers'));
@@ -64,6 +69,11 @@ const AppRoutes = () => {
           <Route path="/login/recruiter" element={<LoginRecruiter />} />
           <Route path="/login/admin" element={<LoginAdmin />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/signup/student" element={<SignupStudent />} />
+          <Route path="/signup/recruiter" element={<SignupRecruiter />} />
+          <Route path="/signup/school" element={<SignupSchool />} />
+          <Route path="/signup/university" element={<SignupUniversity />} />
+          <Route path="/subscription" element={<SubscriptionPlans />} />
           <Route path="/debug-qr" element={<DebugQRTest />} />
           <Route path="/student/profile/:email" element={<StudentPublicViewer />} />
         </Route>

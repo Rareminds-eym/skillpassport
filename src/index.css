@@ -226,6 +226,29 @@ code {
   height: 1px;
 }
 
+
+.tab-link {
+  position: relative;
+  color: #0a6aba;
+  transition: color 0.3s ease;
+}
+
+.tab-link::before {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 3px;
+  background-color: #0a6aba; /* blue color */
+  bottom: -4px;
+  left: 0;
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+.tab-link:hover::before {
+  width: 100%;
+}
+
 /* Responsive typography scale */
 :root {
   --fs-h1: clamp(2rem, 1.6rem + 2vw, 3rem);
