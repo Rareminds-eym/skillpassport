@@ -5,7 +5,11 @@ import {
   CheckCircleIcon, 
   ClockIcon,
   ChartBarIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  PencilSquareIcon,
+  DocumentChartBarIcon,
+  TrophyIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import KPICard from '../../components/educator/KPICard';
 import { educatorApi } from '../../services/educator/mockApi';
@@ -107,6 +111,84 @@ const Dashboard = () => {
           color="purple"
           loading={loading}
         />
+      </div>
+
+      {/* Featured Modules Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Mentor Notes Module */}
+        <div 
+          onClick={() => navigate('/educator/mentornotes')}
+          className="group bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white bg-opacity-20 rounded-xl">
+              <PencilSquareIcon className="h-8 w-8" />
+            </div>
+            <ArrowRightIcon className="h-6 w-6 group-hover:translate-x-2 transition-transform" />
+          </div>
+          <h3 className="text-2xl font-bold mb-2">📝 Mentor Notes</h3>
+          <p className="text-blue-100 mb-4">Record feedback and personal observations for students</p>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1">
+              <UserGroupIcon className="h-4 w-4" />
+              <span>{kpis?.totalStudents || 0} Students</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <DocumentChartBarIcon className="h-4 w-4" />
+              <span>45 Notes</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Verification Module */}
+        <div 
+          onClick={() => navigate('/educator/activities')}
+          className="group bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-6 text-white cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white bg-opacity-20 rounded-xl">
+              <CheckCircleIcon className="h-8 w-8" />
+            </div>
+            <ArrowRightIcon className="h-6 w-6 group-hover:translate-x-2 transition-transform" />
+          </div>
+          <h3 className="text-2xl font-bold mb-2">✅ Verification</h3>
+          <p className="text-emerald-100 mb-4">Approve or reject student-submitted skill activities</p>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1">
+              <ClockIcon className="h-4 w-4" />
+              <span>{kpis?.pendingActivities || 0} Pending</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <CheckCircleIcon className="h-4 w-4" />
+              <span>{kpis?.verifiedActivities || 0} Verified</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Analytics Module */}
+        <div 
+          onClick={() => navigate('/educator/analytics')}
+          className="group bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-6 text-white cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white bg-opacity-20 rounded-xl">
+              <ChartBarIcon className="h-8 w-8" />
+            </div>
+            <ArrowRightIcon className="h-6 w-6 group-hover:translate-x-2 transition-transform" />
+          </div>
+          <h3 className="text-2xl font-bold mb-2">📊 Analytics</h3>
+          <p className="text-purple-100 mb-4">Class performance and student skill growth insights</p>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1">
+              <TrophyIcon className="h-4 w-4" />
+              <span>Top 10</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <AcademicCapIcon className="h-4 w-4" />
+              <span>6 Categories</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Skill Analytics Section */}
