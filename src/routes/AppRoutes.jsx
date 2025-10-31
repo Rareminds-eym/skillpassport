@@ -19,8 +19,8 @@ const LoginAdmin = lazy(() => import('../pages/auth/LoginAdmin'));
 const Register = lazy(() => import('../pages/auth/Register'));
 const SignupStudent = lazy(() => import('../pages/auth/SignupStudent'));
 const SignupRecruiter = lazy(() => import('../pages/auth/SignupRecruiter'));
-const SignupSchool = lazy(() => import('../pages/auth/SignupSchool'));
-const SignupUniversity = lazy(() => import('../pages/auth/SignupUniversity'));
+const SignInSchool = lazy(() => import('../pages/auth/SignInSchool'));
+const SignInUniversity = lazy(() => import('../pages/auth/SignInUniversity'));
 
 const AdminDashboard = lazy(() => import('../pages/admin/Dashboard'));
 const ManageUsers = lazy(() => import('../pages/admin/ManageUsers'));
@@ -71,8 +71,8 @@ const AppRoutes = () => {
           <Route path="/register" element={<Register />} />
           <Route path="/signup/student" element={<SignupStudent />} />
           <Route path="/signup/recruiter" element={<SignupRecruiter />} />
-          <Route path="/signup/school" element={<SignupSchool />} />
-          <Route path="/signup/university" element={<SignupUniversity />} />
+          <Route path="/signin/school" element={<SignInSchool />} />
+          <Route path="/signin/university" element={<SignInUniversity />} />
           <Route path="/subscription" element={<SubscriptionPlans />} />
           <Route path="/debug-qr" element={<DebugQRTest />} />
           <Route path="/student/profile/:email" element={<StudentPublicViewer />} />
