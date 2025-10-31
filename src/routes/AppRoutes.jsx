@@ -165,6 +165,12 @@ const AppRoutes = () => {
           <Route path="students" element={<EducatorStudents />} />
           <Route path="classes" element={<EducatorClasses />} />
           <Route path="assignments" element={<EducatorAssessments />} />
+          <Route path="mentornotes" element={<EducatorMentorNotes />} />
+          <Route path="activities" element={<EducatorActivities />} />
+          <Route path="reports" element={<EducatorReports />} />
+          <Route path="media" element={<EducatorMediaManager />} />
+          <Route path="analytics" element={<EducatorAnalytics />} />
+          <Route path="communication" element={<EducatorCommunication />} />
           <Route
             path=""
             element={<Navigate to="/educator/dashboard" replace />}
