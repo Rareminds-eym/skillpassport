@@ -1,5 +1,5 @@
 import React from 'react';
-import RecruiterSignupForm from './components/RecruiterSignupForm';
+import RecruiterSignupForm from '../RecruiterSignupForm';
 import { Link } from 'react-router-dom';
 
 const SignupRecruiter = () => {
