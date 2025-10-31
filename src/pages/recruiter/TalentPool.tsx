@@ -24,6 +24,7 @@ import { createInterview } from '../../services/interviewService';
 import { useSearch } from '../../context/SearchContext';
 import SearchBar from '../../components/common/SearchBar';
 import { createSavedSearch } from '../../services/savedSearchesService';
+import ReactPaginate from 'react-paginate';
 
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -2345,6 +2346,7 @@ const TalentPool = () => {
   const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [sortBy, setSortBy] = useState('relevance');
+  const [currentPage, setCurrentPage] = useState(0);
   const [filters, setFilters] = useState({
     skills: [],
     courses: [],
@@ -2355,6 +2357,7 @@ const TalentPool = () => {
     maxScore: 100
   });
 
+  const itemsPerPage = 10;
   const { students, loading, error } = useStudents();
 
   // Debug: Log first student to see data structure
@@ -2772,6 +2775,26 @@ const TalentPool = () => {
     return result;
   }, [students, searchQuery, filters, sortBy]);
 
+  // Pagination: Calculate paginated results
+  const paginatedStudents = useMemo(() => {
+    const startIndex = currentPage * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredAndSortedStudents.slice(startIndex, endIndex);
+  }, [filteredAndSortedStudents, currentPage, itemsPerPage]);
+
+  const pageCount = Math.ceil(filteredAndSortedStudents.length / itemsPerPage);
+
+  // Reset to page 0 when filters change
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [searchQuery, filters, sortBy]);
+
+  const handlePageChange = ({ selected }: { selected: number }) => {
+    setCurrentPage(selected);
+    // Scroll to top of results
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Clear all filters
   const handleClearFilters = () => {
     setFilters({
@@ -3042,151 +3065,239 @@ const TalentPool = () => {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Results header */}
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
+                Showing <span className="font-medium">{Math.min((currentPage * itemsPerPage) + 1, filteredAndSortedStudents.length)}</span> to <span className="font-medium">{Math.min((currentPage + 1) * itemsPerPage, filteredAndSortedStudents.length)}</span> of <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
               </p>
-              <select 
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="relevance">Sort by: Relevance</option>
-                <option value="ai_score">Sort by: AI Score</option>
-                <option value="last_updated">Sort by: Last Updated</option>
-                <option value="name">Sort by: Name</option>
-              </select>
+              <div className="flex items-center gap-3">
+                {/* Top Pagination Controls */}
+                {!loading && filteredAndSortedStudents.length > 0 && pageCount > 1 && (
+                  <ReactPaginate
+                    previousLabel="←"
+                    nextLabel="→"
+                    pageCount={pageCount}
+                    onPageChange={handlePageChange}
+                    forcePage={currentPage}
+                    containerClassName="flex items-center space-x-1"
+                    pageClassName=""
+                    pageLinkClassName="px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 hover:text-primary-600 transition-colors"
+                    previousClassName=""
+                    previousLinkClassName="px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 hover:text-primary-600 transition-colors"
+                    nextClassName=""
+                    nextLinkClassName="px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 hover:text-primary-600 transition-colors"
+                    breakLabel="..."
+                    breakClassName=""
+                    breakLinkClassName="px-2 py-1 text-xs font-medium text-gray-500"
+                    activeClassName=""
+                    activeLinkClassName="!bg-primary-600 !text-white !border-primary-600 hover:!bg-primary-700"
+                    disabledClassName="opacity-50 cursor-not-allowed"
+                    disabledLinkClassName="!cursor-not-allowed hover:!bg-white hover:!text-gray-700"
+                    pageRangeDisplayed={2}
+                    marginPagesDisplayed={1}
+                  />
+                )}
+                <select 
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="relevance">Sort by: Relevance</option>
+                  <option value="ai_score">Sort by: AI Score</option>
+                  <option value="last_updated">Sort by: Last Updated</option>
+                  <option value="name">Sort by: Name</option>
+                </select>
+              </div>
             </div>
           </div>
 
           {/* Results */}
           <div className="flex-1 overflow-y-auto p-4">
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {loading && <div className="text-sm text-gray-500">Loading students...</div>}
-                {error && <div className="text-sm text-red-600">{error}</div>}
-                {!loading && filteredAndSortedStudents.map((candidate) => (
-                  <CandidateCard
-                    key={candidate.id}
-                    candidate={candidate as any}
-                    onViewProfile={onViewProfile}
-                    onShortlist={handleShortlistClick}
-                    onScheduleInterview={handleScheduleInterviewClick}
-                  />
-                ))}
-                {!loading && filteredAndSortedStudents.length === 0 && !error && (
-                  <div className="col-span-full text-center py-8">
-                    <p className="text-sm text-gray-500">
-                      {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 
-                        ? 'No candidates match your current filters' 
-                        : 'No students found.'}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-2">
-                      Try adjusting your search terms or filters.
-                    </p>
-                    {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
-                      <button
-                        onClick={handleClearFilters}
-                        className="mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium"
-                      >
-                        Clear all filters
-                      </button>
-                    )}
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {loading && <div className="text-sm text-gray-500">Loading students...</div>}
+                  {error && <div className="text-sm text-red-600">{error}</div>}
+                  {!loading && paginatedStudents.map((candidate) => (
+                    <CandidateCard
+                      key={candidate.id}
+                      candidate={candidate as any}
+                      onViewProfile={onViewProfile}
+                      onShortlist={handleShortlistClick}
+                      onScheduleInterview={handleScheduleInterviewClick}
+                    />
+                  ))}
+                  {!loading && filteredAndSortedStudents.length === 0 && !error && (
+                    <div className="col-span-full text-center py-8">
+                      <p className="text-sm text-gray-500">
+                        {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 
+                          ? 'No candidates match your current filters' 
+                          : 'No students found.'}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-2">
+                        Try adjusting your search terms or filters.
+                      </p>
+                      {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
+                        <button
+                          onClick={handleClearFilters}
+                          className="mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium"
+                        >
+                          Clear all filters
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {/* Pagination Controls for Grid View */}
+                {!loading && filteredAndSortedStudents.length > 0 && pageCount > 1 && (
+                  <div className="mt-6 flex justify-center">
+                    <ReactPaginate
+                      previousLabel="← Previous"
+                      nextLabel="Next →"
+                      pageCount={pageCount}
+                      onPageChange={handlePageChange}
+                      forcePage={currentPage}
+                      containerClassName="flex items-center space-x-2"
+                      pageClassName=""
+                      pageLinkClassName="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-primary-600 transition-colors"
+                      previousClassName=""
+                      previousLinkClassName="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-primary-600 transition-colors"
+                      nextClassName=""
+                      nextLinkClassName="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-primary-600 transition-colors"
+                      breakLabel="..."
+                      breakClassName=""
+                      breakLinkClassName="px-3 py-2 text-sm font-medium text-gray-500"
+                      activeClassName=""
+                      activeLinkClassName="!bg-primary-600 !text-white !border-primary-600 hover:!bg-primary-700"
+                      disabledClassName="opacity-50 cursor-not-allowed"
+                      disabledLinkClassName="!cursor-not-allowed hover:!bg-white hover:!text-gray-700"
+                      pageRangeDisplayed={3}
+                      marginPagesDisplayed={1}
+                    />
                   </div>
                 )}
-              </div>
+              </>
             ) : (
-              <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Skills
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        AI Score
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Location
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredAndSortedStudents.map((candidate) => (
-                      <tr key={candidate.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {candidate.name}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {candidate.dept}
-                              </div>
-                              <BadgeComponent badges={candidate.badges} />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-1">
-                            {candidate.skills.slice(0, 3).map((skill, index) => (
-                              <span
-                                key={index}
-                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
-                              >
-                                {skill}
-                              </span>
-                            ))}
-                            {candidate.skills && candidate.skills.length > 3 && (
-                              <span className="text-xs text-gray-500">+{candidate.skills.length - 3}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <StarIcon className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                            <span className="text-sm font-medium text-gray-900">
-                              {candidate.ai_score_overall}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {candidate.location}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => onViewProfile(candidate)}
-                              className="text-primary-600 hover:text-primary-900"
-                            >
-                              View
-                            </button>
-                            <button 
-                              onClick={() => handleShortlistClick(candidate)}
-                              className="text-primary-600 hover:text-primary-900"
-                            >
-                              Shortlist
-                            </button>
-                            <button 
-                              onClick={() => handleScheduleInterviewClick(candidate)}
-                              className="text-green-600 hover:text-green-900"
-                            >
-                              Schedule
-                            </button>
-                          </div>
-                        </td>
+              <>
+                <div className="bg-white shadow-sm rounded-lg border border-gray-200">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Skills
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          AI Score
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Location
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedStudents.map((candidate) => (
+                        <tr key={candidate.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {candidate.name}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {candidate.dept}
+                                </div>
+                                <BadgeComponent badges={candidate.badges} />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-wrap gap-1">
+                              {candidate.skills.slice(0, 3).map((skill, index) => (
+                                <span
+                                  key={index}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                              {candidate.skills && candidate.skills.length > 3 && (
+                                <span className="text-xs text-gray-500">+{candidate.skills.length - 3}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <StarIcon className="h-4 w-4 text-yellow-400 fill-current mr-1" />
+                              <span className="text-sm font-medium text-gray-900">
+                                {candidate.ai_score_overall}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {candidate.location}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => onViewProfile(candidate)}
+                                className="text-primary-600 hover:text-primary-900"
+                              >
+                                View
+                              </button>
+                              <button 
+                                onClick={() => handleShortlistClick(candidate)}
+                                className="text-primary-600 hover:text-primary-900"
+                              >
+                                Shortlist
+                              </button>
+                              <button 
+                                onClick={() => handleScheduleInterviewClick(candidate)}
+                                className="text-green-600 hover:text-green-900"
+                              >
+                                Schedule
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Pagination Controls for Table View */}
+                {!loading && filteredAndSortedStudents.length > 0 && pageCount > 1 && (
+                  <div className="mt-6 flex justify-center">
+                    <ReactPaginate
+                      previousLabel="← Previous"
+                      nextLabel="Next →"
+                      pageCount={pageCount}
+                      onPageChange={handlePageChange}
+                      forcePage={currentPage}
+                      containerClassName="flex items-center space-x-2"
+                      pageClassName=""
+                      pageLinkClassName="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-primary-600 transition-colors"
+                      previousClassName=""
+                      previousLinkClassName="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-primary-600 transition-colors"
+                      nextClassName=""
+                      nextLinkClassName="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-primary-600 transition-colors"
+                      breakLabel="..."
+                      breakClassName=""
+                      breakLinkClassName="px-3 py-2 text-sm font-medium text-gray-500"
+                      activeClassName=""
+                      activeLinkClassName="!bg-primary-600 !text-white !border-primary-600 hover:!bg-primary-700"
+                      disabledClassName="opacity-50 cursor-not-allowed"
+                      disabledLinkClassName="!cursor-not-allowed hover:!bg-white hover:!text-gray-700"
+                      pageRangeDisplayed={3}
+                      marginPagesDisplayed={1}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

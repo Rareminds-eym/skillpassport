@@ -1,4 +1,4 @@
-import { useState, useMemo, ChangeEvent } from 'react';
+import React, { useState, useMemo, ChangeEvent, useEffect } from 'react';
 import {
     PlusIcon,
     MagnifyingGlassIcon,
@@ -15,69 +15,21 @@ import {
     EllipsisVerticalIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
+import {
+    createAssignment,
+    getAssignmentsByEducator,
+    updateAssignment,
+    deleteAssignment,
+    addAssignmentAttachment,
+    assignToStudents,
+    getAssignmentStatistics
+} from '../../services/educator/assignmentsService';
+import { supabase } from '../../lib/supabaseClient';
+import StudentSelectionModal from '../../components/educator/StudentSelectionModal';
 
-// Mock Data
+// Configuration
 const SKILL_AREAS = ['Creativity', 'Collaboration', 'Critical Thinking', 'Leadership', 'Communication', 'Problem Solving'];
 const CLASSES = ['Class 9A', 'Class 9B', 'Class 10A', 'Class 10B', 'Class 11A', 'Class 12A'];
-
-const mockTasks = [
-    {
-        id: 'T001',
-        title: 'Creative Problem Solving Challenge',
-        description: 'Students brainstorm innovative solutions for local environmental issues in their community.',
-        skillTags: ['Creativity', 'Critical Thinking'],
-        status: 'Active',
-        assignedTo: ['Class 9A', 'Class 10B'],
-        deadline: '2025-11-20',
-        submissions: 32,
-        pending: 8,
-        averageScore: 85,
-        totalStudents: 40,
-        attachments: ['brief.pdf', 'guidelines.docx'],
-        rubric: [
-            { criteria: 'Innovation', weight: 40 },
-            { criteria: 'Teamwork', weight: 30 },
-            { criteria: 'Presentation', weight: 30 }
-        ]
-    },
-    {
-        id: 'T002',
-        title: 'Leadership Team Project',
-        description: 'Collaborative project where students organize a school event demonstrating leadership skills.',
-        skillTags: ['Leadership', 'Collaboration'],
-        status: 'Active',
-        assignedTo: ['Class 11A'],
-        deadline: '2025-12-01',
-        submissions: 15,
-        pending: 10,
-        averageScore: 78,
-        totalStudents: 25,
-        attachments: ['rubric.pdf'],
-        rubric: [
-            { criteria: 'Leadership', weight: 50 },
-            { criteria: 'Communication', weight: 50 }
-        ]
-    },
-    {
-        id: 'T003',
-        title: 'Communication Portfolio',
-        description: 'Students create a multimedia portfolio showcasing their communication abilities.',
-        skillTags: ['Communication', 'Creativity'],
-        status: 'Draft',
-        assignedTo: ['Class 12A'],
-        deadline: '2025-11-30',
-        submissions: 0,
-        pending: 0,
-        averageScore: 0,
-        totalStudents: 30,
-        attachments: ['template.pptx'],
-        rubric: [
-            { criteria: 'Clarity', weight: 40 },
-            { criteria: 'Creativity', weight: 30 },
-            { criteria: 'Impact', weight: 30 }
-        ]
-    }
-];
 
 // Badge Component
 const StatusBadge = ({ status }: { status: string }) => {
@@ -113,7 +65,7 @@ const ProgressBar = ({ current, total, color = 'emerald' }: { current: number; t
 };
 
 // Task Card Component
-const TaskCard = ({ task, onView, onEdit, onAssess, onDelete }: { task: any; onView: (task: any) => void; onEdit: (task: any) => void; onAssess: (task: any) => void; onDelete: (task: any) => void }) => {
+const TaskCard = ({ task, onView, onEdit, onAssess, onDelete, onAssignStudents }) => {
     const [showActions, setShowActions] = useState(false);
     const completionRate = task.totalStudents > 0 ? ((task.submissions / task.totalStudents) * 100).toFixed(0) : 0;
 
@@ -144,6 +96,9 @@ const TaskCard = ({ task, onView, onEdit, onAssess, onDelete }: { task: any; onV
                             </button>
                             <button onClick={() => { onAssess(task); setShowActions(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                                 <ClipboardDocumentListIcon className="h-4 w-4" /> Assess
+                            </button>
+                            <button onClick={() => { onAssignStudents(task); setShowActions(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                                <UsersIcon className="h-4 w-4" /> Assign Students
                             </button>
                             <button onClick={() => { onDelete(task); setShowActions(false); }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
                                 <TrashIcon className="h-4 w-4" /> Delete
@@ -201,30 +156,134 @@ const TaskCard = ({ task, onView, onEdit, onAssess, onDelete }: { task: any; onV
 
 // Main Component
 const Assessments = () => {
-    const [tasks, setTasks] = useState(mockTasks);
+    const [tasks, setTasks] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [skillFilter, setSkillFilter] = useState('All');
     const [classFilter, setClassFilter] = useState('All');
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [showDetailDrawer, setShowDetailDrawer] = useState(false);
-    const [selectedTask, setSelectedTask] = useState<any>(null);
+    const [selectedTask, setSelectedTask] = useState(null);
+    const [activeTab, setActiveTab] = useState('overview');
+    const [currentEducatorId, setCurrentEducatorId] = useState(null);
+    const [showStudentSelectionModal, setShowStudentSelectionModal] = useState(false);
+    const [newlyCreatedAssignmentId, setNewlyCreatedAssignmentId] = useState(null);
 
-    // New Task Form State
+    // New Task Form State - Matching database schema
     const [newTask, setNewTask] = useState({
         title: '',
         description: '',
+        instructions: '',
+        courseName: '',
+        courseCode: '',
+        totalPoints: 100,
+        assignmentType: 'project',
         status: 'Draft',
         skillTags: [] as string[],
         assignedTo: [] as string[],
         deadline: '',
-        allowLateSubmissions: false,
-        attachments: [] as string[],
-        rubric: [{ criteria: '', weight: 100 }]
+        availableFrom: '',
+        allowLateSubmissions: true,
+        attachments: [],
+        documentPdf: ''
     });
     const [additionalSkills, setAdditionalSkills] = useState<string[]>([]);
     const [customSkill, setCustomSkill] = useState('');
     const allSkills = useMemo(() => [...SKILL_AREAS, ...additionalSkills], [additionalSkills]);
+
+    // Fetch current educator and their assignments
+    useEffect(() => {
+        const fetchEducatorAndTasks = async () => {
+            try {
+                setLoading(true);
+                
+                // Try to get current user, but don't fail if not authenticated
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                
+                // If no authenticated user, check for development mode or use fallback
+                if (!user || authError) {
+                    console.log('No authenticated user, starting with empty assignments');
+                    // For development: allow using a test educator ID from localStorage
+                    const devEducatorId = localStorage.getItem('dev_educator_id');
+                    if (devEducatorId) {
+                        console.log('Using development educator ID:', devEducatorId);
+                        setCurrentEducatorId(devEducatorId);
+                        // Try to fetch assignments with dev ID
+                        try {
+                            const assignments = await getAssignmentsByEducator(devEducatorId);
+                            const transformedTasks = await Promise.all(assignments.map(async (assignment) => {
+                                const stats = await getAssignmentStatistics(assignment.assignment_id);
+                                return {
+                                    id: assignment.assignment_id,
+                                    title: assignment.title,
+                                    description: assignment.description || '',
+                                    skillTags: assignment.skill_outcomes || [],
+                                    status: assignment.is_deleted ? 'Closed' : 'Active',
+                                    assignedTo: assignment.assign_classes ? [assignment.assign_classes] : [],
+                                    deadline: assignment.due_date,
+                                    submissions: stats.submitted + stats.graded,
+                                    pending: stats.submitted,
+                                    averageScore: stats.averageGrade,
+                                    totalStudents: stats.total,
+                                    attachments: assignment.assignment_attachments?.map(a => a.file_name) || [],
+                                    rubric: []
+                                };
+                            }));
+                            setTasks(transformedTasks);
+                        } catch (err) {
+                            console.log('No assignments found for dev educator');
+                            setTasks([]);
+                        }
+                    } else {
+                        setCurrentEducatorId(null);
+                        setTasks([]);
+                    }
+                    setError(null);
+                    setLoading(false);
+                    return;
+                }
+                
+                setCurrentEducatorId(user.id);
+                
+                // Fetch assignments for this educator
+                const assignments = await getAssignmentsByEducator(user.id);
+                
+                // Transform assignments to match the component's expected format
+                const transformedTasks = await Promise.all(assignments.map(async (assignment) => {
+                    // Fetch statistics for each assignment
+                    const stats = await getAssignmentStatistics(assignment.assignment_id);
+                    
+                    return {
+                        id: assignment.assignment_id,
+                        title: assignment.title,
+                        description: assignment.description || '',
+                        skillTags: assignment.skill_outcomes || [],
+                        status: assignment.is_deleted ? 'Closed' : 'Active', // Map to UI status
+                        assignedTo: assignment.assign_classes ? [assignment.assign_classes] : [],
+                        deadline: assignment.due_date,
+                        submissions: stats.submitted + stats.graded,
+                        pending: stats.submitted,
+                        averageScore: stats.averageGrade,
+                        totalStudents: stats.total,
+                        attachments: assignment.assignment_attachments?.map(a => a.file_name) || [],
+                        rubric: [] // You can add rubric data if stored
+                    };
+                }));
+                
+                setTasks(transformedTasks);
+                setError(null);
+            } catch (err) {
+                console.error('Error fetching assignments:', err);
+                setError('Failed to load assignments');
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        fetchEducatorAndTasks();
+    }, []);
 
     // Filtered Tasks
     const filteredTasks = useMemo(() => {
@@ -250,31 +309,118 @@ const Assessments = () => {
         return { activeTasks, totalSubmissions, totalPending, avgScore: avgScore.toFixed(1) };
     }, [tasks]);
 
-    const handleCreateTask = () => {
-        const task = {
-            id: `T${String(tasks.length + 1).padStart(3, '0')}`,
-            ...newTask,
-            submissions: 0,
-            pending: 0,
-            averageScore: 0,
-            totalStudents: 0
-        };
-        setTasks([...tasks, task]);
-        setShowTaskModal(false);
-        resetTaskForm();
+    const handleCreateTask = async () => {
+        try {
+            // Get current user info or use dev educator ID
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            
+            // Determine educator ID (auth user, current state, or dev mode)
+            let educatorId = currentEducatorId;
+            let educatorName = 'Educator';
+            
+            if (user && !authError) {
+                // Use authenticated user
+                educatorId = user.id;
+                educatorName = user.email || 'Educator';
+            } else if (!educatorId) {
+                // Check for dev educator ID or generate one
+                const devEducatorId = localStorage.getItem('dev_educator_id');
+                if (devEducatorId) {
+                    educatorId = devEducatorId;
+                    educatorName = 'Dev Educator';
+                } else {
+                    // Generate a new dev educator ID
+                    const newDevId = crypto.randomUUID();
+                    localStorage.setItem('dev_educator_id', newDevId);
+                    educatorId = newDevId;
+                    educatorName = 'Dev Educator';
+                    setCurrentEducatorId(newDevId);
+                    console.log('Generated new dev educator ID:', newDevId);
+                }
+            }
+            
+            if (!educatorId) {
+                alert('Unable to determine educator ID');
+                return;
+            }
+            
+            // Create assignment in database
+            const assignmentData = {
+                title: newTask.title,
+                description: newTask.description,
+                instructions: newTask.instructions || newTask.description,
+                course_name: newTask.courseName || 'General',
+                course_code: newTask.courseCode || '',
+                educator_id: educatorId,
+                educator_name: educatorName,
+                total_points: newTask.totalPoints,
+                assignment_type: newTask.assignmentType,
+                skill_outcomes: newTask.skillTags,
+                assign_classes: newTask.assignedTo.join(', '),
+                document_pdf: newTask.documentPdf || null,
+                due_date: newTask.deadline,
+                available_from: newTask.availableFrom || new Date().toISOString(),
+                allow_late_submission: newTask.allowLateSubmissions
+            };
+            
+            const createdAssignment = await createAssignment(assignmentData);
+            
+            // Add attachments if any
+            for (const attachment of newTask.attachments) {
+                await addAssignmentAttachment(createdAssignment.assignment_id, {
+                    file_name: attachment,
+                    file_type: 'application/pdf',
+                    file_size: 0,
+                    file_url: ''
+                });
+            }
+            
+            // Transform to UI format
+            const uiTask = {
+                id: createdAssignment.assignment_id,
+                title: createdAssignment.title,
+                description: createdAssignment.description || '',
+                skillTags: createdAssignment.skill_outcomes || [],
+                status: newTask.status,
+                assignedTo: newTask.assignedTo,
+                deadline: createdAssignment.due_date,
+                submissions: 0,
+                pending: 0,
+                averageScore: 0,
+                totalStudents: 0,
+                attachments: newTask.attachments,
+                rubric: newTask.rubric
+            };
+            
+            setTasks([...tasks, uiTask]);
+            setShowTaskModal(false);
+            
+            // Open student selection modal after creating assignment
+            setNewlyCreatedAssignmentId(createdAssignment.assignment_id);
+            setShowStudentSelectionModal(true);
+        } catch (err) {
+            console.error('Error creating assignment:', err);
+            alert('Failed to create assignment. Please try again.');
+        }
     };
 
     const resetTaskForm = () => {
         setNewTask({
             title: '',
             description: '',
+            instructions: '',
+            courseName: '',
+            courseCode: '',
+            totalPoints: 100,
+            assignmentType: 'project',
             status: 'Draft',
             skillTags: [] as string[],
             assignedTo: [] as string[],
             deadline: '',
-            allowLateSubmissions: false,
-            attachments: [] as string[],
-            rubric: [{ criteria: '', weight: 100 }]
+            availableFrom: '',
+            allowLateSubmissions: true,
+            attachments: [],
+            documentPdf: ''
         });
         setAdditionalSkills([]);
         setCustomSkill('');
@@ -328,6 +474,39 @@ const Assessments = () => {
             ]))
         }));
         event.target.value = '';
+    };
+
+    const handleStudentsAssigned = async (studentIds: string[]) => {
+        try {
+            if (newlyCreatedAssignmentId && studentIds.length > 0) {
+                await assignToStudents(newlyCreatedAssignmentId, studentIds);
+                
+                // Refresh assignment statistics
+                const stats = await getAssignmentStatistics(newlyCreatedAssignmentId);
+                
+                // Update the task in the list with new student count
+                setTasks(prev => prev.map(task => 
+                    task.id === newlyCreatedAssignmentId 
+                        ? { ...task, totalStudents: stats.total }
+                        : task
+                ));
+                
+                console.log(`Assigned ${studentIds.length} students to assignment ${newlyCreatedAssignmentId}`);
+            }
+            
+            setShowStudentSelectionModal(false);
+            setNewlyCreatedAssignmentId(null);
+            resetTaskForm();
+        } catch (err) {
+            console.error('Error assigning students:', err);
+            alert('Failed to assign students. Please try again.');
+        }
+    };
+
+    const handleStudentSelectionClose = () => {
+        setShowStudentSelectionModal(false);
+        setNewlyCreatedAssignmentId(null);
+        resetTaskForm();
     };
 
     return (
@@ -464,7 +643,24 @@ const Assessments = () => {
             </div>
 
             {/* Task Grid */}
-            {filteredTasks.length === 0 ? (
+            {loading ? (
+                <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                    <ArrowPathIcon className="h-16 w-16 text-gray-300 mx-auto mb-4 animate-spin" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Loading assignments...</h3>
+                </div>
+            ) : error ? (
+                <div className="bg-white rounded-xl border border-red-200 p-12 text-center">
+                    <ClipboardDocumentListIcon className="h-16 w-16 text-red-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-red-900 mb-2">Error loading assignments</h3>
+                    <p className="text-red-600 mb-4">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                        Retry
+                    </button>
+                </div>
+            ) : filteredTasks.length === 0 ? (
                 <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
                     <ClipboardDocumentListIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks found</h3>
@@ -491,9 +687,19 @@ const Assessments = () => {
                                 setShowTaskModal(true);
                             }}
                             onAssess={(task) => alert(`Opening assessment for: ${task.title}`)}
-                            onDelete={(task) => {
+                            onAssignStudents={(task) => {
+                                setNewlyCreatedAssignmentId(task.id);
+                                setShowStudentSelectionModal(true);
+                            }}
+                            onDelete={async (task) => {
                                 if (confirm(`Delete task "${task.title}"?`)) {
-                                    setTasks(tasks.filter(t => t.id !== task.id));
+                                    try {
+                                        await deleteAssignment(task.id);
+                                        setTasks(tasks.filter(t => t.id !== task.id));
+                                    } catch (err) {
+                                        console.error('Error deleting assignment:', err);
+                                        alert('Failed to delete assignment');
+                                    }
                                 }
                             }}
                         />
@@ -527,13 +733,14 @@ const Assessments = () => {
                                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Basic Information</h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Task Title *</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Assignment Title *</label>
                                         <input
                                             type="text"
                                             value={newTask.title}
                                             onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                             placeholder="e.g., Creative Problem Solving Challenge"
+                                            required
                                         />
                                     </div>
                                     <div>
@@ -541,34 +748,122 @@ const Assessments = () => {
                                         <textarea
                                             value={newTask.description}
                                             onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                                            rows={3}
+                                            rows={2}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                            placeholder="Describe the task objectives and expectations..."
+                                            placeholder="Brief overview of the assignment"
                                         />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
-                                            <input
-                                                type="date"
-                                                value={newTask.deadline}
-                                                onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                            <select
-                                                value={newTask.status}
-                                                onChange={(e) => setNewTask({ ...newTask, status: e.target.value })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                            >
-                                                <option value="Draft">Draft</option>
-                                                <option value="Active">Active</option>
-                                                <option value="Closed">Closed</option>
-                                            </select>
-                                        </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Instructions</label>
+                                        <textarea
+                                            value={newTask.instructions}
+                                            onChange={(e) => setNewTask({ ...newTask, instructions: e.target.value })}
+                                            rows={3}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                            placeholder="Detailed instructions for students..."
+                                        />
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Course Information */}
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900 mb-3">Course Information</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Course Name *</label>
+                                        <input
+                                            type="text"
+                                            value={newTask.courseName}
+                                            onChange={(e) => setNewTask({ ...newTask, courseName: e.target.value })}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                            placeholder="e.g., Web Development"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Course Code</label>
+                                        <input
+                                            type="text"
+                                            value={newTask.courseCode}
+                                            onChange={(e) => setNewTask({ ...newTask, courseCode: e.target.value })}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                            placeholder="e.g., CS301"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Assignment Configuration */}
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900 mb-3">Assignment Configuration</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Assignment Type *</label>
+                                        <select
+                                            value={newTask.assignmentType}
+                                            onChange={(e) => setNewTask({ ...newTask, assignmentType: e.target.value })}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        >
+                                            <option value="homework">Homework</option>
+                                            <option value="project">Project</option>
+                                            <option value="quiz">Quiz</option>
+                                            <option value="exam">Exam</option>
+                                            <option value="lab">Lab</option>
+                                            <option value="essay">Essay</option>
+                                            <option value="presentation">Presentation</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Total Points *</label>
+                                        <input
+                                            type="number"
+                                            value={newTask.totalPoints}
+                                            onChange={(e) => setNewTask({ ...newTask, totalPoints: parseFloat(e.target.value) || 100 })}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="100"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Schedule */}
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900 mb-3">Schedule</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Available From</label>
+                                        <input
+                                            type="datetime-local"
+                                            value={newTask.availableFrom}
+                                            onChange={(e) => setNewTask({ ...newTask, availableFrom: e.target.value })}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Due Date *</label>
+                                        <input
+                                            type="datetime-local"
+                                            value={newTask.deadline}
+                                            onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="mt-3">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={newTask.allowLateSubmissions}
+                                            onChange={(e) => setNewTask({ ...newTask, allowLateSubmissions: e.target.checked })}
+                                            className="rounded text-emerald-600 focus:ring-emerald-500"
+                                        />
+                                        <span className="text-sm text-gray-700">Allow late submissions</span>
+                                    </label>
                                 </div>
                             </div>
 
@@ -666,10 +961,10 @@ const Assessments = () => {
                                 </button>
                                 <button
                                     onClick={handleCreateTask}
-                                    disabled={!newTask.title || newTask.skillTags.length === 0 || newTask.assignedTo.length === 0}
+                                    disabled={!newTask.title || !newTask.courseName || !newTask.deadline || newTask.skillTags.length === 0 || newTask.assignedTo.length === 0}
                                     className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                                 >
-                                    {newTask.status === 'Active' ? 'Publish Task' : 'Save as Draft'}
+                                    {newTask.status === 'Active' ? 'Publish Assignment' : 'Save as Draft'}
                                 </button>
                             </div>
                         </div>
@@ -814,6 +1109,16 @@ const Assessments = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Student Selection Modal */}
+            {showStudentSelectionModal && newlyCreatedAssignmentId && (
+                <StudentSelectionModal
+                    isOpen={showStudentSelectionModal}
+                    onClose={handleStudentSelectionClose}
+                    onAssign={handleStudentsAssigned}
+                    assignmentId={newlyCreatedAssignmentId}
+                />
             )}
         </div>
     );
