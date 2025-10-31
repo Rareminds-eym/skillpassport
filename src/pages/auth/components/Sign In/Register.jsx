@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import loginIllustration from "../../assets/images/auth/Recruiter-illustration.png";
-import studentIllustration from "../../assets/images/auth/Student-illustration.jpg"; 
-import educatorIllustration from "../../assets/images/auth/Educator-illustration.jpg";
+import loginIllustration from "../../../../assets/images/auth/Recruiter-illustration.png";
+import studentIllustration from "../../../../assets/images/auth/Student-illustration.jpg"; 
+import educatorIllustration from "../../../../assets/images/auth/Educator-illustration.jpg";
 
 import {
   CheckCircle,
@@ -20,14 +20,19 @@ import {
   BadgeCheck,
   Share2,
   Activity,
+  Info,
+  X,
 } from "lucide-react";
-import FeatureCard from "./components/FeatureCard";
+import FeatureCard from "../ui/FeatureCard";
 
 export default function UnifiedSignup() {
   const [activeTab, setActiveTab] = useState("school");
   const [studentType, setStudentType] = useState("school");
+  const [recruitmentType, setRecruitmentType] = useState("admin");
   const [currentStep, setCurrentStep] = useState(1);
   const [subscriptionType, setSubscriptionType] = useState(null);
+  const [showAdminInfo, setShowAdminInfo] = useState(false);
+  const [showRecruiterInfo, setShowRecruiterInfo] = useState(false);
   const navigate = useNavigate();
 
   const totalSteps = 2;
@@ -49,8 +54,6 @@ export default function UnifiedSignup() {
   // Color schemes for different user types
   const primary = "#0a6aba";
   const secondary = "#09277f";
-
-
 
   // Feature cards data for each user type
   const featureCards = {
@@ -109,22 +112,37 @@ export default function UnifiedSignup() {
   const handleGetStarted = () => {
     if (activeTab === "school" || activeTab === "college") {
       if (!subscriptionType) {
-        return; // Don't proceed without subscription selection
+        return;
       }
       
       if (subscriptionType === "have") {
-        // If they have a subscription, direct them to the appropriate sign-in page
         if (studentType === "university") {
           navigate(`/signin/university`);
         } else if (studentType === "school") {
           navigate(`/signin/school`);
         }
       } else if (subscriptionType === "purchase" || subscriptionType === "view") {
-        // Redirect to subscription page with student type and mode as query parameters
         navigate(`/subscription?type=${studentType}&mode=${subscriptionType}`);
+      }
+    } else if (activeTab === "recruitment") {
+      if (recruitmentType === "admin") {
+        navigate("/signup/recruitment-admin");
+      } else {
+        navigate("/signup/recruitment-recruiter");
       }
     } else {
       navigate(`/signin/${activeTab}`);
+    }
+  };
+
+  // Function to handle info button clicks
+  const handleInfoClick = (type) => {
+    if (type === "admin") {
+      setShowRecruiterInfo(false);
+      setShowAdminInfo(!showAdminInfo);
+    } else {
+      setShowAdminInfo(false);
+      setShowRecruiterInfo(!showRecruiterInfo);
     }
   };
 
@@ -332,11 +350,114 @@ export default function UnifiedSignup() {
                   </div>
                 </div>
               )}
+              
+              {/* Recruitment Section for Mobile */}
+              {activeTab === "recruitment" && (
+                <div className="mb-6">
+                  <p className="text-white mb-3 font-medium">
+                    I am {recruitmentType === "admin" ? "an" : "a"}:
+                  </p>
+                  <div className="space-y-3">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="recruitmentTypeMobile"
+                        value="admin"
+                        checked={recruitmentType === "admin"}
+                        onChange={(e) => setRecruitmentType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-white">Admin</span>
+                      <button 
+                        type="button"
+                        onClick={() => handleInfoClick("admin")}
+                        className="text-blue-300 hover:text-blue-100 ml-auto transition-all duration-200 hover:scale-110 hover:drop-shadow-lg"
+                      >
+                        <Info className="w-4 h-4" />
+                      </button>
+                    </label>
+                    
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="recruitmentTypeMobile"
+                        value="recruiter"
+                        checked={recruitmentType === "recruiter"}
+                        onChange={(e) => setRecruitmentType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-white">Recruiter</span>
+                      <button 
+                        type="button"
+                        onClick={() => handleInfoClick("recruiter")}
+                        className="text-blue-300 hover:text-blue-100 ml-auto transition-all duration-200 hover:scale-110 hover:drop-shadow-lg"
+                      >
+                        <Info className="w-4 h-4" />
+                      </button>
+                    </label>
+                  </div>
+                  
+                  {/* Info modals for mobile */}
+                  <AnimatePresence>
+                    {showAdminInfo && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="mt-3 overflow-hidden"
+                      >
+                        <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs">
+                          <div className="flex justify-between items-start">
+                            <p>
+                              You're creating your company's workspace to generate Workspace ID
+                            </p>
+                            <button
+                              onClick={() => setShowAdminInfo(false)}
+                              className="text-white/70 hover:text-white ml-2 flex-shrink-0 transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                    
+                    {showRecruiterInfo && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="mt-3 overflow-hidden"
+                      >
+                        <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs">
+                          <div className="flex justify-between items-start">
+                            <p>
+                              Enter the Workspace ID given by your admin to join your company's workspace.
+                            </p>
+                            <button
+                              onClick={() => setShowRecruiterInfo(false)}
+                              className="text-white/70 hover:text-white ml-2 flex-shrink-0 transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+              
               <button
                 onClick={handleGetStarted}
                 className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
               >
-                Get Started
+                {activeTab === "recruitment" ? 
+                  (recruitmentType === "admin" ? "Create Workspace" : "Join Workspace") : 
+                  "Get Started"
+                }
               </button>
             </div>
           </div>
@@ -345,7 +466,7 @@ export default function UnifiedSignup() {
           <div className="relative w-full max-w-md hidden lg:block">
             {/* Tabs */}
             {currentStep === 1 && (
-              <div className="flex space-x-4 mb-16 sticky top-[40px] bg-white z-20 py-4 shadow-sm">
+              <div className="flex space-x-4 mb-16 sticky top-[40px] bg-white z-20 py-4 shadow-sm -ml-4">
                 {[
                   { id: "school", label: "School", Icon: User },
                   { id: "college", label: "College", Icon: User },
@@ -355,13 +476,13 @@ export default function UnifiedSignup() {
                   <button
                     key={id}
                     onClick={() => setActiveTab(id)}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
                       activeTab === id
                         ? "bg-blue-50 text-[#0a6aba] font-semibold shadow-sm"
                         : "text-gray-600 hover:text-[#0a6aba]"
                     }`}
                   >
-                    <Icon className="w-6 h-6" />
+                    <Icon className="w-5 h-5" />
                     <span className={`tab-link ${activeTab === id ? "text-[#0a6aba]" : ""}`}>
                       {label}
                     </span>
@@ -490,6 +611,107 @@ export default function UnifiedSignup() {
                 </>
               )}
               
+              {/* Recruitment Section for Desktop */}
+              {activeTab === "recruitment" && (
+                <div className="mb-6">
+                  <p className="text-gray-700 mb-3 font-medium">
+                    I am {recruitmentType === "admin" ? "an" : "a"}:
+                  </p>
+                  <div className="space-y-3">
+                    <label className="flex items-center space-x-3 cursor-pointer group ">
+                      <input
+                        type="radio"
+                        name="recruitmentType"
+                        value="admin"
+                        checked={recruitmentType === "admin"}
+                        onChange={(e) => setRecruitmentType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-gray-700">Admin</span>
+                      <button 
+                        type="button"
+                        onClick={() => handleInfoClick("admin")}
+                        className="text-blue-500 hover:text-blue-600 ml-auto transition-all duration-200 hover:scale-110 hover:drop-shadow-lg pl-4"
+                        title="Learn more about Admin signup"
+                      >
+                        <Info className="w-4 h-4" />
+                      </button>
+                    </label>
+                    
+                    <label className="flex items-center space-x-3 cursor-pointer group">
+                      <input
+                        type="radio"
+                        name="recruitmentType"
+                        value="recruiter"
+                        checked={recruitmentType === "recruiter"}
+                        onChange={(e) => setRecruitmentType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-gray-700">Recruiter</span>
+                      <button 
+                        type="button"
+                        onClick={() => handleInfoClick("recruiter")}
+                        className="text-blue-500 hover:text-blue-600 ml-auto transition-all duration-200 hover:scale-110 hover:drop-shadow-lg"
+                        title="Learn more about Recruiter signup"
+                      >
+                        <Info className="w-4 h-4" />
+                      </button>
+                    </label>
+                  </div>
+                  
+                  {/* Info modals for desktop */}
+                  <AnimatePresence>
+                    {showAdminInfo && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="mt-3 overflow-hidden"
+                      >
+                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 text-gray-700 text-sm">
+                          <div className="flex justify-between items-start">
+                            <p>
+                              You're creating your company's workspace to generate Workspace ID.
+                            </p>
+                            <button
+                              onClick={() => setShowAdminInfo(false)}
+                              className="text-gray-400 hover:text-gray-600 ml-6 flex-shrink-0 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                    
+                    {showRecruiterInfo && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="mt-3 overflow-hidden"
+                      >
+                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 text-gray-700 text-sm">
+                          <div className="flex justify-between items-start">
+                            <p>
+                              Enter the Workspace ID given by your admin to join your company's workspace.
+                            </p>
+                            <button
+                              onClick={() => setShowRecruiterInfo(false)}
+                              className="text-gray-400 hover:text-gray-600 ml-3 flex-shrink-0 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+              
               {(activeTab === "school" || activeTab === "college") ? (
                 <div className="flex space-x-4">
                   {currentStep > 1 && (
@@ -517,7 +739,10 @@ export default function UnifiedSignup() {
                   onClick={handleGetStarted}
                   className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                 >
-                  Get Started
+                  {activeTab === "recruitment" ? 
+                    (recruitmentType === "admin" ? "Create Workspace" : "Join Workspace") : 
+                    "Get Started"
+                  }
                 </button>
               )}
             </div>

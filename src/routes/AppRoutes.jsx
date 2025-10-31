@@ -16,14 +16,14 @@ const SubscriptionPlans = lazy(() =>
   import("../pages/subscription/SubscriptionPlans")
 );
 
-const LoginStudent = lazy(() => import("../pages/auth/LoginStudent"));
-const LoginRecruiter = lazy(() => import("../pages/auth/LoginRecruiter"));
-const LoginAdmin = lazy(() => import("../pages/auth/LoginAdmin"));
-const Register = lazy(() => import("../pages/auth/Register"));
-const SignupStudent = lazy(() => import("../pages/auth/SignupStudent"));
-const SignupRecruiter = lazy(() => import("../pages/auth/SignupRecruiter"));
-const SignInSchool = lazy(() => import('../pages/auth/SignInSchool'));
-const SignInUniversity = lazy(() => import('../pages/auth/SignInUniversity'));
+const LoginStudent = lazy(() => import('../pages/auth/LoginStudent'));
+const LoginRecruiter = lazy(() => import('../pages/auth/LoginRecruiter'));
+const LoginAdmin = lazy(() => import('../pages/auth/LoginAdmin'));
+const Register = lazy(() => import('../pages/auth/components/Sign In/Register'));
+const SignupRecruiter = lazy(() => import('../pages/auth/components/Sign In/recruitment/SignupRecruiter'));
+const SignupAdmin = lazy(() => import('../pages/auth/components/Sign In/recruitment/SignupAdmin'));
+const SignInSchool = lazy(() => import('../pages/auth/components/Sign In/schools/SignInSchool'));
+const SignInUniversity = lazy(() => import('../pages/auth/components/Sign In/university/SignInUniversity'));
 
 const AdminDashboard = lazy(() => import("../pages/admin/Dashboard"));
 const ManageUsers = lazy(() => import("../pages/admin/ManageUsers"));
@@ -82,8 +82,8 @@ const AppRoutes = () => {
           <Route path="/login/recruiter" element={<LoginRecruiter />} />
           <Route path="/login/admin" element={<LoginAdmin />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/signup/student" element={<SignupStudent />} />
-          <Route path="/signup/recruiter" element={<SignupRecruiter />} />
+          <Route path="/signup/recruitment-recruiter" element={<SignupRecruiter />} />
+          <Route path="/signup/recruitment-admin" element={<SignupAdmin />} />
           <Route path="/signin/school" element={<SignInSchool />} />
           <Route path="/signin/university" element={<SignInUniversity />} />
           <Route path="/subscription" element={<SubscriptionPlans />} />
