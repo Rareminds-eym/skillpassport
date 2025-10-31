@@ -327,3 +327,31 @@ code {
 .text-case-subtitle { font-size: clamp(1rem, 0.92rem + 0.7vw, 1.5rem); }
 /* Stat number sizing for mobile */
 .text-stat { font-size: clamp(2rem, 1.2rem + 3vw, 2.75rem); line-height: 1.1; }
+
+/* React Paginate Custom Styles */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pagination li {
+  display: inline-block;
+}
+
+.pagination li a {
+  cursor: pointer;
+  user-select: none;
+}
+
+.pagination li.disabled a {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pagination li.selected a {
+  pointer-events: none;
+}
