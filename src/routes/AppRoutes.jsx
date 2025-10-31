@@ -1,61 +1,75 @@
-import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import ProtectedRoute from '../components/ProtectedRoute';
-import Loader from '../components/Loader';
+import { lazy, Suspense } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import ProtectedRoute from "../components/ProtectedRoute";
+import Loader from "../components/Loader";
 
-import PublicLayout from '../layouts/PublicLayout';
-import AdminLayout from '../layouts/AdminLayout';
-import RecruiterLayout from '../layouts/RecruiterLayout';
-import StudentLayout from '../layouts/StudentLayout';
+import PublicLayout from "../layouts/PublicLayout";
+import AdminLayout from "../layouts/AdminLayout";
+import RecruiterLayout from "../layouts/RecruiterLayout";
+import StudentLayout from "../layouts/StudentLayout";
+import EducatorLayout from "../layouts/EducatorLayout";
 
-const Home = lazy(() => import('../pages/homepage/Home'));
-const About = lazy(() => import('../pages/homepage/About'));
-const Contact = lazy(() => import('../pages/homepage/Contact'));
-const SubscriptionPlans = lazy(() => import('../pages/subscription/SubscriptionPlans'));
+const Home = lazy(() => import("../pages/homepage/Home"));
+const About = lazy(() => import("../pages/homepage/About"));
+const Contact = lazy(() => import("../pages/homepage/Contact"));
+const SubscriptionPlans = lazy(() =>
+  import("../pages/subscription/SubscriptionPlans")
+);
 
-const LoginStudent = lazy(() => import('../pages/auth/LoginStudent'));
-const LoginRecruiter = lazy(() => import('../pages/auth/LoginRecruiter'));
-const LoginAdmin = lazy(() => import('../pages/auth/LoginAdmin'));
-const Register = lazy(() => import('../pages/auth/Register'));
-const SignupStudent = lazy(() => import('../pages/auth/SignupStudent'));
-const SignupRecruiter = lazy(() => import('../pages/auth/SignupRecruiter'));
+const LoginStudent = lazy(() => import("../pages/auth/LoginStudent"));
+const LoginRecruiter = lazy(() => import("../pages/auth/LoginRecruiter"));
+const LoginAdmin = lazy(() => import("../pages/auth/LoginAdmin"));
+const Register = lazy(() => import("../pages/auth/Register"));
+const SignupStudent = lazy(() => import("../pages/auth/SignupStudent"));
+const SignupRecruiter = lazy(() => import("../pages/auth/SignupRecruiter"));
 const SignInSchool = lazy(() => import('../pages/auth/SignInSchool'));
 const SignInUniversity = lazy(() => import('../pages/auth/SignInUniversity'));
 
-const AdminDashboard = lazy(() => import('../pages/admin/Dashboard'));
-const ManageUsers = lazy(() => import('../pages/admin/ManageUsers'));
-const Reports = lazy(() => import('../pages/admin/Reports'));
+const AdminDashboard = lazy(() => import("../pages/admin/Dashboard"));
+const ManageUsers = lazy(() => import("../pages/admin/ManageUsers"));
+const Reports = lazy(() => import("../pages/admin/Reports"));
 
 // Recruiter pages
-const RecruiterProfile = lazy(() => import('../pages/recruiter/Profile'));
+const RecruiterProfile = lazy(() => import("../pages/recruiter/Profile"));
 const RecruiterSettings = lazy(() => import("../pages/recruiter/Settings"));
-const Overview = lazy(() => import('../pages/recruiter/Overview'));
-const Requisitions = lazy(() => import('../pages/recruiter/Requisitions'));
-const ApplicantsList = lazy(() => import('../pages/recruiter/ApplicantsList'));
-const TalentPool = lazy(() => import('../pages/recruiter/TalentPool'));
-const Pipelines = lazy(() => import('../pages/recruiter/Pipelines'));
-const Shortlists = lazy(() => import('../pages/recruiter/Shortlists'));
-const Interviews = lazy(() => import('../pages/recruiter/Interviews'));
-const OffersDecisions = lazy(() => import('../pages/recruiter/OffersDecisions'));
-const Analytics = lazy(() => import('../pages/recruiter/Analytics'));
-const Activities = lazy(() => import('../pages/recruiter/Activities'));
-const RecruiterMessages = lazy(() => import('../pages/recruiter/Messages'));
+const Overview = lazy(() => import("../pages/recruiter/Overview"));
+const Requisitions = lazy(() => import("../pages/recruiter/Requisitions"));
+const ApplicantsList = lazy(() => import("../pages/recruiter/ApplicantsList"));
+const TalentPool = lazy(() => import("../pages/recruiter/TalentPool"));
+const Pipelines = lazy(() => import("../pages/recruiter/Pipelines"));
+const Shortlists = lazy(() => import("../pages/recruiter/Shortlists"));
+const Interviews = lazy(() => import("../pages/recruiter/Interviews"));
+const OffersDecisions = lazy(() =>
+  import("../pages/recruiter/OffersDecisions")
+);
+const Analytics = lazy(() => import("../pages/recruiter/Analytics"));
+const Activities = lazy(() => import("../pages/recruiter/Activities"));
+const RecruiterMessages = lazy(() => import("../pages/recruiter/Messages"));
 
-const StudentDashboard = lazy(() => import('../pages/student/Dashboard'));
-const Profile = lazy(() => import('../pages/student/Profile'));
-const MySkills = lazy(() => import('../pages/student/MySkills'));
-const MyTraining = lazy(() => import('../pages/student/MyTraining'));
-const MyExperience = lazy(() => import('../pages/student/MyExperience'));
-const Opportunities = lazy(() => import('../pages/student/Opportunities'));
-const SavedJobs = lazy(() => import('../pages/student/SavedJobs'));
-const Applications = lazy(() => import('../pages/student/Applications'));
-const AppliedJobs = lazy(() => import('../pages/student/AppliedJobs'));
-const BrowseJobs = lazy(() => import('../pages/student/BrowseJobs'));
-const Messages = lazy(() => import('../pages/student/Messages'));
-const StudentAnalytics = lazy(() => import('../pages/student/Analytics'));
-const DebugQRTest = lazy(() => import('../pages/DebugQRTest'));
-const StudentPublicViewer = lazy(() => import('../components/Students/components/StudentPublicViewer'));
-const Settings = lazy(() => import('../pages/student/Settings'));
+const StudentDashboard = lazy(() => import("../pages/student/Dashboard"));
+const Profile = lazy(() => import("../pages/student/Profile"));
+const MySkills = lazy(() => import("../pages/student/MySkills"));
+const MyTraining = lazy(() => import("../pages/student/MyTraining"));
+const MyExperience = lazy(() => import("../pages/student/MyExperience"));
+const Opportunities = lazy(() => import("../pages/student/Opportunities"));
+const SavedJobs = lazy(() => import("../pages/student/SavedJobs"));
+const Applications = lazy(() => import("../pages/student/Applications"));
+const AppliedJobs = lazy(() => import("../pages/student/AppliedJobs"));
+const BrowseJobs = lazy(() => import("../pages/student/BrowseJobs"));
+const Messages = lazy(() => import("../pages/student/Messages"));
+const StudentAnalytics = lazy(() => import("../pages/student/Analytics"));
+const DebugQRTest = lazy(() => import("../pages/DebugQRTest"));
+const StudentPublicViewer = lazy(() =>
+  import("../components/Students/components/StudentPublicViewer")
+);
+const Settings = lazy(() => import("../pages/student/Settings"));
+
+// Educator pages
+const EducatorDashboard = lazy(() => import("../pages/educator/Dashboard"));
+const EducatorLogin = lazy(() => import("../pages/auth/LoginEducator"));
+const EducatorStudents = lazy(() => import("../pages/educator/StudentsPage"));
+const EducatorClasses = lazy(() => import("../pages/educator/ClassesPage"));
+const EducatorAssessments = lazy(() => import("../pages/educator/Assessments"));
 
 const AppRoutes = () => {
   return (
@@ -81,7 +95,7 @@ const AppRoutes = () => {
         <Route
           path="/admin/*"
           element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={["admin"]}>
               <AdminLayout />
             </ProtectedRoute>
           }
@@ -95,7 +109,7 @@ const AppRoutes = () => {
         <Route
           path="/recruitment/*"
           element={
-            <ProtectedRoute allowedRoles={['recruiter']}>
+            <ProtectedRoute allowedRoles={["recruiter"]}>
               <RecruiterLayout />
             </ProtectedRoute>
           }
@@ -111,16 +125,19 @@ const AppRoutes = () => {
           <Route path="analytics" element={<Analytics />} />
           <Route path="activities" element={<Activities />} />
           <Route path="messages" element={<RecruiterMessages />} />
-           <Route path="profile" element={<RecruiterProfile />} />
+          <Route path="profile" element={<RecruiterProfile />} />
           <Route path="settings" element={<RecruiterSettings />} />
 
-          <Route path="*" element={<Navigate to="/recruitment/overview" replace />} />
+          <Route
+            path="*"
+            element={<Navigate to="/recruitment/overview" replace />}
+          />
         </Route>
 
         <Route
           path="/student/*"
           element={
-            <ProtectedRoute allowedRoles={['student']}>
+            <ProtectedRoute allowedRoles={["student"]}>
               <StudentLayout />
             </ProtectedRoute>
           }
@@ -140,7 +157,23 @@ const AppRoutes = () => {
           <Route path="messages" element={<Messages />} />
           <Route path="settings" element={<Settings />} />
           <Route path="analytics" element={<StudentAnalytics />} />
-          <Route path="" element={<Navigate to="/student/dashboard" replace />} />
+          <Route
+            path=""
+            element={<Navigate to="/student/dashboard" replace />}
+          />
+        </Route>
+
+        {/* Educator routes - no authentication required for now (mock data) */}
+        <Route path="/educator/login" element={<EducatorLogin />} />
+        <Route path="/educator/*" element={<EducatorLayout />}>
+          <Route path="dashboard" element={<EducatorDashboard />} />
+          <Route path="students" element={<EducatorStudents />} />
+          <Route path="classes" element={<EducatorClasses />} />
+          <Route path="assignments" element={<EducatorAssessments />} />
+          <Route
+            path=""
+            element={<Navigate to="/educator/dashboard" replace />}
+          />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

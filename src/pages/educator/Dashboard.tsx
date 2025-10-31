@@ -1,0 +1,219 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  UserGroupIcon, 
+  CheckCircleIcon, 
+  ClockIcon,
+  ChartBarIcon,
+  ArrowRightIcon
+} from '@heroicons/react/24/outline';
+import KPICard from '../../components/educator/KPICard';
+import { educatorApi } from '../../services/educator/mockApi';
+import { Activity } from '../../data/educator/mockActivities';
+
+interface DashboardKPIs {
+  totalStudents: number;
+  activeStudents: number;
+  pendingActivities: number;
+  verifiedActivities: number;
+  totalActivities: number;
+  verificationRate: number;
+  recentActivitiesCount: number;
+}
+
+const Dashboard = () => {
+  const navigate = useNavigate();
+  const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
+  const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [kpisData, activitiesData] = await Promise.all([
+        educatorApi.dashboard.getKPIs(),
+        educatorApi.activities.getAll(),
+      ]);
+      
+      setKpis(kpisData);
+      // Get the 5 most recent activities
+      const sorted = [...activitiesData].sort(
+        (a, b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime()
+      );
+      setRecentActivities(sorted.slice(0, 5));
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const badges = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      verified: 'bg-green-100 text-green-800',
+      rejected: 'bg-red-100 text-red-800',
+    };
+    return badges[status as keyof typeof badges] || badges.pending;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(
+      Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+      'day'
+    );
+  };
+
+  return (
+    <div className="space-y-8" data-testid="educator-dashboard">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p className="mt-2 text-gray-600">Welcome back! Here's what's happening with your students.</p>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <KPICard
+          title="Total Students"
+          value={kpis?.totalStudents || 0}
+          icon={<UserGroupIcon className="h-6 w-6" />}
+          color="blue"
+          loading={loading}
+        />
+        <KPICard
+          title="Pending Reviews"
+          value={kpis?.pendingActivities || 0}
+          icon={<ClockIcon className="h-6 w-6" />}
+          color="yellow"
+          loading={loading}
+        />
+        <KPICard
+          title="Verified Activities"
+          value={kpis?.verifiedActivities || 0}
+          icon={<CheckCircleIcon className="h-6 w-6" />}
+          color="green"
+          loading={loading}
+        />
+        <KPICard
+          title="Verification Rate"
+          value={`${kpis?.verificationRate || 0}%`}
+          icon={<ChartBarIcon className="h-6 w-6" />}
+          color="purple"
+          loading={loading}
+        />
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <button
+            onClick={() => navigate('/educator/activities')}
+            className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all"
+            data-testid="quick-action-verify"
+          >
+            <div className="flex items-center space-x-3">
+              <CheckCircleIcon className="h-6 w-6 text-indigo-600" />
+              <span className="font-medium text-gray-900">Verify Activities</span>
+            </div>
+            <ArrowRightIcon className="h-5 w-5 text-gray-400" />
+          </button>
+
+          <button
+            onClick={() => navigate('/educator/students')}
+            className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all"
+            data-testid="quick-action-students"
+          >
+            <div className="flex items-center space-x-3">
+              <UserGroupIcon className="h-6 w-6 text-indigo-600" />
+              <span className="font-medium text-gray-900">View Students</span>
+            </div>
+            <ArrowRightIcon className="h-5 w-5 text-gray-400" />
+          </button>
+
+          <button
+            onClick={() => navigate('/educator/import')}
+            className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all"
+            data-testid="quick-action-import"
+          >
+            <div className="flex items-center space-x-3">
+              <svg className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <span className="font-medium text-gray-900">Import Students</span>
+            </div>
+            <ArrowRightIcon className="h-5 w-5 text-gray-400" />
+          </button>
+
+          <button
+            onClick={() => navigate('/educator/reports')}
+            className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all"
+            data-testid="quick-action-reports"
+          >
+            <div className="flex items-center space-x-3">
+              <ChartBarIcon className="h-6 w-6 text-indigo-600" />
+              <span className="font-medium text-gray-900">View Reports</span>
+            </div>
+            <ArrowRightIcon className="h-5 w-5 text-gray-400" />
+          </button>
+        </div>
+      </div>
+
+      {/* Recent Activities Feed */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">Recent Activity Submissions</h2>
+          <button
+            onClick={() => navigate('/educator/activities')}
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+            data-testid="view-all-activities"
+          >
+            View All
+          </button>
+        </div>
+        <div className="divide-y divide-gray-200">
+          {loading ? (
+            <div className="p-6 text-center text-gray-500">Loading activities...</div>
+          ) : recentActivities.length === 0 ? (
+            <div className="p-6 text-center text-gray-500" data-testid="empty-activities">
+              No recent activities
+            </div>
+          ) : (
+            recentActivities.map((activity) => (
+              <div
+                key={activity.id}
+                className="p-6 hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => navigate(`/educator/activities/${activity.id}`)}
+                data-testid="activity-item"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <h3 className="text-base font-medium text-gray-900">{activity.title}</h3>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(activity.status)}`}>
+                        {activity.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">{activity.studentName} • {activity.category}</p>
+                    <p className="text-sm text-gray-500 line-clamp-2">{activity.description}</p>
+                  </div>
+                  <span className="text-sm text-gray-500 whitespace-nowrap ml-4">
+                    {formatDate(activity.submittedDate)}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
