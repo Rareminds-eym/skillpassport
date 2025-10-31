@@ -115,16 +115,16 @@ export default function UnifiedSignup() {
       if (subscriptionType === "have") {
         // If they have a subscription, direct them to the appropriate sign-in page
         if (studentType === "university") {
-          navigate(`/signup/university`);
+          navigate(`/signin/university`);
         } else if (studentType === "school") {
-          navigate(`/signup/school`);
+          navigate(`/signin/school`);
         }
       } else if (subscriptionType === "purchase" || subscriptionType === "view") {
         // Redirect to subscription page with student type and mode as query parameters
         navigate(`/subscription?type=${studentType}&mode=${subscriptionType}`);
       }
     } else {
-      navigate(`/signup/${activeTab}`);
+      navigate(`/signin/${activeTab}`);
     }
   };
 
