@@ -44,7 +44,9 @@ const RecruiterProfile = lazy(() => import("../pages/recruiter/Profile"));
 const RecruiterSettings = lazy(() => import("../pages/recruiter/Settings"));
 const Overview = lazy(() => import("../pages/recruiter/Overview"));
 const Requisitions = lazy(() => import("../pages/recruiter/Requisitions"));
-const ApplicantsList = lazy(() => import("../pages/recruiter/ApplicantsList"));
+const ApplicantsList = lazy(() =>
+  import("../pages/recruiter/ApplicantsList")
+);
 const TalentPool = lazy(() => import("../pages/recruiter/TalentPool"));
 const Pipelines = lazy(() => import("../pages/recruiter/Pipelines"));
 const Shortlists = lazy(() => import("../pages/recruiter/Shortlists"));
@@ -54,7 +56,9 @@ const OffersDecisions = lazy(() =>
 );
 const Analytics = lazy(() => import("../pages/recruiter/Analytics"));
 const Activities = lazy(() => import("../pages/recruiter/Activities"));
-const RecruiterMessages = lazy(() => import("../pages/recruiter/Messages"));
+const RecruiterMessages = lazy(() =>
+  import("../pages/recruiter/Messages")
+);
 
 const StudentDashboard = lazy(() => import("../pages/student/Dashboard"));
 const Profile = lazy(() => import("../pages/student/Profile"));
@@ -80,8 +84,12 @@ const EducatorDashboard = lazy(() => import("../pages/educator/Dashboard"));
 const EducatorLogin = lazy(() => import("../pages/auth/LoginEducator"));
 const EducatorStudents = lazy(() => import("../pages/educator/StudentsPage"));
 const EducatorClasses = lazy(() => import("../pages/educator/ClassesPage"));
-const EducatorAssessments = lazy(() => import("../pages/educator/Assessments"));
-const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
+const EducatorAssessments = lazy(() =>
+  import("../pages/educator/Assessments")
+);
+const EducatorMentorNotes = lazy(() =>
+  import("../pages/educator/MentorNotes")
+);
 
 const AppRoutes = () => {
   return (
@@ -146,7 +154,6 @@ const AppRoutes = () => {
           <Route path="messages" element={<RecruiterMessages />} />
           <Route path="profile" element={<RecruiterProfile />} />
           <Route path="settings" element={<RecruiterSettings />} />
-
           <Route
             path="*"
             element={<Navigate to="/recruitment/overview" replace />}
@@ -183,7 +190,6 @@ const AppRoutes = () => {
           />
         </Route>
 
-        {/* Educator routes - no authentication required for now (mock data) */}
         <Route path="/educator/*" element={<EducatorLayout />}>
           <Route path="dashboard" element={<EducatorDashboard />} />
           <Route path="students" element={<EducatorStudents />} />
