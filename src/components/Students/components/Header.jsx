@@ -47,6 +47,7 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: "experience", label: "My Experience" },
     { id: "opportunities", label: "Opportunities" },
     { id: "applications", label: "Applications" },
+    { id: "assignments", label: "Assignments" },
     { id: "messages", label: "Messages" },
     { id: "analytics", label: "Analytics" },
   ];
@@ -100,6 +101,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/opportunities");
                   } else if (tab.id === "applications") {
                     navigate("/student/applications");
+                  } else if (tab.id === "assignments") {
+                    navigate("/student/assignments");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
                   } else if (tab.id === "analytics") {
@@ -231,6 +234,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                   navigate("/student/opportunities");
                 } else if (tab.id === "applications") {
                   navigate("/student/applications");
+                } else if (tab.id === "assignments") {
+                  navigate("/student/assignments");
                 } else if (tab.id === "messages") {
                   navigate("/student/messages");
                 } else if (tab.id === "analytics") {

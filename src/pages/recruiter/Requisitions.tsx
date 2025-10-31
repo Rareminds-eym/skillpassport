@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
-  FunnelIcon,
   EllipsisVerticalIcon,
   PencilIcon,
   TrashIcon,
@@ -12,7 +11,6 @@ import {
   ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ChatBubbleLeftRightIcon,
   DocumentTextIcon,
   MapPinIcon,
   CurrencyDollarIcon,
@@ -30,9 +28,7 @@ import { useAuth } from '../../context/AuthContext';
 interface Opportunity {
   id: string;
   job_title: string;
-  title: string; // Keep for backward compatibility
-  company_name: string;
-  company_logo?: string;
+  title: string;
   department: string;
   location: string;
   employment_type: 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
@@ -41,24 +37,17 @@ interface Opportunity {
   salary_range_max?: number;
   status: 'draft' | 'open' | 'closed' | 'on_hold';
   posted_date: string;
-  closing_date?: string;
   description: string;
   requirements: string[];
   responsibilities: string[];
-  benefits?: string[];
   applications_count: number;
   messages_count: number;
   views_count: number;
   created_by: string;
   created_at: string;
   updated_at: string;
-  mode?: string;
-  stipend_or_salary?: string;
-  experience_required?: string;
-  skills_required?: any[];
-  application_link?: string;
-  deadline?: string;
   is_active?: boolean;
+  recruiter_id?: string;
 }
 
 const Requisitions = () => {
@@ -74,6 +63,8 @@ const Requisitions = () => {
   const [showMessagesModal, setShowMessagesModal] = useState(false);
   const [selectedRequisition, setSelectedRequisition] = useState<Opportunity | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [recruiters, setRecruiters] = useState<any[]>([]);
+  const [currentRecruiterId, setCurrentRecruiterId] = useState<string | null>(null);
   
   // Sorting State
   const [sortField, setSortField] = useState<string>('created_at');
@@ -91,10 +82,58 @@ const Requisitions = () => {
     applicationCountRange: 'all'
   });
 
+  // Load recruiters and current recruiter
+  useEffect(() => {
+    loadRecruiters();
+    loadCurrentRecruiter();
+  }, [user]);
+
   // Load requisitions from Supabase
   useEffect(() => {
     loadRequisitions();
   }, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection]);
+
+  const loadRecruiters = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('recruiters')
+        .select('id, name, email')
+        .eq('isactive', true)
+        .order('name');
+
+      if (error) {
+        console.error('Error loading recruiters:', error);
+        return;
+      }
+
+      setRecruiters(data || []);
+    } catch (error) {
+      console.error('Error loading recruiters:', error);
+    }
+  };
+
+  const loadCurrentRecruiter = async () => {
+    if (!user?.email) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('recruiters')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+
+      if (error) {
+        console.error('Error loading current recruiter:', error);
+        return;
+      }
+
+      if (data) {
+        setCurrentRecruiterId(data.id);
+      }
+    } catch (error) {
+      console.error('Error loading current recruiter:', error);
+    }
+  };
 
   const loadRequisitions = async () => {
     setLoading(true);
@@ -206,10 +245,10 @@ const Requisitions = () => {
   const createRequisition = async (requisitionData: any): Promise<Opportunity> => {
     const { data, error } = await supabase
       .from('opportunities')
-      .insert([{
+      .insert({
         title: requisitionData.job_title,
         job_title: requisitionData.job_title,
-        company_name: 'Your Company', // Set appropriate company name
+        company_name: 'Company Name',
         department: requisitionData.department,
         location: requisitionData.location,
         employment_type: requisitionData.employment_type,
@@ -220,14 +259,14 @@ const Requisitions = () => {
         description: requisitionData.description,
         requirements: requisitionData.requirements,
         responsibilities: requisitionData.responsibilities,
-        benefits: requisitionData.benefits,
         applications_count: 0,
         messages_count: 0,
         views_count: 0,
         created_by: user?.id,
         posted_date: new Date().toISOString(),
-        is_active: requisitionData.status === 'open'
-      }])
+        is_active: requisitionData.status === 'open',
+        recruiter_id: requisitionData.recruiter_id
+      })
       .select()
       .single();
 
@@ -261,8 +300,6 @@ const Requisitions = () => {
     if (error) throw error;
   };
 
-  // All filtering now happens in SQL query for better performance
-  const filteredRequisitions = requisitions;
 
   const handleResetFilters = () => {
     setAdvancedFilters({
@@ -348,7 +385,7 @@ const Requisitions = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Job Requisitions</h1>
             <p className="text-sm text-gray-500 mt-1">
-              {filteredRequisitions.length} requisition{filteredRequisitions.length !== 1 ? 's' : ''}
+              {requisitions.length} requisition{requisitions.length !== 1 ? 's' : ''}
             </p>
           </div>
           <button
@@ -374,9 +411,9 @@ const Requisitions = () => {
           </div>
           
           {/* Results Count & Sort Info */}
-          {filteredRequisitions.length > 0 && (
+          {requisitions.length > 0 && (
             <div className="hidden md:flex items-center px-3 py-2 bg-gray-100 rounded-md text-xs text-gray-600">
-              <span className="font-medium">{filteredRequisitions.length}</span>
+              <span className="font-medium">{requisitions.length}</span>
               <span className="mx-1">results</span>
               {sortField && (
                 <>
@@ -485,7 +522,7 @@ const Requisitions = () => {
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
           </div>
-        ) : filteredRequisitions.length === 0 ? (
+        ) : requisitions.length === 0 ? (
           <div className="text-center py-12">
             <BriefcaseSolidIcon className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No requisitions found</h3>
@@ -508,7 +545,7 @@ const Requisitions = () => {
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredRequisitions.map((req) => (
+            {requisitions.map((req) => (
               <RequisitionCard
                 key={req.id}
                 requisition={req}
@@ -600,7 +637,7 @@ const Requisitions = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredRequisitions.map((req) => (
+                {requisitions.map((req) => (
                   <tr key={req.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -693,6 +730,8 @@ const Requisitions = () => {
       {/* Modals */}
       {showCreateModal && (
         <CreateRequisitionModal
+          recruiters={recruiters}
+          currentRecruiterId={currentRecruiterId}
           onClose={() => setShowCreateModal(false)}
           onSuccess={async (newReqData) => {
             try {
@@ -710,6 +749,7 @@ const Requisitions = () => {
       {showEditModal && selectedRequisition && (
         <EditRequisitionModal
           requisition={selectedRequisition}
+          recruiters={recruiters}
           onClose={() => {
             setShowEditModal(false);
             setSelectedRequisition(null);
@@ -878,7 +918,7 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
 };
 
 // Modal Components (unchanged - they already work with the interface)
-const CreateRequisitionModal = ({ onClose, onSuccess }: any) => {
+const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuccess }: any) => {
   const [formData, setFormData] = useState({
     job_title: '',
     department: '',
@@ -890,7 +930,8 @@ const CreateRequisitionModal = ({ onClose, onSuccess }: any) => {
     description: '',
     requirements: '',
     responsibilities: '',
-    status: 'draft'
+    status: 'draft',
+    recruiter_id: currentRecruiterId || ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1016,6 +1057,25 @@ const CreateRequisitionModal = ({ onClose, onSuccess }: any) => {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Recruiter <span className="text-red-500">*</span>
+              </label>
+              <select
+                required
+                value={formData.recruiter_id}
+                onChange={(e) => setFormData({...formData, recruiter_id: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">Select a recruiter</option>
+                {recruiters.map((recruiter: any) => (
+                  <option key={recruiter.id} value={recruiter.id}>
+                    {recruiter.name} ({recruiter.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1106,7 +1166,7 @@ const CreateRequisitionModal = ({ onClose, onSuccess }: any) => {
   );
 };
 
-const EditRequisitionModal = ({ requisition, onClose, onSuccess }: any) => {
+const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: any) => {
   const [formData, setFormData] = useState({
     job_title: requisition.job_title,
     department: requisition.department,
@@ -1118,7 +1178,8 @@ const EditRequisitionModal = ({ requisition, onClose, onSuccess }: any) => {
     description: requisition.description,
     requirements: requisition.requirements?.join('\n') || '',
     responsibilities: requisition.responsibilities?.join('\n') || '',
-    status: requisition.status
+    status: requisition.status,
+    recruiter_id: requisition.recruiter_id || ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1242,6 +1303,25 @@ const EditRequisitionModal = ({ requisition, onClose, onSuccess }: any) => {
                   <option value="closed">Closed</option>
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Recruiter <span className="text-red-500">*</span>
+              </label>
+              <select
+                required
+                value={formData.recruiter_id}
+                onChange={(e) => setFormData({...formData, recruiter_id: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">Select a recruiter</option>
+                {recruiters.map((recruiter: any) => (
+                  <option key={recruiter.id} value={recruiter.id}>
+                    {recruiter.name} ({recruiter.email})
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-6">

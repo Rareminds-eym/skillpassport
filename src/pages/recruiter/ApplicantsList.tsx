@@ -90,10 +90,31 @@ const ApplicantsList: React.FC = () => {
     }
   };
 
+  const handleViewApplicant = async (applicant: Applicant) => {
+    try {
+      // Update status to 'viewed' if it's currently 'applied'
+      if (applicant.application_status === 'applied') {
+        await AppliedJobsService.updateApplicationStatus(applicant.id, 'viewed');
+        // Update local state to reflect the change
+        setApplicants(prevApplicants =>
+          prevApplicants.map(app =>
+            app.id === applicant.id
+              ? { ...app, application_status: 'viewed', viewed_at: new Date().toISOString() }
+              : app
+          )
+        );
+      }
+      // TODO: Add navigation to applicant details page or open modal
+      console.log('View applicant:', applicant);
+    } catch (error) {
+      console.error('Error updating application status:', error);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusConfig: { [key: string]: { label: string; color: string; icon: string } } = {
       applied: { label: 'Applied', color: 'bg-indigo-100 text-indigo-700', icon: '○' },
-      viewed: { label: 'Viewed', color: 'bg-blue-100 text-blue-700', icon: '👁' },
+      viewed: { label: 'Viewed', color: 'bg-blue-100 text-blue-700', icon: '' },
       under_review: { label: 'Under Review', color: 'bg-yellow-100 text-yellow-700', icon: '📝' },
       interview_scheduled: { label: 'Interview Scheduled', color: 'bg-blue-100 text-blue-700', icon: '📅' },
       interviewed: { label: 'Interviewed', color: 'bg-purple-100 text-purple-700', icon: '✓' },
@@ -391,6 +412,7 @@ const ApplicantsList: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">
                         <button
+                          onClick={() => handleViewApplicant(applicant)}
                           className="p-2 text-primary-600 border border-primary-600 rounded hover:bg-primary-50 transition-colors"
                           title="View Details"
                         >
