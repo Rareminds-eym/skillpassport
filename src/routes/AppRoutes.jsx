@@ -70,6 +70,12 @@ const EducatorLogin = lazy(() => import("../pages/auth/LoginEducator"));
 const EducatorStudents = lazy(() => import("../pages/educator/StudentsPage"));
 const EducatorClasses = lazy(() => import("../pages/educator/ClassesPage"));
 const EducatorAssessments = lazy(() => import("../pages/educator/Assessments"));
+const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
+const EducatorReports = lazy(() => import("../pages/educator/Reports"));
+const EducatorMediaManager = lazy(() => import("../pages/educator/MediaManager"));
+const EducatorAnalytics = lazy(() => import("../pages/educator/Analytics"));
+const EducatorCommunication = lazy(() => import("../pages/educator/Communication"));
+const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
 
 const AppRoutes = () => {
   return (
@@ -170,6 +176,12 @@ const AppRoutes = () => {
           <Route path="students" element={<EducatorStudents />} />
           <Route path="classes" element={<EducatorClasses />} />
           <Route path="assignments" element={<EducatorAssessments />} />
+          <Route path="mentornotes" element={<EducatorMentorNotes />} />
+          <Route path="activities" element={<EducatorActivities />} />
+          <Route path="reports" element={<EducatorReports />} />
+          <Route path="media" element={<EducatorMediaManager />} />
+          <Route path="analytics" element={<EducatorAnalytics />} />
+          <Route path="communication" element={<EducatorCommunication />} />
           <Route
             path=""
             element={<Navigate to="/educator/dashboard" replace />}

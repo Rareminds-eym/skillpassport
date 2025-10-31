@@ -1,8 +1,7 @@
-import React, { useState, useMemo, ChangeEvent } from 'react';
+import { useState, useMemo, ChangeEvent } from 'react';
 import {
     PlusIcon,
     MagnifyingGlassIcon,
-    FunnelIcon,
     XMarkIcon,
     CalendarIcon,
     UsersIcon,
@@ -13,20 +12,13 @@ import {
     CheckCircleIcon,
     ClockIcon,
     DocumentArrowUpIcon,
-    LinkIcon,
-    StarIcon,
-    ChartBarIcon,
-    ChatBubbleLeftRightIcon,
-    EllipsisVerticalIcon,
-    ChevronDownIcon,
-    ArrowPathIcon
+    EllipsisVerticalIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 
 // Mock Data
 const SKILL_AREAS = ['Creativity', 'Collaboration', 'Critical Thinking', 'Leadership', 'Communication', 'Problem Solving'];
 const CLASSES = ['Class 9A', 'Class 9B', 'Class 10A', 'Class 10B', 'Class 11A', 'Class 12A'];
-const RUBRIC_LEVELS = ['Emerging', 'Developing', 'Proficient', 'Exemplary'];
 
 const mockTasks = [
     {
@@ -88,8 +80,8 @@ const mockTasks = [
 ];
 
 // Badge Component
-const StatusBadge = ({ status }) => {
-    const colors = {
+const StatusBadge = ({ status }: { status: string }) => {
+    const colors: Record<string, string> = {
         Active: 'bg-emerald-100 text-emerald-700 border-emerald-300',
         Draft: 'bg-gray-100 text-gray-700 border-gray-300',
         Closed: 'bg-rose-100 text-rose-700 border-rose-300'
@@ -102,7 +94,7 @@ const StatusBadge = ({ status }) => {
 };
 
 // Progress Bar Component
-const ProgressBar = ({ current, total, color = 'emerald' }) => {
+const ProgressBar = ({ current, total, color = 'emerald' }: { current: number; total: number; color?: string }) => {
     const percentage = total > 0 ? (current / total) * 100 : 0;
     return (
         <div className="w-full">
@@ -121,7 +113,7 @@ const ProgressBar = ({ current, total, color = 'emerald' }) => {
 };
 
 // Task Card Component
-const TaskCard = ({ task, onView, onEdit, onAssess, onDelete }) => {
+const TaskCard = ({ task, onView, onEdit, onAssess, onDelete }: { task: any; onView: (task: any) => void; onEdit: (task: any) => void; onAssess: (task: any) => void; onDelete: (task: any) => void }) => {
     const [showActions, setShowActions] = useState(false);
     const completionRate = task.totalStudents > 0 ? ((task.submissions / task.totalStudents) * 100).toFixed(0) : 0;
 
@@ -162,7 +154,7 @@ const TaskCard = ({ task, onView, onEdit, onAssess, onDelete }) => {
             </div>
 
             <div className="flex flex-wrap gap-1.5 mb-4">
-                {task.skillTags.map(skill => (
+                {task.skillTags.map((skill: string) => (
                     <span key={skill} className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-md border border-emerald-200">
                         {skill}
                     </span>
@@ -214,22 +206,20 @@ const Assessments = () => {
     const [statusFilter, setStatusFilter] = useState('All');
     const [skillFilter, setSkillFilter] = useState('All');
     const [classFilter, setClassFilter] = useState('All');
-    const [showFilters, setShowFilters] = useState(false);
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [showDetailDrawer, setShowDetailDrawer] = useState(false);
-    const [selectedTask, setSelectedTask] = useState(null);
-    const [activeTab, setActiveTab] = useState('overview');
+    const [selectedTask, setSelectedTask] = useState<any>(null);
 
     // New Task Form State
     const [newTask, setNewTask] = useState({
         title: '',
         description: '',
         status: 'Draft',
-        skillTags: [],
-        assignedTo: [],
+        skillTags: [] as string[],
+        assignedTo: [] as string[],
         deadline: '',
         allowLateSubmissions: false,
-        attachments: [],
+        attachments: [] as string[],
         rubric: [{ criteria: '', weight: 100 }]
     });
     const [additionalSkills, setAdditionalSkills] = useState<string[]>([]);
@@ -279,18 +269,18 @@ const Assessments = () => {
             title: '',
             description: '',
             status: 'Draft',
-            skillTags: [],
-            assignedTo: [],
+            skillTags: [] as string[],
+            assignedTo: [] as string[],
             deadline: '',
             allowLateSubmissions: false,
-            attachments: [],
+            attachments: [] as string[],
             rubric: [{ criteria: '', weight: 100 }]
         });
         setAdditionalSkills([]);
         setCustomSkill('');
     };
 
-    const handleSkillToggle = (skill) => {
+    const handleSkillToggle = (skill: string) => {
         setNewTask(prev => ({
             ...prev,
             skillTags: prev.skillTags.includes(skill)
@@ -316,7 +306,7 @@ const Assessments = () => {
         setCustomSkill('');
     };
 
-    const handleClassToggle = (className) => {
+    const handleClassToggle = (className: string) => {
         setNewTask(prev => ({
             ...prev,
             assignedTo: prev.assignedTo.includes(className)
@@ -392,7 +382,7 @@ const Assessments = () => {
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     >
                         <option value="All">All Skills</option>
-                        {SKILL_AREAS.map(skill => (
+                        {SKILL_AREAS.map((skill: string) => (
                             <option key={skill} value={skill}>{skill}</option>
                         ))}
                     </select>
@@ -403,7 +393,7 @@ const Assessments = () => {
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     >
                         <option value="All">All Classes</option>
-                        {CLASSES.map(cls => (
+                        {CLASSES.map((cls: string) => (
                             <option key={cls} value={cls}>{cls}</option>
                         ))}
                     </select>
@@ -586,7 +576,7 @@ const Assessments = () => {
                             <div>
                                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Skill Outcomes</h3>
                                 <div className="flex flex-wrap gap-2">
-                                    {allSkills.map(skill => (
+                                    {allSkills.map((skill: string) => (
                                         <button
                                             key={skill}
                                             onClick={() => handleSkillToggle(skill)}
@@ -622,7 +612,7 @@ const Assessments = () => {
                             <div>
                                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Assign to Classes</h3>
                                 <div className="grid grid-cols-3 gap-2">
-                                    {CLASSES.map(cls => (
+                                    {CLASSES.map((cls: string) => (
                                         <label key={cls} className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                                             <input
                                                 type="checkbox"
@@ -652,7 +642,7 @@ const Assessments = () => {
                                 </label>
                                 {newTask.attachments.length > 0 && (
                                     <div className="mt-3 space-y-2">
-                                        {newTask.attachments.map((file, index) => (
+                                        {newTask.attachments.map((file: string, index: number) => (
                                             <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                                 <DocumentArrowUpIcon className="h-5 w-5 text-gray-400" />
                                                 <span className="text-sm text-gray-700 truncate">{file}</span>
@@ -715,7 +705,7 @@ const Assessments = () => {
                                 <div>
                                     <h3 className="text-sm font-semibold text-gray-900 mb-2">Skill Outcomes</h3>
                                     <div className="flex flex-wrap gap-2">
-                                        {selectedTask.skillTags.map(skill => (
+                                        {selectedTask.skillTags.map((skill: string) => (
                                             <span key={skill} className="px-3 py-1 bg-emerald-50 text-emerald-700 text-sm rounded-lg border border-emerald-200">
                                                 {skill}
                                             </span>
@@ -726,7 +716,7 @@ const Assessments = () => {
                                 <div>
                                     <h3 className="text-sm font-semibold text-gray-900 mb-2">Assigned Classes</h3>
                                     <div className="flex flex-wrap gap-2">
-                                        {selectedTask.assignedTo.map(cls => (
+                                        {selectedTask.assignedTo.map((cls: string) => (
                                             <span key={cls} className="px-3 py-1 bg-blue-50 text-blue-700 text-sm rounded-lg border border-blue-200">
                                                 {cls}
                                             </span>
@@ -780,7 +770,7 @@ const Assessments = () => {
                                 <div>
                                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Rubric Criteria</h3>
                                     <div className="space-y-2">
-                                        {selectedTask.rubric.map((r, idx) => (
+                                        {selectedTask.rubric.map((r: any, idx: number) => (
                                             <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                                 <span className="text-sm font-medium text-gray-700">{r.criteria}</span>
                                                 <span className="text-sm font-semibold text-gray-900">{r.weight}%</span>
@@ -792,7 +782,7 @@ const Assessments = () => {
                                 <div>
                                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Attachments</h3>
                                     <div className="space-y-2">
-                                        {selectedTask.attachments.map((file, idx) => (
+                                        {selectedTask.attachments.map((file: string, idx: number) => (
                                             <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer">
                                                 <DocumentArrowUpIcon className="h-5 w-5 text-gray-400" />
                                                 <span className="text-sm text-gray-700">{file}</span>

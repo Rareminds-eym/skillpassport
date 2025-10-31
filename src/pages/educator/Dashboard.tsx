@@ -109,6 +109,34 @@ const Dashboard = () => {
         />
       </div>
 
+      {/* Skill Analytics Section */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Skill Analytics</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <p className="text-sm text-gray-600 mb-2">Skill Participation (Bar Chart)</p>
+            <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">[Bar Chart Placeholder]</div>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 mb-2">Skill Distribution (Pie Chart)</p>
+            <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">[Pie Chart Placeholder]</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Announcements Panel */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Announcements</h2>
+        <div className="flex gap-3 mb-4">
+          <input type="text" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg" placeholder="Type announcement..." />
+          <button className="px-4 py-2 bg-emerald-600 text-white rounded-lg">Send</button>
+        </div>
+        <ul className="space-y-2">
+          <li className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">Submit project by Friday</li>
+          <li className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">School event on Monday</li>
+        </ul>
+      </div>
+
       {/* Quick Actions */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>

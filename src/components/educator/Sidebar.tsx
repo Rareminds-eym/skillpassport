@@ -11,6 +11,8 @@ import {
   DocumentChartBarIcon,
   Cog6ToothIcon,
   ChevronDownIcon,
+  PhotoIcon,
+  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 
 function classNames(...classes: string[]) {
@@ -75,7 +77,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           name: "Verification",
-          path: "/educator/verification",
+          path: "/educator/activities",
           icon: CheckCircleIcon,
         },
       ],
@@ -85,8 +87,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   // single items before & after dropdowns
   const topItem = { name: "Dashboard", path: "/educator/dashboard", icon: HomeIcon };
   const bottomItems = [
-    // { name: "Reports", path: "/educator/reports", icon: DocumentChartBarIcon },
     { name: "Analytics", path: "/educator/analytics", icon: ChartBarIcon },
+    { name: "Reports", path: "/educator/reports", icon: DocumentChartBarIcon },
+    { name: "Media Manager", path: "/educator/media", icon: PhotoIcon },
+    { name: "Communication", path: "/educator/communication", icon: ChatBubbleLeftRightIcon },
     { name: "Settings", path: "/educator/settings", icon: Cog6ToothIcon },
   ];
 
