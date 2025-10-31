@@ -68,6 +68,7 @@ const EducatorDashboard = lazy(() => import('../pages/educator/Dashboard'));
 const EducatorStudents = lazy(() => import('../pages/educator/StudentsPage'));
 const EducatorClasses = lazy(() => import('../pages/educator/ClassesPage'));
 const EducatorAssessments = lazy(() => import('../pages/educator/Assessments'));
+const EducatorMentorNotes = lazy(() => import('../pages/educator/MentorNotes'));
 
 const AppRoutes = () => {
   return (
@@ -166,11 +167,6 @@ const AppRoutes = () => {
           <Route path="classes" element={<EducatorClasses />} />
           <Route path="assignments" element={<EducatorAssessments />} />
           <Route path="mentornotes" element={<EducatorMentorNotes />} />
-          <Route path="activities" element={<EducatorActivities />} />
-          <Route path="reports" element={<EducatorReports />} />
-          <Route path="media" element={<EducatorMediaManager />} />
-          <Route path="analytics" element={<EducatorAnalytics />} />
-          <Route path="communication" element={<EducatorCommunication />} />
           <Route
             path=""
             element={<Navigate to="/educator/dashboard" replace />}
