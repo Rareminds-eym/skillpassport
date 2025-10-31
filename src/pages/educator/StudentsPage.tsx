@@ -697,12 +697,19 @@ const StudentsPage = () => {
   return (
     <div className="flex flex-col h-screen">
       {/* Header - responsive layout */}
-      <div className='mb-2'>
-        <h1 className="text-3xl font-bold text-gray-900">Students Management</h1>
-        <p className="mt-2 text-gray-600">Manage your students and their profiles.</p>
+      <div className='p-4 sm:p-6 lg:p-8 mb-2'>
+        <h1 className="text-xl md:text-3xl font-bold text-gray-900">Students Management</h1>
+        <p className="text-base md:text-lg mt-2 text-gray-600">Manage your students and their profiles.</p>
       </div>
-      <div className="hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
-        
+      <div className="px-4 sm:px-6 lg:px-8 hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
+        <div className="w-80 flex-shrink-0 pr-4 text-left">
+          <div className="inline-flex items-baseline">
+            <h1 className="text-xl font-semibold text-gray-900">Students</h1>
+            <span className="ml-2 text-sm text-gray-500">
+              ({filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`})
+            </span>
+          </div>
+        </div>
 
         <div className="flex-1 px-4">
           <div className="max-w-xl mx-auto">
@@ -892,7 +899,7 @@ const StudentsPage = () => {
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Results header */}
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <div className="px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-700">
                 Showing <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
@@ -912,9 +919,9 @@ const StudentsPage = () => {
           </div>
 
           {/* Results */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                 {loading && <div className="text-sm text-gray-500">Loading students...</div>}
                 {error && <div className="text-sm text-red-600">{error}</div>}
                 {!loading && filteredAndSortedStudents.map((student) => (

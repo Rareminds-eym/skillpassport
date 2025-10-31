@@ -74,7 +74,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-8" data-testid="educator-dashboard">
+    <div className="space-y-8 p-4 sm:p-6 lg:p-8" data-testid="educator-dashboard">
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>

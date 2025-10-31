@@ -1,136 +1,284 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AcademicCapIcon } from '@heroicons/react/24/outline';
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  BookOpen,
+  Users,
+  Star,
+} from "lucide-react";
+import educatorIllustration from "../../assets/images/auth/Recruiter-illustration.png"; // ✅ replace with your educator image path
+import FeatureCard from "./components/ui/FeatureCard";
 
-const Login = () => {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export default function LoginEducator() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const navigate = useNavigate();
+
+  const primary = "#4f46e5"; // Indigo
+  const secondary = "#312e81"; // Deep Indigo
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
-    
-    // Mock login - simulate API call
+
+    // Simulated login (replace with API later)
     setTimeout(() => {
+      if (!email.includes("@")) {
+        setError("Invalid email address");
+        setLoading(false);
+        return;
+      }
       setLoading(false);
-      // For now, any login succeeds and navigates to dashboard
-      navigate('/educator/dashboard');
-    }, 500);
+      navigate("/educator/dashboard");
+    }, 1000);
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Logo and Header */}
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-indigo-600 rounded-full flex items-center justify-center">
-            <AcademicCapIcon className="h-10 w-10 text-white" />
-          </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Educators Dashboard
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Student Skill Progress Platform
-          </p>
+  const renderForm = (isLg: boolean) => (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Email */}
+      <div className="space-y-2">
+        <label
+          htmlFor="email"
+          className={`block text-sm font-medium ${
+            isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
+          }`}
+        >
+          Email ID
+        </label>
+        <div className="relative">
+          <input
+            type="email"
+            id="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter email ID"
+            autoComplete="username"
+            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/70 lg:placeholder:text-gray-400 ${
+              isLg
+                ? "bg-white/90"
+                : "bg-white/20 border-2 border-white/15 backdrop-blur-sm"
+            }`}
+          />
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
         </div>
+      </div>
 
-        {/* Login Form */}
-        <div className="bg-white py-8 px-6 shadow-xl rounded-lg border border-gray-200">
-          <form className="space-y-6" onSubmit={handleLogin}>
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="teacher@school.edu"
-                data-testid="email-input"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="••••••••"
-                data-testid="password-input"
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <button
-                  type="button"
-                  onClick={() => navigate('/educator/forgot-password')}
-                  className="font-medium text-indigo-600 hover:text-indigo-500"
-                >
-                  Forgot password?
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors"
-              data-testid="login-button"
-            >
-              {loading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </form>
-
-          {/* Demo Info */}
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-            <p className="text-sm text-blue-800 font-medium">Demo Mode</p>
-            <p className="text-xs text-blue-600 mt-1">
-              Enter any email/password to access the dashboard with mock data.
-            </p>
-          </div>
-        </div>
-
-        {/* Links */}
-        <div className="text-center text-sm">
-          <span className="text-gray-600">Don't have an account? </span>
+      {/* Password */}
+      <div className="space-y-2">
+        <label
+          htmlFor="password"
+          className={`block text-sm font-medium ${
+            isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
+          }`}
+        >
+          Password
+        </label>
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            id="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            autoComplete="current-password"
+            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/80 lg:placeholder:text-gray-400 ${
+              isLg
+                ? "bg-white/90"
+                : "bg-white/20 border-2 border-white/15 backdrop-blur-sm"
+            }`}
+          />
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
           <button
-            onClick={() => navigate('/educator/signup')}
-            className="font-medium text-indigo-600 hover:text-indigo-500"
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? (
+              <EyeOff className="w-5 h-5 text-white/60 lg:text-gray-400" />
+            ) : (
+              <Eye className="w-5 h-5 text-white/60 lg:text-gray-400" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Buttons */}
+      <div className="space-y-3">
+        {isLg ? (
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 text-white text-sm font-medium rounded-lg shadow-sm transition disabled:opacity-60"
+            style={{
+              background: `linear-gradient(90deg, ${primary}, ${secondary})`,
+            }}
+          >
+            {loading ? "Signing in..." : "Login"}
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 text-white text-sm font-medium rounded-lg shadow-sm transition disabled:opacity-60"
+            style={{
+              background: `linear-gradient(90deg, #6366f1, #312e81)`,
+            }}
+          >
+            {loading ? "Signing in..." : "Login"}
+          </button>
+        )}
+      </div>
+
+      {/* Links */}
+      <div className="flex justify-between mt-4 text-sm">
+        <a
+          href="/educator/forgot-password"
+          className={
+            isLg
+              ? "text-[#4f46e5] font-semibold hover:text-[#1e1b4b]"
+              : "text-white/90 font-semibold hover:opacity-90"
+          }
+        >
+          Forgot password?
+        </a>
+        {isLg ? (
+          <a
+            href="/educator/signup"
+            className="text-[#4f46e5] font-semibold hover:text-[#312e81]"
           >
             Sign up
-          </button>
+          </a>
+        ) : null}
+      </div>
+    </form>
+  );
+
+  return (
+    <div className="flex items-center lg:py-10 bg-white">
+      <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[700px] overflow-hidden">
+        {/* LEFT SIDE */}
+        <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#4f46e5] to-[#312e81]">
+          <div className="relative z-10">
+            <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+              Empower Learning. Guide Students to Success.
+            </h2>
+            <p className="mt-4 max-w-xl text-indigo-100">
+              Manage student skills, progress, and verified achievements in one place.
+            </p>
+          </div>
+
+          <div className="relative z-10 flex justify-start items-end h-full mt-12">
+            <img
+              src={educatorIllustration}
+              alt="Educator illustration"
+              className="w-80 lg:w-[24rem] object-contain drop-shadow-xl -ml-10"
+            />
+
+            <motion.div
+              className="absolute top-1 lg:left-[8rem] xl:left-[12rem]"
+              animate={{ y: [0, -10, 0] }}
+              transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+            >
+              <FeatureCard title="Track Progress" Icon={BookOpen} />
+            </motion.div>
+
+            <motion.div
+              className="absolute top-40 lg:-right-8 xl:-right-4"
+              animate={{ y: [0, -12, 0] }}
+              transition={{
+                repeat: Infinity,
+                duration: 3.5,
+                ease: "easeInOut",
+              }}
+            >
+              <FeatureCard title="Manage Students" Icon={Users} />
+            </motion.div>
+
+            <motion.div
+              className="absolute bottom-8 lg:left-[8rem] xl:left-[12rem]"
+              animate={{ y: [0, -8, 0] }}
+              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+            >
+              <FeatureCard title="Recognize Excellence" Icon={Star} />
+            </motion.div>
+          </div>
+        </div>
+
+        {/* RIGHT SIDE */}
+        <div className="relative flex items-center justify-center px-4 sm:px-8 md:px-12 py-10 lg:py-8">
+          {/* Gradient bg for mobile/tablet */}
+          <div
+            className="absolute inset-0 lg:hidden"
+            style={{
+              background: `linear-gradient(135deg, ${primary}, ${secondary})`,
+            }}
+            aria-hidden
+          />
+
+          {/* Illustration overlay (mobile/tablet only) */}
+          <img
+            src={educatorIllustration}
+            alt=""
+            className="absolute inset-0 h-full w-full object-contain lg:hidden opacity-60 pointer-events-none"
+          />
+
+          {/* White bg for lg */}
+          <div className="hidden lg:block absolute inset-0 bg-white" />
+
+          {/* MOBILE/TABLET */}
+          <div className="relative w-full max-w-md lg:hidden">
+            <div className="text-center mb-6">
+              <h3 className="text-3xl font-bold text-white">Educator Login</h3>
+              <p className="text-sm text-white/80 mt-2">
+                Access your educator dashboard to manage student skills and progress.
+              </p>
+            </div>
+            <div className="rounded-2xl p-5 sm:p-6 bg-transparent">
+              {error && (
+                <div className="bg-red-50/90 border border-red-200 rounded-lg p-4 flex items-start gap-3 mb-4 max-w-full">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-700 break-words">{error}</p>
+                </div>
+              )}
+              {renderForm(false)}
+            </div>
+          </div>
+
+          {/* DESKTOP */}
+          <div className="relative w-full max-w-md hidden lg:block">
+            <div className="text-center mb-8">
+              <h3 className="text-3xl font-bold text-[#000000]">
+                Educator Login
+              </h3>
+              <p className="text-sm text-gray-700/90 lg:text-gray-500 mt-2">
+                Access your educator dashboard with verified student data.
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white/95 shadow-xl lg:shadow-none lg:bg-white ring-1 lg:ring-0 ring-black/5 p-6 sm:p-8">
+              {error && (
+                <div className="bg-red-50/90 border border-red-200 rounded-lg p-4 flex items-start gap-3 mb-4">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-700 break-words">{error}</p>
+                </div>
+              )}
+              {renderForm(true)}
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
-};
-
-export default Login;
+}
