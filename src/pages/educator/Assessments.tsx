@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, ChangeEvent } from 'react';
 import {
     PlusIcon,
     MagnifyingGlassIcon,
@@ -232,6 +232,9 @@ const Assessments = () => {
         attachments: [],
         rubric: [{ criteria: '', weight: 100 }]
     });
+    const [additionalSkills, setAdditionalSkills] = useState<string[]>([]);
+    const [customSkill, setCustomSkill] = useState('');
+    const allSkills = useMemo(() => [...SKILL_AREAS, ...additionalSkills], [additionalSkills]);
 
     // Filtered Tasks
     const filteredTasks = useMemo(() => {
@@ -283,6 +286,8 @@ const Assessments = () => {
             attachments: [],
             rubric: [{ criteria: '', weight: 100 }]
         });
+        setAdditionalSkills([]);
+        setCustomSkill('');
     };
 
     const handleSkillToggle = (skill) => {
@@ -294,6 +299,23 @@ const Assessments = () => {
         }));
     };
 
+    const handleAddCustomSkill = () => {
+        const trimmedSkill = customSkill.trim();
+        if (!trimmedSkill) {
+            return;
+        }
+        if (!allSkills.includes(trimmedSkill)) {
+            setAdditionalSkills(prev => [...prev, trimmedSkill]);
+        }
+        setNewTask(prev => ({
+            ...prev,
+            skillTags: prev.skillTags.includes(trimmedSkill)
+                ? prev.skillTags
+                : [...prev.skillTags, trimmedSkill]
+        }));
+        setCustomSkill('');
+    };
+
     const handleClassToggle = (className) => {
         setNewTask(prev => ({
             ...prev,
@@ -301,6 +323,21 @@ const Assessments = () => {
                 ? prev.assignedTo.filter(c => c !== className)
                 : [...prev.assignedTo, className]
         }));
+    };
+
+    const handleAttachmentChange = (event: ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(event.target.files ?? []);
+        if (!files.length) {
+            return;
+        }
+        setNewTask(prev => ({
+            ...prev,
+            attachments: Array.from(new Set([
+                ...prev.attachments,
+                ...files.map(file => file.name)
+            ]))
+        }));
+        event.target.value = '';
     };
 
     return (
@@ -549,7 +586,7 @@ const Assessments = () => {
                             <div>
                                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Skill Outcomes</h3>
                                 <div className="flex flex-wrap gap-2">
-                                    {SKILL_AREAS.map(skill => (
+                                    {allSkills.map(skill => (
                                         <button
                                             key={skill}
                                             onClick={() => handleSkillToggle(skill)}
@@ -561,6 +598,23 @@ const Assessments = () => {
                                             {skill}
                                         </button>
                                     ))}
+                                </div>
+                                <div className="mt-4 flex items-center gap-3">
+                                    <input
+                                        type="text"
+                                        value={customSkill}
+                                        onChange={(e) => setCustomSkill(e.target.value)}
+                                        placeholder="Add custom skill"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleAddCustomSkill}
+                                        disabled={!customSkill.trim()}
+                                        className="p-2 rounded-lg border border-emerald-500 text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <PlusIcon className="h-5 w-5" />
+                                    </button>
                                 </div>
                             </div>
 
@@ -580,6 +634,32 @@ const Assessments = () => {
                                         </label>
                                     ))}
                                 </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900 mb-3">Attachments</h3>
+                                <label className="flex flex-col items-center justify-center w-full px-6 py-8 border-2 border-dashed border-gray-300 rounded-2xl text-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-colors">
+                                    <DocumentArrowUpIcon className="h-6 w-6 text-emerald-500 mb-2" />
+                                    <span className="text-sm font-medium text-emerald-700">Upload PDF or Word documents</span>
+                                    <span className="text-xs text-gray-500 mt-1">PDF, DOC, DOCX files supported</span>
+                                    <input
+                                        type="file"
+                                        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                        multiple
+                                        onChange={handleAttachmentChange}
+                                        className="hidden"
+                                    />
+                                </label>
+                                {newTask.attachments.length > 0 && (
+                                    <div className="mt-3 space-y-2">
+                                        {newTask.attachments.map((file, index) => (
+                                            <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                <DocumentArrowUpIcon className="h-5 w-5 text-gray-400" />
+                                                <span className="text-sm text-gray-700 truncate">{file}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Actions */}
