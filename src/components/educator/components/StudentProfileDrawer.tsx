@@ -1,4 +1,4 @@
-// src/components/Recruiter/components/CandidateProfileDrawer.tsx
+// src/components/educator/StudentProfileDrawer.tsx
 import React, { useState } from 'react';
 import {
   XMarkIcon,
@@ -7,18 +7,16 @@ import {
   AcademicCapIcon,
   PhoneIcon,
   EnvelopeIcon,
-  BookmarkIcon,
-  CalendarDaysIcon,
   DocumentArrowDownIcon,
   ChatBubbleLeftRightIcon,
   ShieldCheckIcon,
   TrophyIcon,
   BriefcaseIcon,
   BeakerIcon,
-  DevicePhoneMobileIcon
+  DevicePhoneMobileIcon,
+  PencilSquareIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline';
-import AddToShortlistModal from '../modals/AddToShortlistModal';
-import ScheduleInterviewModal from '../modals/ScheduleInterviewModal';
 import { QRCodeSVG } from 'qrcode.react';
 
 const Badge = ({ type }) => {
@@ -63,28 +61,13 @@ const TabButton = ({ active, onClick, children }) => (
   </button>
 );
 
-const ProgressBar = ({ label, value, maxValue = 100 }) => (
-  <div className="mb-3">
-    <div className="flex justify-between items-center mb-1">
-      <span className="text-sm text-gray-600">{label}</span>
-      <span className="text-sm font-medium text-gray-900">{value}/{maxValue}</span>
-    </div>
-    <div className="w-full bg-gray-200 rounded-full h-2">
-      <div
-        className="bg-primary-600 h-2 rounded-full"
-        style={{ width: `${(value / maxValue) * 100}%` }}
-      ></div>
-    </div>
-  </div>
-);
-
-const ExportModal = ({ isOpen, onClose, candidate }) => {
+const ExportModal = ({ isOpen, onClose, student }) => {
   const [exportSettings, setExportSettings] = useState({
     format: 'pdf',
     type: 'mini_profile'
   });
 
-  const generatePDF = (candidate, settings) => {
+  const generatePDF = (student, settings) => {
     const isFullProfile = settings.type === 'full_profile';
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
@@ -105,7 +88,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     // Title
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text(`CANDIDATE PROFILE - ${candidate.name}`, margin, yPos);
+    doc.text(`STUDENT PROFILE - ${student.name}`, margin, yPos);
     yPos += 10;
 
     // Metadata
@@ -113,7 +96,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     doc.setFont('helvetica', 'normal');
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, margin, yPos);
     yPos += lineHeight;
-    doc.text(`Export Type: ${isFullProfile ? 'Full Profile with PII' : 'Mini-Profile'}`, margin, yPos);
+    doc.text(`Export Type: ${isFullProfile ? 'Full Profile with PII' : 'Academic Profile'}`, margin, yPos);
     yPos += lineHeight + 3;
 
     // Basic Information
@@ -126,23 +109,23 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     doc.setFont('helvetica', 'normal');
 
     const basicFields = [
-      { label: 'Name', value: candidate.name },
-      { label: 'Registration Number', value: candidate.registration_number },
-      { label: 'Date of Birth', value: candidate.date_of_birth },
-      { label: 'Age', value: candidate.age },
-      { label: 'University', value: candidate.university || candidate.college },
-      { label: 'College/School', value: candidate.college_school_name || candidate.college },
-      { label: 'Department', value: candidate.dept || candidate.branch_field },
-      { label: 'Course', value: candidate.course },
-      { label: 'District', value: candidate.district_name || candidate.location },
-      { label: 'Year', value: candidate.year },
+      { label: 'Name', value: student.name },
+      { label: 'Registration Number', value: student.registration_number },
+      { label: 'Date of Birth', value: student.date_of_birth },
+      { label: 'Age', value: student.age },
+      { label: 'University', value: student.university || student.college },
+      { label: 'College/School', value: student.college_school_name || student.college },
+      { label: 'Department', value: student.dept || student.branch_field },
+      { label: 'Course', value: student.course },
+      { label: 'District', value: student.district_name || student.location },
+      { label: 'Year', value: student.year },
     ];
 
     if (isFullProfile) {
       basicFields.push(
-        { label: 'Email', value: candidate.email },
-        { label: 'Phone', value: candidate.phone },
-        { label: 'Alternate Number', value: candidate.alternate_number }
+        { label: 'Email', value: student.email },
+        { label: 'Phone', value: student.phone },
+        { label: 'Alternate Number', value: student.alternate_number }
       );
     }
 
@@ -165,13 +148,13 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     doc.setFont('helvetica', 'normal');
 
     const academicFields = [
-      { label: 'Branch/Field', value: candidate.branch_field },
-      { label: 'Trainer Name', value: candidate.trainer_name },
-      { label: 'NM ID', value: candidate.nm_id },
-      { label: 'AI Score', value: candidate.ai_score_overall },
-      { label: 'CGPA', value: candidate.cgpa },
-      { label: 'Year of Passing', value: candidate.year_of_passing },
-      { label: 'Employability Score', value: candidate.employability_score },
+      { label: 'Branch/Field', value: student.branch_field },
+      { label: 'Trainer Name', value: student.trainer_name },
+      { label: 'NM ID', value: student.nm_id },
+      { label: 'Academic Score', value: student.ai_score_overall || student.academic_score },
+      { label: 'CGPA', value: student.cgpa },
+      { label: 'Year of Passing', value: student.year_of_passing },
+      { label: 'Employability Score', value: student.employability_score },
     ];
 
     academicFields.forEach(field => {
@@ -184,7 +167,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     yPos += 3;
 
     // Skills
-    if (candidate.skills && candidate.skills.length > 0) {
+    if (student.skills && student.skills.length > 0) {
       checkNewPage();
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
@@ -193,7 +176,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
 
-      const skillsText = candidate.skills.join(', ');
+      const skillsText = student.skills.join(', ');
       const splitSkills = doc.splitTextToSize(skillsText, pageWidth - (margin * 2) - 5);
       splitSkills.forEach(line => {
         checkNewPage();
@@ -203,35 +186,34 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       yPos += 3;
     }
 
-    // Additional Information (if in full profile mode)
-    if (isFullProfile) {
+    // Projects Summary
+    if (student.projects && student.projects.length > 0) {
       checkNewPage();
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
-      doc.text('ADDITIONAL INFORMATION', margin, yPos);
+      doc.text('PROJECTS', margin, yPos);
       yPos += lineHeight + 2;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
+      doc.text(`Total Projects: ${student.projects.length}`, margin + 5, yPos);
+      yPos += lineHeight + 3;
+    }
 
-      const additionalFields = [
-        { label: 'Imported At', value: candidate.imported_at },
-        { label: 'Last Updated', value: candidate.last_updated },
-        { label: 'Created At', value: candidate.created_at },
-        { label: 'Verified', value: candidate.verified ? 'Yes' : 'No' },
-      ];
-
-      additionalFields.forEach(field => {
-        if (field.value) {
-          checkNewPage();
-          doc.text(`${field.label}: ${field.value}`, margin + 5, yPos);
-          yPos += lineHeight;
-        }
-      });
-      yPos += 3;
+    // Certificates Summary
+    if (student.certificates && student.certificates.length > 0) {
+      checkNewPage();
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('CERTIFICATES', margin, yPos);
+      yPos += lineHeight + 2;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Total Certificates: ${student.certificates.length}`, margin + 5, yPos);
+      yPos += lineHeight + 3;
     }
 
     // Verification Badges
-    if (candidate.badges && candidate.badges.length > 0) {
+    if (student.badges && student.badges.length > 0) {
       checkNewPage();
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
@@ -239,7 +221,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       yPos += lineHeight + 2;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(candidate.badges.join(', '), margin + 5, yPos);
+      doc.text(student.badges.join(', '), margin + 5, yPos);
       yPos += lineHeight + 3;
     }
 
@@ -249,7 +231,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
-      doc.text('--- Exported from RecruiterHub ---', pageWidth / 2, pageHeight - 10, { align: 'center' });
+      doc.text('--- Exported from Skill Eco System ---', pageWidth / 2, pageHeight - 10, { align: 'center' });
       doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
       doc.setTextColor(0, 0, 0);
     }
@@ -257,10 +239,9 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     return doc;
   };
 
-  const generateCSV = (candidate, settings) => {
+  const generateCSV = (student, settings) => {
     const isFullProfile = settings.type === 'full_profile';
 
-    // Build comprehensive headers
     const headers = [
       'Name',
       'Registration Number',
@@ -286,7 +267,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     }
 
     headers.push(
-      'AI Score',
+      'Academic Score',
       'CGPA',
       'Year of Passing',
       'Employability Score',
@@ -295,66 +276,47 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       'Verified'
     );
 
-    if (isFullProfile) {
-      headers.push(
-        'Imported At',
-        'Last Updated',
-        'Created At'
-      );
-    }
-
     let csvContent = headers.join(',') + '\n';
 
-    // Escape function for CSV
     const escapeCSV = (value) => {
       if (value === null || value === undefined || value === '') return '""';
       const str = String(value);
-      // Escape quotes and wrap in quotes
       return `"${str.replace(/"/g, '""')}"`;
     };
 
-    // Build row data
     const row = [
-      escapeCSV(candidate.name),
-      escapeCSV(candidate.registration_number),
-      escapeCSV(candidate.date_of_birth),
-      escapeCSV(candidate.age),
-      escapeCSV(candidate.university || candidate.college),
-      escapeCSV(candidate.college_school_name || candidate.college),
-      escapeCSV(candidate.dept || candidate.branch_field),
-      escapeCSV(candidate.course),
-      escapeCSV(candidate.branch_field),
-      escapeCSV(candidate.district_name || candidate.location),
-      escapeCSV(candidate.year),
+      escapeCSV(student.name),
+      escapeCSV(student.registration_number),
+      escapeCSV(student.date_of_birth),
+      escapeCSV(student.age),
+      escapeCSV(student.university || student.college),
+      escapeCSV(student.college_school_name || student.college),
+      escapeCSV(student.dept || student.branch_field),
+      escapeCSV(student.course),
+      escapeCSV(student.branch_field),
+      escapeCSV(student.district_name || student.location),
+      escapeCSV(student.year),
     ];
 
     if (isFullProfile) {
       row.push(
-        escapeCSV(candidate.email),
-        escapeCSV(candidate.phone),
-        escapeCSV(candidate.alternate_number),
-        escapeCSV(candidate.trainer_name),
-        escapeCSV(candidate.nm_id)
+        escapeCSV(student.email),
+        escapeCSV(student.phone),
+        escapeCSV(student.alternate_number),
+        escapeCSV(student.trainer_name),
+        escapeCSV(student.nm_id)
       );
     }
 
     row.push(
-      escapeCSV(candidate.ai_score_overall),
-      escapeCSV(candidate.cgpa),
-      escapeCSV(candidate.year_of_passing),
-      escapeCSV(candidate.employability_score),
-      escapeCSV(candidate.skills?.join('; ')),
-      escapeCSV(candidate.badges?.join('; ')),
-      escapeCSV(candidate.verified ? 'Yes' : 'No')
+      escapeCSV(student.ai_score_overall || student.academic_score),
+      escapeCSV(student.cgpa),
+      escapeCSV(student.year_of_passing),
+      escapeCSV(student.employability_score),
+      escapeCSV(student.skills?.join('; ')),
+      escapeCSV(student.badges?.join('; ')),
+      escapeCSV(student.verified ? 'Yes' : 'No')
     );
-
-    if (isFullProfile) {
-      row.push(
-        escapeCSV(candidate.imported_at),
-        escapeCSV(candidate.last_updated),
-        escapeCSV(candidate.created_at)
-      );
-    }
 
     csvContent += row.join(',') + '\n';
 
@@ -376,13 +338,13 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
   };
 
   const handleExport = () => {
-    const filename = `${candidate.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`;
+    const filename = `${student.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`;
 
     if (exportSettings.format === 'csv') {
-      const content = generateCSV(candidate, exportSettings);
+      const content = generateCSV(student, exportSettings);
       downloadFile(content, filename + '.csv', 'csv');
     } else {
-      const pdfDoc = generatePDF(candidate, exportSettings);
+      const pdfDoc = generatePDF(student, exportSettings);
       pdfDoc.save(filename + '.pdf');
     }
 
@@ -398,7 +360,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Export Candidate Profile</h3>
+            <h3 className="text-lg font-medium text-gray-900">Export Student Report</h3>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
@@ -445,7 +407,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
                     onChange={(e) => setExportSettings({ ...exportSettings, type: e.target.value })}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                   />
-                  <span className="ml-2 text-sm text-gray-700">Mini-Profile</span>
+                  <span className="ml-2 text-sm text-gray-700">Academic Profile</span>
                 </label>
                 <label className="inline-flex items-center">
                   <input
@@ -483,26 +445,26 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
   );
 };
 
-const MessageModal = ({ isOpen, onClose, candidate }) => {
+const MessageModal = ({ isOpen, onClose, student }) => {
   if (!isOpen) return null;
 
   const handleWhatsApp = () => {
-    const phone = candidate.phone?.replace(/[^0-9]/g, '') || '';
-    const message = encodeURIComponent(`Hi ${candidate.name}, I came across your profile on RecruiterHub...`);
+    const phone = student.phone?.replace(/[^0-9]/g, '') || '';
+    const message = encodeURIComponent(`Hi ${student.name}, I wanted to reach out regarding your academic progress...`);
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
     onClose();
   };
 
   const handleSMS = () => {
-    const phone = candidate.phone?.replace(/[^0-9]/g, '') || '';
+    const phone = student.phone?.replace(/[^0-9]/g, '') || '';
     window.location.href = `sms:${phone}`;
     onClose();
   };
 
   const handleEmail = () => {
-    const subject = encodeURIComponent('Opportunity from RecruiterHub');
-    const body = encodeURIComponent(`Dear ${candidate.name},\n\nI came across your profile on RecruiterHub and would like to discuss a potential opportunity...\n\nBest regards`);
-    window.location.href = `mailto:${candidate.email}?subject=${subject}&body=${body}`;
+    const subject = encodeURIComponent('Academic Update from Skill Eco System');
+    const body = encodeURIComponent(`Dear ${student.name},\n\nI wanted to reach out regarding your academic progress and achievements...\n\nBest regards`);
+    window.location.href = `mailto:${student.email}?subject=${subject}&body=${body}`;
     onClose();
   };
 
@@ -513,7 +475,7 @@ const MessageModal = ({ isOpen, onClose, candidate }) => {
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Contact {candidate.name}</h3>
+            <h3 className="text-lg font-medium text-gray-900">Contact {student.name}</h3>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
@@ -551,11 +513,11 @@ const MessageModal = ({ isOpen, onClose, candidate }) => {
             <div className="text-xs text-gray-600 space-y-1">
               <div className="flex items-center">
                 <PhoneIcon className="h-3 w-3 mr-1" />
-                <span>{candidate.phone || 'Not available'}</span>
+                <span>{student.phone || 'Not available'}</span>
               </div>
               <div className="flex items-center">
                 <EnvelopeIcon className="h-3 w-3 mr-1" />
-                <span>{candidate.email || 'Not available'}</span>
+                <span>{student.email || 'Not available'}</span>
               </div>
             </div>
           </div>
@@ -565,45 +527,225 @@ const MessageModal = ({ isOpen, onClose, candidate }) => {
   );
 };
 
-const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
+const AddMentorNoteModal = ({ isOpen, onClose, student, onSuccess }) => {
+  const [note, setNote] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!note.trim()) return;
+
+    setIsSubmitting(true);
+    try {
+      // TODO: API call to save mentor note
+      // await saveMentorNote(student.id, note);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      onSuccess?.();
+      setNote('');
+      onClose();
+    } catch (error) {
+      console.error('Error saving note:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Add Mentor Note</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Student: {student.name}
+              </label>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={6}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                placeholder="Enter your mentor feedback or observations..."
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-end space-x-3">
+            <button
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting || !note.trim()}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50"
+            >
+              {isSubmitting ? 'Saving...' : 'Save Note'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const VerifyAssignmentModal = ({ isOpen, onClose, student, onSuccess }) => {
+  const [selectedAssignments, setSelectedAssignments] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Mock pending assignments - replace with actual data
+  const pendingAssignments = [
+    { id: '1', title: 'React Project Submission', submittedAt: '2025-10-25' },
+    { id: '2', title: 'Database Design Assignment', submittedAt: '2025-10-26' },
+    { id: '3', title: 'API Development Task', submittedAt: '2025-10-28' },
+  ];
+
+  const toggleAssignment = (id: string) => {
+    setSelectedAssignments(prev =>
+      prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
+    );
+  };
+
+  const handleVerify = async () => {
+    if (selectedAssignments.length === 0) return;
+
+    setIsSubmitting(true);
+    try {
+      // TODO: API call to verify assignments
+      // await verifyAssignments(student.id, selectedAssignments);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      onSuccess?.();
+      setSelectedAssignments([]);
+      onClose();
+    } catch (error) {
+      console.error('Error verifying assignments:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Verify Assignments</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+
+          <div className="mb-4">
+            <p className="text-sm text-gray-600">Student: <span className="font-medium">{student.name}</span></p>
+          </div>
+
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {pendingAssignments.length > 0 ? (
+              pendingAssignments.map(assignment => (
+                <label
+                  key={assignment.id}
+                  className="flex items-start p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedAssignments.includes(assignment.id)}
+                    onChange={() => toggleAssignment(assignment.id)}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mt-1"
+                  />
+                  <div className="ml-3 flex-1">
+                    <p className="text-sm font-medium text-gray-900">{assignment.title}</p>
+                    <p className="text-xs text-gray-500 mt-1">Submitted: {assignment.submittedAt}</p>
+                  </div>
+                </label>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <CheckCircleIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <p className="text-gray-500 mt-2">No pending assignments</p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 flex items-center justify-end space-x-3">
+            <button
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleVerify}
+              disabled={isSubmitting || selectedAssignments.length === 0}
+              className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 disabled:opacity-50"
+            >
+              {isSubmitting ? 'Verifying...' : `Verify ${selectedAssignments.length} Assignment${selectedAssignments.length !== 1 ? 's' : ''}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [notes, setNotes] = useState('');
-  const [rating, setRating] = useState(0);
-  const [showShortlistModal, setShowShortlistModal] = useState(false);
-  const [showInterviewModal, setShowInterviewModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
+  const [showMentorNoteModal, setShowMentorNoteModal] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  if (!isOpen || !student) return null;
 
-  if (!isOpen || !candidate) return null;
+  const studentName = (student as any).name || (student as any).student_name || '';
+  const studentEmail = (student as any).email || (student as any).student_email || '';
 
-  const candidateName = (candidate as any).name || (candidate as any).candidate_name || '';
-  const candidateEmail = (candidate as any).email || (candidate as any).candidate_email || '';
+  const qrCodeValue = `${window.location.origin}/student/profile/${studentEmail}`;
 
-  const qrCodeValue = `${window.location.origin}/student/profile/${candidateEmail}`;
-
-  // Parse profile data if it's a string/object and prepare helpers
-  let profileData: any = candidate;
+  // Parse profile data
+  let profileData: any = student;
   let rawProfile: any = {};
 
-  if (candidate.profile && typeof candidate.profile === 'string') {
+  if (student.profile && typeof student.profile === 'string') {
     try {
-      rawProfile = JSON.parse(candidate.profile);
-      profileData = { ...candidate, ...rawProfile };
+      rawProfile = JSON.parse(student.profile);
+      profileData = { ...student, ...rawProfile };
     } catch (e) {
-      console.warn('Profile parsing failed, using fallback:', e);
+      console.warn('Profile parsing failed:', e);
       rawProfile = {};
-      profileData = candidate;
+      profileData = student;
     }
-  } else if (candidate.profile && typeof candidate.profile === 'object') {
-    rawProfile = candidate.profile;
-    profileData = { ...candidate, ...rawProfile };
+  } else if (student.profile && typeof student.profile === 'object') {
+    rawProfile = student.profile;
+    profileData = { ...student, ...rawProfile };
   }
 
-  const projectsData = Array.isArray((candidate as any).projects) ? (candidate as any).projects : [];
-  const certificatesData = Array.isArray((candidate as any).certificates) ? (candidate as any).certificates : [];
-  const assessmentsData = Array.isArray((candidate as any).assessments) ? (candidate as any).assessments : [];
+  const projectsData = Array.isArray((student as any).projects) ? (student as any).projects : [];
+  const certificatesData = Array.isArray((student as any).certificates) ? (student as any).certificates : [];
+  const assessmentsData = Array.isArray((student as any).assessments) ? (student as any).assessments : [];
 
   const verifiedProjects = projectsData.filter((project: any) => project?.verified === true || project?.status === 'verified');
   const verifiedCertificates = certificatesData.filter((certificate: any) => certificate?.verified === true || certificate?.status === 'verified');
@@ -615,10 +757,10 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
     assessments: assessmentsData
   };
 
-  const modalCandidate = {
-    ...candidate,
-    name: candidateName,
-    email: candidateEmail,
+  const modalStudent = {
+    ...student,
+    name: studentName,
+    email: studentEmail,
     projects: verifiedProjects,
     certificates: verifiedCertificates,
     assessments: assessmentsData
@@ -638,9 +780,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   const isPrimitive = (val: any) => val === null || ['string', 'number', 'boolean'].includes(typeof val);
   const isEmpty = (v: any) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
 
-  // Build lists of fields from the JSONB profile
-  const knownComposite = new Set(['training', 'education', 'technicalSkills', 'softSkills', 'experience', 'projects', 'certificates', 'assessments']);
-  // Fields to exclude from Profile Information display (metadata/internal fields)
+  const knownComposite = new Set(['training', 'education', 'technicalSkills', 'softSkills', 'experience', 'projects', 'certificates', 'assessments', 'mentorNotes']);
   const excludedFields = new Set([
     '_', 'imported_at', 'contact_number_dial_code', 'id', 'student_id',
     'created_at', 'updated_at', 'last_updated'
@@ -650,16 +790,23 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
     .filter(([k, v]) => !knownComposite.has(k) && !excludedFields.has(k) && isPrimitive(v) && !isEmpty(v))
     .sort(([a], [b]) => a.localeCompare(b));
 
-  const otherArrays = Object.entries(rawProfile || {})
-    .filter(([k, v]) => Array.isArray(v) && !knownComposite.has(k));
-
   const tabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'projects', label: 'Projects' },
     { key: 'assessments', label: 'Assessments' },
     { key: 'certificates', label: 'Certificates' },
     { key: 'verification', label: 'Verification' },
-    { key: 'notes', label: 'Notes & Ratings' }
+    { key: 'notes', label: 'Mentor Notes' }
+  ];
+
+  // Mock mentor notes - replace with actual data
+  const mentorNotes = profileData.mentorNotes || [
+    {
+      id: '1',
+      educator: 'Dr. Sarah Johnson',
+      date: '2025-10-28',
+      note: 'Excellent progress in React development. Shows strong problem-solving skills.'
+    }
   ];
 
   return (
@@ -675,31 +822,31 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center">
-                      <h2 className="text-xl font-semibold text-gray-900">{profileData.name || candidate.name}</h2>
+                      <h2 className="text-xl font-semibold text-gray-900">{profileData.name || student.name}</h2>
                       <div className="ml-3 flex items-center">
                         <StarIcon className="h-5 w-5 text-yellow-400 fill-current" />
-                        <span className="text-lg font-bold text-gray-900 ml-1">{candidate.ai_score_overall || 0}</span>
-                        <span className="text-sm text-gray-600 ml-1">AI Score</span>
+                        <span className="text-lg font-bold text-gray-900 ml-1">{student.ai_score_overall || student.academic_score || 0}</span>
+                        <span className="text-sm text-gray-600 ml-1">Academic Score</span>
                       </div>
                     </div>
                     <div className="mt-2 flex items-center text-sm text-gray-600">
                       <AcademicCapIcon className="h-4 w-4 mr-1" />
-                      <span>{profileData.college_school_name || candidate.college} • {profileData.branch_field || candidate.dept}</span>
+                      <span>{profileData.college_school_name || student.college} • {profileData.branch_field || student.dept}</span>
                     </div>
                     <div className="mt-1 flex items-center text-sm text-gray-600">
                       <MapPinIcon className="h-4 w-4 mr-1" />
-                      <span>{profileData.district_name || candidate.location} • Age {profileData.age || 'N/A'}</span>
+                      <span>{profileData.district_name || student.location} • Age {profileData.age || 'N/A'}</span>
                     </div>
-                    {candidate.badges && candidate.badges.length > 0 && (
+                    {student.badges && student.badges.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {candidate.badges.map((badge, index) => (
+                        {student.badges.map((badge, index) => (
                           <Badge key={index} type={badge} />
                         ))}
                       </div>
                     )}
                   </div>
 
-                  {/* Right side — QR code */}
+                  {/* QR Code */}
                   <div className="relative flex flex-col items-center justify-center group">
                     <div
                       onClick={() => {
@@ -713,12 +860,10 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                       <QRCodeSVG value={qrCodeValue} size={72} level="H" />
                     </div>
 
-                    {/* Hover text / scan hint */}
                     <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-[11px] bg-gray-800 text-white rounded-md px-2 py-1 bottom-[-30px] whitespace-nowrap shadow-md">
                       {copied ? '✅ Link copied!' : '📱 Scan or click to copy'}
                     </div>
 
-                    {/* Static caption */}
                     <p className="text-xs text-gray-500 mt-1">Scan to view profile</p>
                   </div>
 
@@ -736,11 +881,11 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                 <div className="flex items-center space-x-4 text-sm">
                   <div className="flex items-center text-gray-600">
                     <PhoneIcon className="h-4 w-4 mr-1" />
-                    <span>{profileData.contact_number || candidate.phone || 'Not provided'}</span>
+                    <span>{profileData.contact_number || student.phone || 'Not provided'}</span>
                   </div>
                   <div className="flex items-center text-gray-600">
                     <EnvelopeIcon className="h-4 w-4 mr-1" />
-                    <span>{profileData.email || candidate.email}</span>
+                    <span>{profileData.email || student.email}</span>
                   </div>
                 </div>
               </div>
@@ -775,7 +920,6 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                               <span className="font-medium text-gray-900 break-all">{String(value)}</span>
                             </div>
                           ))}
-                          {/* Composite summaries inside Profile Information */}
                           {Array.isArray(profileData.education) && profileData.education.length > 0 && (
                             <div className="flex flex-col col-span-1">
                               <span className="text-gray-500 text-xs mb-1">Education</span>
@@ -968,7 +1112,6 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                     <div className="space-y-4">
                       {profileData.projects && profileData.projects.length > 0 ? (
                         profileData.projects.map((project: any, index: number) => {
-                          // Handle multiple possible field names for tech stack
                           const techStack = project.technologies || project.tech || project.techStack || project.skills || [];
                           const statusText = project.status ? project.status.charAt(0).toUpperCase() + project.status.slice(1) : 'Status Unknown';
 
@@ -1016,21 +1159,11 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                       ))}
                                     </div>
                                   )}
-                                  <div className="flex items-center gap-3 mt-3">
-                                    {project.link && (
-                                      <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:text-primary-700 inline-flex items-center">
-                                        View Project →
-                                      </a>
-                                    )}
-                                    {/* {project.github && (
-                                      <a href={project.github} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-gray-800 inline-flex items-center">
-                                        <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                                          <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
-                                        </svg>
-                                        GitHub
-                                      </a>
-                                    )} */}
-                                  </div>
+                                  {project.link && (
+                                    <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:text-primary-700 mt-2 inline-flex items-center">
+                                      View Project →
+                                    </a>
+                                  )}
                                 </div>
                                 <BeakerIcon className="h-6 w-6 text-gray-400 ml-4 flex-shrink-0" />
                               </div>
@@ -1127,7 +1260,6 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                       {cert.title || cert.name || `Certificate ${index + 1}`}
                                     </h4>
 
-                                    {/* Row 2: Issued by + Issue Date */}
                                     <div className="flex justify-between">
                                       {cert.issuer && (
                                         <p className="text-sm text-gray-600 mt-1">Issued by: {cert.issuer}</p>
@@ -1215,8 +1347,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                     <div className="mb-6">
                       <h4 className="text-sm font-medium text-gray-700 mb-3">Verification Status</h4>
                       <div className="space-y-3">
-                        {candidate.badges && candidate.badges.length > 0 ? (
-                          candidate.badges.map((badge: string, index: number) => {
+                        {student.badges && student.badges.length > 0 ? (
+                          student.badges.map((badge: string, index: number) => {
                             const verificationInfo: any = {
                               self_verified: {
                                 title: 'Self Verified',
@@ -1293,7 +1425,6 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                     <div className="mt-8">
                       <h4 className="text-sm font-medium text-gray-700 mb-3">Verification Trail</h4>
                       <div className="space-y-3">
-                        {/* Education Verification */}
                         {profileData.education && profileData.education.length > 0 && (
                           <div className="border border-gray-200 rounded-lg p-3">
                             <div className="flex items-start">
@@ -1311,7 +1442,6 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                           </div>
                         )}
 
-                        {/* Training Verification */}
                         {profileData.training && profileData.training.length > 0 && (
                           <div className="border border-gray-200 rounded-lg p-3">
                             <div className="flex items-start">
@@ -1331,7 +1461,6 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                           </div>
                         )}
 
-                        {/* Skills Verification */}
                         {((profileData.technicalSkills && profileData.technicalSkills.length > 0) ||
                           (profileData.softSkills && profileData.softSkills.length > 0)) && (
                             <div className="border border-gray-200 rounded-lg p-3">
@@ -1350,7 +1479,6 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                             </div>
                           )}
 
-                        {/* Profile Import Info */}
                         {profileData.imported_at && (
                           <div className="border border-gray-200 rounded-lg p-3">
                             <div className="flex items-start">
@@ -1374,65 +1502,38 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                   </div>
                 )}
 
+                {/* Mentor Notes Tab */}
                 {activeTab === 'notes' && (
                   <div className="p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Notes & Ratings</h3>
-                    {/* Rating */}
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Your Rating
-                      </label>
-                      <div className="flex items-center space-x-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            onClick={() => setRating(star)}
-                            className={`h-8 w-8 ${star <= rating ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-400`}
-                          >
-                            <StarIcon className={star <= rating ? 'fill-current' : ''} />
-                          </button>
-                        ))}
-                      </div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-medium text-gray-900">Mentor Notes</h3>
+                      <button
+                        onClick={() => setShowMentorNoteModal(true)}
+                        className="inline-flex items-center px-3 py-1.5 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
+                      >
+                        <PencilSquareIcon className="h-4 w-4 mr-1" />
+                        Add Note
+                      </button>
                     </div>
 
-                    {/* Notes */}
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Notes
-                      </label>
-                      <textarea
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        rows={4}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="Add your notes about this candidate..."
-                      />
-                    </div>
-
-                    {/* Team Notes */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">Team Notes</h4>
-                      <div className="space-y-3">
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium text-gray-900">Sarah Johnson</span>
-                            <span className="text-xs text-gray-500">2 days ago</span>
+                    <div className="space-y-3">
+                      {mentorNotes.length > 0 ? (
+                        mentorNotes.map((note: any) => (
+                          <div key={note.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-900">{note.educator}</span>
+                              <span className="text-xs text-gray-500">{note.date}</span>
+                            </div>
+                            <p className="text-sm text-gray-700">{note.note}</p>
                           </div>
-                          <p className="text-sm text-gray-700">
-                            Strong technical skills, particularly impressed with the food safety project.
-                            Good communication during preliminary screening.
-                          </p>
-                          <div className="flex items-center mt-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <StarIcon
-                                key={star}
-                                className={`h-4 w-4 ${star <= 4 ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
-                              />
-                            ))}
-                            <span className="text-sm text-gray-600 ml-2">4/5</span>
-                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-12">
+                          <PencilSquareIcon className="mx-auto h-12 w-12 text-gray-400" />
+                          <p className="text-gray-500 mt-2">No mentor notes yet</p>
+                          <p className="text-gray-400 text-sm mt-1">Add feedback or observations about this student</p>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1443,17 +1544,17 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                 <div className="flex items-center justify-between">
                   <div className="flex space-x-3">
                     <button
-                      onClick={() => setShowShortlistModal(true)}
+                      onClick={() => setShowMentorNoteModal(true)}
                       className="inline-flex items-center px-4 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100">
-                      <BookmarkIcon className="h-4 w-4 mr-2" />
-                      Add to Shortlist
+                      <PencilSquareIcon className="h-4 w-4 mr-2" />
+                      Add Mentor Note
                     </button>
-                    <button
-                      onClick={() => setShowInterviewModal(true)}
-                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                      <CalendarDaysIcon className="h-4 w-4 mr-2" />
-                      Schedule Interview
-                    </button>
+                    {/* <button
+                      onClick={() => setShowVerifyModal(true)}
+                      className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100">
+                      <CheckCircleIcon className="h-4 w-4 mr-2" />
+                      Verify Assignment
+                    </button> */}
                   </div>
                   <div className="flex space-x-2">
                     <button
@@ -1477,17 +1578,17 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
           </div>
 
           {/* Modals */}
-          <AddToShortlistModal
-            isOpen={showShortlistModal}
-            onClose={() => setShowShortlistModal(false)}
-            candidate={modalCandidate}
-            onSuccess={() => { }}
+          <AddMentorNoteModal
+            isOpen={showMentorNoteModal}
+            onClose={() => setShowMentorNoteModal(false)}
+            student={modalStudent}
+            onSuccess={() => {}}
           />
-          <ScheduleInterviewModal
-            isOpen={showInterviewModal}
-            onClose={() => setShowInterviewModal(false)}
-            candidate={modalCandidate}
-            onSuccess={() => { }}
+          <VerifyAssignmentModal
+            isOpen={showVerifyModal}
+            onClose={() => setShowVerifyModal(false)}
+            student={modalStudent}
+            onSuccess={() => {}}
           />
         </div>
       </div>
@@ -1496,17 +1597,17 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
       <ExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
-        candidate={modalCandidate}
+        student={modalStudent}
       />
 
       {/* Message Modal */}
       <MessageModal
         isOpen={showMessageModal}
         onClose={() => setShowMessageModal(false)}
-        candidate={modalCandidate}
+        student={modalStudent}
       />
     </div>
   );
 };
 
-export default CandidateProfileDrawer;
+export default StudentProfileDrawer;
