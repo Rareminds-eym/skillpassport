@@ -16,7 +16,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-import FeatureCard from "./components/FeatureCard";
+import FeatureCard from "./components/ui/FeatureCard";
 import { getStudentByEmail } from "../../services/studentServiceProfile";
 
 export default function LoginStudent() {

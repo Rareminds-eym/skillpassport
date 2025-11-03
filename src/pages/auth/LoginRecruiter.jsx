@@ -14,7 +14,7 @@ import {
   EyeOff,
   AlertCircle,
 } from "lucide-react";
-import FeatureCard from "./components/FeatureCard";
+import FeatureCard from "./components/ui/FeatureCard";
 import { loginRecruiter } from "../../services/recruiterProfile";
 
 export default function LoginRecruiter() {
