@@ -6,17 +6,19 @@ import {
   Bars3Icon,
   XMarkIcon
 } from '@heroicons/react/24/outline'
-import { recentActivity } from '../../../data/sampleData'
 import { HeaderProps } from '../../../types/recruiter'
 import { useAuth } from '../../../context/AuthContext'
+import { useNotifications } from '../../../hooks/useNotifications'
 import NotificationPanel from './NotificationPanel'
 
 const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
   const [showNotifications, setShowNotifications] = useState<boolean>(false)
   const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false)
-  const [unreadCount, setUnreadCount] = useState<number>(0)
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+
+  // ✅ get realtime unread notifications
+  const { unreadCount } = useNotifications(user?.email || null)
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
@@ -35,6 +37,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
               )}
             </button>
             
+            {/* Logo */}
             <div className="flex-shrink-0 ml-2 md:ml-0">
               <img
                 src="/RareMinds ISO Logo-01.png"
@@ -53,13 +56,13 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
                 className="relative p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <BellIcon className="h-6 w-6" />
-                {/* red dot */}
+                {/* red dot shows only if unread > 0 */}
                 { unreadCount > 0 && (
-                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full ring-2 ring-white bg-red-500"></span>
+                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
                 )}
               </button>
 
-              {/* ✅ Pass email to NotificationPanel */}
+              {/* ✅ Notification Panel */}
               <NotificationPanel
                 isOpen={showNotifications}
                 onClose={() => setShowNotifications(false)}
@@ -72,6 +75,8 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
               <button
                 onClick={() => setShowProfileMenu((s) => !s)}
                 className="flex items-center space-x-3 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500"
+                aria-haspopup="true"
+                aria-expanded={showProfileMenu}
               >
                 <UserCircleIcon className="h-8 w-8 text-gray-400" />
                 <div className="hidden md:flex flex-col items-start">
@@ -93,16 +98,14 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
                     >
                       My Profile
                     </button>
-
                     <div className="border-t border-gray-100 my-1"></div>
-
                     <button
                       onClick={() => {
                         setShowProfileMenu(false)
                         try {
                           logout()
                         } finally {
-                          // optional redirect
+                          // optional redirect after logout
                           // navigate("/login")
                         }
                       }}

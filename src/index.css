@@ -37,25 +37,6 @@ code {
   background: #94a3b8;
 }
 
-/* Custom scrollbar for Recent Updates */
-.recent-updates-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-
-.recent-updates-scroll::-webkit-scrollbar-track {
-  background: #F3F8FF;
-  border-radius: 10px;
-}
-
-.recent-updates-scroll::-webkit-scrollbar-thumb {
-  background: #2196F3;
-  border-radius: 10px;
-}
-
-.recent-updates-scroll::-webkit-scrollbar-thumb:hover {
-  background: #1976D2;
-}
-
 /* Mobile-friendly tap highlights */
 * {
   -webkit-tap-highlight-color: transparent;
@@ -245,6 +226,29 @@ code {
   height: 1px;
 }
 
+
+.tab-link {
+  position: relative;
+  color: #0a6aba;
+  transition: color 0.3s ease;
+}
+
+.tab-link::before {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 3px;
+  background-color: #0a6aba; /* blue color */
+  bottom: -4px;
+  left: 0;
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+.tab-link:hover::before {
+  width: 100%;
+}
+
 /* Responsive typography scale */
 :root {
   --fs-h1: clamp(2rem, 1.6rem + 2vw, 3rem);
@@ -281,6 +285,40 @@ code {
   }
 }
 
+/* Animated signup button */
+.signup-button {
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 1000ms;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.signup-button::before {
+  content: "";
+  position: absolute;
+  left: -50px;
+  top: 0;
+  width: 0;
+  height: 100%;
+  background-color: #ef4444;
+  transform: skewX(45deg);
+  z-index: -1;
+  transition: width 1000ms;
+}
+
+.signup-button:hover {
+  color: #ffffff !important;
+  transform: scale(1.05);
+  box-shadow: 4px 5px 17px -4px #ef4444;
+}
+
+.signup-button:hover::before {
+  width: 250%;
+}
+
 /* Optional typography helpers for special cases */
 .text-hero { font-size: clamp(2.25rem, 1.3rem + 3.2vw, 4rem); line-height: 1.05; }
 .text-subhero { font-size: clamp(1rem, 0.9rem + 0.8vw, 1.375rem); }
@@ -289,3 +327,31 @@ code {
 .text-case-subtitle { font-size: clamp(1rem, 0.92rem + 0.7vw, 1.5rem); }
 /* Stat number sizing for mobile */
 .text-stat { font-size: clamp(2rem, 1.2rem + 3vw, 2.75rem); line-height: 1.1; }
+
+/* React Paginate Custom Styles */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pagination li {
+  display: inline-block;
+}
+
+.pagination li a {
+  cursor: pointer;
+  user-select: none;
+}
+
+.pagination li.disabled a {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pagination li.selected a {
+  pointer-events: none;
+}

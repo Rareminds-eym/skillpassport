@@ -6,3 +6,5 @@ export { default as Opportunities } from './Opportunities';
 export { default as MySkills } from './MySkills';
 export { default as MyTraining } from './MyTraining';
 export { default as MyExperience } from './MyExperience';
+export { default as Assignments } from './Assignments';
+export { default as Settings } from './Settings';

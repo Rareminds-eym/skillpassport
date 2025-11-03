@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { Outlet, useParams, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
+import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
 import Header from '../components/Students/components/Header';
 import ProfileHeroEdit from '../components/Students/components/ProfileHeroEdit';
 import Footer from '../components/Students/components/Footer';
@@ -22,6 +25,7 @@ const StudentLayout = () => {
   const [activeTab, setActiveTab] = useState('skills');
   const [activeModal, setActiveModal] = useState(null);
   const location = useLocation();
+  const { user } = useAuth();
   
   // Check if viewing someone else's profile
   const isViewingOthersProfile = location.pathname.includes('/student/profile/');
@@ -52,14 +56,15 @@ const StudentLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header activeTab={activeTab} setActiveTab={setActiveTab} />
-      {!isViewingOthersProfile && <ProfileHeroEdit onEditClick={handleEditClick} />}
-      <main className="py-8 px-6">
-        <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
-      </main>
-      <Footer />
-      <Toaster />
+    <GlobalPresenceProvider userType="student">
+      <div className="min-h-screen bg-gray-50">
+        <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+        {!isViewingOthersProfile && <ProfileHeroEdit onEditClick={handleEditClick} />}
+        <main className="py-8 px-6">
+          <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
+        </main>
+        <Footer />
+        <Toaster />
 
       {/* Edit Modals - Only show if not viewing someone else's profile */}
       {!isViewingOthersProfile && (
@@ -104,7 +109,8 @@ const StudentLayout = () => {
           />
         </>
       )}
-    </div>
+      </div>
+    </GlobalPresenceProvider>
   );
 };
 

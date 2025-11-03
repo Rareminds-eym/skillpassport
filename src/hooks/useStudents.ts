@@ -8,6 +8,11 @@ interface StudentRow {
   profile?: any
   createdAt?: string
   updatedAt?: string
+  skill_passports?: {
+    projects?: any[]
+    certificates?: any[]
+    assessments?: any[]
+  } | null
 }
 
 export interface StudentProfile {
@@ -42,6 +47,10 @@ export interface UICandidate {
   badges: string[]
   ai_score_overall: number
   last_updated?: string
+  profile?: any
+  projects?: any[]
+  certificates?: any[]
+  assessments?: any[]
 }
 
 function safeParseProfile(input: unknown): StudentProfile | null {
@@ -72,6 +81,7 @@ function safeParseProfile(input: unknown): StudentProfile | null {
 
 function mapToUICandidate(row: StudentRow): UICandidate {
   const profile = safeParseProfile(row.profile) || {}
+  const passport = row.skill_passports || {}
 
   const name = profile.name || 'Unknown'
   const email = profile.email
@@ -90,6 +100,26 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     .map(s => s.trim())
     .filter(Boolean)
 
+  const rawProjects = Array.isArray(passport.projects) ? passport.projects : []
+  const rawCertificates = Array.isArray(passport.certificates) ? passport.certificates : []
+  const rawAssessments = Array.isArray(passport.assessments) ? passport.assessments : []
+
+  const projects = rawProjects
+    .filter(project => project?.verified === true || project?.status === 'verified')
+    .map(project => ({
+      ...project,
+      verifiedAt: project?.verifiedAt || project?.updatedAt || project?.createdAt
+    }))
+
+  const certificates = rawCertificates
+    .filter(certificate => certificate?.verified === true || certificate?.status === 'verified')
+    .map(certificate => ({
+      ...certificate,
+      verifiedAt: certificate?.verifiedAt || certificate?.updatedAt || certificate?.createdAt
+    }))
+
+  const assessments = rawAssessments
+
   return {
     id: row.id,
     name,
@@ -102,6 +132,10 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     badges: ['institution_verified'],
     ai_score_overall: 0,
     last_updated: row.updatedAt || profile.imported_at || row.createdAt,
+    profile: row.profile,
+    projects,
+    certificates,
+    assessments,
   }
 }
 
@@ -118,7 +152,7 @@ export function useStudents() {
       try {
         const { data, error } = await supabase
           .from('students')
-          .select('id, universityId, profile, createdAt, updatedAt')
+          .select('id, universityId, profile, createdAt, updatedAt, skill_passports(projects, certificates, assessments)')
           .order('updatedAt', { ascending: false })
           .limit(500)
         if (error) throw error

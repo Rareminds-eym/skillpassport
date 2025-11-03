@@ -19,21 +19,22 @@ import {
 } from '@heroicons/react/24/outline';
 import AddToShortlistModal from '../modals/AddToShortlistModal';
 import ScheduleInterviewModal from '../modals/ScheduleInterviewModal';
+import { QRCodeSVG } from 'qrcode.react';
 
 const Badge = ({ type }) => {
   const badgeConfig = {
-    self_verified: { 
-      color: 'bg-gray-100 text-gray-800 border-gray-300', 
+    self_verified: {
+      color: 'bg-gray-100 text-gray-800 border-gray-300',
       label: 'Self Verified',
       icon: ShieldCheckIcon
     },
-    institution_verified: { 
-      color: 'bg-blue-100 text-blue-800 border-blue-300', 
+    institution_verified: {
+      color: 'bg-blue-100 text-blue-800 border-blue-300',
       label: 'Institution Verified',
       icon: AcademicCapIcon
     },
-    external_audited: { 
-      color: 'bg-yellow-100 text-yellow-800 border-yellow-400', 
+    external_audited: {
+      color: 'bg-yellow-100 text-yellow-800 border-yellow-400',
       label: 'External Audited',
       icon: ShieldCheckIcon
     }
@@ -53,11 +54,10 @@ const Badge = ({ type }) => {
 const TabButton = ({ active, onClick, children }) => (
   <button
     onClick={onClick}
-    className={`px-4 py-2 text-sm font-medium border-b-2 ${
-      active
-        ? 'border-primary-500 text-primary-600'
-        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-    }`}
+    className={`px-4 py-2 text-sm font-medium border-b-2 ${active
+      ? 'border-primary-500 text-primary-600'
+      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+      }`}
   >
     {children}
   </button>
@@ -92,22 +92,22 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     const margin = 14;
     const lineHeight = 6;
     let yPos = 20;
-    
+
     const checkNewPage = () => {
       if (yPos > pageHeight - 30) {
         doc.addPage();
         yPos = 20;
       }
     };
-    
+
     doc.setFont('helvetica');
-    
+
     // Title
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text(`CANDIDATE PROFILE - ${candidate.name}`, margin, yPos);
     yPos += 10;
-    
+
     // Metadata
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -115,7 +115,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     yPos += lineHeight;
     doc.text(`Export Type: ${isFullProfile ? 'Full Profile with PII' : 'Mini-Profile'}`, margin, yPos);
     yPos += lineHeight + 3;
-    
+
     // Basic Information
     checkNewPage();
     doc.setFont('helvetica', 'bold');
@@ -124,7 +124,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     yPos += lineHeight + 2;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    
+
     const basicFields = [
       { label: 'Name', value: candidate.name },
       { label: 'Registration Number', value: candidate.registration_number },
@@ -137,7 +137,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       { label: 'District', value: candidate.district_name || candidate.location },
       { label: 'Year', value: candidate.year },
     ];
-    
+
     if (isFullProfile) {
       basicFields.push(
         { label: 'Email', value: candidate.email },
@@ -145,7 +145,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
         { label: 'Alternate Number', value: candidate.alternate_number }
       );
     }
-    
+
     basicFields.forEach(field => {
       if (field.value) {
         checkNewPage();
@@ -154,7 +154,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       }
     });
     yPos += 3;
-    
+
     // Academic Information
     checkNewPage();
     doc.setFont('helvetica', 'bold');
@@ -163,7 +163,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     yPos += lineHeight + 2;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    
+
     const academicFields = [
       { label: 'Branch/Field', value: candidate.branch_field },
       { label: 'Trainer Name', value: candidate.trainer_name },
@@ -173,7 +173,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       { label: 'Year of Passing', value: candidate.year_of_passing },
       { label: 'Employability Score', value: candidate.employability_score },
     ];
-    
+
     academicFields.forEach(field => {
       if (field.value !== undefined && field.value !== null && field.value !== '') {
         checkNewPage();
@@ -182,7 +182,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       }
     });
     yPos += 3;
-    
+
     // Skills
     if (candidate.skills && candidate.skills.length > 0) {
       checkNewPage();
@@ -192,7 +192,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       yPos += lineHeight + 2;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      
+
       const skillsText = candidate.skills.join(', ');
       const splitSkills = doc.splitTextToSize(skillsText, pageWidth - (margin * 2) - 5);
       splitSkills.forEach(line => {
@@ -202,7 +202,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       });
       yPos += 3;
     }
-    
+
     // Additional Information (if in full profile mode)
     if (isFullProfile) {
       checkNewPage();
@@ -212,14 +212,14 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       yPos += lineHeight + 2;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      
+
       const additionalFields = [
         { label: 'Imported At', value: candidate.imported_at },
         { label: 'Last Updated', value: candidate.last_updated },
         { label: 'Created At', value: candidate.created_at },
         { label: 'Verified', value: candidate.verified ? 'Yes' : 'No' },
       ];
-      
+
       additionalFields.forEach(field => {
         if (field.value) {
           checkNewPage();
@@ -229,7 +229,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       });
       yPos += 3;
     }
-    
+
     // Verification Badges
     if (candidate.badges && candidate.badges.length > 0) {
       checkNewPage();
@@ -242,7 +242,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       doc.text(candidate.badges.join(', '), margin + 5, yPos);
       yPos += lineHeight + 3;
     }
-    
+
     // Footer on all pages
     const totalPages = doc.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
@@ -253,13 +253,13 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
       doc.setTextColor(0, 0, 0);
     }
-    
+
     return doc;
   };
 
   const generateCSV = (candidate, settings) => {
     const isFullProfile = settings.type === 'full_profile';
-    
+
     // Build comprehensive headers
     const headers = [
       'Name',
@@ -274,7 +274,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       'District',
       'Year',
     ];
-    
+
     if (isFullProfile) {
       headers.push(
         'Email',
@@ -284,7 +284,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
         'NM ID'
       );
     }
-    
+
     headers.push(
       'AI Score',
       'CGPA',
@@ -294,7 +294,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       'Verification Badges',
       'Verified'
     );
-    
+
     if (isFullProfile) {
       headers.push(
         'Imported At',
@@ -302,9 +302,9 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
         'Created At'
       );
     }
-    
+
     let csvContent = headers.join(',') + '\n';
-    
+
     // Escape function for CSV
     const escapeCSV = (value) => {
       if (value === null || value === undefined || value === '') return '""';
@@ -312,7 +312,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       // Escape quotes and wrap in quotes
       return `"${str.replace(/"/g, '""')}"`;
     };
-    
+
     // Build row data
     const row = [
       escapeCSV(candidate.name),
@@ -327,7 +327,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       escapeCSV(candidate.district_name || candidate.location),
       escapeCSV(candidate.year),
     ];
-    
+
     if (isFullProfile) {
       row.push(
         escapeCSV(candidate.email),
@@ -337,7 +337,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
         escapeCSV(candidate.nm_id)
       );
     }
-    
+
     row.push(
       escapeCSV(candidate.ai_score_overall),
       escapeCSV(candidate.cgpa),
@@ -347,7 +347,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       escapeCSV(candidate.badges?.join('; ')),
       escapeCSV(candidate.verified ? 'Yes' : 'No')
     );
-    
+
     if (isFullProfile) {
       row.push(
         escapeCSV(candidate.imported_at),
@@ -355,15 +355,15 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
         escapeCSV(candidate.created_at)
       );
     }
-    
+
     csvContent += row.join(',') + '\n';
-    
+
     return csvContent;
   };
 
   const downloadFile = (content, filename, format) => {
-    const blob = new Blob([content], { 
-      type: format === 'csv' ? 'text/csv' : 'application/pdf' 
+    const blob = new Blob([content], {
+      type: format === 'csv' ? 'text/csv' : 'application/pdf'
     });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -377,7 +377,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
 
   const handleExport = () => {
     const filename = `${candidate.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`;
-    
+
     if (exportSettings.format === 'csv') {
       const content = generateCSV(candidate, exportSettings);
       downloadFile(content, filename + '.csv', 'csv');
@@ -385,7 +385,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       const pdfDoc = generatePDF(candidate, exportSettings);
       pdfDoc.save(filename + '.pdf');
     }
-    
+
     onClose();
   };
 
@@ -395,7 +395,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
-        
+
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Export Candidate Profile</h3>
@@ -414,7 +414,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
                     name="format"
                     value="csv"
                     checked={exportSettings.format === 'csv'}
-                    onChange={(e) => setExportSettings({...exportSettings, format: e.target.value})}
+                    onChange={(e) => setExportSettings({ ...exportSettings, format: e.target.value })}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                   />
                   <span className="ml-2 text-sm text-gray-700">CSV</span>
@@ -425,7 +425,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
                     name="format"
                     value="pdf"
                     checked={exportSettings.format === 'pdf'}
-                    onChange={(e) => setExportSettings({...exportSettings, format: e.target.value})}
+                    onChange={(e) => setExportSettings({ ...exportSettings, format: e.target.value })}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                   />
                   <span className="ml-2 text-sm text-gray-700">PDF</span>
@@ -442,7 +442,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
                     name="type"
                     value="mini_profile"
                     checked={exportSettings.type === 'mini_profile'}
-                    onChange={(e) => setExportSettings({...exportSettings, type: e.target.value})}
+                    onChange={(e) => setExportSettings({ ...exportSettings, type: e.target.value })}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                   />
                   <span className="ml-2 text-sm text-gray-700">Mini-Profile</span>
@@ -453,7 +453,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
                     name="type"
                     value="full_profile"
                     checked={exportSettings.type === 'full_profile'}
-                    onChange={(e) => setExportSettings({...exportSettings, type: e.target.value})}
+                    onChange={(e) => setExportSettings({ ...exportSettings, type: e.target.value })}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                   />
                   <span className="ml-2 text-sm text-gray-700">Full Profile</span>
@@ -510,7 +510,7 @@ const MessageModal = ({ isOpen, onClose, candidate }) => {
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
-        
+
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Contact {candidate.name}</h3>
@@ -525,7 +525,7 @@ const MessageModal = ({ isOpen, onClose, candidate }) => {
               className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-green-50 hover:border-green-300 transition-colors"
             >
               <svg className="h-5 w-5 mr-3 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
               </svg>
               WhatsApp
             </button>
@@ -573,14 +573,15 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   const [showInterviewModal, setShowInterviewModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
+  const [copied, setCopied] = useState(false);
+
 
   if (!isOpen || !candidate) return null;
 
-  const modalCandidate = {
-    ...candidate,
-    name: (candidate as any).name || (candidate as any).candidate_name || '',
-    email: (candidate as any).email || (candidate as any).candidate_email || ''
-  };
+  const candidateName = (candidate as any).name || (candidate as any).candidate_name || '';
+  const candidateEmail = (candidate as any).email || (candidate as any).candidate_email || '';
+
+  const qrCodeValue = `${window.location.origin}/student/profile/${candidateEmail}`;
 
   // Parse profile data if it's a string/object and prepare helpers
   let profileData: any = candidate;
@@ -591,6 +592,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
       rawProfile = JSON.parse(candidate.profile);
       profileData = { ...candidate, ...rawProfile };
     } catch (e) {
+      console.warn('Profile parsing failed, using fallback:', e);
       rawProfile = {};
       profileData = candidate;
     }
@@ -599,22 +601,57 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
     profileData = { ...candidate, ...rawProfile };
   }
 
+  const projectsData = Array.isArray((candidate as any).projects) ? (candidate as any).projects : [];
+  const certificatesData = Array.isArray((candidate as any).certificates) ? (candidate as any).certificates : [];
+  const assessmentsData = Array.isArray((candidate as any).assessments) ? (candidate as any).assessments : [];
+
+  const verifiedProjects = projectsData.filter((project: any) => project?.verified === true || project?.status === 'verified');
+  const verifiedCertificates = certificatesData.filter((certificate: any) => certificate?.verified === true || certificate?.status === 'verified');
+
+  profileData = {
+    ...profileData,
+    projects: verifiedProjects,
+    certificates: verifiedCertificates,
+    assessments: assessmentsData
+  };
+
+  const modalCandidate = {
+    ...candidate,
+    name: candidateName,
+    email: candidateEmail,
+    projects: verifiedProjects,
+    certificates: verifiedCertificates,
+    assessments: assessmentsData
+  };
+
   const formatLabel = (key: string) => key
     .replace(/_/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/^\w/, (c) => c.toUpperCase());
 
-  const isPrimitive = (val: any) => val === null || ['string','number','boolean'].includes(typeof val);
+  const formatDateValue = (value: any) => {
+    if (!value) return '';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString();
+  };
+
+  const isPrimitive = (val: any) => val === null || ['string', 'number', 'boolean'].includes(typeof val);
   const isEmpty = (v: any) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
 
   // Build lists of fields from the JSONB profile
-  const knownComposite = new Set(['training','education','technicalSkills','softSkills','experience']);
+  const knownComposite = new Set(['training', 'education', 'technicalSkills', 'softSkills', 'experience', 'projects', 'certificates', 'assessments']);
+  // Fields to exclude from Profile Information display (metadata/internal fields)
+  const excludedFields = new Set([
+    '_', 'imported_at', 'contact_number_dial_code', 'id', 'student_id',
+    'created_at', 'updated_at', 'last_updated'
+  ]);
+
   const primitiveEntries = Object.entries(rawProfile || {})
-    .filter(([k,v]) => !knownComposite.has(k) && isPrimitive(v) && !isEmpty(v))
-    .sort(([a],[b]) => a.localeCompare(b));
+    .filter(([k, v]) => !knownComposite.has(k) && !excludedFields.has(k) && isPrimitive(v) && !isEmpty(v))
+    .sort(([a], [b]) => a.localeCompare(b));
 
   const otherArrays = Object.entries(rawProfile || {})
-    .filter(([k,v]) => Array.isArray(v) && !knownComposite.has(k));
+    .filter(([k, v]) => Array.isArray(v) && !knownComposite.has(k));
 
   const tabs = [
     { key: 'overview', label: 'Overview' },
@@ -629,7 +666,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
     <div className="fixed inset-0 z-50 overflow-hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
-        
+
         <div className="fixed inset-y-0 right-0 pl-10 max-w-full flex sm:pl-16">
           <div className="w-screen max-w-2xl">
             <div className="h-full flex flex-col bg-white shadow-xl">
@@ -661,6 +698,30 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                       </div>
                     )}
                   </div>
+
+                  {/* Right side — QR code */}
+                  <div className="relative flex flex-col items-center justify-center group">
+                    <div
+                      onClick={() => {
+                        navigator.clipboard.writeText(qrCodeValue);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      className="cursor-pointer bg-white border border-gray-200 p-2 rounded-lg shadow-sm transition-transform transform hover:scale-105 hover:shadow-md"
+                      title="Click to copy profile link"
+                    >
+                      <QRCodeSVG value={qrCodeValue} size={72} level="H" />
+                    </div>
+
+                    {/* Hover text / scan hint */}
+                    <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-[11px] bg-gray-800 text-white rounded-md px-2 py-1 bottom-[-30px] whitespace-nowrap shadow-md">
+                      {copied ? '✅ Link copied!' : '📱 Scan or click to copy'}
+                    </div>
+
+                    {/* Static caption */}
+                    <p className="text-xs text-gray-500 mt-1">Scan to view profile</p>
+                  </div>
+
                   <button
                     onClick={onClose}
                     className="bg-white rounded-md p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-50"
@@ -778,9 +839,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                     {edu.cgpa && edu.cgpa !== 'N/A' && <span>• CGPA: {edu.cgpa}</span>}
                                   </div>
                                 </div>
-                                <span className={`px-2 py-1 text-xs rounded-full ${
-                                  edu.status === 'ongoing' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                                }`}>
+                                <span className={`px-2 py-1 text-xs rounded-full ${edu.status === 'ongoing' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                                  }`}>
                                   {edu.status}
                                 </span>
                               </div>
@@ -803,9 +863,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                   {train.skill && <p className="text-sm text-gray-600 mt-1">{train.skill}</p>}
                                   {train.trainer && <p className="text-xs text-gray-500 mt-1">Trainer: {train.trainer}</p>}
                                 </div>
-                                <span className={`px-2 py-1 text-xs rounded-full ${
-                                  train.status === 'ongoing' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                                }`}>
+                                <span className={`px-2 py-1 text-xs rounded-full ${train.status === 'ongoing' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+                                  }`}>
                                   {train.status}
                                 </span>
                               </div>
@@ -843,9 +902,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                               <div className="flex items-center">
                                 <div className="flex">
                                   {[...Array(5)].map((_, i) => (
-                                    <div key={i} className={`w-2 h-2 rounded-full mx-0.5 ${
-                                      i < skill.level ? 'bg-primary-600' : 'bg-gray-300'
-                                    }`}></div>
+                                    <div key={i} className={`w-2 h-2 rounded-full mx-0.5 ${i < skill.level ? 'bg-primary-600' : 'bg-gray-300'
+                                      }`}></div>
                                   ))}
                                 </div>
                                 {skill.verified && (
@@ -903,104 +961,415 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                   </div>
                 )}
 
-                {/* Existing tabs remain unchanged */}
+                {/* Projects Tab */}
                 {activeTab === 'projects' && (
                   <div className="p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Projects & Portfolio</h3>
                     <div className="space-y-4">
-                      {candidate.projects?.map((project, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">{project.title}</h4>
-                              <p className="text-sm text-gray-600 mt-1">{project.description}</p>
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {project.tech?.map((tech, techIndex) => (
-                                  <span
-                                    key={techIndex}
-                                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
-                                  >
-                                    {tech}
-                                  </span>
-                                ))}
+                      {profileData.projects && profileData.projects.length > 0 ? (
+                        profileData.projects.map((project: any, index: number) => {
+                          // Handle multiple possible field names for tech stack
+                          const techStack = project.technologies || project.tech || project.techStack || project.skills || [];
+                          const statusText = project.status ? project.status.charAt(0).toUpperCase() + project.status.slice(1) : 'Status Unknown';
+
+                          return (
+                            <div key={project.id || index} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center">
+                                    <h4 className="font-medium text-gray-900">{project.title || project.name || `Project ${index + 1}`}</h4>
+                                    {project.status && (
+                                      <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${project.status.toLowerCase() === 'completed' ? 'bg-green-100 text-green-800' :
+                                        project.status.toLowerCase() === 'ongoing' ? 'bg-blue-100 text-blue-800' :
+                                          'bg-gray-100 text-gray-800'
+                                        }`}>
+                                        {statusText}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {project.organization && (
+                                    <p className="text-sm text-gray-500 mt-1">
+                                      <span className="font-medium">Organization:</span> {project.organization}
+                                    </p>
+                                  )}
+                                  {project.description && (
+                                    <p className="text-sm text-gray-600 mt-2">{project.description}</p>
+                                  )}
+                                  {project.role && (
+                                    <p className="text-sm text-gray-500 mt-1"><span className="font-medium">Role:</span> {project.role}</p>
+                                  )}
+                                  {project.duration && (
+                                    <p className="text-sm text-gray-500 mt-1"><span className="font-medium">Duration:</span> {project.duration}</p>
+                                  )}
+                                  {project.verifiedAt && (
+                                    <p className="text-xs text-green-600 mt-1">Verified on: {formatDateValue(project.verifiedAt || project.updatedAt || project.createdAt)}</p>
+                                  )}
+                                  {techStack.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-3">
+                                      {techStack.map((tech: string, techIndex: number) => (
+                                        <span
+                                          key={techIndex}
+                                          className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary-50 text-primary-700 border border-primary-200"
+                                        >
+                                          {tech}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-3 mt-3">
+                                    {project.link && (
+                                      <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:text-primary-700 inline-flex items-center">
+                                        View Project →
+                                      </a>
+                                    )}
+                                    {/* {project.github && (
+                                      <a href={project.github} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-gray-800 inline-flex items-center">
+                                        <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                                          <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+                                        </svg>
+                                        GitHub
+                                      </a>
+                                    )} */}
+                                  </div>
+                                </div>
+                                <BeakerIcon className="h-6 w-6 text-gray-400 ml-4 flex-shrink-0" />
                               </div>
                             </div>
-                            <BeakerIcon className="h-6 w-6 text-gray-400 ml-4" />
-                          </div>
+                          );
+                        })
+                      ) : (
+                        <div className="text-center py-12">
+                          <BeakerIcon className="mx-auto h-12 w-12 text-gray-400" />
+                          <p className="text-gray-500 mt-2">No projects available</p>
+                          <p className="text-gray-400 text-sm mt-1">Student hasn't added any projects yet</p>
                         </div>
-                      )) || (
-                        <p className="text-gray-500 text-center py-8">No projects available</p>
                       )}
                     </div>
                   </div>
                 )}
 
-                {/* Other tabs unchanged */}
+                {/* Assessments Tab */}
                 {activeTab === 'assessments' && (
                   <div className="p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Assessments</h3>
-                    <p className="text-gray-500 text-center py-8">Assessment results will be displayed here</p>
-                  </div>
-                )}
-
-                {activeTab === 'certificates' && (
-                  <div className="p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Certificates</h3>
-                    <p className="text-gray-500 text-center py-8">Certificates will be displayed here</p>
-                  </div>
-                )}
-
-                {activeTab === 'verification' && (
-                  <div className="p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Verification Provenance</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Assessments & Test Scores</h3>
                     <div className="space-y-4">
-                      {candidate.badges.map((badge, index) => {
-                        const verificationInfo = {
-                          self_verified: {
-                            title: 'Self Verified',
-                            description: 'Student has self-declared this information',
-                            date: 'Sep 20, 2025',
-                            verifier: 'Student',
-                            status: 'pending'
-                          },
-                          institution_verified: {
-                            title: 'Institution Verified',
-                            description: 'Verified by college examination cell',
-                            date: 'Sep 25, 2025',
-                            verifier: 'College Exam Cell',
-                            status: 'verified'
-                          },
-                          external_audited: {
-                            title: 'External Audited',
-                            description: 'Third-party verification completed',
-                            date: 'Sep 28, 2025',
-                            verifier: 'External Auditor',
-                            status: 'audited'
-                          }
-                        };
-
-                        const info = verificationInfo[badge];
-                        const statusColors = {
-                          pending: 'text-yellow-600 bg-yellow-50 border-yellow-200',
-                          verified: 'text-blue-600 bg-blue-50 border-blue-200',
-                          audited: 'text-green-600 bg-green-50 border-green-200'
-                        };
-
-                        return (
-                          <div key={index} className={`border rounded-lg p-4 ${statusColors[info.status]}`}>
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h4 className="font-medium">{info.title}</h4>
-                                <p className="text-sm mt-1">{info.description}</p>
-                                <p className="text-xs mt-2">
-                                  Verified on {info.date} by {info.verifier}
-                                </p>
+                      {profileData.assessments && profileData.assessments.length > 0 ? (
+                        profileData.assessments.map((assessment: any, index: number) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-medium text-gray-900">{assessment.name || assessment.title || `Assessment ${index + 1}`}</h4>
+                                  {assessment.score && (
+                                    <span className="text-lg font-bold text-primary-600">{assessment.score}</span>
+                                  )}
+                                </div>
+                                {assessment.type && (
+                                  <p className="text-sm text-gray-500 mt-1">{assessment.type}</p>
+                                )}
+                                {assessment.date && (
+                                  <p className="text-xs text-gray-400 mt-1">Completed on: {assessment.date}</p>
+                                )}
+                                {assessment.percentile && (
+                                  <div className="mt-3">
+                                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                      <span>Percentile</span>
+                                      <span>{assessment.percentile}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                      <div className="bg-green-500 h-2 rounded-full" style={{ width: `${assessment.percentile}%` }}></div>
+                                    </div>
+                                  </div>
+                                )}
+                                {assessment.badge && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mt-2">
+                                    <TrophyIcon className="h-3 w-3 mr-1" />
+                                    {assessment.badge}
+                                  </span>
+                                )}
                               </div>
-                              <ShieldCheckIcon className="h-6 w-6" />
                             </div>
                           </div>
-                        );
-                      })}
+                        ))
+                      ) : (
+                        <div className="text-center py-12">
+                          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <p className="text-gray-500 mt-2">No assessments available</p>
+                          <p className="text-gray-400 text-sm mt-1">Assessment results will appear here once completed</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Certificates Tab */}
+                {activeTab === 'certificates' && (
+                  <div className="p-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Certificates & Credentials</h3>
+                    <div className="space-y-4">
+                      {profileData.certificates && profileData.certificates.length > 0 ? (
+                        profileData.certificates.map((cert: any, index: number) => (
+                          <div key={cert.id || index} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                            <div className="flex items-start">
+                              <div className="flex-shrink-0">
+                                <div className="h-12 w-12 bg-primary-100 rounded-lg flex items-center justify-center">
+                                  <svg className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                  </svg>
+                                </div>
+                              </div>
+                              <div className="ml-4 flex-1">
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <h4 className="font-medium text-gray-900">
+                                      {cert.title || cert.name || `Certificate ${index + 1}`}
+                                    </h4>
+
+                                    {/* Row 2: Issued by + Issue Date */}
+                                    <div className="flex justify-between">
+                                      {cert.issuer && (
+                                        <p className="text-sm text-gray-600 mt-1">Issued by: {cert.issuer}</p>
+                                      )}
+                                      {cert.issuedOn && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          Issue Date: {cert.issuedOn}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    {cert.expiry_date && (
+                                      <p className="text-xs text-gray-500">Expires: {cert.expiry_date}</p>
+                                    )}
+                                    {cert.credentialId && (
+                                      <p className="text-xs text-gray-400 mt-2">ID: {cert.credentialId}</p>
+                                    )}
+
+                                    {cert.level && (
+                                      <p className="text-xs text-gray-700 mt-2 flex items-center gap-1">
+                                        <span className="font-medium">Level:</span>
+                                        <span className="inline-block w-auto px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                          {cert.level}
+                                        </span>
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {(cert.verified || cert.status === "verified") && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      <ShieldCheckIcon className="h-3 w-3 mr-1" />
+                                      Verified
+                                    </span>
+                                  )}
+                                  {cert.status === "pending" && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                      Pending
+                                    </span>
+                                  )}
+                                </div>
+
+                                {cert.verifiedAt && (
+                                  <p className="text-xs text-green-600 mt-2">Verified on: {formatDateValue(cert.verifiedAt)}</p>
+                                )}
+                                {cert.description && (
+                                  <p className="text-sm text-gray-600 mt-2">{cert.description}</p>
+                                )}
+                                {cert.skills && cert.skills.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-3">
+                                    {cert.skills.map((skill: string, skillIndex: number) => (
+                                      <span key={skillIndex} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                        {skill}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {cert.link && (
+                                  <a href={cert.link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:text-primary-700 mt-2 inline-flex items-center">
+                                    View Certificate →
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-12">
+                          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                          </svg>
+                          <p className="text-gray-500 mt-2">No certificates available</p>
+                          <p className="text-gray-400 text-sm mt-1">Certificates and credentials will appear here</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Verification Tab */}
+                {activeTab === 'verification' && (
+                  <div className="p-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Verification & Provenance</h3>
+
+                    {/* Verification Badges */}
+                    <div className="mb-6">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Verification Status</h4>
+                      <div className="space-y-3">
+                        {candidate.badges && candidate.badges.length > 0 ? (
+                          candidate.badges.map((badge: string, index: number) => {
+                            const verificationInfo: any = {
+                              self_verified: {
+                                title: 'Self Verified',
+                                description: 'Student has self-declared this information',
+                                date: profileData.imported_at || 'N/A',
+                                verifier: 'Student',
+                                status: 'pending',
+                                icon: '👤'
+                              },
+                              institution_verified: {
+                                title: 'Institution Verified',
+                                description: 'Verified by college/university',
+                                date: profileData.imported_at || 'N/A',
+                                verifier: profileData.college_school_name || 'Institution',
+                                status: 'verified',
+                                icon: '🎓'
+                              },
+                              external_audited: {
+                                title: 'External Audited',
+                                description: 'Third-party verification completed',
+                                date: profileData.imported_at || 'N/A',
+                                verifier: 'External Auditor',
+                                status: 'audited',
+                                icon: '✓'
+                              }
+                            };
+
+                            const info = verificationInfo[badge] || {
+                              title: badge,
+                              description: 'Verification status',
+                              date: 'N/A',
+                              verifier: 'System',
+                              status: 'pending',
+                              icon: '•'
+                            };
+
+                            const statusColors: any = {
+                              pending: 'bg-yellow-50 border-yellow-200',
+                              verified: 'bg-blue-50 border-blue-200',
+                              audited: 'bg-green-50 border-green-200'
+                            };
+
+                            return (
+                              <div key={index} className={`border rounded-lg p-4 ${statusColors[info.status]}`}>
+                                <div className="flex items-start justify-between">
+                                  <div className="flex items-start">
+                                    <div className="text-2xl mr-3">{info.icon}</div>
+                                    <div>
+                                      <h4 className="font-medium text-gray-900">{info.title}</h4>
+                                      <p className="text-sm text-gray-600 mt-1">{info.description}</p>
+                                      <div className="mt-2 text-xs text-gray-500">
+                                        <p>Verified by: {info.verifier}</p>
+                                        {info.date && info.date !== 'N/A' && (
+                                          <p>Date: {new Date(info.date).toLocaleDateString()}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <ShieldCheckIcon className={`h-6 w-6 flex-shrink-0 ${info.status === 'verified' ? 'text-blue-600' :
+                                    info.status === 'audited' ? 'text-green-600' :
+                                      'text-yellow-600'
+                                    }`} />
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p className="text-sm text-gray-500">No verification badges available</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Verification Trail */}
+                    <div className="mt-8">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Verification Trail</h4>
+                      <div className="space-y-3">
+                        {/* Education Verification */}
+                        {profileData.education && profileData.education.length > 0 && (
+                          <div className="border border-gray-200 rounded-lg p-3">
+                            <div className="flex items-start">
+                              <AcademicCapIcon className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">Education Records</p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {profileData.education.length} education record(s) on file
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Source: {profileData.university || profileData.college_school_name || 'Institution'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Training Verification */}
+                        {profileData.training && profileData.training.length > 0 && (
+                          <div className="border border-gray-200 rounded-lg p-3">
+                            <div className="flex items-start">
+                              <BeakerIcon className="h-5 w-5 text-purple-600 mr-2 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">Training Records</p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {profileData.training.length} training program(s) documented
+                                </p>
+                                {profileData.trainer_name && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Trainer: {profileData.trainer_name}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Skills Verification */}
+                        {((profileData.technicalSkills && profileData.technicalSkills.length > 0) ||
+                          (profileData.softSkills && profileData.softSkills.length > 0)) && (
+                            <div className="border border-gray-200 rounded-lg p-3">
+                              <div className="flex items-start">
+                                <ShieldCheckIcon className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900">Skills Assessment</p>
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    {(profileData.technicalSkills?.length || 0) + (profileData.softSkills?.length || 0)} skill(s) verified
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Technical: {profileData.technicalSkills?.length || 0}, Soft: {profileData.softSkills?.length || 0}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                        {/* Profile Import Info */}
+                        {profileData.imported_at && (
+                          <div className="border border-gray-200 rounded-lg p-3">
+                            <div className="flex items-start">
+                              <svg className="h-5 w-5 text-gray-600 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">Profile Import</p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  Last imported: {new Date(profileData.imported_at).toLocaleString()}
+                                </p>
+                                {profileData.nm_id && (
+                                  <p className="text-xs text-gray-500 mt-1">NM ID: {profileData.nm_id}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1050,7 +1419,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                             <span className="text-xs text-gray-500">2 days ago</span>
                           </div>
                           <p className="text-sm text-gray-700">
-                            Strong technical skills, particularly impressed with the food safety project. 
+                            Strong technical skills, particularly impressed with the food safety project.
                             Good communication during preliminary screening.
                           </p>
                           <div className="flex items-center mt-2">
@@ -1073,13 +1442,13 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
               <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div className="flex space-x-3">
-                    <button 
+                    <button
                       onClick={() => setShowShortlistModal(true)}
                       className="inline-flex items-center px-4 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100">
                       <BookmarkIcon className="h-4 w-4 mr-2" />
                       Add to Shortlist
                     </button>
-                    <button 
+                    <button
                       onClick={() => setShowInterviewModal(true)}
                       className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                       <CalendarDaysIcon className="h-4 w-4 mr-2" />
@@ -1087,14 +1456,14 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                     </button>
                   </div>
                   <div className="flex space-x-2">
-                    <button 
+                    <button
                       onClick={() => setShowMessageModal(true)}
                       className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                     >
                       <ChatBubbleLeftRightIcon className="h-4 w-4 mr-2" />
                       Message
                     </button>
-                    <button 
+                    <button
                       onClick={() => setShowExportModal(true)}
                       className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                     >
@@ -1106,19 +1475,19 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
               </div>
             </div>
           </div>
-          
+
           {/* Modals */}
-          <AddToShortlistModal 
+          <AddToShortlistModal
             isOpen={showShortlistModal}
             onClose={() => setShowShortlistModal(false)}
             candidate={modalCandidate}
-            onSuccess={() => {}}
+            onSuccess={() => { }}
           />
-          <ScheduleInterviewModal 
+          <ScheduleInterviewModal
             isOpen={showInterviewModal}
             onClose={() => setShowInterviewModal(false)}
             candidate={modalCandidate}
-            onSuccess={() => {}}
+            onSuccess={() => { }}
           />
         </div>
       </div>
@@ -1127,14 +1496,14 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
       <ExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
-        candidate={candidate}
+        candidate={modalCandidate}
       />
 
       {/* Message Modal */}
       <MessageModal
         isOpen={showMessageModal}
         onClose={() => setShowMessageModal(false)}
-        candidate={candidate}
+        candidate={modalCandidate}
       />
     </div>
   );

@@ -89,87 +89,187 @@ function safeJSONParse(jsonString) {
  * @param {string} email - Student email
  * @returns {Promise<Object>} Student data
  */
-export async function getStudentByEmail(email) {
+export const getStudentByEmail = async (email) => {
   try {
     console.log('🔍 Fetching student data for email:', email);
     
-    // First, try to find by email in profile (for students with email populated)
-    console.log('🔍 Trying JSONB query: profile->>email =', email);
+    // STRATEGY 1: Try students.email column first (if it exists and is populated)
+    console.log('🔍 Trying students.email column query');
     let { data, error } = await supabase
       .from('students')
-      .select('*')
-      .eq('profile->>email', email)
+      .select(`
+        *,
+        skill_passports (
+          id,
+          projects,
+          certificates,
+          assessments,
+          status,
+          aiVerification,
+          nsqfLevel,
+          skills,
+          createdAt,
+          updatedAt
+        )
+      `)
+      .eq('email', email)
       .maybeSingle();
 
-    console.log('🔍 JSONB query result - data:', data);
-    console.log('🔍 JSONB query result - error:', error);
+    console.log('🔍 students.email query result - data:', data ? 'Found' : 'Not found');
+    console.log('🔍 students.email query result - error:', error);
+
+    // STRATEGY 2: If not found, try JSONB profile query
+    if (!data && !error) {
+      console.log('🔍 Trying JSONB query: profile->>email =', email);
+      const result = await supabase
+        .from('students')
+        .select(`
+          *,
+          skill_passports (
+            id,
+            projects,
+            certificates,
+            assessments,
+            status,
+            aiVerification,
+            nsqfLevel,
+            skills,
+            createdAt,
+            updatedAt
+          )
+        `)
+        .eq('profile->>email', email)
+        .maybeSingle();
+      
+      data = result.data;
+      error = result.error;
+      console.log('🔍 JSONB query result - data:', data ? 'Found' : 'Not found');
+      console.log('🔍 JSONB query result - error:', error);
+    }
 
     if (error) {
-      console.error('❌ Error fetching student:', error);
+      console.error('❌ Supabase error:', error);
       return { success: false, error: error.message };
     }
 
-    // If found by email, we're done!
-    if (data) {
-      console.log('✅ Student found by email in profile:', data.profile?.name);
-      console.log('📋 Raw profile data:', data.profile);
-      
-      // CRITICAL: Parse profile if it's a string (Supabase returns JSONB as string sometimes)
-      // Handle NaN values which are not valid JSON
-      const profileData = safeJSONParse(data.profile);
-      
-      const transformedData = transformProfileData(profileData, email);
-      console.log('📋 Transformed data:', transformedData);
-      return {
-        success: true,
-        data: transformedData,
-        rawData: data
-      };
+    // STRATEGY 3: If JSONB operator doesn't work, manual search
+    if (!data) {
+      console.log('🔍 JSONB query returned null. Trying manual search...');
+      const { data: allStudents, error: allError } = await supabase
+        .from('students')
+        .select(`
+          *,
+          skill_passports (
+            id,
+            projects,
+            certificates,
+            assessments,
+            status,
+            aiVerification,
+            nsqfLevel,
+            skills,
+            createdAt,
+            updatedAt
+          )
+        `);
+
+      if (allError) {
+        console.error('❌ Error fetching all students:', allError);
+        return { success: false, error: allError.message };
+      }
+
+      console.log('🔍 Found', allStudents?.length || 0, 'total students. Searching for email...');
+
+      // Manually search for matching email
+      data = allStudents?.find(student => {
+        const profileData = safeJSONParse(student.profile);
+        const studentEmail = profileData?.email;
+        console.log('🔍 Checking student:', profileData?.name, 'email:', studentEmail);
+        return studentEmail?.toLowerCase() === email.toLowerCase();
+      });
+
+      if (!data) {
+        console.log('❌ No student found with email in profile. Returning null.');
+        return { success: false, error: 'No data found for this email.' };
+      }
     }
 
-    // If JSONB query didn't work, try fetching all students and checking manually
-    // (This handles cases where profile is stored as a string or JSONB operator doesn't work)
-    console.log('🔍 JSONB query returned null. Trying manual search...');
-    const { data: allStudents, error: allError } = await supabase
-      .from('students')
-      .select('*');
+    console.log('✅ Student found:', data.profile?.name || 'No name');
+    console.log('📋 Raw profile data:', data.profile);
+    console.log('📋 Raw skill_passports data:', data.skill_passports);
 
-    if (allError) {
-      console.error('❌ Error fetching all students:', allError);
-      return { success: false, error: allError.message };
-    }
+    // Parse the profile JSONB
+    const profileData = safeJSONParse(data.profile);
+    
+    // Transform profile data to consistent format
+    const transformedProfile = transformProfileData(profileData, email);
 
-    console.log('🔍 Found', allStudents?.length || 0, 'total students. Searching for email...');
+    // Extract skill_passports data (if exists)
+    const passport = data.skill_passports || {};
 
-    // Manually search for matching email
-    const matchingStudent = allStudents?.find(student => {
-      const profileData = safeJSONParse(student.profile);
-      const studentEmail = profileData?.email;
-      console.log('🔍 Checking student:', profileData?.name, 'email:', studentEmail);
-      return studentEmail?.toLowerCase() === email.toLowerCase();
+    // Merge: database fields + profile fields + passport fields
+    const mergedData = {
+      id: data.id,
+      universityId: data.universityId,
+      email: data.email || transformedProfile.email,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+      
+      // Profile data (from students.profile JSONB)
+      profile: transformedProfile,
+      
+      // Legacy flattened access for backward compatibility
+      ...transformedProfile,
+      
+      // NOW THESE COME FROM skill_passports table (NOT from profile):
+      projects: Array.isArray(passport.projects)
+        ? passport.projects
+          .map((project) => ({
+            ...project,
+            verifiedAt:
+              project?.verified === true || project?.status === 'verified'
+                ? project?.verifiedAt || project?.updatedAt || project?.createdAt
+                : null
+          }))
+        : [],
+      certificates: Array.isArray(passport.certificates)
+        ? passport.certificates
+          .map((certificate) => ({
+            ...certificate,
+            verifiedAt:
+              certificate?.verified === true || certificate?.status === 'verified'
+                ? certificate?.verifiedAt || certificate?.updatedAt || certificate?.createdAt
+                : null
+          }))
+        : [],
+      assessments: passport.assessments || [],
+      
+      // Passport metadata:
+      passportId: passport.id,
+      passportStatus: passport.status,
+      aiVerification: passport.aiVerification,
+      nsqfLevel: passport.nsqfLevel,
+      passportSkills: passport.skills || [],
+      
+      // Raw data for debugging
+      rawData: data
+    };
+
+    console.log('✅ Merged student data with passport:', {
+      name: mergedData.name,
+      email: mergedData.email,
+      projectsCount: mergedData.projects?.length || 0,
+      certificatesCount: mergedData.certificates?.length || 0,
+      assessmentsCount: mergedData.assessments?.length || 0,
+      hasPassport: !!passport.id
     });
 
-    if (matchingStudent) {
-      console.log('✅ Student found by manual search:', matchingStudent.profile?.name || matchingStudent.profile);
-      const profileData = safeJSONParse(matchingStudent.profile);
-      const transformedData = transformProfileData(profileData, email);
-      return {
-        success: true,
-        data: transformedData,
-        rawData: matchingStudent
-      };
-    }
-
-    // If not found by email, do NOT fallback to name matching or first student
-    // Only show a student if their email is actually present in the JSONB profile
-    console.log('❌ No student found with email in profile. Returning null.');
-    return { success: false, error: 'No data found for this email.' };
-
+    return { success: true, data: mergedData };
   } catch (err) {
-    console.error('❌ Unexpected error:', err);
+    console.error('❌ getStudentByEmail exception:', err);
     return { success: false, error: err.message };
   }
-}
+};
 
 /**
  * Transform imported JSONB profile data to UI format
@@ -224,6 +324,14 @@ function transformProfileData(profile, email) {
       district: profile.district_name || '',
       college: profile.college_school_name || '',
       registrationNumber: profile.registration_number,
+      // Social Media Links
+      github_link: profile.github_link || '',
+      portfolio_link: profile.portfolio_link || '',
+      linkedin_link: profile.linkedin_link || '',
+      twitter_link: profile.twitter_link || '',
+      instagram_link: profile.instagram_link || '',
+      facebook_link: profile.facebook_link || '',
+      other_social_links: profile.other_social_links || [],
     },
     
     // Education - Build from imported data OR use existing from profile
@@ -283,6 +391,21 @@ function transformProfileData(profile, email) {
         description: 'Works well in teams'
       }
     ],
+
+    projects: Array.isArray(profile.projects)
+      ? profile.projects
+      : Array.isArray(profile.profile?.projects)
+        ? profile.profile.projects
+        : Array.isArray(profile.profile?.profile?.projects)
+          ? profile.profile.profile.projects
+          : [],
+    certificates: Array.isArray(profile.certificates)
+      ? profile.certificates
+      : Array.isArray(profile.profile?.certificates)
+        ? profile.profile.certificates
+        : Array.isArray(profile.profile?.profile?.certificates)
+          ? profile.profile.profile.certificates
+          : [],
     
     // Recent updates
     recentUpdates: [
@@ -491,8 +614,47 @@ export async function updateStudentByEmail(email, updates) {
       ...currentProfile,
       ...updates
     };
+
+    const nestedSyncKeys = ['projects', 'certificates'];
+    if (updatedProfile && typeof updatedProfile === 'object') {
+      if (updatedProfile.profile && typeof updatedProfile.profile === 'object') {
+        let outerProfile = updatedProfile.profile;
+        let outerChanged = false;
+        nestedSyncKeys.forEach((key) => {
+          if (updates[key] !== undefined) {
+            if (!outerChanged) {
+              outerProfile = { ...outerProfile };
+              outerChanged = true;
+            }
+            outerProfile[key] = updates[key];
+          }
+        });
+        if (outerChanged) {
+          updatedProfile.profile = outerProfile;
+        }
+        if (outerProfile.profile && typeof outerProfile.profile === 'object') {
+          let innerProfile = outerProfile.profile;
+          let innerChanged = false;
+          nestedSyncKeys.forEach((key) => {
+            if (updates[key] !== undefined) {
+              if (!innerChanged) {
+                innerProfile = { ...innerProfile };
+                innerChanged = true;
+              }
+              innerProfile[key] = updates[key];
+            }
+          });
+          if (innerChanged) {
+            updatedProfile.profile = {
+              ...updatedProfile.profile,
+              profile: innerProfile,
+            };
+          }
+        }
+      }
+    }
     
-    console.log('� Updated profile (merged):', updatedProfile);
+    console.log('📋 Final profile to save:', JSON.stringify(updatedProfile).substring(0, 300));
     console.log('💾 Saving to Supabase...');
 
     // Update using student ID (more reliable)
@@ -840,3 +1002,84 @@ export async function updateSoftSkillsByEmail(email, skillsData) {
     return { success: false, error: err.message };
   }
 }
+
+
+/**
+ * Update projects in skill_passports table
+ */
+export const updateProjectsByEmail = async (email, projectsData) => {
+  try {
+    console.log('💾 updateProjectsByEmail:', email, projectsData);
+
+    // 1. Get student ID
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('id')
+      .eq('email', email)
+      .single();
+
+    if (studentError || !student) {
+      return { success: false, error: 'Student not found' };
+    }
+
+    // 2. Update skill_passports.projects
+    const { data: passport, error: passportError } = await supabase
+      .from('skill_passports')
+      .update({ projects: projectsData })
+      .eq('studentId', student.id)
+      .select()
+      .single();
+
+    if (passportError) {
+      console.error('❌ Error updating projects:', passportError);
+      return { success: false, error: passportError.message };
+    }
+
+    // 3. Fetch fresh merged data
+    const result = await getStudentByEmail(email);
+    return result;
+  } catch (err) {
+    console.error('❌ updateProjectsByEmail exception:', err);
+    return { success: false, error: err.message };
+  }
+};
+
+/**
+ * Update certificates in skill_passports table
+ */
+export const updateCertificatesByEmail = async (email, certificatesData) => {
+  try {
+    console.log('💾 updateCertificatesByEmail:', email, certificatesData);
+
+    // 1. Get student ID
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('id')
+      .eq('email', email)
+      .single();
+
+    if (studentError || !student) {
+      return { success: false, error: 'Student not found' };
+    }
+
+    // 2. Update skill_passports.certificates
+    const { data: passport, error: passportError } = await supabase
+      .from('skill_passports')
+      .update({ certificates: certificatesData })
+      .eq('studentId', student.id)
+      .select()
+      .single();
+
+    if (passportError) {
+      console.error('❌ Error updating certificates:', passportError);
+      return { success: false, error: passportError.message };
+    }
+
+    // 3. Fetch fresh merged data
+    const result = await getStudentByEmail(email);
+    return result;
+  } catch (err) {
+    console.error('❌ updateCertificatesByEmail exception:', err);
+    return { success: false, error: err.message };
+  }
+};

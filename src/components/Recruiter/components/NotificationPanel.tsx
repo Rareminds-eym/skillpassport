@@ -129,6 +129,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     if (filterKey === "pipeline") {
       return notifications.filter((n) =>
         [
+          "candidate_sourced",
           "pipeline_stage_changed",
           "candidate_shortlisted",
           "candidate_rejected",
@@ -277,9 +278,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                             <EyeIcon className="h-4 w-4" />
                           </button>
                         )}
-                        <button onClick={() => remove(n.id)} className="text-gray-400 hover:text-red-600">
+                        {/* <button onClick={() => remove(n.id)} className="text-gray-400 hover:text-red-600">
                           <TrashIcon className="h-4 w-4" />
-                        </button>
+                        </button> */}
                       </div>
                     </div>
                   </div>

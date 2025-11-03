@@ -174,6 +174,14 @@ const Header = () => {
 
           {/* Action Buttons */}
           <div className="hidden md:flex items-center space-x-4 flex-shrink-0">
+            {/* Signup Button */}
+            <Link
+              to="/register"
+              className="signup-button px-5 py-2 text-sm font-extrabold text-red-600 border-2 border-red-300 rounded-full transition-all duration-200"
+            >
+              Sign Up
+            </Link>
+
             {/* Login Dropdown */}
             <div 
               ref={loginBtnRef}
@@ -203,6 +211,13 @@ const Header = () => {
                       className="block px-5 py-3.5 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
                     >
                       Login as Student
+                    </Link>
+                    <div className="h-px bg-gray-100"></div>
+                    <Link
+                      to="/login/educator"
+                      className="block px-5 py-3.5 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+                    >
+                      Login as Educator
                     </Link>
                   </div>
                 </div>
@@ -235,23 +250,47 @@ const Header = () => {
               ref={(el) => (mobileMenuItemsRef.current[0] = el)}
               className="px-2 pt-4 space-y-3"
             >
-              {/* Mobile Login Options */}
-              <div className="space-y-2">
-                <div className="text-xs font-bold text-gray-400 uppercase px-2 tracking-wider">Login</div>
-                <Link
-                  to="/login/recruiter"
-                  onClick={closeMobileMenuWithAnimation}
-                  className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
-                >
-                  Login as Recruiter
-                </Link>
-                <Link
-                  to="/login/student"
-                  onClick={closeMobileMenuWithAnimation}
-                  className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
-                >
-                  Login as Student
-                </Link>
+              {/* Mobile Login/Signup Options */}
+              <div className="space-y-4">
+                <div>
+                  <div className="text-xs font-bold text-gray-400 uppercase px-2 tracking-wider">Sign Up</div>
+                  <div className="mt-2">
+                    <Link
+                      to="/register"
+                      onClick={closeMobileMenuWithAnimation}
+                      className="signup-button block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 border-2 border-red-300 rounded-lg transition-all duration-200"
+                    >
+                      Create an Account
+                    </Link>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-xs font-bold text-gray-400 uppercase px-2 tracking-wider">Login</div>
+                  <div className="mt-2 space-y-2">
+                    <Link
+                      to="/login/recruiter"
+                      onClick={closeMobileMenuWithAnimation}
+                      className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
+                    >
+                      Login as Recruiter
+                    </Link>
+                    <Link
+                      to="/login/student"
+                      onClick={closeMobileMenuWithAnimation}
+                      className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
+                    >
+                      Login as Student
+                    </Link>
+                    <Link
+                      to="/login/educator"
+                      onClick={closeMobileMenuWithAnimation}
+                      className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
+                    >
+                      Login as Educator
+                    </Link>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

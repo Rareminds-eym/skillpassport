@@ -62,7 +62,8 @@ const MyExperience = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-[#F8FAFC] py-8 px-6">
+      <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8 flex flex-col items-center justify-center text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">My Experience</h1>
@@ -75,14 +76,16 @@ const MyExperience = () => {
           {/* Sticky container for both cards */}
           <div className="sticky top-20 z-30 flex flex-col gap-6">
             {/* Recent Updates */}
-            <div className="bg-white rounded-2xl shadow-none">
-              <CardHeader className="bg-[#F3F8FF] rounded-t-2xl border-b-0 px-6 py-4">
-                <CardTitle className="flex items-center gap-2 text-[#1976D2] text-lg font-bold">
-                  <Bell className="w-5 h-5 text-[#1976D2]" />
-                  Recent Updates
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+              <CardHeader className="px-6 py-4 border-b border-gray-100">
+                <CardTitle className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Bell className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <span className="text-lg font-semibold text-gray-900">Recent Updates</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-0 py-4">
+              <CardContent className="p-6">
                 {finalLoading ? (
                   <div className="flex justify-center items-center py-8">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#1976D2]"></div>
@@ -110,7 +113,7 @@ const MyExperience = () => {
                       {(showAllRecentUpdates 
                         ? finalRecentUpdates
                         : finalRecentUpdates.slice(0, 5)
-                      ).map((update, idx) => (
+                      ).filter(update => update && update.message).map((update, idx) => (
                         <div key={update.id || `update-${update.timestamp}-${idx}`} className="flex items-start gap-3 px-6 py-4 bg-white rounded-xl border-l-4 border-[#2196F3] mb-2 hover:shadow-md transition-shadow">
                           <div className="w-2 h-2 bg-[#FF9800] rounded-full mt-2 flex-shrink-0" />
                           <div>
@@ -160,39 +163,41 @@ const MyExperience = () => {
         {/* RIGHT COLUMN - Experience Content */}
         <div className="lg:col-span-2">
           {/* Experience Card - Matches Dashboard Design */}
-          <Card className="h-full border-2 border-[#5378f1] rounded-2xl shadow-none bg-white">
-            <CardHeader className="bg-gradient-to-r from-white to-purple-50 rounded-t-2xl border-b-0 flex items-center justify-between">
+          <Card className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md">
+            <CardHeader className="px-6 py-4 border-b border-gray-100">
               <div className="flex items-center w-full justify-between">
-                <CardTitle className="flex items-center gap-2 text-blue-700 text-lg font-semibold m-0 p-0">
-                  <Users className="w-5 h-5" />
-                  <span>My Experience</span>
+                <CardTitle className="flex items-center gap-3 m-0 p-0">
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <span className="text-lg font-semibold text-gray-900">My Experience</span>
                 </CardTitle>
                 <button
-                  className="p-2 rounded-full hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300 ml-2"
+                  className="p-2 rounded-md hover:bg-gray-100 transition-colors"
                   title="Edit Experience"
                   onClick={() => setActiveModal('experience')}
                 >
-                  <Edit className="w-5 h-5 text-blue-600" />
+                  <Edit className="w-4 h-4 text-gray-600" />
                 </button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4 p-0">
+            <CardContent className="p-6 space-y-3">
               {experience.filter(exp => exp.enabled !== false).length > 0 ? (
                 <>
                   {(showAllExperience 
                     ? experience.filter(exp => exp.enabled !== false) 
                     : experience.filter(exp => exp.enabled !== false).slice(0, 2)
                   ).map((exp, idx) => (
-                    <div key={exp.id || `${exp.role}-${exp.organization}-${idx}`} className="bg-white rounded-xl border-0 shadow-none px-5 py-4 mb-2 flex flex-col gap-2" style={{boxShadow:'0 2px 8px 0 #e9e3fa'}}>
+                    <div key={exp.id || `${exp.role}-${exp.organization}-${idx}`} className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-bold text-gray-900 text-base mb-1">{exp.role}</p>
-                          <p className="text-gray-600 text-sm font-medium mb-1">{exp.organization}</p>
-                          <p className="text-xs text-gray-500">{exp.duration}</p>
+                          <p className="font-semibold text-gray-900 text-base mb-1">{exp.role}</p>
+                          <p className="text-blue-600 text-sm font-medium mb-1">{exp.organization}</p>
+                          <p className="text-xs text-gray-600">{exp.duration}</p>
                         </div>
                         {exp.verified && (
-                          <Badge className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-xs font-semibold shadow-none">
-                            <CheckCircle className="w-3 h-3 mr-1" />
+                          <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
                             Verified
                           </Badge>
                         )}
@@ -203,7 +208,7 @@ const MyExperience = () => {
                     <Button
                       variant="outline"
                       onClick={() => setShowAllExperience((v) => !v)}
-                      className="w-full border-2 border-blue-400 text-blue-600 hover:bg-purple-50 font-semibold rounded-lg mt-2"
+                      className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
                     >
                       {showAllExperience ? 'Show Less' : 'View All Experience'}
                     </Button>
@@ -214,7 +219,7 @@ const MyExperience = () => {
                   <Users className="w-20 h-20 mx-auto text-gray-300 mb-4" />
                   <h3 className="text-xl font-semibold text-gray-600 mb-2">No experience records yet</h3>
                   <p className="text-gray-500 mb-6">Start building your professional portfolio by adding your work experience</p>
-                  <Button onClick={() => setActiveModal('experience')} className="bg-blue-600 hover:bg-blue-700">
+                  <Button onClick={() => setActiveModal('experience')} className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 rounded-md transition-colors">
                     <Plus className="w-4 h-4 mr-2" />
                     Add Your First Experience
                   </Button>
@@ -222,9 +227,10 @@ const MyExperience = () => {
               )}
             </CardContent>
           </Card>
-        </div>
       </div>
-
+      </div>
+    </div>
+  );
       {/* Edit Modal */}
       {activeModal && (
         <ExperienceEditModal

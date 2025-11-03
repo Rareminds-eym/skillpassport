@@ -298,7 +298,53 @@ export const getRecentActivity = async (limit = 15) => {
       console.log('⚠️ Offer activities unavailable:', error.message);
     }
 
-    // 5. Placements
+    // 5. Interviews (scheduled, completed, cancelled)
+    console.log('📅 Fetching interview activities...');
+    try {
+      const { data: interviews } = await supabase
+        .from('interviews')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(limit);
+
+      if (interviews?.length > 0) {
+        interviews.forEach(interview => {
+          let action = 'scheduled interview with';
+          if (interview.status === 'completed') action = 'completed interview with';
+          if (interview.status === 'cancelled') action = 'cancelled interview with';
+          if (interview.status === 'rescheduled') action = 'rescheduled interview with';
+          
+          const interviewDate = new Date(interview.date);
+          const dateStr = interviewDate.toLocaleDateString();
+          const timeStr = interview.scheduled_time || '';
+          
+          allActivities.push({
+            id: `interview-${interview.id}`,
+            user: interview.interviewer_name || interview.created_by || 'Recruiter',
+            action: action,
+            candidate: interview.candidate_name,
+            details: `${interview.interview_type || 'Interview'} on ${dateStr}${timeStr ? ` at ${timeStr}` : ''}`,
+            timestamp: interview.updated_at,
+            type: interview.status === 'completed' ? 'interview_completed' : 
+                  interview.status === 'cancelled' ? 'interview_cancelled' : 'interview',
+            metadata: {
+              status: interview.status,
+              date: interview.date,
+              scheduledTime: interview.scheduled_time,
+              interviewType: interview.interview_type,
+              location: interview.location,
+              meetingLink: interview.meeting_link
+            },
+            icon: 'calendar'
+          });
+        });
+        console.log(`📋 Added ${interviews.length} interview activities`);
+      }
+    } catch (error) {
+      console.log('⚠️ Interview activities unavailable:', error.message);
+    }
+
+    // 6. Placements
     console.log('🎯 Fetching placement activities...');
     try {
       const { data: placements } = await supabase
@@ -347,7 +393,7 @@ export const getRecentActivity = async (limit = 15) => {
       console.log('⚠️ Placement activities unavailable:', error.message);
     }
 
-    // 6. Pipeline Candidates (new additions, stage changes)
+    // 7. Pipeline Candidates (new additions, stage changes)
     console.log('🔄 Fetching pipeline candidate activities...');
     try {
       const { data: pipelineCandidates } = await supabase
@@ -387,7 +433,7 @@ export const getRecentActivity = async (limit = 15) => {
       console.log('⚠️ Pipeline candidate activities unavailable:', error.message);
     }
 
-    // 7. Shortlist Creation/Updates
+    // 8. Shortlist Creation/Updates
     console.log('📝 Fetching shortlist creation activities...');
     try {
       const { data: shortlists } = await supabase
@@ -445,80 +491,11 @@ export const getRecentActivity = async (limit = 15) => {
  * Get alerts and pending tasks with enhanced checks
  */
 export const getDashboardAlerts = async () => {
-  console.log('🚨 Fetching dashboard alerts...');
+  console.log('🚨 Fetching dashboard alerts from page data sources...');
   try {
-    const alerts = [];
-    const now = new Date();
-
-    // Check for verification pending - students without verification
-    // First, let's see if the students table has a verified field
-    try {
-      const { count: unverifiedStudents, error: verificationError } = await supabase
-        .from('students')
-        .select('*', { count: 'exact', head: true });
-
-      // Since we don't know the exact structure, let's assume some students need verification
-      if (!verificationError && unverifiedStudents > 0) {
-        // Generate a reasonable number for verification pending
-        const pendingCount = Math.max(1, Math.floor(unverifiedStudents * 0.3)); // 30% might need verification
-        alerts.push({
-          id: 'verification-pending',
-          type: 'warning',
-          title: 'Verification Pending',
-          message: `${pendingCount} candidate(s) waiting for document verification`,
-          time: '2 hours ago',
-          urgent: true
-        });
-        console.log('📋 Added verification pending alert for', pendingCount, 'candidates');
-      }
-    } catch (verificationError) {
-      console.log('⚠️ Verification check unavailable:', verificationError.message);
-    }
-
-    // Try to check for expiring offers (handling if table doesn't exist)
-    try {
-      const { count: pipelineCount } = await supabase
-        .from('pipeline_candidates')
-        .select('*', { count: 'exact', head: true });
-        
-      if (pipelineCount > 0) {
-        // Generate a sample expiring offer alert
-        alerts.push({
-          id: 'expiring-offers',
-          type: 'error',
-          title: 'Expiring Offers',
-          message: 'Offer for Arjun Kumar expires in 24 hours',
-          time: '4 hours ago',
-          urgent: true
-        });
-        console.log('📋 Added expiring offers alert');
-      }
-    } catch (offersError) {
-      console.log('⚠️ Offers check unavailable:', offersError.message);
-    }
-    
-    // Add a sample positive feedback alert
-    alerts.push({
-      id: 'positive-feedback',
-      type: 'success',
-      title: 'Interview Feedback',
-      message: 'Positive feedback received for Priya S',
-      time: '1 day ago',
-      urgent: false
-    });
-    console.log('📋 Added positive feedback alert');
-    
-    // Ensure we always have at least 3 alerts for demo purposes
-    if (alerts.length < 3) {
-      alerts.push({
-        id: 'upcoming-interviews',
-        type: 'warning', 
-        title: 'Upcoming Interviews',
-        message: '2 interviews scheduled for tomorrow',
-        time: '6 hours ago',
-        urgent: false
-      });
-    }
+    // Dynamically import the alerts service to avoid circular deps
+    const { getAllAlerts } = await import('./alertsService.ts');
+    const alerts = await getAllAlerts();
 
     return {
       data: alerts,
@@ -594,30 +571,29 @@ export const getRecentShortlists = async (limit = 5) => {
 
 /**
  * Get saved searches (Quick Searches)
- * This could be stored in a separate table or derived from common searches
+ * Now uses the dedicated savedSearchesService
  */
 export const getSavedSearches = async () => {
   try {
-    // For now, return common search patterns
-    // In a real implementation, you might track user searches or have a saved_searches table
-    const savedSearches = [
-      'React + Node.js',
-      'Python Developers',
-      'Data Science + ML',
-      'Frontend (React/Angular)',
-      'Full Stack Developers',
-      'DevOps Engineers',
-      'Mobile App Developers',
-      'UI/UX Designers'
-    ];
-
+    // Import dynamically to avoid circular dependencies
+    const { getSavedSearches: fetchSavedSearches } = await import('./savedSearchesService.ts');
+    const result = await fetchSavedSearches();
+    
+    // Return just the data in the format expected by dashboard
     return {
-      data: savedSearches,
-      error: null
+      data: result.data || [],
+      error: result.error
     };
   } catch (error) {
     console.error('Error fetching saved searches:', error);
-    return { data: [], error };
+    // Fallback to simple array format for backward compatibility
+    const defaultSearches = [
+      { id: 'default-1', name: 'React + Node.js', search_criteria: { skills: ['React', 'Node.js'] } },
+      { id: 'default-2', name: 'Python Developers', search_criteria: { skills: ['Python'] } },
+      { id: 'default-3', name: 'Data Science + ML', search_criteria: { skills: ['Data Science', 'Machine Learning'] } },
+      { id: 'default-4', name: 'Frontend (React/Angular)', search_criteria: { skills: ['React', 'Angular'] } }
+    ];
+    return { data: defaultSearches, error };
   }
 };
 

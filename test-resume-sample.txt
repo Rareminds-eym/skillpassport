@@ -1,0 +1,84 @@
+JOHN DOE
+Email: john.doe@example.com
+Phone: +1-555-123-4567
+Location: New York, NY
+
+EDUCATION
+
+Bachelor of Science in Computer Science
+Massachusetts Institute of Technology
+2018 - 2022
+CGPA: 3.8/4.0
+
+High School Diploma
+Lincoln High School
+2014 - 2018
+GPA: 3.9/4.0
+
+EXPERIENCE
+
+Software Engineer
+Google LLC
+June 2022 - Present
+- Developed scalable web applications using React and Node.js
+- Implemented CI/CD pipelines reducing deployment time by 40%
+- Collaborated with cross-functional teams of 10+ members
+
+Software Engineering Intern
+Microsoft Corporation
+Summer 2021
+- Built REST APIs using .NET Core and Azure
+- Optimized database queries improving performance by 30%
+- Participated in code reviews and agile sprints
+
+TECHNICAL SKILLS
+
+Programming Languages: JavaScript, Python, Java, C++, TypeScript
+Web Technologies: React, Node.js, Express, HTML, CSS
+Databases: MongoDB, PostgreSQL, MySQL, Redis
+Cloud & DevOps: AWS, Azure, Docker, Kubernetes, Jenkins
+Tools: Git, VS Code, Jira, Postman
+
+SOFT SKILLS
+
+Communication: Excellent verbal and written communication
+Leadership: Led team of 5 developers in capstone project
+Teamwork: Collaborative team player with strong interpersonal skills
+Problem Solving: Analytical thinker with creative problem-solving abilities
+Time Management: Efficient at managing multiple priorities
+
+CERTIFICATIONS
+
+AWS Certified Solutions Architect - Associate
+Amazon Web Services
+Issued: January 2023
+Credential ID: AWS-1234567890
+
+Google Cloud Professional Cloud Architect
+Google Cloud
+Issued: March 2023
+Credential ID: GCP-0987654321
+
+TRAINING & COURSES
+
+Full Stack Web Development Bootcamp
+Completed - 2021
+Progress: 100%
+Topics: MERN Stack, REST APIs, Authentication
+
+Machine Learning Specialization
+Ongoing - 2023
+Progress: 60%
+Topics: Neural Networks, Deep Learning, TensorFlow
+
+PROJECTS
+
+E-commerce Platform
+- Built full-stack e-commerce application using MERN stack
+- Implemented payment gateway integration with Stripe
+- Deployed on AWS with auto-scaling capabilities
+
+Task Management App
+- Developed real-time task management application
+- Used WebSockets for live updates
+- Implemented user authentication and authorization

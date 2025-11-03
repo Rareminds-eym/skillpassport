@@ -16,7 +16,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-import FeatureCard from "./components/FeatureCard";
+import FeatureCard from "./components/ui/FeatureCard";
 import { getStudentByEmail } from "../../services/studentServiceProfile";
 
 export default function LoginStudent() {
@@ -49,8 +49,13 @@ export default function LoginStudent() {
         return;
       }
 
-      // proceed with login
-      login({ name: result.data.profile.name, email, role: "student" });
+      // proceed with login - include student ID
+      login({ 
+        id: result.data.id,  // Add student ID!
+        name: result.data.profile.name, 
+        email, 
+        role: "student" 
+      });
       navigate("/student/dashboard");
     } catch (err) {
       console.error("❌ Login error:", err);
