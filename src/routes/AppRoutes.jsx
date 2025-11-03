@@ -16,11 +16,11 @@ const SubscriptionPlans = lazy(() => import('../pages/subscription/SubscriptionP
 const LoginStudent = lazy(() => import('../pages/auth/LoginStudent'));
 const LoginRecruiter = lazy(() => import('../pages/auth/LoginRecruiter'));
 const LoginAdmin = lazy(() => import('../pages/auth/LoginAdmin'));
-const Register = lazy(() => import('../pages/auth/components/Sign In/Register'));
-const SignupRecruiter = lazy(() => import('../pages/auth/components/Sign In/recruitment/SignupRecruiter'));
-const SignupAdmin = lazy(() => import('../pages/auth/components/Sign In/recruitment/SignupAdmin'));
-const SignInSchool = lazy(() => import('../pages/auth/components/Sign In/schools/SignInSchool'));
-const SignInUniversity = lazy(() => import('../pages/auth/components/Sign In/university/SignInUniversity'));
+const Register = lazy(() => import('../pages/auth/components/SignIn/Register'));
+const SignupRecruiter = lazy(() => import('../pages/auth/components/SignIn/recruitment/SignupRecruiter'));
+const SignupAdmin = lazy(() => import('../pages/auth/components/SignIn/recruitment/SignupAdmin'));
+const SignInSchool = lazy(() => import('../pages/auth/components/SignIn/schools/SignInSchool'));
+const SignInUniversity = lazy(() => import('../pages/auth/components/SignIn/university/SignInUniversity'));
 
 const AdminDashboard = lazy(() => import('../pages/admin/Dashboard'));
 const ManageUsers = lazy(() => import('../pages/admin/ManageUsers'));

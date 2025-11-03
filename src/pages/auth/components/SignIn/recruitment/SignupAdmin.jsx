@@ -543,6 +543,18 @@ const SignupAdmin = () => {
     }
   }, [showCaptcha]);
 
+    // Set up reCAPTCHA callbacks
+    useEffect(() => {
+      window.handleRecaptchaChange = (value) => {
+        setRecaptchaVerified(!!value);
+      };
+  
+      window.handleRecaptchaExpired = () => {
+        setRecaptchaVerified(false);
+      };
+    }, []);
+  
+
   // Step Indicator Component
   const StepIndicator = () => (
     <div className="flex justify-center mb-8">
@@ -1278,7 +1290,8 @@ const SignupAdmin = () => {
                 <div
                   className="g-recaptcha"
                   data-sitekey="6Ldg8vwrAAAAALHVgjWqLKWEYMgPepeVvuOzesji"
-                  data-callback={handleRecaptchaChange}
+                  data-callback="handleRecaptchaChange"
+                  data-expired-callback="handleRecaptchaExpired"
                 ></div>
               </div>
             )}
