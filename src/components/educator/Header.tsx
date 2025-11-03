@@ -36,7 +36,7 @@ const Header: React.FC<HeaderProps> = ({
 
   const handleLogout = () => {
     setShowProfileMenu(false)
-    navigate('/educator/login')
+    navigate('/')
   }
 
   const handleProfileClick = () => {
