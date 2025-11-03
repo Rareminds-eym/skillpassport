@@ -18,9 +18,9 @@ import {
 const navigationItems = [
   { name: 'Overview', path: '/recruitment/overview', icon: HomeIcon },
   { name: 'Talent Pool', path: '/recruitment/talent-pool', icon: UsersIcon },
-  { 
-    name: 'Requisition', 
-    path: '/recruitment/requisition', 
+  {
+    name: 'Requisition',
+    path: '/recruitment/requisition',
     icon: BriefcaseIcon,
     subItems: [
       { name: 'Job Requisitions', path: '/recruitment/requisition' },
