@@ -130,6 +130,23 @@ export default function UnifiedSignup() {
       } else {
         navigate("/signup/recruitment-recruiter");
       }
+    } else if (activeTab === "university") {
+      // Handle university navigation
+      if (studentType === "admin") {
+        if (!subscriptionType) return;
+        
+        if (subscriptionType === "have") {
+          navigate("/signin/university-admin");
+        } else if (subscriptionType === "purchase") {
+          navigate("/signup/university-admin");
+        } else if (subscriptionType === "view") {
+          navigate("/subscription?type=university&mode=view");
+        }
+      } else if (studentType === "educator") {
+        navigate("/signin/university-educator");
+      } else if (studentType === "student") {
+        navigate("/signin/university-student");
+      }
     } else {
       navigate(`/signin/${activeTab}`);
     }
@@ -143,6 +160,14 @@ export default function UnifiedSignup() {
     } else {
       setShowAdminInfo(false);
       setShowRecruiterInfo(!showRecruiterInfo);
+    }
+  };
+
+  // Reset subscription type when user type changes
+  const handleStudentTypeChange = (type) => {
+    setStudentType(type);
+    if (type !== "admin") {
+      setSubscriptionType(null);
     }
   };
 
@@ -310,6 +335,7 @@ export default function UnifiedSignup() {
               </p>
             </div>
             <div className="rounded-2xl p-5 sm:p-6 bg-transparent">
+              {/* School/College Section for Mobile */}
               {(activeTab === "school" || activeTab === "college") && (
                 <div className="mb-6">
                   <p className="text-white mb-3 font-medium">I am a:</p>
@@ -329,12 +355,14 @@ export default function UnifiedSignup() {
                       <input
                         type="radio"
                         name="studentTypeMobile"
-                        value="school"
-                        checked={studentType === "school"}
+                        value="student"
+                        checked={studentType === "student"}
                         onChange={(e) => setStudentType(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
-                      <span className="text-white">School Student</span>
+                      <span className="text-white">
+                        {activeTab === "school" ? "School Student" : "College Student"}
+                      </span>
                     </label>
                     <label className="flex items-center space-x-3 cursor-pointer">
                       <input
@@ -343,6 +371,48 @@ export default function UnifiedSignup() {
                         value="admin"
                         checked={studentType === "admin"}
                         onChange={(e) => setStudentType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-white">Admin</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+              
+              {/* University Section for Mobile */}
+              {activeTab === "university" && (
+                <div className="mb-6">
+                  <p className="text-white mb-3 font-medium">I am a:</p>
+                  <div className="space-y-3">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="studentTypeMobile"
+                        value="educator"
+                        checked={studentType === "educator"}
+                        onChange={(e) => handleStudentTypeChange(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-white">Educator</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="studentTypeMobile"
+                        value="student"
+                        checked={studentType === "student"}
+                        onChange={(e) => handleStudentTypeChange(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-white">University Student</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="studentTypeMobile"
+                        value="admin"
+                        checked={studentType === "admin"}
+                        onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-white">Admin</span>
@@ -491,8 +561,8 @@ export default function UnifiedSignup() {
               </div>
             )}
 
-            {(activeTab === "school" || activeTab === "college") && (
-              /* Step indicator */
+            {/* Step indicator for School/College/University Admin */}
+            {(activeTab === "school" || activeTab === "college" || (activeTab === "university" && studentType === "admin")) && (
               <div className="flex items-center justify-center mb-8">
                 <div className="flex items-center space-x-4">
                   <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
@@ -512,17 +582,18 @@ export default function UnifiedSignup() {
             
             <div className="text-center mb-8">
               <h3 className="text-3xl font-bold text-gray-900">
-                {(activeTab === "school" || activeTab === "college") 
+                {(activeTab === "school" || activeTab === "college" || (activeTab === "university" && studentType === "admin")) 
                   ? (currentStep === 1 ? titles[activeTab].login : "Subscription")
                   : titles[activeTab].login}
               </h3>
               <p className="text-sm text-gray-600 mt-2">
-                {(activeTab === "school" || activeTab === "college")
+                {(activeTab === "school" || activeTab === "college" || (activeTab === "university" && studentType === "admin"))
                   ? (currentStep === 1 ? titles[activeTab].subtitle : "Choose your subscription option")
                   : titles[activeTab].subtitle}
               </p>
             </div>
             <div className="rounded-2xl bg-white/95 shadow-xl ring-1 ring-black/5 p-6 sm:p-8">
+              {/* School/College Section for Desktop */}
               {(activeTab === "school" || activeTab === "college") && (
                 <>
                   {currentStep === 1 && (
@@ -544,13 +615,13 @@ export default function UnifiedSignup() {
                           <input
                             type="radio"
                             name="studentType"
-                            value="school"
-                            checked={studentType === "school"}
+                            value="student"
+                            checked={studentType === "student"}
                             onChange={(e) => setStudentType(e.target.value)}
                             className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                           />
                           <span className="text-gray-700">
-                            {activeTab === "school" ? "School Student" : "University Student"}
+                            {activeTab === "school" ? "School Student" : "College Student"}
                           </span>
                         </label>
                         <label className="flex items-center space-x-3 cursor-pointer">
@@ -569,6 +640,93 @@ export default function UnifiedSignup() {
                   )}
                   
                   {currentStep === 2 && (
+                    <div className="mb-6">
+                      <p className="text-gray-700 mb-3 font-medium">Subscription:</p>
+                      <div className="space-y-3">
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="subscriptionType"
+                            value="have"
+                            checked={subscriptionType === "have"}
+                            onChange={(e) => setSubscriptionType(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-gray-700">I already have a subscription</span>
+                        </label>
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="subscriptionType"
+                            value="purchase"
+                            checked={subscriptionType === "purchase"}
+                            onChange={(e) => setSubscriptionType(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-gray-700">Purchase subscription</span>
+                        </label>
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="subscriptionType"
+                            value="view"
+                            checked={subscriptionType === "view"}
+                            onChange={(e) => setSubscriptionType(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-gray-700">View My Plan</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+              
+              {/* University Section for Desktop */}
+              {activeTab === "university" && (
+                <>
+                  {currentStep === 1 && (
+                    <div className="mb-6">
+                      <p className="text-gray-700 mb-3 font-medium">I am a:</p>
+                      <div className="space-y-3">
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="studentType"
+                            value="educator"
+                            checked={studentType === "educator"}
+                            onChange={(e) => handleStudentTypeChange(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-gray-700">Educator</span>
+                        </label>
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="studentType"
+                            value="student"
+                            checked={studentType === "student"}
+                            onChange={(e) => handleStudentTypeChange(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-gray-700">University Student</span>
+                        </label>
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="studentType"
+                            value="admin"
+                            checked={studentType === "admin"}
+                            onChange={(e) => handleStudentTypeChange(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-gray-700">Admin</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {currentStep === 2 && studentType === "admin" && (
                     <div className="mb-6">
                       <p className="text-gray-700 mb-3 font-medium">Subscription:</p>
                       <div className="space-y-3">
@@ -712,7 +870,8 @@ export default function UnifiedSignup() {
                 </div>
               )}
               
-              {(activeTab === "school" || activeTab === "college") ? (
+              {/* Action buttons for all sections */}
+              {(activeTab === "school" || activeTab === "college" || (activeTab === "university" && studentType === "admin")) ? (
                 <div className="flex space-x-4">
                   {currentStep > 1 && (
                     <button
