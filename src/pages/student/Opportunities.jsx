@@ -14,12 +14,13 @@ import { useOpportunities } from '../../hooks/useOpportunities';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useAuth } from '../../context/AuthContext';
 import AppliedJobsService from '../../services/appliedJobsService';
+import SearchHistoryService from '../../services/searchHistoryService';
+import { Clock, X } from 'lucide-react';
 import SavedJobsService from '../../services/savedJobsService';
 import OpportunityCard from '../../components/Students/components/OpportunityCard';
 import OpportunityListItem from '../../components/Students/components/OpportunityListItem';
 import OpportunityPreview from '../../components/Students/components/OpportunityPreview';
 import AdvancedFilters from '../../components/Students/components/AdvancedFilters';
-
 const Opportunities = () => {
   // Get user context
   const { user } = useAuth();
@@ -53,6 +54,10 @@ const Opportunities = () => {
   const [appliedJobs, setAppliedJobs] = useState(new Set());
   const [savedJobs, setSavedJobs] = useState(new Set());
   const [isApplying, setIsApplying] = useState(false);
+  // Search history state
+  const [searchHistory, setSearchHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState({
     employmentType: [],
     experienceLevel: [],
@@ -80,6 +85,69 @@ const Opportunities = () => {
       setSelectedOpportunity(opportunities[0]);
     }
   }, [opportunities]);
+
+  // Load search history on mount
+  useEffect(() => {
+    const loadSearchHistory = async () => {
+      if (!studentId) return;
+      
+      try {
+        setIsLoadingHistory(true);
+        const history = await SearchHistoryService.getSearchHistory(studentId);
+        setSearchHistory(history);
+      } catch (error) {
+        console.error('Error loading search history:', error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    loadSearchHistory();
+  }, [studentId]);
+
+  // Handle search submission
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) return;
+    
+    if (studentId) {
+      // Save to database
+      await SearchHistoryService.addSearchTerm(studentId, searchTerm);
+      
+      // Reload history
+      const history = await SearchHistoryService.getSearchHistory(studentId);
+      setSearchHistory(history);
+    }
+    
+    setShowHistory(false);
+  };
+
+  // Handle search term selection from history
+  const handleHistorySelect = (term) => {
+    setSearchTerm(term);
+    setShowHistory(false);
+  };
+
+  // Handle delete search term from history
+  const handleDeleteSearchTerm = async (e, searchHistoryId) => {
+    e.stopPropagation();
+    
+    if (!studentId) return;
+    
+    const result = await SearchHistoryService.deleteSearchTerm(studentId, searchHistoryId);
+    
+    if (result.success) {
+      // Reload history
+      const history = await SearchHistoryService.getSearchHistory(studentId);
+      setSearchHistory(history);
+    }
+  };
+
+  // Handle Enter key press in search input
+  const handleSearchKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
 
   // Filter and sort opportunities
   const filteredAndSortedOpportunities = React.useMemo(() => {
@@ -356,7 +424,7 @@ const Opportunities = () => {
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm p-3 sm:p-8 mb-3 sm:mb-6">
           <div className="flex gap-3 sm:gap-4 mb-4 sm:mb-6">
             {/* Search Input */}
-            <div className="relative flex-1">
+            {/* <div className="relative flex-1">
               <input
                 type="text"
                 placeholder="Search job title here..."
@@ -364,10 +432,54 @@ const Opportunities = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 text-sm"
               />
+            </div> */}
+             {/* Search Input with History */}
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Search job title here..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setShowHistory(true)}
+                onBlur={() => setTimeout(() => setShowHistory(false), 200)}
+                onKeyPress={handleSearchKeyPress}
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 text-sm"
+              />
+              
+              {/* Search History Dropdown */}
+              {showHistory && searchHistory.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+                  <div className="p-2 border-b border-gray-100">
+                    <p className="text-xs font-semibold text-gray-500 uppercase px-2">Recent Searches</p>
+                  </div>
+                  {searchHistory.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => handleHistorySelect(item.search_term)}
+                      className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2 flex-1">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-700">{item.search_term}</span>
+                        {item.search_count > 1 && (
+                          <span className="text-xs text-gray-400">({item.search_count}x)</span>
+                        )}
+                      </div>
+                      <button
+                        onClick={(e) => handleDeleteSearchTerm(e, item.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-all"
+                      >
+                        <X className="w-3 h-3 text-gray-500" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
+
             {/* Search Button */}
-            <button className="bg-gray-900 hover:bg-gray-800 text-white rounded-lg px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-center gap-2 font-medium transition-colors min-h-[42px]">
+            <button onClick={handleSearch}className="bg-gray-900 hover:bg-gray-800 text-white rounded-lg px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-center gap-2 font-medium transition-colors min-h-[42px]">
               <Search className="w-4 h-4" />
               <span className="hidden md:inline">Search</span>
             </button>
