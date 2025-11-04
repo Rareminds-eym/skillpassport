@@ -28,6 +28,15 @@ export class AppliedJobsService {
         };
       }
 
+      // Get student details for pipeline
+      const { data: student } = await supabase
+        .from('students')
+        .select('profile')
+        .eq('id', studentId)
+        .single();
+
+      const profile = student?.profile || {};
+
       // Insert application
       const { data, error } = await supabase
         .from('applied_jobs')
@@ -40,6 +49,31 @@ export class AppliedJobsService {
         .single();
 
       if (error) throw error;
+
+      // Automatically add to pipeline as "sourced"
+      try {
+        const { error: pipelineError } = await supabase
+          .from('pipeline_candidates')
+          .insert([{
+            opportunity_id: opportunityId,
+            student_id: studentId,
+            candidate_name: profile.name || 'Unknown',
+            candidate_email: profile.email || '',
+            candidate_phone: profile.contact_number || '',
+            stage: 'sourced',
+            source: 'direct_application',
+            status: 'active',
+            added_at: new Date().toISOString(),
+            stage_changed_at: new Date().toISOString()
+          }]);
+
+        if (pipelineError) {
+          console.warn('Failed to add to pipeline:', pipelineError);
+          // Don't fail the application if pipeline insert fails
+        }
+      } catch (pipelineErr) {
+        console.warn('Pipeline sync error:', pipelineErr);
+      }
 
       return {
         success: true,

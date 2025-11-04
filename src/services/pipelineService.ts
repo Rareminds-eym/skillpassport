@@ -21,7 +21,7 @@ export const getRequisitions = async () => {
 };
 
 /**
- * Get a single requisition by ID
+ * Get a single requisition by ID (DEPRECATED - use getOpportunityById instead)
  */
 export const getRequisitionById = async (requisitionId: string) => {
   try {
@@ -35,6 +35,25 @@ export const getRequisitionById = async (requisitionId: string) => {
     return { data, error: null };
   } catch (error) {
     console.error('Error fetching requisition:', error);
+    return { data: null, error };
+  }
+};
+
+/**
+ * Get a single opportunity by ID
+ */
+export const getOpportunityById = async (opportunityId: number) => {
+  try {
+    const { data, error } = await supabase
+      .from('opportunities')
+      .select('*')
+      .eq('id', opportunityId)
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching opportunity:', error);
     return { data: null, error };
   }
 };
@@ -60,18 +79,18 @@ export const getRequisitionsWithStats = async () => {
 // ==================== PIPELINE CANDIDATE OPERATIONS ====================
 
 /**
- * Get all pipeline candidates for a requisition
- * If requisitionId is empty, fetch all candidates from all requisitions
+ * Get all pipeline candidates for an opportunity
+ * If opportunityId is empty, fetch all candidates from all opportunities
  */
-export const getPipelineCandidates = async (requisitionId?: string) => {
+export const getPipelineCandidates = async (opportunityId?: number) => {
   try {
     let query = supabase
       .from('pipeline_candidates_detailed')
       .select('*');
     
-    // Only filter by requisition_id if provided
-    if (requisitionId) {
-      query = query.eq('requisition_id', requisitionId);
+    // Only filter by opportunity_id if provided
+    if (opportunityId) {
+      query = query.eq('opportunity_id', opportunityId);
     }
     
     const { data, error } = await query.order('added_at', { ascending: false });
@@ -87,9 +106,9 @@ export const getPipelineCandidates = async (requisitionId?: string) => {
 /**
  * Get pipeline candidates for a specific stage
  */
-export const getPipelineCandidatesByStage = async (requisitionId: string, stage: string) => {
+export const getPipelineCandidatesByStage = async (opportunityId: number, stage: string) => {
   try {
-    console.log(`[Pipeline Service] Fetching candidates for requisition: ${requisitionId}, stage: ${stage}`);
+    console.log(`[Pipeline Service] Fetching candidates for opportunity: ${opportunityId}, stage: ${stage}`);
     
     const { data, error } = await supabase
       .from('pipeline_candidates')
@@ -108,7 +127,7 @@ export const getPipelineCandidatesByStage = async (requisitionId: string, stage:
           profile
         )
       `)
-      .eq('requisition_id', requisitionId)
+      .eq('opportunity_id', opportunityId)
       .eq('stage', stage)
       .eq('status', 'active')
       .order('updated_at', { ascending: false });
@@ -168,7 +187,7 @@ export const getPipelineCandidatesByStage = async (requisitionId: string, stage:
  * Get pipeline candidates with advanced filters and sorting (SQL-optimized)
  */
 export const getPipelineCandidatesWithFilters = async (
-  requisitionId: string,
+  opportunityId: number,
   filters: {
     stages?: string[]
     skills?: string[]
@@ -206,7 +225,7 @@ export const getPipelineCandidatesWithFilters = async (
           profile
         )
       `)
-      .eq('requisition_id', requisitionId)
+      .eq('opportunity_id', opportunityId)
       .eq('status', 'active');
 
     // Apply stage filters
@@ -385,9 +404,9 @@ export const getPipelineCandidatesWithFilters = async (
 /**
  * Get all pipeline candidates grouped by stage
  */
-export const getAllPipelineCandidatesByStage = async (requisitionId: string) => {
+export const getAllPipelineCandidatesByStage = async (opportunityId: number) => {
   try {
-    const { data, error } = await getPipelineCandidates(requisitionId);
+    const { data, error } = await getPipelineCandidates(opportunityId);
     
     if (error) throw error;
 
@@ -418,7 +437,7 @@ export const getAllPipelineCandidatesByStage = async (requisitionId: string) => 
  * Add candidate to pipeline
  */
 export const addCandidateToPipeline = async (pipelineData: {
-  requisition_id: string;
+  opportunity_id: number;
   student_id: string;
   candidate_name: string;
   candidate_email?: string;
@@ -519,7 +538,7 @@ export const moveCandidateToStage = async (
     // Get current candidate data with student info
     const { data: currentData, error: fetchError } = await supabase
       .from('pipeline_candidates')
-      .select('stage, student_id, candidate_name, candidate_email, requisition_id')
+      .select('stage, student_id, candidate_name, candidate_email, opportunity_id')
       .eq('id', candidateId)
       .single();
 
@@ -554,11 +573,11 @@ export const moveCandidateToStage = async (
 
     // Create notification for student about stage change
     try {
-      // Get requisition details for better notification
-      const { data: requisition } = await supabase
-        .from('requisitions')
+      // Get opportunity details for better notification
+      const { data: opportunity } = await supabase
+        .from('opportunities')
         .select('title, department')
-        .eq('id', currentData.requisition_id)
+        .eq('id', currentData.opportunity_id)
         .single();
 
       const stageLabels: { [key: string]: string } = {
@@ -572,8 +591,8 @@ export const moveCandidateToStage = async (
       };
 
       const notificationMessage = newStage === 'rejected' 
-        ? `Your application for ${requisition?.title || 'a position'} has been reviewed. Thank you for your interest.`
-        : `Great news! You've been moved to ${stageLabels[newStage] || newStage} stage for ${requisition?.title || 'a position'}.`;
+        ? `Your application for ${opportunity?.title || 'a position'} has been reviewed. Thank you for your interest.`
+        : `Great news! You've been moved to ${stageLabels[newStage] || newStage} stage for ${opportunity?.title || 'a position'}.`;
 
       // Insert notification (if you have a notifications table for students)
       // This is optional - you can create a student_notifications table
@@ -843,11 +862,11 @@ export const bulkRejectCandidates = async (
 // ==================== ANALYTICS ====================
 
 /**
- * Get pipeline statistics for a requisition
+ * Get pipeline statistics for an opportunity
  */
-export const getPipelineStatistics = async (requisitionId: string) => {
+export const getPipelineStatistics = async (opportunityId: number) => {
   try {
-    const { data, error } = await getPipelineCandidates(requisitionId);
+    const { data, error } = await getPipelineCandidates(opportunityId);
     
     if (error) throw error;
 

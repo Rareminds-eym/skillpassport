@@ -18,7 +18,8 @@ import {
   AlertCircle,
   Video,
   Award,
-  Bell
+  Bell,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
@@ -46,6 +47,7 @@ const Applications = () => {
   const [showPipelineView, setShowPipelineView] = useState(true);
   const [viewDetailsModalOpen, setViewDetailsModalOpen] = useState(false);
   const [detailsApplication, setDetailsApplication] = useState(null);
+  const [showPipelineStatus, setShowPipelineStatus] = useState({});
   
   useMessageNotifications({
     userId: studentId,
@@ -363,6 +365,14 @@ const Applications = () => {
     return configs[stage] || configs.sourced;
   };
 
+  // Toggle function for pipeline status visibility
+  const togglePipelineStatus = (applicationId) => {
+    setShowPipelineStatus(prev => ({
+      ...prev,
+      [applicationId]: !prev[applicationId]
+    }));
+  };
+
   const stats = [
     { label: 'Total Applied', value: applications.length, icon: Briefcase, color: 'bg-slate-700' },
     { label: 'Under Review', value: applications.filter(a => a.status === 'under_review').length, icon: Eye, color: 'bg-slate-600' },
@@ -553,13 +563,46 @@ const Applications = () => {
                         {/* Pipeline Status Section */}
                         {app.hasPipelineStatus && (
                           <div className="mt-4 p-5 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 rounded-xl border-2 border-slate-200 shadow-sm">
-                            <div className="flex items-center gap-2 mb-4">
-                              <div className="p-2 bg-white rounded-lg shadow-sm">
-                                <Users className="w-5 h-5 text-slate-700" />
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-2">
+                                <div className="p-2 bg-white rounded-lg shadow-sm">
+                                  <Users className="w-5 h-5 text-slate-700" />
+                                </div>
+                                <h4 className="font-bold text-slate-900">Recruitment Pipeline Status</h4>
                               </div>
-                              <h4 className="font-bold text-slate-900">Recruitment Pipeline Status</h4>
+                              <button
+                                onClick={() => togglePipelineStatus(app.id)}
+                                className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-200 group"
+                                title={showPipelineStatus[app.id] ? "Hide pipeline details" : "Show pipeline details"}
+                              >
+                                <FileText className={`w-5 h-5 transition-colors duration-200 ${
+                                  showPipelineStatus[app.id] ? 'text-slate-700' : 'text-slate-400 group-hover:text-slate-600'
+                                }`} />
+                              </button>
                             </div>
                             
+                            {/* Collapsed view - just show current stage */}
+                            {!showPipelineStatus[app.id] && app.pipelineStage && (
+                              <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-200">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-gray-600">Current Stage:</span>
+                                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${getPipelineStageConfig(app.pipelineStage).bg} border-2 ${getPipelineStageConfig(app.pipelineStage).bg.replace('bg-', 'border-')}`}>
+                                    {React.createElement(getPipelineStageConfig(app.pipelineStage).icon, {
+                                      className: `w-4 h-4 ${getPipelineStageConfig(app.pipelineStage).color}`
+                                    })}
+                                    <span className={`text-sm font-bold ${getPipelineStageConfig(app.pipelineStage).color}`}>
+                                      {getPipelineStageConfig(app.pipelineStage).label}
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-700 font-medium mt-2">
+                                  {getPipelineStageConfig(app.pipelineStage).description}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {/* Expanded view - show all details */}
+                            {showPipelineStatus[app.id] && (
                             <div className="space-y-4">
                               {/* Current Stage with Description */}
                               {app.pipelineStage && (
@@ -701,6 +744,7 @@ const Applications = () => {
                                 </div>
                               )}
                             </div>
+                            )}
                           </div>
                         )}
                       </div>

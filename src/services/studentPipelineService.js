@@ -19,7 +19,7 @@ export class StudentPipelineService {
         .from('pipeline_candidates')
         .select(`
           id,
-          requisition_id,
+          opportunity_id,
           student_id,
           candidate_name,
           candidate_email,
@@ -40,18 +40,18 @@ export class StudentPipelineService {
           added_at,
           created_at,
           updated_at,
-          requisitions (
+          opportunities (
             id,
+            job_title,
             title,
+            company_name,
             department,
             location,
-            job_type,
-            status,
-            priority,
+            employment_type,
+            mode,
+            stipend_or_salary,
             description,
-            salary_range,
-            owner,
-            hiring_manager
+            experience_required
           )
         `)
         .eq('status', 'active')
@@ -148,7 +148,7 @@ export class StudentPipelineService {
    */
   static async getStudentApplicationsWithPipeline(studentId, studentEmail = null) {
     try {
-      // Fetch applications with opportunity details including requisition_id
+      // Fetch applications with opportunity details
       const { data: applications, error: appsError } = await supabase
         .from('applied_jobs')
         .select(`
@@ -166,8 +166,7 @@ export class StudentPipelineService {
             mode,
             department,
             recruiter_id,
-            experience_level,
-            requisition_id
+            experience_level
           )
         `)
         .eq('student_id', studentId)
@@ -184,34 +183,34 @@ export class StudentPipelineService {
       // Fetch interviews
       const interviews = await this.getStudentInterviews(studentId);
 
-      // Create lookup map by requisition_id (the correct way to match)
+      // Create lookup map by opportunity_id
       const pipelineMap = new Map();
       pipelineStatuses.forEach(ps => {
-        if (ps.requisition_id) {
-          console.log('🔍 Adding to map - Requisition ID:', ps.requisition_id, 'Stage:', ps.stage);
-          pipelineMap.set(ps.requisition_id, ps);
+        if (ps.opportunity_id) {
+          console.log('🔍 Adding to map - Opportunity ID:', ps.opportunity_id, 'Stage:', ps.stage);
+          pipelineMap.set(ps.opportunity_id, ps);
         }
       });
 
-      // Create interviews map by requisition_id
+      // Create interviews map by opportunity_id
       const interviewsMap = new Map();
       interviews.forEach(interview => {
-        const key = interview.requisition_id || interview.job_title;
+        const key = interview.opportunity_id || interview.job_title;
         if (!interviewsMap.has(key)) {
           interviewsMap.set(key, []);
         }
         interviewsMap.get(key).push(interview);
       });
 
-      // Combine data - match by requisition_id from opportunity
+      // Combine data - match by opportunity_id
       const combinedData = (applications || []).map(app => {
-        const requisitionId = app.opportunity?.requisition_id;
-        const pipelineStatus = requisitionId ? pipelineMap.get(requisitionId) : null;
-        const jobInterviews = requisitionId ? interviewsMap.get(requisitionId) : [];
+        const opportunityId = app.opportunity?.id;
+        const pipelineStatus = opportunityId ? pipelineMap.get(opportunityId) : null;
+        const jobInterviews = opportunityId ? interviewsMap.get(opportunityId) : [];
         
         console.log('🔍 Matching Application:', {
           jobTitle: app.opportunity?.job_title,
-          requisitionId: requisitionId,
+          opportunityId: opportunityId,
           hasPipelineStatus: !!pipelineStatus,
           stage: pipelineStatus?.stage
         });

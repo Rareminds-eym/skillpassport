@@ -3,7 +3,7 @@
  * Run this after applying the database fix to verify everything works
  */
 
-import { supabase } from './src/lib/supabaseClient.js';
+import { supabase } from './src/lib/supabaseClient.ts';
 
 async function testPipelineIntegration() {
   console.log('🧪 Testing Pipeline Integration...\n');

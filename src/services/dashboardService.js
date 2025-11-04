@@ -422,7 +422,7 @@ export const getRecentActivity = async (limit = 15) => {
             metadata: {
               stage: pc.stage,
               status: pc.status,
-              requisitionId: pc.requisition_id
+              opportunityId: pc.opportunity_id
             },
             icon: 'user-group'
           });

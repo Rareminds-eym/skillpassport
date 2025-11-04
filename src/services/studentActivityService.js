@@ -146,7 +146,7 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
             metadata: {
               stage: pc.stage,
               status: pc.status,
-              requisitionId: pc.requisition_id
+              opportunityId: pc.opportunity_id
             }
           });
         });
