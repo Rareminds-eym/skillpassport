@@ -261,5 +261,32 @@ export const educatorApi = {
         ).length,
       });
     },
+
+    getSkillAnalytics: async () => {
+      // Count skill participation (activities per skill)
+      const skillCounts: { [key: string]: number } = {};
+      mockActivities.forEach(activity => {
+        activity.skills.forEach(skill => {
+          skillCounts[skill] = (skillCounts[skill] || 0) + 1;
+        });
+      });
+
+      // Count skill distribution by category
+      const categoryCounts: { [key: string]: number } = {};
+      mockActivities.forEach(activity => {
+        categoryCounts[activity.category] = (categoryCounts[activity.category] || 0) + 1;
+      });
+
+      return mockApiCall({
+        skillParticipation: Object.entries(skillCounts).map(([skill, count]) => ({
+          skill,
+          count,
+        })),
+        skillDistribution: Object.entries(categoryCounts).map(([category, count]) => ({
+          category,
+          count,
+        })),
+      });
+    },
   },
 };

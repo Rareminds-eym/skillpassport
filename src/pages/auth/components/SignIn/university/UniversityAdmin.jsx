@@ -1,28 +1,33 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { State, City } from 'country-state-city';
 
-const SignupAdmin = () => {
+const UniversityAdmin = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
-    // Company Details
-    companyName: '',
-    companyDomain: '',
-    companySize: '',
-    industryType: '',
-    companyLogo: null,
-    companyRegistrationNo: '',
-    companyAddress: '',
-    officialEmailDomain: '',
-    recruitmentFocus: [],
+    // University Details
+    universityName: '',
+    universityType: '',
+    universityCode: '',
+    universityEmail: '',
+    universityPhone: '',
+    universityAddress: '',
+    state: '',
+    city: '',
+    pincode: '',
+    logo: null,
+    websiteUrl: '',
+    areasOfInterest: [],
+    otherAreaOfInterest: '',
     
     // Admin Account Details
     fullName: '',
-    workEmail: '',
+    designation: '',
+    email: '',
     phoneNumber: '',
     password: '',
     confirmPassword: '',
-    designation: '',
-    customDesignation: '',
+    role: 'admin',
     
     // Security
     agreeToTerms: false
@@ -37,170 +42,161 @@ const SignupAdmin = () => {
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [termsViewed, setTermsViewed] = useState(false);
   const [showCaptcha, setShowCaptcha] = useState(false);
+  const [cities, setCities] = useState([]);
 
   const blobRefs = {
-    // Company Details
-    companyName: useRef(null),
-    companyDomain: useRef(null),
-    companySize: useRef(null),
-    industryType: useRef(null),
-    companyRegistrationNo: useRef(null),
-    companyAddress: useRef(null),
-    officialEmailDomain: useRef(null),
+    // University Details
+    universityName: useRef(null),
+    universityType: useRef(null),
+    universityCode: useRef(null),
+    universityEmail: useRef(null),
+    universityPhone: useRef(null),
+    universityAddress: useRef(null),
+    state: useRef(null),
+    city: useRef(null),
+    pincode: useRef(null),
+    websiteUrl: useRef(null),
     
     // Admin Details
     fullName: useRef(null),
-    workEmail: useRef(null),
+    designation: useRef(null),
+    email: useRef(null),
     phoneNumber: useRef(null),
     password: useRef(null),
-    confirmPassword: useRef(null),
-    designation: useRef(null),
-    customDesignation: useRef(null)
+    confirmPassword: useRef(null)
   };
 
-  const companySizes = [
-    '1-10',
-    '11-50', 
-    '51-200',
-    '201-500',
-    '500+'
+  const universityTypes = [
+    'Central University',
+    'State University',
+    'Deemed to be University',
+    'Private University',
+    'Institute of National Importance',
+    'Open University',
+    'Autonomous University/College',
   ];
 
-  const industryTypes = [
-    'IT & Software',
-    'Education',
-    'Manufacturing',
-    'Healthcare',
-    'Finance',
-    'Retail',
-    'Construction',
-    'Hospitality',
-    'Transportation',
+  const areaOfInterestOptions = [
+    'Science',
+    'Pedagogy',
+    'Engineering',
+    'Medicine',
+    'Arts',
+    'Commerce',
+    'Law',
+    'Management',
+    'Technology',
+    'Research',
+    'Vocational Studies',
+    'Distance Education',
     'Other'
   ];
 
   const designationOptions = [
-    'HR Manager',
-    'Recruitment Manager',
-    'Talent Acquisition Specialist',
-    'HR Director',
-    'Recruitment Coordinator',
-    'Team Lead',
-    'Department Head',
+    'Principal',
+    'Dean',
+    'Academic Head',
+    'Director',
+    'Registrar',
+    'Administrator',
+    'Head of Department',
     'Other'
   ];
 
-  const recruitmentFocusOptions = [
-    'Internship',
-    'Apprenticeship',
-    'Full-time',
-    'Part-time',
-    'Contract',
-    'Freelance'
-  ];
-
-  // Debug logging function
-  const debugLog = (message, data = null) => {
-    console.log(`[DEBUG] ${new Date().toISOString()}: ${message}`, data || '');
+  // Generate university code based on name and type
+  const generateUniversityCode = () => {
+    const namePart = formData.universityName
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .substring(0, 3)
+      .toUpperCase();
+    
+    const typePart = formData.universityType
+      .substring(0, 3)
+      .toUpperCase();
+    
+    const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    return `${namePart}${typePart}${randomPart}`;
   };
 
   const validateField = (name, value) => {
     const newErrors = { ...errors };
     const newSuccess = { ...success };
 
-    debugLog(`Validating field: ${name}`, { value });
-
     switch (name) {
-      // Company Details Validations
-      case 'companyName':
+      // University Details Validations
+      case 'universityName':
         if (!value) {
-          newErrors.companyName = 'Company name is required';
-          newSuccess.companyName = false;
+          newErrors.universityName = 'University name is required';
+          newSuccess.universityName = false;
         } else if (value.length < 2) {
-          newErrors.companyName = 'Company name must be at least 2 characters';
-          newSuccess.companyName = false;
+          newErrors.universityName = 'University name must be at least 2 characters';
+          newSuccess.universityName = false;
         } else {
-          newErrors.companyName = '';
-          newSuccess.companyName = true;
+          newErrors.universityName = '';
+          newSuccess.universityName = true;
         }
         break;
 
-      case 'companyDomain':
+      case 'universityType':
         if (!value) {
-          newErrors.companyDomain = 'Company domain is required';
-          newSuccess.companyDomain = false;
-        } else if (!/^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/.test(value)) {
-          newErrors.companyDomain = 'Please enter a valid domain (e.g., rareminds.in)';
-          newSuccess.companyDomain = false;
+          newErrors.universityType = 'University type is required';
+          newSuccess.universityType = false;
         } else {
-          newErrors.companyDomain = '';
-          newSuccess.companyDomain = true;
+          newErrors.universityType = '';
+          newSuccess.universityType = true;
         }
         break;
 
-      case 'companySize':
+      case 'universityEmail':
         if (!value) {
-          newErrors.companySize = 'Company size is required';
-          newSuccess.companySize = false;
+          newErrors.universityEmail = 'University email is required';
+          newSuccess.universityEmail = false;
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          newErrors.universityEmail = 'Please enter a valid universityal email address';
+          newSuccess.universityEmail = false;
         } else {
-          newErrors.companySize = '';
-          newSuccess.companySize = true;
+          newErrors.universityEmail = '';
+          newSuccess.universityEmail = true;
         }
         break;
 
-      case 'industryType':
+      case 'universityPhone':
         if (!value) {
-          newErrors.industryType = 'Industry type is required';
-          newSuccess.industryType = false;
+          newErrors.universityPhone = 'University phone number is required';
+          newSuccess.universityPhone = false;
+        } else if (!/^\d{10}$/.test(value.replace(/\D/g, ''))) {
+          newErrors.universityPhone = 'Please enter a valid 10-digit phone number';
+          newSuccess.universityPhone = false;
         } else {
-          newErrors.industryType = '';
-          newSuccess.industryType = true;
+          newErrors.universityPhone = '';
+          newSuccess.universityPhone = true;
         }
         break;
 
-      case 'companyLogo':
+      case 'universityAddress':
         if (!value) {
-          newErrors.companyLogo = 'Company logo is required';
-          newSuccess.companyLogo = false;
-        } else {
-          newErrors.companyLogo = '';
-          newSuccess.companyLogo = true;
-        }
-        break;
-
-      case 'companyRegistrationNo':
-        if (!value) {
-          newErrors.companyRegistrationNo = 'Company registration number/GSTIN is required';
-          newSuccess.companyRegistrationNo = false;
-        } else if (value.length < 3) {
-          newErrors.companyRegistrationNo = 'Please enter a valid registration number';
-          newSuccess.companyRegistrationNo = false;
-        } else {
-          newErrors.companyRegistrationNo = '';
-          newSuccess.companyRegistrationNo = true;
-        }
-        break;
-
-      case 'companyAddress':
-        if (!value) {
-          newErrors.companyAddress = 'Company address is required';
-          newSuccess.companyAddress = false;
+          newErrors.universityAddress = 'University address is required';
+          newSuccess.universityAddress = false;
         } else if (value.length < 10) {
-          newErrors.companyAddress = 'Please enter a complete address';
-          newSuccess.companyAddress = false;
+          newErrors.universityAddress = 'Please enter a complete address (minimum 10 characters)';
+          newSuccess.universityAddress = false;
         } else {
-          newErrors.companyAddress = '';
-          newSuccess.companyAddress = true;
+          newErrors.universityAddress = '';
+          newSuccess.universityAddress = true;
         }
         break;
 
-      case 'officialEmailDomain':
-        if (value && !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) {
-          newErrors.officialEmailDomain = 'Please enter a valid email domain';
-          newSuccess.officialEmailDomain = false;
+      case 'websiteUrl':
+        if (!value) {
+          newErrors.websiteUrl = 'Website URL is required';
+          newSuccess.websiteUrl = false;
+        } else if (!/^https?:\/\/.+\..+/.test(value)) {
+          newErrors.websiteUrl = 'Please enter a valid website URL';
+          newSuccess.websiteUrl = false;
         } else {
-          newErrors.officialEmailDomain = '';
-          newSuccess.officialEmailDomain = true;
+          newErrors.websiteUrl = '';
+          newSuccess.websiteUrl = true;
         }
         break;
 
@@ -218,16 +214,29 @@ const SignupAdmin = () => {
         }
         break;
 
-      case 'workEmail':
+      case 'designation':
         if (!value) {
-          newErrors.workEmail = 'Work email is required';
-          newSuccess.workEmail = false;
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          newErrors.workEmail = 'Please enter a valid email address';
-          newSuccess.workEmail = false;
+          newErrors.designation = 'Designation is required';
+          newSuccess.designation = false;
+        } else if (value.length < 2) {
+          newErrors.designation = 'Designation must be at least 2 characters';
+          newSuccess.designation = false;
         } else {
-          newErrors.workEmail = '';
-          newSuccess.workEmail = true;
+          newErrors.designation = '';
+          newSuccess.designation = true;
+        }
+        break;
+
+      case 'email':
+        if (!value) {
+          newErrors.email = 'Email is required';
+          newSuccess.email = false;
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          newErrors.email = 'Please enter a valid email address';
+          newSuccess.email = false;
+        } else {
+          newErrors.email = '';
+          newSuccess.email = true;
         }
         break;
 
@@ -273,97 +282,65 @@ const SignupAdmin = () => {
         }
         break;
 
-      case 'designation':
-        if (!value) {
-          newErrors.designation = 'Designation is required';
-          newSuccess.designation = false;
-        } else if (value === 'Other' && !formData.customDesignation) {
-          newErrors.designation = 'Please specify your designation';
-          newSuccess.designation = false;
-        } else if (value !== 'Other' && value.length < 2) {
-          newErrors.designation = 'Designation must be at least 2 characters';
-          newSuccess.designation = false;
-        } else {
-          newErrors.designation = '';
-          newSuccess.designation = true;
-        }
-        break;
-
-      case 'customDesignation':
-        if (formData.designation === 'Other' && !value) {
-          newErrors.designation = 'Please specify your designation';
-          newSuccess.designation = false;
-        } else if (formData.designation === 'Other' && value.length < 2) {
-          newErrors.designation = 'Designation must be at least 2 characters';
-          newSuccess.designation = false;
-        } else {
-          newErrors.designation = '';
-          newSuccess.designation = true;
-        }
-        break;
-
       default:
         break;
     }
 
     setErrors(newErrors);
     setSuccess(newSuccess);
-    debugLog(`Validation result for ${name}`, { error: newErrors[name], success: newSuccess[name] });
   };
-  const handleChange = (e) => {
-  const { name, value, type, files, checked } = e.target;
-  
-  debugLog(`Field changed: ${name}`, { value, type, checked });
 
-  if (type === 'checkbox') {
-    // Handle recruitment focus checkboxes
-    if (name === 'recruitmentFocus') {
+  const handleChange = (e) => {
+    const { name, value, type, files, checked } = e.target;
+    
+    if (type === 'checkbox') {
+      // Handle areas of interest checkboxes
+      if (name === 'areasOfInterest') {
+        setFormData(prev => ({
+          ...prev,
+          areasOfInterest: checked 
+            ? [...prev.areasOfInterest, value]
+            : prev.areasOfInterest.filter(item => item !== value)
+        }));
+      }
+      // Handle terms and conditions checkbox
+      else if (name === 'agreeToTerms') {
+        const newValue = checked;
+        setFormData(prev => ({
+          ...prev,
+          [name]: newValue
+        }));
+        
+        // Show captcha when terms are checked
+        if (newValue) {
+          setShowCaptcha(true);
+        } else {
+          setShowCaptcha(false);
+          setRecaptchaVerified(false);
+        }
+      }
+    } else if (type === 'file') {
       setFormData(prev => ({
         ...prev,
-        recruitmentFocus: checked 
-          ? [...prev.recruitmentFocus, value]
-          : prev.recruitmentFocus.filter(item => item !== value)
+        [name]: files[0]
       }));
-    }
-    // Handle terms and conditions checkbox
-    else if (name === 'agreeToTerms') {
-      const newValue = checked;
+      validateField(name, files[0]);
+    } else {
+      // Handle phone number formatting specifically
+      let processedValue = value;
+      if (name === 'phoneNumber' || name === 'universityPhone') {
+        processedValue = formatPhoneNumber(value);
+      }
+      
       setFormData(prev => ({
         ...prev,
-        [name]: newValue
+        [name]: processedValue
       }));
       
-      // Show captcha when terms are checked
-      if (newValue) {
-        debugLog('Terms and conditions checked, showing captcha');
-        setShowCaptcha(true);
-      } else {
-        setShowCaptcha(false);
-        setRecaptchaVerified(false);
-      }
+      validateField(name, processedValue);
+      animateBlob(name);
     }
-  } else if (type === 'file') {
-    setFormData(prev => ({
-      ...prev,
-      [name]: files[0]
-    }));
-    validateField(name, files[0]);
-  } else {
-    // Handle phone number formatting specifically
-    let processedValue = value;
-    if (name === 'phoneNumber') {
-      processedValue = formatPhoneNumber(value);
-    }
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: processedValue
-    }));
-    
-    validateField(name, processedValue);
-    animateBlob(name);
-  }
-};
+  };
   
   const animateBlob = (fieldName) => {
     const blob = blobRefs[fieldName]?.current;
@@ -379,30 +356,18 @@ const SignupAdmin = () => {
     }
   };
 
-  const handleCheckboxChange = (e) => {
-    const { name, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: checked
-    }));
-  };
-
   const togglePasswordVisibility = () => {
-    debugLog('Toggling password visibility', { currentState: showPassword });
     setShowPassword(!showPassword);
   };
 
   const toggleConfirmPasswordVisibility = () => {
-    debugLog('Toggling confirm password visibility', { currentState: showConfirmPassword });
     setShowConfirmPassword(!showConfirmPassword);
   };
 
   const validateStep = (step) => {
-    debugLog(`Validating step ${step}`);
-
     const stepFields = {
-      1: ['companyName', 'companyDomain', 'companySize', 'industryType', 'companyLogo', 'companyRegistrationNo', 'companyAddress'],
-      2: ['fullName', 'workEmail', 'phoneNumber', 'password', 'confirmPassword', 'designation']
+      1: ['universityName', 'universityType', 'universityEmail', 'universityPhone', 'universityAddress', 'websiteUrl'],
+      2: ['fullName', 'designation', 'email', 'phoneNumber', 'password', 'confirmPassword']
     };
 
     const fieldsToValidate = stepFields[step] || [];
@@ -415,93 +380,75 @@ const SignupAdmin = () => {
       }
     });
 
-    // Additional validation for recruitment focus
-    if (step === 1 && formData.recruitmentFocus.length === 0) {
-      isValid = false;
-    }
-
-    // Additional validation for custom designation
-    if (step === 2 && formData.designation === 'Other' && !formData.customDesignation) {
-      isValid = false;
-    }
-
-    debugLog(`Step ${step} validation result`, { isValid, errors });
     return isValid;
   };
 
   const nextStep = () => {
-    debugLog('Moving to next step', { currentStep, nextStep: currentStep + 1 });
     if (validateStep(currentStep)) {
       setCurrentStep(prev => prev + 1);
-    } else {
-      debugLog('Step validation failed', { currentStep });
     }
   };
 
   const prevStep = () => {
-    debugLog('Moving to previous step', { currentStep, prevStep: currentStep - 1 });
     setCurrentStep(prev => prev - 1);
   };
 
   const openTermsModal = () => {
-    debugLog('Opening terms modal');
     setShowTermsModal(true);
     setTermsViewed(true);
   };
 
   const closeTermsModal = () => {
-    debugLog('Closing terms modal');
     setShowTermsModal(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    debugLog('Form submission started', {
-      stepValid: validateStep(2),
-      agreeToTerms: formData.agreeToTerms,
-      recaptchaVerified,
-      showCaptcha
-    });
+    // Auto-generate university code before submission if not provided
+    const finalFormData = {
+      ...formData,
+      universityCode: formData.universityCode || generateUniversityCode()
+    };
 
     if (!validateStep(2) || !formData.agreeToTerms || !recaptchaVerified) {
       if (!formData.agreeToTerms) {
-        debugLog('Submission failed: Terms not agreed');
         alert('Please agree to the Terms and Conditions');
       }
       if (!recaptchaVerified) {
-        debugLog('Submission failed: Captcha not verified');
         alert('Please complete the reCAPTCHA verification');
       }
       return;
     }
 
     setIsSubmitting(true);
-    debugLog('Form submission in progress');
     
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('Workspace created:', formData);
-      debugLog('Workspace created successfully', formData);
-      alert('Workspace created successfully!');
+      console.log('University admin account created:', finalFormData);
+      alert('University admin account created successfully!');
       // Reset form
       setFormData({
-        companyName: '',
-        companyDomain: '',
-        companySize: '',
-        industryType: '',
-        companyLogo: null,
-        companyRegistrationNo: '',
-        companyAddress: '',
-        officialEmailDomain: '',
-        recruitmentFocus: [],
+        universityName: '',
+        universityType: '',
+        universityCode: '',
+        universityEmail: '',
+        universityPhone: '',
+        universityAddress: '',
+        state: '',
+        city: '',
+        pincode: '',
+        logo: null,
+        websiteUrl: '',
+        areasOfInterest: [],
+        otherAreaOfInterest: '',
         fullName: '',
-        workEmail: '',
+        designation: '',
+        email: '',
         phoneNumber: '',
         password: '',
         confirmPassword: '',
-        designation: '',
-        customDesignation: '',
+        role: 'admin',
         agreeToTerms: false
       });
       setCurrentStep(1);
@@ -509,16 +456,13 @@ const SignupAdmin = () => {
       setTermsViewed(false);
       setShowCaptcha(false);
     } catch (error) {
-      debugLog('Workspace creation failed', { error });
-      alert('Workspace creation failed. Please try again.');
+      alert('Account creation failed. Please try again.');
     } finally {
       setIsSubmitting(false);
-      debugLog('Form submission completed');
     }
   };
 
   const handleRecaptchaChange = (value) => {
-    debugLog('reCAPTCHA verification', { verified: !!value });
     setRecaptchaVerified(!!value);
   };
 
@@ -530,7 +474,6 @@ const SignupAdmin = () => {
   // Load reCAPTCHA script when captcha should be shown
   useEffect(() => {
     if (showCaptcha) {
-      debugLog('Loading reCAPTCHA script');
       const script = document.createElement('script');
       script.src = 'https://www.google.com/recaptcha/api.js';
       script.async = true;
@@ -543,6 +486,71 @@ const SignupAdmin = () => {
     }
   }, [showCaptcha]);
 
+  // Set up reCAPTCHA callbacks
+  useEffect(() => {
+    window.handleRecaptchaChange = (value) => {
+      setRecaptchaVerified(!!value);
+    };
+
+    window.handleRecaptchaExpired = () => {
+      setRecaptchaVerified(false);
+    };
+  }, []);
+
+  // Handle state change to load cities
+  const handleStateChange = (e) => {
+    const selectedState = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      state: selectedState,
+      city: '',
+      pincode: ''
+    }));
+
+    // Find ISO code for the selected state and load cities
+    const stateObj = State.getStatesOfCountry("IN").find(
+      (s) => s.name === selectedState
+    );
+
+    if (stateObj) {
+      const cityList = City.getCitiesOfState("IN", stateObj.isoCode);
+      setCities(cityList);
+    }
+
+    validateField('state', selectedState);
+    animateBlob('state');
+  };
+
+  // Handle city change to fetch pincode
+  const handleCityChange = async (e) => {
+    const cityName = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      city: cityName,
+      pincode: ''
+    }));
+
+    // Auto-fetch pincode
+    if (cityName) {
+      try {
+        const res = await fetch(`https://api.postalpincode.in/postoffice/${cityName}`);
+        const data = await res.json();
+        if (data[0]?.Status === "Success") {
+          const pin = data[0].PostOffice?.[0]?.Pincode;
+          setFormData(prev => ({
+            ...prev,
+            pincode: pin || ""
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching pincode:", error);
+      }
+    }
+
+    validateField('city', cityName);
+    animateBlob('city');
+  };
+
   // Step Indicator Component
   const StepIndicator = () => (
     <div className="flex justify-center mb-8">
@@ -554,7 +562,7 @@ const SignupAdmin = () => {
           }`}>
             1
           </div>
-          <span className="text-sm mt-1">Company</span>
+          <span className="text-sm mt-1">University</span>
         </div>
         
         <div className={`w-16 h-1 ${currentStep >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
@@ -604,27 +612,27 @@ const SignupAdmin = () => {
             
             <section>
               <h3 className="font-semibold text-lg mb-2">1. Acceptance of Terms</h3>
-              <p>By accessing and using this recruitment platform, you accept and agree to be bound by the terms and provision of this agreement.</p>
+              <p>By accessing and using this educational university platform, you accept and agree to be bound by the terms and provision of this agreement.</p>
             </section>
 
             <section>
-              <h3 className="font-semibold text-lg mb-2">2. Use License</h3>
-              <p>Permission is granted to temporarily use this platform for recruitment purposes. This is the grant of a license, not a transfer of title.</p>
+              <h3 className="font-semibold text-lg mb-2">2. University Responsibilities</h3>
+              <p>As an university administrator, you are responsible for maintaining the accuracy of universityal information and ensuring proper use of the platform.</p>
             </section>
 
             <section>
               <h3 className="font-semibold text-lg mb-2">3. Account Responsibilities</h3>
-              <p>You are responsible for maintaining the confidentiality of your account and password and for restricting access to your computer.</p>
+              <p>You are responsible for maintaining the confidentiality of your admin account and password and for restricting access to authorized personnel only.</p>
             </section>
 
             <section>
               <h3 className="font-semibold text-lg mb-2">4. Data Privacy</h3>
-              <p>We collect and process personal data in accordance with our Privacy Policy. By using our services, you consent to such processing.</p>
+              <p>We collect and process universityal and student data in accordance with our Privacy Policy and educational data protection regulations.</p>
             </section>
 
             <section>
-              <h3 className="font-semibold text-lg mb-2">5. Candidate Data</h3>
-              <p>You agree to handle candidate data responsibly and in compliance with applicable data protection laws.</p>
+              <h3 className="font-semibold text-lg mb-2">5. Universityal Data</h3>
+              <p>You agree to handle student and universityal data responsibly and in compliance with applicable educational data protection laws.</p>
             </section>
 
             <section>
@@ -644,7 +652,7 @@ const SignupAdmin = () => {
 
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-6">
               <p className="text-sm text-yellow-700">
-                <strong>Note:</strong> These are sample terms and conditions. Please consult with legal counsel to create appropriate terms for your specific use case.
+                <strong>Note:</strong> These are sample terms and conditions for educational universitys. Please consult with legal counsel to create appropriate terms for your specific use case.
               </p>
             </div>
           </div>
@@ -677,297 +685,390 @@ const SignupAdmin = () => {
       </div>
       
       <h1 className="text-2xl font-semibold text-center mb-2 text-blue-600 uppercase">
-        Create Workspace
+        University Admin Signup
       </h1>
-      <p className="text-center text-gray-600 mb-8">Setup your recruitment workspace in minutes</p>
+      <p className="text-center text-gray-600 mb-8">Setup your university admin account</p>
 
       {/* Step Indicator */}
       <StepIndicator />
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Step 1: Company Details */}
+        {/* Step 1: University Details */}
         {currentStep === 1 && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-blue-600 border-b-2 border-blue-200 pb-2">
-              🔹 Company Details
+              🔹 University Details
             </h2>
 
-            {/* Company Name */}
+            {/* University Name */}
             <div className="relative">
               <div className="relative">
                 <input
                   type="text"
-                  name="companyName"
-                  value={formData.companyName}
+                  name="universityName"
+                  value={formData.universityName}
                   onChange={handleChange}
-                  onFocus={() => animateBlob('companyName')}
+                  onFocus={() => animateBlob('universityName')}
                   className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.companyName 
+                    errors.universityName 
                       ? 'border-red-500 focus:border-red-500' 
-                      : success.companyName 
+                      : success.universityName 
                         ? 'border-green-500 focus:border-green-500'
                         : 'border-blue-200 focus:border-blue-100'
                   }`}
-                  placeholder="Company Name *"
+                  placeholder="University Name *"
                 />
                 <div
-                  ref={blobRefs.companyName}
+                  ref={blobRefs.universityName}
                   className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
                 ></div>
               </div>
-              {errors.companyName && (
+              {errors.universityName && (
                 <p className="text-red-500 text-sm mt-1 flex items-center">
                   <span className="mr-1">⚠</span>
-                  {errors.companyName}
+                  {errors.universityName}
                 </p>
               )}
             </div>
 
-            {/* Company Domain */}
-            <div className="relative">
-              <div className="relative">
-                <input
-                  type="text"
-                  name="companyDomain"
-                  value={formData.companyDomain}
-                  onChange={handleChange}
-                  onFocus={() => animateBlob('companyDomain')}
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.companyDomain 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.companyDomain 
-                        ? 'border-green-500 focus:border-green-500'
-                        : 'border-blue-200 focus:border-blue-100'
-                  }`}
-                  placeholder="Company Domain (e.g., rareminds.in) *"
-                />
-                <div
-                  ref={blobRefs.companyDomain}
-                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                ></div>
-              </div>
-              {errors.companyDomain && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.companyDomain}
-                </p>
-              )}
-            </div>
-
-            {/* Company Size & Industry Type */}
+            {/* University Type & Code */}
             <div className="grid grid-cols-2 gap-4">
               <div className="relative">
                 <div className="relative">
                   <select
-                    name="companySize"
-                    value={formData.companySize}
+                    name="universityType"
+                    value={formData.universityType}
                     onChange={handleChange}
-                    onFocus={() => animateBlob('companySize')}
+                    onFocus={() => animateBlob('universityType')}
                     className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.companySize 
+                      errors.universityType 
                         ? 'border-red-500 focus:border-red-500' 
-                        : success.companySize 
+                        : success.universityType 
                           ? 'border-green-500 focus:border-green-500'
                           : 'border-blue-200 focus:border-blue-100'
                     }`}
                   >
-                    <option value="">Company Size *</option>
-                    {companySizes.map(size => (
-                      <option key={size} value={size}>{size} employees</option>
+                    <option value="">University Type *</option>
+                    {universityTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
                     ))}
                   </select>
                   <div
-                    ref={blobRefs.companySize}
+                    ref={blobRefs.universityType}
                     className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
                   ></div>
                 </div>
-                {errors.companySize && (
+                {errors.universityType && (
                   <p className="text-red-500 text-sm mt-1 flex items-center">
                     <span className="mr-1">⚠</span>
-                    {errors.companySize}
+                    {errors.universityType}
                   </p>
                 )}
               </div>
 
               <div className="relative">
                 <div className="relative">
-                  <select
-                    name="industryType"
-                    value={formData.industryType}
+                  <input
+                    type="text"
+                    name="universityCode"
+                    value={formData.universityCode}
                     onChange={handleChange}
-                    onFocus={() => animateBlob('industryType')}
-                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.industryType 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.industryType 
-                          ? 'border-green-500 focus:border-green-500'
-                          : 'border-blue-200 focus:border-blue-100'
-                    }`}
-                  >
-                    <option value="">Industry Type *</option>
-                    {industryTypes.map(industry => (
-                      <option key={industry} value={industry}>{industry}</option>
-                    ))}
-                  </select>
+                    onFocus={() => animateBlob('universityCode')}
+                    className="w-full px-4 py-3 border-2 border-blue-200 rounded-lg focus:outline-none focus:border-blue-100 transition-all duration-300"
+                    placeholder="University Code / ID (Optional)"
+                  />
                   <div
-                    ref={blobRefs.industryType}
+                    ref={blobRefs.universityCode}
                     className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
                   ></div>
                 </div>
-                {errors.industryType && (
+                <p className="text-gray-500 text-sm mt-1">Leave blank for auto-generation</p>
+              </div>
+            </div>
+
+            {/* University Email & Phone */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="relative">
+                <div className="relative">
+                  <input
+                    type="email"
+                    name="universityEmail"
+                    value={formData.universityEmail}
+                    onChange={handleChange}
+                    onFocus={() => animateBlob('universityEmail')}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
+                      errors.universityEmail 
+                        ? 'border-red-500 focus:border-red-500' 
+                        : success.universityEmail 
+                          ? 'border-green-500 focus:border-green-500'
+                          : 'border-blue-200 focus:border-blue-100'
+                    }`}
+                    placeholder="University Email *"
+                  />
+                  <div
+                    ref={blobRefs.universityEmail}
+                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
+                  ></div>
+                </div>
+                {errors.universityEmail && (
                   <p className="text-red-500 text-sm mt-1 flex items-center">
                     <span className="mr-1">⚠</span>
-                    {errors.industryType}
+                    {errors.universityEmail}
+                  </p>
+                )}
+              </div>
+
+              <div className="relative">
+                <div className="relative">
+                  <input
+                    type="tel"
+                    name="universityPhone"
+                    value={formData.universityPhone}
+                    onChange={handleChange}
+                    onFocus={() => animateBlob('universityPhone')}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
+                      errors.universityPhone 
+                        ? 'border-red-500 focus:border-red-500' 
+                        : success.universityPhone 
+                          ? 'border-green-500 focus:border-green-500'
+                          : 'border-blue-200 focus:border-blue-100'
+                    }`}
+                    placeholder="University Phone *"
+                    maxLength="10"
+                  />
+                  <div
+                    ref={blobRefs.universityPhone}
+                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
+                  ></div>
+                </div>
+                {errors.universityPhone && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                    <span className="mr-1">⚠</span>
+                    {errors.universityPhone}
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Company Logo - Now Mandatory */}
+            {/* University Address */}
+            <div className="relative">
+              <div className="relative">
+                <textarea
+                  name="universityAddress"
+                  value={formData.universityAddress}
+                  onChange={handleChange}
+                  onFocus={() => animateBlob('universityAddress')}
+                  rows="3"
+                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
+                    errors.universityAddress 
+                      ? 'border-red-500 focus:border-red-500' 
+                      : success.universityAddress 
+                        ? 'border-green-500 focus:border-green-500'
+                        : 'border-blue-200 focus:border-blue-100'
+                  }`}
+                  placeholder="University Address *"
+                />
+                <div
+                  ref={blobRefs.universityAddress}
+                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
+                ></div>
+              </div>
+              {errors.universityAddress && (
+                <p className="text-red-500 text-sm mt-1 flex items-center">
+                  <span className="mr-1">⚠</span>
+                  {errors.universityAddress}
+                </p>
+              )}
+            </div>
+
+            {/* State, City, and Pincode */}
+            <div className="grid grid-cols-3 gap-4">
+              {/* State */}
+              <div className="relative">
+                <div className="relative">
+                  <select
+                    name="state"
+                    value={formData.state}
+                    onChange={handleStateChange}
+                    onFocus={() => animateBlob('state')}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
+                      errors.state 
+                        ? 'border-red-500 focus:border-red-500' 
+                        : success.state 
+                          ? 'border-green-500 focus:border-green-500'
+                          : 'border-blue-200 focus:border-blue-100'
+                    }`}
+                  >
+                    <option value="">State *</option>
+                    {State.getStatesOfCountry("IN").map((s) => (
+                      <option key={s.isoCode} value={s.name}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div
+                    ref={blobRefs.state}
+                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
+                  ></div>
+                </div>
+                {errors.state && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                    <span className="mr-1">⚠</span>
+                    {errors.state}
+                  </p>
+                )}
+              </div>
+
+              {/* City */}
+              <div className="relative">
+                <div className="relative">
+                  <select
+                    name="city"
+                    value={formData.city}
+                    onChange={handleCityChange}
+                    onFocus={() => animateBlob('city')}
+                    disabled={!formData.state}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
+                      errors.city 
+                        ? 'border-red-500 focus:border-red-500' 
+                        : success.city 
+                          ? 'border-green-500 focus:border-green-500'
+                          : 'border-blue-200 focus:border-blue-100'
+                    } ${!formData.state ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  >
+                    <option value="">City *</option>
+                    {cities.map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div
+                    ref={blobRefs.city}
+                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
+                  ></div>
+                </div>
+                {errors.city && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                    <span className="mr-1">⚠</span>
+                    {errors.city}
+                  </p>
+                )}
+              </div>
+
+              {/* Pincode */}
+              <div className="relative">
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="pincode"
+                    value={formData.pincode}
+                    onChange={handleChange}
+                    onFocus={() => animateBlob('pincode')}
+                    readOnly
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
+                      errors.pincode 
+                        ? 'border-red-500 focus:border-red-500' 
+                        : success.pincode 
+                          ? 'border-green-500 focus:border-green-500'
+                          : 'border-blue-200 focus:border-blue-100'
+                    } bg-gray-50`}
+                    placeholder="Pincode"
+                  />
+                  <div
+                    ref={blobRefs.pincode}
+                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
+                  ></div>
+                </div>
+                {errors.pincode && (
+                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                    <span className="mr-1">⚠</span>
+                    {errors.pincode}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Logo Upload */}
             <div className="relative">
               <div className="relative">
                 <input
                   type="file"
-                  name="companyLogo"
+                  name="logo"
                   onChange={handleChange}
                   accept="image/*"
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.companyLogo 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : 'border-blue-200 focus:border-blue-100'
-                  }`}
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-lg focus:outline-none focus:border-blue-100 transition-all duration-300"
                 />
                 <div className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"></div>
               </div>
-              {errors.companyLogo && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.companyLogo}
-                </p>
-              )}
-              <p className="text-gray-500 text-sm mt-1">* Upload your company logo (Required)</p>
+              <p className="text-gray-500 text-sm mt-1">Upload university logo (Optional)</p>
             </div>
 
-            {/* Company Registration No / GSTIN */}
+            {/* Website URL */}
             <div className="relative">
               <div className="relative">
                 <input
-                  type="text"
-                  name="companyRegistrationNo"
-                  value={formData.companyRegistrationNo}
+                  type="url"
+                  name="websiteUrl"
+                  value={formData.websiteUrl}
                   onChange={handleChange}
-                  onFocus={() => animateBlob('companyRegistrationNo')}
+                  onFocus={() => animateBlob('websiteUrl')}
                   className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.companyRegistrationNo 
+                    errors.websiteUrl 
                       ? 'border-red-500 focus:border-red-500' 
-                      : success.companyRegistrationNo 
+                      : success.websiteUrl 
                         ? 'border-green-500 focus:border-green-500'
                         : 'border-blue-200 focus:border-blue-100'
                   }`}
-                  placeholder="Company Registration No / GSTIN *"
+                  placeholder="Website URL *"
                 />
                 <div
-                  ref={blobRefs.companyRegistrationNo}
+                  ref={blobRefs.websiteUrl}
                   className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
                 ></div>
               </div>
-              {errors.companyRegistrationNo && (
+              {errors.websiteUrl && (
                 <p className="text-red-500 text-sm mt-1 flex items-center">
                   <span className="mr-1">⚠</span>
-                  {errors.companyRegistrationNo}
+                  {errors.websiteUrl}
                 </p>
               )}
             </div>
 
-            {/* Company Address - Now Mandatory */}
-            <div className="relative">
-              <div className="relative">
-                <textarea
-                  name="companyAddress"
-                  value={formData.companyAddress}
-                  onChange={handleChange}
-                  onFocus={() => animateBlob('companyAddress')}
-                  rows="3"
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.companyAddress 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.companyAddress 
-                        ? 'border-green-500 focus:border-green-500'
-                        : 'border-blue-200 focus:border-blue-100'
-                  }`}
-                  placeholder="Company Address *"
-                />
-                <div
-                  ref={blobRefs.companyAddress}
-                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                ></div>
-              </div>
-              {errors.companyAddress && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.companyAddress}
-                </p>
-              )}
-            </div>
-
-            {/* Recruitment Focus Area */}
+            {/* Areas of Interest */}
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Recruitment Focus Areas *
+                Areas of Interest
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {recruitmentFocusOptions.map(option => (
-                  <label key={option} className="flex items-center space-x-2">
+              <div className="grid grid-cols-3 gap-2">
+                {areaOfInterestOptions.map(area => (
+                  <label key={area} className="flex items-center space-x-2">
                     <input
                       type="checkbox"
-                      name="recruitmentFocus"
-                      value={option}
-                      checked={formData.recruitmentFocus.includes(option)}
+                      name="areasOfInterest"
+                      value={area}
+                      checked={formData.areasOfInterest.includes(area)}
                       onChange={handleChange}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <span className="text-sm text-gray-700">{option}</span>
+                    <span className="text-sm text-gray-700">{area}</span>
                   </label>
                 ))}
               </div>
-              {formData.recruitmentFocus.length === 0 && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  Please select at least one recruitment focus area
-                </p>
+              
+              {/* Other Area of Interest Textbox */}
+              {formData.areasOfInterest.includes('Other') && (
+                <div className="mt-3">
+                  <input
+                    type="text"
+                    name="otherAreaOfInterest"
+                    value={formData.otherAreaOfInterest}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Please specify other area of interest"
+                  />
+                </div>
               )}
-            </div>
-
-            {/* Official Email Domain */}
-            <div className="relative">
-              <div className="relative">
-                <input
-                  type="text"
-                  name="officialEmailDomain"
-                  value={formData.officialEmailDomain}
-                  onChange={handleChange}
-                  onFocus={() => animateBlob('officialEmailDomain')}
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.officialEmailDomain 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.officialEmailDomain 
-                        ? 'border-green-500 focus:border-green-500'
-                        : 'border-blue-200 focus:border-blue-100'
-                  }`}
-                  placeholder="Official Email Domain (Optional - e.g., company.com)"
-                />
-                <div
-                  ref={blobRefs.officialEmailDomain}
-                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                ></div>
-              </div>
-              {errors.officialEmailDomain && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.officialEmailDomain}
-                </p>
-              )}
-              <p className="text-gray-500 text-sm mt-1">Optional: Restrict recruiter signups to this domain</p>
             </div>
 
             {/* Next Button */}
@@ -1019,7 +1120,7 @@ const SignupAdmin = () => {
               )}
             </div>
 
-            {/* Designation Dropdown with Other Option */}
+            {/* Designation */}
             <div className="relative">
               <div className="relative">
                 <select
@@ -1053,102 +1154,68 @@ const SignupAdmin = () => {
               )}
             </div>
 
-            {/* Custom Designation Input (shown only when "Other" is selected) */}
-            {formData.designation === 'Other' && (
-              <div className="relative">
-                <div className="relative">
-                  <input
-                    type="text"
-                    name="customDesignation"
-                    value={formData.customDesignation}
-                    onChange={handleChange}
-                    onFocus={() => animateBlob('customDesignation')}
-                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.designation 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.designation 
-                          ? 'border-green-500 focus:border-green-500'
-                          : 'border-blue-200 focus:border-blue-100'
-                    }`}
-                    placeholder="Please specify your designation *"
-                  />
-                  <div
-                    ref={blobRefs.customDesignation}
-                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                  ></div>
-                </div>
-                {errors.designation && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <span className="mr-1">⚠</span>
-                    {errors.designation}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Work Email */}
+            {/* Email */}
             <div className="relative">
               <div className="relative">
                 <input
                   type="email"
-                  name="workEmail"
-                  value={formData.workEmail}
+                  name="email"
+                  value={formData.email}
                   onChange={handleChange}
-                  onFocus={() => animateBlob('workEmail')}
+                  onFocus={() => animateBlob('email')}
                   className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.workEmail 
+                    errors.email 
                       ? 'border-red-500 focus:border-red-500' 
-                      : success.workEmail 
+                      : success.email 
                         ? 'border-green-500 focus:border-green-500'
                         : 'border-blue-200 focus:border-blue-100'
                   }`}
-                  placeholder="Work Email *"
+                  placeholder="Admin Email *"
                 />
                 <div
-                  ref={blobRefs.workEmail}
+                  ref={blobRefs.email}
                   className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
                 ></div>
               </div>
-              {errors.workEmail && (
+              {errors.email && (
                 <p className="text-red-500 text-sm mt-1 flex items-center">
                   <span className="mr-1">⚠</span>
-                  {errors.workEmail}
+                  {errors.email}
                 </p>
               )}
             </div>
 
-            {/* Phone Number with 10-digit validation */}
-           
+            {/* Phone Number */}
+            <div className="relative">
               <div className="relative">
-                <div className="relative">
-                  <input
-                    type="tel"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleChange} // Use the main handleChange function
-                    onFocus={() => animateBlob('phoneNumber')}
-                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.phoneNumber 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.phoneNumber 
-                          ? 'border-green-500 focus:border-green-500'
-                          : 'border-blue-200 focus:border-blue-100'
-                    }`}
-                    placeholder="Phone Number (10 digits) *"
-                    maxLength="10"
-                  />
-                  <div
-                    ref={blobRefs.phoneNumber}
-                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                  ></div>
-                </div>
-                {errors.phoneNumber && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <span className="mr-1">⚠</span>
-                    {errors.phoneNumber}
-                  </p>
-                )}
+                <input
+                  type="tel"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  onFocus={() => animateBlob('phoneNumber')}
+                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
+                    errors.phoneNumber 
+                      ? 'border-red-500 focus:border-red-500' 
+                      : success.phoneNumber 
+                        ? 'border-green-500 focus:border-green-500'
+                        : 'border-blue-200 focus:border-blue-100'
+                  }`}
+                  placeholder="Phone Number (10 digits) *"
+                  maxLength="10"
+                />
+                <div
+                  ref={blobRefs.phoneNumber}
+                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
+                ></div>
               </div>
+              {errors.phoneNumber && (
+                <p className="text-red-500 text-sm mt-1 flex items-center">
+                  <span className="mr-1">⚠</span>
+                  {errors.phoneNumber}
+                </p>
+              )}
+            </div>
 
             {/* Password & Confirm Password */}
             <div className="grid grid-cols-2 gap-4">
@@ -1278,7 +1345,8 @@ const SignupAdmin = () => {
                 <div
                   className="g-recaptcha"
                   data-sitekey="6Ldg8vwrAAAAALHVgjWqLKWEYMgPepeVvuOzesji"
-                  data-callback={handleRecaptchaChange}
+                  data-callback="handleRecaptchaChange"
+                  data-expired-callback="handleRecaptchaExpired"
                 ></div>
               </div>
             )}
@@ -1331,10 +1399,10 @@ const SignupAdmin = () => {
                 {isSubmitting ? (
                   <div className="flex items-center justify-center">
                     <div className="w-5 h-5 border-t-2 border-white rounded-full animate-spin mr-2"></div>
-                    Creating Workspace...
+                    Creating Account...
                   </div>
                 ) : (
-                  'Create Workspace'
+                  'Create Admin Account'
                 )}
               </button>
             </div>
@@ -1348,4 +1416,4 @@ const SignupAdmin = () => {
   );
 };
 
-export default SignupAdmin;
+export default UniversityAdmin;

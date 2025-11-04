@@ -89,21 +89,77 @@ export const getPipelineCandidates = async (requisitionId?: string) => {
  */
 export const getPipelineCandidatesByStage = async (requisitionId: string, stage: string) => {
   try {
+    console.log(`[Pipeline Service] Fetching candidates for requisition: ${requisitionId}, stage: ${stage}`);
+    
     const { data, error } = await supabase
       .from('pipeline_candidates')
       .select(`
         *,
-        students (*)
+        students (
+          id,
+          name,
+          email,
+          phone,
+          department,
+          university,
+          cgpa,
+          employability_score,
+          verified,
+          profile
+        )
       `)
       .eq('requisition_id', requisitionId)
       .eq('stage', stage)
       .eq('status', 'active')
       .order('updated_at', { ascending: false });
 
-    if (error) throw error;
-    return { data, error: null };
+    if (error) {
+      console.error(`[Pipeline Service] Error fetching stage ${stage}:`, error);
+      throw error;
+    }
+
+    console.log(`[Pipeline Service] Raw data for stage ${stage}:`, data);
+
+    // Transform data to include profile fields at student level
+    const transformedData = data?.map((candidate, index) => {
+      console.log(`[Pipeline Service] Processing candidate ${index + 1}:`, {
+        id: candidate.id,
+        student_id: candidate.student_id,
+        candidate_name: candidate.candidate_name,
+        has_students: !!candidate.students,
+        has_profile: !!(candidate.students?.profile)
+      });
+
+      if (candidate.students && candidate.students.profile) {
+        const profile = candidate.students.profile;
+        console.log(`[Pipeline Service] Profile data:`, {
+          dept: profile.dept,
+          college: profile.college,
+          skills_count: profile.skills?.length || 0,
+          ai_score: profile.ai_score_overall
+        });
+
+        return {
+          ...candidate,
+          students: {
+            ...candidate.students,
+            dept: profile.dept || profile.department || candidate.students.department,
+            college: profile.college || profile.university || candidate.students.university,
+            location: profile.location || profile.city || '',
+            skills: profile.skills || [],
+            ai_score_overall: profile.ai_score_overall || candidate.students.employability_score || 0
+          }
+        };
+      }
+      
+      console.log(`[Pipeline Service] No profile data found for candidate:`, candidate.candidate_name);
+      return candidate;
+    });
+
+    console.log(`[Pipeline Service] Transformed ${transformedData?.length || 0} candidates for stage ${stage}`);
+    return { data: transformedData, error: null };
   } catch (error) {
-    console.error('Error fetching pipeline candidates by stage:', error);
+    console.error('[Pipeline Service] Error fetching pipeline candidates by stage:', error);
     return { data: null, error };
   }
 };
@@ -137,7 +193,18 @@ export const getPipelineCandidatesWithFilters = async (
       .from('pipeline_candidates')
       .select(`
         *,
-        students (*)
+        students (
+          id,
+          name,
+          email,
+          phone,
+          department,
+          university,
+          cgpa,
+          employability_score,
+          verified,
+          profile
+        )
       `)
       .eq('requisition_id', requisitionId)
       .eq('status', 'active');
@@ -221,9 +288,26 @@ export const getPipelineCandidatesWithFilters = async (
 
     if (error) throw error;
 
-    // Apply client-side filters for student data (skills, department, location, AI score)
-    let filteredData = data || [];
+    // Transform data to include profile fields at student level
+    let filteredData = data?.map(candidate => {
+      if (candidate.students && candidate.students.profile) {
+        const profile = candidate.students.profile;
+        return {
+          ...candidate,
+          students: {
+            ...candidate.students,
+            dept: profile.dept || profile.department || candidate.students.department,
+            college: profile.college || profile.university || candidate.students.university,
+            location: profile.location || profile.city || '',
+            skills: profile.skills || [],
+            ai_score_overall: profile.ai_score_overall || candidate.students.employability_score || 0
+          }
+        };
+      }
+      return candidate;
+    }) || [];
 
+    // Apply client-side filters for student data (skills, department, location, AI score)
     // Filter by skills (check if student has any of the selected skills)
     if (filters.skills && filters.skills.length > 0) {
       filteredData = filteredData.filter(candidate => {
@@ -346,13 +430,42 @@ export const addCandidateToPipeline = async (pipelineData: {
   next_action_notes?: string;
 }) => {
   try {
+    // Fetch student's AI score and employability data
+    let aiScore = null;
+    let employabilityScore = null;
+    
+    try {
+      const { data: studentData, error: studentError } = await supabase
+        .from('students')
+        .select('profile')
+        .eq('id', pipelineData.student_id)
+        .single();
+      
+      if (!studentError && studentData) {
+        aiScore = studentData.profile?.ai_score_overall || null;
+        employabilityScore = studentData.profile?.employability_score || null;
+      }
+    } catch (e) {
+      console.warn('Could not fetch student AI scores:', e);
+    }
+
+    // Add AI score to recruiter notes for visibility
+    let recruiterNotes = '';
+    if (aiScore !== null) {
+      recruiterNotes += `AI Match Score: ${aiScore}/100`;
+    }
+    if (employabilityScore !== null) {
+      recruiterNotes += recruiterNotes ? ` | Employability Score: ${employabilityScore}/100` : `Employability Score: ${employabilityScore}/100`;
+    }
+
     const { data, error } = await supabase
       .from('pipeline_candidates')
       .insert([{
         ...pipelineData,
         stage: pipelineData.stage || 'sourced',
         source: pipelineData.source || 'talent_pool',
-        status: 'active'
+        status: 'active',
+        recruiter_notes: recruiterNotes || pipelineData.next_action_notes || null
       }])
       .select()
       .single();
@@ -378,7 +491,11 @@ export const addCandidateToPipeline = async (pipelineData: {
         activity_type: 'stage_change',
         from_stage: null,
         to_stage: data.stage,
-        performed_by: pipelineData.added_by
+        performed_by: pipelineData.added_by,
+        activity_details: {
+          ai_score: aiScore,
+          employability_score: employabilityScore
+        }
       });
     }
 
@@ -399,10 +516,10 @@ export const moveCandidateToStage = async (
   notes?: string
 ) => {
   try {
-    // Get current candidate data
+    // Get current candidate data with student info
     const { data: currentData, error: fetchError } = await supabase
       .from('pipeline_candidates')
-      .select('stage')
+      .select('stage, student_id, candidate_name, candidate_email, requisition_id')
       .eq('id', candidateId)
       .single();
 
@@ -434,6 +551,41 @@ export const moveCandidateToStage = async (
       activity_details: notes ? { notes } : null,
       performed_by: performedBy
     });
+
+    // Create notification for student about stage change
+    try {
+      // Get requisition details for better notification
+      const { data: requisition } = await supabase
+        .from('requisitions')
+        .select('title, department')
+        .eq('id', currentData.requisition_id)
+        .single();
+
+      const stageLabels: { [key: string]: string } = {
+        sourced: 'Sourced',
+        screened: 'Screened',
+        interview_1: 'Interview Round 1',
+        interview_2: 'Interview Round 2',
+        offer: 'Offer Stage',
+        hired: 'Hired',
+        rejected: 'Application Reviewed'
+      };
+
+      const notificationMessage = newStage === 'rejected' 
+        ? `Your application for ${requisition?.title || 'a position'} has been reviewed. Thank you for your interest.`
+        : `Great news! You've been moved to ${stageLabels[newStage] || newStage} stage for ${requisition?.title || 'a position'}.`;
+
+      // Insert notification (if you have a notifications table for students)
+      // This is optional - you can create a student_notifications table
+      console.log('Stage change notification for student:', {
+        student_id: currentData.student_id,
+        message: notificationMessage,
+        from_stage: previousStage,
+        to_stage: newStage
+      });
+    } catch (notifError) {
+      console.warn('Could not create student notification:', notifError);
+    }
 
     return { data, error: null };
   } catch (error) {

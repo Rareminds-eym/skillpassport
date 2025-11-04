@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Input } from '../../../components/Students/components/ui/input';
-import { Button } from '../../../components/Students/components/ui/button';
-import { Alert, AlertDescription } from '../../../components/Students/components/ui/alert';
+import { Input } from '../../../../../components/Students/components/ui/input';
+import { Button } from '../../../../../components/Students/components/ui/button';
+import { Alert, AlertDescription } from '../../../../../components/Students/components/ui/alert';
 
 const RecruiterSignupForm = () => {
   const [email, setEmail] = useState('');

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
@@ -20,6 +21,7 @@ import { useClasses } from "../../hooks/useClasses"
 import ManageStudentsModal from "../../components/educator/ManageStudentsModal"
 import { createClass, EducatorClass } from "../../services/classService"
 import toast from "react-hot-toast"
+import Pagination from "../../components/educator/Pagination"
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen)
@@ -613,6 +615,10 @@ const ClassesPage = () => {
   const [viewMode, setViewMode] = useState("grid")
   const [showFilters, setShowFilters] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(25)
+
   const [filters, setFilters] = useState({
     courses: [] as string[],
     years: [] as string[],
@@ -625,6 +631,10 @@ const ClassesPage = () => {
   const [detailClass, setDetailClass] = useState<EducatorClass | null>(null)
   const [manageStudentsClass, setManageStudentsClass] = useState<EducatorClass | null>(null)
   const [showAddClassModal, setShowAddClassModal] = useState(false)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, filters])
 
   const courseOptions = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -761,6 +771,24 @@ const ClassesPage = () => {
     })
   }, [classes, searchQuery, filters])
 
+  // Calculate pagination
+  const totalItems = filteredClasses.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedClasses = filteredClasses.slice(startIndex, endIndex)
+
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    setCurrentPage(1)
+  }
+
   const handleClearFilters = () => {
     setFilters({
       courses: [],
@@ -787,7 +815,7 @@ const ClassesPage = () => {
     filters.skillAreas.length +
     filters.performanceBands.length
 
-  const isEmpty = !loading && filteredClasses.length === 0 && !error && !searchQuery && totalFilters === 0
+  const isEmpty = !loading && paginatedClasses.length === 0 && !error && !searchQuery && totalFilters === 0
 
   return (
     <div className="flex flex-col h-screen">
@@ -834,8 +862,8 @@ const ClassesPage = () => {
             <button
               onClick={() => setViewMode("grid")}
               className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === "grid"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               type="button"
             >
@@ -844,8 +872,8 @@ const ClassesPage = () => {
             <button
               onClick={() => setViewMode("table")}
               className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === "table"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               type="button"
             >
@@ -883,8 +911,8 @@ const ClassesPage = () => {
             <button
               onClick={() => setViewMode("grid")}
               className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === "grid"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               type="button"
             >
@@ -893,8 +921,58 @@ const ClassesPage = () => {
             <button
               onClick={() => setViewMode("table")}
               className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === "table"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
+              type="button"
+            >
+              <TableCellsIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile header */}
+      <div className="lg:hidden p-4 bg-white border-b border-gray-200 space-y-4">
+        <div className="text-left">
+          <h1 className="text-xl font-semibold text-gray-900">Classes</h1>
+          <span className="text-sm text-gray-500">{paginatedClasses.length} results</span>
+        </div>
+
+        <div>
+          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search classes" size="md" />
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 relative"
+            type="button"
+          >
+            <FunnelIcon className="h-4 w-4 mr-2" />
+            Filters
+            {totalFilters > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-indigo-600 rounded-full">
+                {totalFilters}
+              </span>
+            )}
+          </button>
+          <div className="flex rounded-md shadow-sm">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === "grid"
+                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
+              type="button"
+            >
+              <Squares2X2Icon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("table")}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === "table"
+                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               type="button"
             >
@@ -1017,9 +1095,9 @@ const ClassesPage = () => {
             )}
             {isEmpty && <EmptyState onCreate={() => setShowAddClassModal(true)} />}
 
-            {!loading && !isEmpty && viewMode === "grid" && filteredClasses.length > 0 && (
+            {!loading && !isEmpty && viewMode === "grid" && paginatedClasses.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredClasses.map((classItem) => (
+                {paginatedClasses.map((classItem) => (
                   <div key={classItem.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-3">
                       <div>
@@ -1085,7 +1163,7 @@ const ClassesPage = () => {
               </div>
             )}
 
-            {!loading && !isEmpty && viewMode === "table" && filteredClasses.length > 0 && (
+            {!loading && !isEmpty && viewMode === "table" && paginatedClasses.length > 0 && (
               <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -1100,7 +1178,7 @@ const ClassesPage = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredClasses.map((classItem) => (
+                    {paginatedClasses.map((classItem) => (
                       <tr key={classItem.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{classItem.name}</div>
@@ -1151,7 +1229,7 @@ const ClassesPage = () => {
               </div>
             )}
 
-            {!loading && filteredClasses.length === 0 && !isEmpty && (
+            {!loading && paginatedClasses.length === 0 && !isEmpty && (
               <div className="text-center py-10 text-sm text-gray-500">
                 No classes match your current filters. Try adjusting filters or clearing them.
                 <div className="mt-3">
@@ -1162,6 +1240,19 @@ const ClassesPage = () => {
               </div>
             )}
           </div>
+
+          {/* Add Pagination Component */}
+          {!loading && totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              // onItemsPerPageChange={handleItemsPerPageChange}
+              // itemsPerPageOptions={[10, 25, 50, 100]}
+            />
+          )}
         </div>
       </div>
 

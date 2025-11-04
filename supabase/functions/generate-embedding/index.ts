@@ -21,36 +21,26 @@ serve(async (req) => {
 
     console.log(`Generating embedding for ${type} #${id}`);
 
-    // Generate embedding using OpenRouter
-    const openrouterKey = Deno.env.get('OPENROUTER_API_KEY');
+    // Use Render.com embedding service (FREE Transformers.js)
+    const embeddingServiceUrl = Deno.env.get('EMBEDDING_SERVICE_URL') || 'https://embedings.onrender.com';
     
-    if (!openrouterKey) {
-      throw new Error('OPENROUTER_API_KEY not configured');
-    }
-
-    // Use OpenRouter's embedding model (you can use text-embedding-ada-002 through OpenRouter)
-    const embeddingRes = await fetch('https://openrouter.ai/api/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openrouterKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://skillpassport.app', // Your app URL
-        'X-Title': 'SkillPassport',
-      },
-      body: JSON.stringify({
-        input: text,
-        model: 'openai/text-embedding-ada-002', // Available through OpenRouter
-      }),
-    });
+    const embeddingRes = await fetch(
+      `${embeddingServiceUrl}/embed`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      }
+    );
 
     if (!embeddingRes.ok) {
       const errorText = await embeddingRes.text();
-      console.error('OpenRouter error:', errorText);
-      throw new Error(`OpenRouter API error: ${embeddingRes.status} - ${errorText}`);
+      throw new Error(`Embedding service error: ${embeddingRes.status} - ${errorText}`);
     }
 
-    const { data } = await embeddingRes.json();
-    const embedding = data[0].embedding;
+    const { embedding } = await embeddingRes.json();
 
     console.log(`Generated embedding with ${embedding.length} dimensions`);
 

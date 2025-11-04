@@ -8,7 +8,9 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "generate-embeddings": "node scripts/generateEmbeddings.js",
+    "generate-student-embeddings": "node scripts/generateStudentEmbeddingsViaEdge.js"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -40,11 +42,14 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@supabase/supabase-js": "^2.57.4",
     "@tanstack/react-query": "^5.90.3",
+    "@xenova/transformers": "^2.17.2",
     "apexcharts": "^5.3.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "country-state-city": "^3.2.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
     "embla-carousel-react": "^8.6.0",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.23.24",

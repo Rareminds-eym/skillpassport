@@ -16,24 +16,15 @@ const SubscriptionPlans = lazy(() =>
   import("../pages/subscription/SubscriptionPlans")
 );
 
-const LoginStudent = lazy(() => import("../pages/auth/LoginStudent"));
-const LoginRecruiter = lazy(() => import("../pages/auth/LoginRecruiter"));
-const LoginAdmin = lazy(() => import("../pages/auth/LoginAdmin"));
-const Register = lazy(() =>
-  import("../pages/auth/components/Sign In/Register")
-);
-const SignupRecruiter = lazy(() =>
-  import("../pages/auth/components/Sign In/recruitment/SignupRecruiter")
-);
-const SignupAdmin = lazy(() =>
-  import("../pages/auth/components/Sign In/recruitment/SignupAdmin")
-);
-const SignInSchool = lazy(() =>
-  import("../pages/auth/components/Sign In/schools/SignInSchool")
-);
-const SignInUniversity = lazy(() =>
-  import("../pages/auth/components/Sign In/university/SignInUniversity")
-);
+const LoginStudent = lazy(() => import('../pages/auth/LoginStudent'));
+const LoginRecruiter = lazy(() => import('../pages/auth/LoginRecruiter'));
+const LoginAdmin = lazy(() => import('../pages/auth/LoginAdmin'));
+const Register = lazy(() => import('../pages/auth/components/SignIn/Register'));
+const SignupRecruiter = lazy(() => import('../pages/auth/components/SignIn/recruitment/SignupRecruiter'));
+const SignupAdmin = lazy(() => import('../pages/auth/components/SignIn/recruitment/SignupAdmin'));
+const SignInSchool = lazy(() => import('../pages/auth/components/SignIn/schools/SignInSchool'));
+const SignInUniversity = lazy(() => import('../pages/auth/components/SignIn/university/SignInUniversity'));
+const UniversityAdmin = lazy(() => import('../pages/auth/components/SignIn/university/UniversityAdmin'));
 
 const AdminDashboard = lazy(() => import("../pages/admin/Dashboard"));
 const ManageUsers = lazy(() => import("../pages/admin/ManageUsers"));
@@ -82,6 +73,12 @@ const EducatorStudents = lazy(() => import("../pages/educator/StudentsPage"));
 const EducatorClasses = lazy(() => import("../pages/educator/ClassesPage"));
 const EducatorAssessments = lazy(() => import("../pages/educator/Assessments"));
 const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
+const EducatorSettings = lazy(() => import("../pages/educator/Settings"));
+const EducatorCommunication = lazy(() => import("../pages/educator/Communication"));
+const EducatorAnalytics = lazy(() => import("../pages/educator/Analytics"));
+const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
+const EducatorReports = lazy(() => import("../pages/educator/Reports"));
+const EducatorMediaManager = lazy(() => import("../pages/educator/MediaManager"));
 
 const AppRoutes = () => {
   return (
@@ -103,6 +100,7 @@ const AppRoutes = () => {
           <Route path="/signup/recruitment-admin" element={<SignupAdmin />} />
           <Route path="/signin/school" element={<SignInSchool />} />
           <Route path="/signin/university" element={<SignInUniversity />} />
+          <Route path="/signup/university-admin" element={<UniversityAdmin />} />
           <Route path="/subscription" element={<SubscriptionPlans />} />
           <Route path="/debug-qr" element={<DebugQRTest />} />
           <Route
@@ -146,7 +144,6 @@ const AppRoutes = () => {
           <Route path="messages" element={<RecruiterMessages />} />
           <Route path="profile" element={<RecruiterProfile />} />
           <Route path="settings" element={<RecruiterSettings />} />
-
           <Route
             path="*"
             element={<Navigate to="/recruitment/overview" replace />}
@@ -183,13 +180,18 @@ const AppRoutes = () => {
           />
         </Route>
 
-        {/* Educator routes - no authentication required for now (mock data) */}
         <Route path="/educator/*" element={<EducatorLayout />}>
           <Route path="dashboard" element={<EducatorDashboard />} />
           <Route path="students" element={<EducatorStudents />} />
           <Route path="classes" element={<EducatorClasses />} />
           <Route path="assignments" element={<EducatorAssessments />} />
           <Route path="mentornotes" element={<EducatorMentorNotes />} />
+          <Route path="settings" element={<EducatorSettings />} />
+          <Route path="communication" element={<EducatorCommunication />} />
+          <Route path="analytics" element={<EducatorAnalytics />} />
+          <Route path="activities" element={<EducatorActivities />} />
+          <Route path="reports" element={<EducatorReports />} />
+          <Route path="media" element={<EducatorMediaManager />} />
           <Route
             path=""
             element={<Navigate to="/educator/dashboard" replace />}
