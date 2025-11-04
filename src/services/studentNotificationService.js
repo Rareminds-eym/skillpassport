@@ -133,7 +133,7 @@ export class StudentNotificationService {
           title: notificationData.title,
           message: notificationData.message,
           pipeline_candidate_id: notificationData.pipeline_candidate_id || null,
-          requisition_id: notificationData.requisition_id || null,
+          opportunity_id: notificationData.opportunity_id || null,
           interview_id: notificationData.interview_id || null,
           application_id: notificationData.application_id || null,
           metadata: notificationData.metadata || null

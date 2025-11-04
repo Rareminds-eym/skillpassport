@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AppliedJobsService from '../../services/appliedJobsService';
-import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, FunnelIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { getAllPipelineCandidatesByStage, moveCandidateToStage } from '../../services/pipelineService';
+import { supabase } from '../../lib/supabaseClient';
+import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, FunnelIcon, ArrowDownTrayIcon, UsersIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { MessageModal } from '../../components/messaging/MessageModal';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { useAuth } from '../../context/AuthContext';
@@ -42,6 +44,16 @@ interface Applicant {
   notes?: string;
   student: Student;
   opportunity: Opportunity;
+  pipeline_stage?: string;
+  pipeline_candidate_id?: string;
+}
+
+interface PipelineStage {
+  stage: string;
+  label: string;
+  count: number;
+  color: string;
+  icon: string;
 }
 
 const ApplicantsList: React.FC = () => {
@@ -54,6 +66,18 @@ const ApplicantsList: React.FC = () => {
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'rating'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedRequisition, setSelectedRequisition] = useState<string>('all');
+  
+  // Pipeline stages state
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([
+    { stage: 'sourced', label: 'Sourced', count: 0, color: 'bg-blue-100 text-blue-800', icon: '👥' },
+    { stage: 'screened', label: 'Screened', count: 0, color: 'bg-purple-100 text-purple-800', icon: '📋' },
+    { stage: 'interview_1', label: 'Interview 1', count: 0, color: 'bg-orange-100 text-orange-800', icon: '📹' },
+    { stage: 'interview_2', label: 'Interview 2', count: 0, color: 'bg-pink-100 text-pink-800', icon: '🗣️' },
+    { stage: 'offer', label: 'Offer', count: 0, color: 'bg-green-100 text-green-800', icon: '🎉' },
+    { stage: 'hired', label: 'Hired', count: 0, color: 'bg-emerald-100 text-emerald-800', icon: '✅' }
+  ]);
+  const [availableRequisitions, setAvailableRequisitions] = useState<Array<{id: string, title: string}>>([]);
   
   // Message modal state
   const [messageModalOpen, setMessageModalOpen] = useState(false);
@@ -80,14 +104,183 @@ const ApplicantsList: React.FC = () => {
   const fetchApplicants = async () => {
     setLoading(true);
     try {
-      // Fetch all applicants from applied_jobs table
+      // Fetch all applicants from applied_jobs table with pipeline data
       const applicantsData = await AppliedJobsService.getAllApplicants();
-      setApplicants(applicantsData || []);
+      
+      // Get unique opportunity IDs for the dropdown
+      const uniqueOpportunities = [...new Set(
+        applicantsData
+          ?.filter((app: any) => app.opportunity_id)
+          .map((app: any) => ({
+            id: app.opportunity_id,
+            title: app.opportunity?.job_title || app.opportunity?.title
+          }))
+      )];
+      setAvailableRequisitions(uniqueOpportunities);
+
+      // Fetch pipeline data for each opportunity
+      const applicantsWithPipeline = await Promise.all(
+        (applicantsData || []).map(async (applicant: any) => {
+          if (applicant.opportunity_id) {
+            try {
+              // Get pipeline data for this opportunity
+              const { data: pipelineData } = await getAllPipelineCandidatesByStage(applicant.opportunity_id);
+              
+              // Find this student in the pipeline data
+              let pipelineStage = null;
+              let pipelineCandidateId = null;
+              
+              if (pipelineData) {
+                for (const [stage, candidates] of Object.entries(pipelineData)) {
+                  const found = (candidates as any[]).find(c => c.student_id === applicant.student_id);
+                  if (found) {
+                    pipelineStage = stage;
+                    pipelineCandidateId = found.id;
+                    break;
+                  }
+                }
+              }
+              
+              return {
+                ...applicant,
+                pipeline_stage: pipelineStage,
+                pipeline_candidate_id: pipelineCandidateId,
+                opportunity_id: applicant.opportunity_id
+              };
+            } catch (error) {
+              console.error('Error fetching pipeline data for opportunity:', applicant.opportunity_id, error);
+              return applicant;
+            }
+          }
+          return applicant;
+        })
+      );
+
+      setApplicants(applicantsWithPipeline);
+      
+      // Update pipeline stage counts
+      updatePipelineCounts(applicantsWithPipeline);
+      
     } catch (error) {
       console.error('Error fetching applicants:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const updatePipelineCounts = (applicantsList: Applicant[]) => {
+    const counts = {
+      sourced: 0,
+      screened: 0,
+      interview_1: 0,
+      interview_2: 0,
+      offer: 0,
+      hired: 0
+    };
+
+    applicantsList.forEach(applicant => {
+      // Only count actual pipeline stages, not application statuses
+      if (applicant.pipeline_stage && counts.hasOwnProperty(applicant.pipeline_stage)) {
+        counts[applicant.pipeline_stage as keyof typeof counts]++;
+      }
+    });
+
+    setPipelineStages(prev => prev.map(stage => ({
+      ...stage,
+      count: counts[stage.stage as keyof typeof counts] || 0
+    })));
+  };
+
+  const handleMoveToPipelineStage = async (applicant: Applicant, newStage: string) => {
+    // If candidate is not in pipeline yet but has applied/viewed status, add them first
+    if (!applicant.pipeline_candidate_id && (applicant.application_status === 'applied' || applicant.application_status === 'viewed')) {
+      try {
+        // Add candidate to pipeline first
+        const { data: student } = await supabase
+          .from('students')
+          .select('name, email, contact_number')
+          .eq('id', applicant.student_id)
+          .single();
+
+        if (!student) {
+          alert('Student information not found');
+          return;
+        }
+
+        // Use opportunity_id directly instead of requisition
+        const opportunityId = applicant.opportunity_id;
+
+        // Add to pipeline using opportunity_id
+        const { data: newCandidate, error: insertError } = await supabase
+          .from('pipeline_candidates')
+          .insert({
+            opportunity_id: opportunityId,
+            student_id: applicant.student_id,
+            candidate_name: student.name || 'Unknown Student',
+            candidate_email: student.email || '',
+            candidate_phone: student.contact_number || '',
+            stage: newStage,
+            source: 'direct_application',
+            status: 'active',
+            added_at: new Date().toISOString(),
+            stage_changed_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          throw insertError;
+        }
+
+        console.log('Successfully added to pipeline:', newCandidate);
+        
+      } catch (error) {
+        console.error('Error adding candidate to pipeline:', error);
+        alert('Failed to add candidate to pipeline. Please try again.');
+        return;
+      }
+    } else if (!applicant.pipeline_candidate_id) {
+      alert('This applicant is not in the pipeline system yet');
+      return;
+    } else {
+      // Use existing pipeline movement function
+      try {
+        const result = await moveCandidateToStage(
+          applicant.pipeline_candidate_id,
+          newStage,
+          user?.id || '',
+          `Moved to ${newStage} stage`
+        );
+
+        if (result.error) {
+          throw result.error;
+        }
+      } catch (error) {
+        console.error('Error moving candidate:', error);
+        alert('Failed to move candidate. Please try again.');
+        return;
+      }
+    }
+
+    // Refresh the applicants list to show updated stages
+    await fetchApplicants();
+    alert(`Successfully moved ${applicant.student.name} to ${newStage} stage`);
+  };
+
+  const getNextStageOptions = (applicant: Applicant) => {
+    const stageOrder = ['sourced', 'screened', 'interview_1', 'interview_2', 'offer', 'hired'];
+    
+    // If candidate has pipeline stage, show next stages
+    if (applicant.pipeline_stage) {
+      const currentIndex = stageOrder.indexOf(applicant.pipeline_stage);
+      if (currentIndex === -1) return stageOrder;
+      return stageOrder.slice(currentIndex + 1);
+    }
+    
+    // If no pipeline stage, show all stages starting from sourced
+    return stageOrder;
   };
 
   const handleViewApplicant = async (applicant: Applicant) => {
@@ -111,20 +304,51 @@ const ApplicantsList: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (applicant: Applicant) => {
+    // Show pipeline stage if available
+    if (applicant.pipeline_stage) {
+      const pipelineConfig: { [key: string]: { label: string; color: string; icon: string } } = {
+        sourced: { label: 'Sourced', color: 'bg-blue-100 text-blue-800', icon: '👥' },
+        screened: { label: 'Screened', color: 'bg-purple-100 text-purple-800', icon: '📋' },
+        interview_1: { label: 'Interview 1', color: 'bg-orange-100 text-orange-800', icon: '📹' },
+        interview_2: { label: 'Interview 2', color: 'bg-pink-100 text-pink-800', icon: '🗣️' },
+        offer: { label: 'Offer', color: 'bg-green-100 text-green-800', icon: '🎉' },
+        hired: { label: 'Hired', color: 'bg-emerald-100 text-emerald-800', icon: '✅' },
+        rejected: { label: 'Rejected', color: 'bg-red-100 text-red-800', icon: '❌' }
+      };
+
+      const config = pipelineConfig[applicant.pipeline_stage] || { 
+        label: applicant.pipeline_stage, 
+        color: 'bg-gray-100 text-gray-700', 
+        icon: '📝' 
+      };
+      
+      return (
+        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
+          <span className="mr-1">{config.icon}</span>
+          {config.label}
+        </span>
+      );
+    }
+
+    // Show original application status
     const statusConfig: { [key: string]: { label: string; color: string; icon: string } } = {
       applied: { label: 'Applied', color: 'bg-indigo-100 text-indigo-700', icon: '○' },
-      viewed: { label: 'Viewed', color: 'bg-blue-100 text-blue-700', icon: '' },
+      viewed: { label: 'Viewed', color: 'bg-blue-100 text-blue-700', icon: '👁️' },
       under_review: { label: 'Under Review', color: 'bg-yellow-100 text-yellow-700', icon: '📝' },
-      interview_scheduled: { label: 'Interview Scheduled', color: 'bg-blue-100 text-blue-700', icon: '📅' },
+      interview_scheduled: { label: 'Interview Scheduled', color: 'bg-orange-100 text-orange-700', icon: '📅' },
       interviewed: { label: 'Interviewed', color: 'bg-purple-100 text-purple-700', icon: '✓' },
-      offer_received: { label: 'Offer Received', color: 'bg-orange-100 text-orange-700', icon: '📋' },
-      accepted: { label: 'Accepted', color: 'bg-green-100 text-green-700', icon: '✓' },
+      offer_received: { label: 'Offer Received', color: 'bg-green-100 text-green-700', icon: '📋' },
+      accepted: { label: 'Accepted', color: 'bg-emerald-100 text-emerald-700', icon: '✓' },
       rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700', icon: '✗' },
       withdrawn: { label: 'Withdrawn', color: 'bg-gray-100 text-gray-700', icon: '←' },
     };
 
-    const config = statusConfig[status] || { label: status, color: 'bg-gray-100 text-gray-700', icon: '' };
+    const config = statusConfig[applicant.status] || { 
+      label: applicant.status || 'Unknown', 
+      color: 'bg-gray-100 text-gray-700', 
+      icon: '📝' 
+    };
     
     return (
       <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
@@ -182,10 +406,19 @@ const ApplicantsList: React.FC = () => {
       applicant.opportunity?.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       applicant.opportunity?.title?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Filter by status
-    const matchesStatus = statusFilter === 'all' || applicant.application_status === statusFilter;
+    // Filter by status - use pipeline stage if available, otherwise application status
+    const currentStatus = applicant.pipeline_stage || applicant.application_status;
     
-    return matchesSearch && matchesStatus;
+    const matchesStatus = statusFilter === 'all' || 
+      applicant.application_status === statusFilter ||
+      applicant.pipeline_stage === statusFilter ||
+      currentStatus === statusFilter;
+
+    // Filter by opportunity
+    const matchesRequisition = selectedRequisition === 'all' || 
+      applicant.opportunity_id === Number(selectedRequisition);
+    
+    return matchesSearch && matchesStatus && matchesRequisition;
   });
 
   const sortedApplicants = [...filteredApplicants].sort((a, b) => {
@@ -263,8 +496,39 @@ const ApplicantsList: React.FC = () => {
           </button>
         </div>
 
+        {/* Pipeline Stages Overview */}
+        <div className="mt-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Pipeline Overview</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {pipelineStages.map((stage) => (
+              <div
+                key={stage.stage}
+                className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
+                  statusFilter === stage.stage 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+                onClick={() => setStatusFilter(statusFilter === stage.stage ? 'all' : stage.stage)}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">{stage.label}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stage.count}</p>
+                  </div>
+                  <div className="text-2xl">{stage.icon}</div>
+                </div>
+                {statusFilter === stage.stage && (
+                  <div className="absolute top-2 right-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Search and Filters */}
-        <div className="mt-4 flex flex-col sm:flex-row gap-3">
+        <div className="mt-6 flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -297,15 +561,38 @@ const ApplicantsList: React.FC = () => {
             className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
           >
             <option value="all">All Status</option>
-            <option value="applied">Applied</option>
-            <option value="viewed">Viewed</option>
-            <option value="under_review">Under Review</option>
-            <option value="interview_scheduled">Interview Scheduled</option>
-            <option value="interviewed">Interviewed</option>
-            <option value="offer_received">Offer Received</option>
-            <option value="accepted">Accepted</option>
-            <option value="rejected">Rejected</option>
-            <option value="withdrawn">Withdrawn</option>
+            <optgroup label="Pipeline Stages">
+              <option value="sourced">Sourced</option>
+              <option value="screened">Screened</option>
+              <option value="interview_1">Interview 1</option>
+              <option value="interview_2">Interview 2</option>
+              <option value="offer">Offer</option>
+              <option value="hired">Hired</option>
+            </optgroup>
+            <optgroup label="Application Status">
+              <option value="applied">Applied</option>
+              <option value="viewed">Viewed</option>
+              <option value="under_review">Under Review</option>
+              <option value="interview_scheduled">Interview Scheduled</option>
+              <option value="interviewed">Interviewed</option>
+              <option value="offer_received">Offer Received</option>
+              <option value="accepted">Accepted</option>
+              <option value="rejected">Rejected</option>
+              <option value="withdrawn">Withdrawn</option>
+            </optgroup>
+          </select>
+
+          <select
+            value={selectedRequisition}
+            onChange={(e) => setSelectedRequisition(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+          >
+            <option value="all">All Positions</option>
+            {availableRequisitions.map((req) => (
+              <option key={req.id} value={req.id}>
+                {req.title}
+              </option>
+            ))}
           </select>
           
           <select
@@ -404,7 +691,7 @@ const ApplicantsList: React.FC = () => {
                       {applicant.opportunity?.job_title || applicant.opportunity?.title || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(applicant.application_status)}
+                      {getStatusBadge(applicant)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {getTimeAgo(applicant.applied_at)}
@@ -438,6 +725,37 @@ const ApplicantsList: React.FC = () => {
                         >
                           <ChatBubbleLeftIcon className="h-4 w-4" />
                         </button>
+                        
+                        {/* Pipeline Stage Actions */}
+                        {(applicant.pipeline_candidate_id || applicant.application_status === 'applied' || applicant.application_status === 'viewed') && (
+                          <div className="relative group">
+                            <button className="p-2 text-purple-600 border border-purple-600 rounded hover:bg-purple-50 transition-colors">
+                              <ChevronRightIcon className="h-4 w-4" />
+                            </button>
+                            <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                              <div className="py-1">
+                                <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b">Move to Stage</div>
+                                {getNextStageOptions(applicant).map((stage) => (
+                                  <button
+                                    key={stage}
+                                    onClick={() => handleMoveToPipelineStage(applicant, stage)}
+                                    className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                  >
+                                    {pipelineStages.find(s => s.stage === stage)?.label || stage}
+                                  </button>
+                                ))}
+                                <div className="border-t">
+                                  <button
+                                    onClick={() => handleMoveToPipelineStage(applicant, 'rejected')}
+                                    className="block w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                                  >
+                                    ❌ Reject
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>

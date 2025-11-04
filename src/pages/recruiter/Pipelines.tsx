@@ -15,10 +15,9 @@ import {
   XCircleIcon
 } from '@heroicons/react/24/outline';
 import { useStudents } from '../../hooks/useStudents';
-import { useRequisitions } from '../../hooks/useRequisitions';
+import { useOpportunities } from '../../hooks/useOpportunities';
 import { useNotifications } from '../../hooks/useNotifications';
 import {
-  getRequisitions,
   getPipelineCandidatesByStage,
   getPipelineCandidatesWithFilters,
   addCandidateToPipeline,
@@ -29,6 +28,8 @@ import { createNotification } from "../../services/notificationService";
 import PipelineAdvancedFilters from '../../components/Recruiter/components/PipelineAdvancedFilters';
 import PipelineSortMenu from '../../components/Recruiter/components/PipelineSortMenu';
 import { PipelineFilters, PipelineSortOptions } from '../../types/recruiter';
+import { supabase } from '../../lib/supabaseClient';
+import AppliedJobsService from '../../services/AppliedJobsService';
 
 // Add from Talent Pool Modal
 const AddFromTalentPoolModal = ({ isOpen, onClose, requisitionId, targetStage, onSuccess }) => {
@@ -57,7 +58,7 @@ const AddFromTalentPoolModal = ({ isOpen, onClose, requisitionId, targetStage, o
       const results = await Promise.all(
         selectedStudents.map(student =>
           addCandidateToPipeline({
-            requisition_id: requisitionId,
+            opportunity_id: requisitionId,
             student_id: student.id,
             candidate_name: student.name,
             candidate_email: student.email,
@@ -603,8 +604,8 @@ const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, 
 };
 
 const Pipelines = ({ onViewProfile }) => {
-  // Fetch requisitions from Supabase
-  const { requisitions, loading: requisitionsLoading, error: requisitionsError } = useRequisitions();
+  // Fetch opportunities from Supabase
+  const { opportunities, loading: opportunitiesLoading, error: opportunitiesError } = useOpportunities();
 
   const [selectedJob, setSelectedJob] = useState(null);
   const { students, loading, error } = useStudents();
@@ -662,12 +663,19 @@ const Pipelines = ({ onViewProfile }) => {
     direction: 'desc'
   });
 
-  // Set initial selected job when requisitions load
+  // Set initial selected job when opportunities load (prefer most recently updated)
   React.useEffect(() => {
-    if (!requisitionsLoading && requisitions.length > 0 && !selectedJob) {
-      setSelectedJob(requisitions[0].id);
+    if (!opportunitiesLoading && opportunities.length > 0 && !selectedJob) {
+      // Sort opportunities by most recently updated first
+      const sortedOpportunities = [...opportunities].sort((a, b) => {
+        const dateA = new Date(a.updated_at || a.created_at || '');
+        const dateB = new Date(b.updated_at || b.created_at || '');
+        return dateB.getTime() - dateA.getTime();
+      });
+      setSelectedJob(sortedOpportunities[0].id);
+      console.log('Auto-selected most recent opportunity:', sortedOpportunities[0].id, sortedOpportunities[0].job_title);
     }
-  }, [requisitionsLoading, requisitions, selectedJob]);
+  }, [opportunitiesLoading, opportunities, selectedJob]);
 
   // Fetch pipeline candidates when job, filters, or sort changes
   React.useEffect(() => {
@@ -701,6 +709,8 @@ const Pipelines = ({ onViewProfile }) => {
       filters.nextActionTypes.length > 0 ||
       filters.hasNextAction !== null ||
       filters.assignedTo.length > 0;
+
+    console.log('[Pipelines] Has active filters:', hasActiveFilters);
 
     if (hasActiveFilters) {
       // Use filtered query with sorting
@@ -798,8 +808,9 @@ const Pipelines = ({ onViewProfile }) => {
       // Default behavior - stage by stage
       console.log('[Pipelines] Default behavior: loading stage by stage');
       for (const stage of stages) {
+        console.log(`[Pipelines] Loading stage: ${stage} for requisition: ${selectedJob}`);
         const { data, error } = await getPipelineCandidatesByStage(selectedJob, stage);
-        console.log(`[Pipelines] Stage ${stage}:`, { dataCount: data?.length, error });
+        console.log(`[Pipelines] Stage ${stage}:`, { dataCount: data?.length, error, data });
 
         if (!error && data) {
           // Map pipeline_candidates to match expected format
@@ -842,7 +853,8 @@ const Pipelines = ({ onViewProfile }) => {
   const [selectedCandidates, setSelectedCandidates] = useState([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
 
-  const selectedJobDetails = requisitions.find(job => job.id === selectedJob);
+  const selectedJobDetails = opportunities.find(job => job.id === selectedJob);
+  const jobTitle = selectedJobDetails?.job_title || selectedJobDetails?.title || 'Job';
 
   const stages = [
     { key: 'sourced', label: 'Sourced', color: 'bg-gray-400' },
@@ -948,8 +960,8 @@ const Pipelines = ({ onViewProfile }) => {
       return;
     }
 
-    const emailSubject = `Update regarding ${selectedJobDetails?.title || 'Job Application'}`;
-    const emailBody = `Dear Candidate,\n\nWe would like to update you on your application status for the position of ${selectedJobDetails?.title || 'the role'}.\n\nBest regards,\nRecruitment Team`;
+    const emailSubject = `Update regarding ${jobTitle}`;
+    const emailBody = `Dear Candidate,\n\nWe would like to update you on your application status for the position of ${jobTitle}.\n\nBest regards,\nRecruitment Team`;
 
     // Simulate sending emails
     alert(`📧 Bulk Email Sent!\n\nRecipients: ${candidateNames.join(', ')}\nSubject: ${emailSubject}\n\nEmails have been queued for delivery.`);
@@ -971,7 +983,7 @@ const Pipelines = ({ onViewProfile }) => {
       return;
     }
 
-    const message = `Hi! This is an update regarding your application for ${selectedJobDetails?.title || 'the position'}. We will be in touch soon with next steps.`;
+    const message = `Hi! This is an update regarding your application for ${jobTitle}. We will be in touch soon with next steps.`;
 
     // Simulate sending WhatsApp messages
     alert(`📱 WhatsApp Messages Sent!\n\nRecipients: ${candidateNames.join(', ')}\nMessage: "${message}"\n\nMessages have been delivered.`);
@@ -1043,7 +1055,7 @@ const Pipelines = ({ onViewProfile }) => {
         selectedJob ,
         "candidate_rejected",
         "Candidates Rejected",
-        `${candidateNames.length} candidate(s) were rejected from ${selectedJobDetails?.title || "pipeline"}.`
+        `${candidateNames.length} candidate(s) were rejected from ${jobTitle}.`
       );
 
       if (!notifResult.success) {
@@ -1079,13 +1091,13 @@ const Pipelines = ({ onViewProfile }) => {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `pipeline_${selectedJobDetails?.title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `pipeline_${jobTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    alert(`📊 Pipeline Exported!\n\nFile: pipeline_${selectedJobDetails?.title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv\n\n${allCandidates.length} candidates exported successfully.`);
+    alert(`📊 Pipeline Exported!\n\nFile: pipeline_${jobTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv\n\n${allCandidates.length} candidates exported successfully.`);
   };
 
   const handleAddCandidates = () => {
@@ -1104,8 +1116,8 @@ const Pipelines = ({ onViewProfile }) => {
   };
 
   const handleSendEmail = (candidate) => {
-    const subject = `Update regarding ${selectedJobDetails?.title || 'your application'}`;
-    const message = `Dear ${candidate.name},\n\nWe wanted to provide you with an update on your application for the ${selectedJobDetails?.title || 'position'}.\n\nYour application is currently in the review process and we will be in touch with next steps soon.\n\nBest regards,\nRecruitment Team`;
+    const subject = `Update regarding ${jobTitle}`;
+    const message = `Dear ${candidate.name},\n\nWe wanted to provide you with an update on your application for ${jobTitle}.\n\nYour application is currently in the review process and we will be in touch with next steps soon.\n\nBest regards,\nRecruitment Team`;
 
     alert(`📧 Email Sent to ${candidate.name}!\n\nSubject: ${subject}\n\nMessage: "${message}"\n\nEmail has been delivered successfully.`);
   };
@@ -1146,21 +1158,30 @@ const Pipelines = ({ onViewProfile }) => {
               <h1 className="text-xl font-semibold text-gray-900">Pipeline Management</h1>
               {selectedJobDetails && (
                 <p className="text-sm text-gray-500 mt-1">
-                  {selectedJobDetails.title} • {selectedJobDetails.location} • {selectedJobDetails.openings} openings
+                  {selectedJobDetails.job_title || selectedJobDetails.title} • {selectedJobDetails.location} • {selectedJobDetails.company_name || 'No company'}
                 </p>
               )}
             </div>
             <select
               value={selectedJob || ''}
-              onChange={(e) => setSelectedJob(e.target.value)}
+              onChange={(e) => setSelectedJob(Number(e.target.value))}
               className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
-              {requisitions.map(job => (
+              {opportunities.map(job => (
                 <option key={job.id} value={job.id}>
-                  {job.title} ({job.location})
+                  {job.job_title || job.title} ({job.location})
                 </option>
               ))}
             </select>
+            <button
+              onClick={() => {
+                loadPipelineCandidates();
+                console.log('Manual refresh triggered for opportunity:', selectedJob);
+              }}
+              className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              🔄 Refresh
+            </button>
           </div>
 
           <div className="flex items-center space-x-4 text-sm text-gray-600">
@@ -1168,12 +1189,12 @@ const Pipelines = ({ onViewProfile }) => {
               <span className="font-medium">{getTotalCandidates()}</span> candidates in pipeline
             </div>
             <div>
-              <span className="font-medium">{selectedJobDetails?.owner || 'Unassigned'}</span> owner
+              <span className="font-medium">{selectedJobDetails?.company_name || 'Unassigned'}</span> company
             </div>
             <div>
               <span className="font-medium">
-                {selectedJobDetails?.created_date ?
-                  Math.floor((new Date() - new Date(selectedJobDetails.created_date)) / (1000 * 60 * 60 * 24))
+                {selectedJobDetails?.created_at ?
+                  Math.floor((new Date() - new Date(selectedJobDetails.created_at)) / (1000 * 60 * 60 * 24))
                   : 0
                 } days
               </span> aging
