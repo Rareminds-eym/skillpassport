@@ -209,21 +209,20 @@ const Header = () => {
             </Link>
           </div>
 
-          {/* User Info (if authenticated) */}
-          {authUser && (location.pathname === '/subscription/payment' || location.pathname === '/my-subscription') && (
-            <div className="hidden md:flex items-center space-x-3 mr-4">
-              <div className="text-right">
-                <div className="text-sm font-semibold text-gray-900">{authUser.email}</div>
-                <div className="text-xs text-gray-500 capitalize">{authUser.role}</div>
-              </div>
-              <div className="w-10 h-10 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                {authUser.email?.charAt(0).toUpperCase()}
-              </div>
+          {/* User Info (if authenticated) - Show on subscription pages */}
+          {authUser && (location.pathname.startsWith('/subscription/') || location.pathname === '/my-subscription') && (
+            <div className="hidden md:flex items-center space-x-2 mr-4">
+              <span className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
+                {authUser.email}
+              </span>
+              <span className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-blue-100 text-blue-700 capitalize">
+                {authUser.role}
+              </span>
             </div>
           )}
 
-          {/* Action Buttons - Hide on payment and my-subscription pages */}
-          {location.pathname !== '/subscription/payment' && location.pathname !== '/my-subscription' && (
+          {/* Action Buttons - Hide on subscription pages */}
+          {!location.pathname.startsWith('/subscription/') && location.pathname !== '/my-subscription' && (
             <div className="hidden md:flex items-center space-x-4 flex-shrink-0">
               {/* Signup Button */}
               <Link
@@ -299,20 +298,19 @@ const Header = () => {
             className="md:hidden py-4 space-y-2 border-t border-gray-100 overflow-hidden"
           >
             {/* User Info Mobile (if authenticated) */}
-            {authUser && (location.pathname === '/subscription/payment' || location.pathname === '/my-subscription') && (
-              <div className="px-4 py-3 bg-red-50 rounded-lg mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                    {authUser.email?.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900">{authUser.email}</div>
-                    <div className="text-xs text-gray-500 capitalize">{authUser.role}</div>
-                  </div>
+            {authUser && (location.pathname.startsWith('/subscription/') || location.pathname === '/my-subscription') && (
+              <div className="px-4 py-3 bg-gray-50 rounded-lg mb-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
+                    {authUser.email}
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-blue-100 text-blue-700 capitalize">
+                    {authUser.role}
+                  </span>
                 </div>
               </div>
             )}
-            {location.pathname !== '/subscription/payment' && location.pathname !== '/my-subscription' && (
+            {!location.pathname.startsWith('/subscription/') && location.pathname !== '/my-subscription' && (
               <div 
                 ref={(el) => (mobileMenuItemsRef.current[0] = el)}
                 className="px-2 pt-4 space-y-3"

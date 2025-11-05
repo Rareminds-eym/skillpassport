@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { initiateRazorpayPayment } from '../../services/razorpayService';
+import SubscriptionRouteGuard from '../../components/Subscription/SubscriptionRouteGuard';
 
 function PaymentCompletion() {
   const navigate = useNavigate();
@@ -96,7 +97,7 @@ function PaymentCompletion() {
     );
   }
 
-  return (
+  const paymentContent = (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -224,6 +225,12 @@ function PaymentCompletion() {
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <SubscriptionRouteGuard mode="payment">
+      {paymentContent}
+    </SubscriptionRouteGuard>
   );
 }
 
