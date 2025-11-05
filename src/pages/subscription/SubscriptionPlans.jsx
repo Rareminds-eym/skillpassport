@@ -55,7 +55,7 @@ const plans = [
   }
 ];
 
-import { useSubscription } from '../../hooks/Subscription/useSubscription';
+import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 
 // Memoized PlanCard component
 const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRemaining }) => {
@@ -173,14 +173,13 @@ function SubscriptionPlans() {
     };
   }, [location.search]);
   
-  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError } = useSubscription();
+  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError } = useSubscriptionQuery();
 
   const handlePlanSelection = useCallback((plan) => {
     // If user has subscription and clicks manage on current plan
     if (subscriptionData && subscriptionData.plan === plan.id) {
-      // Navigate to manage subscription page (you can create this route)
-      // For now, we'll just show an alert
-      alert('Manage subscription feature - You can add renewal, cancellation, and auto-renew toggle here');
+      // Navigate to manage subscription page
+      navigate('/subscription/manage');
       return;
     }
 
@@ -191,9 +190,15 @@ function SubscriptionPlans() {
       setPlanToSelect(plan);
       setShowSignupModal(true);
     } else {
-      // User authenticated, proceed to payment
-      console.log('✅ User authenticated:', user?.email, '| Role:', role);
-      navigate('/subscription/payment', { state: { plan, studentType, isUpgrade: !!subscriptionData } });
+      // User authenticated, check if they have active subscription
+      if (subscriptionData && subscriptionData.status === 'active') {
+        // User has active subscription, redirect to manage page instead of payment
+        navigate('/subscription/manage');
+      } else {
+        // User authenticated but no active subscription, proceed to payment
+        console.log('✅ User authenticated:', user?.email, '| Role:', role);
+        navigate('/subscription/payment', { state: { plan, studentType, isUpgrade: !!subscriptionData } });
+      }
     }
   }, [isAuthenticated, user, role, navigate, studentType, subscriptionData]);
 

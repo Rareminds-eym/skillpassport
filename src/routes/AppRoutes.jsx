@@ -21,6 +21,9 @@ const PaymentCompletion = lazy(() =>
 const MySubscription = lazy(() =>
   import("../pages/subscription/MySubscription")
 );
+const SubscriptionManage = lazy(() =>
+  import("../pages/subscription/SubscriptionManage")
+);
 
 const LoginStudent = lazy(() => import('../pages/auth/LoginStudent'));
 const LoginRecruiter = lazy(() => import('../pages/auth/LoginRecruiter'));
@@ -109,7 +112,9 @@ const AppRoutes = () => {
           <Route path="/signup/university-admin" element={<UniversityAdmin />} />
           <Route path="/subscription/plans" element={<SubscriptionPlans />} />
           <Route path="/subscription/payment" element={<PaymentCompletion />} />
-          <Route path="/my-subscription" element={<MySubscription />} />
+          <Route path="/subscription/manage" element={<SubscriptionManage />} />
+          {/* Legacy route - redirect to new manage route */}
+          <Route path="/my-subscription" element={<Navigate to="/subscription/manage" replace />} />
           <Route path="/debug-qr" element={<DebugQRTest />} />
           <Route
             path="/student/profile/:email"

@@ -21,7 +21,7 @@ import {
   Mail,
   MessageSquare
 } from 'lucide-react';
-import { useSubscription } from '../../hooks/Subscription/useSubscription';
+import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
 import { getUserSubscriptions } from '../../services/subscriptionService';
 
@@ -66,8 +66,8 @@ const plans = [
 
 function MySubscription() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const { subscriptionData, loading: subscriptionLoading } = useSubscription();
+  const { user, role, loading: authLoading } = useAuth();
+  const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showBillingHistory, setShowBillingHistory] = useState(false);
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
@@ -299,8 +299,20 @@ function MySubscription() {
       <div className="bg-white border-b border-neutral-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-neutral-900 mb-1">My Subscription</h1>
+            <div className="flex-1">
+              <h1 className="text-2xl font-semibold text-neutral-900 mb-2">My Subscription</h1>
+              <div className="flex items-center gap-2 mb-2">
+                {user?.email && (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-neutral-100 text-neutral-700">
+                    {user.email}
+                  </span>
+                )}
+                {role && (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-700 capitalize">
+                    {role}
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-neutral-600">Manage your subscription and billing</p>
             </div>
             <div className="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center">
