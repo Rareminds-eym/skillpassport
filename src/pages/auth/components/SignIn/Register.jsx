@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import loginIllustration from "../../../../assets/images/auth/Recruiter-illustration.png";
 import studentIllustration from "../../../../assets/images/auth/Student-illustration.jpg"; 
 import educatorIllustration from "../../../../assets/images/auth/Educator-illustration.jpg";
+import LoginModal from '../../../../components/Subscription/LoginModal';
 
 import {
   CheckCircle,
@@ -33,6 +34,7 @@ export default function UnifiedSignup() {
   const [subscriptionType, setSubscriptionType] = useState(null);
   const [showAdminInfo, setShowAdminInfo] = useState(false);
   const [showRecruiterInfo, setShowRecruiterInfo] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const navigate = useNavigate();
 
   const totalSteps = 2;
@@ -116,13 +118,11 @@ export default function UnifiedSignup() {
       }
       
       if (subscriptionType === "have") {
-        if (studentType === "university") {
-          navigate(`/signin/university`);
-        } else if (studentType === "school") {
-          navigate(`/signin/school`);
-        }
+        // Show login modal instead of navigating
+        setShowLoginModal(true);
+        return;
       } else if (subscriptionType === "purchase" || subscriptionType === "view") {
-        navigate(`/subscription?type=${studentType}&mode=${subscriptionType}`);
+        navigate(`/subscription/plans?type=${studentType}&mode=${subscriptionType}`);
       }
     } else if (activeTab === "recruitment") {
       if (recruitmentType === "admin") {
@@ -136,11 +136,13 @@ export default function UnifiedSignup() {
         if (!subscriptionType) return;
         
         if (subscriptionType === "have") {
-          navigate("/signin/university-admin");
+          // Show login modal
+          setShowLoginModal(true);
+          return;
         } else if (subscriptionType === "purchase") {
           navigate("/signup/university-admin");
         } else if (subscriptionType === "view") {
-          navigate("/subscription?type=university&mode=view");
+          navigate("/subscription/plans?type=university&mode=view");
         }
       } else if (studentType === "educator") {
         navigate("/signin/university-educator");
@@ -908,6 +910,26 @@ export default function UnifiedSignup() {
           </div>
         </div>
       </div>
+      
+      {/* Login Modal for existing subscription users */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        selectedPlan={null}
+        studentType={activeTab}
+        onLoginSuccess={() => {
+          setShowLoginModal(false);
+          // Navigate to my subscription page
+          navigate('/my-subscription');
+        }}
+        onSwitchToSignup={() => {
+          setShowLoginModal(false);
+          // User wants to sign up instead
+          if (subscriptionType === "have") {
+            setSubscriptionType("purchase");
+          }
+        }}
+      />
     </div> 
   );
 }

@@ -57,7 +57,7 @@ export const SupabaseAuthProvider = ({ children }) => {
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -163,7 +163,7 @@ export const SupabaseAuthProvider = ({ children }) => {
       const { data, error } = await supabase
         .from('students')
         .update(updates)
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .select()
         .single();
 
