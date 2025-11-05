@@ -4,10 +4,11 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import Loader from "../components/Loader";
 
 import PublicLayout from "../layouts/PublicLayout";
-import AdminLayout from "../layouts/AdminLayout";
+// import AdminLayout from "../layouts/AdminLayout";
 import RecruiterLayout from "../layouts/RecruiterLayout";
 import StudentLayout from "../layouts/StudentLayout";
 import EducatorLayout from "../layouts/EducatorLayout";
+import AdminLayout from "../layouts/AdminLayout";
 
 const Home = lazy(() => import("../pages/homepage/Home"));
 const About = lazy(() => import("../pages/homepage/About"));
@@ -35,9 +36,9 @@ const SignInSchool = lazy(() => import('../pages/auth/components/SignIn/schools/
 const SignInUniversity = lazy(() => import('../pages/auth/components/SignIn/university/SignInUniversity'));
 const UniversityAdmin = lazy(() => import('../pages/auth/components/SignIn/university/UniversityAdmin'));
 
-const AdminDashboard = lazy(() => import("../pages/admin/Dashboard"));
-const ManageUsers = lazy(() => import("../pages/admin/ManageUsers"));
-const Reports = lazy(() => import("../pages/admin/Reports"));
+// const AdminDashboard = lazy(() => import("../pages/admin/Dashboard"));
+// const ManageUsers = lazy(() => import("../pages/admin/ManageUsers"));
+// const Reports = lazy(() => import("../pages/admin/Reports"));
 
 // Recruiter pages
 const RecruiterProfile = lazy(() => import("../pages/recruiter/Profile"));
@@ -89,6 +90,14 @@ const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
 const EducatorReports = lazy(() => import("../pages/educator/Reports"));
 const EducatorMediaManager = lazy(() => import("../pages/educator/MediaManager"));
 
+// University Admin pages
+const AdminDashboard = lazy(() =>
+  import("../pages/admin/UniversityAdmin/Dashboard")
+);
+const DepartmentManagement = lazy(() => import("../pages/admin/UniversityAdmin/DepartmentManagement"));
+const CourseMapping = lazy(() => import("../pages/admin/UniversityAdmin/CourseMapping"));
+
+
 const AppRoutes = () => {
   return (
     <Suspense fallback={<Loader />}>
@@ -122,7 +131,7 @@ const AppRoutes = () => {
           />
         </Route>
 
-        <Route
+        {/* <Route
           path="/admin/*"
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
@@ -134,7 +143,7 @@ const AppRoutes = () => {
           <Route path="users" element={<ManageUsers />} />
           <Route path="reports" element={<Reports />} />
           <Route path="" element={<Navigate to="/admin/dashboard" replace />} />
-        </Route>
+        </Route> */}
 
         <Route
           path="/recruitment/*"
@@ -210,6 +219,31 @@ const AppRoutes = () => {
             element={<Navigate to="/educator/dashboard" replace />}
           />
         </Route>
+
+         <Route
+          path="/college-admin/*"
+          // element={
+          //   <ProtectedRoute allowedRoles={["university-admin"]}>
+          //     <UniversityAdminLayout />
+          //   </ProtectedRoute>
+          // }
+          element={<AdminLayout />}
+        >
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route
+            path="departments/management"
+            element={<DepartmentManagement />}
+          />
+          <Route
+            path="departments/mapping"
+            element={<CourseMapping />}
+          />
+          <Route
+            path=""
+            element={<Navigate to="/college-admin/dashboard" replace />}
+          />
+        </Route>
+
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
