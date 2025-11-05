@@ -37,10 +37,16 @@ export const getTalentPoolAlerts = async (): Promise<Alert[]> => {
 
   try {
     // Check for unverified students
-    const { count: unverifiedCount } = await supabase
+    // Note: Using .or() to handle null or false values
+    const { count: unverifiedCount, error } = await supabase
       .from('students')
-      .select('*', { count: 'exact', head: true })
-      .eq('verified', false);
+      .select('id', { count: 'exact', head: true })
+      .or('verified.is.null,verified.eq.false');
+
+    if (error) {
+      console.error('Error fetching unverified students:', error);
+      return alerts;
+    }
 
     if (unverifiedCount && unverifiedCount > 0) {
       alerts.push({

@@ -19,9 +19,9 @@ INSERT INTO pipeline_candidates (
 SELECT 
   aj.opportunity_id,
   aj.student_id,
-  COALESCE(s.profile->>'name', 'Unknown'),
-  COALESCE(s.profile->>'email', ''),
-  COALESCE(s.profile->>'contact_number', ''),
+  COALESCE(s.name, 'Unknown'),
+  COALESCE(s.email, ''),
+  COALESCE(s.contact_number, ''),
   'sourced', -- Default stage for new applications
   'direct_application',
   'active',
