@@ -15,6 +15,12 @@ const Contact = lazy(() => import("../pages/homepage/Contact"));
 const SubscriptionPlans = lazy(() =>
   import("../pages/subscription/SubscriptionPlans")
 );
+const PaymentCompletion = lazy(() =>
+  import("../pages/subscription/PaymentCompletion")
+);
+const MySubscription = lazy(() =>
+  import("../pages/subscription/MySubscription")
+);
 
 const LoginStudent = lazy(() => import('../pages/auth/LoginStudent'));
 const LoginRecruiter = lazy(() => import('../pages/auth/LoginRecruiter'));
@@ -101,7 +107,9 @@ const AppRoutes = () => {
           <Route path="/signin/school" element={<SignInSchool />} />
           <Route path="/signin/university" element={<SignInUniversity />} />
           <Route path="/signup/university-admin" element={<UniversityAdmin />} />
-          <Route path="/subscription" element={<SubscriptionPlans />} />
+          <Route path="/subscription/plans" element={<SubscriptionPlans />} />
+          <Route path="/subscription/payment" element={<PaymentCompletion />} />
+          <Route path="/my-subscription" element={<MySubscription />} />
           <Route path="/debug-qr" element={<DebugQRTest />} />
           <Route
             path="/student/profile/:email"

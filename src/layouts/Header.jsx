@@ -3,12 +3,14 @@ import { useState, useEffect, useRef } from 'react';
 import { Menu, X, ChevronDown } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { supabase } from '../lib/supabaseClient';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLoginDropdown, setShowLoginDropdown] = useState(false);
+  const [authUser, setAuthUser] = useState(null);
   const location = useLocation();
   const headerRef = useRef(null);
   const logoRef = useRef(null);
@@ -29,6 +31,41 @@ const Header = () => {
   const isActivePath = (path) => {
     return location.pathname === path;
   };
+
+  // Fetch authenticated user data
+  useEffect(() => {
+    const fetchAuthUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setAuthUser({
+            email: user.email,
+            role: user.raw_user_meta_data?.role || user.user_metadata?.role || 'user'
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching auth user:', error);
+      }
+    };
+
+    fetchAuthUser();
+
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setAuthUser({
+          email: session.user.email,
+          role: session.user.raw_user_meta_data?.role || session.user.user_metadata?.role || 'user'
+        });
+      } else {
+        setAuthUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const closeMobileMenuWithAnimation = () => {
     // Exit Animation before closing
@@ -172,58 +209,73 @@ const Header = () => {
             </Link>
           </div>
 
-          {/* Action Buttons */}
-          <div className="hidden md:flex items-center space-x-4 flex-shrink-0">
-            {/* Signup Button */}
-            <Link
-              to="/register"
-              className="signup-button px-5 py-2 text-sm font-extrabold text-red-600 border-2 border-red-300 rounded-full transition-all duration-200"
-            >
-              Sign Up
-            </Link>
-
-            {/* Login Dropdown */}
-            <div 
-              ref={loginBtnRef}
-              className="relative"
-              onMouseEnter={() => setShowLoginDropdown(true)}
-              onMouseLeave={() => setShowLoginDropdown(false)}
-            >
-              <button
-                className="flex items-center space-x-1 px-5 py-2.5 text-sm font-extrabold text-white border-2 border-red-300 bg-gradient-to-r from-red-500  to-red-400 shadow-lg shadow-red-200 rounded-full hover:bg-red-100 transition-all duration-200 hover:shadow-md"
-              >
-                <span>Login</span>
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              
-              {showLoginDropdown && (
-                <div className="absolute top-full left-0 pt-2 w-52 z-50">
-                  <div className="bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden">
-                    <Link
-                      to="/login/recruiter"
-                      className="block px-5 py-3.5 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
-                    >
-                      Login as Recruiter
-                    </Link>
-                    <div className="h-px bg-gray-100"></div>
-                    <Link
-                      to="/login/student"
-                      className="block px-5 py-3.5 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
-                    >
-                      Login as Student
-                    </Link>
-                    <div className="h-px bg-gray-100"></div>
-                    <Link
-                      to="/login/educator"
-                      className="block px-5 py-3.5 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
-                    >
-                      Login as Educator
-                    </Link>
-                  </div>
-                </div>
-              )}
+          {/* User Info (if authenticated) */}
+          {authUser && (location.pathname === '/subscription/payment' || location.pathname === '/my-subscription') && (
+            <div className="hidden md:flex items-center space-x-3 mr-4">
+              <div className="text-right">
+                <div className="text-sm font-semibold text-gray-900">{authUser.email}</div>
+                <div className="text-xs text-gray-500 capitalize">{authUser.role}</div>
+              </div>
+              <div className="w-10 h-10 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                {authUser.email?.charAt(0).toUpperCase()}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Action Buttons - Hide on payment and my-subscription pages */}
+          {location.pathname !== '/subscription/payment' && location.pathname !== '/my-subscription' && (
+            <div className="hidden md:flex items-center space-x-4 flex-shrink-0">
+              {/* Signup Button */}
+              <Link
+                to="/register"
+                className="signup-button px-5 py-2 text-sm font-extrabold text-red-600 border-2 border-red-300 rounded-full transition-all duration-200"
+              >
+                Sign Up
+              </Link>
+
+              {/* Login Dropdown */}
+              <div 
+                ref={loginBtnRef}
+                className="relative"
+                onMouseEnter={() => setShowLoginDropdown(true)}
+                onMouseLeave={() => setShowLoginDropdown(false)}
+              >
+                <button
+                  className="flex items-center space-x-1 px-5 py-2.5 text-sm font-extrabold text-white border-2 border-red-300 bg-gradient-to-r from-red-500  to-red-400 shadow-lg shadow-red-200 rounded-full hover:bg-red-100 transition-all duration-200 hover:shadow-md"
+                >
+                  <span>Login</span>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                
+                {showLoginDropdown && (
+                  <div className="absolute top-full left-0 pt-2 w-52 z-50">
+                    <div className="bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden">
+                      <Link
+                        to="/login/recruiter"
+                        className="block px-5 py-3.5 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+                      >
+                        Login as Recruiter
+                      </Link>
+                      <div className="h-px bg-gray-100"></div>
+                      <Link
+                        to="/login/student"
+                        className="block px-5 py-3.5 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+                      >
+                        Login as Student
+                      </Link>
+                      <div className="h-px bg-gray-100"></div>
+                      <Link
+                        to="/login/educator"
+                        className="block px-5 py-3.5 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+                      >
+                        Login as Educator
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Mobile Menu Button */}
           <div className="md:hidden">
@@ -246,53 +298,69 @@ const Header = () => {
             ref={mobileMenuRef}
             className="md:hidden py-4 space-y-2 border-t border-gray-100 overflow-hidden"
           >
-            <div 
-              ref={(el) => (mobileMenuItemsRef.current[0] = el)}
-              className="px-2 pt-4 space-y-3"
-            >
-              {/* Mobile Login/Signup Options */}
-              <div className="space-y-4">
-                <div>
-                  <div className="text-xs font-bold text-gray-400 uppercase px-2 tracking-wider">Sign Up</div>
-                  <div className="mt-2">
-                    <Link
-                      to="/register"
-                      onClick={closeMobileMenuWithAnimation}
-                      className="signup-button block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 border-2 border-red-300 rounded-lg transition-all duration-200"
-                    >
-                      Create an Account
-                    </Link>
+            {/* User Info Mobile (if authenticated) */}
+            {authUser && (location.pathname === '/subscription/payment' || location.pathname === '/my-subscription') && (
+              <div className="px-4 py-3 bg-red-50 rounded-lg mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    {authUser.email?.charAt(0).toUpperCase()}
                   </div>
-                </div>
-
-                <div>
-                  <div className="text-xs font-bold text-gray-400 uppercase px-2 tracking-wider">Login</div>
-                  <div className="mt-2 space-y-2">
-                    <Link
-                      to="/login/recruiter"
-                      onClick={closeMobileMenuWithAnimation}
-                      className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
-                    >
-                      Login as Recruiter
-                    </Link>
-                    <Link
-                      to="/login/student"
-                      onClick={closeMobileMenuWithAnimation}
-                      className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
-                    >
-                      Login as Student
-                    </Link>
-                    <Link
-                      to="/login/educator"
-                      onClick={closeMobileMenuWithAnimation}
-                      className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
-                    >
-                      Login as Educator
-                    </Link>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">{authUser.email}</div>
+                    <div className="text-xs text-gray-500 capitalize">{authUser.role}</div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
+            {location.pathname !== '/subscription/payment' && location.pathname !== '/my-subscription' && (
+              <div 
+                ref={(el) => (mobileMenuItemsRef.current[0] = el)}
+                className="px-2 pt-4 space-y-3"
+              >
+                {/* Mobile Login/Signup Options */}
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-xs font-bold text-gray-400 uppercase px-2 tracking-wider">Sign Up</div>
+                    <div className="mt-2">
+                      <Link
+                        to="/register"
+                        onClick={closeMobileMenuWithAnimation}
+                        className="signup-button block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 border-2 border-red-300 rounded-lg transition-all duration-200"
+                      >
+                        Create an Account
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-bold text-gray-400 uppercase px-2 tracking-wider">Login</div>
+                    <div className="mt-2 space-y-2">
+                      <Link
+                        to="/login/recruiter"
+                        onClick={closeMobileMenuWithAnimation}
+                        className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
+                      >
+                        Login as Recruiter
+                      </Link>
+                      <Link
+                        to="/login/student"
+                        onClick={closeMobileMenuWithAnimation}
+                        className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
+                      >
+                        Login as Student
+                      </Link>
+                      <Link
+                        to="/login/educator"
+                        onClick={closeMobileMenuWithAnimation}
+                        className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
+                      >
+                        Login as Educator
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </nav>

@@ -12,7 +12,11 @@ import {
   MagnifyingGlassIcon,
   CheckIcon,
   BellIcon,
-  XCircleIcon
+  XCircleIcon,
+  FunnelIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 import { useStudents } from '../../hooks/useStudents';
 import { useOpportunities } from '../../hooks/useOpportunities';
@@ -30,10 +34,17 @@ import PipelineSortMenu from '../../components/Recruiter/components/PipelineSort
 import { PipelineFilters, PipelineSortOptions } from '../../types/recruiter';
 import { supabase } from '../../lib/supabaseClient';
 import AppliedJobsService from '../../services/AppliedJobsService';
+import { useToast } from '../../components/Recruiter/components/Toast';
+import { PipelineEmptyState } from '../../components/Recruiter/components/EmptyState';
+import { CandidateCardSkeleton, ColumnLoadingSkeleton } from '../../components/Recruiter/components/LoadingSkeleton';
+import { CandidateQuickView } from '../../components/Recruiter/components/CandidateQuickView';
+import { PipelineStats, QuickStats } from '../../components/Recruiter/components/PipelineStats';
+import { ActivityIndicators } from '../../components/Recruiter/components/ActivityIndicators';
 
 // Add from Talent Pool Modal
 const AddFromTalentPoolModal = ({ isOpen, onClose, requisitionId, targetStage, onSuccess }) => {
   const { students, loading: studentsLoading } = useStudents();
+  const { addToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [adding, setAdding] = useState(false);
@@ -100,11 +111,15 @@ const AddFromTalentPoolModal = ({ isOpen, onClose, requisitionId, targetStage, o
       }
 
       if (successCount > 0 && currentRecruiterId) {
-        alert(`✅ Successfully added ${successCount} candidate(s) to pipeline!`);
+        addToast(
+          'success',
+          'Candidates Added!',
+          `Successfully added ${successCount} candidate(s) to ${targetStage} stage`
+        );
 
         const notifResult = await createNotification(
           currentRecruiterId,
-          targetStage === "sourced" ? "candidate_sourced" : "candidate_shortlisted", // ✅
+          targetStage === "sourced" ? "candidate_sourced" : "candidate_shortlisted",
           "Candidate(s) Added to Pipeline",
           `${successCount} candidate(s) were added to the ${targetStage} stage.`
         );
@@ -272,6 +287,7 @@ const AddFromTalentPoolModal = ({ isOpen, onClose, requisitionId, targetStage, o
 
 // Next Action Modal
 const NextActionModal = ({ isOpen, onClose, candidate, onSuccess }) => {
+  const { addToast } = useToast();
   const [action, setAction] = useState('send_email');
   const [date, setDate] = useState('');
   const [notes, setNotes] = useState('');
@@ -295,7 +311,11 @@ const NextActionModal = ({ isOpen, onClose, candidate, onSuccess }) => {
         notes || null
       );
 
-      alert(`✅ Next action set: ${actions.find(a => a.value === action)?.label}`);
+      addToast(
+        'success',
+        'Next Action Set',
+        actions.find(a => a.value === action)?.label || 'Action updated successfully'
+      );
 
       const notifResult = await createNotification(
         candidate.requisition_id || candidate.id, // Make sure requisition_id is available
@@ -316,7 +336,7 @@ const NextActionModal = ({ isOpen, onClose, candidate, onSuccess }) => {
       setNotes('');
     } catch (error) {
       console.error('Error setting next action:', error);
-      alert('Failed to set next action. Please try again.');
+      addToast('error', 'Error', 'Failed to set next action. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -414,67 +434,67 @@ const NextActionModal = ({ isOpen, onClose, candidate, onSuccess }) => {
   );
 };
 
-const KanbanColumn = ({ title, count, color, candidates, onCandidateMove, onCandidateView, selectedCandidates, onToggleSelect, onSendEmail, onAddClick, onNextAction }) => {
+const KanbanColumn = ({ title, count, color, candidates, onCandidateMove, onCandidateView, selectedCandidates, onToggleSelect, onSendEmail, onAddClick, onNextAction, stageKey, movingCandidates }) => {
   const [showAddForm, setShowAddForm] = useState(false);
 
+  const getBorderColor = (color) => {
+    const colorMap = {
+      'bg-gray-400': 'border-l-gray-400',
+      'bg-blue-400': 'border-l-blue-400',
+      'bg-yellow-400': 'border-l-yellow-400',
+      'bg-orange-400': 'border-l-orange-400',
+      'bg-green-400': 'border-l-green-400',
+      'bg-emerald-400': 'border-l-emerald-400',
+    };
+    return colorMap[color] || 'border-l-gray-400';
+  };
+
   return (
-    <div className="bg-gray-50 rounded-lg p-4 min-w-80">
+    <div className="bg-gray-50 rounded-xl p-4 min-w-80 flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center">
-          <div className={`w-3 h-3 rounded-full ${color} mr-2`}></div>
-          <h3 className="font-medium text-gray-900">{title}</h3>
-          <span className="ml-2 bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded-full">
+        <div className="flex items-center space-x-2">
+          <div className={`w-3 h-3 rounded-full ${color} shadow-sm`}></div>
+          <h3 className="font-semibold text-gray-900 text-sm">{title}</h3>
+          <span className="bg-white text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full shadow-sm border border-gray-200 tabular-nums">
             {count}
           </span>
         </div>
         <button
-          onClick={() => setShowAddForm(true)}
-          className="p-1 text-gray-400 hover:text-gray-600"
+          onClick={() => onAddClick()}
+          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-white rounded-lg transition-colors"
+          title="Add candidate"
         >
           <PlusIcon className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="space-y-3 max-h-96 overflow-y-auto">
-        {(candidates || []).map((candidate) => (
-          <CandidateCard
-            key={candidate.id}
-            candidate={candidate}
-            onMove={onCandidateMove}
-            onView={onCandidateView}
-            isSelected={selectedCandidates.includes(candidate.id)}
-            onToggleSelect={onToggleSelect}
-            onSendEmail={onSendEmail}
-            onNextAction={onNextAction}
-          />
-        ))}
-
-        {showAddForm && (
-          <div className="border border-dashed border-gray-300 rounded-lg p-4 bg-white">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Add candidate</span>
-              <button
-                onClick={() => setShowAddForm(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <XMarkIcon className="h-4 w-4" />
-              </button>
-            </div>
-            <button
-              onClick={onAddClick}
-              className="w-full text-left text-sm text-primary-600 hover:text-primary-700"
-            >
-              + Add from talent pool
-            </button>
-          </div>
+      <div className="space-y-3 overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+        {(candidates || []).length === 0 ? (
+          <PipelineEmptyState stage={stageKey} onAddClick={onAddClick} />
+        ) : (
+          (candidates || []).map((candidate) => (
+            <CandidateCard
+              key={candidate.id}
+              candidate={candidate}
+              onMove={onCandidateMove}
+              onView={onCandidateView}
+              isSelected={selectedCandidates.includes(candidate.id)}
+              onToggleSelect={onToggleSelect}
+              onSendEmail={onSendEmail}
+              onNextAction={onNextAction}
+              stageColor={getBorderColor(color)}
+              isMoving={movingCandidates?.includes(candidate.id)}
+            />
+          ))
         )}
       </div>
     </div>
   );
 };
 
-const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, onSendEmail, onNextAction }) => {
+const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, onSendEmail, onNextAction, stageColor, isMoving }) => {
   const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const stages = [
     'sourced',
@@ -494,91 +514,198 @@ const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, 
     hired: 'Hired'
   };
 
+  // Get initials for avatar
+  const getInitials = (name) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  // Get source badge color
+  const getSourceBadge = (source) => {
+    const badges = {
+      talent_pool: { label: 'Talent Pool', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+      direct: { label: 'Direct', color: 'bg-green-100 text-green-700 border-green-200' },
+      referral: { label: 'Referral', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+      application: { label: 'Applied', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+    };
+    return badges[source] || { label: source, color: 'bg-gray-100 text-gray-700 border-gray-200' };
+  };
+
+  const sourceBadge = candidate.source ? getSourceBadge(candidate.source) : null;
+
   return (
-    <div className={`bg-white border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow ${isSelected ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
-      }`}>
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-start">
+    <div 
+      className={`group relative bg-white border-l-4 rounded-lg p-4 shadow-sm transition-all duration-200 cursor-pointer ${
+        isSelected 
+          ? `border-l-primary-500 bg-primary-50 shadow-md ring-2 ring-primary-200` 
+          : `${stageColor} hover:shadow-lg hover:-translate-y-0.5`
+      } ${isMoving ? 'opacity-60' : ''}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={() => onView(candidate)}
+    >
+      {/* Loading Overlay */}
+      {isMoving && (
+        <div className="absolute inset-0 bg-white bg-opacity-50 rounded-lg flex items-center justify-center z-10">
+          <div className="flex items-center space-x-2">
+            <svg className="animate-spin h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span className="text-sm font-medium text-gray-700">Moving...</span>
+          </div>
+        </div>
+      )}
+      <div className="flex items-start space-x-3 mb-3">
+        {/* Avatar */}
+        <div className="flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+            {getInitials(candidate.name || 'NA')}
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold text-gray-900 text-sm truncate">{candidate.name}</h4>
+              <p className="text-xs text-gray-600 mt-0.5">{candidate.dept}</p>
+              <p className="text-xs text-gray-500">{candidate.college}</p>
+            </div>
+            
+            {/* Score Badge */}
+            <div className="flex items-center space-x-2 ml-2">
+              <div className="flex items-center space-x-1 bg-yellow-50 px-2 py-1 rounded-full border border-yellow-200">
+                <StarIcon className="h-3.5 w-3.5 text-yellow-500 fill-current" />
+                <span className="text-xs font-bold text-yellow-700 tabular-nums">{candidate.ai_score_overall || 0}</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Source Badge & Activity Indicator */}
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            {sourceBadge && (
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${sourceBadge.color}`}>
+                {sourceBadge.label}
+              </span>
+            )}
+            <ActivityIndicators 
+              lastUpdated={candidate.last_updated}
+              createdAt={candidate.created_at}
+            />
+          </div>
+        </div>
+
+        {/* Checkbox - visible on hover or when selected */}
+        <div className={`flex-shrink-0 transition-opacity ${
+          isSelected || isHovered ? 'opacity-100' : 'opacity-0'
+        }`}>
           <input
             type="checkbox"
             checked={isSelected}
-            onChange={() => onToggleSelect(candidate.id)}
-            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mt-1 mr-2"
+            onChange={(e) => {
+              e.stopPropagation();
+              onToggleSelect(candidate.id);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
           />
-          <div>
-            <h4 className="font-medium text-gray-900 text-sm">{candidate.name}</h4>
-            <p className="text-xs text-gray-500">{candidate.dept}</p>
-            <p className="text-xs text-gray-400">{candidate.college}</p>
-          </div>
         </div>
-        <div className="flex items-center space-x-1">
-          <StarIcon className="h-3 w-3 text-yellow-400 fill-current" />
-          <span className="text-xs font-medium">{candidate.ai_score_overall}</span>
-          <div className="relative">
-            <button
-              onClick={() => setShowMoveMenu(!showMoveMenu)}
-              className="p-1 text-gray-400 hover:text-gray-600"
-            >
-              <EllipsisVerticalIcon className="h-4 w-4" />
-            </button>
 
-            {showMoveMenu && (
-              <div className="absolute right-0 top-6 w-36 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                <div className="py-1">
+        {/* Menu Button */}
+        <div className="flex-shrink-0 relative" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMoveMenu(!showMoveMenu);
+            }}
+            className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+          >
+            <EllipsisVerticalIcon className="h-5 w-5" />
+          </button>
+
+          {showMoveMenu && (
+            <div className="absolute right-0 top-8 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-20">
+              <div className="py-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onView(candidate);
+                    setShowMoveMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+                >
+                  <UserIcon className="h-4 w-4 mr-2" />
+                  View Profile
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSendEmail(candidate);
+                    setShowMoveMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+                >
+                  <EnvelopeIcon className="h-4 w-4 mr-2" />
+                  Send Email
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNextAction?.(candidate);
+                    setShowMoveMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
+                >
+                  <ClockIcon className="h-4 w-4 mr-2" />
+                  Set Next Action
+                </button>
+                <div className="border-t border-gray-100 my-1"></div>
+                <div className="px-2 py-1 text-xs font-semibold text-gray-500">Move to:</div>
+                {stages.map(stage => (
                   <button
-                    onClick={() => onView(candidate)}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    key={stage}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMove(candidate.id, stage);
+                      setShowMoveMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
-                    View Profile
+                    {stageLabels[stage]}
                   </button>
-                  <button
-                    onClick={() => onSendEmail(candidate)}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    Send Email
-                  </button>
-                  <button
-                    onClick={() => alert(`📞 Scheduling call with ${candidate.name}...\n\nThis would open a calendar interface to schedule a phone/video call.`)}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    Schedule Call
-                  </button>
-                  <div className="border-t border-gray-100 my-1"></div>
-                  {stages.map(stage => (
-                    <button
-                      key={stage}
-                      onClick={() => onMove(candidate.id, stage)}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      Move to {stageLabels[stage]}
-                    </button>
-                  ))}
-                  <div className="border-t border-gray-100 my-1"></div>
-                  <button className="w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-red-50">
-                    Reject
-                  </button>
-                </div>
+                ))}
+                <div className="border-t border-gray-100 my-1"></div>
+                <button 
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
+                >
+                  <XCircleIcon className="h-4 w-4 mr-2" />
+                  Reject
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Skills */}
-      <div className="mb-2">
-        <div className="flex flex-wrap gap-1">
+      <div className="mb-3">
+        <div className="flex flex-wrap gap-1.5">
           {candidate.skills && candidate.skills.length > 0 ? (
             <>
-              {candidate.skills.slice(0, 2).map((skill, index) => (
+              {candidate.skills.slice(0, 3).map((skill, index) => (
                 <span
                   key={index}
-                  className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700"
+                  className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors"
+                  title={skill}
                 >
                   {skill}
                 </span>
               ))}
-              {candidate.skills.length > 2 && (
-                <span className="text-xs text-gray-500">+{candidate.skills.length - 2}</span>
+              {candidate.skills.length > 3 && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">
+                  +{candidate.skills.length - 3} more
+                </span>
               )}
             </>
           ) : (
@@ -587,16 +714,23 @@ const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, 
         </div>
       </div>
 
-      {/* Next Action */}
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-gray-500">
-          {candidate.last_updated && `Updated ${new Date(candidate.last_updated).toLocaleDateString()}`}
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+        <span className="text-xs text-gray-500">
+          {candidate.last_updated && (
+            <span title={new Date(candidate.last_updated).toLocaleString()}>
+              {new Date(candidate.last_updated).toLocaleDateString()}
+            </span>
+          )}
         </span>
         <button
-          onClick={() => onNextAction?.(candidate)}
-          className="text-primary-600 hover:text-primary-700 font-medium"
+          onClick={(e) => {
+            e.stopPropagation();
+            onNextAction?.(candidate);
+          }}
+          className="text-xs font-semibold text-primary-600 hover:text-primary-700 transition-colors"
         >
-          Next Action
+          Next Action →
         </button>
       </div>
     </div>
@@ -604,11 +738,13 @@ const CandidateCard = ({ candidate, onMove, onView, isSelected, onToggleSelect, 
 };
 
 const Pipelines = ({ onViewProfile }) => {
-  // Fetch opportunities from Supabase
+  // Hooks
   const { opportunities, loading: opportunitiesLoading, error: opportunitiesError } = useOpportunities();
-
-  const [selectedJob, setSelectedJob] = useState(null);
   const { students, loading, error } = useStudents();
+  const { addToast } = useToast();
+
+  // State
+  const [selectedJob, setSelectedJob] = useState(null);
   const [pipelineData, setPipelineData] = useState({
     sourced: [],
     screened: [],
@@ -617,6 +753,10 @@ const Pipelines = ({ onViewProfile }) => {
     offer: [],
     hired: []
   });
+  const [showQuickView, setShowQuickView] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [movingCandidates, setMovingCandidates] = useState<number[]>([]);
 
   let currentRecruiterId = null;
   try {
@@ -866,41 +1006,61 @@ const Pipelines = ({ onViewProfile }) => {
   ];
 
   const handleCandidateMove = async (candidateId, newStage) => {
+    let movedCandidate = null;
+    let oldStage = null;
+
+    // Find current stage
+    Object.keys(pipelineData).forEach(stage => {
+      const candidate = pipelineData[stage].find(c => c.id === candidateId);
+      if (candidate) {
+        movedCandidate = candidate;
+        oldStage = stage;
+      }
+    });
+
+    if (!movedCandidate) return;
+
+    // Show loading state immediately
+    setMovingCandidates(prev => [...prev, candidateId]);
+
+    // Optimistic UI update
+    setPipelineData(prev => {
+      const newData = { ...prev };
+
+      Object.keys(newData).forEach(stage => {
+        newData[stage] = newData[stage].filter(candidate => candidate.id !== candidateId);
+      });
+
+      if (newData[newStage]) {
+        newData[newStage].push({
+          ...movedCandidate,
+          last_updated: new Date().toISOString(),
+        });
+      }
+
+      return newData;
+    });
+
     try {
       const result = await moveCandidateToStage(candidateId, newStage);
 
       if (result.error) {
-        alert('Failed to move candidate: ' + result.error.message);
+        // Revert optimistic update on error
+        setPipelineData(prev => {
+          const newData = { ...prev };
+          newData[newStage] = newData[newStage].filter(c => c.id !== candidateId);
+          if (oldStage && newData[oldStage]) {
+            newData[oldStage].push(movedCandidate);
+          }
+          return newData;
+        });
+        
+        addToast('error', 'Move Failed', result.error.message);
+        setMovingCandidates(prev => prev.filter(id => id !== candidateId));
         return;
       }
 
-      let movedCandidate = null;
-
-      // Update local state
-      setPipelineData(prev => {
-        const newData = { ...prev };
-
-        Object.keys(newData).forEach(stage => {
-          newData[stage] = newData[stage].filter(candidate => {
-            if (candidate.id === candidateId) {
-              movedCandidate = candidate;
-              return false;
-            }
-            return true;
-          });
-        });
-
-        if (movedCandidate && newData[newStage]) {
-          newData[newStage].push({
-            ...movedCandidate,
-            last_updated: new Date().toISOString(),
-          });
-        }
-
-        return newData;
-      });
-
-      alert('✅ Candidate moved successfully!');
+      addToast('success', 'Candidate Moved!', `Successfully moved to ${newStage.replace('_', ' ')}`);
 
       // Create notification with proper error handling
       if (movedCandidate && selectedJob) {
@@ -931,10 +1091,23 @@ const Pipelines = ({ onViewProfile }) => {
 
     } catch (error) {
       console.error('Error moving candidate:', error);
-      alert('Failed to move candidate. Please try again.');
+      
+      // Revert optimistic update on error
+      setPipelineData(prev => {
+        const newData = { ...prev };
+        newData[newStage] = newData[newStage].filter(c => c.id !== candidateId);
+        if (oldStage && newData[oldStage]) {
+          newData[oldStage].push(movedCandidate);
+        }
+        return newData;
+      });
+      
+      addToast('error', 'Error', 'Failed to move candidate. Please try again.');
+    } finally {
+      // Always remove loading state
+      setMovingCandidates(prev => prev.filter(id => id !== candidateId));
     }
   };
-
 
   const getTotalCandidates = () => {
     return Object.values(pipelineData).reduce((total, stage) => total + stage.length, 0);
@@ -956,7 +1129,7 @@ const Pipelines = ({ onViewProfile }) => {
     }).filter(Boolean);
 
     if (candidateNames.length === 0) {
-      alert('Please select candidates first');
+      addToast('warning', 'No Selection', 'Please select candidates first');
       return;
     }
 
@@ -964,7 +1137,11 @@ const Pipelines = ({ onViewProfile }) => {
     const emailBody = `Dear Candidate,\n\nWe would like to update you on your application status for the position of ${jobTitle}.\n\nBest regards,\nRecruitment Team`;
 
     // Simulate sending emails
-    alert(`📧 Bulk Email Sent!\n\nRecipients: ${candidateNames.join(', ')}\nSubject: ${emailSubject}\n\nEmails have been queued for delivery.`);
+    addToast(
+      'success',
+      'Bulk Email Sent!',
+      `Emails queued for ${candidateNames.length} candidate(s)`
+    );
 
     setSelectedCandidates([]);
     setShowBulkActions(false);
@@ -979,14 +1156,18 @@ const Pipelines = ({ onViewProfile }) => {
     }).filter(Boolean);
 
     if (candidateNames.length === 0) {
-      alert('Please select candidates first');
+      addToast('warning', 'No Selection', 'Please select candidates first');
       return;
     }
 
     const message = `Hi! This is an update regarding your application for ${jobTitle}. We will be in touch soon with next steps.`;
 
     // Simulate sending WhatsApp messages
-    alert(`📱 WhatsApp Messages Sent!\n\nRecipients: ${candidateNames.join(', ')}\nMessage: "${message}"\n\nMessages have been delivered.`);
+    addToast(
+      'success',
+      'WhatsApp Messages Sent!',
+      `Messages delivered to ${candidateNames.length} candidate(s)`
+    );
 
     setSelectedCandidates([]);
     setShowBulkActions(false);
@@ -1001,17 +1182,19 @@ const Pipelines = ({ onViewProfile }) => {
     }).filter(Boolean);
 
     if (candidateNames.length === 0) {
-      alert('Please select candidates first');
+      addToast('warning', 'No Selection', 'Please select candidates first');
       return;
     }
 
-    const interviewer = prompt('Enter interviewer name:', 'Sarah Johnson');
-    if (interviewer) {
-      alert(`👤 Interviewer Assigned!\n\nCandidates: ${candidateNames.join(', ')}\nAssigned to: ${interviewer}\n\nInterview invitations will be sent shortly.`);
+    // Note: In production, this would open a modal to select interviewer
+    addToast(
+      'success',
+      'Interviewer Assignment',
+      `Ready to assign interviewer to ${candidateNames.length} candidate(s)`
+    );
 
-      setSelectedCandidates([]);
-      setShowBulkActions(false);
-    }
+    setSelectedCandidates([]);
+    setShowBulkActions(false);
   };
 
   const handleBulkReject = async () => {
@@ -1023,20 +1206,16 @@ const Pipelines = ({ onViewProfile }) => {
     }).filter(Boolean);
 
     if (candidateNames.length === 0) {
-      alert('Please select candidates first');
+      addToast('warning', 'No Selection', 'Please select candidates first');
       return;
     }
 
-    const confirmed = confirm(
-      `⚠️ Bulk Reject Confirmation\n\nAre you sure you want to reject ${candidateNames.length} candidate(s)?\n\n${candidateNames.join(', ')}\n\nThis action cannot be undone.`
+    // Note: In production, this would show a confirmation modal
+    const confirmed = window.confirm(
+      `Are you sure you want to reject ${candidateNames.length} candidate(s)?\n\nThis action cannot be undone.`
     );
 
     if (confirmed) {
-      const reason = prompt(
-        'Enter rejection reason (optional):',
-        'Thank you for your interest. We have decided to move forward with other candidates.'
-      );
-
       setPipelineData(prev => {
         const newData = { ...prev };
         selectedCandidates.forEach(candidateId => {
@@ -1047,8 +1226,10 @@ const Pipelines = ({ onViewProfile }) => {
         return newData;
       });
 
-      alert(
-        `❌ Candidates Rejected\n\n${candidateNames.join(', ')} have been removed from the pipeline.\n\nRejection notifications will be sent.`
+      addToast(
+        'success',
+        'Candidates Rejected',
+        `${candidateNames.length} candidate(s) removed from pipeline`
       );
 
       const notifResult = await createNotification(
@@ -1073,7 +1254,7 @@ const Pipelines = ({ onViewProfile }) => {
     );
 
     if (allCandidates.length === 0) {
-      alert('No candidates in pipeline to export');
+      addToast('warning', 'No Data', 'No candidates in pipeline to export');
       return;
     }
 
@@ -1097,11 +1278,15 @@ const Pipelines = ({ onViewProfile }) => {
     link.click();
     document.body.removeChild(link);
 
-    alert(`📊 Pipeline Exported!\n\nFile: pipeline_${jobTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv\n\n${allCandidates.length} candidates exported successfully.`);
+    addToast(
+      'success',
+      'Pipeline Exported!',
+      `${allCandidates.length} candidates exported successfully`
+    );
   };
 
   const handleAddCandidates = () => {
-    alert(`👥 Add Candidates\n\nThis would open a modal to:\n• Search and select from talent pool\n• Import candidates from other jobs\n• Add new candidates directly\n\nFeature coming soon!`);
+    addToast('info', 'Feature Coming Soon', 'Add candidates modal will be available shortly');
   };
 
   const toggleCandidateSelection = (candidateId) => {
@@ -1119,7 +1304,12 @@ const Pipelines = ({ onViewProfile }) => {
     const subject = `Update regarding ${jobTitle}`;
     const message = `Dear ${candidate.name},\n\nWe wanted to provide you with an update on your application for ${jobTitle}.\n\nYour application is currently in the review process and we will be in touch with next steps soon.\n\nBest regards,\nRecruitment Team`;
 
-    alert(`📧 Email Sent to ${candidate.name}!\n\nSubject: ${subject}\n\nMessage: "${message}"\n\nEmail has been delivered successfully.`);
+    addToast('success', 'Email Sent', `Email sent to ${candidate.name}`);
+  };
+
+  const handleCandidateView = (candidate) => {
+    setSelectedCandidate(candidate);
+    setShowQuickView(true);
   };
 
   const handleAddFromTalentPool = (stage) => {
@@ -1148,82 +1338,141 @@ const Pipelines = ({ onViewProfile }) => {
     });
   };
 
+  // Filtered pipeline data based on global search
+  const getFilteredPipelineData = () => {
+    if (!globalSearch.trim()) return pipelineData;
+    
+    const searchLower = globalSearch.toLowerCase();
+    const filtered = {};
+    
+    Object.keys(pipelineData).forEach(stage => {
+      filtered[stage] = pipelineData[stage].filter(candidate => 
+        candidate.name?.toLowerCase().includes(searchLower) ||
+        candidate.email?.toLowerCase().includes(searchLower) ||
+        candidate.dept?.toLowerCase().includes(searchLower) ||
+        candidate.college?.toLowerCase().includes(searchLower) ||
+        candidate.skills?.some(skill => skill.toLowerCase().includes(searchLower))
+      );
+    });
+    
+    return filtered;
+  };
+
+  const filteredPipelineData = getFilteredPipelineData();
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">Pipeline Management</h1>
-              {selectedJobDetails && (
-                <p className="text-sm text-gray-500 mt-1">
-                  {selectedJobDetails.job_title || selectedJobDetails.title} • {selectedJobDetails.location} • {selectedJobDetails.company_name || 'No company'}
-                </p>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold text-gray-900">Pipeline Management</h1>
+          
+          <div className="flex items-center gap-3">
+            {/* Global Search */}
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                value={globalSearch}
+                onChange={(e) => setGlobalSearch(e.target.value)}
+                placeholder="Search candidates..."
+                className="pl-10 pr-4 py-2 w-64 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+              {globalSearch && (
+                <button
+                  onClick={() => setGlobalSearch('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
               )}
             </div>
-            <select
-              value={selectedJob || ''}
-              onChange={(e) => setSelectedJob(Number(e.target.value))}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+
+            {/* Action Buttons */}
+            <button
+              onClick={handleAddCandidates}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
             >
-              {opportunities.map(job => (
-                <option key={job.id} value={job.id}>
-                  {job.job_title || job.title} ({job.location})
-                </option>
-              ))}
-            </select>
+              <UserIcon className="h-4 w-4 mr-2" />
+              Add Candidates
+            </button>
+            <button
+              onClick={handleExportPipeline}
+              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+              Export
+            </button>
             <button
               onClick={() => {
                 loadPipelineCandidates();
-                console.log('Manual refresh triggered for opportunity:', selectedJob);
+                addToast('info', 'Refreshing', 'Loading latest candidate data...');
               }}
-              className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Refresh"
             >
-              🔄 Refresh
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
             </button>
           </div>
+        </div>
 
-          <div className="flex items-center space-x-4 text-sm text-gray-600">
-            <div>
-              <span className="font-medium">{getTotalCandidates()}</span> candidates in pipeline
-            </div>
-            <div>
-              <span className="font-medium">{selectedJobDetails?.company_name || 'Unassigned'}</span> company
-            </div>
-            <div>
-              <span className="font-medium">
-                {selectedJobDetails?.created_at ?
-                  Math.floor((new Date() - new Date(selectedJobDetails.created_at)) / (1000 * 60 * 60 * 24))
-                  : 0
-                } days
-              </span> aging
-            </div>
-          </div>
+        {/* Job Tabs */}
+        <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+          {opportunities.slice(0, 5).map(job => (
+            <button
+              key={job.id}
+              onClick={() => setSelectedJob(job.id)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                selectedJob === job.id
+                  ? 'bg-primary-100 text-primary-700 border-2 border-primary-500'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <span>{job.job_title || job.title}</span>
+                {selectedJob === job.id && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-200 text-primary-800 tabular-nums">
+                    {getTotalCandidates()}
+                  </span>
+                )}
+              </div>
+            </button>
+          ))}
+          {opportunities.length > 5 && (
+            <select
+              value={selectedJob || ''}
+              onChange={(e) => setSelectedJob(Number(e.target.value))}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">More jobs...</option>
+              {opportunities.slice(5).map(job => (
+                <option key={job.id} value={job.id}>
+                  {job.job_title || job.title}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
-      {/* Pipeline Stats & Filters */}
-      <div className="bg-gray-50 border-b border-gray-200 px-6 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-6 text-sm">
-          <div className="flex items-center">
-            <span className="text-gray-600">Conversion:</span>
-            <span className="ml-2 font-medium">
-              Sourced → Screened ({getConversionRate('sourced', 'screened')}%)
-            </span>
-          </div>
-          <div className="flex items-center">
-            <span className="font-medium">
-              Interview → Offer ({getConversionRate('interview_1', 'offer')}%)
-            </span>
-          </div>
-          <div className="flex items-center">
-            <span className="font-medium">
-              Offer → Hired ({getConversionRate('offer', 'hired')}%)
-            </span>
-          </div>
-          </div>
+      {/* Quick Stats & Filters Row */}
+      <div className="bg-gray-50 border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between mb-3">
+          {/* Quick Stats */}
+          <QuickStats
+            total={getTotalCandidates()}
+            company={selectedJobDetails?.company_name || 'Unassigned'}
+            daysAging={
+              selectedJobDetails?.created_at
+                ? Math.floor((new Date() - new Date(selectedJobDetails.created_at)) / (1000 * 60 * 60 * 24))
+                : 0
+            }
+            activeStages={Object.values(pipelineData).filter(stage => stage.length > 0).length}
+          />
+
+          {/* Filters & Sort */}
           <div className="flex items-center gap-3">
             <PipelineSortMenu
               sortOptions={sortOptions}
@@ -1236,6 +1485,81 @@ const Pipelines = ({ onViewProfile }) => {
             />
           </div>
         </div>
+
+        {/* Conversion Stats */}
+        <PipelineStats
+          metrics={[
+            {
+              label: 'Sourced → Screened',
+              from: 'sourced',
+              to: 'screened',
+              rate: getConversionRate('sourced', 'screened'),
+              fromCount: pipelineData.sourced?.length || 0,
+              toCount: pipelineData.screened?.length || 0
+            },
+            {
+              label: 'Interview → Offer',
+              from: 'interview_1',
+              to: 'offer',
+              rate: getConversionRate('interview_1', 'offer'),
+              fromCount: pipelineData.interview_1?.length || 0,
+              toCount: pipelineData.offer?.length || 0
+            },
+            {
+              label: 'Offer → Hired',
+              from: 'offer',
+              to: 'hired',
+              rate: getConversionRate('offer', 'hired'),
+              fromCount: pipelineData.offer?.length || 0,
+              toCount: pipelineData.hired?.length || 0
+            }
+          ]}
+        />
+      </div>
+
+      {/* Quick Filters Bar */}
+      <div className="bg-white border-b border-gray-200 px-6 py-2">
+        <div className="flex items-center space-x-2">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Quick Filters:</span>
+          <button
+            onClick={() => addToast('info', 'Filter', 'Showing all candidates')}
+            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-700 border border-primary-200 hover:bg-primary-200 transition-colors"
+          >
+            <CheckIcon className="h-3 w-3 mr-1" />
+            All Candidates ({getTotalCandidates()})
+          </button>
+          <button
+            onClick={() => addToast('info', 'Coming Soon', 'Overdue actions filter will be available soon')}
+            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors"
+          >
+            <ClockIcon className="h-3 w-3 mr-1 text-orange-500" />
+            Overdue Actions
+          </button>
+          <button
+            onClick={() => addToast('info', 'Coming Soon', 'Needs attention filter will be available soon')}
+            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors"
+          >
+            <ExclamationTriangleIcon className="h-3 w-3 mr-1 text-yellow-500" />
+            Needs Attention
+          </button>
+          <button
+            onClick={() => addToast('info', 'Coming Soon', 'High priority filter will be available soon')}
+            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors"
+          >
+            <StarIcon className="h-3 w-3 mr-1 text-red-500" />
+            High Priority
+          </button>
+          {globalSearch && (
+            <button
+              onClick={() => setGlobalSearch('')}
+              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"
+            >
+              <MagnifyingGlassIcon className="h-3 w-3 mr-1" />
+              Search: "{globalSearch}"
+              <XMarkIcon className="h-3 w-3 ml-1" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Kanban Board */}
@@ -1244,85 +1568,103 @@ const Pipelines = ({ onViewProfile }) => {
           {stages.map(stage => (
             <KanbanColumn
               key={stage.key}
+              stageKey={stage.key}
               title={stage.label}
-              count={pipelineData[stage.key]?.length || 0}
+              count={filteredPipelineData[stage.key]?.length || 0}
               color={stage.color}
-              candidates={pipelineData[stage.key] || []}
+              candidates={filteredPipelineData[stage.key] || []}
               onCandidateMove={handleCandidateMove}
-              onCandidateView={onViewProfile}
+              onCandidateView={handleCandidateView}
               selectedCandidates={selectedCandidates}
               onToggleSelect={toggleCandidateSelection}
               onSendEmail={handleSendEmail}
               onAddClick={() => handleAddFromTalentPool(stage.key)}
               onNextAction={handleNextAction}
+              movingCandidates={movingCandidates}
             />
           ))}
         </div>
       </div>
 
-      {/* Bulk Actions Bar */}
-      <div className="bg-white border-t border-gray-200 px-6 py-3">
+      {/* Persistent Bulk Actions Bar */}
+      <div className={`bg-white border-t-2 px-6 py-3 transition-colors ${
+        selectedCandidates.length > 0 
+          ? 'border-primary-500 bg-primary-50' 
+          : 'border-gray-200'
+      }`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            {showBulkActions ? (
-              <>
-                <span className="text-sm text-gray-600">
-                  {selectedCandidates.length} selected - Bulk Actions:
-                </span>
-                <button
-                  onClick={handleBulkEmail}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                >
-                  Send Email
-                </button>
-                <button
-                  onClick={handleBulkWhatsApp}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                >
-                  WhatsApp Message
-                </button>
-                <button
-                  onClick={handleAssignInterviewer}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                >
-                  Assign Interviewer
-                </button>
-                <button
-                  onClick={handleBulkReject}
-                  className="text-sm text-red-600 hover:text-red-700 font-medium"
-                >
-                  Bulk Reject
-                </button>
+            <span className={`text-sm font-medium ${
+              selectedCandidates.length > 0 ? 'text-primary-700' : 'text-gray-500'
+            }`}>
+              {selectedCandidates.length > 0 
+                ? `${selectedCandidates.length} selected` 
+                : 'No candidates selected'
+              }
+            </span>
+            <div className="h-4 w-px bg-gray-300" />
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleBulkEmail}
+                disabled={selectedCandidates.length === 0}
+                className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  selectedCandidates.length > 0
+                    ? 'text-primary-700 hover:bg-primary-100 bg-white border border-primary-200'
+                    : 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-200'
+                }`}
+              >
+                <EnvelopeIcon className="h-4 w-4 mr-1.5" />
+                Email
+              </button>
+              <button
+                onClick={handleBulkWhatsApp}
+                disabled={selectedCandidates.length === 0}
+                className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  selectedCandidates.length > 0
+                    ? 'text-primary-700 hover:bg-primary-100 bg-white border border-primary-200'
+                    : 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-200'
+                }`}
+              >
+                <PhoneIcon className="h-4 w-4 mr-1.5" />
+                WhatsApp
+              </button>
+              <button
+                onClick={handleAssignInterviewer}
+                disabled={selectedCandidates.length === 0}
+                className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  selectedCandidates.length > 0
+                    ? 'text-primary-700 hover:bg-primary-100 bg-white border border-primary-200'
+                    : 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-200'
+                }`}
+              >
+                <UserIcon className="h-4 w-4 mr-1.5" />
+                Assign
+              </button>
+              <button
+                onClick={handleBulkReject}
+                disabled={selectedCandidates.length === 0}
+                className={`inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  selectedCandidates.length > 0
+                    ? 'text-red-700 hover:bg-red-50 bg-white border border-red-200'
+                    : 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-200'
+                }`}
+              >
+                <XCircleIcon className="h-4 w-4 mr-1.5" />
+                Reject
+              </button>
+              {selectedCandidates.length > 0 && (
                 <button
                   onClick={() => {
                     setSelectedCandidates([]);
                     setShowBulkActions(false);
                   }}
-                  className="text-sm text-gray-600 hover:text-gray-700 font-medium"
+                  className="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100 bg-white border border-gray-300 transition-colors"
                 >
-                  Clear Selection
+                  <XMarkIcon className="h-4 w-4 mr-1.5" />
+                  Clear
                 </button>
-              </>
-            ) : (
-              <span className="text-sm text-gray-600">
-                Select candidates to enable bulk actions
-              </span>
-            )}
-          </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={handleAddCandidates}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              <UserIcon className="h-4 w-4 mr-2" />
-              Add Candidates
-            </button>
-            <button
-              onClick={handleExportPipeline}
-              className="inline-flex items-center px-3 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
-            >
-              Export Pipeline
-            </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1341,6 +1683,22 @@ const Pipelines = ({ onViewProfile }) => {
         onClose={() => setShowNextActionModal(false)}
         candidate={selectedCandidateForAction}
         onSuccess={loadPipelineCandidates}
+      />
+
+      <CandidateQuickView
+        isOpen={showQuickView}
+        onClose={() => setShowQuickView(false)}
+        candidate={selectedCandidate}
+        onFullView={() => {
+          setShowQuickView(false);
+          onViewProfile(selectedCandidate);
+        }}
+        onSendEmail={handleSendEmail}
+        onScheduleCall={(candidate) => addToast('info', 'Schedule Call', `Opening calendar for ${candidate.name}`)}
+        onNextAction={(candidate) => {
+          setShowQuickView(false);
+          handleNextAction(candidate);
+        }}
       />
     </div>
   );
