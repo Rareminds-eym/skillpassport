@@ -42,11 +42,11 @@ const Hero = () => {
   const openCalendly = () => {
     if (window.Calendly) {
       window.Calendly.initPopupWidget({
-        url: 'https://calendly.com/rareminds-marketing/30min'
+        url: 'https://calendly.com/d/cs8h-vpx-dwt/skillpassport_home'
       });
     } else {
       // If script not loaded yet, open in new tab as fallback
-      window.open('https://calendly.com/rareminds-marketing/30min', '_blank');
+      window.open('https://calendly.com/d/cs8h-vpx-dwt/skillpassport_home', '_blank');
     }
   };
 

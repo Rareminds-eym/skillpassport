@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FiArrowRight } from "react-icons/fi";
 
 const GradientBars = () => {
@@ -60,6 +60,34 @@ const GradientBars = () => {
 };
 
 const FinalCTA = () => {
+  useEffect(() => {
+    // Load Calendly CSS
+    const link = document.createElement('link');
+    link.href = 'https://assets.calendly.com/assets/external/widget.css';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+
+    // Load Calendly widget script
+    const script = document.createElement('script');
+    script.src = 'https://assets.calendly.com/assets/external/widget.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      if (link.parentNode) link.parentNode.removeChild(link);
+      if (script.parentNode) script.parentNode.removeChild(script);
+    };
+  }, []);
+
+  const openCalendly = () => {
+    const url = 'https://calendly.com/d/cs8h-vpx-dwt/skillpassport_home';
+    if (window.Calendly) {
+      window.Calendly.initPopupWidget({ url });
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
     <section
       className="relative grid place-content-center overflow-hidden px-4 py-20"
@@ -76,14 +104,16 @@ const FinalCTA = () => {
         
         {/* Subheading */}
         <p className="my-6 max-w-3xl text-center text-base leading-relaxed text-gray-900 sm:text-lg md:text-xl">
-          Transform your workforce intelligence today with enterprise-grade skill validation
+          Transform Your Workforce Intelligence Today With Enterprise-Grade Skill Validation.
         </p>
         
         {/* CTA Buttons */}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
           {/* Primary Button - Book a Corporate Demo */}
           <button
+            onClick={openCalendly}
             className="group flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-black transition-all hover:bg-gray-100 sm:px-6 sm:py-3 sm:text-base"
+            aria-label="Book a Corporate Demo"
           >
             Book a Corporate Demo
             <FiArrowRight className="transition-transform group-hover:translate-x-1" />

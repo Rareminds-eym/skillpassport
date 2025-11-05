@@ -116,7 +116,14 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
         *,
         students (
           id,
+          name,
           email,
+          contact_number,
+          department,
+          university,
+          cgpa,
+          employability_score,
+          verified,
           profile
         )
       `)
@@ -207,7 +214,14 @@ export const getPipelineCandidatesWithFilters = async (
         *,
         students (
           id,
+          name,
           email,
+          contact_number,
+          department,
+          university,
+          cgpa,
+          employability_score,
+          verified,
           profile
         )
       `)
