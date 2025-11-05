@@ -25,19 +25,29 @@ const SubscriptionManage = lazy(() =>
   import("../pages/subscription/SubscriptionManage")
 );
 
-const LoginStudent = lazy(() => import('../pages/auth/LoginStudent'));
-const LoginRecruiter = lazy(() => import('../pages/auth/LoginRecruiter'));
-const LoginAdmin = lazy(() => import('../pages/auth/LoginAdmin'));
-const Register = lazy(() => import('../pages/auth/components/SignIn/Register'));
-const SignupRecruiter = lazy(() => import('../pages/auth/components/SignIn/recruitment/SignupRecruiter'));
-const SignupAdmin = lazy(() => import('../pages/auth/components/SignIn/recruitment/SignupAdmin'));
-const SignInSchool = lazy(() => import('../pages/auth/components/SignIn/schools/SignInSchool'));
-const SignInUniversity = lazy(() => import('../pages/auth/components/SignIn/university/SignInUniversity'));
-const UniversityAdmin = lazy(() => import('../pages/auth/components/SignIn/university/UniversityAdmin'));
+const LoginStudent = lazy(() => import("../pages/auth/LoginStudent"));
+const LoginRecruiter = lazy(() => import("../pages/auth/LoginRecruiter"));
+const LoginAdmin = lazy(() => import("../pages/auth/LoginAdmin"));
+const Register = lazy(() => import("../pages/auth/components/SignIn/Register"));
+const SignupRecruiter = lazy(() =>
+  import("../pages/auth/components/SignIn/recruitment/SignupRecruiter")
+);
+const SignupAdmin = lazy(() =>
+  import("../pages/auth/components/SignIn/recruitment/SignupAdmin")
+);
+const SignInSchool = lazy(() =>
+  import("../pages/auth/components/SignIn/schools/SignInSchool")
+);
+const SignInUniversity = lazy(() =>
+  import("../pages/auth/components/SignIn/university/SignInUniversity")
+);
+const UniversityAdmin = lazy(() =>
+  import("../pages/auth/components/SignIn/university/UniversityAdmin")
+);
 
-const AdminDashboard = lazy(() => import("../pages/admin/Dashboard"));
-const ManageUsers = lazy(() => import("../pages/admin/ManageUsers"));
-const Reports = lazy(() => import("../pages/admin/Reports"));
+// const AdminDashboard = lazy(() => import("../pages/admin/Dashboard"));
+// const ManageUsers = lazy(() => import("../pages/admin/ManageUsers"));
+// const Reports = lazy(() => import("../pages/admin/Reports"));
 
 // Recruiter pages
 const RecruiterProfile = lazy(() => import("../pages/recruiter/Profile"));
@@ -83,11 +93,26 @@ const EducatorClasses = lazy(() => import("../pages/educator/ClassesPage"));
 const EducatorAssessments = lazy(() => import("../pages/educator/Assessments"));
 const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
 const EducatorSettings = lazy(() => import("../pages/educator/Settings"));
-const EducatorCommunication = lazy(() => import("../pages/educator/Communication"));
+const EducatorCommunication = lazy(() =>
+  import("../pages/educator/Communication")
+);
 const EducatorAnalytics = lazy(() => import("../pages/educator/Analytics"));
 const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
 const EducatorReports = lazy(() => import("../pages/educator/Reports"));
-const EducatorMediaManager = lazy(() => import("../pages/educator/MediaManager"));
+const EducatorMediaManager = lazy(() =>
+  import("../pages/educator/MediaManager")
+);
+
+// Admin pages
+const AdminDashboard = lazy(() =>
+  import("../pages/admin/collegeAdmin/Dashboard")
+);
+const DepartmentManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/Departmentmanagement")
+);
+const CourseMapping = lazy(() =>
+  import("../pages/admin/collegeAdmin/CourseMapping")
+);
 
 const AppRoutes = () => {
   return (
@@ -109,12 +134,18 @@ const AppRoutes = () => {
           <Route path="/signup/recruitment-admin" element={<SignupAdmin />} />
           <Route path="/signin/school" element={<SignInSchool />} />
           <Route path="/signin/university" element={<SignInUniversity />} />
-          <Route path="/signup/university-admin" element={<UniversityAdmin />} />
+          <Route
+            path="/signup/university-admin"
+            element={<UniversityAdmin />}
+          />
           <Route path="/subscription/plans" element={<SubscriptionPlans />} />
           <Route path="/subscription/payment" element={<PaymentCompletion />} />
           <Route path="/subscription/manage" element={<SubscriptionManage />} />
           {/* Legacy route - redirect to new manage route */}
-          <Route path="/my-subscription" element={<Navigate to="/subscription/manage" replace />} />
+          <Route
+            path="/my-subscription"
+            element={<Navigate to="/subscription/manage" replace />}
+          />
           <Route path="/debug-qr" element={<DebugQRTest />} />
           <Route
             path="/student/profile/:email"
@@ -123,17 +154,24 @@ const AppRoutes = () => {
         </Route>
 
         <Route
-          path="/admin/*"
-          element={
-            <ProtectedRoute allowedRoles={["admin"]}>
-              <AdminLayout />
-            </ProtectedRoute>
-          }
+          path="/college-admin/*"
+          // element={
+          //   <ProtectedRoute allowedRoles={["admin"]}>
+          //     <AdminLayout />
+          //   </ProtectedRoute>
+          // }
+          element={<AdminLayout />}
         >
           <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="users" element={<ManageUsers />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route
+            path="departments/management"
+            element={<DepartmentManagement />}
+          />
+          <Route path="departments/mapping" element={<CourseMapping />} />
+          <Route
+            path=""
+            element={<Navigate to="/college-admin/dashboard" replace />}
+          />
         </Route>
 
         <Route
