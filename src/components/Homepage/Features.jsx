@@ -12,17 +12,17 @@ const Features = () => {
       <div className="relative z-10 mx-auto max-w-7xl text-center">
         {/* Main Heading */}
         <h2 className="font-bold mb-6 text-black leading-tight">
-          Move beyond attendance sheets and completion certificates.
+         Move Beyond Attendance Sheets & Completion Certificates.
         </h2>
 
         {/* Subheading */}
         <p className="mx-auto mb-10 max-w-3xl text-gray-600 leading-relaxed">
-          The Skill Passport captures and verifies every competenc developed inside your organization, linking learning to performance and business results.
+          The Skill Passport Captures And Verifies Every Competenc Developed Inside Your Organization, Linking Learning To Performance And Business Results.
         </p>
 
         {/* CTA Button */}
-        <button className="rounded-full bg-black text-amber-400 px-6 py-4 text-sm md:text-base font-semibold transition-colors hover:bg-gray-900">
-          From learning hours to skill power.
+        <button className="rounded-full bg-black text-amber-400 px-6 py-4 text-sm md:text-base font-semibold transition-colors">
+          From Learning Hours To Skill Power.
         </button>
       </div>
     </section>
