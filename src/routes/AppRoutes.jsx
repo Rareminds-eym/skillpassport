@@ -94,8 +94,8 @@ const EducatorMediaManager = lazy(() => import("../pages/educator/MediaManager")
 const AdminDashboard = lazy(() =>
   import("../pages/admin/UniversityAdmin/Dashboard")
 );
-const DepartmentManagement = lazy(() => import("../pages/admin/UniversityAdmin/DepartmentManagement"));
-const CourseMapping = lazy(() => import("../pages/admin/UniversityAdmin/CourseMapping"));
+const DepartmentManagement = lazy(() => import("../pages/admin/UniversityAdmin/Departmentmanagement"));
+const CourseMapping = lazy(() => import("../pages/admin/UniversityAdmin/courseMapping"));
 
 
 const AppRoutes = () => {
