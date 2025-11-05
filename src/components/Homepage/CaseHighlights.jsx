@@ -67,7 +67,7 @@ const CaseHighlights = () => {
             Case Studies
           </h2>
           <p className="text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Transforming education and employability across institutions
+            Transforming Education And Employability Across Institutions
           </p>
         </div>
 

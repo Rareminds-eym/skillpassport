@@ -25,8 +25,8 @@ const SecurityCompliance = () => {
               <Lock className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-black animate-pulse" style={{ animationDelay: '0.5s' }} />
             </div>
             <p className="text-gray-600 max-w-3xl mx-auto leading-relaxed text-sm sm:text-base md:text-lg">
-              Enterprise-grade data security, role-based access, and tamper-proof 
-              records ensure trust and integrity at scale.
+              Enterprise-Grade Data Security, Role-Based Access, And Tamper-Proof 
+              Records Ensure Trust And Integrity At Scale.
             </p>
           </div>
         </SecurityIconBackground>

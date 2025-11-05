@@ -32,9 +32,9 @@ const AnimatedCounter = ({ end, duration = 1200, suffix = '' }) => {
 
 const BusinessImpact = () => {
   const stats = [
-    { value: 40, suffix: '%', description: 'reduction in manual reporting time' },
-    { value: 25, suffix: '%', description: 'faster internal mobility decisions' },
-    { value: 30, suffix: '%', description: 'increase in training effectiveness tracking' },
+    { value: 40, suffix: '%', description: 'Reduction in manual reporting time' },
+    { value: 25, suffix: '%', description: 'Faster internal mobility decisions' },
+    { value: 30, suffix: '%', description: 'Increase in training effectiveness tracking' },
   ];
 
   return (
@@ -66,7 +66,7 @@ const BusinessImpact = () => {
 
         {/* Bottom tagline */}
         <p className="italic text-gray-300 text-sm sm:text-base">
-          Because what gets measured — gets mastered.
+          Because What Gets Measured — Gets Mastered.
         </p>
       </div>
     </section>
