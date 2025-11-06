@@ -425,7 +425,6 @@ const UniversityAdmin = () => {
     
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('University admin account created:', finalFormData);
       alert('University admin account created successfully!');
       // Reset form
       setFormData({

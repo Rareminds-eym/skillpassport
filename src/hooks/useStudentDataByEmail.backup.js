@@ -23,16 +23,13 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         setLoading(true);
         setError(null);
 
-        console.log('\ud83d\udce7 Fetching data for email:', email);
 
         const result = await getStudentByEmail(email);
 
         if (result.success && result.data) {
-          console.log('\u2705 Student data loaded:', result.data);
           setStudentData(result.data);
           setError(null);
         } else {
-          console.warn('\u26a0\ufe0f No data found for email:', email);
           // Check if it's an RLS error
           const errorMsg = result.error || 'Student not found';
           if (errorMsg.toLowerCase().includes('row-level security') || 

@@ -36,7 +36,6 @@ const Opportunities = () => {
   
   // Debug logging
   useEffect(() => {
-    console.log('🔍 Opportunities Debug:', {
       user,
       userEmail,
       studentData,
@@ -95,10 +94,6 @@ const Opportunities = () => {
   // Debug: Log recommendations to see if similarity exists
   useEffect(() => {
     if (recommendations && recommendations.length > 0) {
-      console.log('🔍 Recommendations received:', recommendations.length);
-      console.log('🔍 First rec:', recommendations[0]);
-      console.log('🔍 Has similarity?', 'similarity' in recommendations[0]);
-      console.log('🔍 Similarity value:', recommendations[0].similarity);
     }
   }, [recommendations]);
 
@@ -307,16 +302,12 @@ const Opportunities = () => {
   useEffect(() => {
     const loadAppliedJobs = async () => {
       if (!studentId) {
-        console.log('⚠️ No studentId, skipping applied jobs load');
         return;
       }
       
       try {
-        console.log('🔄 Loading applied jobs for student:', studentId);
         const applications = await AppliedJobsService.getStudentApplications(studentId);
-        console.log('✅ Loaded applications:', applications);
         const appliedSet = new Set(applications.map(app => app.opportunity_id));
-        console.log('✅ Applied jobs Set:', Array.from(appliedSet));
         setAppliedJobs(appliedSet);
       } catch (error) {
         console.error('❌ Error loading applied jobs:', error);
@@ -330,14 +321,11 @@ const Opportunities = () => {
   useEffect(() => {
     const loadSavedJobs = async () => {
       if (!studentId) {
-        console.log('⚠️ No studentId, skipping saved jobs load');
         return;
       }
       
       try {
-        console.log('🔄 Loading saved jobs for student:', studentId);
         const savedIds = await SavedJobsService.getSavedJobIds(studentId);
-        console.log('✅ Loaded saved job IDs:', savedIds);
         setSavedJobs(new Set(savedIds));
       } catch (error) {
         console.error('❌ Error loading saved jobs:', error);
@@ -360,14 +348,12 @@ const Opportunities = () => {
       if (result.success) {
         if (result.isSaved) {
           setSavedJobs(prev => new Set([...prev, opportunity.id]));
-          console.log('✅ Job saved:', opportunity.job_title || opportunity.title);
         } else {
           setSavedJobs(prev => {
             const newSet = new Set(prev);
             newSet.delete(opportunity.id);
             return newSet;
           });
-          console.log('✅ Job unsaved:', opportunity.job_title || opportunity.title);
         }
       } else {
         console.error('❌ Failed to toggle save:', result.message);
@@ -378,7 +364,6 @@ const Opportunities = () => {
   };
 
   const handleApply = async (opportunity) => {
-    console.log('🎯 handleApply called:', {
       studentId,
       user,
       userId: user?.id,

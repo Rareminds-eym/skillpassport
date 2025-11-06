@@ -36,7 +36,6 @@ export const useAuth = () => {
     // Subscribe to auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event);
         
         if (session && session.user) {
           const userRole = session.user.raw_user_meta_data?.role || 

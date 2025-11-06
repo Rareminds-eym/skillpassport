@@ -114,9 +114,6 @@ export const signUpWithRole = async (email, password, userData = {}) => {
       };
     }
 
-    console.log('✅ User created successfully:', data.user.id);
-    console.log('📧 Email:', data.user.email);
-    console.log('🎭 Role:', userData.role);
 
     return {
       success: true,

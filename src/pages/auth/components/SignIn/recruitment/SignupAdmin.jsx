@@ -101,7 +101,6 @@ const SignupAdmin = () => {
 
   // Debug logging function
   const debugLog = (message, data = null) => {
-    console.log(`[DEBUG] ${new Date().toISOString()}: ${message}`, data || '');
   };
 
   const validateField = (name, value) => {
@@ -481,7 +480,6 @@ const SignupAdmin = () => {
     
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('Workspace created:', formData);
       debugLog('Workspace created successfully', formData);
       alert('Workspace created successfully!');
       // Reset form

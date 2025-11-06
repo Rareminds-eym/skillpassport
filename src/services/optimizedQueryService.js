@@ -58,7 +58,6 @@ export const checkEmailExistsOptimized = async (email) => {
   // Check cache first
   const cached = emailCheckCache.get(cacheKey);
   if (cached !== null) {
-    console.log('📦 Email check from cache:', email);
     return cached;
   }
 
@@ -95,7 +94,6 @@ export const getStudentByIdOptimized = async (studentId) => {
   // Check cache
   const cached = studentCache.get(cacheKey);
   if (cached) {
-    console.log('📦 Student from cache:', studentId);
     return cached;
   }
 
@@ -171,7 +169,6 @@ export const getActiveSubscriptionOptimized = async (userId) => {
   
   const cached = subscriptionCache.get(cacheKey);
   if (cached) {
-    console.log('📦 Subscription from cache');
     return cached;
   }
 
@@ -203,7 +200,6 @@ export const prefetchUserData = async (userId) => {
 
   try {
     await Promise.all(promises);
-    console.log('✅ User data prefetched');
   } catch (error) {
     console.error('Prefetch error:', error);
   }
@@ -292,7 +288,6 @@ export class OptimizedQuery {
     if (this.cacheKey) {
       const cached = studentCache.get(this.cacheKey);
       if (cached) {
-        console.log('📦 Query from cache:', this.cacheKey);
         return cached;
       }
     }

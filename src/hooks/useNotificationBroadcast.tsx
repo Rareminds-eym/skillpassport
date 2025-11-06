@@ -19,7 +19,6 @@ interface UseNotificationBroadcastProps {
  *   userId: 'user-123',
  *   showToast: true,
  *   onNotification: (notification) => {
- *     console.log('Received notification:', notification);
  *   }
  * });
  * 
@@ -41,12 +40,10 @@ export const useNotificationBroadcast = ({
   useEffect(() => {
     if (!enabled || !userId) return;
 
-    console.log('🔔 Setting up notification broadcasts for:', userId);
 
     const channel = RealtimeService.subscribeToNotificationBroadcasts(
       userId,
       (notification) => {
-        console.log('📨 Notification broadcast received:', notification);
 
         // Call custom handler
         if (onNotification) {
@@ -108,7 +105,6 @@ export const useNotificationBroadcast = ({
           try {
             const audio = new Audio('/notificacion.mp3');
             audio.volume = 0.3;
-            audio.play().catch((e) => console.log('Could not play sound:', e));
           } catch (e) {
             // Silent fail
           }
@@ -117,7 +113,6 @@ export const useNotificationBroadcast = ({
     );
 
     return () => {
-      console.log('🔕 Cleaning up notification broadcasts for:', userId);
       RealtimeService.unsubscribe(`user-notifications:${userId}`);
     };
   }, [userId, enabled, showToast, onNotification]);
@@ -140,7 +135,6 @@ export const useNotificationBroadcast = ({
           targetUserId,
           notification
         );
-        console.log('✅ Notification sent:', result);
         return result;
       } catch (error) {
         console.error('❌ Error sending notification:', error);

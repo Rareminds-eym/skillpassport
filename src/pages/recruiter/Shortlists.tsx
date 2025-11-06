@@ -715,8 +715,6 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
   const handleExport = async () => {
     try {
       // Fetch candidates for this shortlist
-      console.log('Exporting shortlist:', shortlist);
-      console.log('Shortlist ID:', shortlist.id);
       
       const { data: candidates, error: candidatesError } = await getShortlistCandidates(shortlist.id);
       if (candidatesError) {
@@ -724,8 +722,6 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
         throw candidatesError;
       }
       
-      console.log('Fetched candidates for export:', candidates);
-      console.log('Number of candidates:', candidates?.length || 0);
 
       // Check if there are no candidates
       if (!candidates || candidates.length === 0) {
@@ -1391,7 +1387,6 @@ const Shortlists = () => {
     try {
       // Show loading or processing state
       const processingMessage = `Preparing ${settings.format.toUpperCase()} export for "${shortlist.name}"...`;
-      console.log(processingMessage);
       
       // The actual export logic is handled in the ExportModal
       // This function just logs the activity
@@ -1722,10 +1717,6 @@ const Shortlists = () => {
               onView={async (sl) => {
                 // Fetch candidates for this shortlist
                 try {
-                  console.log('=== VIEW BUTTON CLICKED ===');
-                  console.log('Shortlist data:', sl);
-                  console.log('Shortlist ID:', sl.id);
-                  console.log('Candidate count from list:', sl.candidate_count);
                   
                   const { data: candidates, error } = await getShortlistCandidates(sl.id);
                   
@@ -1739,8 +1730,6 @@ const Shortlists = () => {
                     return;
                   }
                   
-                  console.log('Candidates fetched successfully:', candidates);
-                  console.log('Number of candidates:', candidates?.length);
                   
                   // Open modal even if there are no candidates (empty state handled in modal)
                   setSelectedShortlist(sl);

@@ -191,7 +191,6 @@ export class StudentNotificationService {
           filter: `student_id=eq.${studentId}`
         },
         (payload) => {
-          console.log('New notification received:', payload);
           onNotification(payload.new);
         }
       )
@@ -204,7 +203,6 @@ export class StudentNotificationService {
           filter: `student_id=eq.${studentId}`
         },
         (payload) => {
-          console.log('Notification updated:', payload);
           onNotification(payload.new);
         }
       )

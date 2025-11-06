@@ -59,10 +59,8 @@ export class StudentPipelineService {
 
       // Filter by student_id or email
       if (studentId) {
-        console.log('🔍 Querying pipeline_candidates with student_id:', studentId);
         query = query.eq('student_id', studentId);
       } else if (studentEmail) {
-        console.log('🔍 Querying pipeline_candidates with email:', studentEmail);
         query = query.eq('candidate_email', studentEmail);
       }
 
@@ -73,8 +71,6 @@ export class StudentPipelineService {
         throw error;
       }
 
-      console.log('🔍 Pipeline candidates query result:', data);
-      console.log('🔍 Number of records found:', data?.length || 0);
 
       return data || [];
     } catch (error) {
@@ -177,8 +173,6 @@ export class StudentPipelineService {
       // Fetch pipeline statuses
       const pipelineStatuses = await this.getStudentPipelineStatus(studentId, studentEmail);
 
-      console.log('🔍 Pipeline Statuses Found:', pipelineStatuses);
-      console.log('🔍 Number of pipeline statuses:', pipelineStatuses.length);
 
       // Fetch interviews
       const interviews = await this.getStudentInterviews(studentId);
@@ -187,7 +181,6 @@ export class StudentPipelineService {
       const pipelineMap = new Map();
       pipelineStatuses.forEach(ps => {
         if (ps.opportunity_id) {
-          console.log('🔍 Adding to map - Opportunity ID:', ps.opportunity_id, 'Stage:', ps.stage);
           pipelineMap.set(ps.opportunity_id, ps);
         }
       });
@@ -208,7 +201,6 @@ export class StudentPipelineService {
         const pipelineStatus = opportunityId ? pipelineMap.get(opportunityId) : null;
         const jobInterviews = opportunityId ? interviewsMap.get(opportunityId) : [];
         
-        console.log('🔍 Matching Application:', {
           jobTitle: app.opportunity?.job_title,
           opportunityId: opportunityId,
           hasPipelineStatus: !!pipelineStatus,
@@ -285,7 +277,6 @@ export class StudentPipelineService {
           filter: `student_id=eq.${studentId}`
         },
         (payload) => {
-          console.log('Pipeline update received:', payload);
           onUpdate(payload);
         }
       )
@@ -305,7 +296,6 @@ export class StudentPipelineService {
             .single();
 
           if (data && data.student_id === studentId) {
-            console.log('Pipeline activity update:', payload);
             onUpdate(payload);
           }
         }
@@ -319,7 +309,6 @@ export class StudentPipelineService {
           filter: `student_id=eq.${studentId}`
         },
         (payload) => {
-          console.log('Interview update received:', payload);
           onUpdate(payload);
         }
       )

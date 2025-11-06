@@ -73,7 +73,6 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
                 throw error;
             }
 
-            console.log('Fetched students data:', data);
             
             // Transform data to extract from profile JSONB
             const transformedStudents = (data || []).map(student => {
@@ -124,8 +123,6 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
             const uniqueYears = [...new Set(years)];
             setYears(uniqueYears as string[]);
             
-            console.log('Available departments:', uniqueDepts);
-            console.log('Available years:', uniqueYears);
         } catch (error) {
             console.error('Error fetching filter data:', error);
         }

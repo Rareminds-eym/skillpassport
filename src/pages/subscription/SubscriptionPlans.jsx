@@ -186,17 +186,15 @@ function SubscriptionPlans() {
     // For upgrade/downgrade or new purchase
     if (!isAuthenticated) {
       // User not authenticated, show signup modal
-      console.log('🔒 User not authenticated, showing signup modal');
       setPlanToSelect(plan);
       setShowSignupModal(true);
     } else {
       // User authenticated, check if they have active subscription
       if (subscriptionData && subscriptionData.status === 'active') {
-        // User has active subscription, redirect to manage page instead of payment
-        navigate('/subscription/manage');
+        // User has active subscription, redirect to plans page with upgrade mode
+        navigate(`/subscription/plans?type=${studentType || 'student'}&mode=upgrade`);
       } else {
         // User authenticated but no active subscription, proceed to payment
-        console.log('✅ User authenticated:', user?.email, '| Role:', role);
         navigate('/subscription/payment', { state: { plan, studentType, isUpgrade: !!subscriptionData } });
       }
     }
@@ -206,6 +204,7 @@ function SubscriptionPlans() {
     // After successful signup, proceed to payment with selected plan
     setShowSignupModal(false);
     if (planToSelect) {
+      // New users won't have subscription, proceed to payment
       navigate('/subscription/payment', { state: { plan: planToSelect, studentType } });
       setPlanToSelect(null);
     }
@@ -232,9 +231,11 @@ function SubscriptionPlans() {
   }, []);
 
   const handleLoginSuccess = useCallback(() => {
-    // After successful login, proceed to payment with selected plan
+    // After successful login, close modal
     setShowLoginModal(false);
+    
     if (planToSelect) {
+      // Proceed to payment - subscription check will happen on next page
       navigate('/subscription/payment', { state: { plan: planToSelect, studentType } });
       setPlanToSelect(null);
     }
@@ -282,8 +283,8 @@ function SubscriptionPlans() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        {/* Enhanced subscription status banner - Show when user has active subscription */}
-        {subscriptionData && (
+        {/* Enhanced subscription status banner - Show only for authenticated users with active subscription */}
+        {isAuthenticated && subscriptionData && subscriptionData.status === 'active' && (
           <div className="mb-8">
             {/* Subscription Status Card */}
             <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-6 mb-6">
@@ -374,12 +375,12 @@ function SubscriptionPlans() {
 
         <div className="text-center">
               <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                {subscriptionData 
+                {isAuthenticated && subscriptionData && subscriptionData.status === 'active'
                   ? 'Manage or Upgrade Your Plan' 
                   : 'Choose Your Plan'}
               </h1>
               <p className="text-lg text-gray-600 mb-8">
-                {subscriptionData 
+                {isAuthenticated && subscriptionData && subscriptionData.status === 'active'
                   ? 'Upgrade to unlock more features or manage your current subscription'
                   : 'Select the plan that best suits your needs'
                 }
@@ -391,10 +392,10 @@ function SubscriptionPlans() {
                 <PlanCard
                   key={plan.id}
                   plan={plan}
-                  isCurrentPlan={subscriptionData?.plan === plan.id}
+                  isCurrentPlan={isAuthenticated && subscriptionData?.status === 'active' && subscriptionData?.plan === plan.id}
                   onSelect={handlePlanSelection}
-                  subscriptionData={subscriptionData}
-                  daysRemaining={daysRemaining}
+                  subscriptionData={isAuthenticated && subscriptionData?.status === 'active' ? subscriptionData : null}
+                  daysRemaining={isAuthenticated && subscriptionData?.status === 'active' ? daysRemaining : null}
                 />
               ))}
             </div>

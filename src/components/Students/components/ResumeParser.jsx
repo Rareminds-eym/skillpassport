@@ -117,8 +117,6 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
 
   const extractTextFromPDF = async (arrayBuffer) => {
     try {
-      console.log('📄 Starting PDF text extraction...');
-      console.log('📄 ArrayBuffer size:', arrayBuffer.byteLength, 'bytes');
       
       // Create a Uint8Array from the ArrayBuffer
       const uint8Array = new Uint8Array(arrayBuffer);
@@ -133,7 +131,6 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
       
       const pdf = await loadingTask.promise;
       
-      console.log(`📄 PDF loaded successfully: ${pdf.numPages} pages`);
       
       let fullText = '';
       
@@ -150,17 +147,12 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
             .join(' ');
           
           fullText += pageText + '\n\n';
-          console.log(`📄 Extracted page ${pageNum}/${pdf.numPages}: ${pageText.length} chars`);
         } catch (pageError) {
-          console.warn(`⚠️ Error extracting page ${pageNum}:`, pageError);
           // Continue with other pages
         }
       }
       
       const cleanedText = fullText.trim();
-      console.log('✅ PDF text extraction complete');
-      console.log('📝 Total extracted text length:', cleanedText.length);
-      console.log('📝 Extracted text preview:', cleanedText.substring(0, 300));
       
       if (cleanedText.length === 0) {
         throw new Error('No text could be extracted from the PDF. The PDF might be image-based or encrypted.');
@@ -198,7 +190,6 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
     try {
       // Extract text from file
       const resumeText = await extractTextFromFile(file);
-      console.log('📄 Resume text extracted:', resumeText.substring(0, 200));
       
       if (!resumeText || resumeText.trim().length === 0) {
         throw new Error('Could not extract text from file');
@@ -206,7 +197,6 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
 
       // Parse resume using AI
       const parsedData = await parseResumeWithAI(resumeText);
-      console.log('🤖 AI parsed data:', parsedData);
       
       if (!parsedData) {
         throw new Error('Failed to parse resume data');
@@ -242,8 +232,6 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
     setSaveResult(null);
 
     try {
-      console.log('💾 Saving to database...');
-      console.log('Email:', emailToUse);
 
       // Get current student data by email (from JSONB profile column)
       const { data: currentStudent, error: fetchError } = await supabase
@@ -257,7 +245,6 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
         throw new Error(`Error fetching current data: ${fetchError.message}`);
       }
 
-      console.log('📊 Current profile data:', currentStudent?.profile);
 
       // Merge extracted data with current profile
       const updatedProfile = {
@@ -293,7 +280,6 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
         updatedAt: new Date().toISOString()
       };
 
-      console.log('🔄 Updated profile to save:', updatedProfile);
 
       if (currentStudent?.id) {
         // Update existing student using student ID
@@ -308,7 +294,6 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
           throw new Error(`Error saving data: ${updateError.message}`);
         }
 
-        console.log('✅ Data updated successfully:', savedData);
         setSaveResult({ success: true, message: 'Profile updated successfully!' });
       } else {
         // Create new student record
@@ -322,7 +307,6 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
           throw new Error(`Error creating profile: ${insertError.message}`);
         }
 
-        console.log('✅ New profile created successfully:', newStudent);
         setSaveResult({ success: true, message: 'Profile created successfully!' });
       }
       

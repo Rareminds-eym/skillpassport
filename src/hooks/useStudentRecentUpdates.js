@@ -23,7 +23,6 @@ export const useStudentRecentUpdates = (email, limit = 10, since = null) => {
       setLoading(true);
       setError(null);
 
-      console.log('🔄 Fetching recent updates for:', email);
 
       const result = await getStudentRecentUpdatesByEmail(email, since, limit);
 
@@ -31,11 +30,9 @@ export const useStudentRecentUpdates = (email, limit = 10, since = null) => {
         // Format the updates for display
         const formattedUpdates = result.data.map(update => formatRecentUpdate(update));
         
-        console.log('✅ Fetched', formattedUpdates.length, 'recent updates');
         setRecentUpdates(formattedUpdates);
         setError(null);
       } else {
-        console.warn('⚠️ Failed to fetch recent updates:', result.error);
         setError(result.error);
         setRecentUpdates([]);
       }
@@ -49,7 +46,6 @@ export const useStudentRecentUpdates = (email, limit = 10, since = null) => {
   }, [email, limit, since]);
 
   const refresh = useCallback(async () => {
-    console.log('🔄 Refreshing recent updates for:', email);
     await fetchRecentUpdates();
   }, [fetchRecentUpdates, email]);
 

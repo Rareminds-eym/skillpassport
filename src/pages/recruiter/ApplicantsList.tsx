@@ -92,7 +92,6 @@ const ApplicantsList: React.FC = () => {
     userType: 'recruiter',
     enabled: true,
     onMessageReceived: (message) => {
-      console.log('New message received:', message);
       // Optionally refresh conversations or update UI
     }
   });
@@ -234,7 +233,6 @@ const ApplicantsList: React.FC = () => {
           throw insertError;
         }
 
-        console.log('Successfully added to pipeline:', newCandidate);
         
       } catch (error) {
         console.error('Error adding candidate to pipeline:', error);
@@ -298,7 +296,6 @@ const ApplicantsList: React.FC = () => {
         );
       }
       // TODO: Add navigation to applicant details page or open modal
-      console.log('View applicant:', applicant);
     } catch (error) {
       console.error('Error updating application status:', error);
     }
@@ -711,11 +708,6 @@ const ApplicantsList: React.FC = () => {
                               alert('Please wait, loading user data...');
                               return;
                             }
-                            console.log('Opening message modal with:', {
-                              studentId: applicant.student_id,
-                              recruiterId,
-                              applicationId: applicant.id
-                            });
                             setSelectedApplicant(applicant);
                             setMessageModalOpen(true);
                           }}

@@ -14,7 +14,6 @@ import { supabase } from './api';
  */
 export async function getStudentByEmail(email) {
   try {
-    console.log('🔍 Fetching student data for email:', email);
 
     const { data, error } = await supabase
       .from('students')
@@ -28,11 +27,9 @@ export async function getStudentByEmail(email) {
     }
 
     if (!data) {
-      console.log('⚠️ No student found with email:', email);
       return { success: false, error: 'Student not found' };
     }
 
-    console.log('✅ Student data fetched:', data);
 
     // Transform the data to match our UI structure
     const transformedData = transformStudentData(data);
@@ -226,7 +223,6 @@ function generateAvatarUrl(name) {
  */
 export async function updateStudentByEmail(email, updates) {
   try {
-    console.log('💾 Updating student:', email, updates);
 
     const { data, error } = await supabase
       .from('students')
@@ -240,7 +236,6 @@ export async function updateStudentByEmail(email, updates) {
       return { success: false, error: error.message };
     }
 
-    console.log('✅ Student updated:', data);
     return { success: true, data };
 
   } catch (err) {

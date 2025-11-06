@@ -115,7 +115,6 @@ const Dashboard = () => {
     // If connected to Supabase, save to database
     if (userEmail && studentData?.profile) {
       try {
-        console.log(`🔄 Saving ${section} data:`, data);
         
         let result;
         switch (section) {
@@ -135,12 +134,10 @@ const Dashboard = () => {
             result = await updateSoftSkills(data);
             break;
           default:
-            console.warn('Unknown section:', section);
             return;
         }
 
         if (result.success) {
-          console.log(`✅ ${section} saved successfully`);
         } else {
           console.error(`❌ Error saving ${section}:`, result.error);
         }
@@ -506,8 +503,6 @@ const Dashboard = () => {
     };
 
     const order = cardOrders[activeNavItem] || cardOrders.opportunities;
-    console.log('Active nav item:', activeNavItem);
-    console.log('Card order:', order);
     
     return order.map((cardKey, index) => {
       const card = allCards[cardKey];
@@ -601,7 +596,6 @@ const Dashboard = () => {
                       key={item.id}
                       variant={isActive ? "default" : "outline"}
                       onClick={() => {
-                        console.log('Clicked nav item:', item.id);
                         setActiveNavItem(item.id);
                       }}
                       className={`flex items-center gap-2 transition-all ${

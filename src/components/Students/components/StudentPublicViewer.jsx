@@ -314,7 +314,6 @@ export default function StudentPublicViewerModern() {
         setShowShareModal(true);
       }
     } catch (err) {
-      console.warn("Share failed:", err);
       setShowShareModal(true);
     }
   };

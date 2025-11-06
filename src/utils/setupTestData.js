@@ -26,7 +26,6 @@ import {
  */
 export async function setupTestData() {
   try {
-    console.log('🚀 Starting test data setup...');
 
     // 1. Get current Supabase user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -39,7 +38,6 @@ export async function setupTestData() {
       };
     }
 
-    console.log('✓ Supabase user found:', user.email);
 
     // 2. Check if student record exists
     const { data: existingStudent, error: checkError } = await supabase
@@ -154,7 +152,6 @@ export async function setupTestData() {
 
     if (existingStudent) {
       // 4a. Update existing student
-      console.log('✓ Student record exists, updating...');
       
       const { error: updateError } = await supabase
         .from('students')
@@ -173,10 +170,8 @@ export async function setupTestData() {
       }
 
       studentId = existingStudent.id;
-      console.log('✅ Student profile updated!');
     } else {
       // 4b. Create new student record
-      console.log('Creating new student record...');
       
       const { data: newStudent, error: insertError } = await supabase
         .from('students')
@@ -199,14 +194,8 @@ export async function setupTestData() {
       }
 
       studentId = newStudent.id;
-      console.log('✅ New student profile created!');
     }
 
-    console.log('🎉 Test data setup complete!');
-    console.log('📊 Profile data:', profile);
-    console.log('🔑 Student ID:', studentId);
-    console.log('👤 User ID:', user.id);
-    console.log('\n✨ Refresh your dashboard to see the real data!');
 
     return {
       success: true,
@@ -230,7 +219,6 @@ export async function checkCurrentData() {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      console.log('❌ No user logged in');
       return null;
     }
 
@@ -245,7 +233,6 @@ export async function checkCurrentData() {
       return null;
     }
 
-    console.log('Current student data:', student);
     return student;
   } catch (err) {
     console.error('Error:', err);

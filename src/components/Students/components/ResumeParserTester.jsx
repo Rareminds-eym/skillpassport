@@ -84,8 +84,6 @@ const ResumeParserTester = ({ userId, onClose }) => {
   // Extract text from PDF using PDF.js
   const extractTextFromPDF = async (arrayBuffer) => {
     try {
-      console.log('📄 Starting PDF text extraction...');
-      console.log('📄 ArrayBuffer size:', arrayBuffer.byteLength, 'bytes');
       
       // Create a Uint8Array from the ArrayBuffer
       const uint8Array = new Uint8Array(arrayBuffer);
@@ -100,7 +98,6 @@ const ResumeParserTester = ({ userId, onClose }) => {
       
       const pdf = await loadingTask.promise;
       
-      console.log(`📄 PDF loaded successfully: ${pdf.numPages} pages`);
       
       let fullText = '';
       
@@ -115,16 +112,11 @@ const ResumeParserTester = ({ userId, onClose }) => {
             .join(' ');
           
           fullText += pageText + '\n\n';
-          console.log(`📄 Extracted page ${pageNum}/${pdf.numPages}: ${pageText.length} chars`);
         } catch (pageError) {
-          console.warn(`⚠️ Error extracting page ${pageNum}:`, pageError);
         }
       }
       
       const cleanedText = fullText.trim();
-      console.log('✅ PDF text extraction complete');
-      console.log('📝 Total extracted text length:', cleanedText.length);
-      console.log('📝 Extracted text preview:', cleanedText.substring(0, 300));
       
       if (cleanedText.length === 0) {
         throw new Error('No text could be extracted from the PDF. The PDF might be image-based or encrypted.');
@@ -160,11 +152,9 @@ const ResumeParserTester = ({ userId, onClose }) => {
     try {
       // Extract text
       const resumeText = await extractTextFromFile(file);
-      console.log('📄 Resume text extracted:', resumeText.substring(0, 200));
 
       // Parse with AI
       const parsedData = await parseResumeWithAI(resumeText);
-      console.log('🤖 AI parsed data:', parsedData);
 
       if (!parsedData) {
         throw new Error('Failed to parse resume data');
@@ -222,8 +212,6 @@ const ResumeParserTester = ({ userId, onClose }) => {
     setSaveResult(null);
 
     try {
-      console.log('💾 Saving to database...');
-      console.log('Email:', emailToUse);
 
       // Get current student data by email (from JSONB profile column)
       const { data: currentStudent, error: fetchError } = await supabase
@@ -237,7 +225,6 @@ const ResumeParserTester = ({ userId, onClose }) => {
         throw new Error(`Error fetching current data: ${fetchError.message}`);
       }
 
-      console.log('📊 Current profile data:', currentStudent?.profile);
 
       // Merge extracted data with current profile
       const updatedProfile = {
@@ -272,7 +259,6 @@ const ResumeParserTester = ({ userId, onClose }) => {
         updatedAt: new Date().toISOString()
       };
 
-      console.log('🔄 Updated profile to save:', updatedProfile);
 
       // Update in database using email from profile
       const { data: savedData, error: updateError } = await supabase
@@ -286,7 +272,6 @@ const ResumeParserTester = ({ userId, onClose }) => {
         throw new Error(`Error saving data: ${updateError.message}`);
       }
 
-      console.log('✅ Data saved successfully:', savedData);
 
       setSaveResult({
         success: true,

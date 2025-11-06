@@ -35,12 +35,9 @@ export const SupabaseAuthBridgeProvider = ({ children }) => {
       try {
         if (isAuthenticated && user?.email) {
           // DEMO MODE: Try to auto-create/login, but don't block on errors
-          console.log('🔐 Demo Mode - Attempting Supabase auth (non-blocking)');
           try {
             await autoSignInOrCreateUser(user.email, user.name);
           } catch (authErr) {
-            console.log('⚠️ Supabase auth skipped:', authErr.message);
-            console.log('✓ Continuing with direct table access (no auth required)');
             // Don't set error - just continue
           }
         } else {
@@ -53,7 +50,6 @@ export const SupabaseAuthBridgeProvider = ({ children }) => {
           setSupabaseUser(null);
         }
       } catch (err) {
-        console.log('⚠️ Supabase auth bridge warning:', err.message);
         // Don't set error - we can work without auth
       } finally {
         setLoading(false);
@@ -74,8 +70,6 @@ export const SupabaseAuthBridgeProvider = ({ children }) => {
 
   const autoSignInOrCreateUser = async (email, name) => {
     try {
-      console.log('🔐 Demo Mode: Skipping Supabase auth');
-      console.log('📧 Using email for data fetch:', email);
 
       // Skip all authentication - just return a mock user object
       // This allows the data fetching to proceed without creating accounts
@@ -86,7 +80,6 @@ export const SupabaseAuthBridgeProvider = ({ children }) => {
         aud: 'authenticated'
       };
       
-      console.log('✅ Ready to fetch data');
       setSupabaseUser(mockUser);
       return mockUser;
     } catch (err) {

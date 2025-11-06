@@ -73,13 +73,7 @@ const Applications = () => {
           userEmail
         );
         
-        console.log('📊 Raw Applications Data from Service:', applicationsData);
-        console.log('📊 First Application Pipeline Data:', applicationsData[0]);
         if (applicationsData[0]) {
-          console.log('📊 First App - has_pipeline_status:', applicationsData[0].has_pipeline_status);
-          console.log('📊 First App - pipeline_stage:', applicationsData[0].pipeline_stage);
-          console.log('📊 First App - pipeline_status:', applicationsData[0].pipeline_status);
-          console.log('📊 First App - opportunity.requisition_id:', applicationsData[0].opportunity?.requisition_id);
         }
         
         // Fetch interviews separately
@@ -115,8 +109,6 @@ const Applications = () => {
           interviews: app.interviews || []
         }));
 
-        console.log('📊 Transformed Applications:', transformedApplications);
-        console.log('📊 First Transformed App Pipeline Stage:', transformedApplications[0]?.pipelineStage);
 
         setApplications(transformedApplications);
         setFilteredApplications(transformedApplications);
@@ -138,7 +130,6 @@ const Applications = () => {
     const channel = StudentPipelineService.subscribeToPipelineUpdates(
       studentId,
       (payload) => {
-        console.log('Pipeline update received:', payload);
         // Refresh applications when pipeline updates
         window.location.reload(); // Simple refresh, can be optimized
       }
@@ -822,7 +813,6 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
   if (!isOpen) return null;
 
   // Debug logging
-  console.log('Application Details Modal Data:', {
     hasPipelineStatus: application.hasPipelineStatus,
     pipelineStage: application.pipelineStage,
     pipelineStatus: application.pipelineStatus,
@@ -952,7 +942,6 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                       const isRejected = application.pipelineStage === 'rejected';
                       
                       // Debug log for each stage
-                      console.log(`Stage ${stageKey}:`, {
                         isCompleted,
                         isCurrent,
                         currentStage: application.pipelineStage,

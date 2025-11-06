@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
-import { getUserSubscriptions } from '../../services/subscriptionService';
+import { getUserSubscriptions, cancelSubscription, pauseSubscription, resumeSubscription } from '../../services/subscriptionService';
 
 const plans = [
   { 
@@ -69,9 +69,15 @@ function MySubscription() {
   const { user, role, loading: authLoading } = useAuth();
   const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showPauseModal, setShowPauseModal] = useState(false);
   const [showBillingHistory, setShowBillingHistory] = useState(false);
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [additionalFeedback, setAdditionalFeedback] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isPausing, setIsPausing] = useState(false);
+  const [pauseMonths, setPauseMonths] = useState(1);
+  const [showRetentionOffer, setShowRetentionOffer] = useState(false);
   const [autoRenewEnabled, setAutoRenewEnabled] = useState(subscriptionData?.autoRenew || false);
   const [billingHistory, setBillingHistory] = useState([]);
   const [loadingBillingHistory, setLoadingBillingHistory] = useState(false);
@@ -125,10 +131,103 @@ function MySubscription() {
   };
 
   const confirmCancelSubscription = async () => {
-    console.log('Cancelling subscription...', { reason: cancelReason });
-    // Call cancel API with reason
-    setShowCancelModal(false);
-    setCancelReason('');
+    if (!subscriptionData || !cancelReason) {
+      alert('Please select a cancellation reason');
+      return;
+    }
+
+    setIsCancelling(true);
+    
+    try {
+      // Get subscription ID from current subscription
+      const result = await cancelSubscription(
+        subscriptionData.id,
+        cancelReason,
+        additionalFeedback || null
+      );
+
+      if (result.success) {
+        // Success - show confirmation
+        alert(`Subscription cancelled successfully. You'll have access until ${formatDate(subscriptionData.endDate)}`);
+        
+        // Refresh subscription data
+        await refreshSubscription();
+        
+        setShowCancelModal(false);
+        setCancelReason('');
+        setAdditionalFeedback('');
+        setShowRetentionOffer(false);
+      } else {
+        alert(`Failed to cancel subscription: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error cancelling subscription:', error);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handlePauseSubscription = async () => {
+    if (!subscriptionData) return;
+
+    setIsPausing(true);
+    
+    try {
+      const result = await pauseSubscription(
+        subscriptionData.id,
+        pauseMonths
+      );
+
+      if (result.success) {
+        alert(`Subscription paused for ${pauseMonths} month(s). It will automatically resume after this period.`);
+        await refreshSubscription();
+        setShowPauseModal(false);
+        setShowCancelModal(false);
+      } else {
+        alert(`Failed to pause subscription: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error pausing subscription:', error);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsPausing(false);
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    if (!subscriptionData) return;
+
+    const confirmed = window.confirm('Resume your subscription now?');
+    if (!confirmed) return;
+
+    setIsPausing(true); // Reuse isPausing state for loading
+    
+    try {
+      const result = await resumeSubscription(subscriptionData.id);
+
+      if (result.success) {
+        alert('Subscription resumed successfully!');
+        await refreshSubscription();
+      } else {
+        alert(`Failed to resume subscription: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error resuming subscription:', error);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsPausing(false);
+    }
+  };
+
+  const handleCancelReasonChange = (reason) => {
+    setCancelReason(reason);
+    // Show retention offer based on reason
+    if (reason === 'Too expensive' || reason === 'Not using enough') {
+      setShowRetentionOffer(true);
+    } else {
+      setShowRetentionOffer(false);
+    }
   };
 
   const handleDownloadInvoice = async () => {
@@ -136,7 +235,6 @@ function MySubscription() {
     try {
       // Simulate download - replace with actual API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Downloading invoice...');
       // Actual implementation would call API to generate/download invoice
     } finally {
       setIsDownloadingInvoice(false);
@@ -156,7 +254,6 @@ function MySubscription() {
     try {
       // TODO: Call actual API to update auto-renewal setting
       await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
-      console.log('Auto-renewal toggled:', newValue);
       // Success - keep the new value
     } catch (error) {
       // Rollback on error
@@ -292,6 +389,7 @@ function MySubscription() {
   const isExpiringSoon = daysRemaining !== null && daysRemaining <= 7;
   const isExpired = subscriptionData.status === 'expired';
   const isActive = subscriptionData.status === 'active';
+  const isPaused = subscriptionData.status === 'paused';
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -625,16 +723,44 @@ function MySubscription() {
                   <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </button>
 
-                {isActive && (
+                {isPaused && (
                   <button
-                    onClick={handleCancelSubscription}
-                    className="w-full flex items-center justify-center px-4 py-2.5 text-neutral-600 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors"
+                    onClick={handleResumeSubscription}
+                    disabled={isPausing}
+                    className="w-full flex items-center justify-center px-4 py-2.5 text-green-600 bg-green-50 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="flex items-center gap-2">
-                      <XIcon className="w-4 h-4" />
-                      Cancel Subscription
+                      {isPausing ? (
+                        <div className="w-4 h-4 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                      {isPausing ? 'Resuming...' : 'Resume Subscription'}
                     </span>
                   </button>
+                )}
+
+                {isActive && (
+                  <>
+                    <button
+                      onClick={() => setShowPauseModal(true)}
+                      className="w-full flex items-center justify-center px-4 py-2.5 text-orange-600 bg-orange-50 rounded-lg text-sm font-medium hover:bg-orange-100 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Pause Subscription
+                      </span>
+                    </button>
+                    <button
+                      onClick={handleCancelSubscription}
+                      className="w-full flex items-center justify-center px-4 py-2.5 text-neutral-600 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <XIcon className="w-4 h-4" />
+                        Cancel Subscription
+                      </span>
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -724,7 +850,7 @@ function MySubscription() {
       {/* Cancel Confirmation Modal */}
       {showCancelModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-neutral-200 max-w-md w-full p-6">
+          <div className="bg-white rounded-lg border border-neutral-200 max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-start gap-4 mb-6">
               <div className="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <AlertCircle className="w-5 h-5 text-neutral-700" />
@@ -732,15 +858,15 @@ function MySubscription() {
               <div>
                 <h3 className="text-lg font-semibold text-neutral-900 mb-1">Cancel Subscription?</h3>
                 <p className="text-sm text-neutral-600">
-                  You will lose access to all premium features at the end of your billing period.
+                  You'll keep access until {subscriptionData?.endDate ? formatDate(subscriptionData.endDate) : 'the end of your billing period'}.
                 </p>
               </div>
             </div>
             
             {/* Cancellation Feedback */}
-            <div className="mb-6">
+            <div className="mb-4">
               <label className="block text-sm font-medium text-neutral-900 mb-2">
-                Help us improve - Why are you canceling? (Optional)
+                Why are you canceling? *
               </label>
               <div className="space-y-2">
                 {[
@@ -756,7 +882,7 @@ function MySubscription() {
                       name="cancelReason"
                       value={reason}
                       checked={cancelReason === reason}
-                      onChange={(e) => setCancelReason(e.target.value)}
+                      onChange={(e) => handleCancelReasonChange(e.target.value)}
                       className="w-4 h-4 text-neutral-900 focus:ring-neutral-900"
                     />
                     <span className="text-sm text-neutral-700">{reason}</span>
@@ -765,21 +891,139 @@ function MySubscription() {
               </div>
             </div>
 
+            {/* Additional Feedback */}
+            {cancelReason && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-neutral-900 mb-2">
+                  Tell us more (optional)
+                </label>
+                <textarea
+                  value={additionalFeedback}
+                  onChange={(e) => setAdditionalFeedback(e.target.value)}
+                  placeholder="Your feedback helps us improve..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                />
+              </div>
+            )}
+
+            {/* Retention Offers */}
+            {showRetentionOffer && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="text-sm font-semibold text-neutral-900 mb-2">
+                  {cancelReason === 'Too expensive' ? '💰 Special Offer: 30% Off' : '⏸️ Try Pausing Instead'}
+                </h4>
+                <p className="text-xs text-neutral-600 mb-3">
+                  {cancelReason === 'Too expensive'
+                    ? 'We\'d hate to see you go! How about 30% off for the next 3 months?'
+                    : 'Not using it right now? Pause your subscription for 1-3 months instead of canceling.'}
+                </p>
+                <button
+                  onClick={() => {
+                    if (cancelReason === 'Too expensive') {
+                      alert('Discount offer applied! Redirecting to payment...');
+                      setShowCancelModal(false);
+                    } else {
+                      setShowPauseModal(true);
+                    }
+                  }}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  {cancelReason === 'Too expensive' ? 'Claim 30% Discount' : 'Pause Subscription'}
+                </button>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={() => {
                   setShowCancelModal(false);
                   setCancelReason('');
+                  setAdditionalFeedback('');
+                  setShowRetentionOffer(false);
                 }}
-                className="flex-1 px-4 py-2.5 border border-neutral-300 text-neutral-900 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors"
+                disabled={isCancelling}
+                className="flex-1 px-4 py-2.5 border border-neutral-300 text-neutral-900 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Keep Subscription
               </button>
               <button
                 onClick={confirmCancelSubscription}
-                className="flex-1 px-4 py-2.5 bg-neutral-900 text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"
+                disabled={isCancelling || !cancelReason}
+                className="flex-1 px-4 py-2.5 bg-neutral-900 text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Yes, Cancel
+                {isCancelling ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Cancelling...
+                  </span>
+                ) : (
+                  'Confirm Cancel'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pause Subscription Modal */}
+      {showPauseModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg border border-neutral-200 max-w-md w-full p-6">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Clock className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-neutral-900 mb-1">Pause Subscription</h3>
+                <p className="text-sm text-neutral-600">
+                  Take a break without losing your data. Your subscription will automatically resume.
+                </p>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-neutral-900 mb-3">
+                How long would you like to pause?
+              </label>
+              <div className="space-y-2">
+                {[1, 2, 3].map((months) => (
+                  <label key={months} className="flex items-center gap-3 p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer transition-colors">
+                    <input
+                      type="radio"
+                      name="pauseMonths"
+                      value={months}
+                      checked={pauseMonths === months}
+                      onChange={(e) => setPauseMonths(Number(e.target.value))}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-600"
+                    />
+                    <span className="text-sm text-neutral-700 flex-1">{months} Month{months > 1 ? 's' : ''}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowPauseModal(false)}
+                disabled={isPausing}
+                className="flex-1 px-4 py-2.5 border border-neutral-300 text-neutral-900 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePauseSubscription}
+                disabled={isPausing}
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isPausing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Pausing...
+                  </span>
+                ) : (
+                  'Pause Subscription'
+                )}
               </button>
             </div>
           </div>

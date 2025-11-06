@@ -450,7 +450,6 @@ export const getPipelineAlerts = async (): Promise<Alert[]> => {
  */
 export const getAllAlerts = async (): Promise<Alert[]> => {
   try {
-    console.log('🚨 Fetching alerts from all sources...');
     
     const [
       talentPoolAlerts,
@@ -480,12 +479,6 @@ export const getAllAlerts = async (): Promise<Alert[]> => {
       return 0;
     });
 
-    console.log(`✅ Found ${allAlerts.length} alerts total`);
-    console.log(`   - Talent Pool: ${talentPoolAlerts.length}`);
-    console.log(`   - Shortlists: ${shortlistAlerts.length}`);
-    console.log(`   - Interviews: ${interviewAlerts.length}`);
-    console.log(`   - Offers: ${offersAlerts.length}`);
-    console.log(`   - Pipelines: ${pipelineAlerts.length}`);
 
     return allAlerts;
   } catch (error) {

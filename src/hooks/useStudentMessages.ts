@@ -290,18 +290,15 @@ export const useStudentConversations = (studentId: string | null, enabled = true
    * This makes the UI feel instant when marking messages as read
    */
   const clearUnreadCount = useCallback((conversationId: string) => {
-    console.log('📦 [Student Optimistic] Clearing unread count for:', conversationId);
     
     // Get current data from React Query cache
     const currentConversations = queryClient.getQueryData<any[]>(
       ['student-conversations', studentId]
     ) || [];
     
-    console.log('📊 Current conversations in cache:', currentConversations.length);
     
     const optimisticConversations = currentConversations.map(conv => {
       if (conv.id === conversationId) {
-        console.log('✅ Found conversation, clearing unread from', conv.student_unread_count, 'to 0');
         return { ...conv, student_unread_count: 0 };
       }
       return conv;
@@ -322,7 +319,6 @@ export const useStudentConversations = (studentId: string | null, enabled = true
     // Trigger state update to force re-render
     setUpdateTrigger(prev => prev + 1);
     
-    console.log('✅ [Student Optimistic] Cache updated and invalidated - UI should re-render');
   }, [studentId, queryClient]);
 
   // Realtime subscription for conversation updates

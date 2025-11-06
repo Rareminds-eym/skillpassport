@@ -53,6 +53,7 @@ const formatSubscriptionData = (data) => {
   const planId = planTypeMap[planType] || 'basic';
 
   return {
+    id: data.id, // Subscription ID for cancellation
     plan: planId,
     status: data.status,
     startDate: data.subscription_start_date,
@@ -68,7 +69,8 @@ const formatSubscriptionData = (data) => {
     phone: data.phone,
     billingCycle: data.billing_cycle,
     razorpaySubscriptionId: data.razorpay_subscription_id,
-    cancelledAt: data.cancelled_at
+    cancelledAt: data.cancelled_at,
+    cancellationReason: data.cancellation_reason
   };
 };
 

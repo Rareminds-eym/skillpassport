@@ -11,10 +11,8 @@
  * @returns {Object} - Score, level, and label information
  */
 export function calculateEmployabilityScore(studentData) {
-  console.log('📊 Starting employability calculation for:', studentData);
   
   if (!studentData || typeof studentData !== 'object') {
-    console.log('📊 No valid student data, returning default');
     return getDefaultEmployabilityScore();
   }
 
@@ -30,11 +28,9 @@ export function calculateEmployabilityScore(studentData) {
   // Helper to calculate category average
   const calculateCategoryAverage = (skills) => {
     if (!skills || !Array.isArray(skills) || skills.length === 0) {
-      console.log('📊 No skills in category, returning 0');
       return 0; // No skills in this category
     }
 
-    console.log('📊 Calculating average for skills:', skills);
 
     const scores = skills.map(skill => {
       // Handle different skill data structures
@@ -45,14 +41,12 @@ export function calculateEmployabilityScore(studentData) {
       const normalizedRating = rating > 5 ? rating / 10 * 5 : rating;
       
       const score = (normalizedRating / 5) * evidenceWeight;
-      console.log(`📊 Skill "${skill.name || 'Unknown'}" - rating: ${rating}, normalized: ${normalizedRating}, evidence: ${evidenceWeight}, score: ${score}`);
       
       return score;
     });
     
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
     const percentage = avg * 100;
-    console.log(`📊 Category average: ${percentage}%`);
     return percentage;
   };
 
@@ -68,10 +62,8 @@ export function calculateEmployabilityScore(studentData) {
   // CRITICAL: Check if all skill arrays are empty and create synthetic skills
   const totalCategorizedSkills = Object.values(skillsData).reduce((sum, arr) => sum + arr.length, 0);
   
-  console.log('📊 Total categorized skills found:', totalCategorizedSkills);
   
   if (totalCategorizedSkills === 0) {
-    console.log('📊 No skills found, creating synthetic skills from profile data');
     
     // Use basic profile information to create skills
     const profile = studentData.profile || studentData;
@@ -118,27 +110,7 @@ export function calculateEmployabilityScore(studentData) {
       ];
     }
     
-    console.log('📊 Created synthetic skills:', skillsData);
   }
-
-  console.log('📊 Raw student data structure:', {
-    keys: Object.keys(studentData),
-    technicalSkills: studentData.technicalSkills?.length || 0,
-    softSkills: studentData.softSkills?.length || 0,
-    education: studentData.education?.length || 0,
-    training: studentData.training?.length || 0,
-    experience: studentData.experience?.length || 0
-  });
-
-  console.log('📊 Skills data extracted for calculation:', {
-    foundational: skillsData.foundational.length,
-    century21: skillsData.century21.length,
-    digital: skillsData.digital.length,
-    behavior: skillsData.behavior.length,
-    career: skillsData.career.length
-  });
-
-  console.log('📊 Detailed skills arrays:', skillsData);
 
   // Compute weighted score
   let totalScore = 0;
@@ -153,23 +125,6 @@ export function calculateEmployabilityScore(studentData) {
   totalScore += digitalScore * weights.digital;
   totalScore += behaviorScore * weights.behavior;
   totalScore += careerScore * weights.career;
-
-  console.log('📊 Individual category scores:', {
-    foundational: foundationalScore,
-    century21: century21Score,
-    digital: digitalScore,
-    behavior: behaviorScore,
-    career: careerScore
-  });
-
-  console.log('📊 Weighted contributions:', {
-    foundational: foundationalScore * weights.foundational,
-    century21: century21Score * weights.century21,
-    digital: digitalScore * weights.digital,
-    behavior: behaviorScore * weights.behavior,
-    career: careerScore * weights.career,
-    total: totalScore
-  });
 
   // Bonus Calculation
   let bonus = 0;
@@ -222,27 +177,10 @@ export function calculateEmployabilityScore(studentData) {
   // Cap bonus at 5
   if (bonus > 5) bonus = 5;
 
-  console.log('📊 Bonus calculation:', {
-    allEvidenceVerified,
-    hasExperience,
-    hasTraining,
-    participatedHackathonOrInternship,
-    totalSkillCount,
-    hasEducation,
-    finalBonus: bonus
-  });
-
   const finalScore = Math.min(totalScore + bonus, 100);
 
-  console.log('📊 Final calculation:', {
-    totalScore,
-    bonus,
-    finalScore
-  });
-
-  // If the final score is very low (less than 20), use minimum score calculation instead
+  // If the final score is very low
   if (finalScore < 20) {
-    console.log('📊 Score too low, using minimum score calculation');
     return calculateMinimumScore(studentData);
   }
 

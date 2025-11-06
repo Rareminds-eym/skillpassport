@@ -108,7 +108,6 @@ export const getPipelineCandidates = async (opportunityId?: number) => {
  */
 export const getPipelineCandidatesByStage = async (opportunityId: number, stage: string) => {
   try {
-    console.log(`[Pipeline Service] Fetching candidates for opportunity: ${opportunityId}, stage: ${stage}`);
     
     const { data, error } = await supabase
       .from('pipeline_candidates')
@@ -130,11 +129,9 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
       throw error;
     }
 
-    console.log(`[Pipeline Service] Raw data for stage ${stage}:`, data);
 
     // Transform data to include profile fields at student level
     const transformedData = data?.map((candidate, index) => {
-      console.log(`[Pipeline Service] Processing candidate ${index + 1}:`, {
         id: candidate.id,
         student_id: candidate.student_id,
         candidate_name: candidate.candidate_name,
@@ -144,7 +141,6 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
 
       if (candidate.students && candidate.students.profile) {
         const profile = candidate.students.profile;
-        console.log(`[Pipeline Service] Profile data:`, {
           dept: profile.dept,
           college: profile.college,
           skills_count: profile.skills?.length || 0,
@@ -164,11 +160,9 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
         };
       }
       
-      console.log(`[Pipeline Service] No profile data found for candidate:`, candidate.candidate_name);
       return candidate;
     });
 
-    console.log(`[Pipeline Service] Transformed ${transformedData?.length || 0} candidates for stage ${stage}`);
     return { data: transformedData, error: null };
   } catch (error) {
     console.error('[Pipeline Service] Error fetching pipeline candidates by stage:', error);
@@ -451,7 +445,6 @@ export const addCandidateToPipeline = async (pipelineData: {
         employabilityScore = studentData.profile?.employability_score || null;
       }
     } catch (e) {
-      console.warn('Could not fetch student AI scores:', e);
     }
 
     // Add AI score to recruiter notes for visibility
@@ -582,14 +575,12 @@ export const moveCandidateToStage = async (
 
       // Insert notification (if you have a notifications table for students)
       // This is optional - you can create a student_notifications table
-      console.log('Stage change notification for student:', {
         student_id: currentData.student_id,
         message: notificationMessage,
         from_stage: previousStage,
         to_stage: newStage
       });
     } catch (notifError) {
-      console.warn('Could not create student notification:', notifError);
     }
 
     return { data, error: null };

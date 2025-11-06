@@ -11,7 +11,6 @@ class AIRecommendationService {
    */
   async getRecommendations(studentId, forceRefresh = false) {
     try {
-      console.log('🤖 Getting AI recommendations for student:', studentId);
 
       const { data, error } = await supabase.functions.invoke('recommend-opportunities', {
         body: { studentId, forceRefresh }
@@ -22,7 +21,6 @@ class AIRecommendationService {
         throw error;
       }
 
-      console.log(`✅ Received ${data?.recommendations?.length || 0} recommendations`);
       
       return {
         success: true,
@@ -46,7 +44,6 @@ class AIRecommendationService {
    */
   async generateOpportunityEmbedding(opportunityId) {
     try {
-      console.log('🔄 Generating embedding for opportunity:', opportunityId);
 
       // Get opportunity details
       const { data: opp, error: fetchError } = await supabase
@@ -87,7 +84,6 @@ class AIRecommendationService {
 
       if (error) throw error;
 
-      console.log('✅ Opportunity embedding generated:', data);
       return { success: true, ...data };
     } catch (error) {
       console.error('❌ Failed to generate opportunity embedding:', error);
@@ -100,7 +96,6 @@ class AIRecommendationService {
    */
   async generateStudentEmbedding(studentId) {
     try {
-      console.log('🔄 Generating embedding for student:', studentId);
 
       // Get student details
       const { data: student, error: fetchError } = await supabase
@@ -137,7 +132,6 @@ class AIRecommendationService {
 
       if (error) throw error;
 
-      console.log('✅ Student embedding generated:', data);
       return { success: true, ...data };
     } catch (error) {
       console.error('❌ Failed to generate student embedding:', error);
@@ -196,7 +190,6 @@ class AIRecommendationService {
         .delete()
         .eq('student_id', studentId);
 
-      console.log('✅ Cache invalidated for student:', studentId);
       return { success: true };
     } catch (error) {
       console.error('Error invalidating cache:', error);
@@ -209,7 +202,6 @@ class AIRecommendationService {
    */
   async generateAllOpportunityEmbeddings() {
     try {
-      console.log('🔄 Generating embeddings for all opportunities...');
 
       const { data: opportunities, error } = await supabase
         .from('opportunities')
@@ -219,7 +211,6 @@ class AIRecommendationService {
 
       if (error) throw error;
 
-      console.log(`Found ${opportunities.length} opportunities without embeddings`);
 
       const results = [];
       for (const opp of opportunities) {

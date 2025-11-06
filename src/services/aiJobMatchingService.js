@@ -28,19 +28,15 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     const studentId = studentProfile?.id || studentProfile?.email || studentProfile?.profile?.email || 'unknown';
     const studentEmail = studentProfile?.email || studentProfile?.profile?.email || 'unknown@email.com';
     
-    console.log('🤖 AI Job Matching: Starting analysis...');
-    console.log('👤 Matching for Student:', {
       id: studentId,
       email: studentEmail,
       name: studentProfile?.name || studentProfile?.profile?.name || 'Unknown'
     });
-    console.log('📊 Student Profile received:', {
       hasProfile: !!studentProfile,
       profileKeys: studentProfile ? Object.keys(studentProfile) : [],
       hasNestedProfile: !!studentProfile?.profile,
       nestedProfileKeys: studentProfile?.profile ? Object.keys(studentProfile.profile) : []
     });
-    console.log('💼 Total Opportunities:', opportunities?.length || 0);
     
     // Create cache key specific to this student and opportunities
     const opportunitiesHash = opportunities.map(o => o.id).sort().join(',');
@@ -49,18 +45,15 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     // Check cache
     const cached = matchCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      console.log('✅ Using cached matches for student:', studentEmail);
       return cached.matches;
     }
 
     // Validate inputs
     if (!studentProfile) {
-      console.warn('⚠️ No student profile provided');
       return [];
     }
 
     if (!opportunities || opportunities.length === 0) {
-      console.warn('⚠️ No opportunities available');
       return [];
     }
 
@@ -70,11 +63,9 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     }
 
     // Extract student profile data
-    console.log('🔄 Extracting student data from profile...');
     const studentData = extractStudentData(studentProfile);
     
     // Debug: Log extracted student data
-    console.log('📋 Extracted Student Data:', {
       name: studentData.name,
       department: studentData.department,
       technical_skills_count: studentData.technical_skills.length,
@@ -110,11 +101,6 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     // Create AI prompt
     const prompt = createMatchingPrompt(studentData, opportunitiesData, topN);
 
-    console.log('🚀 Sending request to OpenRouter...');
-    console.log('🔑 API Key present:', !!OPENAI_API_KEY);
-    console.log('📧 Matching for student:', studentEmail);
-    console.log('🎯 Student Department:', studentData.department);
-    console.log('🛠️ Student Skills:', studentData.technical_skills.map(s => s.name).join(', '));
 
     // Call OpenAI API via OpenRouter
     const requestBody = {
@@ -133,7 +119,6 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       max_tokens: 2000
     };
 
-    console.log('📤 Request body prepared, making fetch call...');
 
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
@@ -146,7 +131,6 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       body: JSON.stringify(requestBody)
     });
 
-    console.log('📥 Response received, status:', response.status, response.statusText);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: { message: response.statusText } }));
@@ -166,8 +150,6 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     }
 
     const data = await response.json();
-    console.log('✅ AI Response received successfully');
-    console.log('📊 Response data:', {
       hasChoices: !!data.choices,
       choicesLength: data.choices?.length,
       firstChoice: data.choices?.[0],
@@ -176,7 +158,6 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
 
     // Parse AI response
     const aiContent = data.choices[0]?.message?.content;
-    console.log('📝 AI Content received:', aiContent?.substring(0, 500) + '...');
     
     if (!aiContent) {
       console.error('❌ No content in AI response');
@@ -184,14 +165,10 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     }
 
     // Extract JSON from AI response
-    console.log('🔍 Parsing AI response for job matches...');
     const matches = parseAIResponse(aiContent);
-    console.log('🎯 Matched Jobs Count:', matches.length);
-    console.log('🎯 Matched Jobs Details:', matches);
 
     // Safety check: If AI returned no matches, create basic matches from available opportunities
     if (!matches || matches.length === 0) {
-      console.warn('⚠️ AI returned no matches, creating fallback matches...');
       const fallbackMatches = opportunities.slice(0, topN).map((opp, idx) => ({
         job_id: opp.id,
         job_title: opp.job_title || opp.title,
@@ -212,7 +189,6 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
         };
       });
       
-      console.log('✨ Returning fallback matches:', enrichedFallbackMatches.length);
       
       // Cache fallback matches too
       matchCache.set(cacheKey, {
@@ -235,15 +211,8 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     // Warning: Check for cross-field matching (low scores might indicate database issue)
     const averageScore = enrichedMatches.reduce((sum, m) => sum + m.match_score, 0) / enrichedMatches.length;
     if (averageScore < 40) {
-      console.warn('⚠️ WARNING: Low average match score (' + averageScore.toFixed(1) + '%)');
-      console.warn('📌 Student field:', studentData.department);
-      console.warn('📌 Student skills:', studentData.technical_skills.map(s => s.name).join(', '));
-      console.warn('📌 Matched jobs:', enrichedMatches.map(m => m.job_title).join(', '));
-      console.warn('💡 Possible issue: No jobs in database match the student\'s field. Consider adding more diverse opportunities.');
     }
 
-    console.log('✨ Final Enriched Matches:', enrichedMatches);
-    console.log('💾 Caching matches for student:', studentEmail);
     
     // Cache the results
     matchCache.set(cacheKey, {
@@ -268,7 +237,6 @@ function extractStudentData(studentProfile) {
   const profile = studentProfile?.profile || {};
   
   // Debug log the raw profile structure
-  console.log('🔍 Raw Student Profile Structure:', {
     hasProfile: !!studentProfile?.profile,
     profileKeys: Object.keys(profile),
     technicalSkillsType: typeof profile.technicalSkills,
@@ -629,7 +597,6 @@ Return ONLY a valid JSON array with exactly ${topN} matches, ordered by match sc
  */
 function parseAIResponse(aiContent) {
   try {
-    console.log('🔍 Attempting to parse AI response...');
     
     // Try to find JSON array in the response
     const jsonMatch = aiContent.match(/\[[\s\S]*\]/);
@@ -639,7 +606,6 @@ function parseAIResponse(aiContent) {
       return [];
     }
 
-    console.log('✅ Found JSON pattern in response');
     const matches = JSON.parse(jsonMatch[0]);
     
     // Validate structure
@@ -648,7 +614,6 @@ function parseAIResponse(aiContent) {
       return [];
     }
 
-    console.log(`✅ Successfully parsed ${matches.length} matches from AI`);
 
     return matches.map(match => ({
       job_id: match.job_id,

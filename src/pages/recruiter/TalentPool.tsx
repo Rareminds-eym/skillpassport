@@ -1501,20 +1501,6 @@ type RecruiterOutletContext = {
 //   // Debug: Log first student to see data structure
 //   useEffect(() => {
 //     if (students.length > 0) {
-//       console.log('=== STUDENT DATA STRUCTURE ===');
-//       console.log('First student:', students[0]);
-//       console.log('Has profile property?', 'profile' in students[0]);
-//       console.log('Direct certificates:', students[0].certificates);
-//       console.log('Profile certificates:', (students[0] as any).profile?.certificates);
-//       console.log('Direct education:', students[0].education);
-//       console.log('Profile education:', (students[0] as any).profile?.education);
-//       console.log('Direct experience:', students[0].experience);
-//       console.log('Profile experience:', (students[0] as any).profile?.experience);
-//       console.log('Direct technical skills:', students[0].technicalSkills);
-//       console.log('Profile technical skills:', (students[0] as any).profile?.technicalSkills);
-//       console.log('Direct soft skills:', students[0].softSkills);
-//       console.log('Profile soft skills:', (students[0] as any).profile?.softSkills);
-//       console.log('==============================');
 //     }
 //   }, [students]);
 
@@ -1624,8 +1610,6 @@ type RecruiterOutletContext = {
 //     if (searchQuery && searchQuery.trim() !== '') {
 //       const query = searchQuery.toLowerCase().trim();
       
-//       console.log('🔍 Searching for:', query);
-//       console.log('📊 Total students:', students.length);
       
 //       result = result.filter(student => {
 //         // Access the profile data - handles both nested and direct structures
@@ -1674,20 +1658,17 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (skillMatch) {
-//             console.log(`✅ Match in skills for ${student.name}`);
 //             return true;
 //           }
 //         }
         
 //         // Projects - search in title, tech, techStack, technologies, description
 //         if (searchInArray(profile.projects, ['title', 'tech', 'techStack', 'technologies', 'description', 'skills', 'status'])) {
-//           console.log(`✅ Match in projects for ${student.name}`);
 //           return true;
 //         }
         
 //         // Education - check all relevant fields
 //         if (searchInArray(profile.education, ['yearOfPassing', 'university', 'degree', 'department', 'college_school_name', 'level', 'cgpa', 'status'])) {
-//           console.log(`✅ Match in education for ${student.name}`);
 //           return true;
 //         }
         
@@ -1708,7 +1689,6 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (expMatch) {
-//             console.log(`✅ Match in experience for ${student.name}`);
 //             return true;
 //           }
 //         }
@@ -1724,7 +1704,6 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (softSkillMatch) {
-//             console.log(`✅ Match in softSkills for ${student.name}`);
 //             return true;
 //           }
 //         }
@@ -1747,7 +1726,6 @@ type RecruiterOutletContext = {
 //           });
           
 //           if (certMatch) {
-//             console.log(`✅ Match in certificates for ${student.name}`, profile.certificates);
 //             return true;
 //           }
 //         }
@@ -1765,7 +1743,6 @@ type RecruiterOutletContext = {
 //           });
           
 //           if (techMatch) {
-//             console.log(`✅ Match in technicalSkills for ${student.name}`);
 //             return true;
 //           }
 //         }
@@ -1781,7 +1758,6 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (trainingMatch) {
-//             console.log(`✅ Match in training for ${student.name}`);
 //             return true;
 //           }
 //         }
@@ -1789,9 +1765,7 @@ type RecruiterOutletContext = {
 //         return false;
 //       });
       
-//       console.log('✅ Filtered results:', result.length);
 //       if (result.length > 0) {
-//         console.log('Sample matches:', result.slice(0, 3).map(s => s.name));
 //       }
 //     }
 
@@ -2363,20 +2337,6 @@ type RecruiterOutletContext = {
 //   // Debug: Log first student to see data structure
 //   useEffect(() => {
 //     if (students.length > 0) {
-//       console.log('=== STUDENT DATA STRUCTURE ===');
-//       console.log('First student:', students[0]);
-//       console.log('Has profile property?', 'profile' in students[0]);
-//       console.log('Direct certificates:', students[0].certificates);
-//       console.log('Profile certificates:', (students[0] as any).profile?.certificates);
-//       console.log('Direct education:', students[0].education);
-//       console.log('Profile education:', (students[0] as any).profile?.education);
-//       console.log('Direct experience:', students[0].experience);
-//       console.log('Profile experience:', (students[0] as any).profile?.experience);
-//       console.log('Direct technical skills:', students[0].technicalSkills);
-//       console.log('Profile technical skills:', (students[0] as any).profile?.technicalSkills);
-//       console.log('Direct soft skills:', students[0].softSkills);
-//       console.log('Profile soft skills:', (students[0] as any).profile?.softSkills);
-//       console.log('==============================');
 //     }
 //   }, [students]);
 
@@ -2486,8 +2446,6 @@ type RecruiterOutletContext = {
 //     if (searchQuery && searchQuery.trim() !== '') {
 //       const query = searchQuery.toLowerCase().trim();
       
-//       console.log('🔍 Searching for:', query);
-//       console.log('📊 Total students:', students.length);
       
 //       // Store match results with the matched field for sorting
 //       const resultsWithScores = students.map(student => {
@@ -2558,20 +2516,17 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (skillMatch) {
-//             console.log(`✅ Match in skills for ${student.name}`);
 //             return { student, matchedField };
 //           }
 //         }
         
 //         // Projects - search in title, tech, techStack, technologies, description
 //         if (searchInArray(profile.projects, ['title', 'id', 'link', 'tech', 'techStack', 'technologies', 'organization', 'description', 'skills', 'status','enabled','processing','duration','github'], 'projects')) {
-//           console.log(`✅ Match in projects for ${student.name}`);
 //           return { student, matchedField };
 //         }
         
 //         // Education - check all relevant fields
 //         if (searchInArray(profile.education, ['yearOfPassing', 'university', 'degree', 'department', 'college_school_name', 'level', 'cgpa', 'status'], 'education')) {
-//           console.log(`✅ Match in education for ${student.name}`);
 //           return { student, matchedField };
 //         }
         
@@ -2610,7 +2565,6 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (expMatch) {
-//             console.log(`✅ Match in experience for ${student.name}`);
 //             return { student, matchedField };
 //           }
 //         }
@@ -2627,7 +2581,6 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (softSkillMatch) {
-//             console.log(`✅ Match in softSkills for ${student.name}`);
 //             return { student, matchedField };
 //           }
 //         }
@@ -2676,7 +2629,6 @@ type RecruiterOutletContext = {
 //           });
           
 //           if (certMatch) {
-//             console.log(`✅ Match in certificates for ${student.name}`, profile.certificates);
 //             return { student, matchedField };
 //           }
 //         }
@@ -2698,7 +2650,6 @@ type RecruiterOutletContext = {
 //           });
           
 //           if (techMatch) {
-//             console.log(`✅ Match in technicalSkills for ${student.name}`);
 //             return { student, matchedField };
 //           }
 //         }
@@ -2714,7 +2665,6 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (trainingMatch) {
-//             console.log(`✅ Match in training for ${student.name}`);
 //             return { student, matchedField };
 //           }
 //         }
@@ -2729,9 +2679,7 @@ type RecruiterOutletContext = {
       
 //       result = resultsWithScores.map(item => item.student);
       
-//       console.log('✅ Filtered results (lexicographically sorted):', result.length);
 //       if (result.length > 0) {
-//         console.log('Sample matches:', result.slice(0, 3).map(s => s.name));
 //       }
 //     }
 
@@ -3297,20 +3245,6 @@ const TalentPool = () => {
   // Debug: Log first student to see data structure
   useEffect(() => {
     if (students.length > 0) {
-      console.log('=== STUDENT DATA STRUCTURE ===');
-      console.log('First student:', students[0]);
-      console.log('Has profile property?', 'profile' in students[0]);
-      console.log('Direct certificates:', students[0].certificates);
-      console.log('Profile certificates:', (students[0] as any).profile?.certificates);
-      console.log('Direct education:', students[0].education);
-      console.log('Profile education:', (students[0] as any).profile?.education);
-      console.log('Direct experience:', students[0].experience);
-      console.log('Profile experience:', (students[0] as any).profile?.experience);
-      console.log('Direct technical skills:', students[0].technicalSkills);
-      console.log('Profile technical skills:', (students[0] as any).profile?.technicalSkills);
-      console.log('Direct soft skills:', students[0].softSkills);
-      console.log('Profile soft skills:', (students[0] as any).profile?.softSkills);
-      console.log('==============================');
     }
   }, [students]);
 
@@ -3420,8 +3354,6 @@ const TalentPool = () => {
     if (searchQuery && searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase().trim();
       
-      console.log('🔍 Searching for:', query);
-      console.log('📊 Total students:', students.length);
       
       // Store match results with the matched field for sorting
       const resultsWithScores = students.map(student => {
@@ -3526,7 +3458,6 @@ const TalentPool = () => {
             return false;
           });
           if (skillMatch) {
-            console.log(`✅ Match in skills for ${student.name}`);
             return { student, matchedField };
           }
         }
@@ -3574,7 +3505,6 @@ const TalentPool = () => {
             return false;
           });
           if (projectMatch) {
-            console.log(`✅ Match in projects for ${student.name}`);
             return { student, matchedField };
           }
         }
@@ -3618,7 +3548,6 @@ const TalentPool = () => {
             return false;
           });
           if (eduMatch) {
-            console.log(`✅ Match in education for ${student.name}`);
             return { student, matchedField };
           }
         }
@@ -3675,7 +3604,6 @@ const TalentPool = () => {
             return false;
           });
           if (expMatch) {
-            console.log(`✅ Match in experience for ${student.name}`);
             return { student, matchedField };
           }
         }
@@ -3712,7 +3640,6 @@ const TalentPool = () => {
             return false;
           });
           if (softSkillMatch) {
-            console.log(`✅ Match in softSkills for ${student.name}`);
             return { student, matchedField };
           }
         }
@@ -3761,7 +3688,6 @@ const TalentPool = () => {
           });
           
           if (certMatch) {
-            console.log(`✅ Match in certificates for ${student.name}`, profile.certificates);
             return { student, matchedField };
           }
         }
@@ -3783,7 +3709,6 @@ const TalentPool = () => {
           });
           
           if (techMatch) {
-            console.log(`✅ Match in technicalSkills for ${student.name}`);
             return { student, matchedField };
           }
         }
@@ -3807,7 +3732,6 @@ const TalentPool = () => {
             return false;
           });
           if (trainingMatch) {
-            console.log(`✅ Match in training for ${student.name}`);
             return { student, matchedField };
           }
         }
@@ -3822,9 +3746,7 @@ const TalentPool = () => {
       
       result = resultsWithScores.map(item => item.student);
       
-      console.log('✅ Filtered results (lexicographically sorted):', result.length);
       if (result.length > 0) {
-        console.log('Sample matches:', result.slice(0, 3).map(s => s.name));
       }
     }
 

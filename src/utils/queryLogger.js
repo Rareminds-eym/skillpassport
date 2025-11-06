@@ -8,7 +8,6 @@ const isDevelopment = import.meta.env.MODE === 'development';
 export const queryLogger = {
   log: (...args) => {
     if (isDevelopment) {
-      console.log(...args);
     }
   },
   error: (...args) => {
@@ -17,7 +16,6 @@ export const queryLogger = {
   },
   warn: (...args) => {
     if (isDevelopment) {
-      console.warn(...args);
     }
   },
   info: (...args) => {

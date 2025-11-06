@@ -27,8 +27,6 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         setLoading(true);
         setError(null);
 
-        console.log('🎯 useAIJobMatching: Starting job matching for student');
-        console.log('👤 Student Profile:', {
           id: studentProfile?.id,
           email: studentProfile?.email,
           name: studentProfile?.name,
@@ -59,10 +57,8 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
           return true;
         });
 
-        console.log(`📊 Found ${activeOpportunities.length} active opportunities out of ${opportunities.length} total`);
 
         if (activeOpportunities.length === 0) {
-          console.warn('⚠️ No active opportunities available for matching');
           setMatchedJobs([]);
           setLoading(false);
           return;
@@ -71,7 +67,6 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         // Run AI matching
         const matches = await matchJobsWithAI(studentProfile, activeOpportunities, topN);
 
-        console.log('✅ AI Matching complete:', matches);
         setMatchedJobs(matches);
 
       } catch (err) {
