@@ -7,6 +7,7 @@ import {
   XMarkIcon,
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
+import { useAuth } from "../../context/AuthContext";
 import NotificationPanel from "./NotificationPanel";
 
 interface HeaderProps {
@@ -22,6 +23,7 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleNotificationClick = () => {
@@ -31,8 +33,20 @@ const Header: React.FC<HeaderProps> = ({
 
   const handleLogout = () => {
     setShowProfileMenu(false);
-    navigate("/");
+    logout?.(); // optional: clear auth context
+    navigate("/login/admin");
   };
+
+  // Fallbacks
+  const userName = user?.name || "Admin User";
+  const userRoleLabel =
+    user?.role === "school_admin"
+      ? "School Admin"
+      : user?.role === "college_admin"
+      ? "College Admin"
+      : user?.role === "university_admin"
+      ? "University Admin"
+      : "Administrator";
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -89,12 +103,13 @@ const Header: React.FC<HeaderProps> = ({
               >
                 <UserCircleIcon className="h-7 w-7 text-gray-500" />
                 <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium text-gray-900">Admin User</p>
-                  <p className="text-xs text-gray-500">Administrator</p>
+                  <p className="text-sm font-medium text-gray-900">{userName}</p>
+                  <p className="text-xs text-gray-500">{userRoleLabel}</p>
                 </div>
                 <ChevronDownIcon
-                  className={`hidden sm:block h-4 w-4 text-gray-500 transition-transform ${showProfileMenu ? "rotate-180" : ""
-                    }`}
+                  className={`hidden sm:block h-4 w-4 text-gray-500 transition-transform ${
+                    showProfileMenu ? "rotate-180" : ""
+                  }`}
                 />
               </button>
 

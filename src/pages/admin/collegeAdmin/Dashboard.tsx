@@ -140,7 +140,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-8 p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div>
+      <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
           College Dashboard
         </h1>
@@ -148,6 +148,7 @@ const Dashboard: React.FC = () => {
           Overview of institutional performance and analytics
         </p>
       </div>
+
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
