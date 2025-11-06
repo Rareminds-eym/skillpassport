@@ -55,6 +55,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
 import { Toaster } from "react-hot-toast";
+import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
 // Debug utilities removed for production cleanliness
 
 const StudentDashboard = () => {
@@ -420,6 +421,24 @@ const StudentDashboard = () => {
     ));
   };
 
+  // Helper function to get skill level text
+  const getSkillLevelText = (level) => {
+    if (level >= 5) return "Expert";
+    if (level >= 4) return "Advanced";
+    if (level >= 3) return "Intermediate";
+    if (level >= 1) return "Beginner";
+    return "Beginner";
+  };
+
+  // Helper function to get skill level badge color
+  const getSkillLevelColor = (level) => {
+    if (level >= 5) return "bg-purple-100 text-purple-700 border-purple-300";
+    if (level >= 4) return "bg-blue-100 text-blue-700 border-blue-300";
+    if (level >= 3) return "bg-green-100 text-green-700 border-green-300";
+    if (level >= 1) return "bg-yellow-100 text-yellow-700 border-yellow-300";
+    return "bg-gray-100 text-gray-700 border-gray-300";
+  };
+
   const TruncatedText = ({ text, maxLength = 120 }) => {
     const [expanded, setExpanded] = useState(false);
 
@@ -592,20 +611,22 @@ const StudentDashboard = () => {
               key={skill.id || `tech-skill-${idx}`}
               className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
             >
-              <div className="flex items-center justify-between">
-                <div key={`tech-skill-info-${skill.id}`}>
+              <div className="flex items-start justify-between">
+                <div key={`tech-skill-info-${skill.id}`} className="flex-1">
                   <h4 className="font-semibold text-gray-900 text-base mb-1">
                     {skill.name}
                   </h4>
-                  <p className="text-xs text-gray-600 font-medium">
+                  <p className="text-xs text-gray-600 font-medium mb-2">
                     {skill.category}
                   </p>
-                </div>
-                <div
-                  key={`tech-skill-stars-${skill.id}`}
-                  className="flex gap-1"
-                >
-                  {renderStars(skill.level)}
+                  <div className="flex items-center gap-2">
+                    <Badge className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(skill.level)}`}>
+                      {getSkillLevelText(skill.level)}
+                    </Badge>
+                    <div className="flex gap-0.5">
+                      {renderStars(skill.level)}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1238,15 +1259,20 @@ const StudentDashboard = () => {
               key={skill.id || `soft-skill-${idx}`}
               className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
             >
-              <div className="flex items-center justify-between">
-                <div key={`skill-info-${skill.id}`}>
+              <div className="flex items-start justify-between">
+                <div key={`skill-info-${skill.id}`} className="flex-1">
                   <h4 className="font-semibold text-gray-900 text-base mb-1">
                     {skill.name}
                   </h4>
-                  <p className="text-xs text-gray-600">{skill.description}</p>
-                </div>
-                <div key={`skill-stars-${skill.id}`} className="flex gap-1">
-                  {renderStars(skill.level)}
+                  <p className="text-xs text-gray-600 mb-2">{skill.description}</p>
+                  <div className="flex items-center gap-2">
+                    <Badge className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(skill.level)}`}>
+                      {getSkillLevelText(skill.level)}
+                    </Badge>
+                    <div className="flex gap-0.5">
+                      {renderStars(skill.level)}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1786,6 +1812,13 @@ const StudentDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {renderCardsByPriority()}
             </div>
+            
+            {/* Achievement Timeline - Below cards in the right column */}
+            {!isViewingOthersProfile && (
+              <div className="mt-5">
+                <AchievementsTimeline userData={userData} />
+              </div>
+            )}
           </div>
         </div>
       </div>
