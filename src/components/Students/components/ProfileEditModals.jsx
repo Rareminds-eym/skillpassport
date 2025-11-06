@@ -2528,6 +2528,10 @@ export const SkillsEditModal = ({
     );
   };
 
+  const updateNewSkillLevel = (level) => {
+    setNewSkill((prev) => ({ ...prev, level }));
+  };
+
   const handleSubmit = () => {
     onSave(skills);
     toast({
@@ -2537,13 +2541,21 @@ export const SkillsEditModal = ({
     onClose();
   };
 
-  const renderStars = (level, skillId, editable = false) => {
+  const renderStars = (level, skillId, editable = false, isNewSkill = false) => {
     return [...Array(5)].map((_, i) => (
       <button
         key={i}
         type="button"
         disabled={!editable}
-        onClick={() => editable && updateSkillLevel(skillId, i + 1)}
+        onClick={() => {
+          if (editable) {
+            if (isNewSkill) {
+              updateNewSkillLevel(i + 1);
+            } else {
+              updateSkillLevel(skillId, i + 1);
+            }
+          }
+        }}
         className={`w-4 h-4 ${i < level ? "text-[#FFD700]" : "text-gray-300"} ${
           editable ? "hover:text-[#FFD700] cursor-pointer" : ""
         }`}
@@ -2636,7 +2648,7 @@ export const SkillsEditModal = ({
               <div className="flex items-center gap-2">
                 <Label>Level:</Label>
                 <div className="flex gap-1">
-                  {renderStars(newSkill.level, "new", true)}
+                  {renderStars(newSkill.level, "new", true, true)}
                 </div>
               </div>
               <div className="flex gap-2">
