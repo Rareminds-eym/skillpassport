@@ -23,6 +23,8 @@ import { useAuth } from "../../context/AuthContext";
 import { TrainingEditModal } from "../../components/Students/components/ProfileEditModals";
 import { useRecentUpdates } from "../../hooks/useRecentUpdates";
 import { useRecentUpdatesLegacy } from "../../hooks/useRecentUpdatesLegacy";
+import { useAIJobMatching } from "../../hooks/useAIJobMatching";
+import SuggestedNextSteps from "../../components/Students/components/SuggestedNextSteps";
 import {
   suggestions as mockSuggestions,
 } from "../../components/Students/data/mockData";
@@ -59,6 +61,13 @@ const MyTraining = () => {
     refreshRecentUpdates();
     refreshRecentUpdatesLegacy();
   };
+
+  // AI Job Matching - Get top 3 matched jobs for student
+  const {
+    matchedJobs,
+    loading: matchingLoading,
+    error: matchingError,
+  } = useAIJobMatching(studentData, true, 3);
 
   const [activeModal, setActiveModal] = useState(null);
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
@@ -186,43 +195,12 @@ const MyTraining = () => {
               </Card>
 
               {/* Suggestions */}
-              <Card className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <CardHeader className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-amber-50 to-white">
-                  <CardTitle className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-                      <TrendingUp className="w-5 h-5 text-amber-600" />
-                    </div>
-                    <span className="text-lg font-semibold text-gray-900">
-                      Suggested Next Steps
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {suggestions && suggestions.length > 0 ? (
-                    <div className="space-y-3">
-                      {suggestions.map((suggestion, idx) => (
-                        <div
-                          key={idx}
-                          className="p-4 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-all"
-                        >
-                          <p className="text-sm font-medium text-gray-900 leading-relaxed">
-                            {typeof suggestion === "string"
-                              ? suggestion
-                              : suggestion.message || suggestion}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <TrendingUp className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                      <p className="text-gray-500 font-medium">
-                        No suggestions available
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <SuggestedNextSteps
+                matchedJobs={matchedJobs}
+                loading={matchingLoading}
+                error={matchingError}
+                fallbackSuggestions={suggestions}
+              />
             </div>
           </div>
 
