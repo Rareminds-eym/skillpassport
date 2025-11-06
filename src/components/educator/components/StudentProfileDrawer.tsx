@@ -19,6 +19,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import jsPDF from 'jspdf';
 import { supabase } from '../../../lib/supabaseClient';
+import { File } from 'lucide-react';
 
 const Badge = ({ type }) => {
   const badgeConfig = {
@@ -2059,12 +2060,12 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                       <PencilSquareIcon className="h-4 w-4 mr-2" />
                       Add Mentor Note
                     </button>
-                    {/* <button
-                      onClick={() => setShowVerifyModal(true)}
+                    <button
+                      // onClick={() => setShowVerifyModal(true)}
                       className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100">
-                      <CheckCircleIcon className="h-4 w-4 mr-2" />
-                      Verify Assignment
-                    </button> */}
+                      <File className="h-4 w-4 mr-2" />
+                      View Portfolio
+                    </button>
                   </div>
                   <div className="flex space-x-2">
                     <button
