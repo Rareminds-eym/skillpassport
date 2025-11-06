@@ -36,6 +36,7 @@ const Opportunities = () => {
   
   // Debug logging
   useEffect(() => {
+    console.log({
       user,
       userEmail,
       studentData,
@@ -364,6 +365,7 @@ const Opportunities = () => {
   };
 
   const handleApply = async (opportunity) => {
+    console.log({
       studentId,
       user,
       userId: user?.id,

@@ -30,6 +30,7 @@ export const useOpportunities = (options = {}) => {
     setError(null);
 
     try {
+      console.log({
         studentSkills,
         activeOnly,
         filters
@@ -132,6 +133,7 @@ export const useOpportunities = (options = {}) => {
 
   // Re-fetch when dependencies change
   useEffect(() => {
+    console.log({
       filters,
       studentSkills,
       activeOnly,

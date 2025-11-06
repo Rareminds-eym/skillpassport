@@ -28,10 +28,12 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     const studentId = studentProfile?.id || studentProfile?.email || studentProfile?.profile?.email || 'unknown';
     const studentEmail = studentProfile?.email || studentProfile?.profile?.email || 'unknown@email.com';
     
+    console.log({
       id: studentId,
       email: studentEmail,
       name: studentProfile?.name || studentProfile?.profile?.name || 'Unknown'
     });
+    console.log({
       hasProfile: !!studentProfile,
       profileKeys: studentProfile ? Object.keys(studentProfile) : [],
       hasNestedProfile: !!studentProfile?.profile,
@@ -66,6 +68,7 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     const studentData = extractStudentData(studentProfile);
     
     // Debug: Log extracted student data
+    console.log({
       name: studentData.name,
       department: studentData.department,
       technical_skills_count: studentData.technical_skills.length,
@@ -150,6 +153,7 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     }
 
     const data = await response.json();
+    console.log({
       hasChoices: !!data.choices,
       choicesLength: data.choices?.length,
       firstChoice: data.choices?.[0],
@@ -237,6 +241,7 @@ function extractStudentData(studentProfile) {
   const profile = studentProfile?.profile || {};
   
   // Debug log the raw profile structure
+  console.log({
     hasProfile: !!studentProfile?.profile,
     profileKeys: Object.keys(profile),
     technicalSkillsType: typeof profile.technicalSkills,

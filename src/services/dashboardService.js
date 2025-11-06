@@ -39,6 +39,7 @@ export const getDashboardKPIs = async () => {
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     
+    console.log({
       now: now.toISOString(),
       oneWeekAgo: oneWeekAgo.toISOString(),
       twoWeeksAgo: twoWeeksAgo.toISOString()

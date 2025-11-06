@@ -201,6 +201,7 @@ export class StudentPipelineService {
         const pipelineStatus = opportunityId ? pipelineMap.get(opportunityId) : null;
         const jobInterviews = opportunityId ? interviewsMap.get(opportunityId) : [];
         
+        console.log({
           jobTitle: app.opportunity?.job_title,
           opportunityId: opportunityId,
           hasPipelineStatus: !!pipelineStatus,
