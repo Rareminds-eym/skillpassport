@@ -588,7 +588,6 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
 
   useEffect(() => {
     if (!candidate?.id) return;
-    // console.log("Fetching projects for:", student);
 
     // Reset states
     setProjects([]);
@@ -691,7 +690,6 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
       rawProfile = JSON.parse(candidate.profile);
       profileData = { ...candidate, ...rawProfile };
     } catch (e) {
-      console.warn('Profile parsing failed, using fallback:', e);
       rawProfile = {};
       profileData = candidate;
     }

@@ -5,7 +5,6 @@
  */
 export const exportToCSV = (data: any[], filename: string) => {
   if (!data || data.length === 0) {
-    console.warn('No data to export');
     return;
   }
 
@@ -277,7 +276,6 @@ export const scheduleReport = (config: {
   sections: string[];
   format: 'csv' | 'excel' | 'pdf';
 }) => {
-  console.log('Scheduling report:', config);
   
   // In production, this would make an API call to backend
   // For now, just show a success message

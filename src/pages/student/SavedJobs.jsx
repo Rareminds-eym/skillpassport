@@ -38,17 +38,14 @@ const SavedJobs = () => {
   useEffect(() => {
     const loadSavedJobs = async () => {
       if (!studentId) {
-        console.log('⚠️ No studentId available');
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        console.log('🔄 Loading saved jobs for student:', studentId);
         
         const jobs = await SavedJobsService.getSavedJobsWithAppliedStatus(studentId);
-        console.log('✅ Loaded saved jobs:', jobs);
         
         setSavedJobs(jobs);
         

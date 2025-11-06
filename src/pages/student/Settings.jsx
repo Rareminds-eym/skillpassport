@@ -240,7 +240,6 @@ const Settings = () => {
     setIsSaving(true);
     try {
       // await updateProfile({ privacySettings });
-      console.log("Privacy settings:", privacySettings);
       toast({
         title: "Success",
         description: "Privacy settings updated",

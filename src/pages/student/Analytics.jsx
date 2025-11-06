@@ -29,7 +29,6 @@ const Analytics = () => {
     try {
       setLoading(true);
       
-      console.log('📊 Analytics: Fetching data for email:', userEmail);
       
       // Get student ID from email
       const { data: student, error: studentError } = await supabase
@@ -43,7 +42,6 @@ const Analytics = () => {
         return;
       }
       
-      console.log('✅ Analytics: Found student ID:', student.id);
 
       // Fetch applied jobs with opportunity details
       const { data: appliedJobs, error: jobsError } = await supabase
@@ -70,8 +68,6 @@ const Analytics = () => {
         return;
       }
       
-      console.log('📈 Analytics: Found applications:', appliedJobs?.length || 0);
-      console.log('📋 Analytics: Application data:', appliedJobs);
 
       setApplications(appliedJobs || []);
     } catch (error) {
@@ -83,7 +79,6 @@ const Analytics = () => {
 
   const fetchSkillsData = async () => {
     try {
-      console.log('🎯 Fetching skills demand data using analyze_skills_demand()...');
       
       const { data, error } = await supabase.rpc('analyze_skills_demand');
       
@@ -93,14 +88,10 @@ const Analytics = () => {
         return;
       }
       
-      console.log('✅ Skills demand raw response:', data);
       
       if (data && Array.isArray(data) && data.length > 0) {
-        console.log('✅ Skills demand data loaded:', data.length, 'skills');
-        console.log('First 3 skills:', data.slice(0, 3));
         setSkillsData(data);
       } else {
-        console.log('⚠️ No skills data returned from function');
       }
     } catch (error) {
       console.error('❌ Exception in fetchSkillsData:', error);
@@ -189,10 +180,8 @@ const Analytics = () => {
         acc[displayName] = parseInt(item.total_mentions);
         return acc;
       }, {});
-      console.log('📊 Skills chart data:', result);
       return result;
     }
-    console.log('⚠️ No skills data available for chart');
     return {};
   }, [skillsData]);
 

@@ -36,6 +36,32 @@ export const createSubscription = async (subscriptionData) => {
       };
     }
 
+    // Check if user already has an active subscription of the same plan type
+    const { data: existingPlan, error: checkError } = await supabase
+      .from('subscriptions')
+      .select('id, plan_type, status')
+      .eq('user_id', userId)
+      .eq('plan_type', subscriptionData.planName)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('❌ Error checking existing subscription:', checkError);
+      return {
+        success: false,
+        data: null,
+        error: 'Failed to verify existing subscription'
+      };
+    }
+
+    if (existingPlan) {
+      return {
+        success: false,
+        data: null,
+        error: `You already have an active ${subscriptionData.planName} subscription. Please cancel your existing subscription before purchasing again.`
+      };
+    }
+
     // Prepare subscription data
     const subscription = {
       user_id: userId,
@@ -69,7 +95,6 @@ export const createSubscription = async (subscriptionData) => {
       };
     }
 
-    console.log('✅ Subscription created successfully:', data);
     return {
       success: true,
       data: data,
@@ -258,7 +283,6 @@ export const updateSubscriptionStatus = async (subscriptionId, status) => {
       };
     }
 
-    console.log('✅ Subscription updated successfully:', data);
     return {
       success: true,
       data: data,
@@ -318,7 +342,6 @@ export const updateSubscriptionPayment = async (subscriptionId, paymentData) => 
       };
     }
 
-    console.log('✅ Payment updated successfully:', data);
     return {
       success: true,
       data: data,
@@ -335,11 +358,13 @@ export const updateSubscriptionPayment = async (subscriptionId, paymentData) => 
 };
 
 /**
- * Cancel subscription
+ * Cancel subscription with reason tracking
  * @param {string} subscriptionId 
+ * @param {string} cancellationReason - Reason for cancellation
+ * @param {string} additionalFeedback - Optional additional feedback
  * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
  */
-export const cancelSubscription = async (subscriptionId) => {
+export const cancelSubscription = async (subscriptionId, cancellationReason = 'Not specified', additionalFeedback = null) => {
   try {
     // Check authentication first
     const authResult = await checkAuthentication();
@@ -354,16 +379,47 @@ export const cancelSubscription = async (subscriptionId) => {
 
     const userId = authResult.user.id;
 
-    // Update subscription to cancelled
+    // First, get the subscription to check if it has a Razorpay subscription ID
+    const { data: subscription, error: fetchError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('id', subscriptionId)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !subscription) {
+      console.error('❌ Error fetching subscription:', fetchError);
+      return {
+        success: false,
+        data: null,
+        error: fetchError?.message || 'Subscription not found'
+      };
+    }
+
+    // Cancel on Razorpay if razorpay_subscription_id exists
+    if (subscription.razorpay_subscription_id) {
+      const { cancelRazorpaySubscription } = await import('./razorpayService');
+      const razorpayResult = await cancelRazorpaySubscription(subscription.razorpay_subscription_id);
+      
+      if (!razorpayResult.success) {
+        console.warn('⚠️ Razorpay cancellation failed, continuing with local cancellation:', razorpayResult.error);
+      }
+    }
+
+    const now = new Date().toISOString();
+
+    // Update subscription to cancelled (but keep access until end date)
     const { data, error } = await supabase
       .from('subscriptions')
       .update({
         status: 'cancelled',
         auto_renew: false,
-        updated_at: new Date().toISOString()
+        cancelled_at: now,
+        cancellation_reason: cancellationReason,
+        updated_at: now
       })
       .eq('id', subscriptionId)
-      .eq('user_id', userId) // Ensure user owns this subscription
+      .eq('user_id', userId)
       .select()
       .single();
 
@@ -376,7 +432,23 @@ export const cancelSubscription = async (subscriptionId) => {
       };
     }
 
-    console.log('✅ Subscription cancelled successfully:', data);
+    // Save cancellation feedback to cancellations table
+    const { error: cancellationError } = await supabase
+      .from('subscription_cancellations')
+      .insert([{
+        subscription_id: subscriptionId,
+        user_id: userId,
+        cancellation_reason: cancellationReason,
+        additional_feedback: additionalFeedback,
+        cancelled_at: now,
+        access_until: subscription.subscription_end_date
+      }]);
+
+    if (cancellationError) {
+      console.warn('⚠️ Failed to save cancellation feedback:', cancellationError);
+      // Don't fail the cancellation if feedback save fails
+    }
+
     return {
       success: true,
       data: data,
@@ -384,6 +456,200 @@ export const cancelSubscription = async (subscriptionId) => {
     };
   } catch (error) {
     console.error('❌ Unexpected error cancelling subscription:', error);
+    return {
+      success: false,
+      data: null,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Pause subscription
+ * @param {string} subscriptionId 
+ * @param {number} pauseMonths - Number of months to pause (1-3)
+ * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
+ */
+export const pauseSubscription = async (subscriptionId, pauseMonths = 1) => {
+  try {
+    // Check authentication first
+    const authResult = await checkAuthentication();
+    
+    if (!authResult.isAuthenticated) {
+      return {
+        success: false,
+        data: null,
+        error: 'User must be authenticated to pause subscription'
+      };
+    }
+
+    const userId = authResult.user.id;
+
+    // Validate pause duration
+    if (pauseMonths < 1 || pauseMonths > 3) {
+      return {
+        success: false,
+        data: null,
+        error: 'Pause duration must be between 1 and 3 months'
+      };
+    }
+
+    // Get the subscription
+    const { data: subscription, error: fetchError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('id', subscriptionId)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !subscription) {
+      return {
+        success: false,
+        data: null,
+        error: fetchError?.message || 'Subscription not found'
+      };
+    }
+
+    // Pause on Razorpay if razorpay_subscription_id exists
+    if (subscription.razorpay_subscription_id) {
+      const { pauseRazorpaySubscription } = await import('./razorpayService');
+      const razorpayResult = await pauseRazorpaySubscription(subscription.razorpay_subscription_id, pauseMonths);
+      
+      if (!razorpayResult.success) {
+        console.warn('⚠️ Razorpay pause failed:', razorpayResult.error);
+        return {
+          success: false,
+          data: null,
+          error: 'Failed to pause subscription with payment provider'
+        };
+      }
+    }
+
+    const now = new Date();
+    const pausedUntil = new Date(now);
+    pausedUntil.setMonth(pausedUntil.getMonth() + pauseMonths);
+
+    // Update subscription to paused
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .update({
+        status: 'paused',
+        paused_at: now.toISOString(),
+        paused_until: pausedUntil.toISOString(),
+        updated_at: now.toISOString()
+      })
+      .eq('id', subscriptionId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error pausing subscription:', error);
+      return {
+        success: false,
+        data: null,
+        error: error.message
+      };
+    }
+
+    return {
+      success: true,
+      data: data,
+      error: null
+    };
+  } catch (error) {
+    console.error('❌ Unexpected error pausing subscription:', error);
+    return {
+      success: false,
+      data: null,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Resume a paused subscription
+ * @param {string} subscriptionId 
+ * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
+ */
+export const resumeSubscription = async (subscriptionId) => {
+  try {
+    // Check authentication first
+    const authResult = await checkAuthentication();
+    
+    if (!authResult.isAuthenticated) {
+      return {
+        success: false,
+        data: null,
+        error: 'User must be authenticated to resume subscription'
+      };
+    }
+
+    const userId = authResult.user.id;
+
+    // Get the subscription
+    const { data: subscription, error: fetchError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('id', subscriptionId)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !subscription) {
+      return {
+        success: false,
+        data: null,
+        error: fetchError?.message || 'Subscription not found'
+      };
+    }
+
+    // Check if subscription is paused
+    if (subscription.status !== 'paused') {
+      return {
+        success: false,
+        data: null,
+        error: 'Subscription is not paused'
+      };
+    }
+
+    // Resume on Razorpay if razorpay_subscription_id exists
+    if (subscription.razorpay_subscription_id) {
+      // TODO: Add Razorpay resume API call if available
+      // Most payment gateways don't have explicit resume - you just reactivate
+    }
+
+    const now = new Date().toISOString();
+
+    // Update subscription to active
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .update({
+        status: 'active',
+        paused_at: null,
+        paused_until: null,
+        updated_at: now
+      })
+      .eq('id', subscriptionId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error resuming subscription:', error);
+      return {
+        success: false,
+        data: null,
+        error: error.message
+      };
+    }
+
+    return {
+      success: true,
+      data: data,
+      error: null
+    };
+  } catch (error) {
+    console.error('❌ Unexpected error resuming subscription:', error);
     return {
       success: false,
       data: null,

@@ -1025,7 +1025,6 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
       rawProfile = JSON.parse(student.profile);
       profileData = { ...student, ...rawProfile };
     } catch (e) {
-      console.warn('Profile parsing failed:', e);
       rawProfile = {};
       profileData = student;
     }

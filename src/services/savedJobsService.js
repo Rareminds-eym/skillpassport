@@ -12,7 +12,6 @@ export class SavedJobsService {
    */
   static async saveJob(studentId, opportunityId) {
     try {
-      console.log('💾 Saving job:', { studentId, opportunityId });
 
       // Check if already saved
       const { data: existing, error: checkError } = await supabase
@@ -23,7 +22,6 @@ export class SavedJobsService {
         .single();
 
       if (existing) {
-        console.log('⚠️ Job already saved');
         return {
           success: true,
           message: 'Job is already saved',
@@ -49,7 +47,6 @@ export class SavedJobsService {
         throw error;
       }
 
-      console.log('✅ Successfully saved job:', data);
 
       return {
         success: true,
@@ -75,7 +72,6 @@ export class SavedJobsService {
    */
   static async unsaveJob(studentId, opportunityId) {
     try {
-      console.log('🗑️ Unsaving job:', { studentId, opportunityId });
 
       const { data, error } = await supabase
         .from('saved_jobs')
@@ -89,7 +85,6 @@ export class SavedJobsService {
         throw error;
       }
 
-      console.log('✅ Successfully unsaved job:', data);
 
       return {
         success: true,

@@ -7,7 +7,6 @@ import { supabase } from '../utils/api';
 
 export async function debugSupabaseData() {
   try {
-    console.log('🔍 Fetching sample student data from Supabase...');
     
     // Get first few students to see structure
     const { data, error } = await supabase
@@ -20,18 +19,13 @@ export async function debugSupabaseData() {
       return;
     }
 
-    console.log('📊 Sample student records:', data);
     
     if (data && data.length > 0) {
       const firstStudent = data[0];
-      console.log('📊 First student structure:', firstStudent);
-      console.log('📊 Profile keys:', Object.keys(firstStudent.profile || {}));
-      console.log('📊 Profile content:', firstStudent.profile);
       
       // Check for skills in profile
       const profile = firstStudent.profile;
       if (profile) {
-        console.log('📊 Skills in profile:', {
           technicalSkills: profile.technicalSkills || 'Not found',
           softSkills: profile.softSkills || 'Not found',
           training: profile.training || 'Not found',
@@ -50,5 +44,4 @@ export async function debugSupabaseData() {
 // Auto-run if in development
 if (typeof window !== 'undefined') {
   window.debugSupabaseData = debugSupabaseData;
-  console.log('🔧 Run debugSupabaseData() in console to see data structure');
 }

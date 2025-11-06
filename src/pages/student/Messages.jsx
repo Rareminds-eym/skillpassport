@@ -49,7 +49,6 @@ const Messages = () => {
   
   // Debug logging
   useEffect(() => {
-    console.log('📧 Messages Debug:', {
       userEmail,
       studentId,
       studentData,
@@ -101,12 +100,10 @@ const Messages = () => {
   // Mark messages as read when conversation is selected
   useEffect(() => {
     if (!selectedConversationId || !studentId) {
-      console.log('⚠️ [Student] Skipping mark-as-read: no conversation or studentId');
       return;
     }
     
     const conversation = conversations.find(c => c.id === selectedConversationId);
-    console.log('🔍 [Student] Selected conversation:', {
       id: selectedConversationId,
       found: !!conversation,
       unreadCount: conversation?.student_unread_count
@@ -116,19 +113,16 @@ const Messages = () => {
     
     // Only mark as read if there are actually unread messages
     if (!hasUnread) {
-      console.log('ℹ️ [Student] No unread messages, skipping');
       return;
     }
     
     // Prevent duplicate marking
     const markKey = `${selectedConversationId}-${conversation?.student_unread_count}`;
     if (markedAsReadRef.current.has(markKey)) {
-      console.log('⚠️ [Student] Already marked this conversation state, skipping');
       return;
     }
     markedAsReadRef.current.add(markKey);
     
-    console.log('📖 [Student] Marking conversation as read:', selectedConversationId);
     
     // Optimistically clear the unread count immediately in UI (instant feedback)
     if (clearUnreadCount) {
@@ -140,7 +134,6 @@ const Messages = () => {
     // Mark as read in database - no debounce since we already prevent duplicates
     MessageService.markConversationAsRead(selectedConversationId, studentId)
       .then(() => {
-        console.log('✅ [Student] Marked as read successfully');
       })
       .catch(err => {
         console.error('❌ [Student] Failed to mark as read:', err);
@@ -245,7 +238,6 @@ const Messages = () => {
             link: `/recruiter/messages?conversation=${selectedConversationId}`
           });
         } catch (notifError) {
-          console.warn('Could not send notification:', notifError);
         }
         
         setMessageInput('');

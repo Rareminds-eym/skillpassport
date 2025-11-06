@@ -35,7 +35,6 @@ export const useRealtimePresence = ({
   useEffect(() => {
     if (!enabled || !channelName || !userPresence.userId) return;
 
-    console.log('👋 Setting up presence for:', channelName);
 
     let channel: any;
 
@@ -46,7 +45,6 @@ export const useRealtimePresence = ({
           userPresence,
           // On user join
           (user) => {
-            console.log('👤 User joined:', user);
             setOnlineUsers((prev) => {
               // Avoid duplicates
               if (prev.some(u => u.userId === user.userId)) {
@@ -57,12 +55,10 @@ export const useRealtimePresence = ({
           },
           // On user leave
           (user) => {
-            console.log('👤 User left:', user);
             setOnlineUsers((prev) => prev.filter(u => u.userId !== user.userId));
           },
           // On sync
           (users) => {
-            console.log('🔄 Presence synced:', users);
             setOnlineUsers(users);
             setIsConnected(true);
           }
@@ -77,7 +73,6 @@ export const useRealtimePresence = ({
 
     // Cleanup
     return () => {
-      console.log('🔕 Cleaning up presence for:', channelName);
       RealtimeService.unsubscribe(channelName);
       setIsConnected(false);
     };
@@ -94,7 +89,6 @@ export const useRealtimePresence = ({
           userPresence.userId,
           status
         );
-        console.log('✅ Status updated to:', status);
       } catch (error) {
         console.error('❌ Error updating status:', error);
       }

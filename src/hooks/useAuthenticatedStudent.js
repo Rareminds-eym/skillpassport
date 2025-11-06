@@ -31,11 +31,9 @@ export const useAuthenticatedStudent = () => {
         setLoading(true);
         setError(null);
 
-        console.log('👤 Fetching authenticated student data for user:', user.id);
 
         // Use userProfile from auth context if available
         if (userProfile) {
-          console.log('✅ Using cached user profile from auth context');
           setStudentData(userProfile);
           setLoading(false);
           return;
@@ -53,11 +51,9 @@ export const useAuthenticatedStudent = () => {
           setError(dbError.message);
           setStudentData(null);
         } else if (data) {
-          console.log('✅ Student data fetched successfully:', data);
           setStudentData(data);
           setError(null);
         } else {
-          console.warn('⚠️ No student data found for user:', user.id);
           setError('Student profile not found');
           setStudentData(null);
         }
@@ -81,7 +77,6 @@ export const useAuthenticatedStudent = () => {
     }
 
     try {
-      console.log('🔄 Updating student data:', updates);
 
       const { data, error } = await supabase
         .from('students')
@@ -95,7 +90,6 @@ export const useAuthenticatedStudent = () => {
         throw error;
       }
 
-      console.log('✅ Student data updated successfully:', data);
       setStudentData(data);
       return { success: true, data };
 
@@ -123,7 +117,6 @@ export const useAuthenticatedStudent = () => {
         console.error('❌ Error refreshing student data:', error);
         setError(error.message);
       } else {
-        console.log('✅ Student data refreshed:', data);
         setStudentData(data);
         setError(null);
       }

@@ -21,28 +21,20 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   // State for employability score
   const [employabilityData, setEmployabilityData] = useState(getDefaultEmployabilityScore());
   
-  console.log('🔍 ProfileHeroEdit - userEmail from localStorage:', userEmail);
   
   // Fetch real student data
   const { studentData: realStudentData, loading, error } = useStudentDataByEmail(userEmail);
   
-  console.log('🔍 ProfileHeroEdit - realStudentData:', realStudentData);
-  console.log('🔍 ProfileHeroEdit - loading:', loading);
-  console.log('🔍 ProfileHeroEdit - error:', error);
   
   // Calculate employability score when student data changes
   useEffect(() => {
     if (realStudentData) {
-      console.log('🔍 Calculating employability score for:', realStudentData.profile?.name);
-      console.log('🔍 Full student data for calculation:', realStudentData);
       
       // Pass the entire realStudentData object which contains profile, technicalSkills, softSkills, etc.
       const scoreData = calculateEmployabilityScore(realStudentData);
-      console.log('📊 Calculated employability score:', scoreData);
       
       // If score is 0, try with minimum score calculation
       if (scoreData.employabilityScore === 0) {
-        console.log('📊 Score is 0, using fallback calculation');
         const fallbackData = {
           employabilityScore: 42,
           level: "Moderate",
@@ -62,7 +54,6 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       }
     } else {
       // Use default score when no data available
-      console.log('📊 No student data, using default score');
       setEmployabilityData(getDefaultEmployabilityScore());
     }
   }, [realStudentData]);
@@ -73,15 +64,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   // Debug: Log the display data to see what we have
   useEffect(() => {
     if (displayData) {
-      console.log('🔍 ProfileHeroEdit - displayData:', displayData);
-      console.log('🔍 Social Links Check:', {
-        github: displayData.github_link,
-        portfolio: displayData.portfolio_link,
-        linkedin: displayData.linkedin_link,
-        twitter: displayData.twitter_link,
-        instagram: displayData.instagram_link,
-        facebook: displayData.facebook_link
-      });
+      // Data is available
     }
   }, [displayData]);
   
@@ -115,7 +98,6 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     }
   };
   
-  console.log('🔍 ProfileHeroEdit - displayData.name:', displayData?.name);
   if (!displayData) {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-700 text-center">

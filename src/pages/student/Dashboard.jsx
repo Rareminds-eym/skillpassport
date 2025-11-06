@@ -216,7 +216,6 @@ const StudentDashboard = () => {
 
   // Debug log for authentication and student data
   useEffect(() => {
-    console.log("👤 Dashboard: Student data state changed:", {
       studentData: studentData?.id,
       loading: authStudentLoading,
       error: authStudentError,
@@ -225,7 +224,6 @@ const StudentDashboard = () => {
 
   // Debug log for opportunities
   useEffect(() => {
-    console.log("🔍 Dashboard: Opportunities state changed:", {
       opportunities,
       loading: opportunitiesLoading,
       error: opportunitiesError,
@@ -235,7 +233,6 @@ const StudentDashboard = () => {
 
   // Debug log for recent updates
   useEffect(() => {
-    console.log("📢 Dashboard: Recent updates state changed:", {
       recentUpdates,
       loading: recentUpdatesLoading,
       error: recentUpdatesError,
@@ -248,7 +245,6 @@ const StudentDashboard = () => {
   useEffect(() => {
     if (!userEmail || isViewingOthersProfile) return;
 
-    console.log("🔔 Setting up real-time subscription for opportunities...");
 
     // Subscribe to real-time changes in opportunities table
     const channel = supabase
@@ -261,14 +257,12 @@ const StudentDashboard = () => {
           table: "opportunities",
         },
         (payload) => {
-          console.log("🆕 New opportunity detected:", payload.new);
 
           // Refresh opportunities list
           refreshOpportunities();
 
           // Refresh Recent Updates to show the new opportunity
           setTimeout(() => {
-            console.log(
               "🔄 Refreshing Recent Updates after new opportunity..."
             );
             refreshRecentUpdates();
@@ -283,7 +277,6 @@ const StudentDashboard = () => {
           table: "opportunities",
         },
         (payload) => {
-          console.log("✏️ Opportunity updated:", payload.new);
           refreshOpportunities();
         }
       )
@@ -291,7 +284,6 @@ const StudentDashboard = () => {
 
     // Cleanup subscription on unmount
     return () => {
-      console.log("� Unsubscribing from opportunities changes...");
       supabase.removeChannel(channel);
     };
   }, [userEmail, isViewingOthersProfile]);
@@ -300,8 +292,6 @@ const StudentDashboard = () => {
   useEffect(() => {
     const testSupabaseDirectly = async () => {
       try {
-        console.log("🧪 Testing Supabase connection directly...");
-        console.log("🔑 Environment vars:", {
           url: import.meta.env.VITE_SUPABASE_URL ? "Set" : "Missing",
           key: import.meta.env.VITE_SUPABASE_ANON_KEY ? "Set" : "Missing",
         });
@@ -310,11 +300,9 @@ const StudentDashboard = () => {
           .from("opportunities")
           .select("*", { count: "exact" });
 
-        console.log("🧪 Direct test result:", { data, error, count });
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
-        console.log(
           "ℹ️ To debug recent updates, run: await window.debugRecentUpdates() in console"
         );
       } catch (err) {
@@ -407,7 +395,6 @@ const StudentDashboard = () => {
           await refresh();
 
           // Refresh Recent Updates to show the new activity
-          console.log("🔄 Refreshing Recent Updates after save...");
           refreshRecentUpdates();
         }
       } catch (err) {
@@ -472,7 +459,6 @@ const StudentDashboard = () => {
         </CardHeader>
         <CardContent className="p-6 space-y-3">
           {(() => {
-            console.log("🎭 Rendering opportunities with:", {
               loading: opportunitiesLoading,
               error: opportunitiesError,
               opportunities,
@@ -1330,8 +1316,6 @@ const StudentDashboard = () => {
 
   const renderCardsByPriority = () => {
     const order = cardOrders[activeNavItem] || cardOrders.opportunities;
-    console.log("Active nav item:", activeNavItem);
-    console.log("Card order:", order);
 
     return order.map((cardKey, index) => {
       const card = allCards[cardKey];
@@ -1396,7 +1380,6 @@ const StudentDashboard = () => {
                       key={item.id}
                       variant={isActive ? "default" : "outline"}
                       onClick={() => {
-                        console.log('Clicked nav item:', item.id);
                         setActiveNavItem(item.id);
                       }}
                       className={`flex items-center gap-2 transition-all ${

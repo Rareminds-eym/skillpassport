@@ -20,6 +20,12 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
     [user, subscriptionData]
   );
 
+  // Check if user has any manageable subscription (active or paused)
+  const hasManageableSubscription = useMemo(
+    () => user && subscriptionData && ['active', 'paused', 'cancelled'].includes(subscriptionData.status),
+    [user, subscriptionData]
+  );
+
   // Determine if loading
   const isLoading = authLoading || subscriptionLoading;
 
@@ -49,18 +55,20 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
         break;
 
       case 'manage':
-        // Manage page - requires authentication and subscription
+        // Manage page - requires authentication and manageable subscription
+        // Allow active, paused, or recently cancelled subscriptions
         if (!user) {
           setRedirecting(true);
           navigate(addQueryParams('/subscription/plans'), { 
             replace: true,
             state: { from: location.pathname }
           });
-        } else if (!subscriptionData) {
+        } else if (!hasManageableSubscription) {
+          // No subscription or expired subscription - redirect to plans
           setRedirecting(true);
           navigate(addQueryParams('/subscription/plans'), { 
             replace: true,
-            state: { from: location.pathname }
+            state: { from: location.pathname, message: 'no-subscription' }
           });
         }
         break;
@@ -68,7 +76,7 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
       default:
         break;
     }
-  }, [user, subscriptionData, hasActiveSubscription, isLoading, navigate, mode, location]);
+  }, [user, subscriptionData, hasActiveSubscription, hasManageableSubscription, isLoading, navigate, mode, location]);
 
   // Show loading state while checking or redirecting
   if (isLoading || redirecting) {

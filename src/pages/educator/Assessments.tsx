@@ -205,11 +205,9 @@ const Assessments = () => {
                 
                 // If no authenticated user, check for development mode or use fallback
                 if (!user || authError) {
-                    console.log('No authenticated user, starting with empty assignments');
                     // For development: allow using a test educator ID from localStorage
                     const devEducatorId = localStorage.getItem('dev_educator_id');
                     if (devEducatorId) {
-                        console.log('Using development educator ID:', devEducatorId);
                         setCurrentEducatorId(devEducatorId);
                         // Try to fetch assignments with dev ID
                         try {
@@ -234,7 +232,6 @@ const Assessments = () => {
                             }));
                             setTasks(transformedTasks);
                         } catch (err) {
-                            console.log('No assignments found for dev educator');
                             setTasks([]);
                         }
                     } else {
@@ -336,7 +333,6 @@ const Assessments = () => {
                     educatorId = newDevId;
                     educatorName = 'Dev Educator';
                     setCurrentEducatorId(newDevId);
-                    console.log('Generated new dev educator ID:', newDevId);
                 }
             }
             
@@ -492,7 +488,6 @@ const Assessments = () => {
                         : task
                 ));
                 
-                console.log(`Assigned ${studentIds.length} students to assignment ${newlyCreatedAssignmentId}`);
             }
             
             setShowStudentSelectionModal(false);

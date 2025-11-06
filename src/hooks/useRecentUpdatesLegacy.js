@@ -51,7 +51,6 @@ export const useRecentUpdatesLegacy = () => {
       // Simulate API delay for realistic behavior
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      console.log('📚 Loading legacy recent updates (fallback mode)');
       setRecentUpdates(mockRecentUpdates);
       
     } catch (err) {

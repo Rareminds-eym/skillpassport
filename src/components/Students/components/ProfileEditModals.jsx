@@ -1332,7 +1332,6 @@ export const TrainingEditModal = ({ isOpen, onClose, data, onSave }) => {
                     </span>
                     <span className="text-indigo-700">{course.progress}%</span>
                   </div>
-                  {console.log(course.progress)}
                   <div className="relative">
                     {/* <Progress
                       value={course.progress}
@@ -2715,8 +2714,6 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
   // Initialize form data when modal opens
   useEffect(() => {
     if (data && isOpen) {
-      console.log("📝 PersonalInfoEditModal: Initializing with data:", data);
-      console.log("📝 Data keys:", Object.keys(data));
 
       // Extract contact number from formatted phone string if needed
       const extractNumber = (formattedPhone) => {
@@ -2756,7 +2753,6 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
       };
       const getNmId = () => {
         const nmId = data.nm_id || "";
-        console.log("📝 NM ID extracted:", nmId);
         return nmId;
       };
 
@@ -2791,7 +2787,6 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
         other_social_links: getOtherSocialLinks(),
       };
 
-      console.log("📝 Form values extracted:", formValues);
       setFormData(formValues);
     }
   }, [data, isOpen]);
@@ -2807,7 +2802,6 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
     }
 
     setIsSaving(true);
-    console.log("💾 PersonalInfoEditModal: Saving personal info:", formData);
 
     try {
       await onSave(formData);

@@ -41,7 +41,6 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
       // Check cache first
       const cached = emailCheckCache.get(email);
       if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
-        console.log('📦 Using cached result for:', email);
         setEmailExists(cached.exists);
         setExistingUserInfo(cached.info);
         return;
@@ -203,8 +202,6 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
         return;
       }
 
-      console.log('✅ User registered successfully:', result.user);
-      console.log('🎓 Role set to: student');
       
       // Store user data temporarily for payment flow
       const userData = {

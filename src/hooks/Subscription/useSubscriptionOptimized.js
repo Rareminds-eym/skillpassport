@@ -96,7 +96,6 @@ export const useSubscriptionOptimized = () => {
       (now - subscriptionCache.timestamp) < CACHE_DURATION;
 
     if (isCacheValid) {
-      console.log('📦 Using cached subscription data');
       setSubscriptionData(subscriptionCache.data);
       setLoading(false);
       return;
@@ -110,7 +109,6 @@ export const useSubscriptionOptimized = () => {
     fetchingRef.current = true;
 
     try {
-      console.log('🔍 Fetching fresh subscription data for user:', user.id);
       const result = await getActiveSubscription();
 
       if (!isMountedRef.current) return;
@@ -124,9 +122,7 @@ export const useSubscriptionOptimized = () => {
         subscriptionCache.timestamp = Date.now();
 
         setSubscriptionData(formattedData);
-        console.log('✅ Subscription data loaded and cached');
       } else {
-        console.log('ℹ️ No subscription found');
         subscriptionCache.data = null;
         subscriptionCache.userId = user.id;
         subscriptionCache.timestamp = Date.now();

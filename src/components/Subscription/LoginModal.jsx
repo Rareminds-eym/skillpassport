@@ -67,8 +67,6 @@ export default function LoginModal({ isOpen, onClose, selectedPlan, studentType,
         return;
       }
 
-      console.log('✅ User logged in successfully:', result.user);
-      console.log('🎭 Role:', result.role);
       
       // Store user data for subscription flow
       const userData = {
@@ -223,7 +221,6 @@ export default function LoginModal({ isOpen, onClose, selectedPlan, studentType,
                     className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline transition-all"
                     onClick={() => {
                       // Handle forgot password
-                      console.log('Forgot password clicked');
                     }}
                   >
                     Forgot password?

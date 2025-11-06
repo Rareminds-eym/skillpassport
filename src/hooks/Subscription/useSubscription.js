@@ -16,14 +16,10 @@ export const useSubscription = () => {
       }
 
       try {
-        console.log('🔍 Fetching subscription for user:', user.id);
-        console.log('🔍 User object:', user);
         const result = await getActiveSubscription();
         
-        console.log('📦 Subscription result:', result);
         
         if (result.success && result.data) {
-          console.log('✅ Subscription data loaded:', result.data);
           
           // Map plan_type to plan ID
           const planTypeMap = {
@@ -64,6 +60,7 @@ export const useSubscription = () => {
           
           // Transform database data to match UI expectations
           const formattedData = {
+            id: result.data.id, // Subscription ID for cancellation
             plan: planId,
             status: result.data.status,
             startDate: result.data.subscription_start_date,
@@ -79,11 +76,11 @@ export const useSubscription = () => {
             phone: result.data.phone,
             billingCycle: result.data.billing_cycle,
             razorpaySubscriptionId: result.data.razorpay_subscription_id,
-            cancelledAt: result.data.cancelled_at
+            cancelledAt: result.data.cancelled_at,
+            cancellationReason: result.data.cancellation_reason
           };
           setSubscriptionData(formattedData);
         } else {
-          console.log('ℹ️ No subscription found');
           setSubscriptionData(null);
         }
       } catch (err) {

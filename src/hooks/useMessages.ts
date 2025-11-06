@@ -23,7 +23,6 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
     queryKey: ['messages', conversationId],
     queryFn: async () => {
       if (!conversationId) return [];
-      console.log('🔄 Fetching messages for conversation:', conversationId);
       return await MessageService.getConversationMessages(conversationId);
     },
     enabled: enabled && !!conversationId,
@@ -38,12 +37,10 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
   useEffect(() => {
     if (!conversationId || !enabled) return;
 
-    console.log('🔔 Setting up real-time subscription for:', conversationId);
 
     const subscription = MessageService.subscribeToConversation(
       conversationId,
       (newMessage: Message) => {
-        console.log('📨 Real-time message received:', newMessage);
         
         // Optimistically update the cache
         queryClient.setQueryData<Message[]>(
@@ -60,7 +57,6 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
     );
 
     return () => {
-      console.log('🔕 Unsubscribing from conversation:', conversationId);
       subscription.unsubscribe();
     };
   }, [conversationId, enabled, queryClient]);
@@ -136,7 +132,6 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
       console.error('❌ Error sending message:', err);
     },
     onSuccess: (data) => {
-      console.log('✅ Message sent successfully:', data);
       
       // Replace optimistic message with real one
       queryClient.setQueryData<Message[]>(

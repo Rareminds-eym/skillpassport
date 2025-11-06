@@ -37,7 +37,6 @@ export const createRazorpayOrder = async (orderData) => {
   try {
     // DEMO MODE: Create mock order for testing without backend
     if (DEMO_MODE) {
-      console.log('🔧 DEMO MODE: Creating mock Razorpay order', orderData);
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
       
@@ -78,8 +77,6 @@ export const verifyPayment = async (paymentData) => {
   try {
     // DEMO MODE: Mock verification for testing
     if (DEMO_MODE) {
-      console.log('🔧 DEMO MODE: Mock payment verification', paymentData);
-      console.warn('⚠️ WARNING: In production, ALWAYS verify payments on your backend!');
       
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -154,7 +151,6 @@ export const saveSubscriptionToDatabase = async (subscriptionData) => {
       throw error;
     }
 
-    console.log('✅ Subscription saved to database:', data);
     return { success: true, data };
   } catch (error) {
     console.error('Failed to save subscription:', error);
@@ -197,7 +193,6 @@ export const savePaymentTransaction = async (transactionData) => {
       throw error;
     }
 
-    console.log('✅ Payment transaction saved:', data);
     return { success: true, data };
   } catch (error) {
     console.error('Failed to save payment transaction:', error);
@@ -224,6 +219,98 @@ function calculateEndDate(duration) {
   
   return now.toISOString();
 }
+
+/**
+ * Cancel Razorpay subscription
+ * @param {string} razorpaySubscriptionId - Razorpay subscription ID
+ * @returns {Promise<Object>} Cancellation result
+ */
+export const cancelRazorpaySubscription = async (razorpaySubscriptionId) => {
+  try {
+    // DEMO MODE: Mock cancellation for testing
+    if (DEMO_MODE) {
+      console.log('🔴 DEMO MODE: Simulating Razorpay subscription cancellation');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return {
+        success: true,
+        message: 'Subscription cancelled successfully (DEMO MODE)',
+        subscription_id: razorpaySubscriptionId,
+        status: 'cancelled'
+      };
+    }
+
+    // PRODUCTION MODE: Call backend API to cancel Razorpay subscription
+    const response = await fetch('/api/payments/cancel-subscription', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        subscription_id: razorpaySubscriptionId,
+        cancel_at_cycle_end: false // Cancel immediately but keep access until end date
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to cancel Razorpay subscription');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error cancelling Razorpay subscription:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Pause Razorpay subscription
+ * @param {string} razorpaySubscriptionId - Razorpay subscription ID
+ * @param {number} pauseMonths - Number of months to pause (1-3)
+ * @returns {Promise<Object>} Pause result
+ */
+export const pauseRazorpaySubscription = async (razorpaySubscriptionId, pauseMonths = 1) => {
+  try {
+    // DEMO MODE: Mock pause for testing
+    if (DEMO_MODE) {
+      console.log('⏸️  DEMO MODE: Simulating Razorpay subscription pause');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return {
+        success: true,
+        message: `Subscription paused for ${pauseMonths} month(s) (DEMO MODE)`,
+        subscription_id: razorpaySubscriptionId,
+        status: 'paused',
+        pause_months: pauseMonths
+      };
+    }
+
+    // PRODUCTION MODE: Call backend API to pause Razorpay subscription
+    const response = await fetch('/api/payments/pause-subscription', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        subscription_id: razorpaySubscriptionId,
+        pause_months: pauseMonths
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to pause Razorpay subscription');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error pausing Razorpay subscription:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
 
 /**
  * Initialize Razorpay payment

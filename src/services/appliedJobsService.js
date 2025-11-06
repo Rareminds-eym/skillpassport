@@ -68,11 +68,9 @@ export class AppliedJobsService {
           }]);
 
         if (pipelineError) {
-          console.warn('Failed to add to pipeline:', pipelineError);
           // Don't fail the application if pipeline insert fails
         }
       } catch (pipelineErr) {
-        console.warn('Pipeline sync error:', pipelineErr);
       }
 
       return {

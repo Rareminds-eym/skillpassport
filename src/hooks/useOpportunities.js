@@ -30,24 +30,20 @@ export const useOpportunities = (options = {}) => {
     setError(null);
 
     try {
-      console.log('🔍 useOpportunities: Starting fetch with options:', {
         studentSkills,
         activeOnly,
         filters
       });
 
       // Simplified: Always fetch all opportunities for now
-      console.log('📋 Fetching all opportunities');
       const data = await OpportunitiesService.getAllOpportunities();
 
-      console.log('📊 Raw data received:', data);
 
       // Format opportunities for display
       const formattedOpportunities = data.map(opp => 
         OpportunitiesService.formatOpportunityForDisplay(opp)
       );
 
-      console.log('✨ Formatted opportunities:', formattedOpportunities);
       setOpportunities(formattedOpportunities);
     } catch (err) {
       console.error('❌ Error fetching opportunities:', err);
@@ -129,7 +125,6 @@ export const useOpportunities = (options = {}) => {
 
   // Fetch opportunities on mount if enabled
   useEffect(() => {
-    console.log('🚀 useOpportunities: Mount effect triggered', { fetchOnMount });
     if (fetchOnMount) {
       fetchOpportunities();
     }
@@ -137,7 +132,6 @@ export const useOpportunities = (options = {}) => {
 
   // Re-fetch when dependencies change
   useEffect(() => {
-    console.log('🔄 useOpportunities: Dependencies changed', {
       filters,
       studentSkills,
       activeOnly,

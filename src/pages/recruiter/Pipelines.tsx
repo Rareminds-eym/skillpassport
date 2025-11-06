@@ -107,7 +107,6 @@ const AddFromTalentPoolModal = ({ isOpen, onClose, requisitionId, targetStage, o
           currentRecruiterId = user.id || user.recruiter_id;
         }
       } catch (e) {
-        console.warn('Failed to parse user from localStorage:', e);
       }
 
       if (successCount > 0 && currentRecruiterId) {
@@ -125,7 +124,6 @@ const AddFromTalentPoolModal = ({ isOpen, onClose, requisitionId, targetStage, o
         );
 
         if (!notifResult.success) {
-          console.warn('Notification failed:', notifResult.error);
         }
 
         onSuccess?.();
@@ -325,7 +323,6 @@ const NextActionModal = ({ isOpen, onClose, candidate, onSuccess }) => {
       );
 
       if (!notifResult.success) {
-        console.warn('Notification failed:', notifResult.error);
       }
 
       onSuccess?.();
@@ -766,7 +763,6 @@ const Pipelines = ({ onViewProfile }) => {
       currentRecruiterId = user.id || user.recruiter_id;
     }
   } catch (e) {
-    console.warn('Failed to parse user from localStorage:', e);
   }
 
   const {
@@ -813,29 +809,23 @@ const Pipelines = ({ onViewProfile }) => {
         return dateB.getTime() - dateA.getTime();
       });
       setSelectedJob(sortedOpportunities[0].id);
-      console.log('Auto-selected most recent opportunity:', sortedOpportunities[0].id, sortedOpportunities[0].job_title);
     }
   }, [opportunitiesLoading, opportunities, selectedJob]);
 
   // Fetch pipeline candidates when job, filters, or sort changes
   React.useEffect(() => {
-    console.log('[Pipelines] useEffect triggered:', { selectedJob, hasFilters: !!filters, hasSortOptions: !!sortOptions });
     if (selectedJob) {
       loadPipelineCandidates();
     } else {
-      console.log('[Pipelines] No job selected, skipping load');
     }
   }, [selectedJob, filters, sortOptions]);
 
   const loadPipelineCandidates = async () => {
-    console.log('[Pipelines] loadPipelineCandidates called with selectedJob:', selectedJob);
     
     if (!selectedJob) {
-      console.log('[Pipelines] No selectedJob, returning early');
       return;
     }
 
-    console.log('[Pipelines] Loading pipeline candidates for job:', selectedJob, 'with filters:', filters, 'and sort:', sortOptions);
     
     // Check if any filters are active
     const hasActiveFilters = 
@@ -850,14 +840,11 @@ const Pipelines = ({ onViewProfile }) => {
       filters.hasNextAction !== null ||
       filters.assignedTo.length > 0;
 
-    console.log('[Pipelines] Has active filters:', hasActiveFilters);
 
     if (hasActiveFilters) {
       // Use filtered query with sorting
-      console.log('[Pipelines] Using filtered query');
       const { data, error } = await getPipelineCandidatesWithFilters(selectedJob, filters, sortOptions);
       
-      console.log('[Pipelines] Filtered query result:', { dataCount: data?.length, error });
       
       if (!error && data) {
         // Group by stage
@@ -887,17 +874,14 @@ const Pipelines = ({ onViewProfile }) => {
               last_updated: pc.updated_at || pc.created_at,
               student_id: pc.student_id
             }));
-          console.log(`[Pipelines] Stage ${stage}: ${newData[stage].length} candidates`);
         });
         
-        console.log('[Pipelines] Setting filtered pipeline data:', newData);
         setPipelineData(newData);
       } else {
         console.error('[Pipelines] Error loading filtered candidates:', error);
       }
     } else {
       // Use original stage-by-stage query (no filters, but apply sorting)
-      console.log('[Pipelines] No active filters, using stage-by-stage query');
       const stages = ['sourced', 'screened', 'interview_1', 'interview_2', 'offer', 'hired'];
       const newData: any = {
         sourced: [],
@@ -910,14 +894,12 @@ const Pipelines = ({ onViewProfile }) => {
 
       // If custom sort is applied, fetch all and sort
       if (sortOptions.field !== 'updated_at' || sortOptions.direction !== 'desc') {
-        console.log('[Pipelines] Custom sort applied, fetching all candidates');
         const { data: allData, error: allError } = await getPipelineCandidatesWithFilters(
           selectedJob, 
           { stages: [], skills: [], departments: [], locations: [], sources: [], aiScoreRange: {}, nextActionTypes: [], hasNextAction: null, assignedTo: [], dateAdded: {}, lastUpdated: {} },
           sortOptions
         );
 
-        console.log('[Pipelines] Sorted query result:', { dataCount: allData?.length, error: allError });
 
         if (!allError && allData) {
           stages.forEach(stage => {
@@ -936,21 +918,16 @@ const Pipelines = ({ onViewProfile }) => {
                 last_updated: pc.updated_at || pc.created_at,
                 student_id: pc.student_id
               }));
-            console.log(`[Pipelines] Stage ${stage}: ${newData[stage].length} candidates`);
           });
         }
 
-        console.log('[Pipelines] Setting sorted pipeline data:', newData);
         setPipelineData(newData);
         return;
       }
 
       // Default behavior - stage by stage
-      console.log('[Pipelines] Default behavior: loading stage by stage');
       for (const stage of stages) {
-        console.log(`[Pipelines] Loading stage: ${stage} for requisition: ${selectedJob}`);
         const { data, error } = await getPipelineCandidatesByStage(selectedJob, stage);
-        console.log(`[Pipelines] Stage ${stage}:`, { dataCount: data?.length, error, data });
 
         if (!error && data) {
           // Map pipeline_candidates to match expected format
@@ -968,22 +945,17 @@ const Pipelines = ({ onViewProfile }) => {
               last_updated: pc.updated_at || pc.created_at,
               student_id: pc.student_id
             };
-            console.log(`[Pipelines] Mapped candidate for ${stage}:`, mappedCandidate);
             return mappedCandidate;
           });
-          console.log(`[Pipelines] Stage ${stage} loaded: ${newData[stage].length} candidates`);
         } else {
           newData[stage] = [];
           if (error) {
             console.error(`[Pipelines] Error loading ${stage} candidates:`, error);
           } else {
-            console.log(`[Pipelines] No candidates in ${stage} stage`);
           }
         }
       }
 
-      console.log('[Pipelines] Final pipeline data:', newData);
-      console.log('[Pipelines] Total candidates across all stages:', 
         Object.values(newData).reduce((sum: number, arr: any) => sum + arr.length, 0)
       );
       setPipelineData(newData);
@@ -1073,7 +1045,6 @@ const Pipelines = ({ onViewProfile }) => {
             notificationRecruiterId = user.id || user.recruiter_id;
           }
         } catch (e) {
-          console.warn('Failed to parse user from localStorage:', e);
         }
 
 
@@ -1085,7 +1056,6 @@ const Pipelines = ({ onViewProfile }) => {
         );
 
         if (!notifResult.success) {
-          console.warn('Notification failed:', notifResult.error);
         }
       }
 
@@ -1240,7 +1210,6 @@ const Pipelines = ({ onViewProfile }) => {
       );
 
       if (!notifResult.success) {
-        console.warn('Notification failed:', notifResult.error);
       }
 
       setSelectedCandidates([]);

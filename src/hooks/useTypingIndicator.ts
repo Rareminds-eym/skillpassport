@@ -27,7 +27,6 @@ interface UseTypingIndicatorProps {
  * 
  * // Check if someone is typing
  * if (typingUsers.length > 0) {
- *   console.log(`${typingUsers[0].userName} is typing...`);
  * }
  * ```
  */
@@ -43,12 +42,10 @@ export const useTypingIndicator = ({
   useEffect(() => {
     if (!enabled || !conversationId) return;
 
-    console.log('⌨️ Setting up typing indicators for:', conversationId);
 
     const channel = RealtimeService.subscribeToTypingIndicators(
       conversationId,
       (indicator) => {
-        console.log('⌨️ Typing indicator received:', indicator);
 
         // Ignore own typing indicators
         if (indicator.userId === currentUserId) {
@@ -79,7 +76,6 @@ export const useTypingIndicator = ({
     );
 
     return () => {
-      console.log('🔕 Cleaning up typing indicators for:', conversationId);
       RealtimeService.unsubscribe(`conversation:${conversationId}`);
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
