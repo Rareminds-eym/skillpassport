@@ -24,6 +24,7 @@ import {
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
 import { getUserSubscriptions, cancelSubscription, pauseSubscription, resumeSubscription } from '../../services/subscriptionService';
+import { getSubscriptionStatusChecks, calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil } from '../../utils/subscriptionHelpers';
 
 const plans = [
   { 
@@ -84,33 +85,25 @@ function MySubscription() {
   const [billingHistoryFetched, setBillingHistoryFetched] = useState(false);
   const [isTogglingAutoRenew, setIsTogglingAutoRenew] = useState(false);
 
-  // Calculate days remaining and progress
-  const { daysRemaining, totalDays, progressPercentage } = useMemo(() => {
-    if (!subscriptionData?.endDate || !subscriptionData?.startDate) {
-      return { daysRemaining: null, totalDays: null, progressPercentage: 0 };
-    }
-    const startDate = new Date(subscriptionData.startDate);
-    const endDate = new Date(subscriptionData.endDate);
-    const today = new Date();
-    const diffTime = endDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const total = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-    const elapsed = total - diffDays;
-    const percentage = Math.min(100, Math.max(0, (elapsed / total) * 100));
-    return { 
-      daysRemaining: Math.max(0, diffDays), 
-      totalDays: total,
-      progressPercentage: percentage 
-    };
-  }, [subscriptionData]);
+  // Calculate days remaining and progress - optimized
+  const daysRemaining = useMemo(() => 
+    calculateDaysRemaining(subscriptionData?.endDate),
+    [subscriptionData?.endDate]
+  );
 
-  const formatDate = useCallback((dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  }, []);
+  const progressPercentage = useMemo(() => 
+    calculateProgressPercentage(subscriptionData?.startDate, subscriptionData?.endDate),
+    [subscriptionData?.startDate, subscriptionData?.endDate]
+  );
+
+  const totalDays = useMemo(() => {
+    if (!subscriptionData?.endDate || !subscriptionData?.startDate) return null;
+    const start = new Date(subscriptionData.startDate);
+    const end = new Date(subscriptionData.endDate);
+    return Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  }, [subscriptionData?.startDate, subscriptionData?.endDate]);
+
+  const formatDate = useCallback((dateString) => formatDateUtil(dateString), []);
 
   const handleUpgradePlan = () => {
     navigate('/subscription/plans?mode=upgrade');
@@ -324,6 +317,15 @@ function MySubscription() {
   // Get current plan early for use in billing history
   const currentPlan = plans.find(p => p.id === subscriptionData?.plan);
 
+  // Memoize status checks for better performance using optimized helper
+  // Must be called before any conditional returns (Rules of Hooks)
+  const statusChecks = useMemo(() => 
+    getSubscriptionStatusChecks(subscriptionData, daysRemaining),
+    [subscriptionData, daysRemaining]
+  );
+
+  const { isExpiringSoon, isExpired, isActive, isPaused, isActiveOrPaused: hasActiveOrPaused } = statusChecks;
+
   // Mock usage statistics
   const usageStats = {
     assessments: { used: 15, total: 50, label: 'Skill Assessments' },
@@ -386,11 +388,6 @@ function MySubscription() {
     );
   }
 
-  const isExpiringSoon = daysRemaining !== null && daysRemaining <= 7;
-  const isExpired = subscriptionData.status === 'expired';
-  const isActive = subscriptionData.status === 'active';
-  const isPaused = subscriptionData.status === 'paused';
-
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
@@ -422,28 +419,40 @@ function MySubscription() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Alert Banner */}
-        {(isExpiringSoon || isExpired) && (
+        {(isExpiringSoon || isExpired || isPaused) && (
           <div className={`mb-6 p-4 rounded-lg border flex items-start gap-3 ${
             isExpired 
               ? 'bg-neutral-50 border-neutral-300' 
+              : isPaused
+              ? 'bg-orange-50 border-orange-300'
               : 'bg-neutral-50 border-neutral-300'
           }`}>
-            <AlertCircle className="w-5 h-5 text-neutral-700 flex-shrink-0 mt-0.5" />
+            <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+              isPaused ? 'text-orange-700' : 'text-neutral-700'
+            }`} />
             <div className="flex-1">
-              <h3 className="font-medium text-neutral-900 text-sm">
-                {isExpired ? 'Subscription Expired' : 'Subscription Expiring Soon'}
+              <h3 className={`font-medium text-sm ${
+                isPaused ? 'text-orange-900' : 'text-neutral-900'
+              }`}>
+                {isExpired ? 'Subscription Expired' : isPaused ? 'Subscription Paused' : 'Subscription Expiring Soon'}
               </h3>
-              <p className="text-sm text-neutral-600 mt-1">
+              <p className={`text-sm mt-1 ${
+                isPaused ? 'text-orange-700' : 'text-neutral-600'
+              }`}>
                 {isExpired 
                   ? 'Your subscription has expired. Renew now to continue accessing premium features.'
+                  : isPaused
+                  ? 'Your subscription is currently paused. Resume it to continue accessing premium features.'
                   : `Your subscription will expire in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}. Renew to avoid interruption.`
                 }
               </p>
               <button
                 onClick={handleRenewSubscription}
-                className="mt-3 px-4 py-1.5 bg-neutral-900 text-white rounded-md text-sm font-medium hover:bg-neutral-800 transition-colors inline-flex items-center gap-2"
+                className={`mt-3 px-4 py-1.5 rounded-md text-sm font-medium hover:bg-neutral-800 transition-colors inline-flex items-center gap-2 ${
+                  isPaused ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-neutral-900 text-white'
+                }`}
               >
-                Renew Now
+                {isPaused ? 'Resume Subscription' : 'Renew Now'}
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -494,12 +503,14 @@ function MySubscription() {
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium ${
                         isActive 
                           ? 'bg-neutral-900 text-white' 
+                          : isPaused
+                          ? 'bg-orange-100 text-orange-800'
                           : isExpired
                           ? 'bg-neutral-200 text-neutral-700'
                           : 'bg-neutral-200 text-neutral-700'
                       }`}>
                         <Circle className={`w-1.5 h-1.5 ${
-                          isActive ? 'fill-white' : 'fill-neutral-600'
+                          isActive ? 'fill-white' : isPaused ? 'fill-orange-600' : 'fill-neutral-600'
                         }`} />
                         {subscriptionData.status.charAt(0).toUpperCase() + subscriptionData.status.slice(1)}
                       </span>

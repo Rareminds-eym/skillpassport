@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
+import { isActiveOrPaused, isManageable } from '../../utils/subscriptionHelpers';
 
 /**
  * Centralized Subscription Route Guard
@@ -16,13 +17,13 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
 
   // Memoize active subscription check
   const hasActiveSubscription = useMemo(
-    () => user && subscriptionData && subscriptionData.status === 'active',
+    () => user && subscriptionData && isActiveOrPaused(subscriptionData.status),
     [user, subscriptionData]
   );
 
   // Check if user has any manageable subscription (active or paused)
   const hasManageableSubscription = useMemo(
-    () => user && subscriptionData && ['active', 'paused', 'cancelled'].includes(subscriptionData.status),
+    () => user && subscriptionData && isManageable(subscriptionData.status),
     [user, subscriptionData]
   );
 

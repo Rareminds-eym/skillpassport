@@ -3,6 +3,8 @@
  * Centralized logic for subscription-related routing decisions
  */
 
+import { isActiveOrPaused } from './subscriptionHelpers';
+
 /**
  * Determines the appropriate route based on user auth and subscription status
  * @param {Object} user - The authenticated user object
@@ -34,12 +36,12 @@ export const getSubscriptionRouteDecision = (user, subscriptionData) => {
     };
   }
 
-  // User has active subscription
-  if (subscriptionData.status === 'active') {
+  // User has active or paused subscription
+  if (isActiveOrPaused(subscriptionData.status)) {
     return {
       shouldRedirect: false,
       targetRoute: '/subscription/manage',
-      reason: 'active_subscription',
+      reason: subscriptionData.status === 'active' ? 'active_subscription' : 'paused_subscription',
       canAccessManage: true,
       canAccessPayment: false, // Should redirect to manage
       canAccessPlans: true
@@ -117,7 +119,7 @@ export const getSubscriptionCTA = (subscriptionData, planId) => {
     };
   }
 
-  if (subscriptionData.status === 'active') {
+  if (isActiveOrPaused(subscriptionData.status)) {
     if (selectedPlanPrice > currentPlanPrice) {
       return {
         label: 'Upgrade Plan',
@@ -161,7 +163,8 @@ const getPlanPrice = (planId) => {
 export const isValidStatusTransition = (currentStatus, newStatus) => {
   const validTransitions = {
     pending: ['active', 'cancelled'],
-    active: ['expired', 'cancelled'],
+    active: ['expired', 'cancelled', 'paused'],
+    paused: ['active', 'cancelled'],
     expired: ['active'], // Renewal
     cancelled: ['active'] // Reactivation
   };
@@ -182,6 +185,14 @@ export const getSubscriptionUrgency = (subscriptionData) => {
   const endDate = new Date(subscriptionData.endDate);
   const today = new Date();
   const daysRemaining = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+
+  if (subscriptionData.status === 'paused') {
+    return {
+      level: 'warning',
+      message: 'Your subscription is paused. Resume it to continue accessing premium features.',
+      daysRemaining
+    };
+  }
 
   if (subscriptionData.status === 'expired') {
     return {
