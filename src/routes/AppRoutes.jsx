@@ -103,8 +103,8 @@ const EducatorMediaManager = lazy(() =>
   import("../pages/educator/MediaManager")
 );
 
-// Admin pages
-const AdminDashboard = lazy(() =>
+// ===== Admins (Role-Based) =====
+const CollegeDashboard = lazy(() =>
   import("../pages/admin/collegeAdmin/Dashboard")
 );
 const DepartmentManagement = lazy(() =>
@@ -112,6 +112,20 @@ const DepartmentManagement = lazy(() =>
 );
 const CourseMapping = lazy(() =>
   import("../pages/admin/collegeAdmin/CourseMapping")
+);
+const StudentDataAdmission = lazy(() =>
+  import("../pages/admin/collegeAdmin/Studentdataadmission")
+);
+const EducatorManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/EducatorManagement")
+);
+
+// Future: Add SchoolAdmin and UniversityAdmin dashboards here
+const SchoolAdminDashboard = lazy(() =>
+  import("../pages/admin/schoolAdmin/Dashboard")
+);
+const UniversityAdminDashboard = lazy(() =>
+  import("../pages/admin/universityAdmin/Dashboard")
 );
 
 const AppRoutes = () => {
@@ -153,24 +167,59 @@ const AppRoutes = () => {
           />
         </Route>
 
+        {/* ---------- College Admin ---------- */}
         <Route
           path="/college-admin/*"
-          // element={
-          //   <ProtectedRoute allowedRoles={["admin"]}>
-          //     <AdminLayout />
-          //   </ProtectedRoute>
-          // }
-          element={<AdminLayout />}
+          element={
+            <ProtectedRoute allowedRoles={["college_admin"]}>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
         >
-          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="dashboard" element={<CollegeDashboard />} />
           <Route
             path="departments/management"
             element={<DepartmentManagement />}
           />
           <Route path="departments/mapping" element={<CourseMapping />} />
           <Route
+            path="students/data-management"
+            element={<StudentDataAdmission />}
+          />
+          <Route path="departments/educators" element={<EducatorManagement />} />
+          <Route
             path=""
             element={<Navigate to="/college-admin/dashboard" replace />}
+          />
+        </Route>
+
+        <Route
+          path="/school-admin/*"
+          element={
+            <ProtectedRoute allowedRoles={["school_admin"]}>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="dashboard" element={<SchoolAdminDashboard />} />
+          <Route
+            path=""
+            element={<Navigate to="/school-admin/dashboard" replace />}
+          />
+        </Route>
+
+        <Route
+          path="/university-admin/*"
+          element={
+            <ProtectedRoute allowedRoles={["university_admin"]}>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="dashboard" element={<UniversityAdminDashboard />} />
+          <Route
+            path=""
+            element={<Navigate to="/university-admin/dashboard" replace />}
           />
         </Route>
 

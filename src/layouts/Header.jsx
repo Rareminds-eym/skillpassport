@@ -269,7 +269,16 @@ const Header = () => {
                       >
                         Login as Educator
                       </Link>
+
+                      <div className="h-px bg-gray-100"></div>
+                      <Link
+                        to="/login/admin"
+                        className="block px-5 py-3.5 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+                      >
+                        Login as Admin
+                      </Link>
                     </div>
+                    
                   </div>
                 )}
               </div>
@@ -353,6 +362,13 @@ const Header = () => {
                         className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
                       >
                         Login as Educator
+                      </Link>
+                      <Link
+                        to="/login/admin"
+                        onClick={closeMobileMenuWithAnimation}
+                        className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
+                      >
+                        Login as Admin
                       </Link>
                     </div>
                   </div>
