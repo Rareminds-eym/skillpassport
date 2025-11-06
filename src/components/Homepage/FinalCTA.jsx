@@ -90,12 +90,14 @@ const FinalCTA = () => {
 
   return (
     <section
-      className="relative grid place-content-center overflow-hidden px-4 py-20"
+      className="relative grid place-content-center overflow-hidden px-4 py-10"
       style={{
-        background: 'rgb(255, 255, 255)'
+        backgroundImage: 'url("/assets/HomePage/Make-Every-Skill-Count_1.png")',
+        backgroundSize: 'contain',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
       }}
     >
-      <GradientBars />
       <div className="relative z-10 flex flex-col items-center">
         {/* Main Heading */}
         <h1 className="max-w-5xl text-center text-2xl font-bold leading-snug text-black sm:text-4xl sm:leading-tight md:text-5xl md:leading-tight lg:text-6xl lg:leading-tight">

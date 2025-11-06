@@ -26,9 +26,26 @@ const CoreFeatures: React.FC = () => {
     return () => observer.disconnect();
   }, []);
   return (
-    <div className="relative flex flex-col items-center justify-center min-h-screen bg-white py-12 overflow-hidden">
+    <div 
+      className="relative flex flex-col items-center justify-center min-h-screen py-12 overflow-hidden bg-section-with-opacity"
+    >
       {/* === Inline Animation Styles === */}
      <style>{`
+  .bg-section-with-opacity::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url("/assets/HomePage/background.webp");
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.05;
+    z-index: 0;
+  }
+
   @keyframes drawLine {
     0% { stroke-dashoffset: var(--path-length); }
     100% { stroke-dashoffset: 0; }
@@ -63,7 +80,7 @@ const CoreFeatures: React.FC = () => {
 `}</style>
 
       {/* ===== Heading Section ===== */}
-      <div className="text-center mb-20 px-4 -mt-4 sm:mt-10">
+      <div className="relative z-10 text-center mb-20 px-4 -mt-4 sm:mt-10">
   <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-black">
     Our Core Features
   </h1>
