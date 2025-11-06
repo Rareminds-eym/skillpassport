@@ -27,6 +27,7 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         setLoading(true);
         setError(null);
 
+        console.log({
           id: studentProfile?.id,
           email: studentProfile?.email,
           name: studentProfile?.name,

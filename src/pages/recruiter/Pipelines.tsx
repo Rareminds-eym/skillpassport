@@ -956,8 +956,6 @@ const Pipelines = ({ onViewProfile }) => {
         }
       }
 
-        Object.values(newData).reduce((sum: number, arr: any) => sum + arr.length, 0)
-      );
       setPipelineData(newData);
     }
   };

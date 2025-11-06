@@ -165,6 +165,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
       // Subscribe to the channel
       channel.subscribe((status) => {
         if (status === 'SUBSCRIBED') {
+          console.log('✅ Student subscribed to tables:', 
             tableSubscriptions.map(t => t.table).join(', '));
           isSubscribedRef.current = true;
         } else if (status === 'CHANNEL_ERROR') {

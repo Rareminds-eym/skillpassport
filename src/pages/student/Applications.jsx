@@ -813,6 +813,7 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
   if (!isOpen) return null;
 
   // Debug logging
+  console.log({
     hasPipelineStatus: application.hasPipelineStatus,
     pipelineStage: application.pipelineStage,
     pipelineStatus: application.pipelineStatus,
@@ -942,6 +943,7 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                       const isRejected = application.pipelineStage === 'rejected';
                       
                       // Debug log for each stage
+                      console.log({
                         isCompleted,
                         isCurrent,
                         currentStage: application.pipelineStage,

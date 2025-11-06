@@ -49,11 +49,12 @@ const Messages = () => {
   
   // Debug logging
   useEffect(() => {
+    console.log("Debug data:", {
       userEmail,
       studentId,
       studentData,
       conversationsCount: conversations?.length || 0,
-      conversations
+      conversations,
     });
   }, [userEmail, studentId, studentData, conversations]);
   
@@ -104,6 +105,7 @@ const Messages = () => {
     }
     
     const conversation = conversations.find(c => c.id === selectedConversationId);
+    console.log({
       id: selectedConversationId,
       found: !!conversation,
       unreadCount: conversation?.student_unread_count

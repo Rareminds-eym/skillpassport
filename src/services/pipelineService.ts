@@ -132,6 +132,7 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
 
     // Transform data to include profile fields at student level
     const transformedData = data?.map((candidate, index) => {
+      console.log({
         id: candidate.id,
         student_id: candidate.student_id,
         candidate_name: candidate.candidate_name,
@@ -141,6 +142,7 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
 
       if (candidate.students && candidate.students.profile) {
         const profile = candidate.students.profile;
+        console.log({
           dept: profile.dept,
           college: profile.college,
           skills_count: profile.skills?.length || 0,
@@ -575,6 +577,7 @@ export const moveCandidateToStage = async (
 
       // Insert notification (if you have a notifications table for students)
       // This is optional - you can create a student_notifications table
+      console.log({
         student_id: currentData.student_id,
         message: notificationMessage,
         from_stage: previousStage,

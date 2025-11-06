@@ -216,6 +216,7 @@ const StudentDashboard = () => {
 
   // Debug log for authentication and student data
   useEffect(() => {
+    console.log({
       studentData: studentData?.id,
       loading: authStudentLoading,
       error: authStudentError,
@@ -224,6 +225,7 @@ const StudentDashboard = () => {
 
   // Debug log for opportunities
   useEffect(() => {
+    console.log({
       opportunities,
       loading: opportunitiesLoading,
       error: opportunitiesError,
@@ -233,6 +235,7 @@ const StudentDashboard = () => {
 
   // Debug log for recent updates
   useEffect(() => {
+    console.log({
       recentUpdates,
       loading: recentUpdatesLoading,
       error: recentUpdatesError,
@@ -263,6 +266,7 @@ const StudentDashboard = () => {
 
           // Refresh Recent Updates to show the new opportunity
           setTimeout(() => {
+            console.log(
               "🔄 Refreshing Recent Updates after new opportunity..."
             );
             refreshRecentUpdates();
@@ -292,6 +296,7 @@ const StudentDashboard = () => {
   useEffect(() => {
     const testSupabaseDirectly = async () => {
       try {
+        console.log({
           url: import.meta.env.VITE_SUPABASE_URL ? "Set" : "Missing",
           key: import.meta.env.VITE_SUPABASE_ANON_KEY ? "Set" : "Missing",
         });
@@ -303,6 +308,7 @@ const StudentDashboard = () => {
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
+        console.log(
           "ℹ️ To debug recent updates, run: await window.debugRecentUpdates() in console"
         );
       } catch (err) {
@@ -459,6 +465,7 @@ const StudentDashboard = () => {
         </CardHeader>
         <CardContent className="p-6 space-y-3">
           {(() => {
+            console.log({
               loading: opportunitiesLoading,
               error: opportunitiesError,
               opportunities,
