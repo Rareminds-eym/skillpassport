@@ -4,6 +4,7 @@ import { Check, Shield, Clock, TrendingUp, Calendar } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import SignupModal from '../../components/Subscription/SignupModal';
 import LoginModal from '../../components/Subscription/LoginModal';
+import { isActiveOrPaused, getStatusColor, calculateDaysRemaining } from '../../utils/subscriptionHelpers';
 
 const plans = [
   {
@@ -175,6 +176,17 @@ function SubscriptionPlans() {
   
   const { subscriptionData, loading: subscriptionLoading, error: subscriptionError } = useSubscriptionQuery();
 
+  // Memoize subscription status checks for better performance
+  const hasActiveOrPausedSubscription = useMemo(
+    () => subscriptionData && isActiveOrPaused(subscriptionData.status),
+    [subscriptionData]
+  );
+
+  const currentPlanData = useMemo(
+    () => subscriptionData ? plans.find(p => p.id === subscriptionData.plan) : null,
+    [subscriptionData]
+  );
+
   const handlePlanSelection = useCallback((plan) => {
     // If user has subscription and clicks manage on current plan
     if (subscriptionData && subscriptionData.plan === plan.id) {
@@ -189,16 +201,16 @@ function SubscriptionPlans() {
       setPlanToSelect(plan);
       setShowSignupModal(true);
     } else {
-      // User authenticated, check if they have active subscription
-      if (subscriptionData && subscriptionData.status === 'active') {
-        // User has active subscription, redirect to plans page with upgrade mode
+      // User authenticated, check if they have active or paused subscription
+      if (hasActiveOrPausedSubscription) {
+        // User has active or paused subscription, redirect to plans page with upgrade mode
         navigate(`/subscription/plans?type=${studentType || 'student'}&mode=upgrade`);
       } else {
         // User authenticated but no active subscription, proceed to payment
         navigate('/subscription/payment', { state: { plan, studentType, isUpgrade: !!subscriptionData } });
       }
     }
-  }, [isAuthenticated, user, role, navigate, studentType, subscriptionData]);
+  }, [isAuthenticated, user, role, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription]);
 
   const handleSignupSuccess = useCallback(() => {
     // After successful signup, proceed to payment with selected plan
@@ -241,15 +253,6 @@ function SubscriptionPlans() {
     }
   }, [planToSelect, navigate, studentType]);
 
-  const getStatusColor = useCallback((status) => {
-    const colors = {
-      active: 'bg-green-100 text-green-800',
-      expired: 'bg-red-100 text-red-800',
-      pending: 'bg-yellow-100 text-yellow-800',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  }, []);
-
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -259,14 +262,10 @@ function SubscriptionPlans() {
   }, []);
 
   // Calculate days remaining in subscription
-  const daysRemaining = useMemo(() => {
-    if (!subscriptionData?.endDate) return null;
-    const endDate = new Date(subscriptionData.endDate);
-    const today = new Date();
-    const diffTime = endDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
-  }, [subscriptionData]);
+  const daysRemaining = useMemo(() => 
+    calculateDaysRemaining(subscriptionData?.endDate),
+    [subscriptionData?.endDate]
+  );
 
   // Show loading state while checking authentication
   if (authLoading) {
@@ -283,23 +282,31 @@ function SubscriptionPlans() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        {/* Enhanced subscription status banner - Show only for authenticated users with active subscription */}
-        {isAuthenticated && subscriptionData && subscriptionData.status === 'active' && (
+        {/* Enhanced subscription status banner - Show only for authenticated users with active or paused subscription */}
+        {isAuthenticated && hasActiveOrPausedSubscription && (
           <div className="mb-8">
             {/* Subscription Status Card */}
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-6 mb-6">
+            <div className={`bg-gradient-to-r rounded-xl p-6 mb-6 border-2 ${
+              subscriptionData.status === 'active' 
+                ? 'from-green-50 to-blue-50 border-green-200' 
+                : 'from-orange-50 to-yellow-50 border-orange-200'
+            }`}>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <Shield className="h-6 w-6 text-green-600" />
-                    <h2 className="text-2xl font-bold text-gray-900">Active Subscription</h2>
+                    <Shield className={`h-6 w-6 ${
+                      subscriptionData.status === 'active' ? 'text-green-600' : 'text-orange-600'
+                    }`} />
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {subscriptionData.status === 'active' ? 'Active Subscription' : 'Paused Subscription'}
+                    </h2>
                   </div>
                   <div className="flex flex-wrap items-center gap-4 mt-3">
                     <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(subscriptionData.status)}`}>
                       {subscriptionData.status.charAt(0).toUpperCase() + subscriptionData.status.slice(1)}
                     </span>
                     <span className="text-lg font-semibold text-gray-800">
-                      {plans.find(p => p.id === subscriptionData.plan)?.name || 'Unknown'} Plan
+                      {currentPlanData?.name || 'Unknown'} Plan
                     </span>
                     {daysRemaining !== null && (
                       <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium ${
@@ -375,12 +382,12 @@ function SubscriptionPlans() {
 
         <div className="text-center">
               <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                {isAuthenticated && subscriptionData && subscriptionData.status === 'active'
+                {isAuthenticated && hasActiveOrPausedSubscription
                   ? 'Manage or Upgrade Your Plan' 
                   : 'Choose Your Plan'}
               </h1>
               <p className="text-lg text-gray-600 mb-8">
-                {isAuthenticated && subscriptionData && subscriptionData.status === 'active'
+                {isAuthenticated && hasActiveOrPausedSubscription
                   ? 'Upgrade to unlock more features or manage your current subscription'
                   : 'Select the plan that best suits your needs'
                 }
@@ -392,10 +399,10 @@ function SubscriptionPlans() {
                 <PlanCard
                   key={plan.id}
                   plan={plan}
-                  isCurrentPlan={isAuthenticated && subscriptionData?.status === 'active' && subscriptionData?.plan === plan.id}
+                  isCurrentPlan={isAuthenticated && hasActiveOrPausedSubscription && subscriptionData?.plan === plan.id}
                   onSelect={handlePlanSelection}
-                  subscriptionData={isAuthenticated && subscriptionData?.status === 'active' ? subscriptionData : null}
-                  daysRemaining={isAuthenticated && subscriptionData?.status === 'active' ? daysRemaining : null}
+                  subscriptionData={isAuthenticated && hasActiveOrPausedSubscription ? subscriptionData : null}
+                  daysRemaining={isAuthenticated && hasActiveOrPausedSubscription ? daysRemaining : null}
                 />
               ))}
             </div>

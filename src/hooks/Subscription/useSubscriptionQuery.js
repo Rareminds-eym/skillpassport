@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useSupabaseAuth } from '../../context/SupabaseAuthContext';
 import { getActiveSubscription } from '../../services/subscriptionService';
 import { queryLogger } from '../../utils/queryLogger';
+import { isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
 /**
  * React Query configuration for subscription
@@ -147,12 +148,24 @@ export const useSubscriptionQuery = () => {
     });
   };
 
+  // Memoize expensive checks
+  const hasActiveSubscription = useMemo(
+    () => query.data?.status === 'active',
+    [query.data?.status]
+  );
+
+  const hasActiveOrPausedSubscription = useMemo(
+    () => query.data && isActiveOrPaused(query.data.status),
+    [query.data]
+  );
+
   return {
     subscriptionData: query.data,
     loading: query.isLoading,
     error: query.error,
     isRefetching: query.isRefetching,
-    hasActiveSubscription: query.data?.status === 'active',
+    hasActiveSubscription,
+    hasActiveOrPausedSubscription,
     prefetchSubscription,
     refreshSubscription,
     clearSubscriptionCache,
@@ -186,6 +199,7 @@ export const useSubscriptionCache = () => {
   return {
     subscriptionData: cachedData,
     hasActiveSubscription: cachedData?.status === 'active',
+    hasActiveOrPausedSubscription: cachedData && isActiveOrPaused(cachedData.status),
     isCached: !!cachedData,
   };
 };
