@@ -83,7 +83,7 @@ const Hero = () => {
           </h1>
 
           {/* Subheading */}
-          <p className="text-black font-medium mb-8 sm:mb-10 max-w-2xl text-[16px] sm:text-lg md:text-xl leading-relaxed">
+          <p className="text-black font-medium mb-8 sm:mb-10 max-w-lg text-[16px] sm:text-lg md:text-xl leading-relaxed">
             The Rareminds Skill Passport gives enterprises a single source of truth for employee
             capabilities — turning training outcomes into real-time talent intelligence.
           </p>

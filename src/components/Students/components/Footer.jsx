@@ -61,7 +61,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link 
-                  to="/blog" 
+                  to="https://rareminds.in/blogs" 
                   className="group flex items-center text-gray-300 hover:text-white transition-all duration-200"
                 >
                   <span className="w-0 group-hover:w-2 h-0.5 bg-gradient-to-r from-purple-400 to-amber-400 mr-0 group-hover:mr-2 transition-all duration-200"></span>
@@ -70,7 +70,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link 
-                  to="/support" 
+                  to="https://rareminds.in/contact" 
                   className="group flex items-center text-gray-300 hover:text-white transition-all duration-200"
                 >
                   <span className="w-0 group-hover:w-2 h-0.5 bg-gradient-to-r from-purple-400 to-amber-400 mr-0 group-hover:mr-2 transition-all duration-200"></span>
@@ -79,7 +79,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link 
-                  to="/privacy" 
+                  to="https://rareminds.in/privacy-policy" 
                   className="group flex items-center text-gray-300 hover:text-white transition-all duration-200"
                 >
                   <span className="w-0 group-hover:w-2 h-0.5 bg-gradient-to-r from-purple-400 to-amber-400 mr-0 group-hover:mr-2 transition-all duration-200"></span>
