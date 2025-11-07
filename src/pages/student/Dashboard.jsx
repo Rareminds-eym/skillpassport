@@ -1403,6 +1403,7 @@ const StudentDashboard = () => {
         ]
       : [
           "opportunities",
+          "achievements",
           "education",
           "training",
           "experience",
