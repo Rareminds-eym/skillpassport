@@ -147,6 +147,9 @@ const StudentDashboard = () => {
   // Get unread message count with realtime updates
   const { unreadCount } = useStudentUnreadCount(studentId, !!studentId && !isViewingOthersProfile);
 
+  // Fetch achievements and badges from separate tables
+  const { achievements, badges, loading: achievementsLoading } = useStudentAchievements(studentId, userEmail);
+
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
     education: educationData,
