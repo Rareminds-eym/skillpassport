@@ -30,6 +30,8 @@ import {
   Sparkles,
   Target,
   BookOpen,
+  Trophy,
+  ChevronRight,
 } from "lucide-react";
 import {
   suggestions,
