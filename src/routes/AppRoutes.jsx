@@ -277,6 +277,7 @@ const AppRoutes = () => {
           <Route path="analytics" element={<StudentAnalytics />} />
           <Route path="assignments" element={<Assignments />} />
           <Route path="timeline" element={<TimelinePage />} />
+          <Route path="achievements" element={<AchievementsPage />} />
           <Route
             path=""
             element={<Navigate to="/student/dashboard" replace />}
