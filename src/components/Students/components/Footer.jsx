@@ -170,7 +170,7 @@ const Footer = () => {
           </div>
           
           <div className="flex items-center space-x-6 text-xs text-gray-400">
-            <Link to="/terms" className="hover:text-purple-400 transition-colors duration-200">
+            <Link to="https://rareminds.in/terms" className="hover:text-purple-400 transition-colors duration-200">
               Terms of Service
             </Link>
             <span>•</span>
