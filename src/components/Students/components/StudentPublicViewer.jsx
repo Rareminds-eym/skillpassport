@@ -27,6 +27,7 @@ import {
   generateResumePDF,
   prepareStudentDataForResume,
 } from "./Generateresumepdf";
+import { generateBadges, getBadgeProgress } from "../../../services/badgeService";
 
 function safeParse(jsonLike) {
   if (!jsonLike) return {};
@@ -239,6 +240,21 @@ export default function StudentPublicViewerModern() {
     raw?.profile?.profile?.certificates,
     parsedProfile.profile?.profile?.certificates
   ).filter((x) => x && x.enabled !== false);
+
+  // Generate badges based on student data
+  const studentDataForBadges = {
+    profile,
+    technicalSkills,
+    softSkills,
+    education,
+    training,
+    experience,
+    projects,
+    certificates
+  };
+
+  const earnedBadges = useMemo(() => generateBadges(studentDataForBadges), [studentDataForBadges]);
+  const badgeProgress = useMemo(() => getBadgeProgress(studentDataForBadges), [studentDataForBadges]);
 
   useEffect(() => {
     document.title = `${
@@ -1123,6 +1139,108 @@ export default function StudentPublicViewerModern() {
                     </p>
                   </section>
 
+                  {/* Earned Badges Section */}
+                  <section className="p-2 sm:p-3">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-100 to-yellow-200 flex items-center justify-center">
+                        <Award className="w-5 h-5 text-yellow-600" />
+                      </div>
+                      <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                        Earned Badges ({earnedBadges.length})
+                      </h2>
+                    </div>
+
+                    {earnedBadges.length ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {earnedBadges.map((badge, i) => (
+                          <div
+                            key={badge.id || i}
+                            className="bg-white border border-gray-200 rounded-2xl p-4 hover:shadow-md transition-all duration-200 hover:scale-105"
+                          >
+                            <div className="flex items-center gap-3 mb-3">
+                              <div
+                                className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-sm"
+                                style={{ backgroundColor: `${badge.color}20`, color: badge.color }}
+                              >
+                                {badge.icon}
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-gray-900 text-sm">{badge.name}</h3>
+                                <p className="text-xs text-gray-500 capitalize">{badge.category}</p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-600 leading-relaxed">{badge.description}</p>
+                            <div className="mt-3 text-xs text-gray-400">
+                              Earned {new Date(badge.earnedAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Award className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-400 text-sm font-medium mb-2">
+                          No badges earned yet
+                        </p>
+                        <p className="text-gray-300 text-xs">
+                          Complete courses, projects, and other milestones to earn badges
+                        </p>
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Badge Progress Section */}
+                  {badgeProgress.length > 0 && (
+                    <section className="p-2 sm:p-3">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+                          <TrendingUp className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                          Badge Progress
+                        </h2>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {badgeProgress.map((progress, i) => (
+                          <div
+                            key={progress.badge.id || i}
+                            className="bg-white border border-gray-200 rounded-2xl p-4"
+                          >
+                            <div className="flex items-center gap-3 mb-3">
+                              <div
+                                className="w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-sm"
+                                style={{ backgroundColor: `${progress.badge.color}20`, color: progress.badge.color }}
+                              >
+                                {progress.badge.icon}
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-gray-900 text-sm">{progress.badge.name}</h3>
+                                <p className="text-xs text-gray-500 capitalize">{progress.badge.category}</p>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-xs text-gray-600">
+                                <span>Progress</span>
+                                <span>{progress.current}/{progress.required}</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="h-2 rounded-full transition-all duration-300"
+                                  style={{
+                                    width: `${progress.percentage}%`,
+                                    backgroundColor: progress.badge.color
+                                  }}
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500">{progress.percentage}% complete</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
                   {/* Technical Skills */}
                   <section className="p-2 sm:p-3">
                     <div className="flex items-center gap-2 mb-4">
@@ -1182,6 +1300,8 @@ export default function StudentPublicViewerModern() {
                   </section>
                 </div>
               )}
+
+
 
               {activeTab === "Projects" && (
                 <section className="p-4">
