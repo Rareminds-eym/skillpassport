@@ -56,6 +56,8 @@ import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNot
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
 import { Toaster } from "react-hot-toast";
 import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
+import { useStudentAchievements } from "../../hooks/useStudentAchievements";
+import { useNavigate } from "react-router-dom";
 // Debug utilities removed for production cleanliness
 
 const StudentDashboard = () => {
