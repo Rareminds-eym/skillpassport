@@ -565,13 +565,28 @@ export async function updateStudentByEmail(email, updates) {
     }
 
     const studentRecord = findResult.data;
-    
+
     const currentProfile = safeJSONParse(studentRecord.profile);
 
-    // Merge updates into existing profile
+    // Prepare column updates for fields that have dedicated columns
+    const columnUpdates = {};
+    const profileOnlyUpdates = {};
+
+    // Fields with dedicated columns (from migrate_students_to_columns.sql)
+    const columnFields = ['name', 'email', 'phone', 'department', 'university', 'cgpa', 'employability_score', 'verified'];
+
+    Object.keys(updates).forEach(key => {
+      if (columnFields.includes(key)) {
+        columnUpdates[key] = updates[key];
+      } else {
+        profileOnlyUpdates[key] = updates[key];
+      }
+    });
+
+    // Merge updates into existing profile for non-column fields
     const updatedProfile = {
       ...currentProfile,
-      ...updates
+      ...profileOnlyUpdates
     };
 
     const nestedSyncKeys = ['projects', 'certificates'];
@@ -612,12 +627,17 @@ export async function updateStudentByEmail(email, updates) {
         }
       }
     }
-    
+
+    // Prepare the update object
+    const updateData = { ...columnUpdates };
+    if (Object.keys(profileOnlyUpdates).length > 0 || Object.keys(updatedProfile).length > Object.keys(currentProfile).length) {
+      updateData.profile = updatedProfile;
+    }
 
     // Update using student ID (more reliable)
     const { data, error } = await supabase
       .from('students')
-      .update({ profile: updatedProfile })
+      .update(updateData)
       .eq('id', studentRecord.id)
       .select()
       .single();

@@ -80,6 +80,7 @@ const Messages = lazy(() => import("../pages/student/Messages"));
 const StudentAnalytics = lazy(() => import("../pages/student/Analytics"));
 const Assignments = lazy(() => import("../pages/student/Assignments"));
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
+const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
 const DebugQRTest = lazy(() => import("../pages/DebugQRTest"));
 const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")
@@ -276,6 +277,7 @@ const AppRoutes = () => {
           <Route path="analytics" element={<StudentAnalytics />} />
           <Route path="assignments" element={<Assignments />} />
           <Route path="timeline" element={<TimelinePage />} />
+          <Route path="achievements" element={<AchievementsPage />} />
           <Route
             path=""
             element={<Navigate to="/student/dashboard" replace />}

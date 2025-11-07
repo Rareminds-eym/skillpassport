@@ -111,8 +111,7 @@ const AnimatedPath = ({
 
   useEffect(() => {
     if (ref.current) {
-      const length = ref.current.getTotalLength();
-      setPathLength(length);
+      setPathLength(ref.current.getTotalLength());
     }
   }, []);
 
@@ -124,7 +123,7 @@ const AnimatedPath = ({
       strokeWidth="5"
       strokeLinecap="round"
       fill="none"
-      strokeDasharray="10 15"
+      strokeDasharray={`${pathLength} ${pathLength}`}
       initial={{ 
         strokeDashoffset: pathLength,
         opacity: 0 
@@ -136,10 +135,9 @@ const AnimatedPath = ({
         strokeDashoffset: pathLength,
         opacity: 0 
       }}
-      transition={{ 
-        duration: 2.5, 
-        delay, 
-        ease: "linear"
+      transition={{ duration: 2, delay, ease: "easeInOut" }}
+      style={{
+        strokeDasharray: `10 15`,
       }}
     />
   );
