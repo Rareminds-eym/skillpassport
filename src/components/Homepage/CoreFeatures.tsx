@@ -46,6 +46,12 @@ const CoreFeatures: React.FC = () => {
     z-index: 0;
   }
 
+  @media (max-width: 768px) {
+    .bg-section-with-opacity::before {
+      background-image: url("/assets/HomePage/background_mobile.webp");
+    }
+  }
+
   @keyframes drawLine {
     0% { stroke-dashoffset: var(--path-length); }
     100% { stroke-dashoffset: 0; }
