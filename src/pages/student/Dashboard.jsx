@@ -62,6 +62,7 @@ import { useNavigate } from "react-router-dom";
 
 const StudentDashboard = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Check if viewing someone else's profile (from QR scan)
   const isViewingOthersProfile =
