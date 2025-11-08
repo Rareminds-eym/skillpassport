@@ -209,7 +209,7 @@ export default function LoginStudent() {
               Your Skills. Your Passport. Your Future.
             </h2>
             <p className="mt-4 max-w-xl">
-              Unlock opportunities with your verified Skill Passport.
+              Unlock Opportunities With Your Verified Skill Passport.
             </p>
           </div>
 
@@ -220,7 +220,7 @@ export default function LoginStudent() {
               animate={{ y: [0, -10, 0] }}
               transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
             >
-              <FeatureCard title="Showcase verified skills" Icon={BadgeCheck} />
+              <FeatureCard title="Showcase Verified Skills" Icon={BadgeCheck} />
             </motion.div>
 
             <motion.div
@@ -233,7 +233,7 @@ export default function LoginStudent() {
               }}
             >
               <FeatureCard
-                title="Share with recruiters worldwide"
+                title="Share With Recruiters Worldwide"
                 Icon={Share2}
               />
             </motion.div>
@@ -243,7 +243,7 @@ export default function LoginStudent() {
               animate={{ y: [0, -8, 0] }}
               transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
             >
-              <FeatureCard title="Track employability score" Icon={Activity} />
+              <FeatureCard title="Track Employability Score" Icon={Activity} />
             </motion.div>
           </div>
         </div>

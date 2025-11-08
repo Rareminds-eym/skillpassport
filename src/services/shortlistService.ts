@@ -133,8 +133,6 @@ export const deleteShortlist = async (shortlistId: string) => {
  */
 export const getShortlistCandidates = async (shortlistId: string) => {
   try {
-    console.log('Fetching candidates for shortlist ID:', shortlistId);
-    console.log('Shortlist ID type:', typeof shortlistId);
     
     // First, check if the shortlist exists
     const { data: shortlistCheck, error: shortlistError } = await supabase
@@ -143,7 +141,6 @@ export const getShortlistCandidates = async (shortlistId: string) => {
       .eq('id', shortlistId)
       .single();
     
-    console.log('Shortlist exists check:', shortlistCheck);
     if (shortlistError) {
       console.error('Error checking shortlist:', shortlistError);
     }
@@ -165,13 +162,10 @@ export const getShortlistCandidates = async (shortlistId: string) => {
       throw error;
     }
 
-    console.log('Raw data from shortlist_candidates:', data);
-    console.log('Number of entries found:', data?.length || 0);
 
     // If there are candidates, fetch their student details
     if (data && data.length > 0) {
       const studentIds = data.map(item => item.student_id);
-      console.log('Student IDs to fetch:', studentIds);
       
       // Query students table with profile JSONB column
       const { data: students, error: studentsError } = await supabase
@@ -184,20 +178,15 @@ export const getShortlistCandidates = async (shortlistId: string) => {
         throw studentsError;
       }
       
-      console.log('Students fetched:', students);
       
       // Merge student data with junction table metadata
       // Extract data from profile JSONB column
       const formattedCandidates = data.map(item => {
         const student = students?.find(s => s.id === item.student_id);
         if (!student) {
-          console.warn('Student not found for ID:', item.student_id);
           return null;
         }
         
-        console.log('Processing student:', student.id);
-        console.log('Student profile:', student.profile);
-        console.log('Profile type:', typeof student.profile);
         
         // Extract data from profile JSONB
         // Handle case where profile might be a string that needs parsing
@@ -212,13 +201,10 @@ export const getShortlistCandidates = async (shortlistId: string) => {
         }
         profile = profile || {};
         
-        console.log('Parsed profile:', profile);
         
         // Get education data - try to find the most recent or relevant entry
         const educationArray = profile.education || [];
         const education = educationArray.find(edu => edu.status === 'ongoing') || educationArray[0] || {};
-        console.log('Education entries:', educationArray);
-        console.log('Selected education entry:', education);
         
         // Extract CGPA - check multiple possible fields
         let cgpa = 'N/A';
@@ -249,16 +235,12 @@ export const getShortlistCandidates = async (shortlistId: string) => {
           junction_id: item.id
         };
         
-        console.log('Formatted candidate:', formattedCandidate);
         return formattedCandidate;
       }).filter(Boolean); // Filter out null entries
       
-      console.log('Formatted candidates with student data:', formattedCandidates);
       return { data: formattedCandidates, error: null };
     }
 
-    console.log('No candidates found in shortlist_candidates table');
-    console.log('This could mean: 1) No candidates added yet, 2) Candidates stored differently, 3) ID mismatch');
     return { data: [], error: null };
   } catch (error) {
     console.error('Error fetching shortlist candidates:', error);

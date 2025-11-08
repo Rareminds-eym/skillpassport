@@ -47,14 +47,10 @@ const testStudentData = {
 };
 
 // Test the calculation
-console.log('🧪 Testing Employability Score Calculator');
-console.log('Test Data:', testStudentData);
 
 const result = calculateEmployabilityScore(testStudentData);
-console.log('📊 Calculated Result:', result);
 
 const defaultResult = getDefaultEmployabilityScore();
-console.log('📊 Default Result:', defaultResult);
 
 // Export for testing
 export { testStudentData };

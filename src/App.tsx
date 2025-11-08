@@ -1,4 +1,5 @@
 import { BrowserRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { SupabaseAuthProvider } from './context/SupabaseAuthContext';
 import { SupabaseAuthBridgeProvider } from './context/SupabaseAuthBridge';
@@ -6,45 +7,65 @@ import { SearchProvider } from './context/SearchContext';
 import AppRoutes from './routes/AppRoutes';
 import { Toaster } from './components/Students/components/ui/toaster';
 import { Toaster as HotToaster } from 'react-hot-toast';
+import { ToastProvider } from './components/Recruiter/components/Toast';
+import SubscriptionPrefetch from './components/Subscription/SubscriptionPrefetch';
+
+// Create React Query client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000, // 2 minutes - data is fresh
+      gcTime: 5 * 60 * 1000, // 5 minutes - garbage collection time (replaces cacheTime)
+      refetchOnWindowFocus: false,
+      refetchOnMount: false, // Don't refetch on mount if data is fresh
+      retry: 1,
+    },
+  },
+});
 
 function App() {
   return (
-    <BrowserRouter>
-      <SupabaseAuthProvider>
-        <AuthProvider>
-          <SupabaseAuthBridgeProvider>
-            <SearchProvider>
-              <AppRoutes />
-              <Toaster />
-              <HotToaster 
-                position="top-right"
-                toastOptions={{
-                  duration: 5000,
-                  style: {
-                    background: '#fff',
-                    color: '#363636',
-                  },
-                  success: {
-                    duration: 3000,
-                    iconTheme: {
-                      primary: '#10b981',
-                      secondary: '#fff',
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <SupabaseAuthProvider>
+          <AuthProvider>
+            <SupabaseAuthBridgeProvider>
+              <SearchProvider>
+                <ToastProvider>
+                  <SubscriptionPrefetch />
+                  <AppRoutes />
+                  <Toaster />
+                <HotToaster 
+                  position="top-right"
+                  toastOptions={{
+                    duration: 5000,
+                    style: {
+                      background: '#fff',
+                      color: '#363636',
                     },
-                  },
-                  error: {
-                    duration: 4000,
-                    iconTheme: {
-                      primary: '#ef4444',
-                      secondary: '#fff',
+                    success: {
+                      duration: 3000,
+                      iconTheme: {
+                        primary: '#10b981',
+                        secondary: '#fff',
+                      },
                     },
-                  },
-                }}
-              />
-            </SearchProvider>
-          </SupabaseAuthBridgeProvider>
-        </AuthProvider>
-      </SupabaseAuthProvider>
-    </BrowserRouter>
+                    error: {
+                      duration: 4000,
+                      iconTheme: {
+                        primary: '#ef4444',
+                        secondary: '#fff',
+                      },
+                    },
+                  }}
+                />
+                </ToastProvider>
+              </SearchProvider>
+            </SupabaseAuthBridgeProvider>
+          </AuthProvider>
+        </SupabaseAuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 

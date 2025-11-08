@@ -14,7 +14,6 @@ import { supabase } from './api';
  */
 export async function getStudentByEmail(email) {
   try {
-    console.log('🔍 Fetching student data for:', email);
 
     // Query students table by email
     const { data, error } = await supabase
@@ -33,7 +32,6 @@ export async function getStudentByEmail(email) {
     }
 
     if (!data) {
-      console.log('⚠️ No student found with email:', email);
       return {
         success: false,
         error: 'Student not found',
@@ -41,7 +39,6 @@ export async function getStudentByEmail(email) {
       };
     }
 
-    console.log('✅ Student data found:', data.name);
     
     return {
       success: true,
@@ -211,7 +208,6 @@ export async function getCurrentStudentData() {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
-      console.log('⚠️ No Supabase user logged in');
       return {
         success: false,
         error: 'Not logged in',

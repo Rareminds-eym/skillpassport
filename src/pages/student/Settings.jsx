@@ -115,25 +115,25 @@ const Settings = () => {
 
   // Load student data into form
   useEffect(() => {
-    if (studentData?.profile) {
+    if (studentData) {
       setProfileData({
-        name: studentData.profile.name || "",
-        email: studentData.profile.email || userEmail || "",
-        phone: studentData.profile.phone || "",
-        location: studentData.profile.district || "",
-        dateOfBirth: studentData.profile.dateOfBirth || "",
-        bio: studentData.profile.bio || "",
-        linkedIn: studentData.profile.linkedIn || "",
-        github: studentData.profile.github || "",
-        portfolio: studentData.profile.portfolio || "",
+        name: studentData.name || studentData.profile?.name || "",
+        email: studentData.email || userEmail || "",
+        phone: studentData.contact_number || studentData.phone || studentData.profile?.phone || "",
+        location: studentData.district_name || studentData.district || studentData.profile?.district || "",
+        dateOfBirth: studentData.date_of_birth || studentData.dateOfBirth || studentData.profile?.dateOfBirth || "",
+        bio: studentData.bio || studentData.profile?.bio || "",
+        linkedIn: studentData.linkedin_link || studentData.linkedIn || studentData.profile?.linkedIn || "",
+        github: studentData.github_link || studentData.github || studentData.profile?.github || "",
+        portfolio: studentData.portfolio_link || studentData.portfolio || studentData.profile?.portfolio || "",
       });
 
-      if (studentData.profile.notificationSettings) {
-        setNotificationSettings(studentData.profile.notificationSettings);
+      if (studentData.notificationSettings || studentData.profile?.notificationSettings) {
+        setNotificationSettings(studentData.notificationSettings || studentData.profile.notificationSettings);
       }
 
-      if (studentData.profile.privacySettings) {
-        setPrivacySettings(studentData.profile.privacySettings);
+      if (studentData.privacySettings || studentData.profile?.privacySettings) {
+        setPrivacySettings(studentData.privacySettings || studentData.profile.privacySettings);
       }
     }
   }, [studentData, userEmail]);
@@ -157,7 +157,7 @@ const Settings = () => {
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      // await updateProfile(profileData);
+      await updateProfile(profileData);
       toast({
         title: "Success",
         description: "Profile updated successfully",
@@ -219,7 +219,7 @@ const Settings = () => {
   const handleSaveNotifications = async () => {
     setIsSaving(true);
     try {
-      // await updateProfile({ notificationSettings });
+      await updateProfile({ notificationSettings });
       toast({
         title: "Success",
         description: "Notification preferences updated",
@@ -239,8 +239,7 @@ const Settings = () => {
   const handleSavePrivacy = async () => {
     setIsSaving(true);
     try {
-      // await updateProfile({ privacySettings });
-      console.log("Privacy settings:", privacySettings);
+      await updateProfile({ privacySettings });
       toast({
         title: "Success",
         description: "Privacy settings updated",

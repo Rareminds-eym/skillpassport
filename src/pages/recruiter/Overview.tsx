@@ -174,7 +174,6 @@ const Overview = () => {
           navigate('/recruitment/interviews');
           break;
         default:
-          console.log('No action defined for alert:', alertId);
       }
     }
   };
@@ -183,18 +182,14 @@ const Overview = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       setError(null);
-      console.log('🔄 Overview: Starting dashboard data fetch...');
       
       try {
         const result = await getDashboardData();
-        console.log('📊 Overview: Dashboard data result:', result);
         
         if (result.data) {
-          console.log('✅ Overview: Successfully got dashboard data, setting state...');
           setDashboardData(result.data);
           setError(null);
         } else {
-          console.log('⚠️ Overview: No data returned, using fallback');
           setError(result.error || 'No data returned from service');
         }
       } catch (err) {
@@ -202,7 +197,6 @@ const Overview = () => {
         setError(err);
       } finally {
         setLoading(false);
-        console.log('🏁 Overview: Fetch complete');
       }
     };
 
@@ -297,16 +291,6 @@ const Overview = () => {
     savedSearches: []
   });
   const alerts = data.alerts || [];
-  
-  // Debug logging
-  console.log('📊 Overview render state:', {
-    loading,
-    error: error?.message || error,
-    hasDashboardData: !!dashboardData,
-    dataSource: dashboardData ? 'database' : (error ? 'fallback' : 'empty'),
-    activityCount: data.recentActivity?.length || 0
-  });
-
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">

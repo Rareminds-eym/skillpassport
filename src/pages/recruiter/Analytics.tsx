@@ -230,7 +230,6 @@ const Analytics: React.FC = () => {
   const handleFiltersChange = (newFilters: AnalyticsFilters) => {
     setFilters(newFilters);
     // In production, trigger data refetch with filters
-    console.log('Filters changed:', newFilters);
   };
 
   const handleFiltersReset = () => {

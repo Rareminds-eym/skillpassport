@@ -62,7 +62,6 @@ export class RealtimeService {
     // Remove existing channel if it exists
     this.unsubscribe(channelName);
 
-    console.log('🔔 Subscribing to conversation messages:', conversationId);
 
     const channel = supabase.channel(channelName);
 
@@ -106,7 +105,6 @@ export class RealtimeService {
     }
 
     channel.subscribe((status) => {
-      console.log('📡 Conversation messages subscription status:', status);
     });
 
     this.channels.set(channelName, channel);
@@ -125,7 +123,6 @@ export class RealtimeService {
     
     this.unsubscribe(channelName);
 
-    console.log('🔔 Subscribing to user messages:', userId);
 
     const channel = supabase
       .channel(channelName)
@@ -140,7 +137,6 @@ export class RealtimeService {
         onMessage
       )
       .subscribe((status) => {
-        console.log('📡 User messages subscription status:', status);
       });
 
     this.channels.set(channelName, channel);
@@ -160,7 +156,6 @@ export class RealtimeService {
   ): RealtimeChannel {
     this.unsubscribe(channelName);
 
-    console.log('📢 Creating broadcast channel:', channelName);
 
     const channel = supabase
       .channel(channelName)
@@ -168,12 +163,10 @@ export class RealtimeService {
         'broadcast' as REALTIME_LISTEN_TYPES.BROADCAST,
         { event: 'message' },
         (payload) => {
-          console.log('📨 Broadcast received:', payload);
           onReceive(payload.payload as BroadcastMessage);
         }
       )
       .subscribe((status) => {
-        console.log('📡 Broadcast channel status:', status);
       });
 
     this.channels.set(channelName, channel);
@@ -190,7 +183,6 @@ export class RealtimeService {
     const channel = this.channels.get(channelName);
     
     if (!channel) {
-      console.warn('⚠️ Channel not found, creating new one:', channelName);
       // Create channel if it doesn't exist
       const newChannel = supabase.channel(channelName);
       await newChannel.subscribe();
@@ -199,7 +191,6 @@ export class RealtimeService {
 
     const targetChannel = this.channels.get(channelName)!;
     
-    console.log('📤 Sending broadcast:', { channelName, message });
     
     const result = await targetChannel.send({
       type: 'broadcast',
@@ -308,7 +299,6 @@ export class RealtimeService {
   ): Promise<RealtimeChannel> {
     this.unsubscribe(channelName);
 
-    console.log('👋 Joining presence channel:', channelName, userPresence);
 
     const channel = supabase.channel(channelName, {
       config: {
@@ -324,7 +314,6 @@ export class RealtimeService {
         'presence' as REALTIME_LISTEN_TYPES.PRESENCE,
         { event: REALTIME_PRESENCE_LISTEN_EVENTS.JOIN },
         (payload) => {
-          console.log('👤 User joined:', payload);
           const joins = payload.newPresences;
           joins.forEach((presence: any) => {
             onJoin({
@@ -344,7 +333,6 @@ export class RealtimeService {
         'presence' as REALTIME_LISTEN_TYPES.PRESENCE,
         { event: REALTIME_PRESENCE_LISTEN_EVENTS.LEAVE },
         (payload) => {
-          console.log('👤 User left:', payload);
           const leaves = payload.leftPresences;
           leaves.forEach((presence: any) => {
             onLeave({
@@ -364,7 +352,6 @@ export class RealtimeService {
         'presence' as REALTIME_LISTEN_TYPES.PRESENCE,
         { event: REALTIME_PRESENCE_LISTEN_EVENTS.SYNC },
         () => {
-          console.log('🔄 Presence sync');
           const state = channel.presenceState();
           const users: OnlineUser[] = [];
           
@@ -387,7 +374,6 @@ export class RealtimeService {
 
     // Subscribe and track presence
     await channel.subscribe(async (status) => {
-      console.log('📡 Presence channel status:', status);
       
       if (status === 'SUBSCRIBED') {
         // Track this user's presence
@@ -418,11 +404,9 @@ export class RealtimeService {
     const channel = this.channels.get(channelName);
     
     if (!channel) {
-      console.warn('⚠️ Channel not found:', channelName);
       return;
     }
 
-    console.log('🔄 Updating presence status:', { channelName, userId, status });
 
     const currentState = channel.presenceState();
     const userPresences = currentState[userId];
@@ -445,7 +429,6 @@ export class RealtimeService {
     const channel = this.channels.get(channelName);
     
     if (!channel) {
-      console.warn('⚠️ Channel not found:', channelName);
       return [];
     }
 
@@ -486,7 +469,6 @@ export class RealtimeService {
     const channel = this.channels.get(channelName);
     
     if (channel) {
-      console.log('🔕 Unsubscribing from channel:', channelName);
       await channel.unsubscribe();
       this.channels.delete(channelName);
     }
@@ -496,11 +478,9 @@ export class RealtimeService {
    * Unsubscribe from all channels
    */
   static async unsubscribeAll(): Promise<void> {
-    console.log('🔕 Unsubscribing from all channels');
     
     const unsubscribePromises = Array.from(this.channels.entries()).map(
       async ([name, channel]) => {
-        console.log('🔕 Unsubscribing from:', name);
         await channel.unsubscribe();
       }
     );

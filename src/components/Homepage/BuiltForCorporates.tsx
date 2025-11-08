@@ -56,10 +56,10 @@ const BuiltForCorporates = () => {
       {/* Header Section */}
       <div className="container mx-auto px-4 text-center mb-2">
         <h2 className="font-bold text-black mb-4">
-          Built for Corporates
+          Built For Corporates
         </h2>
         <p className="text-black/70 max-w-2xl mx-auto">
-          Enterprise-grade capabilities that scale with your organization
+          Enterprise-grade Capabilities That Scale With Your Organization 
         </p>
       </div>
 

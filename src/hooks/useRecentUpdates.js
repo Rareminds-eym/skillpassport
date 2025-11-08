@@ -37,7 +37,6 @@ export const useRecentUpdates = () => {
   // 1️⃣ Resolve student ID by email
   const fetchStudentIdByEmail = async (email) => {
     try {
-      console.log("🔍 [useRecentUpdates] Finding student by email:", email);
 
       const { data, error } = await supabase
         .from("students")
@@ -48,12 +47,10 @@ export const useRecentUpdates = () => {
       if (error) throw error;
 
       if (!data) {
-        console.warn("⚠️ No student found with email:", email);
         setStudentId(null);
         return null;
       }
 
-      console.log("✅ [useRecentUpdates] Found student ID:", data.id);
       setStudentId(data.id);
       return data.id;
     } catch (err) {
@@ -67,13 +64,11 @@ export const useRecentUpdates = () => {
   // 2️⃣ Fetch recent updates by student_id
   const fetchRecentUpdates = async (resolvedId) => {
     if (!resolvedId) {
-      console.warn("⚠️ [useRecentUpdates] No studentId, skipping updates fetch.");
       return;
     }
 
     try {
       setLoading(true);
-      console.log("🚀 [useRecentUpdates] Fetching recent updates for:", resolvedId);
 
       const { data, error: updatesError } = await supabase
         .from("recent_updates")
@@ -84,7 +79,6 @@ export const useRecentUpdates = () => {
       if (updatesError) throw updatesError;
 
       if (!data) {
-        console.log("📝 No recent_updates record found.");
         setRecentUpdates([]);
         return;
       }
@@ -116,7 +110,6 @@ export const useRecentUpdates = () => {
         };
       });
 
-      console.log("✅ [useRecentUpdates] Updates fetched & formatted:", formatted.length);
       setRecentUpdates(formatted);
     } catch (err) {
       console.error("❌ [useRecentUpdates] Error fetching updates:", err);
@@ -135,12 +128,10 @@ export const useRecentUpdates = () => {
       null;
 
     if (!email) {
-      console.warn("⚠️ [useRecentUpdates] No email found in localStorage.");
       setLoading(false);
       return;
     }
 
-    console.log("📧 [useRecentUpdates] Using email from localStorage:", email);
     setUserEmail(email);
     fetchStudentIdByEmail(email);
   }, []);
@@ -165,9 +156,7 @@ export const useRecentUpdates = () => {
   }, [recentUpdates.length]);
 
   const refreshRecentUpdates = async () => {
-    console.log("🔄 [useRecentUpdates] Manual refresh triggered...");
     if (studentId) await fetchRecentUpdates(studentId);
-    else console.warn("⚠️ Cannot refresh — studentId is null");
   };
 
   return {

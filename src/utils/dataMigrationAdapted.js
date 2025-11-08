@@ -18,7 +18,6 @@ import {
 
 export const migrateMockDataToSupabaseAdapted = async (userId, universityId = null) => {
   try {
-    console.log('🚀 Starting data migration to JSONB profile...');
 
     // Check if student already exists
     const { data: existing, error: checkError } = await supabase
@@ -122,7 +121,6 @@ export const migrateMockDataToSupabaseAdapted = async (userId, universityId = nu
 
     if (existing) {
       // Update existing student
-      console.log('📝 Updating existing student profile...');
       const { data, error } = await supabase
         .from('students')
         .update({
@@ -135,10 +133,8 @@ export const migrateMockDataToSupabaseAdapted = async (userId, universityId = nu
 
       if (error) throw error;
       result = data;
-      console.log('✅ Student profile updated successfully');
     } else {
       // Insert new student
-      console.log('📝 Creating new student profile...');
       const { data, error } = await supabase
         .from('students')
         .insert([{
@@ -151,20 +147,8 @@ export const migrateMockDataToSupabaseAdapted = async (userId, universityId = nu
 
       if (error) throw error;
       result = data;
-      console.log('✅ Student profile created successfully');
     }
 
-    console.log('🎉 Data migration completed successfully!');
-    console.log('📊 Migrated data:');
-    console.log(`  - Profile: 1 record`);
-    console.log(`  - Education: ${profileData.education.length} records`);
-    console.log(`  - Training: ${profileData.training.length} records`);
-    console.log(`  - Experience: ${profileData.experience.length} records`);
-    console.log(`  - Technical Skills: ${profileData.technicalSkills.length} records`);
-    console.log(`  - Soft Skills: ${profileData.softSkills.length} records`);
-    console.log(`  - Opportunities: ${profileData.opportunities.length} records`);
-    console.log(`  - Recent Updates: ${profileData.recentUpdates.length} records`);
-    console.log(`  - Suggestions: ${profileData.suggestions.length} records`);
 
     return { success: true, studentId: result.id, userId: userId };
 
@@ -199,7 +183,6 @@ const parseTimestamp = (timeString) => {
  */
 export const clearStudentDataAdapted = async (userId) => {
   try {
-    console.log('🗑️ Clearing student data...');
 
     const { error } = await supabase
       .from('students')
@@ -208,7 +191,6 @@ export const clearStudentDataAdapted = async (userId) => {
 
     if (error) throw error;
 
-    console.log('✅ Student data cleared successfully');
     return { success: true };
   } catch (error) {
     console.error('❌ Error clearing student data:', error);
@@ -247,14 +229,10 @@ export const checkStudentExistsAdapted = async (userId) => {
  */
 export const runMigrationAdapted = async (userId, universityId = null) => {
   try {
-    console.log(`🔍 Checking if student ${userId} exists...`);
     const { exists, data } = await checkStudentExistsAdapted(userId);
 
     if (exists) {
-      console.log('⚠️ Student already exists. Data will be overwritten...');
-      console.log('Existing data:', data);
     } else {
-      console.log('✨ Creating new student profile...');
     }
 
     const result = await migrateMockDataToSupabaseAdapted(userId, universityId);
@@ -290,7 +268,6 @@ export const migrateCurrentUserData = async (universityId = null) => {
       throw new Error('No authenticated user found. Please log in first.');
     }
 
-    console.log(`📋 Migrating data for authenticated user: ${userId}`);
     return await runMigrationAdapted(userId, universityId);
   } catch (error) {
     console.error('Migration error:', error);

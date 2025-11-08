@@ -284,7 +284,6 @@ const Messages = () => {
           link: `/student/messages?conversation=${selectedConversationId}`
         });
       } catch (notifError) {
-        console.warn('Could not send notification:', notifError);
       }
       
       setMessageInput('');

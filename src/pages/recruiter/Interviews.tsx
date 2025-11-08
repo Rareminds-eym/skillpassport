@@ -598,7 +598,6 @@ const Interviews = () => {
         return storedUser.id || storedUser.recruiter_id;
       }
     } catch (e) {
-      console.warn('Failed to parse user from localStorage:', e);
     }
 
     return null;
@@ -640,7 +639,6 @@ const Interviews = () => {
 
       if (error) throw error;
 
-      console.log('Raw students data:', data); // Debug log
 
       const formattedCandidates = data?.map(candidate => {
         const profile = typeof candidate.profile === 'string'
@@ -648,12 +646,6 @@ const Interviews = () => {
           : candidate.profile;
 
         const candidateName = profile?.name || candidate.name || profile?.fullName || 'Unknown';
-        
-        console.log('Formatted candidate:', { // Debug log
-          id: candidate.id,
-          name: candidateName,
-          rawProfile: profile
-        });
 
         return {
           id: candidate.id,
@@ -666,7 +658,6 @@ const Interviews = () => {
         };
       }) || [];
 
-      console.log('All formatted candidates:', formattedCandidates); // Debug log
       setCandidates(formattedCandidates);
       setCandidatesLoaded(true);
     } catch (error) {
@@ -715,7 +706,6 @@ const Interviews = () => {
   // ✅ Handle sending reminder with notification
   const handleSendReminder = async (interview: Interview) => {
     try {
-      console.log('Sending reminder for interview:', interview);
       const { data, error } = await sendReminder(interview.id);
 
       if (error) {
@@ -995,7 +985,6 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
         return storedUser.id || storedUser.recruiter_id;
       }
     } catch (e) {
-      console.warn('Failed to parse user from localStorage:', e);
     }
 
     return null;

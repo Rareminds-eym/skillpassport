@@ -25,11 +25,9 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
     queryKey: ['student-activities', studentEmail, limit],
     queryFn: async () => {
       if (!studentEmail) {
-        console.log('⚠️ No student email provided');
         return [];
       }
 
-      console.log('🔄 React Query: Fetching student activities for:', studentEmail);
       const result = await getStudentRecentActivity(studentEmail, limit);
       
       if (result.error) {
@@ -38,8 +36,6 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
       }
 
       const activities = result.data || [];
-      console.log('📊 Fetched student activities:', activities.length, 'items');
-      console.log('✅ First 3 activities:', activities.slice(0, 3).map(a => `${a.user} ${a.action} ${a.candidate}`));
       
       return activities;
     },
@@ -67,7 +63,6 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
       
       return student?.id;
     } catch (error) {
-      console.log('⚠️ Could not get student ID for real-time:', error.message);
       return null;
     }
   }, [studentEmail]);
@@ -81,7 +76,6 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
     
     // Set new timer for 500ms debounce
     debounceTimerRef.current = setTimeout(() => {
-      console.log('🔄 Debounced refetch triggered');
       setLastUpdateTime(Date.now());
       queryClient.invalidateQueries({ 
         queryKey: ['student-activities', studentEmail],
@@ -92,28 +86,21 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
   // Callback to handle real-time changes
   const handleRealtimeChange = useCallback((table, payload) => {
-    console.log(`🔥 Student real-time change detected in ${table}:`, payload.eventType);
-    console.log('📦 Payload:', payload);
     
     // Show toast notification for new activities
     if (payload.eventType === 'INSERT') {
-      console.log('✨ New activity detected for student!');
       // You can add a toast notification here
     } else if (payload.eventType === 'UPDATE') {
-      console.log('🔄 Activity updated for student!');
     } else if (payload.eventType === 'DELETE') {
-      console.log('🗑️ Activity deleted (affecting student)');
     }
     
     // Use debounced refetch instead of immediate
-    console.log('⏱️ Scheduling debounced refetch (500ms)...');
     debouncedRefetch();
   }, [debouncedRefetch]);
 
   // Set up real-time subscriptions for student-relevant tables
   useEffect(() => {
     if (!studentEmail || isSubscribedRef.current) {
-      console.log('✅ Real-time already subscribed or no email, skipping...');
       return;
     }
 
@@ -121,11 +108,9 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
       const studentId = await getStudentId();
       
       if (!studentId) {
-        console.log('⚠️ Cannot set up real-time without student ID');
         return;
       }
 
-      console.log('🎧 Setting up student real-time subscriptions for ID:', studentId);
 
       // Create a unique channel for this student
       const channelName = `student-activities-${studentId}-${Date.now()}`;
@@ -179,9 +164,8 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
       // Subscribe to the channel
       channel.subscribe((status) => {
-        console.log('🔌 Student subscription status:', status);
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Student real-time subscriptions active for tables:', 
+          console.log('✅ Student subscribed to tables:', 
             tableSubscriptions.map(t => t.table).join(', '));
           isSubscribedRef.current = true;
         } else if (status === 'CHANNEL_ERROR') {
@@ -191,7 +175,6 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
           console.error('⏰ Student real-time subscription timed out');
           isSubscribedRef.current = false;
         } else if (status === 'CLOSED') {
-          console.log('🔌 Student real-time connection closed');
           isSubscribedRef.current = false;
         }
       });
@@ -203,7 +186,6 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
     // Cleanup on unmount or email change
     return () => {
-      console.log('🔌 Cleaning up student real-time subscriptions...');
       
       // Clear debounce timer
       if (debounceTimerRef.current) {
@@ -238,7 +220,6 @@ export const useRefreshStudentActivities = (studentEmail) => {
   const queryClient = useQueryClient();
   
   return () => {
-    console.log('🔄 Manual student activity refresh triggered for:', studentEmail);
     queryClient.invalidateQueries({ 
       queryKey: ['student-activities', studentEmail] 
     });

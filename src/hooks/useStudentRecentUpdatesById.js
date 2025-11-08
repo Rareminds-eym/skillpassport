@@ -15,7 +15,6 @@ export const useStudentRecentUpdatesById = (studentId, limit = 10, since = null)
 
   const fetchRecentUpdates = useCallback(async () => {
     if (!studentId) {
-      console.log('⚠️ No student ID provided to useStudentRecentUpdatesById');
       setLoading(false);
       return;
     }
@@ -24,7 +23,6 @@ export const useStudentRecentUpdatesById = (studentId, limit = 10, since = null)
       setLoading(true);
       setError(null);
 
-      console.log('🔄 Fetching recent updates for student ID:', studentId);
 
       const result = await getStudentRecentUpdates(studentId, since, limit);
 
@@ -32,11 +30,9 @@ export const useStudentRecentUpdatesById = (studentId, limit = 10, since = null)
         // Format the updates for display
         const formattedUpdates = result.data.map(update => formatRecentUpdate(update));
         
-        console.log('✅ Fetched', formattedUpdates.length, 'recent updates for student', studentId);
         setRecentUpdates(formattedUpdates);
         setError(null);
       } else {
-        console.warn('⚠️ Failed to fetch recent updates:', result.error);
         setError(result.error);
         setRecentUpdates([]);
       }
@@ -50,7 +46,6 @@ export const useStudentRecentUpdatesById = (studentId, limit = 10, since = null)
   }, [studentId, limit, since]);
 
   const refresh = useCallback(async () => {
-    console.log('🔄 Refreshing recent updates for student ID:', studentId);
     await fetchRecentUpdates();
   }, [fetchRecentUpdates, studentId]);
 

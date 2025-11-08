@@ -21,7 +21,7 @@ export const getRequisitions = async () => {
 };
 
 /**
- * Get a single requisition by ID
+ * Get a single requisition by ID (DEPRECATED - use getOpportunityById instead)
  */
 export const getRequisitionById = async (requisitionId: string) => {
   try {
@@ -35,6 +35,25 @@ export const getRequisitionById = async (requisitionId: string) => {
     return { data, error: null };
   } catch (error) {
     console.error('Error fetching requisition:', error);
+    return { data: null, error };
+  }
+};
+
+/**
+ * Get a single opportunity by ID
+ */
+export const getOpportunityById = async (opportunityId: number) => {
+  try {
+    const { data, error } = await supabase
+      .from('opportunities')
+      .select('*')
+      .eq('id', opportunityId)
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching opportunity:', error);
     return { data: null, error };
   }
 };
@@ -60,18 +79,18 @@ export const getRequisitionsWithStats = async () => {
 // ==================== PIPELINE CANDIDATE OPERATIONS ====================
 
 /**
- * Get all pipeline candidates for a requisition
- * If requisitionId is empty, fetch all candidates from all requisitions
+ * Get all pipeline candidates for an opportunity
+ * If opportunityId is empty, fetch all candidates from all opportunities
  */
-export const getPipelineCandidates = async (requisitionId?: string) => {
+export const getPipelineCandidates = async (opportunityId?: number) => {
   try {
     let query = supabase
       .from('pipeline_candidates_detailed')
       .select('*');
     
-    // Only filter by requisition_id if provided
-    if (requisitionId) {
-      query = query.eq('requisition_id', requisitionId);
+    // Only filter by opportunity_id if provided
+    if (opportunityId) {
+      query = query.eq('opportunity_id', opportunityId);
     }
     
     const { data, error } = await query.order('added_at', { ascending: false });
@@ -87,23 +106,75 @@ export const getPipelineCandidates = async (requisitionId?: string) => {
 /**
  * Get pipeline candidates for a specific stage
  */
-export const getPipelineCandidatesByStage = async (requisitionId: string, stage: string) => {
+export const getPipelineCandidatesByStage = async (opportunityId: number, stage: string) => {
   try {
+    
     const { data, error } = await supabase
       .from('pipeline_candidates')
       .select(`
         *,
-        students (*)
+        students (
+          id,
+          name,
+          email,
+          contact_number,
+          department,
+          university,
+          cgpa,
+          employability_score,
+          verified,
+          profile
+        )
       `)
-      .eq('requisition_id', requisitionId)
+      .eq('opportunity_id', opportunityId)
       .eq('stage', stage)
       .eq('status', 'active')
       .order('updated_at', { ascending: false });
 
-    if (error) throw error;
-    return { data, error: null };
+    if (error) {
+      console.error(`[Pipeline Service] Error fetching stage ${stage}:`, error);
+      throw error;
+    }
+
+
+    // Transform data to include profile fields at student level
+    const transformedData = data?.map((candidate, index) => {
+      console.log({
+        id: candidate.id,
+        student_id: candidate.student_id,
+        candidate_name: candidate.candidate_name,
+        has_students: !!candidate.students,
+        has_profile: !!(candidate.students?.profile)
+      });
+
+      if (candidate.students && candidate.students.profile) {
+        const profile = candidate.students.profile;
+        console.log({
+          dept: profile.dept,
+          college: profile.college,
+          skills_count: profile.skills?.length || 0,
+          ai_score: profile.ai_score_overall
+        });
+
+        return {
+          ...candidate,
+          students: {
+            ...candidate.students,
+            dept: profile.dept || profile.department || candidate.students.department,
+            college: profile.college || profile.university || candidate.students.university,
+            location: profile.location || profile.city || '',
+            skills: profile.skills || [],
+            ai_score_overall: profile.ai_score_overall || candidate.students.employability_score || 0
+          }
+        };
+      }
+      
+      return candidate;
+    });
+
+    return { data: transformedData, error: null };
   } catch (error) {
-    console.error('Error fetching pipeline candidates by stage:', error);
+    console.error('[Pipeline Service] Error fetching pipeline candidates by stage:', error);
     return { data: null, error };
   }
 };
@@ -112,7 +183,7 @@ export const getPipelineCandidatesByStage = async (requisitionId: string, stage:
  * Get pipeline candidates with advanced filters and sorting (SQL-optimized)
  */
 export const getPipelineCandidatesWithFilters = async (
-  requisitionId: string,
+  opportunityId: number,
   filters: {
     stages?: string[]
     skills?: string[]
@@ -137,9 +208,20 @@ export const getPipelineCandidatesWithFilters = async (
       .from('pipeline_candidates')
       .select(`
         *,
-        students (*)
+        students (
+          id,
+          name,
+          email,
+          contact_number,
+          department,
+          university,
+          cgpa,
+          employability_score,
+          verified,
+          profile
+        )
       `)
-      .eq('requisition_id', requisitionId)
+      .eq('opportunity_id', opportunityId)
       .eq('status', 'active');
 
     // Apply stage filters
@@ -221,9 +303,26 @@ export const getPipelineCandidatesWithFilters = async (
 
     if (error) throw error;
 
-    // Apply client-side filters for student data (skills, department, location, AI score)
-    let filteredData = data || [];
+    // Transform data to include profile fields at student level
+    let filteredData = data?.map(candidate => {
+      if (candidate.students && candidate.students.profile) {
+        const profile = candidate.students.profile;
+        return {
+          ...candidate,
+          students: {
+            ...candidate.students,
+            dept: profile.dept || profile.department || candidate.students.department,
+            college: profile.college || profile.university || candidate.students.university,
+            location: profile.location || profile.city || '',
+            skills: profile.skills || [],
+            ai_score_overall: profile.ai_score_overall || candidate.students.employability_score || 0
+          }
+        };
+      }
+      return candidate;
+    }) || [];
 
+    // Apply client-side filters for student data (skills, department, location, AI score)
     // Filter by skills (check if student has any of the selected skills)
     if (filters.skills && filters.skills.length > 0) {
       filteredData = filteredData.filter(candidate => {
@@ -301,9 +400,9 @@ export const getPipelineCandidatesWithFilters = async (
 /**
  * Get all pipeline candidates grouped by stage
  */
-export const getAllPipelineCandidatesByStage = async (requisitionId: string) => {
+export const getAllPipelineCandidatesByStage = async (opportunityId: number) => {
   try {
-    const { data, error } = await getPipelineCandidates(requisitionId);
+    const { data, error } = await getPipelineCandidates(opportunityId);
     
     if (error) throw error;
 
@@ -334,7 +433,7 @@ export const getAllPipelineCandidatesByStage = async (requisitionId: string) => 
  * Add candidate to pipeline
  */
 export const addCandidateToPipeline = async (pipelineData: {
-  requisition_id: string;
+  opportunity_id: number;
   student_id: string;
   candidate_name: string;
   candidate_email?: string;
@@ -346,13 +445,41 @@ export const addCandidateToPipeline = async (pipelineData: {
   next_action_notes?: string;
 }) => {
   try {
+    // Fetch student's AI score and employability data
+    let aiScore = null;
+    let employabilityScore = null;
+    
+    try {
+      const { data: studentData, error: studentError } = await supabase
+        .from('students')
+        .select('profile')
+        .eq('id', pipelineData.student_id)
+        .single();
+      
+      if (!studentError && studentData) {
+        aiScore = studentData.profile?.ai_score_overall || null;
+        employabilityScore = studentData.profile?.employability_score || null;
+      }
+    } catch (e) {
+    }
+
+    // Add AI score to recruiter notes for visibility
+    let recruiterNotes = '';
+    if (aiScore !== null) {
+      recruiterNotes += `AI Match Score: ${aiScore}/100`;
+    }
+    if (employabilityScore !== null) {
+      recruiterNotes += recruiterNotes ? ` | Employability Score: ${employabilityScore}/100` : `Employability Score: ${employabilityScore}/100`;
+    }
+
     const { data, error } = await supabase
       .from('pipeline_candidates')
       .insert([{
         ...pipelineData,
         stage: pipelineData.stage || 'sourced',
         source: pipelineData.source || 'talent_pool',
-        status: 'active'
+        status: 'active',
+        recruiter_notes: recruiterNotes || pipelineData.next_action_notes || null
       }])
       .select()
       .single();
@@ -378,7 +505,11 @@ export const addCandidateToPipeline = async (pipelineData: {
         activity_type: 'stage_change',
         from_stage: null,
         to_stage: data.stage,
-        performed_by: pipelineData.added_by
+        performed_by: pipelineData.added_by,
+        activity_details: {
+          ai_score: aiScore,
+          employability_score: employabilityScore
+        }
       });
     }
 
@@ -399,10 +530,10 @@ export const moveCandidateToStage = async (
   notes?: string
 ) => {
   try {
-    // Get current candidate data
+    // Get current candidate data with student info
     const { data: currentData, error: fetchError } = await supabase
       .from('pipeline_candidates')
-      .select('stage')
+      .select('stage, student_id, candidate_name, candidate_email, opportunity_id')
       .eq('id', candidateId)
       .single();
 
@@ -434,6 +565,40 @@ export const moveCandidateToStage = async (
       activity_details: notes ? { notes } : null,
       performed_by: performedBy
     });
+
+    // Create notification for student about stage change
+    try {
+      // Get opportunity details for better notification
+      const { data: opportunity } = await supabase
+        .from('opportunities')
+        .select('title, department')
+        .eq('id', currentData.opportunity_id)
+        .single();
+
+      const stageLabels: { [key: string]: string } = {
+        sourced: 'Sourced',
+        screened: 'Screened',
+        interview_1: 'Interview Round 1',
+        interview_2: 'Interview Round 2',
+        offer: 'Offer Stage',
+        hired: 'Hired',
+        rejected: 'Application Reviewed'
+      };
+
+      const notificationMessage = newStage === 'rejected' 
+        ? `Your application for ${opportunity?.title || 'a position'} has been reviewed. Thank you for your interest.`
+        : `Great news! You've been moved to ${stageLabels[newStage] || newStage} stage for ${opportunity?.title || 'a position'}.`;
+
+      // Insert notification (if you have a notifications table for students)
+      // This is optional - you can create a student_notifications table
+      console.log({
+        student_id: currentData.student_id,
+        message: notificationMessage,
+        from_stage: previousStage,
+        to_stage: newStage
+      });
+    } catch (notifError) {
+    }
 
     return { data, error: null };
   } catch (error) {
@@ -691,11 +856,11 @@ export const bulkRejectCandidates = async (
 // ==================== ANALYTICS ====================
 
 /**
- * Get pipeline statistics for a requisition
+ * Get pipeline statistics for an opportunity
  */
-export const getPipelineStatistics = async (requisitionId: string) => {
+export const getPipelineStatistics = async (opportunityId: number) => {
   try {
-    const { data, error } = await getPipelineCandidates(requisitionId);
+    const { data, error } = await getPipelineCandidates(opportunityId);
     
     if (error) throw error;
 

@@ -15,7 +15,6 @@ interface UseBroadcastProps {
  * const { sendBroadcast } = useBroadcast({
  *   channelName: 'app-notifications',
  *   onReceive: (message) => {
- *     console.log('Received broadcast:', message);
  *   }
  * });
  * 
@@ -36,7 +35,6 @@ export const useBroadcast = ({
   useEffect(() => {
     if (!enabled || !channelName) return;
 
-    console.log('📢 Setting up broadcast channel:', channelName);
 
     const channel = RealtimeService.createBroadcastChannel(
       channelName,
@@ -44,7 +42,6 @@ export const useBroadcast = ({
     );
 
     return () => {
-      console.log('🔕 Cleaning up broadcast channel:', channelName);
       RealtimeService.unsubscribe(channelName);
     };
   }, [channelName, onReceive, enabled]);
@@ -56,7 +53,6 @@ export const useBroadcast = ({
     async (message: BroadcastMessage) => {
       try {
         const result = await RealtimeService.sendBroadcast(channelName, message);
-        console.log('📤 Broadcast sent:', result);
         return result;
       } catch (error) {
         console.error('❌ Error sending broadcast:', error);

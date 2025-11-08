@@ -30,6 +30,8 @@ import {
   Sparkles,
   Target,
   BookOpen,
+  Trophy,
+  ChevronRight,
 } from "lucide-react";
 import {
   suggestions,
@@ -55,10 +57,14 @@ import { supabase } from "../../lib/supabaseClient";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
 import { Toaster } from "react-hot-toast";
+import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
+import { useStudentAchievements } from "../../hooks/useStudentAchievements";
+import { useNavigate } from "react-router-dom";
 // Debug utilities removed for production cleanliness
 
 const StudentDashboard = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Check if viewing someone else's profile (from QR scan)
   const isViewingOthersProfile =
@@ -143,6 +149,9 @@ const StudentDashboard = () => {
   // Get unread message count with realtime updates
   const { unreadCount } = useStudentUnreadCount(studentId, !!studentId && !isViewingOthersProfile);
 
+  // Fetch achievements and badges from separate tables
+  const { achievements, badges, loading: achievementsLoading } = useStudentAchievements(studentId, userEmail);
+
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
     education: educationData,
@@ -216,7 +225,7 @@ const StudentDashboard = () => {
 
   // Debug log for authentication and student data
   useEffect(() => {
-    console.log("👤 Dashboard: Student data state changed:", {
+    console.log({
       studentData: studentData?.id,
       loading: authStudentLoading,
       error: authStudentError,
@@ -225,7 +234,7 @@ const StudentDashboard = () => {
 
   // Debug log for opportunities
   useEffect(() => {
-    console.log("🔍 Dashboard: Opportunities state changed:", {
+    console.log({
       opportunities,
       loading: opportunitiesLoading,
       error: opportunitiesError,
@@ -235,7 +244,7 @@ const StudentDashboard = () => {
 
   // Debug log for recent updates
   useEffect(() => {
-    console.log("📢 Dashboard: Recent updates state changed:", {
+    console.log({
       recentUpdates,
       loading: recentUpdatesLoading,
       error: recentUpdatesError,
@@ -248,7 +257,6 @@ const StudentDashboard = () => {
   useEffect(() => {
     if (!userEmail || isViewingOthersProfile) return;
 
-    console.log("🔔 Setting up real-time subscription for opportunities...");
 
     // Subscribe to real-time changes in opportunities table
     const channel = supabase
@@ -261,7 +269,6 @@ const StudentDashboard = () => {
           table: "opportunities",
         },
         (payload) => {
-          console.log("🆕 New opportunity detected:", payload.new);
 
           // Refresh opportunities list
           refreshOpportunities();
@@ -283,7 +290,6 @@ const StudentDashboard = () => {
           table: "opportunities",
         },
         (payload) => {
-          console.log("✏️ Opportunity updated:", payload.new);
           refreshOpportunities();
         }
       )
@@ -291,7 +297,6 @@ const StudentDashboard = () => {
 
     // Cleanup subscription on unmount
     return () => {
-      console.log("� Unsubscribing from opportunities changes...");
       supabase.removeChannel(channel);
     };
   }, [userEmail, isViewingOthersProfile]);
@@ -300,8 +305,7 @@ const StudentDashboard = () => {
   useEffect(() => {
     const testSupabaseDirectly = async () => {
       try {
-        console.log("🧪 Testing Supabase connection directly...");
-        console.log("🔑 Environment vars:", {
+        console.log({
           url: import.meta.env.VITE_SUPABASE_URL ? "Set" : "Missing",
           key: import.meta.env.VITE_SUPABASE_ANON_KEY ? "Set" : "Missing",
         });
@@ -310,7 +314,6 @@ const StudentDashboard = () => {
           .from("opportunities")
           .select("*", { count: "exact" });
 
-        console.log("🧪 Direct test result:", { data, error, count });
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
@@ -407,7 +410,6 @@ const StudentDashboard = () => {
           await refresh();
 
           // Refresh Recent Updates to show the new activity
-          console.log("🔄 Refreshing Recent Updates after save...");
           refreshRecentUpdates();
         }
       } catch (err) {
@@ -425,6 +427,24 @@ const StudentDashboard = () => {
         }`}
       />
     ));
+  };
+
+  // Helper function to get skill level text
+  const getSkillLevelText = (level) => {
+    if (level >= 5) return "Expert";
+    if (level >= 4) return "Advanced";
+    if (level >= 3) return "Intermediate";
+    if (level >= 1) return "Beginner";
+    return "Beginner";
+  };
+
+  // Helper function to get skill level badge color
+  const getSkillLevelColor = (level) => {
+    if (level >= 5) return "bg-purple-100 text-purple-700 border-purple-300";
+    if (level >= 4) return "bg-blue-100 text-blue-700 border-blue-300";
+    if (level >= 3) return "bg-green-100 text-green-700 border-green-300";
+    if (level >= 1) return "bg-yellow-100 text-yellow-700 border-yellow-300";
+    return "bg-gray-100 text-gray-700 border-gray-300";
   };
 
   const TruncatedText = ({ text, maxLength = 120 }) => {
@@ -472,7 +492,7 @@ const StudentDashboard = () => {
         </CardHeader>
         <CardContent className="p-6 space-y-3">
           {(() => {
-            console.log("🎭 Rendering opportunities with:", {
+            console.log({
               loading: opportunitiesLoading,
               error: opportunitiesError,
               opportunities,
@@ -599,20 +619,22 @@ const StudentDashboard = () => {
               key={skill.id || `tech-skill-${idx}`}
               className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
             >
-              <div className="flex items-center justify-between">
-                <div key={`tech-skill-info-${skill.id}`}>
+              <div className="flex items-start justify-between">
+                <div key={`tech-skill-info-${skill.id}`} className="flex-1">
                   <h4 className="font-semibold text-gray-900 text-base mb-1">
                     {skill.name}
                   </h4>
-                  <p className="text-xs text-gray-600 font-medium">
+                  <p className="text-xs text-gray-600 font-medium mb-2">
                     {skill.category}
                   </p>
-                </div>
-                <div
-                  key={`tech-skill-stars-${skill.id}`}
-                  className="flex gap-1"
-                >
-                  {renderStars(skill.level)}
+                  <div className="flex items-center gap-2">
+                    <Badge className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(skill.level)}`}>
+                      {getSkillLevelText(skill.level)}
+                    </Badge>
+                    <div className="flex gap-0.5">
+                      {renderStars(skill.level)}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1245,15 +1267,20 @@ const StudentDashboard = () => {
               key={skill.id || `soft-skill-${idx}`}
               className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
             >
-              <div className="flex items-center justify-between">
-                <div key={`skill-info-${skill.id}`}>
+              <div className="flex items-start justify-between">
+                <div key={`skill-info-${skill.id}`} className="flex-1">
                   <h4 className="font-semibold text-gray-900 text-base mb-1">
                     {skill.name}
                   </h4>
-                  <p className="text-xs text-gray-600">{skill.description}</p>
-                </div>
-                <div key={`skill-stars-${skill.id}`} className="flex gap-1">
-                  {renderStars(skill.level)}
+                  <p className="text-xs text-gray-600 mb-2">{skill.description}</p>
+                  <div className="flex items-center gap-2">
+                    <Badge className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(skill.level)}`}>
+                      {getSkillLevelText(skill.level)}
+                    </Badge>
+                    <div className="flex gap-0.5">
+                      {renderStars(skill.level)}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1267,6 +1294,94 @@ const StudentDashboard = () => {
             >
               {showAllSoftSkills ? "Show Less" : "View All Soft Skills"}
             </Button>
+          )}
+        </CardContent>
+      </Card>
+    ),
+    achievements: (
+      <Card
+        key="achievements"
+        className="h-full bg-gradient-to-br from-purple-50 via-pink-50 to-amber-50 rounded-xl border-2 border-purple-200 hover:border-purple-400 transition-all duration-200 shadow-lg hover:shadow-xl"
+      >
+        <CardHeader className="px-6 py-4 border-b border-purple-100">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-md">
+                <Trophy className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <span className="text-lg font-semibold text-gray-900">
+                  Achievements & Badges
+                </span>
+                <p className="text-xs text-gray-600 font-normal mt-0.5">
+                  From separate tables
+                </p>
+              </div>
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 space-y-4">
+          {achievementsLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            </div>
+          ) : (
+            <>
+              {/* Badges Preview */}
+              {badges.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      AI-Generated Badges
+                    </h4>
+                    <Badge className="bg-amber-500 text-white text-xs px-2 py-1">
+                      {badges.length}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {badges.slice(0, 4).map((badge) => (
+                      <div
+                        key={badge.id}
+                        className="p-3 rounded-lg bg-white border-2 border-purple-200 hover:border-purple-400 transition-all text-center"
+                      >
+                        <div className="text-3xl mb-1">{badge.icon}</div>
+                        <p className="text-xs font-semibold text-gray-800 truncate">
+                          {badge.name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  {badges.length > 4 && (
+                    <p className="text-xs text-center text-gray-600">
+                      +{badges.length - 4} more badges
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Achievements Count */}
+              <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200">
+                <div className="flex items-center gap-2">
+                  <Target className="w-5 h-5 text-purple-600" />
+                  <span className="text-sm font-medium text-gray-700">
+                    Total Achievements
+                  </span>
+                </div>
+                <span className="text-2xl font-bold text-purple-600">
+                  {achievements.length}
+                </span>
+              </div>
+
+              {/* View Full Page Button */}
+              <Button
+                onClick={() => navigate('/student/achievements')}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2"
+              >
+                View All Achievements
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </>
           )}
         </CardContent>
       </Card>
@@ -1288,6 +1403,7 @@ const StudentDashboard = () => {
         ]
       : [
           "opportunities",
+          "achievements",
           "education",
           "training",
           "experience",
@@ -1330,8 +1446,6 @@ const StudentDashboard = () => {
 
   const renderCardsByPriority = () => {
     const order = cardOrders[activeNavItem] || cardOrders.opportunities;
-    console.log("Active nav item:", activeNavItem);
-    console.log("Card order:", order);
 
     return order.map((cardKey, index) => {
       const card = allCards[cardKey];
@@ -1396,7 +1510,6 @@ const StudentDashboard = () => {
                       key={item.id}
                       variant={isActive ? "default" : "outline"}
                       onClick={() => {
-                        console.log('Clicked nav item:', item.id);
                         setActiveNavItem(item.id);
                       }}
                       className={`flex items-center gap-2 transition-all ${
@@ -1796,6 +1909,13 @@ const StudentDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {renderCardsByPriority()}
             </div>
+            
+            {/* Achievement Timeline - Below cards in the right column */}
+            {!isViewingOthersProfile && (
+              <div className="mt-5">
+                <AchievementsTimeline userData={userData} />
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FiArrowRight } from "react-icons/fi";
 
 const GradientBars = () => {
@@ -60,14 +60,58 @@ const GradientBars = () => {
 };
 
 const FinalCTA = () => {
+  useEffect(() => {
+    // Load Calendly CSS
+    const link = document.createElement('link');
+    link.href = 'https://assets.calendly.com/assets/external/widget.css';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+
+    // Load Calendly widget script
+    const script = document.createElement('script');
+    script.src = 'https://assets.calendly.com/assets/external/widget.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    // Add styles for responsive background images
+    const style = document.createElement('style');
+    style.textContent = `
+      .final-cta-background {
+        background-image: url("/assets/HomePage/Make-Every-Skill-Count_1.png");
+      }
+      @media (max-width: 768px) {
+        .final-cta-background {
+          background-image: url("/assets/HomePage/footer_banner_mobileversion.webp");
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      if (link.parentNode) link.parentNode.removeChild(link);
+      if (script.parentNode) script.parentNode.removeChild(script);
+      if (style.parentNode) style.parentNode.removeChild(style);
+    };
+  }, []);
+
+  const openCalendly = () => {
+    const url = 'https://calendly.com/d/cs8h-vpx-dwt/skillpassport_home';
+    if (window.Calendly) {
+      window.Calendly.initPopupWidget({ url });
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
     <section
-      className="relative grid place-content-center overflow-hidden px-4 py-20"
+      className="relative grid place-content-center overflow-hidden px-4 py-10 final-cta-background"
       style={{
-        background: 'rgb(255, 255, 255)'
+        backgroundSize: 'contain',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
       }}
     >
-      <GradientBars />
       <div className="relative z-10 flex flex-col items-center">
         {/* Main Heading */}
         <h1 className="max-w-5xl text-center text-2xl font-bold leading-snug text-black sm:text-4xl sm:leading-tight md:text-5xl md:leading-tight lg:text-6xl lg:leading-tight">
@@ -76,22 +120,24 @@ const FinalCTA = () => {
         
         {/* Subheading */}
         <p className="my-6 max-w-3xl text-center text-base leading-relaxed text-gray-900 sm:text-lg md:text-xl">
-          Transform your workforce intelligence today with enterprise-grade skill validation
+          Transform Your Workforce Intelligence Today With Enterprise-Grade Skill Validation.
         </p>
         
         {/* CTA Buttons */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-10 lg:gap-80">
           {/* Primary Button - Book a Corporate Demo */}
           <button
-            className="group flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-black transition-all hover:bg-gray-100 sm:px-6 sm:py-3 sm:text-base"
-          >
+            onClick={openCalendly}
+            className="group flex items-center justify-center gap-2 h-9 sm:h-14 px-4 sm:px-8 rounded-full bg-[#e63b2e] text-white text-xs sm:text-base font-bold uppercase tracking-wide shadow-[0_6px_20px_rgba(230,59,46,0.4)] hover:brightness-110 transition-all"
+            aria-label="Book a Corporate Demo"
+          > 
             Book a Corporate Demo
             <FiArrowRight className="transition-transform group-hover:translate-x-1" />
           </button>
 
           {/* Secondary Button - Request Enterprise Access */}
           <button
-            className="rounded-full border border-black bg-transparent px-4 py-2 text-sm font-bold text-gray-900 transition-all hover:bg-white/10 sm:border-2 sm:px-6 sm:py-3 sm:text-base"
+            className="rounded-full border-2 border-[#288aca] bg-[#288aca]/80 text-white px-4 py-2 text-sm font-bold transition-all hover:brightness-110 sm:px-6 sm:py-3 sm:text-base"
           >
             Request Enterprise Access
           </button>

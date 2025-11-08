@@ -34,13 +34,12 @@ const generateRealisticCandidate = () => {
  * This function will work with your existing database structure and handle empty tables gracefully
  */
 export const getDashboardKPIs = async () => {
-  console.log('🔄 Fetching dashboard KPIs from database...');
   try {
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     
-    console.log('📅 Date ranges:', {
+    console.log({
       now: now.toISOString(),
       oneWeekAgo: oneWeekAgo.toISOString(),
       twoWeeksAgo: twoWeeksAgo.toISOString()
@@ -50,7 +49,6 @@ export const getDashboardKPIs = async () => {
     // and make the queries more robust
     
     // 1. Get total student count and new profiles this week
-    console.log('👥 Fetching student counts...');
     const [totalStudentsResult, newStudentsResult] = await Promise.all([
       supabase.from('students').select('*', { count: 'exact', head: true }),
       supabase.from('students')
@@ -60,10 +58,8 @@ export const getDashboardKPIs = async () => {
     
     const totalStudents = totalStudentsResult.count || 0;
     const newProfiles = newStudentsResult.count || 0;
-    console.log('📋 Students - Total:', totalStudents, 'New this week:', newProfiles);
     
     // 2. Get shortlist counts (handling if table doesn't exist or is empty)
-    console.log('📜 Fetching shortlist counts...');
     let shortlisted = 0;
     try {
       const shortlistResult = await supabase
@@ -71,13 +67,10 @@ export const getDashboardKPIs = async () => {
         .select('*', { count: 'exact', head: true });
       
       shortlisted = shortlistResult.count || 0;
-      console.log('📋 Shortlisted candidates:', shortlisted);
     } catch (shortlistError) {
-      console.log('⚠️ Shortlist table may not exist or be empty:', shortlistError.message);
     }
     
     // 3. Get interview counts (handling if table doesn't exist or is empty)
-    console.log('📅 Fetching interview counts...');
     let interviewsScheduled = 0;
     try {
       const interviewResult = await supabase
@@ -85,13 +78,10 @@ export const getDashboardKPIs = async () => {
         .select('*', { count: 'exact', head: true });
       
       interviewsScheduled = interviewResult.count || 0;
-      console.log('📋 Interviews scheduled:', interviewsScheduled);
     } catch (interviewError) {
-      console.log('⚠️ Interview table may not exist or be empty:', interviewError.message);
     }
     
     // 4. Get pipeline/offers counts (handling if table doesn't exist or is empty)
-    console.log('👥 Fetching pipeline counts...');
     let offersExtended = 0;
     try {
       const pipelineResult = await supabase
@@ -99,9 +89,7 @@ export const getDashboardKPIs = async () => {
         .select('*', { count: 'exact', head: true });
       
       offersExtended = pipelineResult.count || 0;
-      console.log('📋 Pipeline candidates:', offersExtended);
     } catch (pipelineError) {
-      console.log('⚠️ Pipeline table may not exist or be empty:', pipelineError.message);
     }
     
     // Calculate some realistic trends based on current data
@@ -128,7 +116,6 @@ export const getDashboardKPIs = async () => {
       error: null
     };
     
-    console.log('✅ Successfully fetched dashboard KPIs:', result.data);
     return result;
     
   } catch (error) {
@@ -142,12 +129,10 @@ export const getDashboardKPIs = async () => {
  * Now tracks ALL activities from multiple tables in a unified timeline
  */
 export const getRecentActivity = async (limit = 15) => {
-  console.log('📜 Fetching recent activity from all tables...');
   try {
     const allActivities = [];
     
     // 1. Pipeline Activities (stage changes, updates)
-    console.log('🔄 Fetching pipeline activities...');
     try {
       const { data: pipelineActivities } = await supabase
         .from('pipeline_activities')
@@ -177,14 +162,11 @@ export const getRecentActivity = async (limit = 15) => {
             icon: 'pipeline'
           });
         });
-        console.log(`📋 Added ${pipelineActivities.length} pipeline activities`);
       }
     } catch (error) {
-      console.log('⚠️ Pipeline activities unavailable:', error.message);
     }
 
     // 2. Recruiter Activities (searches, views, etc.)
-    console.log('👁️ Fetching recruiter activities...');
     try {
       const { data: recruiterActivities } = await supabase
         .from('recruiter_activities')
@@ -206,14 +188,11 @@ export const getRecentActivity = async (limit = 15) => {
             icon: 'search'
           });
         });
-        console.log(`📋 Added ${recruiterActivities.length} recruiter activities`);
       }
     } catch (error) {
-      console.log('⚠️ Recruiter activities unavailable:', error.message);
     }
 
     // 3. Shortlist Changes
-    console.log('📋 Fetching shortlist activities...');
     try {
       const { data: shortlistCandidates } = await supabase
         .from('shortlist_candidates')
@@ -236,7 +215,6 @@ export const getRecentActivity = async (limit = 15) => {
                 : sc.students.profile;
               studentName = profile.name || `Student ${sc.student_id}`;
             } catch (e) {
-              console.log('⚠️ Could not parse profile for student:', sc.student_id);
               studentName = `Student ${sc.student_id}`;
             }
           } else {
@@ -255,14 +233,11 @@ export const getRecentActivity = async (limit = 15) => {
             icon: 'bookmark'
           });
         });
-        console.log(`📋 Added ${shortlistCandidates.length} shortlist activities`);
       }
     } catch (error) {
-      console.log('⚠️ Shortlist activities unavailable:', error.message);
     }
 
     // 4. Offers (created, updated, status changes)
-    console.log('💼 Fetching offer activities...');
     try {
       const { data: offers } = await supabase
         .from('offers')
@@ -292,14 +267,11 @@ export const getRecentActivity = async (limit = 15) => {
             icon: 'document'
           });
         });
-        console.log(`📋 Added ${offers.length} offer activities`);
       }
     } catch (error) {
-      console.log('⚠️ Offer activities unavailable:', error.message);
     }
 
     // 5. Interviews (scheduled, completed, cancelled)
-    console.log('📅 Fetching interview activities...');
     try {
       const { data: interviews } = await supabase
         .from('interviews')
@@ -338,14 +310,11 @@ export const getRecentActivity = async (limit = 15) => {
             icon: 'calendar'
           });
         });
-        console.log(`📋 Added ${interviews.length} interview activities`);
       }
     } catch (error) {
-      console.log('⚠️ Interview activities unavailable:', error.message);
     }
 
     // 6. Placements
-    console.log('🎯 Fetching placement activities...');
     try {
       const { data: placements } = await supabase
         .from('placements')
@@ -371,7 +340,6 @@ export const getRecentActivity = async (limit = 15) => {
                 : placement.students.profile;
               studentName = profile.name || studentName;
             } catch (e) {
-              console.log('⚠️ Could not parse profile for placement:', placement.studentId);
             }
           }
           
@@ -387,14 +355,11 @@ export const getRecentActivity = async (limit = 15) => {
             icon: 'briefcase'
           });
         }
-        console.log(`📋 Added ${placements.length} placement activities`);
       }
     } catch (error) {
-      console.log('⚠️ Placement activities unavailable:', error.message);
     }
 
     // 7. Pipeline Candidates (new additions, stage changes)
-    console.log('🔄 Fetching pipeline candidate activities...');
     try {
       const { data: pipelineCandidates } = await supabase
         .from('pipeline_candidates')
@@ -422,19 +387,16 @@ export const getRecentActivity = async (limit = 15) => {
             metadata: {
               stage: pc.stage,
               status: pc.status,
-              requisitionId: pc.requisition_id
+              opportunityId: pc.opportunity_id
             },
             icon: 'user-group'
           });
         });
-        console.log(`📋 Added ${pipelineCandidates.length} pipeline candidate activities`);
       }
     } catch (error) {
-      console.log('⚠️ Pipeline candidate activities unavailable:', error.message);
     }
 
     // 8. Shortlist Creation/Updates
-    console.log('📝 Fetching shortlist creation activities...');
     try {
       const { data: shortlists } = await supabase
         .from('shortlists')
@@ -463,10 +425,8 @@ export const getRecentActivity = async (limit = 15) => {
             icon: 'folder'
           });
         });
-        console.log(`📋 Added ${shortlists.length} shortlist creation activities`);
       }
     } catch (error) {
-      console.log('⚠️ Shortlist creation activities unavailable:', error.message);
     }
 
     // Sort all activities by timestamp (most recent first)
@@ -475,7 +435,6 @@ export const getRecentActivity = async (limit = 15) => {
     // Take only the requested limit
     const recentActivities = allActivities.slice(0, limit);
 
-    console.log(`✅ Fetched ${recentActivities.length} total activities from all tables`);
     
     return {
       data: recentActivities,
@@ -491,7 +450,6 @@ export const getRecentActivity = async (limit = 15) => {
  * Get alerts and pending tasks with enhanced checks
  */
 export const getDashboardAlerts = async () => {
-  console.log('🚨 Fetching dashboard alerts from page data sources...');
   try {
     // Dynamically import the alerts service to avoid circular deps
     const { getAllAlerts } = await import('./alertsService.ts');
@@ -511,7 +469,6 @@ export const getDashboardAlerts = async () => {
  * Get recent shortlists for dashboard
  */
 export const getRecentShortlists = async (limit = 5) => {
-  console.log('📜 Fetching recent shortlists...');
   try {
     // Try to get shortlists - handle gracefully if table doesn't exist
     try {
@@ -532,18 +489,15 @@ export const getRecentShortlists = async (limit = 5) => {
           shared: shortlist.shared || false
         }));
         
-        console.log('📋 Found', formattedShortlists.length, 'shortlists');
         return {
           data: formattedShortlists,
           error: null
         };
       }
     } catch (shortlistError) {
-      console.log('⚠️ Shortlists table unavailable:', shortlistError.message);
     }
     
     // If no real shortlists, return sample ones
-    console.log('🗺 No shortlists found, generating sample shortlists...');
     const sampleShortlists = [
       {
         id: 'sample-sl-1',

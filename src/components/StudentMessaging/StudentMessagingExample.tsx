@@ -47,7 +47,6 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
     playSound: true,
     excludeConversationId: selectedConversationId,
     onMessageReceived: (message) => {
-      console.log('🎉 New message notification triggered!', message);
     }
   });
   

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  UserGroupIcon, 
-  CheckCircleIcon, 
+import ReactApexChart from 'react-apexcharts';
+import {
+  UserGroupIcon,
+  CheckCircleIcon,
   ClockIcon,
   ChartBarIcon,
   ArrowRightIcon,
@@ -25,10 +26,16 @@ interface DashboardKPIs {
   recentActivitiesCount: number;
 }
 
+interface SkillAnalytics {
+  skillParticipation: { skill: string; count: number }[];
+  skillDistribution: { category: string; count: number }[];
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
+  const [skillAnalytics, setSkillAnalytics] = useState<SkillAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,12 +45,14 @@ const Dashboard = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const [kpisData, activitiesData] = await Promise.all([
+      const [kpisData, activitiesData, analyticsData] = await Promise.all([
         educatorApi.dashboard.getKPIs(),
         educatorApi.activities.getAll(),
+        educatorApi.dashboard.getSkillAnalytics(),
       ]);
-      
+
       setKpis(kpisData);
+      setSkillAnalytics(analyticsData);
       // Get the 5 most recent activities
       const sorted = [...activitiesData].sort(
         (a, b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime()
@@ -72,6 +81,70 @@ const Dashboard = () => {
       'day'
     );
   };
+
+  // Chart configurations
+  const barChartOptions = {
+    chart: {
+      type: 'bar' as const,
+      height: 300,
+      toolbar: {
+        show: false,
+      },
+    },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '55%',
+        borderRadius: 4,
+      },
+    },
+    dataLabels: {
+      enabled: false,
+    },
+    colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
+    xaxis: {
+      categories: skillAnalytics?.skillParticipation.map(item => item.skill) || [],
+      labels: {
+        style: {
+          fontSize: '12px',
+        },
+      },
+    },
+    yaxis: {
+      title: {
+        text: 'Number of Activities',
+      },
+    },
+    tooltip: {
+      y: {
+        formatter: (val: number) => `${val} activities`,
+      },
+    },
+  };
+
+  const barChartSeries = [{
+    name: 'Activities',
+    data: skillAnalytics?.skillParticipation.map(item => item.count) || [],
+  }];
+
+  const pieChartOptions = {
+    chart: {
+      type: 'pie' as const,
+      height: 300,
+    },
+    labels: skillAnalytics?.skillDistribution.map(item => item.category) || [],
+    colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'],
+    legend: {
+      position: 'bottom' as const,
+    },
+    tooltip: {
+      y: {
+        formatter: (val: number) => `${val} activities`,
+      },
+    },
+  };
+
+  const pieChartSeries = skillAnalytics?.skillDistribution.map(item => item.count) || [];
 
   return (
     <div className="space-y-8 p-4 sm:p-6 lg:p-8" data-testid="educator-dashboard">
@@ -197,11 +270,37 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <p className="text-sm text-gray-600 mb-2">Skill Participation (Bar Chart)</p>
-            <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">[Bar Chart Placeholder]</div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              {loading ? (
+                <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">Loading chart...</div>
+              ) : skillAnalytics?.skillParticipation.length ? (
+                <ReactApexChart
+                  options={barChartOptions}
+                  series={barChartSeries}
+                  type="bar"
+                  height={250}
+                />
+              ) : (
+                <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">No data available</div>
+              )}
+            </div>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-2">Skill Distribution (Pie Chart)</p>
-            <div className="h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">[Pie Chart Placeholder]</div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              {loading ? (
+                <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">Loading chart...</div>
+              ) : skillAnalytics?.skillDistribution.length ? (
+                <ReactApexChart
+                  options={pieChartOptions}
+                  series={pieChartSeries}
+                  type="pie"
+                  height={250}
+                />
+              ) : (
+                <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">No data available</div>
+              )}
+            </div>
           </div>
         </div>
       </div>
