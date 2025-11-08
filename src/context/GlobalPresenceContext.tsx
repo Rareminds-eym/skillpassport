@@ -54,17 +54,7 @@ export const GlobalPresenceProvider: React.FC<GlobalPresenceProviderProps> = ({ 
   // Debug logging
   useEffect(() => {
     if (userId) {
-      console.log('🌐 [GlobalPresence] Context initialized:', {
-        userId,
-        userName,
-        userType,
-        onlineCount: presenceData.onlineUsers.length,
-        onlineUsers: presenceData.onlineUsers.map(u => ({
-          id: u.userId,
-          name: u.userName,
-          type: u.userType
-        }))
-      });
+      // User presence is active
     }
   }, [userId, userName, userType, presenceData.onlineUsers]);
 
@@ -82,7 +72,6 @@ export const useGlobalPresence = (): GlobalPresenceContextType => {
   const context = useContext(GlobalPresenceContext);
   
   if (!context) {
-    console.warn('⚠️ useGlobalPresence must be used within GlobalPresenceProvider');
     // Return safe defaults
     return {
       onlineUsers: [],

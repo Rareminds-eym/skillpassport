@@ -13,6 +13,7 @@ import {
 import { useStudents } from '../../hooks/useStudents';
 import { useSearch } from '../../context/SearchContext';
 import SearchBar from '../../components/common/SearchBar';
+import Pagination from '../../components/educator/Pagination';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -81,11 +82,7 @@ const MentorNoteModal = ({ isOpen, onClose, student, onSuccess }: any) => {
 
     try {
       // TODO: Replace with actual API call to save mentor note
-      // await saveMentorNote(student.id, note);
-
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
-
       onSuccess?.();
       onClose();
     } catch (err: any) {
@@ -291,6 +288,11 @@ const StudentsPage = () => {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [sortBy, setSortBy] = useState('relevance');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+
   const [filters, setFilters] = useState({
     skills: [],
     courses: [],
@@ -302,6 +304,11 @@ const StudentsPage = () => {
   });
 
   const { students, loading, error } = useStudents();
+
+  // Reset to page 1 when filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filters, sortBy]);
 
   // Dynamically generate filter options from actual data
   const skillOptions = useMemo(() => {
@@ -411,12 +418,10 @@ const StudentsPage = () => {
 
       // Store match results with the matched field for sorting
       const resultsWithScores = students.map(student => {
-        // Access the profile data - handles both nested and direct structures
         const profile = (student as any).profile || student;
         let matchedField = '';
         let isMatch = false;
 
-        // Helper function to safely check string fields and track matches
         const matchesField = (field: any, fieldName: string = ''): boolean => {
           if (!field) return false;
           const fieldStr = field.toString().toLowerCase();
@@ -428,7 +433,6 @@ const StudentsPage = () => {
           return false;
         };
 
-        // Helper function to search in arrays
         const searchInArray = (arr: any[], fields: string[], arrayName: string = ''): boolean => {
           if (!arr || !Array.isArray(arr)) return false;
           return arr.some((item: any) => {
@@ -445,7 +449,7 @@ const StudentsPage = () => {
           });
         };
 
-        // Basic fields - check both student level and profile level
+        // Basic fields
         if (matchesField(student.name, 'name') || matchesField(profile.name, 'name')) return { student, matchedField: matchedField || student.name?.toLowerCase() || '' };
         if (matchesField(student.email, 'email') || matchesField(profile.email, 'email')) return { student, matchedField: matchedField || student.email?.toLowerCase() || '' };
         if (matchesField(profile.age, 'age')) return { student, matchedField };
@@ -458,7 +462,7 @@ const StudentsPage = () => {
         if (matchesField(profile.university, 'university')) return { student, matchedField };
         if (matchesField(profile.registration_number, 'registration')) return { student, matchedField };
 
-        // Skills array - handle both formats (string array and object array)
+        // Skills array
         const skillsToCheck = student.skills || profile.skills;
         if (skillsToCheck && Array.isArray(skillsToCheck)) {
           const skillMatch = skillsToCheck.some((skill: any) => {
@@ -480,27 +484,23 @@ const StudentsPage = () => {
           if (skillMatch) return { student, matchedField };
         }
 
-        // Projects - search in title, tech, techStack, technologies, description
+        // Projects
         if (searchInArray(profile.projects, ['title', 'id', 'link', 'tech', 'techStack', 'technologies', 'organization', 'description', 'skills', 'status'], 'projects')) {
           return { student, matchedField };
         }
 
-        // Education - check all relevant fields
+        // Education
         if (searchInArray(profile.education, ['yearOfPassing', 'university', 'degree', 'department', 'college_school_name', 'level', 'cgpa', 'status'], 'education')) {
           return { student, matchedField };
         }
 
-        // Experience - comprehensive check including verified status
+        // Experience
         if (profile.experience && Array.isArray(profile.experience)) {
           const expMatch = profile.experience.some((exp: any) => {
             if (!exp) return false;
-
-            // Check text fields
             if (matchesField(exp.duration, 'experience')) return true;
             if (matchesField(exp.role, 'experience')) return true;
             if (matchesField(exp.organization, 'experience')) return true;
-
-            // Handle verified status search
             if (exp.verified === true && (query.includes('verified') || query === 'true')) {
               if (!isMatch) matchedField = 'verified experience';
               isMatch = true;
@@ -511,13 +511,12 @@ const StudentsPage = () => {
               isMatch = true;
               return true;
             }
-
             return false;
           });
           if (expMatch) return { student, matchedField };
         }
 
-        // Soft Skills - name, description, type
+        // Soft Skills
         if (profile.softSkills && Array.isArray(profile.softSkills)) {
           const softSkillMatch = profile.softSkills.some((skill: any) => {
             if (!skill) return false;
@@ -530,12 +529,10 @@ const StudentsPage = () => {
           if (softSkillMatch) return { student, matchedField };
         }
 
-        // Certificates - comprehensive search
+        // Certificates
         if (profile.certificates && Array.isArray(profile.certificates)) {
           const certMatch = profile.certificates.some((cert: any) => {
             if (!cert) return false;
-
-            // Check all certificate fields
             if (matchesField(cert.level, 'certificate')) return true;
             if (matchesField(cert.title, 'certificate')) return true;
             if (matchesField(cert.issuedOn, 'certificate')) return true;
@@ -543,21 +540,18 @@ const StudentsPage = () => {
             if (matchesField(cert.description, 'certificate')) return true;
             if (matchesField(cert.credentialId, 'certificate')) return true;
             if (matchesField(cert.status, 'certificate')) return true;
-
             return false;
           });
-
           if (certMatch) return { student, matchedField };
         }
 
-        // Technical Skills - name, level, category
+        // Technical Skills
         if (profile.technicalSkills && Array.isArray(profile.technicalSkills)) {
           const techMatch = profile.technicalSkills.some((skill: any) => {
             if (!skill) return false;
             if (matchesField(skill.name, 'technical skill')) return true;
             if (matchesField(skill.level, 'technical skill')) return true;
             if (matchesField(skill.category, 'technical skill')) return true;
-            // Handle verified status
             if (skill.verified === true && query.includes('verified')) {
               if (!isMatch) matchedField = 'verified technical skill';
               isMatch = true;
@@ -565,11 +559,10 @@ const StudentsPage = () => {
             }
             return false;
           });
-
           if (techMatch) return { student, matchedField };
         }
 
-        // Training - if exists
+        // Training
         if (profile.training && Array.isArray(profile.training)) {
           const trainingMatch = profile.training.some((training: any) => {
             if (!training) return false;
@@ -670,6 +663,23 @@ const StudentsPage = () => {
     return result;
   }, [students, searchQuery, filters, sortBy]);
 
+  // Calculate pagination
+  const totalItems = filteredAndSortedStudents.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedStudents = filteredAndSortedStudents.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
   // Clear all filters
   const handleClearFilters = () => {
     setFilters({
@@ -706,7 +716,7 @@ const StudentsPage = () => {
           <div className="inline-flex items-baseline">
             <h1 className="text-xl font-semibold text-gray-900">Students</h1>
             <span className="ml-2 text-sm text-gray-500">
-              ({filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`})
+              ({totalItems} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students)
             </span>
           </div>
         </div>
@@ -763,7 +773,7 @@ const StudentsPage = () => {
         <div className="text-left">
           <h1 className="text-xl font-semibold text-gray-900">Students</h1>
           <span className="text-sm text-gray-500">
-            {filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`}
+            {totalItems} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students
           </span>
         </div>
 
@@ -902,7 +912,9 @@ const StudentsPage = () => {
           <div className="px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
+                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(endIndex, totalItems)}</span> of{' '}
+                <span className="font-medium">{totalItems}</span> result{totalItems !== 1 ? 's' : ''}
                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
               </p>
               <select
@@ -924,7 +936,7 @@ const StudentsPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                 {loading && <div className="text-sm text-gray-500">Loading students...</div>}
                 {error && <div className="text-sm text-red-600">{error}</div>}
-                {!loading && filteredAndSortedStudents.map((student) => (
+                {!loading && paginatedStudents.map((student) => (
                   <StudentCard
                     key={student.id}
                     student={student as any}
@@ -932,7 +944,7 @@ const StudentsPage = () => {
                     onAddNote={handleAddNoteClick}
                   />
                 ))}
-                {!loading && filteredAndSortedStudents.length === 0 && !error && (
+                {!loading && paginatedStudents.length === 0 && !error && (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500">
                       {searchQuery || filters.skills.length > 0 || filters.locations.length > 0
@@ -976,7 +988,7 @@ const StudentsPage = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredAndSortedStudents.map((student) => (
+                    {paginatedStudents.map((student) => (
                       <tr key={student.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -1041,6 +1053,19 @@ const StudentsPage = () => {
               </div>
             )}
           </div>
+
+          {/* Pagination */}
+          {!loading && totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              // onItemsPerPageChange={handleItemsPerPageChange}
+              // itemsPerPageOptions={[10, 25, 50, 100]}
+            />
+          )}
         </div>
       </div>
 

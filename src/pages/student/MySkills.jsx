@@ -17,6 +17,8 @@ import { useAuth } from '../../context/AuthContext';
 import { SkillsEditModal } from '../../components/Students/components/ProfileEditModals';
 import { useRecentUpdates } from '../../hooks/useRecentUpdates';
 import { useRecentUpdatesLegacy } from '../../hooks/useRecentUpdatesLegacy';
+import { useAIJobMatching } from '../../hooks/useAIJobMatching';
+import SuggestedNextSteps from '../../components/Students/components/SuggestedNextSteps';
 import { 
   suggestions as mockSuggestions 
 } from '../../components/Students/data/mockData';
@@ -54,6 +56,13 @@ const MySkills = () => {
     refreshRecentUpdates();
     refreshRecentUpdatesLegacy();
   };
+
+  // AI Job Matching - Get top 3 matched jobs for student
+  const {
+    matchedJobs,
+    loading: matchingLoading,
+    error: matchingError,
+  } = useAIJobMatching(studentData, true, 3);
   
   const [activeModal, setActiveModal] = useState(null);
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
@@ -155,25 +164,12 @@ const MySkills = () => {
             </div>
 
             {/* Suggested Next Steps */}
-            <Card className="bg-white rounded-xl border border-gray-200 shadow-sm">
-              <CardHeader className="px-6 py-4 border-b border-gray-100">
-                <CardTitle className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <span className="text-lg font-semibold text-gray-900">Suggested Next Steps</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-2">
-                {suggestions.map((suggestion, idx) => (
-                  <div key={suggestion.id || `suggestion-${idx}`} className="p-3 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-all">
-                    <p className="text-sm font-medium text-gray-900">
-                      {typeof suggestion === 'string' ? suggestion : suggestion.message || suggestion}
-                    </p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            <SuggestedNextSteps
+              matchedJobs={matchedJobs}
+              loading={matchingLoading}
+              error={matchingError}
+              fallbackSuggestions={suggestions}
+            />
           </div>
         </div>
 

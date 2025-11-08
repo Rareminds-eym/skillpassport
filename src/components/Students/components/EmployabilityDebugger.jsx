@@ -9,17 +9,13 @@ const EmployabilityDebugger = () => {
 
   useEffect(() => {
     if (realStudentData) {
-      console.log('🐛 EMPLOYABILITY DEBUGGER - Full Student Data:', realStudentData);
-      console.log('🐛 EMPLOYABILITY DEBUGGER - Keys:', Object.keys(realStudentData));
       
       // Test the calculation step by step
       const result = calculateEmployabilityScore(realStudentData);
-      console.log('🐛 EMPLOYABILITY DEBUGGER - Final Result:', result);
       setDebugResult(result);
       
       // Also try with just the profile
       const profileResult = calculateEmployabilityScore(realStudentData.profile || {});
-      console.log('🐛 EMPLOYABILITY DEBUGGER - Profile Only Result:', profileResult);
       
       // Test with sample data to verify calculator works
       const testData = {
@@ -43,7 +39,6 @@ const EmployabilityDebugger = () => {
       };
       
       const testResult = calculateEmployabilityScore(testData);
-      console.log('🐛 TEST DATA RESULT:', testResult);
     }
   }, [realStudentData]);
 

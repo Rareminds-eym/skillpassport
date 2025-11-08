@@ -36,7 +36,7 @@ const Header: React.FC<HeaderProps> = ({
 
   const handleLogout = () => {
     setShowProfileMenu(false)
-    navigate('/educator/login')
+    navigate('/')
   }
 
   const handleProfileClick = () => {
@@ -46,7 +46,6 @@ const Header: React.FC<HeaderProps> = ({
 
   // Menu button click handler
   const handleMenuClick = () => {
-    console.log('Menu button clicked') // Debug
     onMenuToggle()
   }
 

@@ -87,10 +87,6 @@ const ProfileEditSection = ({ profileEmail }) => {
   }, [studentData, education, training, experience, techSkills, soft]);
 
   const handleSave = async (section, data) => {
-    console.log(`🔵 handleSave called for section: ${section}`);
-    console.log(`🔵 Data to save:`, data);
-    console.log(`🔵 User email:`, userEmail);
-    console.log(`🔵 Display email:`, displayEmail);
     
     setUserData(prev => ({
       ...prev,
@@ -100,9 +96,6 @@ const ProfileEditSection = ({ profileEmail }) => {
     // Save to Supabase if user is logged in
     if (userEmail && studentData?.profile) {
       try {
-        console.log(`🔄 ProfileEditSection: Saving ${section} data:`, data);
-        console.log(`🔄 User email:`, userEmail);
-        console.log(`🔄 Student data exists:`, !!studentData);
         
         let result;
         switch (section) {
@@ -128,26 +121,20 @@ const ProfileEditSection = ({ profileEmail }) => {
             result = await updateSoftSkills(data);
             break;
           case 'personalInfo':
-            console.log('🔵 Calling updateProfile with:', data);
             result = await updateProfile(data);
-            console.log('🔵 updateProfile result:', result);
             // Refresh the data after updating personal info
             if (result?.success) {
-              console.log('🔵 Update successful, refreshing data...');
               await refresh();
               setRefreshCounter(prev => prev + 1); // Force re-render of modal
-              console.log('🔵 Data refreshed successfully');
             } else {
               console.error('🔵 Update failed:', result?.error);
             }
             break;
           default:
-            console.warn('Unknown section:', section);
             return;
         }
 
         if (result?.success) {
-          console.log(`✅ ProfileEditSection: ${section} saved successfully to database`);
         } else {
           console.error(`❌ ProfileEditSection: Error saving ${section}:`, result?.error);
         }
@@ -155,21 +142,16 @@ const ProfileEditSection = ({ profileEmail }) => {
         console.error(`❌ ProfileEditSection: Error saving ${section} to Supabase:`, err);
       }
     } else {
-      console.warn('⚠️ ProfileEditSection: No user email or student data - saving locally only');
-      console.warn('   - userEmail:', userEmail);
-      console.warn('   - studentData?.profile:', studentData?.profile);
     }
   };
 
   const handleResumeDataExtracted = async (parsedData) => {
-    console.log('📄 Resume data extracted:', parsedData);
     
     try {
       // Merge parsed data with existing profile data
       const currentProfile = studentData?.profile || {};
       const mergedData = mergeResumeData(currentProfile, parsedData);
       
-      console.log('🔀 Merged resume data:', mergedData);
       
       // Update profile with merged data
       if (userEmail && studentData?.profile) {
@@ -210,13 +192,11 @@ const ProfileEditSection = ({ profileEmail }) => {
         
         // Update projects if present
         if (mergedData.projects && mergedData.projects.length > 0) {
-          console.log('📦 Saving projects:', mergedData.projects);
           await handleSave('projects', mergedData.projects);
         }
         
         // Update certificates if present
         if (mergedData.certificates && mergedData.certificates.length > 0) {
-          console.log('📜 Saving certificates:', mergedData.certificates);
           await handleSave('certificates', mergedData.certificates);
         }
         
@@ -234,7 +214,6 @@ const ProfileEditSection = ({ profileEmail }) => {
         await refresh();
         setRefreshCounter(prev => prev + 1);
         
-        console.log('✅ Resume data successfully saved to database');
       }
       
       // Close the resume parser modal

@@ -67,7 +67,7 @@ const CaseHighlights = () => {
             Case Studies
           </h2>
           <p className="text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Transforming education and employability across institutions
+            Transforming Education And Employability Across Institutions
           </p>
         </div>
 
@@ -162,7 +162,7 @@ const CaseHighlights = () => {
 
               {/* Table Rows */}
               {[
-                { label: 'Students Reached', nm: '65,000+', rcu: '900' },
+                { label: 'Students Reached', nm: '145,000+', rcu: '900' },
                 { label: 'Duration', nm: '45 hrs/semester (9 weeks)', rcu: '6 days intensive' },
                 { label: 'Location', nm: 'Statewide Tamil Nadu', rcu: 'Belagavi' },
                 { label: 'Timeline', nm: 'Ongoing since 2023', rcu: 'Sept 22-28, 2025' },
@@ -206,7 +206,7 @@ const CaseHighlights = () => {
                   {/* Timeline Steps */}
                   <div className="space-y-8">
                     {[
-                      { icon: Target, title: 'The Challenge', desc: 'Equip 65,000+ students across Tamil Nadu with industry-aligned, future-ready skills.' },
+                      { icon: Target, title: 'The Challenge', desc: 'Equip 145,000+ students across Tamil Nadu with industry-aligned, future-ready skills.' },
                       { icon: Lightbulb, title: 'Our Approach', desc: '45-hour structured training using 4Cs Learning Model over 9 weeks.' },
                       { icon: Award, title: 'Impact Achieved', desc: 'Improved confidence, job readiness, and stronger placement rates.' }
                     ].map((step, idx) => {
@@ -286,7 +286,7 @@ const CaseHighlights = () => {
                     <span className="text-amber-400">Naan Mudhalvan</span>
                   </h3>
                   <p className="text-case-subtitle text-gray-300 font-medium">
-                    Empowering 65,000+ Students Across Tamil Nadu
+                    Empowering 145,000+ Students Across Tamil Nadu
                   </p>
                 </div>
 
@@ -317,7 +317,7 @@ const CaseHighlights = () => {
               >
                 <div className="absolute top-4 right-4 w-2 h-2 bg-amber-400 rounded-full"></div>
 <div className="text-stat md:text-6xl font-black text-amber-400 mb-3">
-                  <AnimatedCounter end={65} suffix="K+" />
+                  <AnimatedCounter end={145} suffix="K+" />
                 </div>
                 <p className="text-black font-bold text-base sm:text-lg">Students Trained</p>
                 <p className="text-sm text-gray-600 mt-2 font-medium">Since 2023</p>
@@ -439,7 +439,7 @@ const CaseHighlights = () => {
                 </div>
                 <ul className="space-y-3">
                   {[
-                    '65,000+ students upskilled with practical exposure',
+                    '145,000+ students upskilled with practical exposure',
                     'Improved confidence & job readiness',
                     'Stronger participation & placement rates'
                   ].map((impact, idx) => (

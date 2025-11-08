@@ -187,7 +187,10 @@ export interface RequisitionFilters {
   }
   status: string[]
   departments: string[]
+  workModes: string[]
   locations: string[]
+  titles: string[]
+  experienceRequired: string[]
   employmentTypes: string[]
   experienceLevels: string[]
   salaryRange: {

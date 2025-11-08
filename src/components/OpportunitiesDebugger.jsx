@@ -16,7 +16,6 @@ const OpportunitiesDebugger = () => {
   useEffect(() => {
     const testConnection = async () => {
       try {
-        console.log('🔍 Testing Supabase connection...');
         
         // Test 1: Check if supabase client is configured
         if (!supabase) {
@@ -24,7 +23,6 @@ const OpportunitiesDebugger = () => {
         }
 
         // Test 2: Try to fetch from opportunities table
-        console.log('🔍 Fetching from opportunities table...');
         const { data, error, count } = await supabase
           .from('opportunities')
           .select('*', { count: 'exact' });
@@ -40,8 +38,6 @@ const OpportunitiesDebugger = () => {
           return;
         }
 
-        console.log('✅ Successfully fetched data:', data);
-        console.log('📊 Total count:', count);
 
         setDebugInfo({
           loading: false,

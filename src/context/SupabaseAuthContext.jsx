@@ -52,12 +52,11 @@ export const SupabaseAuthProvider = ({ children }) => {
   // Load user profile from students table
   const loadUserProfile = async (userId) => {
     try {
-      console.log('🔄 Loading user profile for user ID:', userId);
       
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -66,12 +65,10 @@ export const SupabaseAuthProvider = ({ children }) => {
       }
 
       if (data) {
-        console.log('✅ User profile loaded:', data);
         setUserProfile(data);
         // Also store email in localStorage for backward compatibility
         localStorage.setItem('userEmail', data.email);
       } else {
-        console.log('📝 No user profile found for user ID:', userId);
       }
     } catch (error) {
       console.error('❌ Error loading user profile:', error);
@@ -81,7 +78,6 @@ export const SupabaseAuthProvider = ({ children }) => {
   // Sign up student
   const signUp = async (email, password, studentData = {}) => {
     try {
-      console.log('🔄 Signing up user:', email);
       
       // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -96,7 +92,6 @@ export const SupabaseAuthProvider = ({ children }) => {
 
       if (authError) throw authError;
 
-      console.log('✅ Auth user created:', authData.user?.id);
 
       // Note: Student profile will be created automatically via database trigger
       // The trigger handles creating the students record when auth.users record is inserted
@@ -111,7 +106,6 @@ export const SupabaseAuthProvider = ({ children }) => {
   // Sign in
   const signIn = async (email, password) => {
     try {
-      console.log('🔄 Signing in user:', email);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -120,7 +114,6 @@ export const SupabaseAuthProvider = ({ children }) => {
 
       if (error) throw error;
 
-      console.log('✅ User signed in:', data.user?.id);
 
       if (data.user) {
         await loadUserProfile(data.user.id);
@@ -136,7 +129,6 @@ export const SupabaseAuthProvider = ({ children }) => {
   // Sign out
   const signOut = async () => {
     try {
-      console.log('🔄 Signing out user');
       
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -145,7 +137,6 @@ export const SupabaseAuthProvider = ({ children }) => {
       // Clear localStorage
       localStorage.removeItem('userEmail');
       
-      console.log('✅ User signed out');
       return { error: null };
     } catch (error) {
       console.error('❌ Sign out error:', error);
@@ -158,18 +149,16 @@ export const SupabaseAuthProvider = ({ children }) => {
     try {
       if (!user) throw new Error('No user logged in');
 
-      console.log('🔄 Updating user profile:', updates);
 
       const { data, error } = await supabase
         .from('students')
         .update(updates)
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .select()
         .single();
 
       if (error) throw error;
 
-      console.log('✅ Profile updated:', data);
       setUserProfile(data);
       return { data, error: null };
     } catch (error) {

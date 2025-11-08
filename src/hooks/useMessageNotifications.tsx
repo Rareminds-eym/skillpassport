@@ -20,7 +20,6 @@ export const useMessageNotifications = ({
   useEffect(() => {
     if (!userId || !enabled) return;
 
-    console.log('🔔 Setting up message notifications for:', userId, userType);
 
     const channel = supabase
       .channel(`user-messages:${userId}`)
@@ -35,7 +34,6 @@ export const useMessageNotifications = ({
         (payload) => {
           const message = payload.new as Message;
           
-          console.log('📨 New message received:', message);
 
           // Don't show notification if current user sent the message
           if (message.sender_id === userId) {
@@ -92,18 +90,15 @@ export const useMessageNotifications = ({
           try {
             const audio = new Audio('/notificacion.mp3');
             audio.volume = 0.3;
-            audio.play().catch((e) => console.log('Could not play sound:', e));
           } catch (e) {
             // Silent fail if audio not available
           }
         }
       )
       .subscribe((status) => {
-        console.log('📡 Subscription status:', status);
       });
 
     return () => {
-      console.log('🔕 Unsubscribing from message notifications');
       channel.unsubscribe();
     };
   }, [userId, userType, enabled, onMessageReceived]);

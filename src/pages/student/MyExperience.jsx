@@ -15,6 +15,8 @@ import { useAuth } from '../../context/AuthContext';
 import { ExperienceEditModal } from '../../components/Students/components/ProfileEditModals';
 import { useRecentUpdates } from '../../hooks/useRecentUpdates';
 import { useRecentUpdatesLegacy } from '../../hooks/useRecentUpdatesLegacy';
+import { useAIJobMatching } from '../../hooks/useAIJobMatching';
+import SuggestedNextSteps from '../../components/Students/components/SuggestedNextSteps';
 import { 
   suggestions as mockSuggestions 
 } from '../../components/Students/data/mockData';
@@ -51,6 +53,13 @@ const MyExperience = () => {
     refreshRecentUpdates();
     refreshRecentUpdatesLegacy();
   };
+
+  // AI Job Matching - Get top 3 matched jobs for student
+  const {
+    matchedJobs,
+    loading: matchingLoading,
+    error: matchingError,
+  } = useAIJobMatching(studentData, true, 3);
   
   const [activeModal, setActiveModal] = useState(null);
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
@@ -140,23 +149,12 @@ const MyExperience = () => {
             </div>
 
             {/* Suggested Next Steps */}
-            <Card className="border-l-4 border-l-amber-500 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-amber-50 to-yellow-50">
-                <CardTitle className="flex items-center gap-2 text-amber-700">
-                  <TrendingUp className="w-5 h-5" />
-                  Suggested Next Steps
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {suggestions.map((suggestion, idx) => (
-                  <div key={suggestion.id || `suggestion-${idx}`} className="p-3 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-lg border-l-2 border-l-amber-500 hover:shadow-sm transition-shadow">
-                    <p className="text-sm font-medium text-amber-900">
-                      {typeof suggestion === 'string' ? suggestion : suggestion.message || suggestion}
-                    </p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            <SuggestedNextSteps
+              matchedJobs={matchedJobs}
+              loading={matchingLoading}
+              error={matchingError}
+              fallbackSuggestions={suggestions}
+            />
           </div>
         </div>
 

@@ -89,7 +89,6 @@ export const generateResumePDF = async (studentData) => {
         reader.readAsDataURL(blob);
       });
     } catch (err) {
-      console.warn("loadImageAsDataURL error:", err);
       return null;
     }
   }
@@ -184,7 +183,6 @@ if (profile.image) {
       doc.circle(photoCenterX, photoCenterY, photoRadius + 1.5, "S"); // Slightly outside image
 
     } catch (e) {
-      console.warn("Failed to add circular image with ring:", e);
     }
 
   } else {

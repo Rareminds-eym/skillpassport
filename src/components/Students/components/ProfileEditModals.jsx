@@ -1332,7 +1332,6 @@ export const TrainingEditModal = ({ isOpen, onClose, data, onSave }) => {
                     </span>
                     <span className="text-indigo-700">{course.progress}%</span>
                   </div>
-                  {console.log(course.progress)}
                   <div className="relative">
                     {/* <Progress
                       value={course.progress}
@@ -2529,6 +2528,10 @@ export const SkillsEditModal = ({
     );
   };
 
+  const updateNewSkillLevel = (level) => {
+    setNewSkill((prev) => ({ ...prev, level }));
+  };
+
   const handleSubmit = () => {
     onSave(skills);
     toast({
@@ -2538,13 +2541,21 @@ export const SkillsEditModal = ({
     onClose();
   };
 
-  const renderStars = (level, skillId, editable = false) => {
+  const renderStars = (level, skillId, editable = false, isNewSkill = false) => {
     return [...Array(5)].map((_, i) => (
       <button
         key={i}
         type="button"
         disabled={!editable}
-        onClick={() => editable && updateSkillLevel(skillId, i + 1)}
+        onClick={() => {
+          if (editable) {
+            if (isNewSkill) {
+              updateNewSkillLevel(i + 1);
+            } else {
+              updateSkillLevel(skillId, i + 1);
+            }
+          }
+        }}
         className={`w-4 h-4 ${i < level ? "text-[#FFD700]" : "text-gray-300"} ${
           editable ? "hover:text-[#FFD700] cursor-pointer" : ""
         }`}
@@ -2637,7 +2648,7 @@ export const SkillsEditModal = ({
               <div className="flex items-center gap-2">
                 <Label>Level:</Label>
                 <div className="flex gap-1">
-                  {renderStars(newSkill.level, "new", true)}
+                  {renderStars(newSkill.level, "new", true, true)}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -2715,8 +2726,6 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
   // Initialize form data when modal opens
   useEffect(() => {
     if (data && isOpen) {
-      console.log("📝 PersonalInfoEditModal: Initializing with data:", data);
-      console.log("📝 Data keys:", Object.keys(data));
 
       // Extract contact number from formatted phone string if needed
       const extractNumber = (formattedPhone) => {
@@ -2756,7 +2765,6 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
       };
       const getNmId = () => {
         const nmId = data.nm_id || "";
-        console.log("📝 NM ID extracted:", nmId);
         return nmId;
       };
 
@@ -2791,7 +2799,6 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
         other_social_links: getOtherSocialLinks(),
       };
 
-      console.log("📝 Form values extracted:", formValues);
       setFormData(formValues);
     }
   }, [data, isOpen]);
@@ -2807,7 +2814,6 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
     }
 
     setIsSaving(true);
-    console.log("💾 PersonalInfoEditModal: Saving personal info:", formData);
 
     try {
       await onSave(formData);

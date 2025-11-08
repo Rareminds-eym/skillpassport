@@ -11,10 +11,8 @@ import { supabase } from '../lib/supabaseClient';
  * @param {number} limit - Number of activities to fetch (default: 10)
  */
 export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
-  console.log('📜 Fetching student activities for:', studentEmail);
   
   if (!studentEmail) {
-    console.warn('⚠️ No student email provided');
     return { data: [], error: 'Student email required' };
   }
 
@@ -29,7 +27,6 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
       .single();
 
     if (studentError || !student) {
-      console.log('⚠️ Student not found for email:', studentEmail);
       return { data: [], error: 'Student not found' };
     }
 
@@ -39,10 +36,8 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
       : student.profile;
     const studentName = studentProfile?.name || `Student ${studentId}`;
 
-    console.log('👤 Found student:', studentName, 'ID:', studentId);
 
     // 1. Shortlist Activities - When student gets shortlisted
-    console.log('📋 Fetching shortlist activities...');
     try {
       const { data: shortlistCandidates } = await supabase
         .from('shortlist_candidates')
@@ -71,14 +66,11 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
             }
           });
         });
-        console.log(`✅ Added ${shortlistCandidates.length} shortlist activities`);
       }
     } catch (error) {
-      console.log('⚠️ Shortlist activities unavailable:', error.message);
     }
 
     // 2. Pipeline Activities - Student's recruitment journey
-    console.log('🔄 Fetching pipeline activities...');
     try {
       const { data: pipelineActivities } = await supabase
         .from('pipeline_activities')
@@ -109,14 +101,11 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
             metadata: pa.activity_details
           });
         });
-        console.log(`✅ Added ${pipelineActivities.length} pipeline activities`);
       }
     } catch (error) {
-      console.log('⚠️ Pipeline activities unavailable:', error.message);
     }
 
     // 3. Pipeline Candidates - Stage changes
-    console.log('👥 Fetching pipeline candidate activities...');
     try {
       const { data: pipelineCandidates } = await supabase
         .from('pipeline_candidates')
@@ -146,18 +135,15 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
             metadata: {
               stage: pc.stage,
               status: pc.status,
-              requisitionId: pc.requisition_id
+              opportunityId: pc.opportunity_id
             }
           });
         });
-        console.log(`✅ Added ${pipelineCandidates.length} pipeline candidate activities`);
       }
     } catch (error) {
-      console.log('⚠️ Pipeline candidate activities unavailable:', error.message);
     }
 
     // 4. Offers - Job offers for the student
-    console.log('💼 Fetching offer activities...');
     try {
       const { data: offers } = await supabase
         .from('offers')
@@ -190,14 +176,11 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
             }
           });
         });
-        console.log(`✅ Added ${offers.length} offer activities`);
       }
     } catch (error) {
-      console.log('⚠️ Offer activities unavailable:', error.message);
     }
 
     // 5. Placements - Final hiring/placement updates
-    console.log('🎯 Fetching placement activities...');
     try {
       const { data: placements } = await supabase
         .from('placements')
@@ -228,10 +211,8 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
             }
           });
         });
-        console.log(`✅ Added ${placements.length} placement activities`);
       }
     } catch (error) {
-      console.log('⚠️ Placement activities unavailable:', error.message);
     }
 
     // 6. Profile Updates - Track when student updates their own profile
@@ -244,7 +225,6 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
     // Take only the requested limit
     const recentActivities = allActivities.slice(0, limit);
 
-    console.log(`✅ Fetched ${recentActivities.length} total activities for student ${studentName}`);
     
     return {
       data: recentActivities,
@@ -265,7 +245,6 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
  * This can be called when student updates their profile
  */
 export const logProfileUpdate = async (studentEmail, section, action, details) => {
-  console.log('📝 Logging profile update:', { studentEmail, section, action });
   
   // For now, just log to console
   // In the future, we can create a profile_updates table
@@ -277,6 +256,5 @@ export const logProfileUpdate = async (studentEmail, section, action, details) =
     timestamp: new Date().toISOString()
   };
 
-  console.log('📝 Profile update logged:', activity);
   return { success: true, activity };
 };

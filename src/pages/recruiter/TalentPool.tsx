@@ -1501,20 +1501,6 @@ type RecruiterOutletContext = {
 //   // Debug: Log first student to see data structure
 //   useEffect(() => {
 //     if (students.length > 0) {
-//       console.log('=== STUDENT DATA STRUCTURE ===');
-//       console.log('First student:', students[0]);
-//       console.log('Has profile property?', 'profile' in students[0]);
-//       console.log('Direct certificates:', students[0].certificates);
-//       console.log('Profile certificates:', (students[0] as any).profile?.certificates);
-//       console.log('Direct education:', students[0].education);
-//       console.log('Profile education:', (students[0] as any).profile?.education);
-//       console.log('Direct experience:', students[0].experience);
-//       console.log('Profile experience:', (students[0] as any).profile?.experience);
-//       console.log('Direct technical skills:', students[0].technicalSkills);
-//       console.log('Profile technical skills:', (students[0] as any).profile?.technicalSkills);
-//       console.log('Direct soft skills:', students[0].softSkills);
-//       console.log('Profile soft skills:', (students[0] as any).profile?.softSkills);
-//       console.log('==============================');
 //     }
 //   }, [students]);
 
@@ -1624,8 +1610,6 @@ type RecruiterOutletContext = {
 //     if (searchQuery && searchQuery.trim() !== '') {
 //       const query = searchQuery.toLowerCase().trim();
       
-//       console.log('🔍 Searching for:', query);
-//       console.log('📊 Total students:', students.length);
       
 //       result = result.filter(student => {
 //         // Access the profile data - handles both nested and direct structures
@@ -1674,20 +1658,17 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (skillMatch) {
-//             console.log(`✅ Match in skills for ${student.name}`);
 //             return true;
 //           }
 //         }
         
 //         // Projects - search in title, tech, techStack, technologies, description
 //         if (searchInArray(profile.projects, ['title', 'tech', 'techStack', 'technologies', 'description', 'skills', 'status'])) {
-//           console.log(`✅ Match in projects for ${student.name}`);
 //           return true;
 //         }
         
 //         // Education - check all relevant fields
 //         if (searchInArray(profile.education, ['yearOfPassing', 'university', 'degree', 'department', 'college_school_name', 'level', 'cgpa', 'status'])) {
-//           console.log(`✅ Match in education for ${student.name}`);
 //           return true;
 //         }
         
@@ -1708,7 +1689,6 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (expMatch) {
-//             console.log(`✅ Match in experience for ${student.name}`);
 //             return true;
 //           }
 //         }
@@ -1724,7 +1704,6 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (softSkillMatch) {
-//             console.log(`✅ Match in softSkills for ${student.name}`);
 //             return true;
 //           }
 //         }
@@ -1747,7 +1726,6 @@ type RecruiterOutletContext = {
 //           });
           
 //           if (certMatch) {
-//             console.log(`✅ Match in certificates for ${student.name}`, profile.certificates);
 //             return true;
 //           }
 //         }
@@ -1765,7 +1743,6 @@ type RecruiterOutletContext = {
 //           });
           
 //           if (techMatch) {
-//             console.log(`✅ Match in technicalSkills for ${student.name}`);
 //             return true;
 //           }
 //         }
@@ -1781,7 +1758,6 @@ type RecruiterOutletContext = {
 //             return false;
 //           });
 //           if (trainingMatch) {
-//             console.log(`✅ Match in training for ${student.name}`);
 //             return true;
 //           }
 //         }
@@ -1789,9 +1765,7 @@ type RecruiterOutletContext = {
 //         return false;
 //       });
       
-//       console.log('✅ Filtered results:', result.length);
 //       if (result.length > 0) {
-//         console.log('Sample matches:', result.slice(0, 3).map(s => s.name));
 //       }
 //     }
 
@@ -2336,6 +2310,914 @@ type RecruiterOutletContext = {
 //   );
 // };
 
+
+
+// const TalentPool = () => {
+//   const { onViewProfile } = useOutletContext<RecruiterOutletContext>()
+//   const { searchQuery, setSearchQuery } = useSearch();
+//   const [viewMode, setViewMode] = useState('grid');
+//   const [showFilters, setShowFilters] = useState(false);
+//   const [showShortlistModal, setShowShortlistModal] = useState(false);
+//   const [showInterviewModal, setShowInterviewModal] = useState(false);
+//   const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
+//   const [selectedCandidate, setSelectedCandidate] = useState(null);
+//   const [sortBy, setSortBy] = useState('relevance');
+//   const [filters, setFilters] = useState({
+//     skills: [],
+//     courses: [],
+//     badges: [],
+//     locations: [],
+//     years: [],
+//     minScore: 0,
+//     maxScore: 100
+//   });
+
+//   const { students, loading, error } = useStudents();
+
+//   // Debug: Log first student to see data structure
+//   useEffect(() => {
+//     if (students.length > 0) {
+//     }
+//   }, [students]);
+
+//   // Dynamically generate filter options from actual data
+//   const skillOptions = useMemo(() => {
+//     const skillCounts = {};
+//     students.forEach(student => {
+//       const profile = (student as any).profile || student;
+//       const skillsToCheck = student.skills || profile.skills;
+//       if (skillsToCheck && Array.isArray(skillsToCheck)) {
+//         skillsToCheck.forEach(skill => {
+//           const skillName = typeof skill === 'string' ? skill : skill?.name;
+//           if (skillName) {
+//             const normalizedSkill = skillName.toLowerCase();
+//             skillCounts[normalizedSkill] = (skillCounts[normalizedSkill] || 0) + 1;
+//           }
+//         });
+//       }
+//     });
+//     return Object.entries(skillCounts)
+//       .map(([skill, count]) => ({
+//         value: skill,
+//         label: skill.charAt(0).toUpperCase() + skill.slice(1),
+//         count
+//       }))
+//       .sort((a, b) => b.count - a.count)
+//       .slice(0, 20);
+//   }, [students]);
+
+//   const courseOptions = useMemo(() => {
+//     const courseCounts = {};
+//     students.forEach(student => {
+//       const profile = (student as any).profile || student;
+//       const dept = student.dept || profile.dept || profile.department;
+//       if (dept) {
+//         const normalizedCourse = dept.toLowerCase();
+//         courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
+//       }
+//     });
+//     return Object.entries(courseCounts)
+//       .map(([course, count]) => ({
+//         value: course,
+//         label: course,
+//         count
+//       }))
+//       .sort((a, b) => b.count - a.count);
+//   }, [students]);
+
+//   const badgeOptions = useMemo(() => {
+//     const badgeCounts = {};
+//     students.forEach(student => {
+//       if (student.badges && Array.isArray(student.badges)) {
+//         student.badges.forEach(badge => {
+//           badgeCounts[badge] = (badgeCounts[badge] || 0) + 1;
+//         });
+//       }
+//     });
+//     return Object.entries(badgeCounts)
+//       .map(([badge, count]) => ({
+//         value: badge,
+//         label: badge.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+//         count
+//       }))
+//       .sort((a, b) => b.count - a.count);
+//   }, [students]);
+
+//   const locationOptions = useMemo(() => {
+//     const locationCounts = {};
+//     students.forEach(student => {
+//       const profile = (student as any).profile || student;
+//       const location = student.location || profile.location;
+//       if (location) {
+//         const normalizedLocation = location.toLowerCase();
+//         locationCounts[normalizedLocation] = (locationCounts[normalizedLocation] || 0) + 1;
+//       }
+//     });
+//     return Object.entries(locationCounts)
+//       .map(([location, count]) => ({
+//         value: location,
+//         label: location.charAt(0).toUpperCase() + location.slice(1),
+//         count
+//       }))
+//       .sort((a, b) => b.count - a.count);
+//   }, [students]);
+
+//   const yearOptions = useMemo(() => {
+//     const yearCounts = {};
+//     students.forEach(student => {
+//       if (student.year) {
+//         yearCounts[student.year] = (yearCounts[student.year] || 0) + 1;
+//       }
+//     });
+//     return Object.entries(yearCounts)
+//       .map(([year, count]) => ({
+//         value: year,
+//         label: year,
+//         count
+//       }))
+//       .sort((a, b) => b.count - a.count);
+//   }, [students]);
+
+//   // Enhanced filter and sort with comprehensive search - WITH LEXICOGRAPHICAL ORDERING
+//   const filteredAndSortedStudents = useMemo(() => {
+//     let result = students;
+
+//     // Apply comprehensive search query filter with lexicographical sorting
+//     if (searchQuery && searchQuery.trim() !== '') {
+//       const query = searchQuery.toLowerCase().trim();
+      
+      
+//       // Store match results with the matched field for sorting
+//       const resultsWithScores = students.map(student => {
+//         // Access the profile data - handles both nested and direct structures
+//         const profile = (student as any).profile || student;
+//         let matchedField = '';
+//         let isMatch = false;
+        
+//         // Helper function to safely check string fields and track matches
+//         const matchesField = (field: any, fieldName: string = ''): boolean => {
+//           if (!field) return false;
+//           const fieldStr = field.toString().toLowerCase();
+//           if (fieldStr.includes(query)) {
+//             if (!isMatch) matchedField = fieldName || fieldStr;
+//             isMatch = true;
+//             return true;
+//           }
+//           return false;
+//         };
+
+//         // Helper function to search in arrays
+//         const searchInArray = (arr: any[], fields: string[], arrayName: string = ''): boolean => {
+//           if (!arr || !Array.isArray(arr)) return false;
+//           return arr.some((item: any) => {
+//             if (!item) return false;
+//             return fields.some(field => {
+//               const value = item[field];
+//               if (value && value.toString().toLowerCase().includes(query)) {
+//                 if (!isMatch) matchedField = arrayName || field;
+//                 isMatch = true;
+//                 return true;
+//               }
+//               return false;
+//             });
+//           });
+//         };
+
+//         // Basic fields - check both student level and profile level
+//         if (matchesField(student.name, 'name') || matchesField(profile.name, 'name')) return { student, matchedField: matchedField || student.name?.toLowerCase() || '' };
+//         if (matchesField(student.email, 'email') || matchesField(profile.email, 'email')) return { student, matchedField: matchedField || student.email?.toLowerCase() || '' };
+//         if (matchesField(profile.age, 'age')) return { student, matchedField };
+//         if (matchesField(profile.skill, 'skill')) return { student, matchedField };
+//         if (matchesField(profile.course, 'course')) return { student, matchedField };
+//         if (matchesField(student.dept, 'dept') || matchesField(profile.dept, 'dept')) return { student, matchedField };
+//         if (matchesField(profile.department, 'department')) return { student, matchedField };
+//         if (matchesField(student.college, 'college') || matchesField(profile.college_school_name, 'college')) return { student, matchedField };
+//         if (matchesField(student.location, 'location') || matchesField(profile.location, 'location')) return { student, matchedField };
+//         if (matchesField(profile.university, 'university')) return { student, matchedField };
+//         if (matchesField(profile.registration_number, 'registration')) return { student, matchedField };
+        
+//         // Skills array - handle both formats (string array and object array)
+//         const skillsToCheck = student.skills || profile.skills;
+//         if (skillsToCheck && Array.isArray(skillsToCheck)) {
+//           const skillMatch = skillsToCheck.some((skill: any) => {
+//             if (typeof skill === 'string') {
+//               if (skill.toLowerCase().includes(query)) {
+//                 if (!isMatch) matchedField = skill.toLowerCase();
+//                 isMatch = true;
+//                 return true;
+//               }
+//             } else if (skill && skill.name) {
+//               if (skill.name.toLowerCase().includes(query)) {
+//                 if (!isMatch) matchedField = skill.name.toLowerCase();
+//                 isMatch = true;
+//                 return true;
+//               }
+//             }
+//             return false;
+//           });
+//           if (skillMatch) {
+//             return { student, matchedField };
+//           }
+//         }
+        
+//         // Projects - search in title, tech, techStack, technologies, description
+//         if (searchInArray(profile.projects, ['title', 'id', 'link', 'tech', 'techStack', 'technologies', 'organization', 'description', 'skills', 'status','enabled','processing','duration','github'], 'projects')) {
+//           return { student, matchedField };
+//         }
+        
+//         // Education - check all relevant fields
+//         if (searchInArray(profile.education, ['yearOfPassing', 'university', 'degree', 'department', 'college_school_name', 'level', 'cgpa', 'status'], 'education')) {
+//           return { student, matchedField };
+//         }
+        
+//         // Experience - comprehensive check including verified status
+//         if (profile.experience && Array.isArray(profile.experience)) {
+//           const expMatch = profile.experience.some((exp: any) => {
+//             if (!exp) return false;
+            
+//             // Check text fields
+//             if (matchesField(exp.duration, 'experience')) return true;
+//             if (matchesField(exp.role, 'experience')) return true;
+//             if (matchesField(exp.duration, 'experience')) return true;
+//             if (matchesField(exp.organization, 'experience')) return true;
+            
+//             // Handle verified status search
+//             if (exp.verified === true && (query.includes('verified') || query === 'true')) {
+//               if (!isMatch) matchedField = 'verified experience';
+//               isMatch = true;
+//               return true;
+//             }
+//             if (exp.verified === false && (query.includes('unverified') || query.includes('not verified') || query === 'false')) {
+//               if (!isMatch) matchedField = 'unverified experience';
+//               isMatch = true;
+//               return true;
+//             }
+//             if (exp.processing === true && (query.includes('processing') || query.includes('pending'))) {
+//               if (!isMatch) matchedField = 'processing experience';
+//               isMatch = true;
+//               return true;
+//             }
+//             if (exp.processing === false && query.includes('processed')) {
+//               if (!isMatch) matchedField = 'processed experience';
+//               isMatch = true;
+//               return true;
+//             }
+//             return false;
+//           });
+//           if (expMatch) {
+//             return { student, matchedField };
+//           }
+//         }
+        
+//         // Soft Skills - name, description, type
+//         if (profile.softSkills && Array.isArray(profile.softSkills)) {
+//           const softSkillMatch = profile.softSkills.some((skill: any) => {
+//             if (!skill) return false;
+//             if (matchesField(skill.id, 'soft skill')) return true;
+//             if (matchesField(skill.name, 'soft skill')) return true;
+//             if (matchesField(skill.description, 'soft skill')) return true;
+//             if (matchesField(skill.type, 'soft skill')) return true;
+//             if (matchesField(skill.level, 'soft skill')) return true;
+//             return false;
+//           });
+//           if (softSkillMatch) {
+//             return { student, matchedField };
+//           }
+//         }
+        
+//         // Certificates - comprehensive search
+//         if (profile.certificates && Array.isArray(profile.certificates)) {
+//           const certMatch = profile.certificates.some((cert: any) => {
+//             if (!cert) return false;
+            
+//             // Check all certificate fields
+//             if (matchesField(cert.id, 'certificate')) return true;
+//             if (matchesField(cert.link, 'certificate')) return true;
+//             if (matchesField(cert.level, 'certificate')) return true;
+//             if (matchesField(cert.title, 'certificate')) return true;
+//             if (matchesField(cert.issuedOn, 'certificate')) return true;
+//             if (matchesField(cert.issuer, 'certificate')) return true;
+//             if (matchesField(cert.description, 'certificate')) return true;
+//             if (matchesField(cert.credentialId, 'certificate')) return true;
+//             if (matchesField(cert.status, 'certificate')) return true;
+
+//             // Handle enabled status search
+//             if (cert.enabled === true && query.includes('enabled')) {
+//               if (!isMatch) matchedField = 'enabled certificate';
+//               isMatch = true;
+//               return true;
+//             }
+//             if (cert.enabled === false && query.includes('disabled')) {
+//               if (!isMatch) matchedField = 'disabled certificate';
+//               isMatch = true;
+//               return true;
+//             }
+            
+//             // Handle processing status search
+//             if (cert.processing === true && (query.includes('processing') || query.includes('pending'))) {
+//               if (!isMatch) matchedField = 'processing certificate';
+//               isMatch = true;
+//               return true;
+//             }
+//             if (cert.processing === false && query.includes('processed')) {
+//               if (!isMatch) matchedField = 'processed certificate';
+//               isMatch = true;
+//               return true;
+//             }
+            
+//             return false;
+//           });
+          
+//           if (certMatch) {
+//             return { student, matchedField };
+//           }
+//         }
+        
+//         // Technical Skills - name, level, category
+//         if (profile.technicalSkills && Array.isArray(profile.technicalSkills)) {
+//           const techMatch = profile.technicalSkills.some((skill: any) => {
+//             if (!skill) return false;
+//             if (matchesField(skill.name, 'technical skill')) return true;
+//             if (matchesField(skill.level, 'technical skill')) return true;
+//             if (matchesField(skill.category, 'technical skill')) return true;
+//             // Handle verified status
+//             if (skill.verified === true && query.includes('verified')) {
+//               if (!isMatch) matchedField = 'verified technical skill';
+//               isMatch = true;
+//               return true;
+//             }
+//             return false;
+//           });
+          
+//           if (techMatch) {
+//             return { student, matchedField };
+//           }
+//         }
+        
+//         // Training - if exists
+//         if (profile.training && Array.isArray(profile.training)) {
+//           const trainingMatch = profile.training.some((training: any) => {
+//             if (!training) return false;
+//             if (matchesField(training.name, 'training')) return true;
+//             if (matchesField(training.title, 'training')) return true;
+//             if (matchesField(training.organization, 'training')) return true;
+//             if (matchesField(training.description, 'training')) return true;
+//             return false;
+//           });
+//           if (trainingMatch) {
+//             return { student, matchedField };
+//           }
+//         }
+        
+//         return null;
+//       }).filter(item => item !== null);
+      
+//       // Sort results lexicographically by matched field
+//       resultsWithScores.sort((a, b) => {
+//         return a.matchedField.localeCompare(b.matchedField);
+//       });
+      
+//       result = resultsWithScores.map(item => item.student);
+      
+//       if (result.length > 0) {
+//       }
+//     }
+
+//     // Apply skill filters
+//     if (filters.skills.length > 0) {
+//       result = result.filter(student => {
+//         const profile = (student as any).profile || student;
+//         const skillsToCheck = student.skills || profile.skills;
+//         return skillsToCheck?.some((skill: any) => {
+//           const skillName = typeof skill === 'string' ? skill : skill?.name;
+//           return skillName && filters.skills.includes(skillName.toLowerCase());
+//         });
+//       });
+//     }
+
+//     // Apply course/department filters
+//     if (filters.courses.length > 0) {
+//       result = result.filter(student => {
+//         const profile = (student as any).profile || student;
+//         const dept = student.dept || profile.dept || profile.department;
+//         return dept && filters.courses.includes(dept.toLowerCase());
+//       });
+//     }
+
+//     // Apply badge filters
+//     if (filters.badges.length > 0) {
+//       result = result.filter(student =>
+//         student.badges?.some(badge =>
+//           filters.badges.includes(badge)
+//         )
+//       );
+//     }
+
+//     // Apply location filters
+//     if (filters.locations.length > 0) {
+//       result = result.filter(student => {
+//         const profile = (student as any).profile || student;
+//         const location = student.location || profile.location;
+//         return location && filters.locations.includes(location.toLowerCase());
+//       });
+//     }
+
+//     // Apply year filters
+//     if (filters.years.length > 0) {
+//       result = result.filter(student =>
+//         filters.years.includes(student.year)
+//       );
+//     }
+
+//     // Apply AI score range filter
+//     result = result.filter(student => {
+//       const score = student.ai_score_overall || 0;
+//       return score >= filters.minScore && score <= filters.maxScore;
+//     });
+
+//     // Apply sorting (only if not already sorted by search relevance)
+//     if (!searchQuery || searchQuery.trim() === '') {
+//       const sortedResult = [...result];
+//       switch (sortBy) {
+//         case 'ai_score':
+//           sortedResult.sort((a, b) => (b.ai_score_overall || 0) - (a.ai_score_overall || 0));
+//           break;
+//         case 'name':
+//           sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+//           break;
+//         case 'last_updated':
+//           sortedResult.sort((a, b) => 
+//             new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
+//           );
+//           break;
+//         case 'relevance':
+//         default:
+//           break;
+//       }
+//       return sortedResult;
+//     }
+
+//     return result;
+//   }, [students, searchQuery, filters, sortBy]);
+
+//   // Clear all filters
+//   const handleClearFilters = () => {
+//     setFilters({
+//       skills: [],
+//       courses: [],
+//       badges: [],
+//       locations: [],
+//       years: [],
+//       minScore: 0,
+//       maxScore: 100
+//     });
+//   };
+
+//   const handleShortlistClick = (candidate) => {
+//     setSelectedCandidate(candidate);
+//     setShowShortlistModal(true);
+//   };
+
+//   const handleShortlistSuccess = () => {
+//     alert(`${selectedCandidate?.name} has been added to the shortlist!`);
+//     setShowShortlistModal(false);
+//     setSelectedCandidate(null);
+//   };
+
+//   const handleScheduleInterviewClick = (candidate) => {
+//     setSelectedCandidate(candidate);
+//     setShowInterviewModal(true);
+//   };
+
+//   const handleInterviewSuccess = () => {
+//     alert(`Interview scheduled for ${selectedCandidate?.name}!`);
+//     setShowInterviewModal(false);
+//     setSelectedCandidate(null);
+//   };
+
+//   const handleSaveSearchClick = () => {
+//     setShowSaveSearchModal(true);
+//   };
+
+//   const handleSaveSearchSuccess = () => {
+//     alert('Search saved successfully! You can now access it from the Overview page.');
+//     setShowSaveSearchModal(false);
+//   };
+
+//   return (
+//     <div className="flex flex-col h-screen">
+//       {/* Header - responsive layout */}
+//       <div className="hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
+//         <div className="w-80 flex-shrink-0 pr-4 text-left">
+//           <div className="inline-flex items-baseline">
+//             <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
+//             <span className="ml-2 text-sm text-gray-500">
+//               ({filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`})
+//             </span>
+//           </div>
+//         </div>
+
+//         <div className="flex-1 px-4">
+//           <div className="max-w-xl mx-auto">
+//             <SearchBar
+//               value={searchQuery}
+//               onChange={setSearchQuery}
+//               placeholder="Search by name, email, skills, projects, certificates, experience..."
+//               size="md"
+//             />
+//           </div>
+//         </div>
+
+//         <div className="w-80 flex-shrink-0 pl-4 flex items-center justify-end space-x-2">
+//           <button
+//             onClick={handleSaveSearchClick}
+//             className="inline-flex items-center px-3 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
+//             title="Save current search and filters"
+//           >
+//             <BookmarkSolidIcon className="h-4 w-4 mr-2" />
+//             Search
+//           </button>
+//           <button
+//             onClick={() => setShowFilters(!showFilters)}
+//             className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 relative"
+//           >
+//             <FunnelIcon className="h-4 w-4 mr-2" />
+//             Filters
+//             {(filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
+//               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
+//                 {filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length}
+//               </span>
+//             )}
+//           </button>
+//           <div className="flex rounded-md shadow-sm">
+//             <button
+//               onClick={() => setViewMode('grid')}
+//               className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+//                 viewMode === 'grid'
+//                   ? 'bg-primary-50 border-primary-300 text-primary-700'
+//                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+//               }`}
+//             >
+//               <Squares2X2Icon className="h-4 w-4" />
+//             </button>
+//             <button
+//               onClick={() => setViewMode('table')}
+//               className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+//                 viewMode === 'table'
+//                   ? 'bg-primary-50 border-primary-300 text-primary-700'
+//                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+//               }`}
+//             >
+//               <TableCellsIcon className="h-4 w-4" />
+//             </button>
+//           </div>
+//         </div>
+//       </div>
+
+//       {/* Mobile/Tablet: stacked layout */}
+//       <div className="lg:hidden p-4 bg-white border-b border-gray-200 space-y-4">
+//         <div className="text-left">
+//           <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
+//           <span className="text-sm text-gray-500">
+//             {filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`}
+//           </span>
+//         </div>
+
+//         <div>
+//           <SearchBar
+//             value={searchQuery}
+//             onChange={setSearchQuery}
+//             placeholder="Search candidates..."
+//             size="md"
+//           />
+//         </div>
+
+//         <div className="flex items-center space-x-2">
+//           <button
+//             onClick={handleSaveSearchClick}
+//             className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
+//           >
+//             <BookmarkSolidIcon className="h-4 w-4 mr-2" />
+//             Save
+//           </button>
+//           <button
+//             onClick={() => setShowFilters(!showFilters)}
+//             className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 relative"
+//           >
+//             <FunnelIcon className="h-4 w-4 mr-2" />
+//             Filters
+//             {(filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
+//               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
+//                 {filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length}
+//               </span>
+//             )}
+//           </button>
+//           <div className="flex rounded-md shadow-sm">
+//             <button
+//               onClick={() => setViewMode('grid')}
+//               className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+//                 viewMode === 'grid'
+//                   ? 'bg-primary-50 border-primary-300 text-primary-700'
+//                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+//               }`}
+//             >
+//               <Squares2X2Icon className="h-4 w-4" />
+//             </button>
+//             <button
+//               onClick={() => setViewMode('table')}
+//               className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+//                 viewMode === 'table'
+//                   ? 'bg-primary-50 border-primary-300 text-primary-700'
+//                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+//               }`}
+//             >
+//               <TableCellsIcon className="h-4 w-4" />
+//             </button>
+//           </div>
+//         </div>
+//       </div>
+
+//       <div className="flex flex-1 overflow-hidden">
+//         {/* Filters Sidebar */}
+//         {showFilters && (
+//           <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
+//             <div className="p-4">
+//               <div className="flex items-center justify-between mb-4">
+//                 <h2 className="font-medium text-gray-900">Filters</h2>
+//                 <button 
+//                   onClick={handleClearFilters}
+//                   className="text-sm text-primary-600 hover:text-primary-700"
+//                 >
+//                   Clear all
+//                 </button>
+//               </div>
+
+//               <div className="space-y-0">
+//                 <FilterSection title="Skills" defaultOpen>
+//                   <CheckboxGroup
+//                     options={skillOptions}
+//                     selectedValues={filters.skills}
+//                     onChange={(values) => setFilters({...filters, skills: values})}
+//                   />
+//                 </FilterSection>
+
+//                 <FilterSection title="Course/Track">
+//                   <CheckboxGroup
+//                     options={courseOptions}
+//                     selectedValues={filters.courses}
+//                     onChange={(values) => setFilters({...filters, courses: values})}
+//                   />
+//                 </FilterSection>
+
+//                 <FilterSection title="Verification Badge">
+//                   <CheckboxGroup
+//                     options={badgeOptions}
+//                     selectedValues={filters.badges}
+//                     onChange={(values) => setFilters({...filters, badges: values})}
+//                   />
+//                   <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+//                     <label className="flex items-center">
+//                       <input
+//                         type="checkbox"
+//                         className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+//                       />
+//                       <span className="ml-2 text-sm font-medium text-yellow-800">
+//                         Only External-audited (Premium)
+//                       </span>
+//                     </label>
+//                   </div>
+//                 </FilterSection>
+
+//                 <FilterSection title="Location">
+//                   <CheckboxGroup
+//                     options={locationOptions}
+//                     selectedValues={filters.locations}
+//                     onChange={(values) => setFilters({...filters, locations: values})}
+//                   />
+//                 </FilterSection>
+
+//                 <FilterSection title="Academic Year">
+//                   <CheckboxGroup
+//                     options={yearOptions}
+//                     selectedValues={filters.years}
+//                     onChange={(values) => setFilters({...filters, years: values})}
+//                   />
+//                 </FilterSection>
+
+//                 <FilterSection title="AI Score Range">
+//                   <div className="space-y-3">
+//                     <div>
+//                       <label className="block text-sm text-gray-700 mb-1">
+//                         Min Score: {filters.minScore}
+//                       </label>
+//                       <input
+//                         type="range"
+//                         min="0"
+//                         max="100"
+//                         value={filters.minScore}
+//                         onChange={(e) => setFilters({...filters, minScore: parseInt(e.target.value)})}
+//                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+//                       />
+//                     </div>
+//                   </div>
+//                 </FilterSection>
+//               </div>
+//             </div>
+//           </div>
+//         )}
+
+//         {/* Main Content */}
+//         <div className="flex-1 flex flex-col overflow-hidden">
+//           {/* Results header */}
+//           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+//             <div className="flex items-center justify-between">
+//               <p className="text-sm text-gray-700">
+//                 Showing <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
+//                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
+//               </p>
+//               <select 
+//                 value={sortBy}
+//                 onChange={(e) => setSortBy(e.target.value)}
+//                 className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+//               >
+//                 <option value="relevance">Sort by: Relevance</option>
+//                 <option value="ai_score">Sort by: AI Score</option>
+//                 <option value="last_updated">Sort by: Last Updated</option>
+//                 <option value="name">Sort by: Name</option>
+//               </select>
+//             </div>
+//           </div>
+
+//           {/* Results */}
+//           <div className="flex-1 overflow-y-auto p-4">
+//             {viewMode === 'grid' ? (
+//               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+//                 {loading && <div className="text-sm text-gray-500">Loading students...</div>}
+//                 {error && <div className="text-sm text-red-600">{error}</div>}
+//                 {!loading && filteredAndSortedStudents.map((candidate) => (
+//                   <CandidateCard
+//                     key={candidate.id}
+//                     candidate={candidate as any}
+//                     onViewProfile={onViewProfile}
+//                     onShortlist={handleShortlistClick}
+//                     onScheduleInterview={handleScheduleInterviewClick}
+//                   />
+//                 ))}
+//                 {!loading && filteredAndSortedStudents.length === 0 && !error && (
+//                   <div className="col-span-full text-center py-8">
+//                     <p className="text-sm text-gray-500">
+//                       {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 
+//                         ? 'No candidates match your current filters' 
+//                         : 'No students found.'}
+//                     </p>
+//                     <p className="text-xs text-gray-400 mt-2">
+//                       Try adjusting your search terms or filters.
+//                     </p>
+//                     {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
+//                       <button
+//                         onClick={handleClearFilters}
+//                         className="mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium"
+//                       >
+//                         Clear all filters
+//                       </button>
+//                     )}
+//                   </div>
+//                 )}
+//               </div>
+//             ) : (
+//               <div className="bg-white shadow-sm rounded-lg border border-gray-200">
+//                 <table className="min-w-full divide-y divide-gray-200">
+//                   <thead className="bg-gray-50">
+//                     <tr>
+//                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+//                         Name
+//                       </th>
+//                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+//                         Skills
+//                       </th>
+//                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+//                         AI Score
+//                       </th>
+//                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+//                         Location
+//                       </th>
+//                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+//                         Actions
+//                       </th>
+//                     </tr>
+//                   </thead>
+//                   <tbody className="bg-white divide-y divide-gray-200">
+//                     {filteredAndSortedStudents.map((candidate) => (
+//                       <tr key={candidate.id} className="hover:bg-gray-50">
+//                         <td className="px-6 py-4 whitespace-nowrap">
+//                           <div className="flex items-center">
+//                             <div>
+//                               <div className="text-sm font-medium text-gray-900">
+//                                 {candidate.name}
+//                               </div>
+//                               <div className="text-sm text-gray-500">
+//                                 {candidate.dept}
+//                               </div>
+//                               <BadgeComponent badges={candidate.badges} />
+//                             </div>
+//                           </div>
+//                         </td>
+//                         <td className="px-6 py-4">
+//                           <div className="flex flex-wrap gap-1">
+//                             {candidate.skills.slice(0, 3).map((skill, index) => (
+//                               <span
+//                                 key={index}
+//                                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
+//                               >
+//                                 {skill}
+//                               </span>
+//                             ))}
+//                             {candidate.skills && candidate.skills.length > 3 && (
+//                               <span className="text-xs text-gray-500">+{candidate.skills.length - 3}</span>
+//                             )}
+//                           </div>
+//                         </td>
+//                         <td className="px-6 py-4 whitespace-nowrap">
+//                           <div className="flex items-center">
+//                             <StarIcon className="h-4 w-4 text-yellow-400 fill-current mr-1" />
+//                             <span className="text-sm font-medium text-gray-900">
+//                               {candidate.ai_score_overall}
+//                             </span>
+//                           </div>
+//                         </td>
+//                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+//                           {candidate.location}
+//                         </td>
+//                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+//                           <div className="flex space-x-2">
+//                             <button
+//                               onClick={() => onViewProfile(candidate)}
+//                               className="text-primary-600 hover:text-primary-900"
+//                             >
+//                               View
+//                             </button>
+//                             <button 
+//                               onClick={() => handleShortlistClick(candidate)}
+//                               className="text-primary-600 hover:text-primary-900"
+//                             >
+//                               Shortlist
+//                             </button>
+//                             <button 
+//                               onClick={() => handleScheduleInterviewClick(candidate)}
+//                               className="text-green-600 hover:text-green-900"
+//                             >
+//                               Schedule
+//                             </button>
+//                           </div>
+//                         </td>
+//                       </tr>
+//                     ))}
+//                   </tbody>
+//                 </table>
+//               </div>
+//             )}
+//           </div>
+//         </div>
+//       </div>
+
+//       {/* Add to Shortlist Modal */}
+//       <AddToShortlistModal
+//         isOpen={showShortlistModal}
+//         onClose={() => {
+//           setShowShortlistModal(false);
+//           setSelectedCandidate(null);
+//         }}
+//         candidate={selectedCandidate}
+//         onSuccess={handleShortlistSuccess}
+//       />
+
+//       {/* Schedule Interview Modal */}
+//       <ScheduleInterviewModal
+//         isOpen={showInterviewModal}
+//         onClose={() => {
+//           setShowInterviewModal(false);
+//           setSelectedCandidate(null);
+//         }}
+//         candidate={selectedCandidate}
+//         onSuccess={handleInterviewSuccess}
+//       />
+
+//       {/* Save Search Modal */}
+//       <SaveSearchModal
+//         isOpen={showSaveSearchModal}
+//         onClose={() => setShowSaveSearchModal(false)}
+//         searchQuery={searchQuery}
+//         filters={filters}
+//         onSuccess={handleSaveSearchSuccess}
+//       />
+//     </div>
+//   );
+// };
+
+// export default TalentPool;
+
+
+
 const TalentPool = () => {
   const { onViewProfile } = useOutletContext<RecruiterOutletContext>()
   const { searchQuery, setSearchQuery } = useSearch();
@@ -2363,20 +3245,6 @@ const TalentPool = () => {
   // Debug: Log first student to see data structure
   useEffect(() => {
     if (students.length > 0) {
-      console.log('=== STUDENT DATA STRUCTURE ===');
-      console.log('First student:', students[0]);
-      console.log('Has profile property?', 'profile' in students[0]);
-      console.log('Direct certificates:', students[0].certificates);
-      console.log('Profile certificates:', (students[0] as any).profile?.certificates);
-      console.log('Direct education:', students[0].education);
-      console.log('Profile education:', (students[0] as any).profile?.education);
-      console.log('Direct experience:', students[0].experience);
-      console.log('Profile experience:', (students[0] as any).profile?.experience);
-      console.log('Direct technical skills:', students[0].technicalSkills);
-      console.log('Profile technical skills:', (students[0] as any).profile?.technicalSkills);
-      console.log('Direct soft skills:', students[0].softSkills);
-      console.log('Profile soft skills:', (students[0] as any).profile?.softSkills);
-      console.log('==============================');
     }
   }, [students]);
 
@@ -2486,8 +3354,6 @@ const TalentPool = () => {
     if (searchQuery && searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase().trim();
       
-      console.log('🔍 Searching for:', query);
-      console.log('📊 Total students:', students.length);
       
       // Store match results with the matched field for sorting
       const resultsWithScores = students.map(student => {
@@ -2528,15 +3394,49 @@ const TalentPool = () => {
         // Basic fields - check both student level and profile level
         if (matchesField(student.name, 'name') || matchesField(profile.name, 'name')) return { student, matchedField: matchedField || student.name?.toLowerCase() || '' };
         if (matchesField(student.email, 'email') || matchesField(profile.email, 'email')) return { student, matchedField: matchedField || student.email?.toLowerCase() || '' };
-        if (matchesField(profile.age, 'age')) return { student, matchedField };
+        if (matchesField(profile.nm_id, 'nm_id')) return { student, matchedField: matchedField || 'nm_id' };
+        if (matchesField(profile.contact_number?.toString(), 'contact')) return { student, matchedField: matchedField || 'contact' };
+        if (matchesField(profile.alternate_number?.toString(), 'alternate contact')) return { student, matchedField: matchedField || 'alternate contact' };
+        if (matchesField(profile.contact_number_dial_code?.toString(), 'dial code')) return { student, matchedField: matchedField || 'dial code' };
+        if (matchesField(profile.date_of_birth, 'date of birth')) return { student, matchedField: matchedField || 'date of birth' };
+        if (matchesField(profile.imported_at, 'imported date')) return { student, matchedField: matchedField || 'imported date' };
+        if (matchesField(profile.resumeImportedAt, 'resume imported')) return { student, matchedField: matchedField || 'resume imported' };
+        if (matchesField(profile.updatedAt, 'updated at')) return { student, matchedField: matchedField || 'updated at' };
+        if (matchesField(profile.age?.toString(), 'age')) return { student, matchedField };
         if (matchesField(profile.skill, 'skill')) return { student, matchedField };
         if (matchesField(profile.course, 'course')) return { student, matchedField };
+        if (matchesField(profile.university, 'university')) return { student, matchedField };
+        if (matchesField(profile.branch_field, 'branch')) return { student, matchedField };
+        if (matchesField(profile.trainer_name, 'trainer')) return { student, matchedField };
+        if (matchesField(profile.district_name, 'district')) return { student, matchedField };
+        if (matchesField(profile.college_school_name, 'college')) return { student, matchedField };
+        if (matchesField(profile.registration_number?.toString(), 'registration')) return { student, matchedField };
+        
+        // Social media and portfolio links
+        if (matchesField(profile.github_link, 'github')) return { student, matchedField: matchedField || 'github' };
+        if (matchesField(profile.linkedin_link, 'linkedin')) return { student, matchedField: matchedField || 'linkedin' };
+        if (matchesField(profile.twitter_link, 'twitter')) return { student, matchedField: matchedField || 'twitter' };
+        if (matchesField(profile.facebook_link, 'facebook')) return { student, matchedField: matchedField || 'facebook' };
+        if (matchesField(profile.instagram_link, 'instagram')) return { student, matchedField: matchedField || 'instagram' };
+        if (matchesField(profile.portfolio_link, 'portfolio')) return { student, matchedField: matchedField || 'portfolio' };
+        
+        // Other social links array
+        if (profile.other_social_links && Array.isArray(profile.other_social_links)) {
+          const socialMatch = profile.other_social_links.some((link: any) => {
+            if (typeof link === 'string' && link.toLowerCase().includes(query)) {
+              if (!isMatch) matchedField = 'social link';
+              isMatch = true;
+              return true;
+            }
+            return false;
+          });
+          if (socialMatch) return { student, matchedField };
+        }
+        
         if (matchesField(student.dept, 'dept') || matchesField(profile.dept, 'dept')) return { student, matchedField };
         if (matchesField(profile.department, 'department')) return { student, matchedField };
-        if (matchesField(student.college, 'college') || matchesField(profile.college_school_name, 'college')) return { student, matchedField };
+        if (matchesField(student.college, 'college')) return { student, matchedField };
         if (matchesField(student.location, 'location') || matchesField(profile.location, 'location')) return { student, matchedField };
-        if (matchesField(profile.university, 'university')) return { student, matchedField };
-        if (matchesField(profile.registration_number, 'registration')) return { student, matchedField };
         
         // Skills array - handle both formats (string array and object array)
         const skillsToCheck = student.skills || profile.skills;
@@ -2558,32 +3458,124 @@ const TalentPool = () => {
             return false;
           });
           if (skillMatch) {
-            console.log(`✅ Match in skills for ${student.name}`);
             return { student, matchedField };
           }
         }
         
-        // Projects - search in title, tech, techStack, technologies, description
-        if (searchInArray(profile.projects, ['title', 'id', 'link', 'tech', 'techStack', 'technologies', 'organization', 'description', 'skills', 'status','enabled','processing','duration','github'], 'projects')) {
-          console.log(`✅ Match in projects for ${student.name}`);
-          return { student, matchedField };
+        // Projects - search in all fields including new ones
+        if (profile.projects && Array.isArray(profile.projects)) {
+          const projectMatch = profile.projects.some((project: any) => {
+            if (!project) return false;
+            
+            if (matchesField(project.id, 'project')) return true;
+            if (matchesField(project.title, 'project')) return true;
+            if (matchesField(project.tech, 'project')) return true;
+            if (matchesField(project.techStack, 'project')) return true;
+            if (matchesField(project.technologies, 'project')) return true;
+            if (matchesField(project.description, 'project')) return true;
+            if (matchesField(project.skills, 'project')) return true;
+            if (matchesField(project.status, 'project')) return true;
+            if (matchesField(project.url, 'project')) return true;
+            if (matchesField(project.demoLink, 'project')) return true;
+            if (matchesField(project.link, 'project')) return true;
+            if (matchesField(project.github, 'project')) return true;
+            if (matchesField(project.duration, 'project')) return true;
+            if (matchesField(project.startDate, 'project')) return true;
+            if (matchesField(project.endDate, 'project')) return true;
+            
+            // Handle enabled status
+            if (project.enabled === true && query.includes('enabled')) {
+              if (!isMatch) matchedField = 'enabled project';
+              isMatch = true;
+              return true;
+            }
+            if (project.enabled === false && query.includes('disabled')) {
+              if (!isMatch) matchedField = 'disabled project';
+              isMatch = true;
+              return true;
+            }
+            
+            // Handle processing status
+            if (project.processing === true && (query.includes('processing') || query.includes('pending'))) {
+              if (!isMatch) matchedField = 'processing project';
+              isMatch = true;
+              return true;
+            }
+            
+            return false;
+          });
+          if (projectMatch) {
+            return { student, matchedField };
+          }
         }
         
-        // Education - check all relevant fields
-        if (searchInArray(profile.education, ['yearOfPassing', 'university', 'degree', 'department', 'college_school_name', 'level', 'cgpa', 'status'], 'education')) {
-          console.log(`✅ Match in education for ${student.name}`);
-          return { student, matchedField };
+        // Education - check all relevant fields including new ones
+        if (profile.education && Array.isArray(profile.education)) {
+          const eduMatch = profile.education.some((edu: any) => {
+            if (!edu) return false;
+            
+            if (matchesField(edu.id, 'education')) return true;
+            if (matchesField(edu.yearOfPassing, 'education')) return true;
+            if (matchesField(edu.university, 'education')) return true;
+            if (matchesField(edu.degree, 'education')) return true;
+            if (matchesField(edu.department, 'education')) return true;
+            if (matchesField(edu.college_school_name, 'education')) return true;
+            if (matchesField(edu.level, 'education')) return true;
+            if (matchesField(edu.cgpa, 'education')) return true;
+            if (matchesField(edu.status, 'education')) return true;
+            if (matchesField(edu.startDate, 'education')) return true;
+            if (matchesField(edu.endDate, 'education')) return true;
+            
+            // Handle enabled status
+            if (edu.enabled === true && query.includes('enabled')) {
+              if (!isMatch) matchedField = 'enabled education';
+              isMatch = true;
+              return true;
+            }
+            if (edu.enabled === false && query.includes('disabled')) {
+              if (!isMatch) matchedField = 'disabled education';
+              isMatch = true;
+              return true;
+            }
+            
+            // Handle processing status
+            if (edu.processing === true && (query.includes('processing') || query.includes('pending'))) {
+              if (!isMatch) matchedField = 'processing education';
+              isMatch = true;
+              return true;
+            }
+            
+            return false;
+          });
+          if (eduMatch) {
+            return { student, matchedField };
+          }
         }
         
-        // Experience - comprehensive check including verified status
+        // Experience - comprehensive check including all fields
         if (profile.experience && Array.isArray(profile.experience)) {
           const expMatch = profile.experience.some((exp: any) => {
             if (!exp) return false;
             
-            // Check text fields
-            if (matchesField(exp.duration, 'experience')) return true;
+            // Check all text fields
+            if (matchesField(exp.id, 'experience')) return true;
             if (matchesField(exp.role, 'experience')) return true;
+            if (matchesField(exp.duration, 'experience')) return true;
             if (matchesField(exp.organization, 'experience')) return true;
+            if (matchesField(exp.startDate, 'experience')) return true;
+            if (matchesField(exp.endDate, 'experience')) return true;
+            
+            // Handle enabled status
+            if (exp.enabled === true && query.includes('enabled')) {
+              if (!isMatch) matchedField = 'enabled experience';
+              isMatch = true;
+              return true;
+            }
+            if (exp.enabled === false && query.includes('disabled')) {
+              if (!isMatch) matchedField = 'disabled experience';
+              isMatch = true;
+              return true;
+            }
             
             // Handle verified status search
             if (exp.verified === true && (query.includes('verified') || query === 'true')) {
@@ -2597,49 +3589,105 @@ const TalentPool = () => {
               return true;
             }
             
+            // Handle processing status search
+            if (exp.processing === true && (query.includes('processing') || query.includes('pending'))) {
+              if (!isMatch) matchedField = 'processing experience';
+              isMatch = true;
+              return true;
+            }
+            if (exp.processing === false && query.includes('processed')) {
+              if (!isMatch) matchedField = 'processed experience';
+              isMatch = true;
+              return true;
+            }
+            
             return false;
           });
           if (expMatch) {
-            console.log(`✅ Match in experience for ${student.name}`);
             return { student, matchedField };
           }
         }
         
-        // Soft Skills - name, description, type
+        // Soft Skills - name, description, type, level, enabled, processing
         if (profile.softSkills && Array.isArray(profile.softSkills)) {
           const softSkillMatch = profile.softSkills.some((skill: any) => {
             if (!skill) return false;
+            if (matchesField(skill.id, 'soft skill')) return true;
             if (matchesField(skill.name, 'soft skill')) return true;
             if (matchesField(skill.description, 'soft skill')) return true;
             if (matchesField(skill.type, 'soft skill')) return true;
             if (matchesField(skill.level, 'soft skill')) return true;
+            
+            // Handle enabled status
+            if (skill.enabled === true && query.includes('enabled')) {
+              if (!isMatch) matchedField = 'enabled soft skill';
+              isMatch = true;
+              return true;
+            }
+            if (skill.enabled === false && query.includes('disabled')) {
+              if (!isMatch) matchedField = 'disabled soft skill';
+              isMatch = true;
+              return true;
+            }
+            
+            // Handle processing status
+            if (skill.processing === true && (query.includes('processing') || query.includes('pending'))) {
+              if (!isMatch) matchedField = 'processing soft skill';
+              isMatch = true;
+              return true;
+            }
+            
             return false;
           });
           if (softSkillMatch) {
-            console.log(`✅ Match in softSkills for ${student.name}`);
             return { student, matchedField };
           }
         }
         
-        // Certificates - comprehensive search
+        // Certificates - comprehensive search including all fields
         if (profile.certificates && Array.isArray(profile.certificates)) {
           const certMatch = profile.certificates.some((cert: any) => {
             if (!cert) return false;
             
             // Check all certificate fields
+            if (matchesField(cert.id, 'certificate')) return true;
+            if (matchesField(cert.link, 'certificate')) return true;
             if (matchesField(cert.level, 'certificate')) return true;
             if (matchesField(cert.title, 'certificate')) return true;
-            if (matchesField(cert.issuedOn, 'certificate')) return true;
             if (matchesField(cert.issuer, 'certificate')) return true;
+            if (matchesField(cert.status, 'certificate')) return true;
+            if (matchesField(cert.issuedOn, 'certificate')) return true;
             if (matchesField(cert.description, 'certificate')) return true;
             if (matchesField(cert.credentialId, 'certificate')) return true;
-            if (matchesField(cert.status, 'certificate')) return true;
+            
+            // Handle enabled status search
+            if (cert.enabled === true && query.includes('enabled')) {
+              if (!isMatch) matchedField = 'enabled certificate';
+              isMatch = true;
+              return true;
+            }
+            if (cert.enabled === false && query.includes('disabled')) {
+              if (!isMatch) matchedField = 'disabled certificate';
+              isMatch = true;
+              return true;
+            }
+            
+            // Handle processing status search
+            if (cert.processing === true && (query.includes('processing') || query.includes('pending'))) {
+              if (!isMatch) matchedField = 'processing certificate';
+              isMatch = true;
+              return true;
+            }
+            if (cert.processing === false && query.includes('processed')) {
+              if (!isMatch) matchedField = 'processed certificate';
+              isMatch = true;
+              return true;
+            }
             
             return false;
           });
           
           if (certMatch) {
-            console.log(`✅ Match in certificates for ${student.name}`, profile.certificates);
             return { student, matchedField };
           }
         }
@@ -2661,7 +3709,6 @@ const TalentPool = () => {
           });
           
           if (techMatch) {
-            console.log(`✅ Match in technicalSkills for ${student.name}`);
             return { student, matchedField };
           }
         }
@@ -2670,14 +3717,21 @@ const TalentPool = () => {
         if (profile.training && Array.isArray(profile.training)) {
           const trainingMatch = profile.training.some((training: any) => {
             if (!training) return false;
-            if (matchesField(training.name, 'training')) return true;
-            if (matchesField(training.title, 'training')) return true;
-            if (matchesField(training.organization, 'training')) return true;
-            if (matchesField(training.description, 'training')) return true;
+            if (matchesField(training.id, 'training')) return true;
+            if (matchesField(training.skill, 'training')) return true;
+            if (matchesField(training.certificateUrl, 'training')) return true;
+            if (matchesField(training.certificationDate, 'training')) return true;
+            if (matchesField(training.course, 'training')) return true;
+            if (matchesField(training.trainer, 'training')) return true;
+            if (matchesField(training.duration, 'training')) return true;
+            if (matchesField(training.provider, 'training')) return true;
+            if (matchesField(training.progress, 'training')) return true;
+            if (matchesField(training.hoursSpent, 'training')) return true
+            if (matchesField(training.totalModules, 'training')) return true
+            if (matchesField(training.completedModules, 'training')) return true
             return false;
           });
           if (trainingMatch) {
-            console.log(`✅ Match in training for ${student.name}`);
             return { student, matchedField };
           }
         }
@@ -2692,9 +3746,7 @@ const TalentPool = () => {
       
       result = resultsWithScores.map(item => item.student);
       
-      console.log('✅ Filtered results (lexicographically sorted):', result.length);
       if (result.length > 0) {
-        console.log('Sample matches:', result.slice(0, 3).map(s => s.name));
       }
     }
 
@@ -3338,4 +4390,3 @@ const TalentPool = () => {
 };
 
 export default TalentPool;
-

@@ -16,7 +16,6 @@ export const parseResumeWithAI = async (resumeText) => {
                    import.meta.env.VITE_OPENROUTER_API_KEY;
     
     if (!apiKey) {
-      console.warn('⚠️ No AI API key configured. Using fallback parser.');
       return parseFallback(resumeText);
     }
 
@@ -42,7 +41,6 @@ export const parseResumeWithAI = async (resumeText) => {
       );
       
       if (!hasData) {
-        console.warn('⚠️ AI parsing returned empty data. Using fallback parser.');
         return parseFallback(resumeText);
       }
       
@@ -52,11 +50,9 @@ export const parseResumeWithAI = async (resumeText) => {
       
       // Special handling for rate limits
       if (aiError.message === 'RATE_LIMIT_EXCEEDED') {
-        console.log('📄 OpenRouter rate limit exceeded. Using enhanced regex-based parser...');
         return parseFallback(resumeText);
       }
       
-      console.log('📄 Falling back to regex-based parser...');
       return parseFallback(resumeText);
     }
   } catch (error) {
@@ -210,8 +206,6 @@ ${resumeText}
 `;
 
   try {
-    console.log('🤖 Calling Gemini API for resume parsing...');
-    console.log('📝 Resume text length:', resumeText.length);
     
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
@@ -243,7 +237,6 @@ ${resumeText}
     const data = await response.json();
     const generatedText = data.candidates[0].content.parts[0].text;
     
-    console.log('🤖 Gemini raw response:', generatedText.substring(0, 500));
     
     // Extract JSON from the response - handle markdown code blocks
     let jsonText = generatedText;
@@ -258,15 +251,12 @@ ${resumeText}
       throw new Error('Failed to extract JSON from AI response');
     }
     
-    console.log('📝 Extracted JSON text:', jsonMatch[0].substring(0, 300));
     
     const parsedData = JSON.parse(jsonMatch[0]);
     
-    console.log('✅ Parsed data:', parsedData);
     
     // Validate that name field doesn't contain entire resume
     if (parsedData.name && parsedData.name.length > 100) {
-      console.warn('⚠️ Name field too long, attempting to extract actual name...');
       parsedData.name = extractNameFromText(parsedData.name);
     }
     
@@ -473,8 +463,6 @@ ${resumeText}
 `;
 
   try {
-    console.log('🤖 Calling OpenRouter API for resume parsing...');
-    console.log('📝 Resume text length:', resumeText.length);
     
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -507,7 +495,6 @@ ${resumeText}
       
       // Handle rate limiting (429) - fall back to regex parser
       if (response.status === 429) {
-        console.warn('⚠️ OpenRouter API rate limit reached. Using fallback parser...');
         throw new Error('RATE_LIMIT_EXCEEDED');
       }
       
@@ -517,7 +504,6 @@ ${resumeText}
     const data = await response.json();
     const generatedText = data.choices[0].message.content;
     
-    console.log('🤖 OpenRouter raw response:', generatedText.substring(0, 500));
     
     // Extract JSON from the response - handle markdown code blocks
     let jsonText = generatedText;
@@ -532,15 +518,12 @@ ${resumeText}
       throw new Error('Failed to extract JSON from AI response');
     }
     
-    console.log('📝 Extracted JSON text:', jsonMatch[0].substring(0, 300));
     
     const parsedData = JSON.parse(jsonMatch[0]);
     
-    console.log('✅ Parsed data:', parsedData);
     
     // Validate that name field doesn't contain entire resume
     if (parsedData.name && parsedData.name.length > 100) {
-      console.warn('⚠️ Name field too long, attempting to extract actual name...');
       parsedData.name = extractNameFromText(parsedData.name);
     }
     
@@ -557,8 +540,6 @@ ${resumeText}
  * Used when AI API fails or is not available
  */
 const parseFallback = (resumeText) => {
-  console.log('📄 Using ENHANCED fallback resume parser');
-  console.log('📝 Resume text:', resumeText.substring(0, 500));
   
   const result = {
     name: '',
@@ -590,14 +571,12 @@ const parseFallback = (resumeText) => {
   // Extract email
   const emailRegex = /[\w.-]+@[\w.-]+\.\w+/;
   result.email = resumeText.match(emailRegex)?.[0] || '';
-  console.log('📧 Found email:', result.email);
   
   // Extract phone number
   const phoneRegex = /(?:\+91\s?)?[\d\s-]{10,}/;
   const phoneMatch = resumeText.match(phoneRegex);
   if (phoneMatch) {
     result.contact_number = phoneMatch[0].replace(/\s+/g, ' ').trim();
-    console.log('📞 Found phone:', result.contact_number);
   }
   
   // Extract name - look for pattern like "P.DURKADEVI" or name before CONTACT/EMAIL
@@ -614,7 +593,6 @@ const parseFallback = (resumeText) => {
     const capsWithDots = trimmed.match(/^([A-Z]\.?\s*)?[A-Z]{3,}$/);
     if (capsWithDots && trimmed.length < 50) {
       result.name = trimmed;
-      console.log('👤 Found name (caps with dots, first lines):', result.name);
       break;
     }
     
@@ -622,7 +600,6 @@ const parseFallback = (resumeText) => {
     const properCase = trimmed.match(/^[A-Z][a-z]+(\s+[A-Z][a-z]+){1,3}$/);
     if (properCase && trimmed.length < 50) {
       result.name = trimmed;
-      console.log('👤 Found name (proper case, first lines):', result.name);
       break;
     }
   }
@@ -647,7 +624,6 @@ const parseFallback = (resumeText) => {
         // Name should be 1-4 words and less than 50 characters
         if (validWords.length >= 1 && validWords.length <= 4 && trimmed.length < 50) {
           result.name = validWords.join(' ');
-          console.log('👤 Found name (before contact):', result.name);
           break;
         }
       }
@@ -665,7 +641,6 @@ const parseFallback = (resumeText) => {
       // Look for all-caps names (common resume format) - including P.DURKADEVI pattern
       if (/^[A-Z]\.?\s*[A-Z]{3,}$/i.test(trimmed) && trimmed.length > 3 && trimmed.length < 40) {
         result.name = trimmed;
-        console.log('👤 Found name (all-caps with optional dot):', result.name);
         break;
       }
       
@@ -673,7 +648,6 @@ const parseFallback = (resumeText) => {
         const words = trimmed.split(/\s+/);
         if (words.length >= 1 && words.length <= 4) {
           result.name = trimmed;
-          console.log('👤 Found name (all-caps):', result.name);
           break;
         }
       }
@@ -683,7 +657,6 @@ const parseFallback = (resumeText) => {
         const words = trimmed.split(/\s+/);
         if (words.length >= 2 && words.length <= 4) {
           result.name = trimmed;
-          console.log('👤 Found name (proper case):', result.name);
           break;
         }
       }
@@ -702,7 +675,6 @@ const parseFallback = (resumeText) => {
         if (cleaned.length > 5 && cleaned.length < 50 && 
             !cleaned.match(/CONTACT|EMAIL|PHONE|SKILLS|EDUCATION|EXPERIENCE|PROJECT/i)) {
           result.name = cleaned;
-          console.log('👤 Found name (pattern match):', result.name);
           break;
         }
       }
@@ -712,7 +684,6 @@ const parseFallback = (resumeText) => {
   // Extract EDUCATION section
   const eduSection = extractSection(resumeText, 'EDUCATION', ['EXPERIENCE', 'WORK EXPERIENCE', 'CERTIFICATES', 'SKILLS']);
   if (eduSection) {
-    console.log('🎓 Found education section:', eduSection);
     const eduItems = parseEducation(eduSection);
     result.education = eduItems;
     
@@ -725,21 +696,18 @@ const parseFallback = (resumeText) => {
   // Extract EXPERIENCE/WORK EXPERIENCE section
   const expSection = extractSection(resumeText, 'EXPERIENCE|WORK EXPERIENCE', ['EDUCATION', 'CERTIFICATES', 'SKILLS', 'PROJECTS']);
   if (expSection) {
-    console.log('💼 Found experience section:', expSection);
     result.experience = parseExperience(expSection);
   }
   
   // Extract PROJECTS section
   const projectsSection = extractSection(resumeText, 'PROJECTS', ['EDUCATION', 'EXPERIENCE', 'WORK EXPERIENCE', 'CERTIFICATES', 'SKILLS']);
   if (projectsSection) {
-    console.log('🚀 Found projects section:', projectsSection);
     result.projects = parseProjects(projectsSection);
   }
   
   // Extract SKILLS section
   const skillsSection = extractSection(resumeText, 'SKILLS', ['EDUCATION', 'EXPERIENCE', 'WORK EXPERIENCE', 'CERTIFICATES', 'PROJECTS']);
   if (skillsSection) {
-    console.log('🔧 Found skills section:', skillsSection);
     const { technical, soft } = parseSkills(skillsSection);
     result.technicalSkills = technical;
     result.softSkills = soft;
@@ -748,11 +716,9 @@ const parseFallback = (resumeText) => {
   // Extract CERTIFICATES section
   const certsSection = extractSection(resumeText, 'CERTIFICATES|CERTIFICATIONS', ['EDUCATION', 'EXPERIENCE', 'SKILLS', 'PROJECTS']);
   if (certsSection) {
-    console.log('📜 Found certificates section:', certsSection);
     result.certificates = parseCertificates(certsSection);
   }
   
-  console.log('✅ Fallback parsing complete:', result);
   return addMetadata(result);
 };
 
@@ -848,25 +814,21 @@ const parseExperience = (section) => {
   const experience = [];
   const lines = section.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   
-  console.log('🔧 Parsing experience section:', lines.length, 'lines');
   
   let currentExp = null;
   let lineIndex = 0;
   
   while (lineIndex < lines.length) {
     const line = lines[lineIndex];
-    console.log(`🔍 Processing experience line ${lineIndex}: "${line}"`);
     
     // Look for date patterns (Jan 2024 - Jan 2025)
     const datePattern = /([A-Z][a-z]{2}\s+\d{4})\s*[-–]\s*([A-Z][a-z]{2}\s+\d{4}|Present)/;
     const dateMatch = line.match(datePattern);
     
     if (dateMatch) {
-      console.log('📅 Found date pattern in experience');
       
       // Save previous experience if exists
       if (currentExp) {
-        console.log('💾 Saving previous experience:', currentExp.role, 'at', currentExp.organization);
         experience.push(currentExp);
       }
       
@@ -874,7 +836,6 @@ const parseExperience = (section) => {
       const beforeDate = line.substring(0, dateMatch.index).trim();
       const duration = dateMatch[0];
       
-      console.log('🆕 Creating new experience - Before date:', beforeDate, 'Duration:', duration);
       
       currentExp = {
         id: experience.length + 1,
@@ -951,7 +912,6 @@ const parseProjects = (section) => {
   const projects = [];
   const lines = section.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   
-  console.log('🔧 Parsing projects section:', lines.length, 'lines');
   
   let currentProject = null;
   let descriptionLines = [];
@@ -970,31 +930,24 @@ const parseProjects = (section) => {
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    console.log(`🔍 Processing line ${i}: "${line.substring(0, 80)}..."`);
     
     // Check for Technologies line (labeled or in bullet)
     // Patterns: "Technologies: Python, React" or "Technologies - Python, React" or "Technologies Python, React"
     if (line.match(/^(Technologies|Tech Stack|Built with|Tools|Tech Used|Stack)[\s:–-]+/i)) {
-      console.log('🎯 Found technology label on line:', line);
       if (currentProject) {
         const techList = line.replace(/^(Technologies|Tech Stack|Built with|Tools|Tech Used|Stack)[\s:–-]+/i, '').trim();
         const techs = techList.split(/[,;|&]/).map(t => t.trim()).filter(t => t.length > 0);
         
-        console.log('🔧 Extracted tech list from label:', techList);
-        console.log('🔧 Split into techs:', techs);
         
         // If technologies array already has items, merge without duplicates
         const existingTechs = new Set(currentProject.technologies.map(t => t.toLowerCase()));
         techs.forEach(tech => {
           if (!existingTechs.has(tech.toLowerCase())) {
             currentProject.technologies.push(tech);
-            console.log('➕ Added tech:', tech);
           }
         });
         
-        console.log('🔧 Current project technologies after merge:', currentProject.technologies);
       } else {
-        console.warn('⚠️ Found technology line but no current project! Line:', line);
       }
       continue;
     }
@@ -1006,7 +959,6 @@ const parseProjects = (section) => {
         const techList = techMatch[3];
         const techs = techList.split(/[,;|]/).map(t => t.trim()).filter(t => t.length > 0 && t.length < 50);
         currentProject.technologies.push(...techs);
-        console.log('🔧 Found inline technologies:', techs);
       }
     }
     
@@ -1043,7 +995,6 @@ const parseProjects = (section) => {
     const dateMatch = line.match(datePattern);
     
     if (dateMatch) {
-      console.log('📅 Found date pattern, creating new project. Line:', line);
       
       // Save previous project if exists
       if (currentProject) {
@@ -1051,9 +1002,6 @@ const parseProjects = (section) => {
         
         // Extract technologies from description if not already found
         if (currentProject.technologies.length === 0) {
-          console.log('🔧 No labeled technologies found, extracting from description...');
-          console.log('🔧 Title:', currentProject.title);
-          console.log('🔧 Description:', currentProject.description.substring(0, 200));
           const fullText = (currentProject.title + ' ' + currentProject.description).toLowerCase();
           const foundTechs = new Set();
           
@@ -1064,12 +1012,9 @@ const parseProjects = (section) => {
           });
           
           currentProject.technologies = Array.from(foundTechs);
-          console.log('🔧 Extracted technologies from text:', currentProject.technologies);
         } else {
-          console.log('✅ Project already has technologies from labeled extraction:', currentProject.technologies);
         }
         
-        console.log('💾 Saving project:', currentProject.title, 'with', currentProject.technologies.length, 'technologies:', currentProject.technologies);
         projects.push(currentProject);
         descriptionLines = [];
       }
@@ -1081,12 +1026,10 @@ const parseProjects = (section) => {
       if (!titlePart && i > 0) {
         titlePart = lines[i - 1].trim();
         usedAsTitle.add(i - 1); // Mark previous line as used for title
-        console.log('🔧 Date on separate line, using previous line as title:', titlePart);
       }
       
       const duration = dateMatch[0];
       
-      console.log('🆕 Creating new project:', titlePart, 'Duration:', duration);
       
       // Next line might be organization
       let organization = '';
@@ -1115,7 +1058,6 @@ const parseProjects = (section) => {
       // Collect description lines (bullet points or regular text)
       // Skip if this line was used as a title
       if (usedAsTitle.has(i)) {
-        console.log('🔧 Skipping line', i, '- used as project title');
         // Don't add to description
       } else if (line.match(/^[•\-\*]/)) {
         descriptionLines.push(line.replace(/^[•\-\*]\s*/, ''));
@@ -1135,9 +1077,6 @@ const parseProjects = (section) => {
     
     // Extract technologies from description if not already found
     if (currentProject.technologies.length === 0) {
-      console.log('🔧 Last project: No labeled technologies found, extracting from description...');
-      console.log('🔧 Title:', currentProject.title);
-      console.log('🔧 Description:', currentProject.description.substring(0, 200));
       const fullText = (currentProject.title + ' ' + currentProject.description).toLowerCase();
       const foundTechs = new Set();
       
@@ -1148,31 +1087,17 @@ const parseProjects = (section) => {
       });
       
       currentProject.technologies = Array.from(foundTechs);
-      console.log('🔧 Last project extracted technologies:', currentProject.technologies);
     } else {
-      console.log('✅ Last project already has technologies:', currentProject.technologies);
     }
     
-    console.log('💾 Saving last project:', currentProject.title, 'with', currentProject.technologies.length, 'technologies:', currentProject.technologies);
     projects.push(currentProject);
   }
   
-  console.log('✅ Parsed projects:', projects.length);
   
   if (projects.length === 0) {
-    console.warn('⚠️ WARNING: No projects were created!');
-    console.warn('⚠️ This might mean:');
-    console.warn('  1. No date patterns found (looking for format: Jan 2024 - Mar 2024)');
-    console.warn('  2. Projects section is empty or not formatted correctly');
-    console.warn('  3. Check the input text format');
-    console.warn('📋 Projects section received:', section.substring(0, 500));
   }
   
   projects.forEach(p => {
-    console.log(`  📊 Project: ${p.title}`);
-    console.log(`     - Technologies (${p.technologies.length}):`, p.technologies);
-    console.log(`     - Duration: ${p.duration}`);
-    console.log(`     - Description length: ${p.description?.length || 0} chars`);
   });
   
   // Clean up empty fields
@@ -1199,7 +1124,6 @@ const parseSkills = (section) => {
   const technical = [];
   const soft = [];
   
-  console.log('🔧 Parsing skills section:', section.substring(0, 200));
   
   // Strategy 1: Split by common delimiters
   let skillWords = section
@@ -1225,7 +1149,6 @@ const parseSkills = (section) => {
   skillWords = skillWords.flatMap(skill => {
     if (skill.length > 50 && /[a-z][A-Z]/.test(skill)) {
       // Has lowercase followed by uppercase - likely concatenated words
-      console.log('🔧 Splitting by capital letters:', skill);
       
       // Split before each capital letter that follows a lowercase letter
       const parts = skill.split(/(?<=[a-z])(?=[A-Z])/);
@@ -1237,7 +1160,6 @@ const parseSkills = (section) => {
       const softSkillKeywords = ['Communication', 'Teamwork', 'Leadership', 'Problem Solving', 'Analytical', 'Critical Thinking'];
       for (const keyword of softSkillKeywords) {
         if (skill.includes(keyword) && skill.length > keyword.length + 5) {
-          console.log('🔧 Splitting by keyword:', keyword, 'in', skill);
           // Split by the keyword, keeping the keyword
           const parts = skill.split(new RegExp(`(${keyword})`, 'i')).filter(p => p.trim().length > 0);
           return parts;
@@ -1248,7 +1170,6 @@ const parseSkills = (section) => {
     return [skill];
   });
   
-  console.log('🔧 Found skill words:', skillWords.length, skillWords.slice(0, 10));
   
   const softSkillKeywords = ['communication', 'teamwork', 'leadership', 'problem', 'analytical', 'critical', 'creative', 'collaboration', 'management', 'presentation', 'interpersonal', 'organizational', 'test'];
   const technicalKeywords = ['python', 'java', 'javascript', 'react', 'node', 'sql', 'html', 'css', 'git', 'aws', 'docker', 'kubernetes', 'programming', 'development', 'framework', 'database', 'testing', 'evaluation'];
@@ -1256,13 +1177,11 @@ const parseSkills = (section) => {
   skillWords.forEach((skill, index) => {
     // Skip if skill is too long (likely not a single skill)
     if (skill.length > 100) {
-      console.warn('⚠️ Skipping overly long skill:', skill.substring(0, 50));
       return;
     }
     
     // Skip if it looks like a name (all caps with optional initial)
     if (/^[A-Z]\.?\s*[A-Z]{4,}$/.test(skill)) {
-      console.warn('⚠️ Skipping name-like text in skills:', skill);
       return;
     }
     
@@ -1290,7 +1209,6 @@ const parseSkills = (section) => {
     }
   });
   
-  console.log('✅ Parsed skills - Technical:', technical.length, 'Soft:', soft.length);
   
   return { technical, soft };
 };
@@ -1302,14 +1220,12 @@ const parseCertificates = (section) => {
   const certificates = [];
   const lines = section.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   
-  console.log('🔧 Parsing certificates section:', lines.length, 'lines');
   
   let currentCert = null;
   let descriptionLines = [];
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    console.log(`🔍 Processing certificate line ${i}: "${line}"`);
     
     // Check if this looks like a new certificate (usually starts with title)
     // Certificates often have patterns like "Certificate Name | Issuer | Date"
@@ -1322,13 +1238,11 @@ const parseCertificates = (section) => {
       (line.length > 20 && !line.match(/^[•\-\*]/) && i === 0)
     );
     
-    console.log(`  isCertStart: ${isCertStart}`);
     
     if (isCertStart && (currentCert === null || descriptionLines.length > 0)) {
       // Save previous certificate
       if (currentCert) {
         currentCert.description = descriptionLines.join(' ').trim();
-        console.log('💾 Saving certificate:', currentCert.title);
         certificates.push(currentCert);
         descriptionLines = [];
       }
@@ -1436,11 +1350,9 @@ const parseCertificates = (section) => {
  * Clean and validate parsed data to prevent data dumping in single fields
  */
 const cleanParsedData = (data) => {
-  console.log('🧹 Cleaning parsed data...');
   
   // Clean name field - ensure it's not too long
   if (data.name && data.name.length > 100) {
-    console.warn('⚠️ Name field too long, extracting...');
     data.name = extractNameFromText(data.name);
   }
   
@@ -1526,7 +1438,6 @@ const cleanParsedData = (data) => {
     const cleaned = [];
     data.softSkills.forEach(item => {
       if (item.name && item.name.length > 30) { // Changed from 100 to 30 to catch more cases
-        console.log('🧹 Splitting soft skill:', item.name.substring(0, 100));
         
         // Likely multiple skills concatenated - try multiple split strategies
         // First try: split by common delimiters
@@ -1544,7 +1455,6 @@ const cleanParsedData = (data) => {
         
         // NEW: If still concatenated, split by capital letters (e.g., "testingCommunicationTeamwork")
         if (skills.some(s => s.length > 40 && /[a-z][A-Z]/.test(s))) {
-          console.log('🧹 Splitting by capital letters...');
           skills = skills.flatMap(s => {
             if (s.length > 40 && /[a-z][A-Z]/.test(s)) {
               return s.split(/(?<=[a-z])(?=[A-Z])/);
@@ -1556,7 +1466,6 @@ const cleanParsedData = (data) => {
         // NEW: If STILL long and has single spaces between words with capitals, split by space
         // This handles: "testing Communication Teamwork Test testtest P.DURKADEVID"
         if (skills.some(s => s.length > 30 && s.includes(' '))) {
-          console.log('🧹 Splitting by single space for capitalized words...');
           skills = skills.flatMap(s => {
             if (s.length > 30 && s.includes(' ')) {
               // Split by space, then filter out common filler words
@@ -1583,7 +1492,6 @@ const cleanParsedData = (data) => {
             // This looks like a name - extract it if we don't have one yet
             if (!data.name || data.name === '') {
               data.name = trimmed;
-              console.log('👤 Found name in soft skills:', trimmed);
             }
             return; // Skip adding this as a skill
           }
@@ -1602,7 +1510,6 @@ const cleanParsedData = (data) => {
         if (namePattern.test(item.name.trim())) {
           if (!data.name || data.name === '') {
             data.name = item.name.trim();
-            console.log('👤 Found name in soft skills:', item.name.trim());
           }
         } else {
           cleaned.push(item);
@@ -1610,7 +1517,6 @@ const cleanParsedData = (data) => {
       }
     });
     
-    console.log(`🧹 Soft skills cleaned: ${data.softSkills.length} → ${cleaned.length} items`);
     data.softSkills = cleaned;
   }
   
@@ -1641,7 +1547,6 @@ const cleanParsedData = (data) => {
       });
   }
   
-  console.log('✅ Data cleaned');
   return data;
 };
 
@@ -1733,7 +1638,6 @@ const addMetadata = (parsedData) => {
       // Parse duration into startDate and endDate
       const dates = parseDurationToDateFields(item.duration);
       
-      console.log(`📅 Experience: "${item.role}" - Duration: "${item.duration}" => Start: ${dates.startDate}, End: ${dates.endDate}`);
       
       return {
         ...item,
@@ -1759,7 +1663,6 @@ const addMetadata = (parsedData) => {
       // Parse duration into startDate and endDate
       const dates = parseDurationToDateFields(item.duration);
       
-      console.log(`📅 Project: "${item.title}" - Duration: "${item.duration}" => Start: ${dates.startDate}, End: ${dates.endDate}`);
       
       return {
         ...item,
@@ -1809,7 +1712,6 @@ const addMetadata = (parsedData) => {
         issuedOnFormatted = parsed.startDate || issuedOnFormatted;
       }
       
-      console.log(`📅 Certificate: "${item.title}" - IssuedOn: "${item.issuedOn}" => Formatted: ${issuedOnFormatted}`);
       
       return {
         ...item,
@@ -1837,7 +1739,6 @@ const addMetadata = (parsedData) => {
  * Extract actual name from text if AI put too much in name field
  */
 const extractNameFromText = (text) => {
-  console.log('🔍 Attempting to extract name from long text:', text.substring(0, 200));
   
   // Split into words and lines
   const lines = text.split(/[\n]+/).map(l => l.trim()).filter(l => l.length > 0);
@@ -1851,7 +1752,6 @@ const extractNameFromText = (text) => {
     const allCapsPattern = /^[A-Z]\.\s*[A-Z]+$/;
     
     if (initialsPattern.test(line) || fullNamePattern.test(line) || allCapsPattern.test(line)) {
-      console.log('✅ Found name using pattern:', line);
       return line;
     }
   }
@@ -1868,7 +1768,6 @@ const extractNameFromText = (text) => {
       );
       
       if (isNameLike && !line.includes('EMAIL') && !line.includes('PHONE') && !line.includes('CONTACT')) {
-        console.log('✅ Found name-like pattern:', line);
         return line;
       }
     }
@@ -1879,7 +1778,6 @@ const extractNameFromText = (text) => {
   if (beforeContact && beforeContact.length < 50) {
     const cleanName = beforeContact.trim().split(/\s+/).slice(0, 4).join(' ');
     if (cleanName.length > 2 && cleanName.length < 50) {
-      console.log('✅ Found name before contact section:', cleanName);
       return cleanName;
     }
   }
@@ -1888,14 +1786,12 @@ const extractNameFromText = (text) => {
   for (let i = 0; i < Math.min(10, words.length - 1); i++) {
     const potentialName = words.slice(i, Math.min(i + 3, words.length)).join(' ');
     if (/^[A-Z][a-z.]*(\s+[A-Z][a-z.]*)*$/.test(potentialName) && potentialName.length < 30) {
-      console.log('✅ Found name in first words:', potentialName);
       return potentialName;
     }
   }
   
   // Fallback: Return first line or "Unknown"
   const fallback = lines[0]?.substring(0, 50) || 'Unknown';
-  console.log('⚠️ Using fallback name:', fallback);
   return fallback;
 };
 

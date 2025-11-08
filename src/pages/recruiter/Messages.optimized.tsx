@@ -290,7 +290,7 @@ const Messages = () => {
           : trimmedInput,
         type: 'message',
         link: `/student/messages?conversation=${selectedConversationId}`
-      }).catch(err => console.warn('Notification failed:', err));
+      }).catch(() => {/* Ignore notification errors */});
       
       setMessageInput('');
       setTyping(false);

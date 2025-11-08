@@ -53,14 +53,6 @@ export class MessageService {
     subject?: string
   ): Promise<Conversation> {
     try {
-      console.log('🔍 Getting or creating conversation:', {
-        studentId,
-        recruiterId,
-        applicationId,
-        opportunityId,
-        subject
-      });
-
       // Try to find existing conversation
       let query = supabase
         .from('conversations')
@@ -79,14 +71,11 @@ export class MessageService {
       }
       
       if (existing) {
-        console.log('✅ Found existing conversation:', existing.id);
         return existing;
       }
       
       // Create new conversation
       const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      console.log('🆕 Creating new conversation:', conversationId);
       
       const { data, error } = await supabase
         .from('conversations')
@@ -104,10 +93,8 @@ export class MessageService {
       
       if (error) throw error;
       
-      console.log('✅ Created conversation:', data.id);
       return data;
     } catch (error) {
-      console.error('❌ Error in getOrCreateConversation:', error);
       throw error;
     }
   }
@@ -127,14 +114,6 @@ export class MessageService {
     attachments?: any[]
   ): Promise<Message> {
     try {
-      console.log('📤 Sending message:', {
-        conversationId,
-        senderId,
-        senderType,
-        receiverId,
-        receiverType
-      });
-
       const { data, error } = await supabase
         .from('messages')
         .insert({
@@ -153,10 +132,8 @@ export class MessageService {
       
       if (error) throw error;
       
-      console.log('✅ Message sent:', data.id);
       return data;
     } catch (error) {
-      console.error('❌ Error sending message:', error);
       throw error;
     }
   }
@@ -175,7 +152,6 @@ export class MessageService {
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('❌ Error fetching messages:', error);
       throw error;
     }
   }
@@ -217,7 +193,6 @@ export class MessageService {
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('❌ Error fetching conversations:', error);
       throw error;
     }
   }
@@ -237,7 +212,6 @@ export class MessageService {
       
       if (error) throw error;
     } catch (error) {
-      console.error('❌ Error marking message as read:', error);
       throw error;
     }
   }
@@ -250,8 +224,6 @@ export class MessageService {
     userId: string
   ): Promise<void> {
     try {
-      console.log('📖 Marking conversation as read:', conversationId, 'for user:', userId);
-
       // Mark messages as read
       const { data: updatedMessages, error: messageError } = await supabase
         .from('messages')
@@ -265,8 +237,6 @@ export class MessageService {
         .select();
       
       if (messageError) throw messageError;
-      
-      console.log('✅ Marked', updatedMessages?.length || 0, 'messages as read');
       
       // Update the conversation's unread count to 0
       // Determine if this is a student or recruiter based on the receiver_id matching
@@ -286,13 +256,10 @@ export class MessageService {
           .eq('id', conversationId);
         
         if (convError) {
-          console.warn('⚠️ Could not update conversation unread count:', convError);
-        } else {
-          console.log('✅ Updated conversation unread count to 0');
+          // Failed to update conversation unread count
         }
       }
     } catch (error) {
-      console.error('❌ Error marking conversation as read:', error);
       throw error;
     }
   }
@@ -304,8 +271,6 @@ export class MessageService {
     conversationId: string,
     onMessage: (message: Message) => void
   ) {
-    console.log('🔔 Subscribing to conversation:', conversationId);
-
     return supabase
       .channel(`conversation:${conversationId}`)
       .on(
@@ -317,7 +282,6 @@ export class MessageService {
           filter: `conversation_id=eq.${conversationId}`
         },
         (payload) => {
-          console.log('📨 New message received:', payload.new);
           onMessage(payload.new as Message);
         }
       )
@@ -331,8 +295,6 @@ export class MessageService {
     userId: string,
     onMessage: (message: Message) => void
   ) {
-    console.log('🔔 Subscribing to user messages:', userId);
-
     return supabase
       .channel(`user-messages:${userId}`)
       .on(
@@ -344,7 +306,6 @@ export class MessageService {
           filter: `receiver_id=eq.${userId}`
         },
         (payload) => {
-          console.log('📨 New message for user:', payload.new);
           onMessage(payload.new as Message);
         }
       )
@@ -369,7 +330,6 @@ export class MessageService {
       if (error) throw error;
       return count || 0;
     } catch (error) {
-      console.error('❌ Error fetching unread count:', error);
       return 0;
     }
   }
@@ -384,7 +344,6 @@ export class MessageService {
     onUpdate: (conversation: Conversation) => void
   ) {
     const column = userType === 'student' ? 'student_id' : 'recruiter_id';
-    console.log('🔔 Subscribing to conversation updates for:', userId);
 
     return supabase
       .channel(`user-conversations:${userId}`)
@@ -397,7 +356,6 @@ export class MessageService {
           filter: `${column}=eq.${userId}`
         },
         (payload) => {
-          console.log('📊 Conversation updated:', payload.new);
           onUpdate(payload.new as Conversation);
         }
       )
@@ -410,7 +368,6 @@ export class MessageService {
           filter: `${column}=eq.${userId}`
         },
         (payload) => {
-          console.log('🆕 New conversation:', payload.new);
           onUpdate(payload.new as Conversation);
         }
       )
@@ -442,7 +399,6 @@ export class MessageService {
       if (error) throw error;
       return data;
     } catch (error) {
-      console.error('❌ Error fetching conversation with student:', error);
       return null;
     }
   }
@@ -452,8 +408,6 @@ export class MessageService {
    */
   static async archiveConversation(conversationId: string): Promise<void> {
     try {
-      console.log('📦 Archiving conversation:', conversationId);
-
       const { error } = await supabase
         .from('conversations')
         .update({ 
@@ -463,10 +417,7 @@ export class MessageService {
         .eq('id', conversationId);
       
       if (error) throw error;
-      
-      console.log('✅ Conversation archived');
     } catch (error) {
-      console.error('❌ Error archiving conversation:', error);
       throw error;
     }
   }
@@ -476,8 +427,6 @@ export class MessageService {
    */
   static async unarchiveConversation(conversationId: string): Promise<void> {
     try {
-      console.log('📂 Unarchiving conversation:', conversationId);
-
       const { error } = await supabase
         .from('conversations')
         .update({ 
@@ -487,10 +436,7 @@ export class MessageService {
         .eq('id', conversationId);
       
       if (error) throw error;
-      
-      console.log('✅ Conversation unarchived');
     } catch (error) {
-      console.error('❌ Error unarchiving conversation:', error);
       throw error;
     }
   }

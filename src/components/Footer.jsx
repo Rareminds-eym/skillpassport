@@ -61,7 +61,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link 
-                  to="/blog" 
+                  to="https://rareminds.in/blogs" 
                   className="group flex items-center text-gray-300 hover:text-white transition-all duration-200"
                 >
                   <span className="w-0 group-hover:w-2 h-0.5 bg-gradient-to-r from-purple-400 to-amber-400 mr-0 group-hover:mr-2 transition-all duration-200"></span>
@@ -70,7 +70,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link 
-                  to="/support" 
+                  to="https://rareminds.in/contact" 
                   className="group flex items-center text-gray-300 hover:text-white transition-all duration-200"
                 >
                   <span className="w-0 group-hover:w-2 h-0.5 bg-gradient-to-r from-purple-400 to-amber-400 mr-0 group-hover:mr-2 transition-all duration-200"></span>
@@ -79,7 +79,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link 
-                  to="/privacy" 
+                  to="https://rareminds.in/privacy-policy" 
                   className="group flex items-center text-gray-300 hover:text-white transition-all duration-200"
                 >
                   <span className="w-0 group-hover:w-2 h-0.5 bg-gradient-to-r from-purple-400 to-amber-400 mr-0 group-hover:mr-2 transition-all duration-200"></span>
@@ -91,11 +91,11 @@ const Footer = () => {
 
           {/* Connect Section */}
           <div>
-            <h4 className="text-lg font-bold mb-6 text-white">
+            <h4 className="text-lg font-bold mb-6 text-white text-center">
               Connect With Us
             </h4>
-            <div className="flex flex-wrap gap-3">
-              <a 
+            <div className="flex flex-row items-center justify-center gap-4 flex-nowrap">
+               <a 
                 href="https://www.linkedin.com/company/rareminds/" 
                 target="_blank" 
                 rel="noopener noreferrer"
@@ -104,6 +104,18 @@ const Footer = () => {
               >
                 <Linkedin className="w-5 h-5 text-gray-300 group-hover:text-purple-400 transition-colors duration-200" />
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-purple-500/0 group-hover:from-purple-500/20 group-hover:to-transparent rounded-xl transition-all duration-300"></div>
+              </a>
+              <a 
+                href="https://www.facebook.com/raremindsgroup" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="group relative w-12 h-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:border-blue-500 transition-all duration-300 hover:scale-110"
+                aria-label="Facebook"
+              >
+                <svg className="w-5 h-5 text-gray-300 group-hover:text-blue-500 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-blue-500/0 group-hover:from-blue-500/20 group-hover:to-transparent rounded-xl transition-all duration-300"></div>
               </a>
               <a 
                 href="https://x.com/minds_rare" 
@@ -170,7 +182,7 @@ const Footer = () => {
           </div>
           
           <div className="flex items-center space-x-6 text-xs text-gray-400">
-            <Link to="/terms" className="hover:text-purple-400 transition-colors duration-200">
+            <Link to="https://rareminds.in/terms" className="hover:text-purple-400 transition-colors duration-200">
               Terms of Service
             </Link>
             <span>•</span>

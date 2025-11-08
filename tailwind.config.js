@@ -1,16 +1,15 @@
 /** @type {import('tailwindcss').Config} */
+import colors from 'tailwindcss/colors'
+
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        // Primary colors
-        primary: {
-          DEFAULT: '#1d8ad1',
-          light: '#5378f1',
-        },
-        // Secondary colors  
+        // Semantic color aliases used in the app (Overview, etc.)
+        primary: colors.indigo,
         secondary: {
+          light: '#5378f1',
           DEFAULT: '#000000',
           red: '#e32a18',
         },
@@ -19,10 +18,9 @@ export default {
           gold: '#d4af37',
           light: '#edf2f9',
         },
-        // Semantic color aliases
-        success: '#10b981',
-        warning: '#d4af37',
-        danger: '#e32a18',
+        success: colors.emerald,
+        warning: colors.amber,
+        danger: colors.rose,
       },
     },
   },

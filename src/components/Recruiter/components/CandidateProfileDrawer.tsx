@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/Recruiter/components/CandidateProfileDrawer.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   XMarkIcon,
   StarIcon,
@@ -20,6 +21,9 @@ import {
 import AddToShortlistModal from '../modals/AddToShortlistModal';
 import ScheduleInterviewModal from '../modals/ScheduleInterviewModal';
 import { QRCodeSVG } from 'qrcode.react';
+import { supabase } from '../../../lib/supabaseClient';
+import { File } from 'lucide-react';
+// import { useAuth } from '../../../context/AuthContext';
 
 const Badge = ({ type }) => {
   const badgeConfig = {
@@ -574,6 +578,101 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [certificates, setCertificates] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [loadingCertificates, setLoadingCertificates] = useState(false);
+  const [assessments, setAssessments] = useState([]);
+  const [loadingAssessments, setLoadingAssessments] = useState(false);
+
+  // Fetch projects and certificates when student changes
+
+  useEffect(() => {
+    if (!candidate?.id) return;
+
+    // Reset states
+    setProjects([]);
+    setCertificates([]);
+    setAssessments([]);
+
+    const fetchProjects = async () => {
+      setLoadingProjects(true);
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('student_id', candidate.id)
+          .eq('approval_status', 'verified')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setProjects(data || []);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        setProjects([]);
+      } finally {
+        setLoadingProjects(false);
+      }
+    };
+
+    const fetchCertificates = async () => {
+      setLoadingCertificates(true);
+      try {
+        const { data, error } = await supabase
+          .from('certificates')
+          .select('*')
+          .eq('student_id', candidate.id)
+          .eq('approval_status', 'verified')
+          .order('issued_on', { ascending: false });
+
+        if (error) throw error;
+        setCertificates(data || []);
+      } catch (error) {
+        console.error('Error fetching certificates:', error);
+        setCertificates([]);
+      } finally {
+        setLoadingCertificates(false);
+      }
+    };
+
+    const fetchAssignemts = async () => {
+      setLoadingAssessments(true);
+      try {
+        const { data, error } = await supabase
+          .from('student_assignments')
+          .select(`
+              *,
+              assignments (
+                title,
+                description,
+                course_name,
+                course_code,
+                assignment_type,
+                due_date,
+                total_points,
+                skill_outcomes,
+                educator_name
+              )
+            `)
+          .eq('student_id', candidate.id)
+          .eq('is_deleted', false)
+          .order('updated_date', { ascending: false });
+
+        if (error) throw error;
+        setAssessments(data || []);
+      } catch (error) {
+        console.error('Error fetching assignments:', error);
+        setAssessments([]);
+      } finally {
+        setLoadingAssessments(false);
+      }
+    };
+
+    fetchProjects();
+    fetchCertificates();
+    fetchAssignemts();
+  }, [candidate?.id]);
+
 
 
   if (!isOpen || !candidate) return null;
@@ -592,7 +691,6 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
       rawProfile = JSON.parse(candidate.profile);
       profileData = { ...candidate, ...rawProfile };
     } catch (e) {
-      console.warn('Profile parsing failed, using fallback:', e);
       rawProfile = {};
       profileData = candidate;
     }
@@ -601,9 +699,9 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
     profileData = { ...candidate, ...rawProfile };
   }
 
-  const projectsData = Array.isArray((candidate as any).projects) ? (candidate as any).projects : [];
-  const certificatesData = Array.isArray((candidate as any).certificates) ? (candidate as any).certificates : [];
-  const assessmentsData = Array.isArray((candidate as any).assessments) ? (candidate as any).assessments : [];
+  const projectsData = projects;
+  const certificatesData = certificates;
+  const assessmentsData = assessments;
 
   const verifiedProjects = projectsData.filter((project: any) => project?.verified === true || project?.status === 'verified');
   const verifiedCertificates = certificatesData.filter((certificate: any) => certificate?.verified === true || certificate?.status === 'verified');
@@ -965,45 +1063,85 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                 {activeTab === 'projects' && (
                   <div className="p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Projects & Portfolio</h3>
+
                     <div className="space-y-4">
-                      {profileData.projects && profileData.projects.length > 0 ? (
-                        profileData.projects.map((project: any, index: number) => {
-                          // Handle multiple possible field names for tech stack
-                          const techStack = project.technologies || project.tech || project.techStack || project.skills || [];
-                          const statusText = project.status ? project.status.charAt(0).toUpperCase() + project.status.slice(1) : 'Status Unknown';
+                      {loadingProjects ? (
+                        <div className="text-center py-12">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+                          <p className="text-gray-500 mt-2">Loading projects...</p>
+                        </div>
+                      ) : projects && projects.length > 0 ? (
+                        projects.map((project: any, index: number) => {
+                          const techStack = project.tech_stack
+                            ? Array.isArray(project.tech_stack)
+                              ? project.tech_stack
+                              : project.tech_stack.split(',').map((t: string) => t.trim())
+                            : [];
+
+                          const statusText = project.status
+                            ? project.status.charAt(0).toUpperCase() + project.status.slice(1).toLowerCase()
+                            : 'Unknown';
+
+                          const approvalBadgeColor =
+                            project.approval_status === 'verified'
+                              ? 'bg-green-100 text-green-800'
+                              : project.approval_status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800';
 
                           return (
-                            <div key={project.id || index} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
+                            <div
+                              key={project.id || index}
+                              className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors"
+                            >
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                  <div className="flex items-center">
-                                    <h4 className="font-medium text-gray-900">{project.title || project.name || `Project ${index + 1}`}</h4>
+                                  {/* Title + Status */}
+                                  <div className="flex items-center flex-wrap gap-2">
+                                    <h4 className="font-medium text-gray-900">
+                                      {project.title || `Project ${index + 1}`}
+                                    </h4>
+
                                     {project.status && (
-                                      <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${project.status.toLowerCase() === 'completed' ? 'bg-green-100 text-green-800' :
-                                        project.status.toLowerCase() === 'ongoing' ? 'bg-blue-100 text-blue-800' :
-                                          'bg-gray-100 text-gray-800'
-                                        }`}>
+                                      <span
+                                        className={`px-2 py-0.5 text-xs rounded-full ${project.status.toLowerCase() === 'completed'
+                                          ? 'bg-green-100 text-green-800'
+                                          : project.status.toLowerCase() === 'ongoing'
+                                            ? 'bg-blue-100 text-blue-800'
+                                            : 'bg-gray-100 text-gray-800'
+                                          }`}
+                                      >
                                         {statusText}
                                       </span>
                                     )}
+
+                                    {project.approval_status && (
+                                      <span
+                                        className={`px-2 py-0.5 text-xs rounded-full ${approvalBadgeColor}`}
+                                      >
+                                        {project.approval_status.charAt(0).toUpperCase() +
+                                          project.approval_status.slice(1)}
+                                      </span>
+                                    )}
                                   </div>
-                                  {project.organization && (
+
+                                  {/* Duration */}
+                                  {project.duration && (
                                     <p className="text-sm text-gray-500 mt-1">
-                                      <span className="font-medium">Organization:</span> {project.organization}
+                                      <span className="font-medium">Duration:</span> {project.duration}
                                     </p>
                                   )}
-                                  {project.description && (
+
+                                  {/* Description */}
+                                  {project.description ? (
                                     <p className="text-sm text-gray-600 mt-2">{project.description}</p>
+                                  ) : (
+                                    <p className="text-sm text-gray-400 mt-2 italic">
+                                      No description provided.
+                                    </p>
                                   )}
-                                  {project.role && (
-                                    <p className="text-sm text-gray-500 mt-1"><span className="font-medium">Role:</span> {project.role}</p>
-                                  )}
-                                  {project.duration && (
-                                    <p className="text-sm text-gray-500 mt-1"><span className="font-medium">Duration:</span> {project.duration}</p>
-                                  )}
-                                  {project.verifiedAt && (
-                                    <p className="text-xs text-green-600 mt-1">Verified on: {formatDateValue(project.verifiedAt || project.updatedAt || project.createdAt)}</p>
-                                  )}
+
+                                  {/* Tech Stack */}
                                   {techStack.length > 0 && (
                                     <div className="flex flex-wrap gap-1 mt-3">
                                       {techStack.map((tech: string, techIndex: number) => (
@@ -1016,22 +1154,41 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                       ))}
                                     </div>
                                   )}
-                                  <div className="flex items-center gap-3 mt-3">
-                                    {project.link && (
-                                      <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:text-primary-700 inline-flex items-center">
-                                        View Project →
+
+                                  {/* Links */}
+                                  <div className="flex flex-wrap gap-4 mt-3">
+                                    {project.demo_link && (
+                                      <a
+                                        href={project.demo_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm text-primary-600 hover:text-primary-700 inline-flex items-center"
+                                      >
+                                        Demo →
                                       </a>
                                     )}
-                                    {/* {project.github && (
-                                      <a href={project.github} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 hover:text-gray-800 inline-flex items-center">
-                                        <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                                          <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
-                                        </svg>
-                                        GitHub
+                                    {project.github_link && (
+                                      <a
+                                        href={project.github_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm text-primary-600 hover:text-primary-700 inline-flex items-center"
+                                      >
+                                        GitHub →
                                       </a>
-                                    )} */}
+                                    )}
                                   </div>
+
+                                  {/* Verified / Updated */}
+                                  {project.updated_at && (
+                                    <p className="text-xs text-gray-400 mt-2">
+                                      Last updated on:{' '}
+                                      {formatDateValue(project.updated_at || project.created_at)}
+                                    </p>
+                                  )}
                                 </div>
+
+                                {/* Icon */}
                                 <BeakerIcon className="h-6 w-6 text-gray-400 ml-4 flex-shrink-0" />
                               </div>
                             </div>
@@ -1041,76 +1198,229 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                         <div className="text-center py-12">
                           <BeakerIcon className="mx-auto h-12 w-12 text-gray-400" />
                           <p className="text-gray-500 mt-2">No projects available</p>
-                          <p className="text-gray-400 text-sm mt-1">Student hasn't added any projects yet</p>
+                          <p className="text-gray-400 text-sm mt-1">
+                            Student hasn't added any projects yet
+                          </p>
                         </div>
                       )}
                     </div>
                   </div>
                 )}
 
+
                 {/* Assessments Tab */}
                 {activeTab === 'assessments' && (
                   <div className="p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Assessments & Test Scores</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Assignments & Assessments
+                    </h3>
+
                     <div className="space-y-4">
-                      {profileData.assessments && profileData.assessments.length > 0 ? (
-                        profileData.assessments.map((assessment: any, index: number) => (
-                          <div key={index} className="border border-gray-200 rounded-lg p-4">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between">
-                                  <h4 className="font-medium text-gray-900">{assessment.name || assessment.title || `Assessment ${index + 1}`}</h4>
-                                  {assessment.score && (
-                                    <span className="text-lg font-bold text-primary-600">{assessment.score}</span>
-                                  )}
-                                </div>
-                                {assessment.type && (
-                                  <p className="text-sm text-gray-500 mt-1">{assessment.type}</p>
-                                )}
-                                {assessment.date && (
-                                  <p className="text-xs text-gray-400 mt-1">Completed on: {assessment.date}</p>
-                                )}
-                                {assessment.percentile && (
-                                  <div className="mt-3">
-                                    <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                      <span>Percentile</span>
-                                      <span>{assessment.percentile}%</span>
+                      {loadingAssessments ? (
+                        <div className="text-center py-12">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+                          <p className="text-gray-500 mt-2">Loading assignments...</p>
+                        </div>
+                      ) : assessments && assessments.length > 0 ? (
+                        assessments.map((assessment: any, index: number) => {
+                          const assignment = assessment.assignments || {};
+                          const statusColors: Record<string, string> = {
+                            todo: 'bg-gray-100 text-gray-800',
+                            'in-progress': 'bg-blue-100 text-blue-800',
+                            submitted: 'bg-yellow-100 text-yellow-800',
+                            graded: 'bg-green-100 text-green-800',
+                          };
+                          const priorityColors: Record<string, string> = {
+                            low: 'bg-gray-100 text-gray-800',
+                            medium: 'bg-yellow-100 text-yellow-800',
+                            high: 'bg-red-100 text-red-800',
+                          };
+
+                          return (
+                            <div
+                              key={assessment.student_assignment_id || index}
+                              className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-all"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  {/* Title + Course */}
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex-1">
+                                      <h4 className="font-medium text-gray-900">
+                                        {assignment?.title || `Assignment ${index + 1}`}
+                                      </h4>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        {assignment?.course_name}{' '}
+                                        {assignment?.course_code && `(${assignment.course_code})`}
+                                      </p>
                                     </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                      <div className="bg-green-500 h-2 rounded-full" style={{ width: `${assessment.percentile}%` }}></div>
+
+                                    {/* Grades */}
+                                    <div className="flex flex-col items-end space-y-1">
+                                      {assessment.grade_percentage && (
+                                        <span className="text-lg font-bold text-primary-600">
+                                          {assessment.grade_percentage}%
+                                        </span>
+                                      )}
+                                      {assessment.grade_received && (
+                                        <span className="text-sm text-gray-600">
+                                          {assessment.grade_received}/
+                                          {assignment?.total_points || 100} pts
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
-                                )}
-                                {assessment.badge && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mt-2">
-                                    <TrophyIcon className="h-3 w-3 mr-1" />
-                                    {assessment.badge}
-                                  </span>
-                                )}
+
+                                  {/* Status / Priority / Type */}
+                                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                                    <span
+                                      className={`px-2 py-1 text-xs rounded-full ${statusColors[assessment.status] ||
+                                        'bg-gray-100 text-gray-800'
+                                        }`}
+                                    >
+                                      {assessment.status
+                                        ? assessment.status.replace('-', ' ').toUpperCase()
+                                        : 'UNKNOWN'}
+                                    </span>
+                                    {assessment.priority && (
+                                      <span
+                                        className={`px-2 py-1 text-xs rounded-full ${priorityColors[assessment.priority] ||
+                                          'bg-gray-100 text-gray-800'
+                                          }`}
+                                      >
+                                        {assessment.priority.toUpperCase()}
+                                      </span>
+                                    )}
+                                    {assignment.assignment_type && (
+                                      <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800">
+                                        {assignment.assignment_type.toUpperCase()}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Dates */}
+                                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs text-gray-500">
+                                    <div>
+                                      <span className="font-medium">Assigned:</span>{' '}
+                                      {assessment.assigned_date
+                                        ? new Date(
+                                          assessment.assigned_date
+                                        ).toLocaleDateString()
+                                        : 'N/A'}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">Due:</span>{' '}
+                                      {assignment?.due_date
+                                        ? new Date(assignment.due_date).toLocaleDateString()
+                                        : 'N/A'}
+                                    </div>
+                                    {assessment.submission_date && (
+                                      <div>
+                                        <span className="font-medium">Submitted:</span>{' '}
+                                        {new Date(
+                                          assessment.submission_date
+                                        ).toLocaleDateString()}
+                                      </div>
+                                    )}
+                                    {assessment.graded_date && (
+                                      <div>
+                                        <span className="font-medium">Graded:</span>{' '}
+                                        {new Date(
+                                          assessment.graded_date
+                                        ).toLocaleDateString()}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Feedback */}
+                                  {assessment.instructor_feedback && (
+                                    <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                                      <p className="text-xs font-medium text-blue-800">
+                                        Instructor Feedback:
+                                      </p>
+                                      <p className="text-xs text-blue-700 mt-1">
+                                        {assessment.instructor_feedback}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Late submission */}
+                                  {assessment.is_late && (
+                                    <div className="mt-2">
+                                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">
+                                        Late Submission{' '}
+                                        {assessment.late_penalty
+                                          ? `(-${assessment.late_penalty}%)`
+                                          : ''}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* Skill Outcomes */}
+                                  {assignment.skill_outcomes &&
+                                    Array.isArray(assignment.skill_outcomes) &&
+                                    assignment.skill_outcomes.length > 0 && (
+                                      <div className="mt-3">
+                                        <p className="text-xs font-medium text-gray-700 mb-1">
+                                          Skill Outcomes:
+                                        </p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {assignment.skill_outcomes.map(
+                                            (skill: string, skillIndex: number) => (
+                                              <span
+                                                key={skillIndex}
+                                                className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded"
+                                              >
+                                                {skill}
+                                              </span>
+                                            )
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : (
                         <div className="text-center py-12">
-                          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          <svg
+                            className="mx-auto h-12 w-12 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
                           </svg>
-                          <p className="text-gray-500 mt-2">No assessments available</p>
-                          <p className="text-gray-400 text-sm mt-1">Assessment results will appear here once completed</p>
+                          <p className="text-gray-500 mt-2">No assignments available</p>
+                          <p className="text-gray-400 text-sm mt-1">
+                            Assignments will appear here once assigned.
+                          </p>
                         </div>
                       )}
                     </div>
                   </div>
                 )}
+
 
                 {/* Certificates Tab */}
                 {activeTab === 'certificates' && (
                   <div className="p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Certificates & Credentials</h3>
                     <div className="space-y-4">
-                      {profileData.certificates && profileData.certificates.length > 0 ? (
-                        profileData.certificates.map((cert: any, index: number) => (
+                      {loadingCertificates ? (
+                        <div className="text-center py-12">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+                          <p className="text-gray-500 mt-2">Loading certificates...</p>
+                        </div>
+                      ) : certificates && certificates.length > 0 ? (
+                        certificates.map((cert: any, index: number) => (
                           <div key={cert.id || index} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
                             <div className="flex items-start">
                               <div className="flex-shrink-0">
@@ -1127,23 +1437,19 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                       {cert.title || cert.name || `Certificate ${index + 1}`}
                                     </h4>
 
-                                    {/* Row 2: Issued by + Issue Date */}
                                     <div className="flex justify-between">
                                       {cert.issuer && (
                                         <p className="text-sm text-gray-600 mt-1">Issued by: {cert.issuer}</p>
                                       )}
-                                      {cert.issuedOn && (
+                                      {cert.issued_on && (
                                         <p className="text-xs text-gray-500 mt-1">
-                                          Issue Date: {cert.issuedOn}
+                                          Issue Date: {new Date(cert.issued_on).toLocaleDateString()}
                                         </p>
                                       )}
                                     </div>
 
-                                    {cert.expiry_date && (
-                                      <p className="text-xs text-gray-500">Expires: {cert.expiry_date}</p>
-                                    )}
-                                    {cert.credentialId && (
-                                      <p className="text-xs text-gray-400 mt-2">ID: {cert.credentialId}</p>
+                                    {cert.credential_id && (
+                                      <p className="text-xs text-gray-400 mt-2">ID: {cert.credential_id}</p>
                                     )}
 
                                     {cert.level && (
@@ -1442,18 +1748,30 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
               <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div className="flex space-x-3">
-                    <button
+                    {/* <button
                       onClick={() => setShowShortlistModal(true)}
                       className="inline-flex items-center px-4 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100">
                       <BookmarkIcon className="h-4 w-4 mr-2" />
                       Add to Shortlist
+                    </button> */}
+                    <button
+                      onClick={() => setShowInterviewModal(true)}
+                      className="inline-flex items-center px-4 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100">
+                      <CalendarDaysIcon className="h-4 w-4 mr-2" />
+                      Schedule Interview
                     </button>
                     <button
+                      // onClick={() => setShowVerifyModal(true)}
+                      className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100">
+                      <File className="h-4 w-4 mr-2" />
+                      View Portfolio
+                    </button>
+                    {/* <button
                       onClick={() => setShowInterviewModal(true)}
                       className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                       <CalendarDaysIcon className="h-4 w-4 mr-2" />
                       Schedule Interview
-                    </button>
+                    </button> */}
                   </div>
                   <div className="flex space-x-2">
                     <button

@@ -86,10 +86,6 @@ const Assignments = () => {
   const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;
   
-  console.log('🎯 ASSIGNMENTS COMPONENT MOUNTED');
-  console.log('🎯 authLoading:', authLoading);
-  console.log('🎯 studentData:', studentData);
-  console.log('🎯 studentId:', studentId);
   
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy] = useState('dueDate');
@@ -108,18 +104,15 @@ const Assignments = () => {
 
   // Fetch assignments from database
   useEffect(() => {
-    console.log('🔄 useEffect triggered - authLoading:', authLoading, 'studentData:', studentData);
     
     const fetchAssignments = async () => {
       // Still loading auth
       if (authLoading) {
-        console.log('⏳ Still loading auth...');
         return;
       }
 
       // Auth complete but no student data - show empty state
       if (!studentId) {
-        console.log('⚠️ No student ID found. studentData:', studentData, 'studentId:', studentId);
         setLoading(false);
         setAssignments([]);
         return;
@@ -127,15 +120,12 @@ const Assignments = () => {
 
       try {
         setLoading(true);
-        console.log('🔍 Fetching assignments for student ID:', studentId);
         
         const [assignmentsData, statsData] = await Promise.all([
           getAssignmentsByStudentId(studentId),
           getAssignmentStats(studentId)
         ]);
 
-        console.log('📦 Assignments data received:', assignmentsData);
-        console.log('📊 Stats data received:', statsData);
 
         const transformedAssignments = assignmentsData.map(transformAssignment);
         setAssignments(transformedAssignments);

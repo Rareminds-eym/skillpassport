@@ -24,7 +24,6 @@ export const useAIRecommendations = ({
    */
   const fetchRecommendations = useCallback(async (forceRefresh = false) => {
     if (!user?.id) {
-      console.warn('No user ID available for recommendations');
       return;
     }
 

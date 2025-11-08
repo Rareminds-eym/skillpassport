@@ -27,7 +27,6 @@ export async function getEducatorByEmail(email) {
 
 // ✅ Login educator (ignores password, only checks email)
 export async function loginEducator(email, password) {
-  console.log("🔍 Searching for educator with email:", email);
   
   const result = await getEducatorByEmail(email);
 
@@ -36,7 +35,6 @@ export async function loginEducator(email, password) {
   }
 
   const educator = result.data;
-  console.log("✅ Educator found:", educator);
 
   // ⚠️ Password ignored → accept any password
   return {

@@ -221,7 +221,6 @@ const Messages = () => {
           : trimmedInput,
         type: 'message',
         link: `/recruiter/messages?conversation=${selectedConversationId}`
-      }).catch(err => console.warn('Notification failed:', err));
       
       setMessageInput('');
       setTyping(false);

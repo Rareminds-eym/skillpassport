@@ -91,10 +91,8 @@ function safeJSONParse(jsonString) {
  */
 export const getStudentByEmail = async (email) => {
   try {
-    console.log('🔍 Fetching student data for email:', email);
     
     // STRATEGY 1: Try students.email column first (if it exists and is populated)
-    console.log('🔍 Trying students.email column query');
     let { data, error } = await supabase
       .from('students')
       .select(`
@@ -115,12 +113,9 @@ export const getStudentByEmail = async (email) => {
       .eq('email', email)
       .maybeSingle();
 
-    console.log('🔍 students.email query result - data:', data ? 'Found' : 'Not found');
-    console.log('🔍 students.email query result - error:', error);
 
     // STRATEGY 2: If not found, try JSONB profile query
     if (!data && !error) {
-      console.log('🔍 Trying JSONB query: profile->>email =', email);
       const result = await supabase
         .from('students')
         .select(`
@@ -143,8 +138,6 @@ export const getStudentByEmail = async (email) => {
       
       data = result.data;
       error = result.error;
-      console.log('🔍 JSONB query result - data:', data ? 'Found' : 'Not found');
-      console.log('🔍 JSONB query result - error:', error);
     }
 
     if (error) {
@@ -154,7 +147,6 @@ export const getStudentByEmail = async (email) => {
 
     // STRATEGY 3: If JSONB operator doesn't work, manual search
     if (!data) {
-      console.log('🔍 JSONB query returned null. Trying manual search...');
       const { data: allStudents, error: allError } = await supabase
         .from('students')
         .select(`
@@ -178,25 +170,19 @@ export const getStudentByEmail = async (email) => {
         return { success: false, error: allError.message };
       }
 
-      console.log('🔍 Found', allStudents?.length || 0, 'total students. Searching for email...');
 
       // Manually search for matching email
       data = allStudents?.find(student => {
         const profileData = safeJSONParse(student.profile);
         const studentEmail = profileData?.email;
-        console.log('🔍 Checking student:', profileData?.name, 'email:', studentEmail);
         return studentEmail?.toLowerCase() === email.toLowerCase();
       });
 
       if (!data) {
-        console.log('❌ No student found with email in profile. Returning null.');
         return { success: false, error: 'No data found for this email.' };
       }
     }
 
-    console.log('✅ Student found:', data.profile?.name || 'No name');
-    console.log('📋 Raw profile data:', data.profile);
-    console.log('📋 Raw skill_passports data:', data.skill_passports);
 
     // Parse the profile JSONB
     const profileData = safeJSONParse(data.profile);
@@ -255,15 +241,6 @@ export const getStudentByEmail = async (email) => {
       rawData: data
     };
 
-    console.log('✅ Merged student data with passport:', {
-      name: mergedData.name,
-      email: mergedData.email,
-      projectsCount: mergedData.projects?.length || 0,
-      certificatesCount: mergedData.certificates?.length || 0,
-      assessmentsCount: mergedData.assessments?.length || 0,
-      hasPassport: !!passport.id
-    });
-
     return { success: true, data: mergedData };
   } catch (err) {
     console.error('❌ getStudentByEmail exception:', err);
@@ -278,15 +255,8 @@ export const getStudentByEmail = async (email) => {
  * Output: Structured data matching Dashboard expectations
  */
 function transformProfileData(profile, email) {
-  console.log('🔄 transformProfileData called with:');
-  console.log('  - profile:', profile);
-  console.log('  - email:', email);
-  console.log('  - profile.name:', profile?.name);
-  console.log('  - profile.registration_number:', profile?.registration_number);
-  console.log('  - profile.university:', profile?.university);
   
   if (!profile) {
-    console.log('❌ Profile is null/undefined!');
     return null;
   }
 
@@ -298,7 +268,6 @@ function transformProfileData(profile, email) {
     ? `SP-${profile.registration_number}` 
     : 'SP-0000';
   
-  console.log('  - Calculated passportId:', passportId);
 
   // Format phone number
   const phone = formatPhoneNumber(profile.contact_number, profile.contact_number_dial_code);
@@ -445,7 +414,6 @@ function transformProfileData(profile, email) {
     ]
   };
   
-  console.log('✅ Transform complete, returning result with name:', result.profile.name);
   return result;
 }
 
@@ -486,7 +454,6 @@ function generateAvatar(name) {
  */
 export async function createStudentProfileByEmail(email, initialData = {}) {
   try {
-    console.log('🆕 Creating new student profile for:', email);
     
     const defaultProfile = {
       name: initialData.name || 'New Student',
@@ -556,7 +523,6 @@ export async function createStudentProfileByEmail(email, initialData = {}) {
       return { success: false, error: error.message };
     }
 
-    console.log('✅ Student profile created successfully');
     return {
       success: true,
       data: transformProfileData(data.profile, email)
@@ -577,12 +543,10 @@ export async function getOrCreateStudentByEmail(email, initialData = {}) {
     const existingResult = await getStudentByEmail(email);
     
     if (existingResult.success && existingResult.data) {
-      console.log('✅ Found existing student profile');
       return existingResult;
     }
     
     // If not found, create a new profile
-    console.log('📝 Student not found, creating new profile...');
     return await createStudentProfileByEmail(email, initialData);
     
   } catch (err) {
@@ -592,9 +556,6 @@ export async function getOrCreateStudentByEmail(email, initialData = {}) {
 }
 export async function updateStudentByEmail(email, updates) {
   try {
-    console.log('💾 updateStudentByEmail called');
-    console.log('   - Email:', email);
-    console.log('   - Updates:', updates);
 
     // Find student record using robust method
     const findResult = await findStudentByEmail(email);
@@ -604,15 +565,28 @@ export async function updateStudentByEmail(email, updates) {
     }
 
     const studentRecord = findResult.data;
-    console.log('✅ Found student record:', studentRecord.id);
-    
-    const currentProfile = safeJSONParse(studentRecord.profile);
-    console.log('📋 Current profile:', currentProfile);
 
-    // Merge updates into existing profile
+    const currentProfile = safeJSONParse(studentRecord.profile);
+
+    // Prepare column updates for fields that have dedicated columns
+    const columnUpdates = {};
+    const profileOnlyUpdates = {};
+
+    // Fields with dedicated columns (from migrate_students_to_columns.sql)
+    const columnFields = ['name', 'email', 'phone', 'department', 'university', 'cgpa', 'employability_score', 'verified'];
+
+    Object.keys(updates).forEach(key => {
+      if (columnFields.includes(key)) {
+        columnUpdates[key] = updates[key];
+      } else {
+        profileOnlyUpdates[key] = updates[key];
+      }
+    });
+
+    // Merge updates into existing profile for non-column fields
     const updatedProfile = {
       ...currentProfile,
-      ...updates
+      ...profileOnlyUpdates
     };
 
     const nestedSyncKeys = ['projects', 'certificates'];
@@ -653,14 +627,17 @@ export async function updateStudentByEmail(email, updates) {
         }
       }
     }
-    
-    console.log('📋 Final profile to save:', JSON.stringify(updatedProfile).substring(0, 300));
-    console.log('💾 Saving to Supabase...');
+
+    // Prepare the update object
+    const updateData = { ...columnUpdates };
+    if (Object.keys(profileOnlyUpdates).length > 0 || Object.keys(updatedProfile).length > Object.keys(currentProfile).length) {
+      updateData.profile = updatedProfile;
+    }
 
     // Update using student ID (more reliable)
     const { data, error } = await supabase
       .from('students')
-      .update({ profile: updatedProfile })
+      .update(updateData)
       .eq('id', studentRecord.id)
       .select()
       .single();
@@ -670,11 +647,8 @@ export async function updateStudentByEmail(email, updates) {
       return { success: false, error: error.message };
     }
 
-    console.log('✅ Supabase update successful');
-    console.log('📋 Returned data:', data);
     
     const transformedData = transformProfileData(data.profile, email);
-    console.log('📋 Transformed data:', transformedData);
     
     return {
       success: true,
@@ -692,7 +666,6 @@ export async function updateStudentByEmail(email, updates) {
  */
 export async function updateEducationByEmail(email, educationData) {
   try {
-    console.log('📚 Updating education for:', email);
     
     // First, find the student record using the same logic as getStudentByEmail
     let studentRecord = null;
@@ -706,9 +679,7 @@ export async function updateEducationByEmail(email, educationData) {
 
     if (directData) {
       studentRecord = directData;
-      console.log('✅ Found student by direct JSONB query');
     } else {
-      console.log('🔍 Direct query failed, trying manual search...');
       
       // Fallback: get all students and search manually
       const { data: allStudents, error: allError } = await supabase
@@ -725,7 +696,6 @@ export async function updateEducationByEmail(email, educationData) {
         const profile = safeJSONParse(student.profile);
         if (profile?.email === email) {
           studentRecord = student;
-          console.log('✅ Found student by manual search');
           break;
         }
       }
@@ -744,7 +714,6 @@ export async function updateEducationByEmail(email, educationData) {
       education: educationData
     };
 
-    console.log('💾 Updating profile with new education data...');
 
     // Update using the student ID (more reliable than JSONB query)
     const { data, error } = await supabase
@@ -759,7 +728,6 @@ export async function updateEducationByEmail(email, educationData) {
       throw error;
     }
 
-    console.log('✅ Education updated successfully');
     return {
       success: true,
       data: transformProfileData(data.profile, email)
@@ -775,7 +743,6 @@ export async function updateEducationByEmail(email, educationData) {
  */
 async function findStudentByEmail(email) {
   try {
-    console.log('🔍 Finding student by email:', email);
     
     // Try JSONB query first
     let { data: directData, error: directError } = await supabase
@@ -785,11 +752,9 @@ async function findStudentByEmail(email) {
       .maybeSingle();
 
     if (directData) {
-      console.log('✅ Found student by direct JSONB query');
       return { success: true, data: directData };
     }
     
-    console.log('🔍 Direct query failed, trying manual search...');
     
     // Fallback: get all students and search manually
     const { data: allStudents, error: allError } = await supabase
@@ -805,7 +770,6 @@ async function findStudentByEmail(email) {
     for (const student of allStudents || []) {
       const profile = safeJSONParse(student.profile);
       if (profile?.email === email) {
-        console.log('✅ Found student by manual search');
         return { success: true, data: student };
       }
     }
@@ -824,7 +788,6 @@ async function findStudentByEmail(email) {
  */
 export async function updateTrainingByEmail(email, trainingData) {
   try {
-    console.log('🎓 Updating training for:', email);
     
     // Find student record
     const findResult = await findStudentByEmail(email);
@@ -840,7 +803,6 @@ export async function updateTrainingByEmail(email, trainingData) {
       training: trainingData
     };
 
-    console.log('💾 Updating profile with new training data...');
 
     const { data, error } = await supabase
       .from('students')
@@ -854,7 +816,6 @@ export async function updateTrainingByEmail(email, trainingData) {
       throw error;
     }
 
-    console.log('✅ Training updated successfully');
     return {
       success: true,
       data: transformProfileData(data.profile, email)
@@ -870,7 +831,6 @@ export async function updateTrainingByEmail(email, trainingData) {
  */
 export async function updateExperienceByEmail(email, experienceData) {
   try {
-    console.log('💼 Updating experience for:', email);
     
     // Find student record
     const findResult = await findStudentByEmail(email);
@@ -886,7 +846,6 @@ export async function updateExperienceByEmail(email, experienceData) {
       experience: experienceData
     };
 
-    console.log('💾 Updating profile with new experience data...');
 
     const { data, error } = await supabase
       .from('students')
@@ -900,7 +859,6 @@ export async function updateExperienceByEmail(email, experienceData) {
       throw error;
     }
 
-    console.log('✅ Experience updated successfully');
     return {
       success: true,
       data: transformProfileData(data.profile, email)
@@ -916,7 +874,6 @@ export async function updateExperienceByEmail(email, experienceData) {
  */
 export async function updateTechnicalSkillsByEmail(email, skillsData) {
   try {
-    console.log('⚡ Updating technical skills for:', email);
     
     // Find student record
     const findResult = await findStudentByEmail(email);
@@ -932,7 +889,6 @@ export async function updateTechnicalSkillsByEmail(email, skillsData) {
       technicalSkills: skillsData
     };
 
-    console.log('💾 Updating profile with new technical skills data...');
 
     const { data, error } = await supabase
       .from('students')
@@ -946,7 +902,6 @@ export async function updateTechnicalSkillsByEmail(email, skillsData) {
       throw error;
     }
 
-    console.log('✅ Technical skills updated successfully');
     return {
       success: true,
       data: transformProfileData(data.profile, email)
@@ -962,7 +917,6 @@ export async function updateTechnicalSkillsByEmail(email, skillsData) {
  */
 export async function updateSoftSkillsByEmail(email, skillsData) {
   try {
-    console.log('🤝 Updating soft skills for:', email);
     
     // Find student record
     const findResult = await findStudentByEmail(email);
@@ -978,7 +932,6 @@ export async function updateSoftSkillsByEmail(email, skillsData) {
       softSkills: skillsData
     };
 
-    console.log('💾 Updating profile with new soft skills data...');
 
     const { data, error } = await supabase
       .from('students')
@@ -992,7 +945,6 @@ export async function updateSoftSkillsByEmail(email, skillsData) {
       throw error;
     }
 
-    console.log('✅ Soft skills updated successfully');
     return {
       success: true,
       data: transformProfileData(data.profile, email)
@@ -1009,7 +961,6 @@ export async function updateSoftSkillsByEmail(email, skillsData) {
  */
 export const updateProjectsByEmail = async (email, projectsData) => {
   try {
-    console.log('💾 updateProjectsByEmail:', email, projectsData);
 
     // 1. Get student ID
     const { data: student, error: studentError } = await supabase
@@ -1049,7 +1000,6 @@ export const updateProjectsByEmail = async (email, projectsData) => {
  */
 export const updateCertificatesByEmail = async (email, certificatesData) => {
   try {
-    console.log('💾 updateCertificatesByEmail:', email, certificatesData);
 
     // 1. Get student ID
     const { data: student, error: studentError } = await supabase

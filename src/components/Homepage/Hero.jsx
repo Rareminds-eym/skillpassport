@@ -42,11 +42,11 @@ const Hero = () => {
   const openCalendly = () => {
     if (window.Calendly) {
       window.Calendly.initPopupWidget({
-        url: 'https://calendly.com/rareminds-marketing/30min'
+        url: 'https://calendly.com/d/cs8h-vpx-dwt/skillpassport_home'
       });
     } else {
       // If script not loaded yet, open in new tab as fallback
-      window.open('https://calendly.com/rareminds-marketing/30min', '_blank');
+      window.open('https://calendly.com/d/cs8h-vpx-dwt/skillpassport_home', '_blank');
     }
   };
 
@@ -83,7 +83,7 @@ const Hero = () => {
           </h1>
 
           {/* Subheading */}
-          <p className="text-black font-medium mb-8 sm:mb-10 max-w-2xl text-[16px] sm:text-lg md:text-xl leading-relaxed">
+          <p className="text-black font-medium mb-8 sm:mb-10 max-w-lg text-[16px] sm:text-lg md:text-xl leading-relaxed">
             The Rareminds Skill Passport gives enterprises a single source of truth for employee
             capabilities — turning training outcomes into real-time talent intelligence.
           </p>
