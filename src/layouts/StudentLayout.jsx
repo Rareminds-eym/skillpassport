@@ -6,6 +6,7 @@ import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
 import Header from '../components/Students/components/Header';
 import ProfileHeroEdit from '../components/Students/components/ProfileHeroEdit';
 import Footer from '../components/Students/components/Footer';
+import FloatingAIButton from '../components/FloatingAIButton';
 import { Toaster } from '../components/Students/components/ui/toaster';
 import {
   EducationEditModal,
@@ -55,15 +56,22 @@ const StudentLayout = () => {
     }
   };
 
+  // Check if current page is dashboard
+  const isDashboardPage = location.pathname === '/student/dashboard' || location.pathname === '/student' || location.pathname === '/student/';
+  
+  // Check if current page is Career AI
+  const isCareerAIPage = location.pathname === '/student/career-ai' || location.pathname.includes('/career-ai');
+
   return (
     <GlobalPresenceProvider userType="student">
-      <div className="min-h-screen bg-gray-50">
+      <div className={isCareerAIPage ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}>
         <Header activeTab={activeTab} setActiveTab={setActiveTab} />
-        {!isViewingOthersProfile && <ProfileHeroEdit onEditClick={handleEditClick} />}
-        <main className="py-8 px-6">
+        {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
+        <main className={isCareerAIPage ? "flex-1 overflow-hidden" : "py-8 px-6"}>
           <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
         </main>
-        <Footer />
+        {!isCareerAIPage && <Footer />}
+        <FloatingAIButton />
         <Toaster />
 
       {/* Edit Modals - Only show if not viewing someone else's profile */}
