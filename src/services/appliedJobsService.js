@@ -122,7 +122,7 @@ export class AppliedJobsService {
         .from('applied_jobs')
         .select(`
           *,
-          opportunity:opportunities (
+          opportunity:opportunities!fk_applied_jobs_opportunity (
             id,
             job_title,
             title,
@@ -284,7 +284,7 @@ export class AppliedJobsService {
 
       const { data, error } = await supabase
         .from('applied_jobs')
-        .select('*, opportunity:opportunities(job_title, company_name, company_logo)')
+        .select('*, opportunity:opportunities!fk_applied_jobs_opportunity(job_title, company_name, company_logo)')
         .eq('student_id', studentId)
         .gte('applied_at', thirtyDaysAgo.toISOString())
         .order('applied_at', { ascending: false });

@@ -9,6 +9,7 @@ import {
   Copy,
   Check,
   Bookmark,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import {
@@ -47,6 +48,7 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: "experience", label: "My Experience" },
     { id: "opportunities", label: "Opportunities" },
     { id: "applications", label: "Applications" },
+    { id: "career-ai", label: "Career AI", icon: "✨" },
     { id: "assignments", label: "Assignments" },
     { id: "messages", label: "Messages" },
     { id: "analytics", label: "Analytics" },
@@ -103,6 +105,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
+                  } else if (tab.id === "career-ai") {
+                    navigate("/student/career-ai");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
                   } else if (tab.id === "analytics") {
@@ -113,6 +117,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   activeTab === tab.id ? "font-semibold" : ""
                 }`}
               >
+                {tab.icon && <span className="mr-1">{tab.icon}</span>}
                 {tab.label}
                 {activeTab === tab.id && (
                   <span className="absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-14 h-1 bg-gradient-to-r from-amber-300 to-yellow-400 rounded-full"></span>
