@@ -149,7 +149,6 @@ const AppRoutes = () => {
           />
           <Route path="/signup/recruitment-admin" element={<SignupAdmin />} />
           <Route path="/signin/school" element={<SignInSchool />} />
-          <Route path="/signup/school-admin" element={<SchoolAdmin />} />
           <Route path="/signin/university" element={<SignInUniversity />} />
           <Route
             path="/signup/university-admin"
