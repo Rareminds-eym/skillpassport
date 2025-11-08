@@ -79,12 +79,9 @@ const BrowseJobs = lazy(() => import("../pages/student/BrowseJobs"));
 const Messages = lazy(() => import("../pages/student/Messages"));
 const StudentAnalytics = lazy(() => import("../pages/student/Analytics"));
 const Assignments = lazy(() => import("../pages/student/Assignments"));
-<<<<<<< Updated upstream
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
-=======
 const CareerAI = lazy(() => import("../features/career-assistant/components/CareerAssistant"));
->>>>>>> Stashed changes
 const DebugQRTest = lazy(() => import("../pages/DebugQRTest"));
 const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")
@@ -105,7 +102,6 @@ const EducatorCommunication = lazy(() =>
 const EducatorAnalytics = lazy(() => import("../pages/educator/Analytics"));
 const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
 const EducatorReports = lazy(() => import("../pages/educator/Reports"));
-<<<<<<< Updated upstream
 const EducatorMediaManager = lazy(() =>
   import("../pages/educator/MediaManager")
 );
@@ -134,10 +130,6 @@ const SchoolAdminDashboard = lazy(() =>
 const UniversityAdminDashboard = lazy(() =>
   import("../pages/admin/universityAdmin/Dashboard")
 );
-=======
-const EducatorMediaManager = lazy(() => import("../pages/educator/MediaManager"));
-const JobRecommendationsDemo = lazy(() => import("../pages/JobRecommendationsDemo"));
->>>>>>> Stashed changes
 
 const AppRoutes = () => {
   return (
@@ -172,7 +164,6 @@ const AppRoutes = () => {
             element={<Navigate to="/subscription/manage" replace />}
           />
           <Route path="/debug-qr" element={<DebugQRTest />} />
-          <Route path="/job-recommendations-demo" element={<JobRecommendationsDemo />} />
           <Route
             path="/student/profile/:email"
             element={<StudentPublicViewer />}
