@@ -14,6 +14,9 @@ import { useStudents } from '../../hooks/useStudents';
 import { useSearch } from '../../context/SearchContext';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/educator/Pagination';
+import AddEditStudentModal from '../../components/educator/modals/Addeditstudentmodal';
+import DeleteStudentModal from '../../components/educator/modals/Deletestudentmodal';
+import { PencilIcon, TrashIcon, UserPlusIcon } from 'lucide-react';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -194,57 +197,56 @@ const BadgeComponent = ({ badges }) => {
   );
 };
 
-const StudentCard = ({ student, onViewProfile, onAddNote }) => {
+const StudentCard = ({ student, onViewProfile, onAddNote, onEdit, onDelete }) => {
+  const profile = student.profile || student;
+  const skills = profile.skills || [];
+  const projects = profile.projects || [];
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h3 className="font-medium text-gray-900">{student.name}</h3>
-          <p className="text-sm text-gray-500">{student.dept}</p>
-          <p className="text-xs text-gray-400">{student.college} • {student.location}</p>
+          <h3 className="font-medium text-gray-900">{profile.name}</h3>
+          <p className="text-sm text-gray-500">{profile.course || profile.department}</p>
+          <p className="text-xs text-gray-400">{profile.university} • {profile.district}</p>
         </div>
         <div className="flex flex-col items-end">
           <div className="flex items-center mb-1">
             <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
-            <span className="text-sm font-medium text-gray-700 ml-1">{student.ai_score_overall}</span>
+            <span className="text-sm font-medium text-gray-700 ml-1">75</span>
           </div>
-          <BadgeComponent badges={student.badges} />
+          <BadgeComponent badges={[]} />
         </div>
       </div>
 
       {/* Skills */}
       <div className="mb-3">
         <div className="flex flex-wrap gap-1">
-          {student.skills.slice(0, 5).map((skill, index) => (
+          {skills.slice(0, 5).map((skill, index) => (
             <span
               key={index}
               className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
             >
-              {skill}
+              {typeof skill === 'string' ? skill : skill?.name || skill}
             </span>
           ))}
-          {student.skills.length > 5 && (
-            <span className="text-xs text-gray-500">+{student.skills.length - 5} more</span>
+          {skills.length > 5 && (
+            <span className="text-xs text-gray-500">+{skills.length - 5} more</span>
           )}
         </div>
       </div>
 
       {/* Evidence snippets */}
       <div className="mb-4 space-y-1">
-        {student.hackathon && (
+        {projects && projects.length > 0 && (
           <p className="text-xs text-gray-600">
-            🏆 Rank #{student.hackathon.rank} in {student.hackathon.event_id}
+            🔬 {projects[0].title}
           </p>
         )}
-        {student.internship && (
+        {profile.training && profile.training.length > 0 && (
           <p className="text-xs text-gray-600">
-            💼 {student.internship.org} ({student.internship.rating}⭐)
-          </p>
-        )}
-        {student.projects && student.projects.length > 0 && (
-          <p className="text-xs text-gray-600">
-            🔬 {student.projects[0].title}
+            📚 {profile.training[0].course}
           </p>
         )}
       </div>
@@ -252,23 +254,40 @@ const StudentCard = ({ student, onViewProfile, onAddNote }) => {
       {/* Actions */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-500">
-          Updated {new Date(student.last_updated).toLocaleDateString()}
+          Updated {new Date().toLocaleDateString()}
         </span>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-1">
           <button
             onClick={() => onViewProfile(student)}
             className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
             disabled={!onViewProfile}
+            title="View Profile"
           >
             <EyeIcon className="h-3 w-3 mr-1" />
-            View Profile
+            View
+          </button>
+          <button
+            onClick={() => onEdit(student)}
+            className="inline-flex items-center px-2 py-1 border border-blue-300 rounded text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
+            title="Edit Student"
+          >
+            <PencilIcon className="h-3 w-3 mr-1" />
+            Edit
           </button>
           <button
             onClick={() => onAddNote(student)}
-            className="inline-flex items-center px-2 py-1 border border-primary-300 rounded text-xs font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
+            className="inline-flex items-center px-2 py-1 border border-indigo-300 rounded text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
+            title="Add Note"
           >
             <PencilSquareIcon className="h-3 w-3 mr-1" />
-            Add Note
+            Note
+          </button>
+          <button
+            onClick={() => onDelete(student)}
+            className="inline-flex items-center px-2 py-1 border border-red-300 rounded text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100"
+            title="Delete Student"
+          >
+            <TrashIcon className="h-3 w-3" />
           </button>
         </div>
       </div>
@@ -288,6 +307,12 @@ const StudentsPage = () => {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [sortBy, setSortBy] = useState('relevance');
+
+  // NEW: Modal states for Add/Edit/Delete
+  const [showAddEditModal, setShowAddEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [studentToEdit, setStudentToEdit] = useState(null);
+  const [studentToDelete, setStudentToDelete] = useState(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -680,6 +705,26 @@ const StudentsPage = () => {
     setCurrentPage(1);
   };
 
+  const handleAddStudent = () => {
+    setStudentToEdit(null);
+    setShowAddEditModal(true);
+  };
+
+  const handleEditStudent = (student) => {
+    setStudentToEdit(student);
+    setShowAddEditModal(true);
+  };
+
+  const handleDeleteStudent = (student) => {
+    setStudentToDelete(student);
+    setShowDeleteModal(true);
+  };
+
+  const handleStudentOperationSuccess = () => {
+    // Refresh the students list
+    window.location.reload(); // Simple refresh, or implement a proper refetch
+  };
+
   // Clear all filters
   const handleClearFilters = () => {
     setFilters({
@@ -708,9 +753,21 @@ const StudentsPage = () => {
     <div className="flex flex-col h-screen">
       {/* Header - responsive layout */}
       <div className='p-4 sm:p-6 lg:p-8 mb-2'>
-        <h1 className="text-xl md:text-3xl font-bold text-gray-900">Students Management</h1>
-        <p className="text-base md:text-lg mt-2 text-gray-600">Manage your students and their profiles.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl md:text-3xl font-bold text-gray-900">Students Management</h1>
+            <p className="text-base md:text-lg mt-2 text-gray-600">Manage your students and their profiles.</p>
+          </div>
+          <button
+            onClick={handleAddStudent}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            <UserPlusIcon className="h-5 w-5 mr-2" />
+            Add Student
+          </button>
+        </div>
       </div>
+
       <div className="px-4 sm:px-6 lg:px-8 hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
         <div className="w-80 flex-shrink-0 pr-4 text-left">
           <div className="inline-flex items-baseline">
@@ -937,11 +994,13 @@ const StudentsPage = () => {
                 {loading && <div className="text-sm text-gray-500">Loading students...</div>}
                 {error && <div className="text-sm text-red-600">{error}</div>}
                 {!loading && paginatedStudents.map((student) => (
-                  <StudentCard
+                   <StudentCard
                     key={student.id}
                     student={student as any}
                     onViewProfile={onViewProfile}
                     onAddNote={handleAddNoteClick}
+                    onEdit={handleEditStudent}
+                    onDelete={handleDeleteStudent}
                   />
                 ))}
                 {!loading && paginatedStudents.length === 0 && !error && (
@@ -1033,16 +1092,21 @@ const StudentsPage = () => {
                           <div className="flex space-x-2">
                             <button
                               onClick={() => onViewProfile(student)}
-                              className="text-primary-600 hover:text-primary-900"
-                              disabled={!onViewProfile}
+                              className="text-indigo-600 hover:text-indigo-900"
                             >
                               View
                             </button>
                             <button
-                              onClick={() => handleAddNoteClick(student)}
-                              className="text-primary-600 hover:text-primary-900"
+                              onClick={() => handleEditStudent(student)}
+                              className="text-blue-600 hover:text-blue-900"
                             >
-                              Add Note
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStudent(student)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
                             </button>
                           </div>
                         </td>
@@ -1078,6 +1142,24 @@ const StudentsPage = () => {
         }}
         student={selectedStudent}
         onSuccess={handleNoteSuccess}
+      />
+      <AddEditStudentModal
+        isOpen={showAddEditModal}
+        onClose={() => {
+          setShowAddEditModal(false);
+          setStudentToEdit(null);
+        }}
+        student={studentToEdit}
+        onSuccess={handleStudentOperationSuccess}
+      />
+      <DeleteStudentModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setStudentToDelete(null);
+        }}
+        student={studentToDelete}
+        onSuccess={handleStudentOperationSuccess}
       />
     </div>
   );

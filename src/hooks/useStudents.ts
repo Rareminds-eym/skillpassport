@@ -13,6 +13,31 @@ interface StudentRow {
     certificates?: any[]
     assessments?: any[]
   } | null
+  name?: string
+  email?: string
+  age?: number
+  date_of_birth?: string
+  contact_number?: string
+  alternate_number?: string
+  gender?: string
+  blood_group?: string
+  address?: string
+  city?: string
+  state?: string
+  country?: string
+  pincode?: string
+  university?: string
+  branch_field?: string
+  college_school_name?: string
+  registration_number?: string
+  enrollment_number?: string
+  enrollment_date?: string
+  expected_graduation_date?: string
+  current_cgpa?: number
+  guardian_name?: string
+  guardian_phone?: string
+  guardian_email?: string
+  guardian_relation?: string
 }
 
 export interface StudentProfile {
@@ -51,6 +76,30 @@ export interface UICandidate {
   projects?: any[]
   certificates?: any[]
   assessments?: any[]
+  // Additional fields for edit modal
+  contact_number?: string
+  alternate_number?: string
+  date_of_birth?: string
+  age?: number
+  gender?: string
+  blood_group?: string
+  address?: string
+  city?: string
+  state?: string
+  country?: string
+  pincode?: string
+  university?: string
+  college_school_name?: string
+  branch_field?: string
+  registration_number?: string
+  enrollment_number?: string
+  enrollment_date?: string
+  expected_graduation_date?: string
+  current_cgpa?: number
+  guardian_name?: string
+  guardian_phone?: string
+  guardian_email?: string
+  guardian_relation?: string
 }
 
 function safeParseProfile(input: unknown): StudentProfile | null {
@@ -136,6 +185,30 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     projects,
     certificates,
     assessments,
+    // Additional fields for edit modal
+    contact_number: row.contact_number || row.contactNumber,
+    alternate_number: row.alternate_number,
+    date_of_birth: row.date_of_birth || row.dateOfBirth,
+    age: row.age,
+    gender: row.gender,
+    blood_group: row.blood_group || row.bloodGroup,
+    address: row.address,
+    city: row.city,
+    state: row.state,
+    country: row.country,
+    pincode: row.pincode,
+    university: row.university,
+    college_school_name: row.college_school_name,
+    branch_field: row.branch_field,
+    registration_number: row.registration_number,
+    enrollment_number: row.enrollment_number || row.enrollmentNumber,
+    enrollment_date: row.enrollment_date || row.enrollmentDate,
+    expected_graduation_date: row.expected_graduation_date || row.expectedGraduationDate,
+    current_cgpa: row.current_cgpa || row.currentCgpa,
+    guardian_name: row.guardian_name || row.guardianName,
+    guardian_phone: row.guardian_phone || row.guardianPhone,
+    guardian_email: row.guardian_email || row.guardianEmail,
+    guardian_relation: row.guardian_relation || row.guardianRelation,
   }
 }
 
@@ -152,7 +225,7 @@ export function useStudents() {
       try {
         const { data, error } = await supabase
           .from('students')
-          .select('id, universityId, profile, createdAt, updatedAt, skill_passports(projects, certificates, assessments)')
+          .select('*, skill_passports(projects, certificates, assessments)')
           .order('updatedAt', { ascending: false })
           .limit(500)
         if (error) throw error

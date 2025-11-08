@@ -49,8 +49,8 @@ const PersonalInfoSummary = ({ data, isOwnProfile = true }) => {
     {
       icon: Phone,
       label: 'Alternate Contact',
-      value: data.alternate_number || data.alternatePhone ? 
-        `${data.alternate_number || data.alternatePhone}` : null
+      value: data.alternate_number ?
+        `${data.alternate_number}` : null
     },
     {
       icon: Calendar,
