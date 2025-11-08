@@ -111,18 +111,20 @@ export default function UnifiedSignup() {
 
   const handleGetStarted = () => {
     if (activeTab === "school" || activeTab === "college") {
-      if (!subscriptionType) {
-        return;
-      }
-      
-      if (subscriptionType === "have") {
-        if (studentType === "university") {
-          navigate(`/signin/university`);
-        } else if (studentType === "school") {
-          navigate(`/signin/school`);
+      if (studentType === "admin") {
+        if (!subscriptionType) return;
+        
+        if (subscriptionType === "have") {
+          navigate(`/signin/${activeTab}-admin`);
+        } else if (subscriptionType === "purchase") {
+          navigate(`/signup/${activeTab}-admin`);
+        } else if (subscriptionType === "view") {
+          navigate(`/subscription?type=${activeTab}&mode=view`);
         }
-      } else if (subscriptionType === "purchase" || subscriptionType === "view") {
-        navigate(`/subscription?type=${studentType}&mode=${subscriptionType}`);
+      } else if (studentType === "educator") {
+        navigate(`/signin/${activeTab}-educator`);
+      } else if (studentType === "student") {
+        navigate(`/signin/${activeTab}-student`);
       }
     } else if (activeTab === "recruitment") {
       if (recruitmentType === "admin") {
@@ -346,7 +348,7 @@ export default function UnifiedSignup() {
                         name="studentTypeMobile"
                         value="educator"
                         checked={studentType === "educator"}
-                        onChange={(e) => setStudentType(e.target.value)}
+                        onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-white">Educator</span>
@@ -357,7 +359,7 @@ export default function UnifiedSignup() {
                         name="studentTypeMobile"
                         value="student"
                         checked={studentType === "student"}
-                        onChange={(e) => setStudentType(e.target.value)}
+                        onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-white">
@@ -370,7 +372,7 @@ export default function UnifiedSignup() {
                         name="studentTypeMobile"
                         value="admin"
                         checked={studentType === "admin"}
-                        onChange={(e) => setStudentType(e.target.value)}
+                        onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-white">Admin</span>
@@ -606,7 +608,7 @@ export default function UnifiedSignup() {
                             name="studentType"
                             value="educator"
                             checked={studentType === "educator"}
-                            onChange={(e) => setStudentType(e.target.value)}
+                            onChange={(e) => handleStudentTypeChange(e.target.value)}
                             className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                           />
                           <span className="text-gray-700">Educator</span>
@@ -617,7 +619,7 @@ export default function UnifiedSignup() {
                             name="studentType"
                             value="student"
                             checked={studentType === "student"}
-                            onChange={(e) => setStudentType(e.target.value)}
+                            onChange={(e) => handleStudentTypeChange(e.target.value)}
                             className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                           />
                           <span className="text-gray-700">
@@ -630,7 +632,7 @@ export default function UnifiedSignup() {
                             name="studentType"
                             value="admin"
                             checked={studentType === "admin"}
-                            onChange={(e) => setStudentType(e.target.value)}
+                            onChange={(e) => handleStudentTypeChange(e.target.value)}
                             className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                           />
                           <span className="text-gray-700">Admin</span>
@@ -639,7 +641,7 @@ export default function UnifiedSignup() {
                     </div>
                   )}
                   
-                  {currentStep === 2 && (
+                  {currentStep === 2 && studentType === "admin" && (
                     <div className="mb-6">
                       <p className="text-gray-700 mb-3 font-medium">Subscription:</p>
                       <div className="space-y-3">

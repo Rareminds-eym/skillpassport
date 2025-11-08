@@ -23,6 +23,7 @@ const Register = lazy(() => import('../pages/auth/components/SignIn/Register'));
 const SignupRecruiter = lazy(() => import('../pages/auth/components/SignIn/recruitment/SignupRecruiter'));
 const SignupAdmin = lazy(() => import('../pages/auth/components/SignIn/recruitment/SignupAdmin'));
 const SignInSchool = lazy(() => import('../pages/auth/components/SignIn/schools/SignInSchool'));
+const SchoolAdmin = lazy(() => import('../pages/auth/components/SignIn/schools/SchoolAdmin'));
 const SignInUniversity = lazy(() => import('../pages/auth/components/SignIn/university/SignInUniversity'));
 const UniversityAdmin = lazy(() => import('../pages/auth/components/SignIn/university/UniversityAdmin'));
 
@@ -99,6 +100,7 @@ const AppRoutes = () => {
           />
           <Route path="/signup/recruitment-admin" element={<SignupAdmin />} />
           <Route path="/signin/school" element={<SignInSchool />} />
+          <Route path="/signup/school-admin" element={<SchoolAdmin />} />
           <Route path="/signin/university" element={<SignInUniversity />} />
           <Route path="/signup/university-admin" element={<UniversityAdmin />} />
           <Route path="/subscription" element={<SubscriptionPlans />} />
