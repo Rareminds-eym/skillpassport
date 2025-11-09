@@ -27,7 +27,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
+import { useStudentSettings } from "../../hooks/useStudentSettings";
 import { useRecentUpdates } from "../../hooks/useRecentUpdates";
 import { useRecentUpdatesLegacy } from "../../hooks/useRecentUpdatesLegacy";
 import { useToast } from "../../hooks/use-toast";
@@ -36,10 +36,7 @@ const Settings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const userEmail = user?.email;
-  const { studentData, updateProfile } = useStudentDataByEmail(
-    userEmail,
-    false
-  );
+  const { studentData, loading: studentLoading, error: studentError, updateProfile, updatePassword } = useStudentSettings(userEmail);
 
   // Fetch recent updates
   const {
@@ -77,11 +74,32 @@ const Settings = () => {
     name: "",
     email: "",
     phone: "",
+    alternatePhone: "",
     location: "",
+    address: "",
+    state: "",
+    country: "India",
+    pincode: "",
     dateOfBirth: "",
+    age: "",
+    gender: "",
+    bloodGroup: "",
+    university: "",
+    branch: "",
+    college: "",
+    registrationNumber: "",
+    enrollmentNumber: "",
+    currentCgpa: "",
+    guardianName: "",
+    guardianPhone: "",
+    guardianEmail: "",
+    guardianRelation: "",
     bio: "",
     linkedIn: "",
     github: "",
+    twitter: "",
+    facebook: "",
+    instagram: "",
     portfolio: "",
   });
 
@@ -117,23 +135,46 @@ const Settings = () => {
   useEffect(() => {
     if (studentData) {
       setProfileData({
-        name: studentData.name || studentData.profile?.name || "",
+        name: studentData.name || "",
         email: studentData.email || userEmail || "",
-        phone: studentData.contact_number || studentData.phone || studentData.profile?.phone || "",
-        location: studentData.district_name || studentData.district || studentData.profile?.district || "",
-        dateOfBirth: studentData.date_of_birth || studentData.dateOfBirth || studentData.profile?.dateOfBirth || "",
-        bio: studentData.bio || studentData.profile?.bio || "",
-        linkedIn: studentData.linkedin_link || studentData.linkedIn || studentData.profile?.linkedIn || "",
-        github: studentData.github_link || studentData.github || studentData.profile?.github || "",
-        portfolio: studentData.portfolio_link || studentData.portfolio || studentData.profile?.portfolio || "",
+        phone: studentData.phone || "",
+        alternatePhone: studentData.alternatePhone || "",
+        location: studentData.location || "",
+        address: studentData.address || "",
+        state: studentData.state || "",
+        country: studentData.country || "India",
+        pincode: studentData.pincode || "",
+        dateOfBirth: studentData.dateOfBirth || "",
+        age: studentData.age || "",
+        gender: studentData.gender || "",
+        bloodGroup: studentData.bloodGroup || "",
+        university: studentData.university || "",
+        branch: studentData.branch || "",
+        college: studentData.college || "",
+        registrationNumber: studentData.registrationNumber || "",
+        enrollmentNumber: studentData.enrollmentNumber || "",
+        currentCgpa: studentData.currentCgpa || "",
+        guardianName: studentData.guardianName || "",
+        guardianPhone: studentData.guardianPhone || "",
+        guardianEmail: studentData.guardianEmail || "",
+        guardianRelation: studentData.guardianRelation || "",
+        bio: studentData.bio || "",
+        linkedIn: studentData.linkedIn || "",
+        github: studentData.github || "",
+        twitter: studentData.twitter || "",
+        facebook: studentData.facebook || "",
+        instagram: studentData.instagram || "",
+        portfolio: studentData.portfolio || "",
       });
 
-      if (studentData.notificationSettings || studentData.profile?.notificationSettings) {
-        setNotificationSettings(studentData.notificationSettings || studentData.profile.notificationSettings);
+      // Load notification settings
+      if (studentData.notificationSettings) {
+        setNotificationSettings(studentData.notificationSettings);
       }
 
-      if (studentData.privacySettings || studentData.profile?.privacySettings) {
-        setPrivacySettings(studentData.privacySettings || studentData.profile.privacySettings);
+      // Load privacy settings
+      if (studentData.privacySettings) {
+        setPrivacySettings(studentData.privacySettings);
       }
     }
   }, [studentData, userEmail]);
@@ -195,6 +236,7 @@ const Settings = () => {
 
     setIsSaving(true);
     try {
+      await updatePassword(passwordData.currentPassword, passwordData.newPassword);
       toast({
         title: "Success",
         description: "Password updated successfully",
@@ -208,7 +250,7 @@ const Settings = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update password",
+        description: error.message || "Failed to update password",
         variant: "destructive",
       });
     } finally {
@@ -262,6 +304,40 @@ const Settings = () => {
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "privacy", label: "Privacy", icon: Shield },
   ];
+
+  // Show loading state
+  if (studentLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (studentError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center py-20">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Settings</h2>
+            <p className="text-gray-600 mb-4">{studentError}</p>
+            <Button
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -561,87 +637,408 @@ const Settings = () => {
                     </span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-6 p-6 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Name */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-500" />
-                        Full Name
-                      </label>
-                      <input
-                        type="text"
-                        value={profileData.name}
-                        onChange={(e) =>
-                          handleProfileChange("name", e.target.value)
-                        }
-                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                        placeholder="Enter your full name"
-                      />
-                    </div>
+                <CardContent className="pt-6 p-6 space-y-8">
+                  {/* Personal Information */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <User className="w-5 h-5 text-blue-600" />
+                      Personal Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Name */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Full Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.name}
+                          onChange={(e) =>
+                            handleProfileChange("name", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter your full name"
+                        />
+                      </div>
 
-                    {/* Email */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-gray-500" />
-                        Email Address
-                      </label>
-                      <input
-                        type="email"
-                        value={profileData.email}
-                        disabled
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-gray-500 cursor-not-allowed"
-                      />
-                    </div>
+                      {/* Email */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          value={profileData.email}
+                          disabled
+                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-gray-500 cursor-not-allowed"
+                        />
+                      </div>
 
-                    {/* Phone */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-gray-500" />
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        value={profileData.phone}
-                        onChange={(e) =>
-                          handleProfileChange("phone", e.target.value)
-                        }
-                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                        placeholder="+1 (555) 123-4567"
-                      />
-                    </div>
+                      {/* Phone */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Phone Number
+                        </label>
+                        <input
+                          type="tel"
+                          value={profileData.phone}
+                          onChange={(e) =>
+                            handleProfileChange("phone", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter phone number"
+                        />
+                      </div>
 
-                    {/* Location */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-gray-500" />
-                        Location
-                      </label>
-                      <input
-                        type="text"
-                        value={profileData.location}
-                        onChange={(e) =>
-                          handleProfileChange("location", e.target.value)
-                        }
-                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                        placeholder="City, Country"
-                      />
-                    </div>
+                      {/* Alternate Phone */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Alternate Phone
+                        </label>
+                        <input
+                          type="tel"
+                          value={profileData.alternatePhone}
+                          onChange={(e) =>
+                            handleProfileChange("alternatePhone", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter alternate phone number"
+                        />
+                      </div>
 
-                    {/* Date of Birth */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-500" />
-                        Date of Birth
-                      </label>
-                      <input
-                        type="date"
-                        value={profileData.dateOfBirth}
-                        onChange={(e) =>
-                          handleProfileChange("dateOfBirth", e.target.value)
-                        }
-                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                      />
+                      {/* Date of Birth */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Date of Birth
+                        </label>
+                        <input
+                          type="date"
+                          value={profileData.dateOfBirth}
+                          onChange={(e) =>
+                            handleProfileChange("dateOfBirth", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        />
+                      </div>
+
+                      {/* Gender */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Gender
+                        </label>
+                        <select
+                          value={profileData.gender}
+                          onChange={(e) =>
+                            handleProfileChange("gender", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        >
+                          <option value="">Select Gender</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+
+                      {/* Blood Group */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Blood Group
+                        </label>
+                        <select
+                          value={profileData.bloodGroup}
+                          onChange={(e) =>
+                            handleProfileChange("bloodGroup", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        >
+                          <option value="">Select Blood Group</option>
+                          <option value="A+">A+</option>
+                          <option value="A-">A-</option>
+                          <option value="B+">B+</option>
+                          <option value="B-">B-</option>
+                          <option value="AB+">AB+</option>
+                          <option value="AB-">AB-</option>
+                          <option value="O+">O+</option>
+                          <option value="O-">O-</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Address Information */}
+                  <div className="pt-6 border-t border-slate-100">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <MapPin className="w-5 h-5 text-blue-600" />
+                      Address Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Address */}
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Address
+                        </label>
+                        <textarea
+                          value={profileData.address}
+                          onChange={(e) =>
+                            handleProfileChange("address", e.target.value)
+                          }
+                          rows={3}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
+                          placeholder="Enter your full address"
+                        />
+                      </div>
+
+                      {/* City */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          City
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.location}
+                          onChange={(e) =>
+                            handleProfileChange("location", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter city"
+                        />
+                      </div>
+
+                      {/* State */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          State
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.state}
+                          onChange={(e) =>
+                            handleProfileChange("state", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter state"
+                        />
+                      </div>
+
+                      {/* Country */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Country
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.country}
+                          onChange={(e) =>
+                            handleProfileChange("country", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter country"
+                        />
+                      </div>
+
+                      {/* Pincode */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Pincode
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.pincode}
+                          onChange={(e) =>
+                            handleProfileChange("pincode", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter pincode"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Academic Information */}
+                  <div className="pt-6 border-t border-slate-100">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Briefcase className="w-5 h-5 text-blue-600" />
+                      Academic Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* University */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          University
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.university}
+                          onChange={(e) =>
+                            handleProfileChange("university", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter university name"
+                        />
+                      </div>
+
+                      {/* College */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          College/School
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.college}
+                          onChange={(e) =>
+                            handleProfileChange("college", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter college/school name"
+                        />
+                      </div>
+
+                      {/* Branch */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Branch/Field
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.branch}
+                          onChange={(e) =>
+                            handleProfileChange("branch", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter branch/field of study"
+                        />
+                      </div>
+
+                      {/* Registration Number */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Registration Number
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.registrationNumber}
+                          onChange={(e) =>
+                            handleProfileChange("registrationNumber", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter registration number"
+                        />
+                      </div>
+
+                      {/* Enrollment Number */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Enrollment Number
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.enrollmentNumber}
+                          onChange={(e) =>
+                            handleProfileChange("enrollmentNumber", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter enrollment number"
+                        />
+                      </div>
+
+                      {/* Current CGPA */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Current CGPA
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="10"
+                          value={profileData.currentCgpa}
+                          onChange={(e) =>
+                            handleProfileChange("currentCgpa", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter current CGPA"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Guardian Information */}
+                  <div className="pt-6 border-t border-slate-100">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-blue-600" />
+                      Guardian Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Guardian Name */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Guardian Name
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.guardianName}
+                          onChange={(e) =>
+                            handleProfileChange("guardianName", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter guardian name"
+                        />
+                      </div>
+
+                      {/* Guardian Relation */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Relation
+                        </label>
+                        <select
+                          value={profileData.guardianRelation}
+                          onChange={(e) =>
+                            handleProfileChange("guardianRelation", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        >
+                          <option value="">Select Relation</option>
+                          <option value="Father">Father</option>
+                          <option value="Mother">Mother</option>
+                          <option value="Guardian">Guardian</option>
+                          <option value="Uncle">Uncle</option>
+                          <option value="Aunt">Aunt</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+
+                      {/* Guardian Phone */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Guardian Phone
+                        </label>
+                        <input
+                          type="tel"
+                          value={profileData.guardianPhone}
+                          onChange={(e) =>
+                            handleProfileChange("guardianPhone", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter guardian phone"
+                        />
+                      </div>
+
+                      {/* Guardian Email */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Guardian Email
+                        </label>
+                        <input
+                          type="email"
+                          value={profileData.guardianEmail}
+                          onChange={(e) =>
+                            handleProfileChange("guardianEmail", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter guardian email"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -662,13 +1059,31 @@ const Settings = () => {
                     />
                   </div>
 
+                  {/* Bio */}
+                  <div className="pt-6 border-t border-slate-100">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Bio
+                    </h3>
+                    <div className="space-y-2">
+                      <textarea
+                        value={profileData.bio}
+                        onChange={(e) =>
+                          handleProfileChange("bio", e.target.value)
+                        }
+                        rows={4}
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
+                        placeholder="Tell us about yourself..."
+                      />
+                    </div>
+                  </div>
+
                   {/* Social Links */}
-                  <div className="pt-4 border-t border-slate-100">
-                    <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-gray-500" />
+                  <div className="pt-6 border-t border-slate-100">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Globe className="w-5 h-5 text-blue-600" />
                       Social Links
                     </h3>
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {[
                         {
                           key: "linkedIn",
@@ -685,9 +1100,24 @@ const Settings = () => {
                           label: "Portfolio",
                           placeholder: "https://yourportfolio.com",
                         },
+                        {
+                          key: "twitter",
+                          label: "Twitter",
+                          placeholder: "https://twitter.com/yourusername",
+                        },
+                        {
+                          key: "facebook",
+                          label: "Facebook",
+                          placeholder: "https://facebook.com/yourprofile",
+                        },
+                        {
+                          key: "instagram",
+                          label: "Instagram",
+                          placeholder: "https://instagram.com/yourusername",
+                        },
                       ].map((field) => (
                         <div key={field.key} className="space-y-2">
-                          <label className="text-sm font-medium text-gray-700">
+                          <label className="text-sm font-semibold text-gray-700">
                             {field.label}
                           </label>
                           <input
