@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Briefcase, 
-  Clock, 
-  CheckCircle2, 
-  XCircle, 
-  Calendar, 
-  Building2, 
-  MapPin, 
+import {
+  Briefcase,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Calendar,
+  Building2,
+  MapPin,
   DollarSign,
   Eye,
   Filter,
@@ -33,7 +33,7 @@ const Applications = () => {
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;
-  
+
   const [applications, setApplications] = useState([]);
   const [filteredApplications, setFilteredApplications] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,7 +48,7 @@ const Applications = () => {
   const [viewDetailsModalOpen, setViewDetailsModalOpen] = useState(false);
   const [detailsApplication, setDetailsApplication] = useState(null);
   const [showPipelineStatus, setShowPipelineStatus] = useState({});
-  
+
   useMessageNotifications({
     userId: studentId,
     userType: 'student',
@@ -66,16 +66,16 @@ const Applications = () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         // Fetch applications with pipeline data
         const applicationsData = await StudentPipelineService.getStudentApplicationsWithPipeline(
-          studentId, 
+          studentId,
           userEmail
         );
-        
+
         if (applicationsData[0]) {
         }
-        
+
         // Fetch interviews separately
         const interviewsData = await StudentPipelineService.getStudentInterviews(studentId);
         setInterviews(interviewsData);
@@ -97,7 +97,7 @@ const Applications = () => {
           lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
           opportunityId: app.opportunity_id,
           recruiterId: app.opportunity?.recruiter_id || null,
-          
+
           // Pipeline data
           pipelineStatus: app.pipeline_status,
           hasPipelineStatus: app.has_pipeline_status,
@@ -143,7 +143,7 @@ const Applications = () => {
   const formatLastUpdate = (dateString) => {
     if (!dateString) return 'Recently';
     const diffDays = Math.ceil(Math.abs(new Date() - new Date(dateString)) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return '1 day ago';
     if (diffDays < 7) return `${diffDays} days ago`;
@@ -464,7 +464,7 @@ const Applications = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all appearance-none bg-white cursor-pointer min-w-[200px]"
               >
-              <option value="all">All Status</option>
+                <option value="all">All Status</option>
                 <option value="applied">Applied</option>
                 <option value="viewed">Viewed</option>
                 <option value="under_review">Under Review</option>
@@ -499,12 +499,6 @@ const Applications = () => {
                 >
                   <div className="p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center gap-6">
-                      {/* Company Logo */}
-                      <div className="flex-shrink-0">
-                        <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden">
-                          <Building2 className="w-8 h-8 text-slate-600" />
-                        </div>
-                      </div>
 
                       {/* Job Details */}
                       <div className="flex-1 space-y-3">
@@ -566,12 +560,11 @@ const Applications = () => {
                                 className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-200 group"
                                 title={showPipelineStatus[app.id] ? "Hide pipeline details" : "Show pipeline details"}
                               >
-                                <FileText className={`w-5 h-5 transition-colors duration-200 ${
-                                  showPipelineStatus[app.id] ? 'text-slate-700' : 'text-slate-400 group-hover:text-slate-600'
-                                }`} />
+                                <FileText className={`w-5 h-5 transition-colors duration-200 ${showPipelineStatus[app.id] ? 'text-slate-700' : 'text-slate-400 group-hover:text-slate-600'
+                                  }`} />
                               </button>
                             </div>
-                            
+
                             {/* Collapsed view - just show current stage */}
                             {!showPipelineStatus[app.id] && app.pipelineStage && (
                               <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-200">
@@ -591,158 +584,171 @@ const Applications = () => {
                                 </p>
                               </div>
                             )}
-                            
+
                             {/* Expanded view - show all details */}
                             {showPipelineStatus[app.id] && (
-                            <div className="space-y-4">
-                              {/* Current Stage with Description */}
-                              {app.pipelineStage && (
-                                <>
-                                  <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-200">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <span className="text-sm font-medium text-gray-600">Current Stage:</span>
-                                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${getPipelineStageConfig(app.pipelineStage).bg} border-2 ${getPipelineStageConfig(app.pipelineStage).bg.replace('bg-', 'border-')}`}>
-                                        {React.createElement(getPipelineStageConfig(app.pipelineStage).icon, {
-                                          className: `w-4 h-4 ${getPipelineStageConfig(app.pipelineStage).color}`
-                                        })}
-                                        <span className={`text-sm font-bold ${getPipelineStageConfig(app.pipelineStage).color}`}>
-                                          {getPipelineStageConfig(app.pipelineStage).label}
-                                        </span>
+                              <div className="space-y-4">
+                                {/* Current Stage with Description */}
+                                {app.pipelineStage && (
+                                  <>
+                                    <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-200">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <span className="text-sm font-medium text-gray-600">Current Stage:</span>
+                                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${getPipelineStageConfig(app.pipelineStage).bg} border-2 ${getPipelineStageConfig(app.pipelineStage).bg.replace('bg-', 'border-')}`}>
+                                          {React.createElement(getPipelineStageConfig(app.pipelineStage).icon, {
+                                            className: `w-4 h-4 ${getPipelineStageConfig(app.pipelineStage).color}`
+                                          })}
+                                          <span className={`text-sm font-bold ${getPipelineStageConfig(app.pipelineStage).color}`}>
+                                            {getPipelineStageConfig(app.pipelineStage).label}
+                                          </span>
+                                        </div>
                                       </div>
-                                    </div>
-                                    <p className="text-sm text-gray-700 font-medium mt-2">
-                                      {getPipelineStageConfig(app.pipelineStage).description}
-                                    </p>
-                                  </div>
-
-                                  {/* What You Need to Do */}
-                                  <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
-                                    <div className="flex items-start gap-2 mb-3">
-                                      <CheckCircle2 className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                                      <div className="flex-1">
-                                        <h5 className="text-sm font-bold text-gray-900 mb-1">What You Need to Do:</h5>
-                                        <p className="text-sm text-blue-700 font-semibold bg-blue-50 px-3 py-2 rounded-lg">
-                                          {getPipelineStageConfig(app.pipelineStage).studentAction}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Next Steps Checklist */}
-                                  <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                                    <h5 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                                      <ArrowRight className="w-4 h-4 text-indigo-600" />
-                                      Recommended Next Steps:
-                                    </h5>
-                                    <ul className="space-y-2">
-                                      {getPipelineStageConfig(app.pipelineStage).nextSteps.map((step, idx) => (
-                                        <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                                          <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                            <span className="text-xs font-bold text-indigo-700">{idx + 1}</span>
-                                          </div>
-                                          <span>{step}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-
-                                  {/* Timeline Expectation */}
-                                  <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
-                                    <div className="flex items-start gap-2">
-                                      <Clock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                                      <div className="flex-1">
-                                        <p className="text-xs font-medium text-amber-900">Expected Timeline:</p>
-                                        <p className="text-xs text-amber-700 mt-1">
-                                          {getPipelineStageConfig(app.pipelineStage).waitTime}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </>
-                              )}
-
-                              {/* Stage Changed Date */}
-                              {app.pipelineStageChangedAt && (
-                                <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-200">
-                                  <span>Last stage update:</span>
-                                  <span className="font-medium">{new Date(app.pipelineStageChangedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                </div>
-                              )}
-
-                              {/* Next Action */}
-                              {app.nextAction && (
-                                <div className="flex items-start gap-2 p-3 bg-blue-100 rounded-lg border-2 border-blue-300">
-                                  <Bell className="w-5 h-5 text-blue-700 mt-0.5 flex-shrink-0 animate-pulse" />
-                                  <div className="flex-1">
-                                    <p className="text-xs font-bold text-blue-900 uppercase tracking-wide">Upcoming Action:</p>
-                                    <p className="text-sm font-semibold text-blue-800 mt-1">{app.nextAction.replace(/_/g, ' ').toUpperCase()}</p>
-                                    {app.nextActionDate && (
-                                      <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
-                                        <Calendar className="w-3 h-3" />
-                                        Scheduled: {new Date(app.nextActionDate).toLocaleDateString()}
+                                      <p className="text-sm text-gray-700 font-medium mt-2">
+                                        {getPipelineStageConfig(app.pipelineStage).description}
                                       </p>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
+                                    </div>
 
-                              {/* Rejection Reason */}
-                              {app.rejectionReason && (
-                                <div className="flex items-start gap-2 p-3 bg-red-50 rounded-lg border-2 border-red-200">
-                                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-                                  <div className="flex-1">
-                                    <p className="text-xs font-bold text-red-900 uppercase tracking-wide">Feedback from Recruiter:</p>
-                                    <p className="text-sm text-red-700 mt-1">{app.rejectionReason}</p>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Scheduled Interviews */}
-                              {app.interviews && app.interviews.length > 0 && (
-                                <div className="bg-white rounded-lg p-4 shadow-sm border-2 border-indigo-200">
-                                  <h5 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                                    <Video className="w-5 h-5 text-indigo-600" />
-                                    Scheduled Interviews ({app.interviews.length})
-                                  </h5>
-                                  <div className="space-y-2">
-                                    {app.interviews.map((interview, idx) => (
-                                      <div key={idx} className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors">
+                                    {/* What You Need to Do */}
+                                    <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
+                                      <div className="flex items-start gap-2 mb-3">
+                                        <CheckCircle2 className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                                         <div className="flex-1">
-                                          <p className="font-semibold text-gray-900">{interview.type} Interview</p>
-                                          <p className="text-sm text-gray-600 mt-0.5">with {interview.interviewer}</p>
-                                          {interview.meeting_link && (
-                                            <a 
-                                              href={interview.meeting_link} 
-                                              target="_blank" 
-                                              rel="noopener noreferrer"
-                                              className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 inline-block"
-                                            >
-                                              Join Meeting →
-                                            </a>
-                                          )}
-                                        </div>
-                                        <div className="text-right ml-4">
-                                          <p className="font-bold text-indigo-700">
-                                            {new Date(interview.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                          </p>
-                                          <p className="text-sm text-gray-600">
-                                            {new Date(interview.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                          <h5 className="text-sm font-bold text-gray-900 mb-1">What You Need to Do:</h5>
+                                          <p className="text-sm text-blue-700 font-semibold bg-blue-50 px-3 py-2 rounded-lg">
+                                            {getPipelineStageConfig(app.pipelineStage).studentAction}
                                           </p>
                                         </div>
                                       </div>
-                                    ))}
+                                    </div>
+
+                                    {/* Next Steps Checklist */}
+                                    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                                      <h5 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                        <ArrowRight className="w-4 h-4 text-indigo-600" />
+                                        Recommended Next Steps:
+                                      </h5>
+                                      <ul className="space-y-2">
+                                        {getPipelineStageConfig(app.pipelineStage).nextSteps.map((step, idx) => (
+                                          <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                                            <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                              <span className="text-xs font-bold text-indigo-700">{idx + 1}</span>
+                                            </div>
+                                            <span>{step}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+
+                                    {/* Timeline Expectation */}
+                                    <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                                      <div className="flex items-start gap-2">
+                                        <Clock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                                        <div className="flex-1">
+                                          <p className="text-xs font-medium text-amber-900">Expected Timeline:</p>
+                                          <p className="text-xs text-amber-700 mt-1">
+                                            {getPipelineStageConfig(app.pipelineStage).waitTime}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+
+                                {/* Stage Changed Date */}
+                                {app.pipelineStageChangedAt && (
+                                  <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-200">
+                                    <span>Last stage update:</span>
+                                    <span className="font-medium">{new Date(app.pipelineStageChangedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                                   </div>
-                                </div>
-                              )}
-                            </div>
+                                )}
+
+                                {/* Next Action */}
+                                {app.nextAction && (
+                                  <div className="flex items-start gap-2 p-3 bg-blue-100 rounded-lg border-2 border-blue-300">
+                                    <Bell className="w-5 h-5 text-blue-700 mt-0.5 flex-shrink-0 animate-pulse" />
+                                    <div className="flex-1">
+                                      <p className="text-xs font-bold text-blue-900 uppercase tracking-wide">Upcoming Action:</p>
+                                      <p className="text-sm font-semibold text-blue-800 mt-1">{app.nextAction.replace(/_/g, ' ').toUpperCase()}</p>
+                                      {app.nextActionDate && (
+                                        <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
+                                          <Calendar className="w-3 h-3" />
+                                          Scheduled: {new Date(app.nextActionDate).toLocaleDateString()}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Rejection Reason */}
+                                {app.rejectionReason && (
+                                  <div className="flex items-start gap-2 p-3 bg-red-50 rounded-lg border-2 border-red-200">
+                                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                      <p className="text-xs font-bold text-red-900 uppercase tracking-wide">Feedback from Recruiter:</p>
+                                      <p className="text-sm text-red-700 mt-1">{app.rejectionReason}</p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Scheduled Interviews */}
+                                {app.interviews && app.interviews.length > 0 && (
+                                  <div className="bg-white rounded-lg p-4 shadow-sm border-2 border-indigo-200">
+                                    <h5 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                      <Video className="w-5 h-5 text-indigo-600" />
+                                      Scheduled Interviews ({app.interviews.length})
+                                    </h5>
+                                    <div className="space-y-2">
+                                      {app.interviews.map((interview, idx) => (
+                                        <div key={idx} className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors">
+                                          <div className="flex-1">
+                                            <p className="font-semibold text-gray-900">{interview.type} Interview</p>
+                                            <p className="text-sm text-gray-600 mt-0.5">with {interview.interviewer}</p>
+                                            {interview.meeting_link && (
+                                              <a
+                                                href={interview.meeting_link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 inline-block"
+                                              >
+                                                Join Meeting →
+                                              </a>
+                                            )}
+                                          </div>
+                                          <div className="text-right ml-4">
+                                            <p className="font-bold text-indigo-700">
+                                              {new Date(interview.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                            </p>
+                                            <p className="text-sm text-gray-600">
+                                              {new Date(interview.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
                       </div>
 
+
                       {/* Actions */}
                       <div className="flex-shrink-0 flex lg:flex-col gap-2">
-                        <button 
+                        {/* Company Logo */}
+                        <div className="flex-shrink-0">
+                          <button
+                            onClick={() => togglePipelineStatus(app.id)}
+                            className="w-16 h-16 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center overflow-hidden transition-all duration-200 group"
+                            title={showPipelineStatus[app.id] ? "Hide pipeline details" : "Show pipeline details"}
+                          >
+                            <Building2 className={`w-8 h-8 transition-colors duration-200 ${showPipelineStatus[app.id] ? 'text-slate-700' : 'text-slate-600 group-hover:text-slate-700'
+                              }`} />
+                          </button>
+                        </div>
+
+                        <button
                           onClick={() => {
                             setDetailsApplication(app);
                             setViewDetailsModalOpen(true);
@@ -752,7 +758,7 @@ const Applications = () => {
                           <Eye className="w-4 h-4" />
                           View Details
                         </button>
-                        <button 
+                        <button
                           onClick={() => {
                             setSelectedApplication(app);
                             setMessageModalOpen(true);
@@ -763,6 +769,7 @@ const Applications = () => {
                           <MessageSquare className="w-4 h-4" />
                           Message
                         </button>
+
                       </div>
                     </div>
                   </div>
@@ -772,7 +779,7 @@ const Applications = () => {
           )}
         </div>
       </div>
-      
+
       {/* Message Modal */}
       {selectedApplication && selectedApplication.recruiterId && selectedApplication.studentId && (
         <MessageModal
@@ -883,12 +890,11 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="text-sm text-gray-600 mb-1">Application Status</div>
               <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  application.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                  application.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  application.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${application.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                    application.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      application.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                  }`}>
                   {application.status?.charAt(0).toUpperCase() + application.status?.slice(1)}
                 </span>
               </div>
@@ -917,16 +923,16 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                 <TrendingUp className="w-5 h-5 text-slate-700" />
                 Recruitment Pipeline Status
               </h3>
-              
+
               {/* Pipeline Progress Tracker */}
               <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-6 rounded-xl border border-blue-100 mb-4">
                 {/* Debug Info - Remove after testing */}
                 <div className="bg-yellow-50 border border-yellow-200 p-2 rounded mb-4 text-xs">
-                  <strong>Debug:</strong> Stage = "{application.pipelineStage}" | 
-                  Has Pipeline = {application.hasPipelineStatus ? 'Yes' : 'No'} | 
+                  <strong>Debug:</strong> Stage = "{application.pipelineStage}" |
+                  Has Pipeline = {application.hasPipelineStatus ? 'Yes' : 'No'} |
                   Stage Order = {getStageOrder(application.pipelineStage)}
                 </div>
-                
+
                 <div className="relative">
                   {/* Progress Bar Container */}
                   <div className="flex items-center justify-between mb-8">
@@ -941,7 +947,7 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                       const isCompleted = getStageOrder(application.pipelineStage) > getStageOrder(stageKey);
                       const isCurrent = application.pipelineStage === stageKey;
                       const isRejected = application.pipelineStage === 'rejected';
-                      
+
                       // Debug log for each stage
                       console.log({
                         isCompleted,
@@ -950,20 +956,19 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                         stageKey,
                         equal: application.pipelineStage === stageKey
                       });
-                      
+
                       return (
                         <div key={stageKey} className="flex flex-col items-center flex-1 relative">
                           {/* Stage Number Circle */}
                           <div className="relative z-10 mb-2">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                              isCompleted 
-                                ? 'bg-green-500 text-white shadow-lg shadow-green-200' 
-                                : isCurrent 
-                                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse' 
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isCompleted
+                                ? 'bg-green-500 text-white shadow-lg shadow-green-200'
+                                : isCurrent
+                                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse'
                                   : isRejected && index > getStageOrder('sourced')
                                     ? 'bg-gray-200 text-gray-400'
                                     : 'bg-white text-gray-400 border-2 border-gray-300'
-                            }`}>
+                              }`}>
                               {isCompleted ? (
                                 <CheckCircle2 className="w-6 h-6" />
                               ) : (
@@ -971,24 +976,22 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                               )}
                             </div>
                           </div>
-                          
+
                           {/* Connecting Line */}
                           {index < array.length - 1 && (
-                            <div className={`absolute top-5 left-1/2 w-full h-0.5 -z-0 transition-all ${
-                              isCompleted 
-                                ? 'bg-green-500' 
+                            <div className={`absolute top-5 left-1/2 w-full h-0.5 -z-0 transition-all ${isCompleted
+                                ? 'bg-green-500'
                                 : 'bg-gray-300'
-                            }`} style={{ transform: 'translateY(-50%)' }} />
+                              }`} style={{ transform: 'translateY(-50%)' }} />
                           )}
-                          
+
                           {/* Stage Label */}
-                          <div className={`text-xs font-medium text-center px-1 transition-all ${
-                            isCurrent 
-                              ? 'text-blue-700 font-bold' 
-                              : isCompleted 
-                                ? 'text-green-700' 
+                          <div className={`text-xs font-medium text-center px-1 transition-all ${isCurrent
+                              ? 'text-blue-700 font-bold'
+                              : isCompleted
+                                ? 'text-green-700'
                                 : 'text-gray-500'
-                          }`}>
+                            }`}>
                             {stageLabel}
                           </div>
                         </div>
@@ -1019,23 +1022,23 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Progress Message */}
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <p className="text-sm text-gray-700">
-                      {application.pipelineStage === 'sourced' && 
+                      {application.pipelineStage === 'sourced' &&
                         "🎯 Your application has been added to the recruitment pipeline and is being reviewed by the hiring team."}
-                      {application.pipelineStage === 'screened' && 
+                      {application.pipelineStage === 'screened' &&
                         "✅ Your application passed initial screening. The team is evaluating your qualifications."}
-                      {application.pipelineStage === 'interview_1' && 
+                      {application.pipelineStage === 'interview_1' &&
                         "📞 You're scheduled for the first round of interviews. Good luck!"}
-                      {application.pipelineStage === 'interview_2' && 
+                      {application.pipelineStage === 'interview_2' &&
                         "🌟 Great progress! You're in the second round of interviews."}
-                      {application.pipelineStage === 'offer' && 
+                      {application.pipelineStage === 'offer' &&
                         "🎉 Congratulations! An offer is being prepared for you."}
-                      {application.pipelineStage === 'hired' && 
+                      {application.pipelineStage === 'hired' &&
                         "✨ Welcome aboard! You've been successfully hired."}
-                      {application.pipelineStage === 'rejected' && 
+                      {application.pipelineStage === 'rejected' &&
                         "We appreciate your interest. Please see the rejection reason below."}
                     </p>
                   </div>
@@ -1078,7 +1081,7 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                 <Calendar className="w-5 h-5 text-slate-700" />
                 Scheduled Interviews
               </h3>
-              
+
               <div className="space-y-3">
                 {interviews.map((interview, idx) => (
                   <div key={idx} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
@@ -1099,11 +1102,10 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                           <div className="text-sm text-gray-600 mt-2">{interview.notes}</div>
                         )}
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        interview.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        interview.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${interview.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          interview.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                        }`}>
                         {interview.status?.charAt(0).toUpperCase() + interview.status?.slice(1)}
                       </span>
                     </div>
@@ -1120,7 +1122,7 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                 <TrendingUp className="w-5 h-5 text-slate-700" />
                 Recruitment Pipeline
               </h3>
-              
+
               {/* Pipeline Progress Tracker - All stages shown but inactive */}
               <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-6 rounded-xl border border-gray-200 mb-4">
                 <div className="relative">
@@ -1142,12 +1144,12 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                               {index + 1}
                             </div>
                           </div>
-                          
+
                           {/* Connecting Line */}
                           {index < array.length - 1 && (
                             <div className="absolute top-5 left-1/2 w-full h-0.5 bg-gray-300 -z-0" style={{ transform: 'translateY(-50%)' }} />
                           )}
-                          
+
                           {/* Stage Label */}
                           <div className="text-xs font-medium text-center px-1 text-gray-500">
                             {stageLabel}
