@@ -370,26 +370,6 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <motion.footer 
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.6 }}
-        className="py-6 px-6 bg-gray-100 dark:bg-gray-800 transition-colors duration-300"
-      >
-        <div className="max-w-7xl mx-auto text-center">
-          <motion.p 
-            initial={{ y: 20, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="text-gray-600 dark:text-gray-400 text-sm"
-          >
-            © 2025 Rareminds/digital-portfolio. All rights reserved.
-          </motion.p>
-        </div>
-      </motion.footer>
     </div>
   );
 };
