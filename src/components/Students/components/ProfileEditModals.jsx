@@ -7,12 +7,6 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Badge } from "./ui/badge";
 import {
-  createCertificate,
-  updateCertificate as updateCertificateService,
-  deleteCertificate as deleteCertificateService,
-  uploadCertificateFile,
-} from "../../../services/certificateService";
-import {
   Plus,
   Trash2,
   Edit3,
@@ -26,16 +20,19 @@ import {
   Calendar,
   Eye,
   EyeOff,
-  Upload,
+  Presentation,
   FileText,
-  ExternalLink,
-  Shield,
-  Download,
+  Video,
+  Upload,
+  Link,
   X,
-  Check,
-  AlertCircle,
+  CalendarDays,
+  LinkIcon,
+  Github,
+  Building2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 // const VersionStatusBadge = ({ version, type }) => {
 //   if (!version) return null;
@@ -272,9 +269,18 @@ export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
     }
   };
 
-  const handleSubmit = () => {
-    onSave(educationList);
-    onClose();
+  const handleSubmit = async () => {
+    try {
+      await onSave(educationList);
+      onClose();
+    } catch (error) {
+      console.error('Error saving education:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save education details. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getLevelColor = (level) => {
@@ -978,13 +984,22 @@ export const TrainingEditModal = ({ isOpen, onClose, data, onSave }) => {
   };
 
   // Save all changes
-  const handleSubmit = () => {
-    onSave(courses);
-    toast({
-      title: "Training Updated",
-      description: "Your training details have been saved successfully.",
-    });
-    onClose();
+  const handleSubmit = async () => {
+    try {
+      await onSave(courses);
+      toast({
+        title: "Training Updated",
+        description: "Your training details have been saved successfully.",
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error saving training:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save training details. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Render form
@@ -1433,14 +1448,23 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
     setExperiences(experiences.filter((exp) => exp.id !== id));
   };
 
-  const handleSubmit = () => {
-    onSave(experiences);
-    toast({
-      title: "Experience Updated",
-      description:
-        "Your experience details are being processed for verification.",
-    });
-    onClose();
+  const handleSubmit = async () => {
+    try {
+      await onSave(experiences);
+      toast({
+        title: "Experience Updated",
+        description:
+          "Your experience details are being processed for verification.",
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error saving experience:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save experience details. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -1590,16 +1614,30 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
   const [projectsList, setProjectsList] = useState(data || []);
   const [isAdding, setIsAdding] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [expandedDescriptions, setExpandedDescriptions] = useState({});
+  const { toast } = useToast();
+
   const [formData, setFormData] = useState({
     title: "",
-    organization: "",
     duration: "",
     status: "",
     description: "",
+    organization: "",
     link: "",
+    githubLink: "",
     techInput: "",
+    start_date: "",
+    end_date: "",
+    certificate: null,
+    video: null,
+    ppt: null,
+    certificate_url: "",
+    video_url: "",
+    ppt_url: "",
+    certificateLink: "",
+    videoLink: "",
+    pptLink: "",
   });
-  const { toast } = useToast();
 
   useEffect(() => {
     setProjectsList(data || []);
@@ -1608,44 +1646,64 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
   const resetForm = () => {
     setFormData({
       title: "",
-      organization: "",
       duration: "",
       status: "",
       description: "",
+      organization: "",
       link: "",
+      githubLink: "",
       techInput: "",
+      start_date: "",
+      end_date: "",
+      certificate: null,
+      video: null,
+      ppt: null,
+      certificate_url: "",
+      video_url: "",
+      ppt_url: "",
+      certificateLink: "",
+      videoLink: "",
+      pptLink: "",
     });
     setEditingIndex(null);
   };
 
-  const extractTech = (project) => {
-    if (Array.isArray(project.tech) && project.tech.length) return project.tech;
-    if (Array.isArray(project.technologies) && project.technologies.length)
-      return project.technologies;
-    if (Array.isArray(project.techStack) && project.techStack.length)
-      return project.techStack;
-    if (Array.isArray(project.skills) && project.skills.length)
-      return project.skills;
-    return [];
-  };
+  const extractTech = (project) =>
+    project.tech ||
+    project.technologies ||
+    project.techStack ||
+    project.tech_stack ||
+    project.skills ||
+    [];
 
-  const formatTech = (input) => {
-    return (input || "")
+  const formatTech = (input) =>
+    (input || "")
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean);
-  };
 
   const startEditing = (project, index) => {
     setFormData({
-      title: project.title || project.name || "",
-      organization:
-        project.organization || project.company || project.client || "",
-      duration: project.duration || project.timeline || project.period || "",
+      title: project.title || "",
+      duration: project.duration || "",
       status: project.status || "",
       description: project.description || "",
-      link: project.link || project.github,
+      organization: project.organization || project.client || "",
+      link: project.link || "",
+      githubLink:
+        project.github_url || project.github_link || project.github || "",
       techInput: extractTech(project).join(", "),
+      start_date: project.start_date || "",
+      end_date: project.end_date || "",
+      certificate: null,
+      video: null,
+      ppt: null,
+      certificate_url: project.certificate_url || "",
+      video_url: project.video_url || "",
+      ppt_url: project.ppt_url || "",
+      certificateLink: project.certificate_url || "",
+      videoLink: project.video_url || "",
+      pptLink: project.ppt_url || "",
     });
     setEditingIndex(index);
     setIsAdding(true);
@@ -1653,28 +1711,67 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
 
   const prepareProject = (base, existing = {}) => {
     const techArray = formatTech(base.techInput);
-    const { techInput, ...rest } = base;
-    const trimmed = Object.fromEntries(
-      Object.entries(rest).map(([key, value]) => [
-        key,
-        typeof value === "string" ? value.trim() : value,
-      ])
-    );
-    const normalizedLink = typeof trimmed.link === "string" ? trimmed.link : "";
+    const organizationValue = base.organization?.trim() || null;
+    const enabledValue =
+      typeof base.enabled === "boolean"
+        ? base.enabled
+        : typeof existing.enabled === "boolean"
+        ? existing.enabled
+        : true;
+    let durationText = "";
+    let startLabel = "";
+    let endLabel = "";
+
+    if (base.start_date && base.end_date) {
+      const start = new Date(base.start_date);
+      const end = new Date(base.end_date);
+      const diffMs = Math.abs(end - start);
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+      // compute months/weeks/days
+      let duration = "";
+      if (diffDays >= 30) {
+        const diffMonths = Math.floor(diffDays / 30);
+        duration = `${diffMonths} month${diffMonths > 1 ? "s" : ""}`;
+      } else if (diffDays >= 14) {
+        const diffWeeks = Math.floor(diffDays / 7);
+        duration = `${diffWeeks} week${diffWeeks > 1 ? "s" : ""}`;
+      } else if (diffDays > 1) {
+        duration = `${diffDays} days`;
+      } else {
+        duration = "1 day";
+      }
+
+      // format month-year labels
+      const formatMonthYear = (date) =>
+        date.toLocaleString("default", { month: "short", year: "numeric" });
+
+      startLabel = formatMonthYear(start);
+      endLabel = formatMonthYear(end);
+
+      // final display
+      durationText = `${startLabel} – ${endLabel} (${duration})`;
+    }
+
     return {
       ...existing,
-      ...trimmed,
-      title: trimmed.title || existing.title || "",
-      organization: trimmed.organization || existing.organization || "",
-      duration: trimmed.duration || existing.duration || "",
-      status: trimmed.status || existing.status || "",
-      description: trimmed.description || existing.description || "",
-      link: normalizedLink,
-      github: normalizedLink,
+      ...base,
+      start_date: base.start_date || null,
+      end_date: base.end_date || null,
+      duration: durationText, // formatted version
+      status: base.status || "In Progress",
+      enabled: enabledValue,
       tech: techArray,
       technologies: techArray,
-      techStack: techArray,
-      skills: techArray.length ? techArray : existing.skills || [],
+      organization: organizationValue,
+      client: organizationValue,
+      certificate_url: base.certificateLink?.trim() || base.certificate_url?.trim() || null,
+      video_url: base.videoLink?.trim() || base.video_url?.trim() || null,
+      ppt_url: base.pptLink?.trim() || base.ppt_url?.trim() || null,
+      github_url: base.githubLink?.trim() || base.github_url?.trim() || null,
+      github_link: base.githubLink?.trim() || base.github_url?.trim() || null,
+      github: base.githubLink?.trim() || base.github_url?.trim() || null,
+      updatedAt: new Date().toISOString(),
     };
   };
 
@@ -1689,54 +1786,24 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
     }
 
     const newProject = prepareProject(formData);
-
     if (editingIndex !== null) {
       setProjectsList((prev) =>
-        prev.map((proj, idx) =>
-          idx === editingIndex
-            ? {
-                ...(proj || {}),
-                ...prepareProject(formData, proj),
-                enabled: proj?.enabled === false ? false : true,
-
-                // 🔁 Verification reset logic
-                verified: false,
-              processing: true,
-                verifiedAt: null,
-
-                updatedAt: new Date().toISOString(),
-              }
-            : proj
-        )
+        prev.map((proj, idx) => (idx === editingIndex ? newProject : proj))
       );
-
       toast({
         title: "Project Updated",
-        description:
-          "Changes detected — verification will be reprocessed by the system.",
+        description: "Changes saved successfully.",
       });
     } else {
-      // 🆕 new project
       setProjectsList((prev) => [
         ...prev,
-        {
-        ...newProject,
-        enabled: true,
-          verified: false,
-        processing: true,
-          verifiedAt: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        { ...newProject, createdAt: new Date().toISOString(), enabled: true },
       ]);
-
       toast({
         title: "Project Added",
-        description:
-          "Your project details are being processed for verification.",
+        description: "New project added successfully.",
       });
     }
-
     setIsAdding(false);
     resetForm();
   };
@@ -1744,269 +1811,718 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
   const toggleProject = (index) => {
     setProjectsList((prev) =>
       prev.map((project, idx) =>
-        idx === index
-          ? { ...project, enabled: project.enabled === false ? true : false }
-          : project
+        idx === index ? { ...project, enabled: !project.enabled } : project
       )
     );
   };
 
   const deleteProject = (index) => {
-    setProjectsList((prev) => prev.filter((_, idx) => idx !== index));
+    setProjectsList((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
-    onSave(
-      projectsList.map((project) => ({
-        ...project,
-        tech: extractTech(project),
-        technologies: extractTech(project),
-        techStack: extractTech(project),
-      }))
-    );
-    onClose();
+  const handleSubmit = async () => {
+    try {
+      await onSave(projectsList);
+      onClose();
+    } catch (error) {
+      console.error('Error saving projects:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save project details. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={() => {
-        onClose();
-        setIsAdding(false);
-        resetForm();
-      }}
-    >
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Edit3 className="w-5 h-5" />
-            Manage Projects
+          <DialogTitle className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+            <Edit3 className="w-5 h-5 text-blue-600" /> Manage Projects
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+
+        <div className="space-y-6 mt-4">
+          {/* Project List */}
           {projectsList.map((project, index) => (
             <div
-              key={project.id || index}
-              className={`p-4 border rounded-lg ${
-                project.enabled === false ? "opacity-50" : "opacity-100"
+              key={index}
+              className={`relative border border-gray-200 rounded-xl p-6 shadow-sm transition-opacity ${
+                project.enabled === false ? "bg-gray-50 opacity-60" : "bg-white"
               }`}
             >
-              <div className="flex justify-between items-start gap-3">
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold" style={{ color: "#6A0DAD" }}>
-                      {project.title || "Untitled Project"}
-                    </h4>
-                    {project.status && (
-                      <Badge className="bg-emerald-100 text-emerald-700">
-                        {project.status}
-                      </Badge>
-                    )}
-                    {project.processing && (
-                      <Badge className="bg-orange-100 text-orange-700">
-                        <Clock className="w-3 h-3 mr-1" />
-                        Processing
-                      </Badge>
-                    )}
-                  </div>
+              <div className="absolute top-4 right-4 flex gap-2">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="text-blue-600 bg-white border-blue-200 hover:bg-blue-50"
+                  onClick={() => startEditing(project, index)}
+                >
+                  <Edit3 className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="text-red-600 bg-red-50 border-red-200 hover:bg-red-50"
+                  onClick={() => deleteProject(index)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className={
+                    project.enabled
+                      ? "text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+                      : "text-gray-500 border-gray-300 bg-white hover:bg-gray-100"
+                  }
+                  onClick={() => toggleProject(index)}
+                  title={project.enabled ? "Disable project" : "Enable project"}
+                >
+                  {project.enabled ? (
+                    <Eye className="w-4 h-4" />
+                  ) : (
+                    <EyeOff className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
 
-                  {(project.organization ||
-                    project.company ||
-                    project.client) && (
-                    <p
-                      className="text-sm font-medium"
-                      style={{ color: "#6A0DAD" }}
+              <h2 className="text-xl font-semibold text-black w-[calc(100%-8rem)]">
+                {project.title}
+              </h2>
+              {(project.organization || project.client) && (
+                <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                  <Building2 className="w-4 h-4 text-gray-500" />
+                  {project.organization || project.client}
+                </p>
+              )}
+              {project.duration && (
+                <p className="text-sm text-gray-500 flex items-center gap-1 my-2">
+                  <CalendarDays className="w-4 h-4 text-gray-400" />
+                  {project.duration}
+                </p>
+              )}
+
+              {/* Status */}
+              <div className="flex gap-2 mt-4">
+                {project.status && (
+                  <span className="flex items-center px-3 py-1 text-xs rounded-full bg-green-50 text-green-700 border border-green-200">
+                    <CheckCircle className="w-3 h-3 mr-1" /> {project.status}
+                  </span>
+                )}
+                {project.processing && (
+                  <span className="flex items-center px-3 py-1 text-xs rounded-full bg-orange-50 text-orange-700 border border-orange-200">
+                    <Clock className="w-3 h-3 mr-1" /> Processing
+                  </span>
+                )}
+                {project.approval_status && (
+                  <span className={`flex items-center px-3 py-1 text-xs rounded-full border ${
+                    project.approval_status === 'approved'
+                      ? 'bg-green-50 text-green-700 border-green-200'
+                      : project.approval_status === 'rejected'
+                      ? 'bg-red-50 text-red-700 border-red-200'
+                      : 'bg-orange-50 text-orange-700 border-orange-200'
+                  }`}>
+                    {project.approval_status === 'approved' ? (
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                    ) : project.approval_status === 'rejected' ? (
+                      <X className="w-3 h-3 mr-1" />
+                    ) : (
+                      <Clock className="w-3 h-3 mr-1" />
+                    )}
+                    {project.approval_status.charAt(0).toUpperCase() + project.approval_status.slice(1)}
+                  </span>
+                )}
+              </div>
+
+              {project.description && (
+                <div className="mt-2">
+                  <p
+                    className={`text-sm text-gray-700 leading-relaxed ${
+                      expandedDescriptions[index]
+                        ? "line-clamp-none"
+                        : "line-clamp-3"
+                    }`}
+                  >
+                    {project.description}
+                  </p>
+                  {project.description.length > 180 && (
+                    <button
+                      onClick={() =>
+                        setExpandedDescriptions((prev) => ({
+                          ...prev,
+                          [index]: !prev[index],
+                        }))
+                      }
+                      className="mt-1 text-xs text-blue-600 hover:underline"
                     >
-                      {project.organization ||
-                        project.company ||
-                        project.client}
-                    </p>
+                      {expandedDescriptions[index] ? "Show less" : "Show more"}
+                    </button>
                   )}
-                  {(project.duration || project.timeline) && (
-                    <p className="text-xs" style={{ color: "#6A0DAD" }}>
-                      {project.duration || project.timeline}
-                    </p>
-                  )}
-                  {project.description && (
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {project.description}
-                    </p>
-                  )}
+
+                  {/* Tech Stack */}
                   {extractTech(project).length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {extractTech(project).map((techItem, techIdx) => (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {extractTech(project).map((tech, i) => (
                         <span
-                          key={techIdx}
-                          className="px-2 py-1 rounded bg-purple-50 text-purple-700 text-xs font-medium"
+                          key={i}
+                          className="px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 text-xs border border-purple-100"
                         >
-                          {techItem}
+                          {tech}
                         </span>
                       ))}
                     </div>
                   )}
-                  {project.link && (
+                </div>
+              )}
+
+              <div className="flex justify-end items-center gap-2 pt-4 mt-2 border-t border-gray-100 flex-wrap">
+                {project.link && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  >
                     <a
                       href={project.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
                     >
-                      View Project
+                      <Link className="w-4 h-4 mr-1" /> Demo
                     </a>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => startEditing(project, index)}
-                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                  >
-                    <Edit3 className="w-4 h-4 mr-1" />
-                    Edit
                   </Button>
+                )}
+                {(project.github_url || project.github_link || project.github) && (
                   <Button
-                    variant={project.enabled === false ? "outline" : "default"}
+                    asChild
+                    variant="outline"
                     size="sm"
-                    onClick={() => toggleProject(index)}
-                    className={
-                      project.enabled === false
-                        ? "text-gray-500 border-gray-400"
-                        : "bg-emerald-500 text-white"
-                    }
+                    className="text-gray-700 border-gray-300 hover:bg-gray-100"
                   >
-                    {project.enabled === undefined || project.enabled
-                      ? "Disable"
-                      : "Enable"}
+                    <a
+                      href={project.github_url || project.github_link || project.github}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Github className="w-4 h-4 mr-1" /> GitHub
+                    </a>
                   </Button>
+                )}
+                {project.certificate_url && (
                   <Button
-                    variant="destructive"
+                    asChild
+                    variant="outline"
                     size="sm"
-                    onClick={() => deleteProject(index)}
+                    className="text-green-600 border-green-200 hover:bg-green-50"
                   >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Delete
+                    <a
+                      href={project.certificate_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <FileText className="w-4 h-4 mr-1" /> Certificate
+                    </a>
                   </Button>
-                </div>
+                )}
+                {project.video_url && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    <a
+                      href={project.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Video className="w-4 h-4 mr-1" /> Video
+                    </a>
+                  </Button>
+                )}
+                {project.ppt_url && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                  >
+                    <a
+                      href={project.ppt_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Presentation className="w-4 h-4 mr-1" /> PPT
+                    </a>
+                  </Button>
+                )}
               </div>
             </div>
           ))}
 
-          {isAdding ? (
-            <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="project-title">Project Title *</Label>
-                  <Input
-                    id="project-title"
-                    value={formData.title}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        title: e.target.value,
-                      }))
-                    }
-                    placeholder="e.g., Smart Hiring Platform"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="project-organization">
-                    Organization / Client
-                  </Label>
-                  <Input
-                    id="project-organization"
-                    value={formData.organization}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        organization: e.target.value,
-                      }))
-                    }
-                    placeholder="e.g., Rareminds"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="project-duration">Duration / Timeline</Label>
-                  <Input
-                    id="project-duration"
-                    value={formData.duration}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        duration: e.target.value,
-                      }))
-                    }
-                    placeholder="e.g., Jan 2024 - Mar 2024"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="project-status">Status</Label>
-                  <Input
-                    id="project-status"
-                    value={formData.status}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        status: e.target.value,
-                      }))
-                    }
-                    placeholder="e.g., Completed"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="project-description">Description</Label>
-                <Textarea
-                  id="project-description"
-                  value={formData.description}
+          {/* Add Form */}
+          {!isAdding ? (
+            <Button
+              onClick={() => setIsAdding(true)}
+              variant="outline"
+              className="w-full border-dashed border-gray-300 text-gray-600 hover:bg-gray-50"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add New Project
+            </Button>
+          ) : (
+            <div className="p-5 border border-gray-200 rounded-xl bg-gray-50 space-y-4">
+              {/* Basic Info */}
+              <div className="space-y-2">
+                <Label htmlFor="project-title">Project Title *</Label>
+                <Input
+                  id="project-title"
+                  value={formData.title}
                   onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
+                    setFormData((p) => ({ ...p, title: e.target.value }))
                   }
-                  placeholder="Describe the project, your role, outcomes..."
+                  placeholder="e.g., Smart Hiring Platform"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="project-organization">Organization / Client</Label>
+                <Input
+                  id="project-organization"
+                  value={formData.organization}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, organization: e.target.value }))
+                  }
+                  placeholder="e.g., Acme Corp"
                 />
               </div>
 
+              {/* Timeline Section */}
+              <div className="space-y-2">
+                <Label className="font-medium text-gray-800">Timeline</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                  {/* Start Month */}
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="project-start"
+                      className="text-sm text-gray-600"
+                    >
+                      Start Date
+                    </Label>
+                    <Input
+                      type="date"
+                      id="project-start"
+                      value={formData.start_date}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          start_date: e.target.value,
+                        }))
+                      }
+                      className="border-gray-300 text-gray-700"
+                    />
+                  </div>
+
+                  {/* End Month */}
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="project-end"
+                      className="text-sm text-gray-600"
+                    >
+                      End Date
+                    </Label>
+                    <Input
+                      type="date"
+                      id="project-end"
+                      value={formData.end_date}
+                      onChange={(e) =>
+                        setFormData((p) => ({ ...p, end_date: e.target.value }))
+                      }
+                      className="border-gray-300 text-gray-700"
+                    />
+                  </div>
+                </div>
+
+                {/* Display computed duration */}
+                {formData.duration && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Duration:{" "}
+                    <span className="font-medium text-gray-700">
+                      {formData.duration}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              {/* Status Dropdown */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="project-status"
+                  className="font-medium text-gray-800"
+                >
+                  Project Status
+                </Label>
+                <select
+                  id="project-status"
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, status: e.target.value }))
+                  }
+                  className="w-full border border-gray-300 rounded-md p-2 text-sm text-gray-700 focus:ring-2 focus:ring-blue-400 focus:outline-none bg-white"
+                >
+                  <option value="">Select status...</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+
+              <div className="gap-4 space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, description: e.target.value }))
+                  }
+                  placeholder="Describe your project..."
+                />
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="project-tech">
-                    Tech Stack (comma separated)
-                  </Label>
+                <div className="space-y-2">
+                  <Label>Tech Stack (comma separated)</Label>
                   <Input
-                    id="project-tech"
                     value={formData.techInput}
                     onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        techInput: e.target.value,
-                      }))
+                      setFormData((p) => ({ ...p, techInput: e.target.value }))
                     }
                     placeholder="React, Node.js, PostgreSQL"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="project-link">Project Link</Label>
+                <div className="space-y-2">
+                  <Label>Demo Link</Label>
                   <Input
-                    id="project-link"
                     value={formData.link}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, link: e.target.value }))
+                      setFormData((p) => ({ ...p, link: e.target.value }))
                     }
                     placeholder="https://"
                   />
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label>GitHub Link (optional)</Label>
+                <Input
+                  value={formData.githubLink}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, githubLink: e.target.value }))
+                  }
+                  placeholder="https://github.com/..."
+                />
+              </div>
 
-              <div className="flex gap-2">
-                <Button
-                  onClick={saveProject}
-                  className="bg-blue-400 hover:bg-blue-500 text-white"
-                >
-                  {editingIndex !== null ? "Update Project" : "Add Project"}
-                </Button>
+              {/* ---- Evidence Section (YOUR UI KEPT EXACTLY AS IS) ---- */}
+              <div className="space-y-8">
+                {/* Header */}
+                <div className="flex items-center gap-2 pt-4">
+                  <FileText className="w-5 h-5 text-gray-700" />
+                  <Label className="text-base font-semibold text-gray-800">
+                    Project Evidence
+                    <span className="text-gray-500 font-normal text-sm ml-1">
+                      (Optional)
+                    </span>
+                  </Label>
+                </div>
+
+                {/* Evidence Rows */}
+                <div className="flex flex-col gap-6">
+                  {/* === CERTIFICATE === */}
+                  <div className="border border-gray-200 rounded-xl p-5 bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      <Label className="text-sm font-medium text-gray-800">
+                        Certificate
+                      </Label>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      {formData.certificate ? (
+                        <motion.div
+                          key="file"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="flex flex-col sm:flex-row items-start sm:items-center justify-between border border-blue-200 bg-blue-50 rounded-lg px-4 py-3 gap-3"
+                        >
+                          <div
+                            className="flex items-center gap-2 text-sm text-blue-700 max-w-full overflow-hidden"
+                            title={formData.certificate.name}
+                          >
+                            <FileText className="w-4 h-4 flex-shrink-0" />
+                            <span className="truncate max-w-[220px] sm:max-w-[300px] md:max-w-[400px]">
+                              {formData.certificate.name}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700 self-end sm:self-center"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                certificate: null,
+                              }))
+                            }
+                          >
+                            <X className="w-4 h-4" /> Remove
+                          </Button>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="upload"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="flex flex-col md:flex-row items-center gap-3"
+                        >
+                          <label
+                            htmlFor="project-certificate"
+                            className="flex items-center justify-center w-full md:w-1/2 border border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-600 cursor-pointer hover:border-blue-400 transition"
+                          >
+                            <Upload className="w-4 h-4 mr-2 text-blue-600" />
+                            Upload file
+                            <input
+                              id="project-certificate"
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              className="hidden"
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  certificate: e.target.files?.[0] || null,
+                                  certificateLink: "",
+                                }))
+                              }
+                            />
+                          </label>
+
+                          <span className="text-xs text-gray-400 text-center md:w-auto w-full">
+                            or
+                          </span>
+
+                          <div className="relative w-full md:w-1/2">
+                            <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                            <Input
+                              id="project-certificate-link"
+                              type="url"
+                              placeholder="Paste certificate link..."
+                              value={formData.certificateLink}
+                              className="pl-8 text-sm border-gray-300 focus:ring-1 focus:ring-blue-300"
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  certificateLink: e.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* === VIDEO === */}
+                  <div className="border border-gray-200 rounded-xl p-5 bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Video className="w-4 h-4 text-blue-600" />
+                      <Label className="text-sm font-medium text-gray-800">
+                        Video
+                      </Label>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      {formData.video ? (
+                        <motion.div
+                          key="file"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="flex flex-col sm:flex-row items-start sm:items-center justify-between border border-blue-200 bg-blue-50 rounded-lg px-4 py-3 gap-3"
+                        >
+                          <div
+                            className="flex items-center gap-2 text-sm text-blue-700 max-w-full overflow-hidden"
+                            title={formData.video.name}
+                          >
+                            <Video className="w-4 h-4 flex-shrink-0" />
+                            <span className="truncate max-w-[220px] sm:max-w-[300px] md:max-w-[400px]">
+                              {formData.video.name}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700 self-end sm:self-center"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                video: null,
+                              }))
+                            }
+                          >
+                            <X className="w-4 h-4" /> Remove
+                          </Button>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="upload"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="flex flex-col md:flex-row items-center gap-3"
+                        >
+                          <label
+                            htmlFor="project-video"
+                            className="flex items-center justify-center w-full md:w-1/2 border border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-600 cursor-pointer hover:border-blue-400 transition"
+                          >
+                            <Upload className="w-4 h-4 mr-2 text-blue-600" />
+                            Upload video
+                            <input
+                              id="project-video"
+                              type="file"
+                              accept=".mp4,.avi,.mov,.wmv"
+                              className="hidden"
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  video: e.target.files?.[0] || null,
+                                  videoLink: "",
+                                }))
+                              }
+                            />
+                          </label>
+
+                          <span className="text-xs text-gray-400 text-center md:w-auto w-full">
+                            or
+                          </span>
+
+                          <div className="relative w-full md:w-1/2">
+                            <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                            <Input
+                              id="project-video-link"
+                              type="url"
+                              placeholder="Paste video link (YouTube, Drive...)"
+                              value={formData.videoLink}
+                              className="pl-8 text-sm border-gray-300 focus:ring-1 focus:ring-blue-300"
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  videoLink: e.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* === PRESENTATION === */}
+                  <div className="border border-gray-200 rounded-xl p-5 bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Presentation className="w-4 h-4 text-blue-600" />
+                      <Label className="text-sm font-medium text-gray-800">
+                        Presentation (PPT)
+                      </Label>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      {formData.ppt ? (
+                        <motion.div
+                          key="file"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="flex flex-col sm:flex-row items-start sm:items-center justify-between border border-blue-200 bg-blue-50 rounded-lg px-4 py-3 gap-3"
+                        >
+                          <div
+                            className="flex items-center gap-2 text-sm text-blue-700 max-w-full overflow-hidden"
+                            title={formData.ppt.name}
+                          >
+                            <Presentation className="w-4 h-4 flex-shrink-0" />
+                            <span className="truncate max-w-[220px] sm:max-w-[300px] md:max-w-[400px]">
+                              {formData.ppt.name}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700 self-end sm:self-center"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                ppt: null,
+                              }))
+                            }
+                          >
+                            <X className="w-4 h-4" /> Remove
+                          </Button>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="upload"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="flex flex-col md:flex-row items-center gap-3"
+                        >
+                          <label
+                            htmlFor="project-ppt"
+                            className="flex items-center justify-center w-full md:w-1/2 border border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-600 cursor-pointer hover:border-blue-400 transition"
+                          >
+                            <Upload className="w-4 h-4 mr-2 text-blue-600" />
+                            Upload presentation
+                            <input
+                              id="project-ppt"
+                              type="file"
+                              accept=".ppt,.pptx,.pdf"
+                              className="hidden"
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  ppt: e.target.files?.[0] || null,
+                                  pptLink: "",
+                                }))
+                              }
+                            />
+                          </label>
+
+                          <span className="text-xs text-gray-400 text-center md:w-auto w-full">
+                            or
+                          </span>
+
+                          <div className="relative w-full md:w-1/2">
+                            <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                            <Input
+                              id="project-ppt-link"
+                              type="url"
+                              placeholder="Paste presentation link..."
+                              value={formData.pptLink}
+                              className="pl-8 text-sm border-gray-300 focus:ring-1 focus:ring-blue-300"
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  pptLink: e.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -2016,33 +2532,24 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
                 >
                   Cancel
                 </Button>
+                <Button
+                  onClick={saveProject}
+                  className="bg-blue-500 hover:bg-blue-600 text-white"
+                >
+                  {editingIndex !== null ? "Update Project" : "Add Project"}
+                </Button>
               </div>
             </div>
-          ) : (
-            <Button
-              onClick={() => setIsAdding(true)}
-              variant="outline"
-              className="w-full border-dashed"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add New Project
-            </Button>
           )}
 
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                onClose();
-                setIsAdding(false);
-                resetForm();
-              }}
-            >
-              Cancel
+          {/* Save All */}
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+            <Button variant="outline" onClick={onClose}>
+              Close
             </Button>
             <Button
               onClick={handleSubmit}
-              className="bg-blue-400 hover:bg-blue-500"
+              className="bg-blue-500 hover:bg-blue-600 text-white"
             >
               Save All Changes
             </Button>
@@ -2053,12 +2560,10 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
   );
 };
 
-export const CertificatesEditModal = ({ isOpen, onClose, data, onSave, studentId, onRefresh }) => {
+export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
   const [certificates, setCertificates] = useState(data || []);
   const [isAdding, setIsAdding] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
-  const [uploadedFile, setUploadedFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     issuer: "",
@@ -2067,7 +2572,9 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave, studentId
     description: "",
     credentialId: "",
     link: "",
-    upload: "",
+    document: null,
+    documentLink: "",
+    document_url: "",
   });
   const { toast } = useToast();
 
@@ -2084,54 +2591,14 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave, studentId
       description: "",
       credentialId: "",
       link: "",
-      upload: "",
+      document: null,
+      documentLink: "",
+      document_url: "",
     });
-    setUploadedFile(null);
     setEditingIndex(null);
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type (PDF, images)
-      const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-      if (!validTypes.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: "Please upload a PDF or image file (JPG, PNG).",
-          variant: "destructive",
-        });
-        return;
-      }
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: "Please upload a file smaller than 5MB.",
-          variant: "destructive",
-        });
-        return;
-      }
-      setUploadedFile(file);
-    }
-  };
-
   const startEditing = (certificate, index) => {
-    // Handle date formatting for the date input
-    let dateValue = certificate.issued_on || certificate.issuedOn || certificate.year || certificate.date || certificate.issueDate || "";
-    
-    // If it's already in YYYY-MM-DD format, use it
-    // Otherwise, try to parse and format it
-    if (dateValue && !dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const parsedDate = new Date(dateValue);
-      if (!isNaN(parsedDate.getTime())) {
-        dateValue = parsedDate.toISOString().split('T')[0];
-      } else {
-        // Can't parse the date, leave empty for user to re-enter
-        dateValue = "";
-      }
-    }
-
     setFormData({
       title:
         certificate.title || certificate.name || certificate.certificate || "",
@@ -2140,7 +2607,12 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave, studentId
         certificate.organization ||
         certificate.institution ||
         "",
-      issuedOn: dateValue,
+      issuedOn:
+        certificate.year ||
+        certificate.date ||
+        certificate.issueDate ||
+        certificate.issuedOn ||
+        "",
       level:
         certificate.level || certificate.category || certificate.type || "",
       description: certificate.description || "",
@@ -2152,13 +2624,23 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave, studentId
         certificate.credentialUrl ||
         certificate.viewUrl ||
         "",
-      upload: certificate.upload || "",
+      document: null,
+      documentLink:
+        certificate.documentLink ||
+        certificate.document_url ||
+        certificate.documentUrl ||
+        "",
+      document_url:
+        certificate.document_url ||
+        certificate.documentUrl ||
+        certificate.documentLink ||
+        "",
     });
     setEditingIndex(index);
     setIsAdding(true);
   };
 
-  const saveCertificate = async () => {
+  const saveCertificate = () => {
     // 1️⃣ Validation
     if (!formData.title.trim()) {
       toast({
@@ -2179,164 +2661,108 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave, studentId
       return;
     }
 
-    if (!studentId) {
+    // 2️⃣ Clean up whitespace in all string fields
+    const formatted = Object.fromEntries(
+      Object.entries(formData).map(([key, value]) => [
+        key,
+        typeof value === "string" ? value.trim() : value,
+      ])
+    );
+
+    const documentUrlInput = formatted.documentLink || formatted.document_url || "";
+
+    // 3️⃣ Update existing certificate
+    if (editingIndex !== null) {
+      setCertificates((prev) =>
+        prev.map((cert, idx) => {
+          if (idx !== editingIndex) {
+            return cert;
+          }
+          const resolvedDocumentUrl = documentUrlInput;
+          return {
+            ...(cert || {}),
+            ...formatted,
+            document_url: resolvedDocumentUrl || null,
+            documentLink: resolvedDocumentUrl,
+            enabled: cert?.enabled === false ? false : true,
+
+            // 🔁 Re-verification reset logic:
+            verified: false,
+            verifiedAt: null,
+            processing: true,
+            status: "pending",
+
+            // ⏱ Update timestamp
+            updatedAt: new Date().toISOString(),
+          };
+        })
+      );
+
       toast({
-        title: "Error",
-        description: "Student ID is missing. Please try again.",
-        variant: "destructive",
+        title: "Certificate Updated",
+        description:
+          "Changes detected — verification will be reprocessed by the system.",
       });
-      return;
     }
 
-    setUploading(true);
+    // 4️⃣ Add new certificate
+    else {
+      const resolvedDocumentUrl = documentUrlInput;
+      setCertificates((prev) => [
+        ...prev,
+        {
+          ...formatted,
+          document_url: resolvedDocumentUrl || null,
+          documentLink: resolvedDocumentUrl,
+          id: Date.now(),
+          enabled: true,
+          status: "pending",
+          verified: false,
+          verifiedAt: null,
+          processing: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ]);
 
-    try {
-      // 2️⃣ Upload file if provided
-      let uploadUrl = formData.upload || null;
-      if (uploadedFile) {
-        const uploadResult = await uploadCertificateFile(uploadedFile, studentId);
-        if (uploadResult.success) {
-          uploadUrl = uploadResult.url;
-        } else {
-          toast({
-            title: "Upload failed",
-            description: uploadResult.error || "Failed to upload file.",
-            variant: "destructive",
-          });
-          setUploading(false);
-          return;
-        }
-      }
-
-      // 3️⃣ Prepare certificate data
-      const certificateData = {
-        title: formData.title.trim(),
-        issuer: formData.issuer.trim(),
-        level: formData.level.trim() || null,
-        credential_id: formData.credentialId.trim() || null,
-        link: formData.link.trim() || null,
-        issued_on: formData.issuedOn.trim() || null,
-        description: formData.description.trim() || null,
-        upload: uploadUrl,
-      };
-
-      // Log only in development
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📋 Saving certificate:', certificateData.title);
-      }
-
-      // 4️⃣ Update existing or create new certificate
-      if (editingIndex !== null) {
-        const certToUpdate = certificates[editingIndex];
-        const result = await updateCertificateService(certToUpdate.id, certificateData);
-
-        if (result.success) {
-          // Update local state
-          setCertificates((prev) =>
-            prev.map((cert, idx) =>
-              idx === editingIndex ? result.data : cert
-            )
-          );
-
-          // Refresh parent to show updated data
-          if (onRefresh) {
-            await onRefresh();
-          }
-
-          toast({
-            title: "Certificate Updated",
-            description: "Your certificate has been updated successfully.",
-          });
-        } else {
-          toast({
-            title: "Update failed",
-            description: result.error || "Failed to update certificate.",
-            variant: "destructive",
-          });
-        }
-      } else {
-        // Create new certificate
-        const result = await createCertificate({
-          ...certificateData,
-          student_id: studentId,
-        });
-
-        if (result.success) {
-          // Add to local state
-          setCertificates((prev) => [...prev, result.data]);
-
-          // Refresh parent to show new certificate
-          if (onRefresh) {
-            await onRefresh();
-          }
-
-          toast({
-            title: "Certificate Added",
-            description: "Your certificate has been added successfully.",
-          });
-        } else {
-          toast({
-            title: "Failed to add certificate",
-            description: result.error || "An error occurred.",
-            variant: "destructive",
-          });
-        }
-      }
-
-      // 5️⃣ Reset UI state
-      setIsAdding(false);
-      resetForm();
-    } catch (err) {
-      console.error("Error saving certificate:", err);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred.",
-        variant: "destructive",
+        title: "Certificate Added",
+        description:
+          "Your certificate details are being processed for verification.",
       });
-    } finally {
-      setUploading(false);
     }
+
+    // 5️⃣ Reset UI state
+    setIsAdding(false);
+    resetForm();
   };
 
-  const deleteCertificate = async (index) => {
-    const certToDelete = certificates[index];
-    if (!certToDelete?.id) return;
+  const toggleCertificate = (index) => {
+    setCertificates((prev) =>
+      prev.map((cert, idx) =>
+        idx === index
+          ? { ...cert, enabled: cert.enabled === false ? true : false }
+          : cert
+      )
+    );
+  };
 
+  const deleteCertificate = (index) => {
+    setCertificates((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleSubmit = async () => {
     try {
-      const result = await deleteCertificateService(certToDelete.id);
-      
-      if (result.success) {
-        setCertificates((prev) => prev.filter((_, idx) => idx !== index));
-        
-        // Refresh parent to update the list
-        if (onRefresh) {
-          await onRefresh();
-        }
-        
-        toast({
-          title: "Certificate Deleted",
-          description: "The certificate has been removed successfully.",
-        });
-      } else {
-        toast({
-          title: "Delete failed",
-          description: result.error || "Failed to delete certificate.",
-          variant: "destructive",
-        });
-      }
-    } catch (err) {
-      console.error("Error deleting certificate:", err);
+      await onSave(certificates);
+      onClose();
+    } catch (error) {
+      console.error('Error saving certificates:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred.",
+        description: "Failed to save certificate details. Please try again.",
         variant: "destructive",
       });
     }
-  };
-
-  const handleSubmit = () => {
-    onSave(certificates);
-    onClose();
   };
 
   return (
@@ -2348,209 +2774,151 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave, studentId
         resetForm();
       }}
     >
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="border-b pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                <Award className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-semibold text-gray-900">
-                  My Certificates
-                </DialogTitle>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {certificates.length} {certificates.length === 1 ? 'certificate' : 'certificates'}
-                </p>
-              </div>
-            </div>
-            {!studentId && (
-              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
-                <AlertCircle className="w-3 h-3 mr-1" />
-                Loading profile...
-              </Badge>
-            )}
-          </div>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Edit3 className="w-5 h-5" />
+            Manage Certificates
+          </DialogTitle>
         </DialogHeader>
-        
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {certificates.length === 0 && !isAdding ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4">
-              <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                <Award className="w-10 h-10 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                No certificates yet
-              </h3>
-              <p className="text-sm text-gray-500 text-center max-w-sm mb-6">
-                Showcase your achievements by adding certificates from courses, training programs, or professional certifications.
-              </p>
-              <Button
-                onClick={() => setIsAdding(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Your First Certificate
-              </Button>
-            </div>
-          ) : null}
-
+        <div className="space-y-4">
           {certificates.map((cert, index) => (
             <div
               key={cert.id || index}
-              className="group relative bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-blue-300 transition-all duration-200"
+              className={`p-4 border rounded-lg ${
+                cert.enabled === false ? "opacity-50" : "opacity-100"
+              }`}
             >
-              <div className="flex gap-4">
-                {/* Icon */}
-                <div className="flex-shrink-0">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
-                    <Award className="w-7 h-7 text-white" />
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  {/* Header with title and status */}
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-gray-900 text-lg mb-1 line-clamp-2">
-                        {cert.title || cert.name || "Certificate"}
-                      </h4>
-                      {(cert.issuer || cert.organization || cert.institution) && (
-                        <p className="text-sm text-blue-600 font-medium">
-                          {cert.issuer || cert.organization || cert.institution}
-                        </p>
-                      )}
-                    </div>
-                    
-                    {/* Status badge */}
-                    <div className="flex items-center gap-2">
-                      {cert.approval_status && (
-                        <div>
-                          {cert.approval_status === 'approved' ? (
-                            <Badge className="bg-green-100 text-green-700 border-green-200 whitespace-nowrap">
-                              <Shield className="w-3 h-3 mr-1" />
-                              Verified
-                            </Badge>
-                          ) : cert.approval_status === 'pending' ? (
-                            <Badge className="bg-amber-100 text-amber-700 border-amber-200 whitespace-nowrap">
-                              <Clock className="w-3 h-3 mr-1" />
-                              Pending Review
-                            </Badge>
-                          ) : null}
-                        </div>
-                      )}
-                      
-                      {/* Action buttons - show on hover */}
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => startEditing(cert, index)}
-                          className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600"
-                          title="Edit certificate"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteCertificate(index)}
-                          className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
-                          title="Delete certificate"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Metadata row */}
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3">
-                    {(cert.issued_on || cert.year || cert.date || cert.issueDate || cert.issuedOn) && (
-                      <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span className="font-medium">
-                          {(() => {
-                            const dateStr = cert.issued_on || cert.year || cert.date || cert.issueDate || cert.issuedOn;
-                            const date = new Date(dateStr);
-                            if (!isNaN(date.getTime())) {
-                              return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-                            }
-                            return dateStr;
-                          })()}
-                        </span>
-                      </div>
-                    )}
-                    {cert.level && (
-                      <Badge className="bg-purple-50 text-purple-700 border-purple-200 font-medium">
-                        {cert.level}
+              <div className="flex justify-between items-start gap-3">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold" style={{ color: "#6A0DAD" }}>
+                      {cert.title || cert.name || "Certificate"}
+                    </h4>
+                    {cert.processing && (
+                      <Badge className="bg-orange-100 text-orange-700">
+                        <Clock className="w-3 h-3 mr-1" />
+                        Processing
                       </Badge>
                     )}
-                    {(cert.credential_id || cert.credentialId) && (
-                      <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                        <FileText className="w-4 h-4 text-gray-400" />
-                        <span className="font-mono text-xs">
-                          {cert.credential_id || cert.credentialId}
-                        </span>
-                      </div>
-                    )}
                   </div>
-
-                  {/* Description */}
+                  {(cert.issuer || cert.organization || cert.institution) && (
+                    <p
+                      className="text-sm font-medium"
+                      style={{ color: "#6A0DAD" }}
+                    >
+                      {cert.issuer || cert.organization || cert.institution}
+                    </p>
+                  )}
+                  {(cert.year ||
+                    cert.date ||
+                    cert.issueDate ||
+                    cert.issuedOn) && (
+                    <p className="text-xs" style={{ color: "#6A0DAD" }}>
+                      {cert.year ||
+                        cert.date ||
+                        cert.issueDate ||
+                        cert.issuedOn}
+                    </p>
+                  )}
                   {cert.description && (
-                    <p className="text-sm text-gray-600 leading-relaxed mb-3 line-clamp-2">
+                    <p className="text-sm text-gray-600 leading-relaxed">
                       {cert.description}
                     </p>
                   )}
-
-                  {/* Actions row */}
-                  {((cert.link || cert.url || cert.certificateUrl || cert.credentialUrl || cert.viewUrl) || cert.upload) && (
-                    <div className="flex items-center gap-2">
-                      {(cert.link || cert.url || cert.certificateUrl || cert.credentialUrl || cert.viewUrl) && (
-                        <a
-                          href={cert.link || cert.url || cert.certificateUrl || cert.credentialUrl || cert.viewUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+                  {cert.level && (
+                    <span className="inline-flex px-2 py-1 rounded bg-amber-50 text-amber-700 text-xs font-medium">
+                      {cert.level}
+                    </span>
+                  )}
+                  {cert.credentialId && (
+                    <p className="text-xs text-gray-500 font-medium">
+                      Credential ID: {cert.credentialId}
+                    </p>
+                  )}
+                  {(cert.link || cert.document_url) && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {cert.link && (
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
                         >
-                          <ExternalLink className="w-4 h-4" />
-                          View Certificate
-                        </a>
+                          <a
+                            href={cert.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center"
+                          >
+                            <LinkIcon className="w-4 h-4 mr-1" />
+                            View Credential
+                          </a>
+                        </Button>
                       )}
-                      {cert.upload && (
-                        <a
-                          href={cert.upload}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                      {cert.document_url && (
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="text-green-600 border-green-200 hover:bg-green-50"
                         >
-                          <Download className="w-4 h-4" />
-                          Download
-                        </a>
+                          <a
+                            href={cert.document_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center"
+                          >
+                            <FileText className="w-4 h-4 mr-1" />
+                            View Document
+                          </a>
+                        </Button>
                       )}
                     </div>
                   )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => startEditing(cert, index)}
+                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                  >
+                    <Edit3 className="w-4 h-4 mr-1" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant={cert.enabled === false ? "outline" : "default"}
+                    size="sm"
+                    onClick={() => toggleCertificate(index)}
+                    className={
+                      cert.enabled === false
+                        ? "text-gray-500 border-gray-400"
+                        : "bg-emerald-500 text-white"
+                    }
+                  >
+                    {cert.enabled === undefined || cert.enabled
+                      ? "Disable"
+                      : "Enable"}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => deleteCertificate(index)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
+                  </Button>
                 </div>
               </div>
             </div>
           ))}
 
           {isAdding ? (
-            <div className="bg-gradient-to-br from-blue-50/50 to-indigo-50/50 border-2 border-blue-200 rounded-xl p-6 space-y-6 animate-in fade-in-50 duration-300">
-              {/* Form title */}
-              <div className="flex items-center gap-2 mb-2">
-                <Award className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">
-                  {editingIndex !== null ? 'Edit Certificate' : 'Add New Certificate'}
-                </h3>
-              </div>
-
+            <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="certificate-title" className="text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1">
-                    Certificate Title <span className="text-red-500">*</span>
-                  </Label>
+                  <Label htmlFor="certificate-title">Certificate Title *</Label>
                   <Input
                     id="certificate-title"
                     value={formData.title}
@@ -2561,12 +2929,11 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave, studentId
                       }))
                     }
                     placeholder="e.g., AWS Certified Solutions Architect"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="certificate-issuer" className="text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1">
-                    Issuing Organization <span className="text-red-500">*</span>
+                  <Label htmlFor="certificate-issuer">
+                    Issuing Organization *
                   </Label>
                   <Input
                     id="certificate-issuer"
@@ -2578,16 +2945,12 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave, studentId
                       }))
                     }
                     placeholder="e.g., Amazon Web Services"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="certificate-issued" className="text-sm font-medium text-gray-700 mb-1.5">
-                    Issued Date (Optional)
-                  </Label>
+                  <Label htmlFor="certificate-issued">Issued On / Year</Label>
                   <Input
                     id="certificate-issued"
-                    type="date"
                     value={formData.issuedOn}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -2595,9 +2958,8 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave, studentId
                         issuedOn: e.target.value,
                       }))
                     }
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="e.g., Apr 2024"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Select the date when you received this certificate</p>
                 </div>
                 <div>
                   <Label htmlFor="certificate-level">Level / Category</Label>
@@ -2658,111 +3020,164 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave, studentId
                 </div>
               </div>
 
-              {/* File Upload Section */}
-              <div className="space-y-2">
-                <Label htmlFor="certificate-upload" className="text-sm font-medium text-gray-700">
-                  Upload Certificate Document (Optional)
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="certificate-upload"
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileChange}
-                    className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 pt-2">
+                  <FileText className="w-5 h-5 text-gray-700" />
+                  <Label className="text-base font-semibold text-gray-800">
+                    Certification Evidence
+                    <span className="text-gray-500 font-normal text-sm ml-1">
+                      (Optional)
+                    </span>
+                  </Label>
                 </div>
-                {uploadedFile && (
-                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg mt-2">
-                    <Check className="w-4 h-4 text-green-600" />
-                    <span className="text-sm text-green-700 font-medium">{uploadedFile.name}</span>
-                    <span className="text-xs text-green-600">({(uploadedFile.size / 1024).toFixed(2)} KB)</span>
+
+                <div className="border border-gray-200 rounded-xl p-5 bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="w-4 h-4 text-blue-600" />
+                    <Label className="text-sm font-medium text-gray-800">
+                      Certification Document
+                    </Label>
                   </div>
-                )}
-                {formData.upload && !uploadedFile && (
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg mt-2">
-                    <FileText className="w-4 h-4 text-gray-600" />
-                    <span className="text-sm text-gray-700">Current: {formData.upload.split('/').pop()}</span>
-                  </div>
-                )}
-                <div className="flex items-start gap-2 mt-2">
-                  <AlertCircle className="w-4 h-4 text-gray-400 mt-0.5" />
-                  <p className="text-xs text-gray-500">
-                    Accepted formats: PDF, JPG, PNG • Maximum size: 5MB
-                  </p>
+
+                  <AnimatePresence mode="wait">
+                    {formData.document ? (
+                      <motion.div
+                        key="file"
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between border border-blue-200 bg-blue-50 rounded-lg px-4 py-3 gap-3"
+                      >
+                        <div
+                          className="flex items-center gap-2 text-sm text-blue-700 max-w-full overflow-hidden"
+                          title={formData.document.name}
+                        >
+                          <FileText className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate max-w-[220px] sm:max-w-[300px] md:max-w-[400px]">
+                            {formData.document.name}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 hover:text-red-700 self-end sm:self-center"
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              document: null,
+                              documentLink: "",
+                              document_url: "",
+                            }))
+                          }
+                        >
+                          <X className="w-4 h-4" /> Remove
+                        </Button>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="upload"
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        className="flex flex-col md:flex-row items-center gap-3"
+                      >
+                        <label
+                          htmlFor="certificate-document"
+                          className="flex items-center justify-center w-full md:w-1/2 border border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-600 cursor-pointer hover:border-blue-400 transition"
+                        >
+                          <Upload className="w-4 h-4 mr-2 text-blue-600" />
+                          Upload file
+                          <input
+                            id="certificate-document"
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            className="hidden"
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                document: e.target.files?.[0] || null,
+                                documentLink: "",
+                                document_url: "",
+                              }))
+                            }
+                          />
+                        </label>
+
+                        <span className="text-xs text-gray-400 text-center md:w-auto w-full">
+                          or
+                        </span>
+
+                        <div className="relative w-full md:w-1/2">
+                          <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                          <Input
+                            id="certificate-document-link"
+                            type="url"
+                            placeholder="Paste document link..."
+                            value={formData.documentLink}
+                            className="pl-8 text-sm border-gray-300 focus:ring-1 focus:ring-blue-300"
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setFormData((prev) => ({
+                                ...prev,
+                                documentLink: value,
+                                document_url: value,
+                              }));
+                            }}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+              <div className="flex gap-2">
                 <Button
-                  type="button"
+                  onClick={saveCertificate}
+                  className="bg-blue-400 hover:bg-blue-500 text-white"
+                >
+                  {editingIndex !== null
+                    ? "Update Certificate"
+                    : "Add Certificate"}
+                </Button>
+                <Button
                   variant="outline"
                   onClick={() => {
                     setIsAdding(false);
                     resetForm();
                   }}
-                  disabled={uploading}
-                  className="px-6"
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="button"
-                  onClick={saveCertificate}
-                  disabled={uploading}
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 shadow-md hover:shadow-lg transition-all"
-                >
-                  {uploading ? (
-                    <>
-                      <Clock className="w-4 h-4 mr-2 animate-spin" />
-                      {uploadedFile ? "Uploading..." : "Saving..."}
-                    </>
-                  ) : (
-                    <>
-                      {editingIndex !== null ? (
-                        <>
-                          <Check className="w-4 h-4 mr-2" />
-                          Update Certificate
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Certificate
-                        </>
-                      )}
-                    </>
-                  )}
-                </Button>
               </div>
             </div>
-          ) : certificates.length > 0 ? (
+          ) : (
             <Button
               onClick={() => setIsAdding(true)}
-              className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-dashed border-blue-200 hover:border-blue-400 hover:from-blue-100 hover:to-indigo-100 py-6 rounded-xl transition-all duration-200 group shadow-sm hover:shadow-md"
+              variant="outline"
+              className="w-full border-dashed"
             >
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-500 group-hover:bg-blue-600 flex items-center justify-center transition-all duration-200 shadow-sm group-hover:scale-110">
-                  <Plus className="w-5 h-5 text-white" />
-                </div>
-                <span className="font-semibold text-base text-gray-700 group-hover:text-blue-700 transition-colors">Add Another Certificate</span>
-              </div>
+              <Plus className="w-4 h-4 mr-2" />
+              Add New Certificate
             </Button>
-          ) : null}
-        </div>
+          )}
 
-        {/* Footer */}
-        <div className="border-t border-gray-200 bg-white px-6 py-4">
-          <div className="flex items-center justify-end">
+          <div className="flex justify-end gap-2">
             <Button
+              variant="outline"
               onClick={() => {
                 onClose();
                 setIsAdding(false);
                 resetForm();
               }}
-              className="px-8 py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg transition-colors shadow-sm"
             >
-              Done
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              className="bg-blue-400 hover:bg-blue-500"
+            >
+              Save All Changes
             </Button>
           </div>
         </div>
@@ -2814,16 +3229,30 @@ export const SkillsEditModal = ({
     setNewSkill((prev) => ({ ...prev, level }));
   };
 
-  const handleSubmit = () => {
-    onSave(skills);
-    toast({
-      title: `${title} Updated`,
-      description: "Your skills are being processed for verification.",
-    });
-    onClose();
+  const handleSubmit = async () => {
+    try {
+      await onSave(skills);
+      toast({
+        title: `${title} Updated`,
+        description: "Your skills are being processed for verification.",
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error saving skills:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save skills. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const renderStars = (level, skillId, editable = false, isNewSkill = false) => {
+  const renderStars = (
+    level,
+    skillId,
+    editable = false,
+    isNewSkill = false
+  ) => {
     return [...Array(5)].map((_, i) => (
       <button
         key={i}
@@ -3008,7 +3437,6 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
   // Initialize form data when modal opens
   useEffect(() => {
     if (data && isOpen) {
-
       // Extract contact number from formatted phone string if needed
       const extractNumber = (formattedPhone) => {
         if (!formattedPhone) return "";
@@ -3051,12 +3479,17 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
       };
 
       const getGithubLink = () => data.github_link || data.githubLink || "";
-      const getPortfolioLink = () => data.portfolio_link || data.portfolioLink || "";
-      const getLinkedinLink = () => data.linkedin_link || data.linkedinLink || "";
+      const getPortfolioLink = () =>
+        data.portfolio_link || data.portfolioLink || "";
+      const getLinkedinLink = () =>
+        data.linkedin_link || data.linkedinLink || "";
       const getTwitterLink = () => data.twitter_link || data.twitterLink || "";
-      const getInstagramLink = () => data.instagram_link || data.instagramLink || "";
-      const getFacebookLink = () => data.facebook_link || data.facebookLink || "";
-      const getOtherSocialLinks = () => data.other_social_links || data.otherSocialLinks || [];
+      const getInstagramLink = () =>
+        data.instagram_link || data.instagramLink || "";
+      const getFacebookLink = () =>
+        data.facebook_link || data.facebookLink || "";
+      const getOtherSocialLinks = () =>
+        data.other_social_links || data.otherSocialLinks || [];
 
       const formValues = {
         name: getName(),

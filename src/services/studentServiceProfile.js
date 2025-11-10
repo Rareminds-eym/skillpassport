@@ -62,6 +62,18 @@ What this tests:
 
 import { supabase } from '../utils/api';
 
+const generateUuid = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  const template = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';
+  return template.replace(/[xy]/g, (char) => {
+    const random = (Math.random() * 16) | 0;
+    const value = char === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+};
+
 /**
  * Safely parse JSON string that may contain NaN values
  * @param {string} jsonString - JSON string with potential NaN values
@@ -71,10 +83,10 @@ function safeJSONParse(jsonString) {
   if (typeof jsonString !== 'string') {
     return jsonString; // Already an object
   }
-  
+
   // Replace NaN with null before parsing (NaN is not valid JSON)
   const sanitized = jsonString.replace(/:\s*NaN\s*([,}])/g, ': null$1');
-  
+
   try {
     return JSON.parse(sanitized);
   } catch (error) {
@@ -91,7 +103,7 @@ function safeJSONParse(jsonString) {
  */
 export const getStudentByEmail = async (email) => {
   try {
-    
+
     // STRATEGY 1: Try students.email column first (if it exists and is populated)
     let { data, error } = await supabase
       .from('students')
@@ -108,7 +120,28 @@ export const getStudentByEmail = async (email) => {
           skills,
           createdAt,
           updatedAt
-        )
+        ),
+        projects (
+          id,
+          title,
+          description,
+          status,
+          start_date,
+          end_date,
+          duration,
+          organization,
+          tech_stack,
+          demo_link,
+          github_link,
+          enabled,
+          approval_status,
+          created_at,
+          updated_at,
+          certificate_url,
+          video_url,
+          ppt_url
+        ),
+        certificates (*)
       `)
       .eq('email', email)
       .maybeSingle();
@@ -131,11 +164,32 @@ export const getStudentByEmail = async (email) => {
             skills,
             createdAt,
             updatedAt
-          )
+          ),
+          projects (
+            id,
+            title,
+            description,
+            status,
+            start_date,
+            end_date,
+            duration,
+            organization,
+            tech_stack,
+            demo_link,
+            github_link,
+            enabled,
+            approval_status,
+            created_at,
+            updated_at,
+            certificate_url,
+            video_url,
+            ppt_url
+          ),
+          certificates (*)
         `)
         .eq('profile->>email', email)
         .maybeSingle();
-      
+
       data = result.data;
       error = result.error;
     }
@@ -162,7 +216,28 @@ export const getStudentByEmail = async (email) => {
             skills,
             createdAt,
             updatedAt
-          )
+          ),
+          projects (
+            id,
+            title,
+            description,
+            status,
+            start_date,
+            end_date,
+            duration,
+            organization,
+            tech_stack,
+            demo_link,
+            github_link,
+            enabled,
+            approval_status,
+            created_at,
+            updated_at,
+            certificate_url,
+            video_url,
+            ppt_url
+          ),
+          certificates (*)
         `);
 
       if (allError) {
@@ -186,58 +261,112 @@ export const getStudentByEmail = async (email) => {
 
     // Parse the profile JSONB
     const profileData = safeJSONParse(data.profile);
-    
+
     // Transform profile data to consistent format
     const transformedProfile = transformProfileData(profileData, email);
 
     // Extract skill_passports data (if exists)
     const passport = data.skill_passports || {};
 
+    const tableCertificates = Array.isArray(data?.certificates) ? data.certificates : [];
+    const formattedTableCertificates = tableCertificates.map((certificate) => {
+      const issuedOnValue = certificate?.issued_on || certificate?.issuedOn || null;
+      const issuedOnFormatted = issuedOnValue ? new Date(issuedOnValue).toISOString().split("T")[0] : "";
+      const approvalSource = certificate?.approval_status || certificate?.status || "pending";
+      const approvalStatus = typeof approvalSource === "string" ? approvalSource.toLowerCase() : "pending";
+      const statusSource = certificate?.status || (certificate?.enabled === false ? "disabled" : "active");
+      const statusValue = typeof statusSource === "string" ? statusSource.toLowerCase() : "active";
+      const documentUrlValue = certificate?.document_url || null;
+      return {
+        id: certificate?.id,
+        title: certificate?.title || "",
+        issuer: certificate?.issuer || "",
+        issuedOn: issuedOnFormatted,
+        level: certificate?.level || "",
+        description: certificate?.description || "",
+        credentialId: certificate?.credential_id || "",
+        link: certificate?.link || "",
+        status: statusValue,
+        approval_status: approvalStatus,
+        verified: approvalStatus === "approved",
+        processing: approvalStatus !== "approved",
+        enabled: statusValue !== "disabled",
+        document_url: documentUrlValue,
+        documentLink: documentUrlValue || "",
+        createdAt: certificate?.created_at,
+        updatedAt: certificate?.updated_at,
+      };
+    });
+
+    const passportCertificates = Array.isArray(passport.certificates)
+      ? passport.certificates.map((certificate) => ({
+          ...certificate,
+          verifiedAt:
+            certificate?.verified === true || certificate?.status === 'verified'
+              ? certificate?.verifiedAt || certificate?.updatedAt || certificate?.createdAt
+              : null,
+        }))
+      : [];
+
+    const mergedCertificates = formattedTableCertificates.length > 0 ? formattedTableCertificates : passportCertificates;
+
     // Merge: database fields + profile fields + passport fields
     const mergedData = {
       id: data.id,
       universityId: data.universityId,
       email: data.email || transformedProfile.email,
-      approval_status: data.approval_status || 'pending',
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
-      
+
       // Profile data (from students.profile JSONB)
       profile: transformedProfile,
-      
+
       // Legacy flattened access for backward compatibility
       ...transformedProfile,
-      
-      // NOW THESE COME FROM skill_passports table (NOT from profile):
-      projects: Array.isArray(passport.projects)
-        ? passport.projects
-          .map((project) => ({
+
+      // NOW THESE COME FROM projects table:
+      projects: Array.isArray(data.projects)
+        ? data.projects.map((project) => ({
             ...project,
+            // Map database column names to UI expected names
+            id: project.id,
+            title: project.title,
+            description: project.description,
+            status: project.status,
+            start_date: project.start_date,
+            end_date: project.end_date,
+            duration: project.duration,
+            tech: project.tech_stack, // UI expects 'tech' array
+            tech_stack: project.tech_stack,
+            link: project.demo_link, // UI expects 'link' for demo link
+            demo_link: project.demo_link,
+            organization: project.organization,
+            github: project.github_link, // UI expects 'github'
+            github_link: project.github_link,
+            github_url: project.github_link,
+            certificate_url: project.certificate_url,
+            video_url: project.video_url,
+            ppt_url: project.ppt_url,
+            approval_status: project.approval_status,
+            created_at: project.created_at,
+            updated_at: project.updated_at,
+            enabled: project.enabled ?? true, // Default to enabled for UI
             verifiedAt:
-              project?.verified === true || project?.status === 'verified'
-                ? project?.verifiedAt || project?.updatedAt || project?.createdAt
+              project?.approval_status === 'approved' || project?.status === 'verified'
+                ? project?.updated_at || project?.created_at
                 : null
           }))
         : [],
-      certificates: Array.isArray(passport.certificates)
-        ? passport.certificates
-          .map((certificate) => ({
-            ...certificate,
-            verifiedAt:
-              certificate?.verified === true || certificate?.status === 'verified'
-                ? certificate?.verifiedAt || certificate?.updatedAt || certificate?.createdAt
-                : null
-          }))
-        : [],
+      certificates: mergedCertificates,
       assessments: passport.assessments || [],
-      
+
       // Passport metadata:
       passportId: passport.id,
       passportStatus: passport.status,
       aiVerification: passport.aiVerification,
       nsqfLevel: passport.nsqfLevel,
       passportSkills: passport.skills || [],
-      
+
       // Raw data for debugging
       rawData: data
     };
@@ -256,19 +385,19 @@ export const getStudentByEmail = async (email) => {
  * Output: Structured data matching Dashboard expectations
  */
 function transformProfileData(profile, email) {
-  
+
   if (!profile) {
     return null;
   }
 
   // Calculate age from date_of_birth if available
   const age = profile.age || calculateAge(profile.date_of_birth);
-  
+
   // Generate passport ID from registration number
-  const passportId = profile.registration_number 
-    ? `SP-${profile.registration_number}` 
+  const passportId = profile.registration_number
+    ? `SP-${profile.registration_number}`
     : 'SP-0000';
-  
+
 
   // Format phone number
   const phone = formatPhoneNumber(profile.contact_number, profile.contact_number_dial_code);
@@ -303,7 +432,7 @@ function transformProfileData(profile, email) {
       facebook_link: profile.facebook_link || '',
       other_social_links: profile.other_social_links || [],
     },
-    
+
     // Education - Build from imported data OR use existing from profile
     education: profile.education || [
       {
@@ -316,7 +445,7 @@ function transformProfileData(profile, email) {
         status: 'ongoing'
       }
     ],
-    
+
     // Training - Build from course and skill OR use existing from profile
     training: profile.training || [
       {
@@ -328,10 +457,10 @@ function transformProfileData(profile, email) {
         trainer: profile.trainer_name || ''
       }
     ],
-    
+
     // Experience - Use existing from profile or empty
     experience: profile.experience || [],
-    
+
     // Technical skills - Use existing or build from skill field
     technicalSkills: profile.technicalSkills || (profile.skill ? [
       {
@@ -343,7 +472,7 @@ function transformProfileData(profile, email) {
         category: profile.course || 'Training'
       }
     ] : []),
-    
+
     // Soft skills - Use existing or default set
     softSkills: profile.softSkills || [
       {
@@ -376,7 +505,7 @@ function transformProfileData(profile, email) {
         : Array.isArray(profile.profile?.profile?.certificates)
           ? profile.profile.profile.certificates
           : [],
-    
+
     // Recent updates
     recentUpdates: [
       {
@@ -386,7 +515,7 @@ function transformProfileData(profile, email) {
         type: 'achievement'
       }
     ],
-    
+
     // Suggestions
     suggestions: [
       {
@@ -402,7 +531,7 @@ function transformProfileData(profile, email) {
         isActive: true
       }
     ],
-    
+
     // Opportunities
     opportunities: [
       {
@@ -414,7 +543,7 @@ function transformProfileData(profile, email) {
       }
     ]
   };
-  
+
   return result;
 }
 
@@ -455,7 +584,7 @@ function generateAvatar(name) {
  */
 export async function createStudentProfileByEmail(email, initialData = {}) {
   try {
-    
+
     const defaultProfile = {
       name: initialData.name || 'New Student',
       email: email,
@@ -467,7 +596,7 @@ export async function createStudentProfileByEmail(email, initialData = {}) {
       cgpa: '',
       yearOfPassing: '',
       phone: '',
-      
+
       // Initialize empty arrays for data
       education: [],
       training: [],
@@ -489,7 +618,7 @@ export async function createStudentProfileByEmail(email, initialData = {}) {
           description: 'Works well in teams'
         }
       ],
-      
+
       // Additional fields
       recentUpdates: [
         {
@@ -542,14 +671,14 @@ export async function getOrCreateStudentByEmail(email, initialData = {}) {
   try {
     // First try to get existing profile
     const existingResult = await getStudentByEmail(email);
-    
+
     if (existingResult.success && existingResult.data) {
       return existingResult;
     }
-    
+
     // If not found, create a new profile
     return await createStudentProfileByEmail(email, initialData);
-    
+
   } catch (err) {
     console.error('❌ Error in getOrCreateStudentByEmail:', err);
     return { success: false, error: err.message };
@@ -648,9 +777,9 @@ export async function updateStudentByEmail(email, updates) {
       return { success: false, error: error.message };
     }
 
-    
+
     const transformedData = transformProfileData(data.profile, email);
-    
+
     return {
       success: true,
       data: transformedData
@@ -667,10 +796,10 @@ export async function updateStudentByEmail(email, updates) {
  */
 export async function updateEducationByEmail(email, educationData) {
   try {
-    
+
     // First, find the student record using the same logic as getStudentByEmail
     let studentRecord = null;
-    
+
     // Try JSONB query first
     let { data: directData, error: directError } = await supabase
       .from('students')
@@ -681,7 +810,7 @@ export async function updateEducationByEmail(email, educationData) {
     if (directData) {
       studentRecord = directData;
     } else {
-      
+
       // Fallback: get all students and search manually
       const { data: allStudents, error: allError } = await supabase
         .from('students')
@@ -708,7 +837,7 @@ export async function updateEducationByEmail(email, educationData) {
     }
 
     const currentProfile = safeJSONParse(studentRecord.profile);
-    
+
     // Update education array
     const updatedProfile = {
       ...currentProfile,
@@ -744,7 +873,7 @@ export async function updateEducationByEmail(email, educationData) {
  */
 async function findStudentByEmail(email) {
   try {
-    
+
     // Try JSONB query first
     let { data: directData, error: directError } = await supabase
       .from('students')
@@ -755,8 +884,8 @@ async function findStudentByEmail(email) {
     if (directData) {
       return { success: true, data: directData };
     }
-    
-    
+
+
     // Fallback: get all students and search manually
     const { data: allStudents, error: allError } = await supabase
       .from('students')
@@ -777,7 +906,7 @@ async function findStudentByEmail(email) {
 
     console.error('❌ Student not found for email:', email);
     return { success: false, error: 'Student not found' };
-    
+
   } catch (err) {
     console.error('❌ Error finding student:', err);
     return { success: false, error: err.message };
@@ -789,7 +918,7 @@ async function findStudentByEmail(email) {
  */
 export async function updateTrainingByEmail(email, trainingData) {
   try {
-    
+
     // Find student record
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -798,7 +927,7 @@ export async function updateTrainingByEmail(email, trainingData) {
 
     const studentRecord = findResult.data;
     const currentProfile = safeJSONParse(studentRecord.profile);
-    
+
     const updatedProfile = {
       ...currentProfile,
       training: trainingData
@@ -832,7 +961,7 @@ export async function updateTrainingByEmail(email, trainingData) {
  */
 export async function updateExperienceByEmail(email, experienceData) {
   try {
-    
+
     // Find student record
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -841,7 +970,7 @@ export async function updateExperienceByEmail(email, experienceData) {
 
     const studentRecord = findResult.data;
     const currentProfile = safeJSONParse(studentRecord.profile);
-    
+
     const updatedProfile = {
       ...currentProfile,
       experience: experienceData
@@ -875,7 +1004,7 @@ export async function updateExperienceByEmail(email, experienceData) {
  */
 export async function updateTechnicalSkillsByEmail(email, skillsData) {
   try {
-    
+
     // Find student record
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -884,7 +1013,7 @@ export async function updateTechnicalSkillsByEmail(email, skillsData) {
 
     const studentRecord = findResult.data;
     const currentProfile = safeJSONParse(studentRecord.profile);
-    
+
     const updatedProfile = {
       ...currentProfile,
       technicalSkills: skillsData
@@ -918,7 +1047,7 @@ export async function updateTechnicalSkillsByEmail(email, skillsData) {
  */
 export async function updateSoftSkillsByEmail(email, skillsData) {
   try {
-    
+
     // Find student record
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -927,7 +1056,7 @@ export async function updateSoftSkillsByEmail(email, skillsData) {
 
     const studentRecord = findResult.data;
     const currentProfile = safeJSONParse(studentRecord.profile);
-    
+
     const updatedProfile = {
       ...currentProfile,
       softSkills: skillsData
@@ -962,8 +1091,7 @@ export async function updateSoftSkillsByEmail(email, skillsData) {
  */
 export const updateProjectsByEmail = async (email, projectsData) => {
   try {
-
-    // 1. Get student ID
+    // 1️⃣ Find student.id by email
     const { data: student, error: studentError } = await supabase
       .from('students')
       .select('id')
@@ -974,22 +1102,63 @@ export const updateProjectsByEmail = async (email, projectsData) => {
       return { success: false, error: 'Student not found' };
     }
 
-    // 2. Update skill_passports.projects
-    const { data: passport, error: passportError } = await supabase
-      .from('skill_passports')
-      .update({ projects: projectsData })
-      .eq('studentId', student.id)
-      .select()
-      .single();
+    const studentId = student.id;
 
-    if (passportError) {
-      console.error('❌ Error updating projects:', passportError);
-      return { success: false, error: passportError.message };
+    // 2️⃣ Clear existing projects for this student (simplest sync method)
+    const { error: deleteError } = await supabase
+      .from('projects')
+      .delete()
+      .eq('student_id', studentId);
+
+    if (deleteError) {
+      console.error('❌ Error deleting old projects:', deleteError);
+      return { success: false, error: deleteError.message };
     }
 
-    // 3. Fetch fresh merged data
-    const result = await getStudentByEmail(email);
-    return result;
+    // 3️⃣ Prepare new projects array for insert
+    const formatted = projectsData.map((p) => ({
+      student_id: studentId,
+      title: p.title || 'Untitled Project',
+      description: p.description || null,
+      status: p.status || null,
+      start_date: p.start_date ? new Date(p.start_date).toISOString().split('T')[0] : null,
+      end_date: p.end_date ? new Date(p.end_date).toISOString().split('T')[0] : null,
+      duration: p.duration || null,
+      tech_stack: Array.isArray(p.tech) ? p.tech : Array.isArray(p.tech_stack) ? p.tech_stack : [],
+      demo_link: p.link || p.demo_link || null,
+      organization: p.organization || null,
+      github_link:
+        p.github ||
+        p.github_link ||
+        p.github_url ||
+        p.githubLink ||
+        null,
+      certificate_url: p.certificate_url || p.certificateLink || null,
+      video_url: p.video_url || p.videoLink || null,
+      ppt_url: p.ppt_url || p.pptLink || null,
+      approval_status: p.approval_status || 'pending',
+      enabled:
+        typeof p.enabled === 'boolean'
+          ? p.enabled
+          : typeof p.enabled === 'string'
+          ? p.enabled.toLowerCase() === 'true'
+          : true,
+      created_at: p.createdAt || p.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+
+    // 4️⃣ Insert new rows
+    const { error: insertError } = await supabase
+      .from('projects')
+      .insert(formatted);
+
+    if (insertError) {
+      console.error('❌ Error inserting projects:', insertError);
+      return { success: false, error: insertError.message };
+    }
+
+    // 5️⃣ Return success
+    return { success: true };
   } catch (err) {
     console.error('❌ updateProjectsByEmail exception:', err);
     return { success: false, error: err.message };
@@ -997,38 +1166,167 @@ export const updateProjectsByEmail = async (email, projectsData) => {
 };
 
 /**
- * Update certificates in skill_passports table
+ * Update certificates table records
  */
-export const updateCertificatesByEmail = async (email, certificatesData) => {
+export const updateCertificatesByEmail = async (email, certificatesData = []) => {
   try {
+    let studentRecord = null;
 
-    // 1. Get student ID
-    const { data: student, error: studentError } = await supabase
+    const { data: directByEmail, error: directEmailError } = await supabase
       .from('students')
       .select('id')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
-    if (studentError || !student) {
+    if (directEmailError) {
+      return { success: false, error: directEmailError.message };
+    }
+
+    if (directByEmail) {
+      studentRecord = directByEmail;
+    }
+
+    if (!studentRecord) {
+      const { data: profileMatch, error: profileError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('profile->>email', email)
+        .maybeSingle();
+
+      if (profileError) {
+        return { success: false, error: profileError.message };
+      }
+
+      if (profileMatch) {
+        studentRecord = profileMatch;
+      }
+    }
+
+    if (!studentRecord) {
+      const { data: allStudents, error: allError } = await supabase
+        .from('students')
+        .select('*');
+
+      if (allError) {
+        return { success: false, error: allError.message };
+      }
+
+      for (const student of allStudents || []) {
+        const profile = safeJSONParse(student.profile);
+        if (profile?.email === email) {
+          studentRecord = student;
+          break;
+        }
+      }
+    }
+
+    if (!studentRecord) {
       return { success: false, error: 'Student not found' };
     }
 
-    // 2. Update skill_passports.certificates
-    const { data: passport, error: passportError } = await supabase
-      .from('skill_passports')
-      .update({ certificates: certificatesData })
-      .eq('studentId', student.id)
-      .select()
-      .single();
+    const studentId = studentRecord.id;
 
-    if (passportError) {
-      console.error('❌ Error updating certificates:', passportError);
-      return { success: false, error: passportError.message };
+    const { data: existingCertificates, error: existingError } = await supabase
+      .from('certificates')
+      .select('id')
+      .eq('student_id', studentId);
+
+    if (existingError) {
+      return { success: false, error: existingError.message };
     }
 
-    // 3. Fetch fresh merged data
-    const result = await getStudentByEmail(email);
-    return result;
+    const normalizeIssuedOn = (value) => {
+      if (!value) {
+        return null;
+      }
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) {
+        return null;
+      }
+      return parsed.toISOString().split('T')[0];
+    };
+
+    const nowIso = new Date().toISOString();
+
+    const formatted = (certificatesData || [])
+      .filter((cert) => cert && typeof cert.title === 'string' && cert.title.trim().length > 0)
+      .map((cert) => {
+        const titleValue = cert.title.trim();
+        const issuerValue = typeof cert.issuer === 'string' ? cert.issuer.trim() : cert.issuer || null;
+        const levelValue = typeof cert.level === 'string' ? cert.level.trim() : cert.level || null;
+        const credentialValue = cert.credentialId || cert.credential_id || null;
+        const credentialTrimmed = typeof credentialValue === 'string' ? credentialValue.trim() : credentialValue;
+        const linkValue = typeof cert.link === 'string' ? cert.link.trim() : cert.link || null;
+        const descriptionValue = typeof cert.description === 'string' ? cert.description.trim() : cert.description || null;
+        const approvalSource = cert.approval_status || cert.status || 'pending';
+        const approvalStatus = typeof approvalSource === 'string' ? approvalSource.toLowerCase() : 'pending';
+        const statusSource = cert.status || (cert.enabled === false ? 'disabled' : 'active');
+        const statusValue = typeof statusSource === 'string' ? statusSource.trim().toLowerCase() : 'active';
+        const documentValue = cert.document_url || cert.documentLink || null;
+        const documentTrimmed = typeof documentValue === 'string' ? documentValue.trim() : documentValue;
+        const issuedOn = normalizeIssuedOn(cert.issuedOn || cert.issued_on);
+        const record = {
+          student_id: studentId,
+          title: titleValue,
+          issuer: issuerValue && issuerValue.length > 0 ? issuerValue : null,
+          level: levelValue && levelValue.length > 0 ? levelValue : null,
+          credential_id: credentialTrimmed && credentialTrimmed.length > 0 ? credentialTrimmed : null,
+          link: linkValue && linkValue.length > 0 ? linkValue : null,
+          issued_on: issuedOn,
+          description: descriptionValue && descriptionValue.length > 0 ? descriptionValue : null,
+          status: statusValue,
+          approval_status: approvalStatus,
+          document_url: documentTrimmed && documentTrimmed.length > 0 ? documentTrimmed : null,
+          updated_at: nowIso,
+        };
+
+        const rawId = typeof cert.id === 'string' ? cert.id.trim() : null;
+        if (rawId && rawId.length === 36) {
+          record.id = rawId;
+        } else {
+          record.id = generateUuid();
+        }
+
+        return record;
+      });
+
+    const incomingIds = new Set(formatted.filter((record) => record.id).map((record) => record.id));
+
+    const toDelete = (existingCertificates || [])
+      .filter((existing) => !incomingIds.has(existing.id))
+      .map((existing) => existing.id);
+
+    if (toDelete.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('certificates')
+        .delete()
+        .in('id', toDelete);
+
+      if (deleteError) {
+        return { success: false, error: deleteError.message };
+      }
+    }
+
+    if (formatted.length > 0) {
+      const { error: upsertError } = await supabase
+        .from('certificates')
+        .upsert(formatted, { onConflict: 'id' });
+
+      if (upsertError) {
+        return { success: false, error: upsertError.message };
+      }
+    } else if ((existingCertificates || []).length > 0) {
+      const { error: deleteAllError } = await supabase
+        .from('certificates')
+        .delete()
+        .eq('student_id', studentId);
+
+      if (deleteAllError) {
+        return { success: false, error: deleteAllError.message };
+      }
+    }
+
+    return await getStudentByEmail(email);
   } catch (err) {
     console.error('❌ updateCertificatesByEmail exception:', err);
     return { success: false, error: err.message };
