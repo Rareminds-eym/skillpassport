@@ -178,7 +178,8 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
   const updateProjects = async (projectsData) => {
     const result = await updateProjectsByEmail(email, projectsData);
     if (result.success) {
-      setStudentData(result.data);
+      // Refresh data after successful update
+      await refresh();
     }
     return result;
   };
