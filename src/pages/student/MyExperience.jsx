@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { Button } from '../../components/Students/components/ui/button';
 import { Badge } from '../../components/Students/components/ui/badge';
@@ -7,8 +7,7 @@ import {
   CheckCircle,
   Edit,
   Plus,
-  Bell,
-  TrendingUp
+  Bell
 } from 'lucide-react';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useAuth } from '../../context/AuthContext';
@@ -24,10 +23,18 @@ import {
 const MyExperience = () => {
   const { user } = useAuth();
   const userEmail = user?.email;
-  const { studentData, updateExperience } = useStudentDataByEmail(userEmail, false);
+  const { studentData, updateExperience, refresh } = useStudentDataByEmail(userEmail, false);
   
   const experience = studentData?.experience || [];
   const suggestions = studentData?.suggestions || mockSuggestions;
+  
+  // Debug logging
+  console.log('🔍 MyExperience Debug:', {
+    userEmail,
+    studentData,
+    experience,
+    experienceLength: experience.length
+  });
   
   // Fetch recent updates data from Supabase (same as Dashboard)
   const {
@@ -64,10 +71,33 @@ const MyExperience = () => {
   const [activeModal, setActiveModal] = useState(null);
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
   const [showAllExperience, setShowAllExperience] = useState(false);
+  const [localExperience, setLocalExperience] = useState(experience);
+
+  // Update local experience when studentData changes
+  useEffect(() => {
+    setLocalExperience(experience);
+  }, [experience]);
 
   const handleSaveExperience = async (updatedData) => {
-    await updateExperience(updatedData.experience);
-    setActiveModal(null);
+    console.log('💾 Saving experience data:', updatedData);
+    try {
+      // Update local state immediately for instant UI feedback
+      setLocalExperience(updatedData);
+      
+      const result = await updateExperience(updatedData);
+      console.log('✅ Save result:', result);
+      
+      // Refresh the data to ensure consistency
+      if (refresh) {
+        await refresh();
+      }
+      
+      setActiveModal(null);
+    } catch (error) {
+      console.error('❌ Error saving experience:', error);
+      // Revert local state on error
+      setLocalExperience(experience);
+    }
   };
 
   return (
@@ -159,7 +189,14 @@ const MyExperience = () => {
         </div>
 
         {/* RIGHT COLUMN - Experience Content */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-8">
+          <div className="flex items-center justify-end mb-4">
+            <Button onClick={() => setActiveModal('experience')} className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 rounded-md transition-colors">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Experience
+            </Button>
+          </div>
+
           {/* Experience Card - Matches Dashboard Design */}
           <Card className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md">
             <CardHeader className="px-6 py-4 border-b border-gray-100">
@@ -180,11 +217,11 @@ const MyExperience = () => {
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-3">
-              {experience.filter(exp => exp.enabled !== false).length > 0 ? (
+              {localExperience.filter(exp => exp.enabled !== false).length > 0 ? (
                 <>
                   {(showAllExperience 
-                    ? experience.filter(exp => exp.enabled !== false) 
-                    : experience.filter(exp => exp.enabled !== false).slice(0, 2)
+                    ? localExperience.filter(exp => exp.enabled !== false) 
+                    : localExperience.filter(exp => exp.enabled !== false).slice(0, 2)
                   ).map((exp, idx) => (
                     <div key={exp.id || `${exp.role}-${exp.organization}-${idx}`} className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all">
                       <div className="flex items-center justify-between">
@@ -202,7 +239,7 @@ const MyExperience = () => {
                       </div>
                     </div>
                   ))}
-                  {experience.filter(exp => exp.enabled !== false).length > 2 && (
+                  {localExperience.filter(exp => exp.enabled !== false).length > 2 && (
                     <Button
                       variant="outline"
                       onClick={() => setShowAllExperience((v) => !v)}
@@ -228,14 +265,14 @@ const MyExperience = () => {
       </div>
       </div>
     </div>
-  );
+
       {/* Edit Modal */}
-      {activeModal && (
+      {activeModal === 'experience' && (
         <ExperienceEditModal
-          isOpen={!!activeModal}
+          isOpen={true}
           onClose={() => setActiveModal(null)}
+          data={localExperience}
           onSave={handleSaveExperience}
-          userData={{ experience }}
         />
       )}
     </div>

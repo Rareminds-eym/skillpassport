@@ -94,6 +94,7 @@ const StudentAnalytics = lazy(() => import("../pages/student/Analytics"));
 const Assignments = lazy(() => import("../pages/student/Assignments"));
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
+const CareerAI = lazy(() => import("../features/career-assistant/components/CareerAssistant"));
 const DebugQRTest = lazy(() => import("../pages/DebugQRTest"));
 const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")
@@ -308,6 +309,7 @@ const AppRoutes = () => {
           <Route path="applied-jobs" element={<AppliedJobs />} />
           <Route path="browse-jobs" element={<BrowseJobs />} />
           <Route path="messages" element={<Messages />} />
+          <Route path="career-ai" element={<CareerAI />} />
           <Route path="settings" element={<Settings />} />
           <Route path="analytics" element={<StudentAnalytics />} />
           <Route path="assignments" element={<Assignments />} />

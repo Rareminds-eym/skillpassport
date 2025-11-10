@@ -48,7 +48,7 @@ const Analytics = () => {
         .from('applied_jobs')
         .select(`
           *,
-          opportunities (
+          opportunities!fk_applied_jobs_opportunity (
             id,
             job_title,
             title,
