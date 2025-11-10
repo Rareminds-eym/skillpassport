@@ -177,16 +177,25 @@ export const useConversation = (
   } = useQuery({
     queryKey: ['conversation', studentId, recruiterId, applicationId],
     queryFn: async () => {
-      return await MessageService.getOrCreateConversation(
-        studentId,
-        recruiterId,
-        applicationId,
-        opportunityId,
-        subject
-      );
+      console.log('🔄 Fetching/creating conversation...', { studentId, recruiterId, applicationId, opportunityId });
+      try {
+        const result = await MessageService.getOrCreateConversation(
+          studentId,
+          recruiterId,
+          applicationId,
+          opportunityId,
+          subject
+        );
+        console.log('✅ Conversation created/fetched:', result);
+        return result;
+      } catch (err) {
+        console.error('❌ Failed to get/create conversation:', err);
+        throw err;
+      }
     },
     enabled: !!studentId && !!recruiterId,
     staleTime: Infinity, // Conversation doesn't change often
+    retry: false, // Don't retry on error
   });
 
   // Mutation for marking messages as read

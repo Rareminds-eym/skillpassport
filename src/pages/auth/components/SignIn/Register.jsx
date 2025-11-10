@@ -113,20 +113,14 @@ export default function UnifiedSignup() {
 
   const handleGetStarted = () => {
     if (activeTab === "school" || activeTab === "college") {
-      if (studentType === "admin") {
-        if (!subscriptionType) return;
-        
-        if (subscriptionType === "have") {
-          navigate(`/signin/${activeTab}-admin`);
-        } else if (subscriptionType === "purchase") {
-          navigate(`/signup/${activeTab}-admin`);
-        } else if (subscriptionType === "view") {
-          navigate(`/subscription?type=${activeTab}&mode=view`);
-        }
-      } else if (studentType === "educator") {
-        navigate(`/signin/${activeTab}-educator`);
-      } else if (studentType === "student") {
-        navigate(`/signin/${activeTab}-student`);
+      if (!subscriptionType) return;
+      
+      if (subscriptionType === "have") {
+        navigate(`/signin/${activeTab}-${studentType}`);
+      } else if (subscriptionType === "purchase") {
+        navigate(`/subscription/plans?type=${studentType}&mode=purchase`);
+      } else if (subscriptionType === "view") {
+        navigate(`/subscription/plans?type=${studentType}&mode=view`);
       }
     } else if (activeTab === "recruitment") {
       if (recruitmentType === "admin") {
@@ -135,23 +129,16 @@ export default function UnifiedSignup() {
         navigate("/signup/recruitment-recruiter");
       }
     } else if (activeTab === "university") {
-      // Handle university navigation
-      if (studentType === "admin") {
-        if (!subscriptionType) return;
-        
-        if (subscriptionType === "have") {
-          // Show login modal
-          setShowLoginModal(true);
-          return;
-        } else if (subscriptionType === "purchase") {
-          navigate("/signup/university-admin");
-        } else if (subscriptionType === "view") {
-          navigate("/subscription/plans?type=university&mode=view");
-        }
-      } else if (studentType === "educator") {
-        navigate("/signin/university-educator");
-      } else if (studentType === "student") {
-        navigate("/signin/university-student");
+      if (!subscriptionType) return;
+      
+      if (subscriptionType === "have") {
+        // Show login modal for all user types
+        setShowLoginModal(true);
+        return;
+      } else if (subscriptionType === "purchase") {
+        navigate(`/subscription/plans?type=${studentType}&mode=purchase`);
+      } else if (subscriptionType === "view") {
+        navigate(`/subscription/plans?type=${studentType}&mode=view`);
       }
     } else {
       navigate(`/signin/${activeTab}`);
@@ -172,9 +159,9 @@ export default function UnifiedSignup() {
   // Reset subscription type when user type changes
   const handleStudentTypeChange = (type) => {
     setStudentType(type);
-    if (type !== "admin") {
-      setSubscriptionType(null);
-    }
+    setSubscriptionType(null);
+    // Auto-advance to step 2 for all user types in school/college/university
+    setCurrentStep(2);
   };
 
   return (
@@ -332,99 +319,212 @@ export default function UnifiedSignup() {
               </div>
             )}
 
+            {/* Step indicator for School/College/University on mobile */}
+            {(activeTab === "school" || activeTab === "college" || activeTab === "university") && (
+              <div className="flex items-center justify-center mb-6">
+                <div className="flex items-center space-x-4">
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                    currentStep >= 1 ? 'bg-white text-blue-600' : 'bg-white/20 text-white/60'
+                  }`}>
+                    1
+                  </div>
+                  <div className={`w-16 h-1 ${currentStep >= 2 ? 'bg-white' : 'bg-white/20'}`}></div>
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                    currentStep >= 2 ? 'bg-white text-blue-600' : 'bg-white/20 text-white/60'
+                  }`}>
+                    2
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="text-center mb-6">
               <h3 className="text-3xl font-bold text-white">
-                {titles[activeTab].login}
+                {(activeTab === "school" || activeTab === "college" || activeTab === "university") 
+                  ? (currentStep === 1 ? titles[activeTab].login : "Subscription")
+                  : titles[activeTab].login}
               </h3>
               <p className="text-sm text-white/80 mt-2">
-                {titles[activeTab].subtitle}
+                {(activeTab === "school" || activeTab === "college" || activeTab === "university")
+                  ? (currentStep === 1 ? titles[activeTab].subtitle : "Choose your subscription option")
+                  : titles[activeTab].subtitle}
               </p>
             </div>
             <div className="rounded-2xl p-5 sm:p-6 bg-transparent">
               {/* School/College Section for Mobile */}
               {(activeTab === "school" || activeTab === "college") && (
-                <div className="mb-6">
-                  <p className="text-white mb-3 font-medium">I am a:</p>
-                  <div className="space-y-3">
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="studentTypeMobile"
-                        value="educator"
-                        checked={studentType === "educator"}
-                        onChange={(e) => handleStudentTypeChange(e.target.value)}
-                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
-                      />
-                      <span className="text-white">Educator</span>
-                    </label>
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="studentTypeMobile"
-                        value="student"
-                        checked={studentType === "student"}
-                        onChange={(e) => handleStudentTypeChange(e.target.value)}
-                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
-                      />
-                      <span className="text-white">
-                        {activeTab === "school" ? "School Student" : "College Student"}
-                      </span>
-                    </label>
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="studentTypeMobile"
-                        value="admin"
-                        checked={studentType === "admin"}
-                        onChange={(e) => handleStudentTypeChange(e.target.value)}
-                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
-                      />
-                      <span className="text-white">Admin</span>
-                    </label>
-                  </div>
-                </div>
+                <>
+                  {currentStep === 1 && (
+                    <div className="mb-6">
+                      <p className="text-white mb-3 font-medium">I am a:</p>
+                      <div className="space-y-3">
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="studentTypeMobile"
+                            value="educator"
+                            checked={studentType === "educator"}
+                            onChange={(e) => handleStudentTypeChange(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-white">Educator</span>
+                        </label>
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="studentTypeMobile"
+                            value="student"
+                            checked={studentType === "student"}
+                            onChange={(e) => handleStudentTypeChange(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-white">
+                            {activeTab === "school" ? "School Student" : "College Student"}
+                          </span>
+                        </label>
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="studentTypeMobile"
+                            value="admin"
+                            checked={studentType === "admin"}
+                            onChange={(e) => handleStudentTypeChange(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-white">Admin</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {currentStep === 2 && (
+                    <div className="mb-6">
+                      <p className="text-white mb-3 font-medium">Subscription:</p>
+                      <div className="space-y-3">
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="subscriptionTypeMobile"
+                            value="have"
+                            checked={subscriptionType === "have"}
+                            onChange={(e) => setSubscriptionType(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-white">I already have a subscription</span>
+                        </label>
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="subscriptionTypeMobile"
+                            value="purchase"
+                            checked={subscriptionType === "purchase"}
+                            onChange={(e) => setSubscriptionType(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-white">Purchase subscription</span>
+                        </label>
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="subscriptionTypeMobile"
+                            value="view"
+                            checked={subscriptionType === "view"}
+                            onChange={(e) => setSubscriptionType(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-white">View My Plan</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               
               {/* University Section for Mobile */}
               {activeTab === "university" && (
-                <div className="mb-6">
-                  <p className="text-white mb-3 font-medium">I am a:</p>
-                  <div className="space-y-3">
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="studentTypeMobile"
-                        value="educator"
-                        checked={studentType === "educator"}
-                        onChange={(e) => handleStudentTypeChange(e.target.value)}
-                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
-                      />
-                      <span className="text-white">Educator</span>
-                    </label>
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="studentTypeMobile"
-                        value="student"
-                        checked={studentType === "student"}
-                        onChange={(e) => handleStudentTypeChange(e.target.value)}
-                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
-                      />
-                      <span className="text-white">University Student</span>
-                    </label>
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="studentTypeMobile"
-                        value="admin"
-                        checked={studentType === "admin"}
-                        onChange={(e) => handleStudentTypeChange(e.target.value)}
-                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
-                      />
-                      <span className="text-white">Admin</span>
-                    </label>
-                  </div>
-                </div>
+                <>
+                  {currentStep === 1 && (
+                    <div className="mb-6">
+                      <p className="text-white mb-3 font-medium">I am a:</p>
+                      <div className="space-y-3">
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="studentTypeMobile"
+                            value="educator"
+                            checked={studentType === "educator"}
+                            onChange={(e) => handleStudentTypeChange(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-white">Educator</span>
+                        </label>
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="studentTypeMobile"
+                            value="student"
+                            checked={studentType === "student"}
+                            onChange={(e) => handleStudentTypeChange(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-white">University Student</span>
+                        </label>
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="studentTypeMobile"
+                            value="admin"
+                            checked={studentType === "admin"}
+                            onChange={(e) => handleStudentTypeChange(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-white">Admin</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {currentStep === 2 && (
+                    <div className="mb-6">
+                      <p className="text-white mb-3 font-medium">Subscription:</p>
+                      <div className="space-y-3">
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="subscriptionTypeMobile"
+                            value="have"
+                            checked={subscriptionType === "have"}
+                            onChange={(e) => setSubscriptionType(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-white">I already have a subscription</span>
+                        </label>
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="subscriptionTypeMobile"
+                            value="purchase"
+                            checked={subscriptionType === "purchase"}
+                            onChange={(e) => setSubscriptionType(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-white">Purchase subscription</span>
+                        </label>
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="subscriptionTypeMobile"
+                            value="view"
+                            checked={subscriptionType === "view"}
+                            onChange={(e) => setSubscriptionType(e.target.value)}
+                            className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                          />
+                          <span className="text-white">View My Plan</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               
               {/* Recruitment Section for Mobile */}
@@ -567,8 +667,8 @@ export default function UnifiedSignup() {
               </div>
             )}
 
-            {/* Step indicator for School/College/University Admin */}
-            {(activeTab === "school" || activeTab === "college" || (activeTab === "university" && studentType === "admin")) && (
+            {/* Step indicator for School/College/University */}
+            {(activeTab === "school" || activeTab === "college" || activeTab === "university") && (
               <div className="flex items-center justify-center mb-8">
                 <div className="flex items-center space-x-4">
                   <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
@@ -588,12 +688,12 @@ export default function UnifiedSignup() {
             
             <div className="text-center mb-8">
               <h3 className="text-3xl font-bold text-gray-900">
-                {(activeTab === "school" || activeTab === "college" || (activeTab === "university" && studentType === "admin")) 
+                {(activeTab === "school" || activeTab === "college" || activeTab === "university") 
                   ? (currentStep === 1 ? titles[activeTab].login : "Subscription")
                   : titles[activeTab].login}
               </h3>
               <p className="text-sm text-gray-600 mt-2">
-                {(activeTab === "school" || activeTab === "college" || (activeTab === "university" && studentType === "admin"))
+                {(activeTab === "school" || activeTab === "college" || activeTab === "university")
                   ? (currentStep === 1 ? titles[activeTab].subtitle : "Choose your subscription option")
                   : titles[activeTab].subtitle}
               </p>
@@ -645,7 +745,7 @@ export default function UnifiedSignup() {
                     </div>
                   )}
                   
-                  {currentStep === 2 && studentType === "admin" && (
+                  {currentStep === 2 && (
                     <div className="mb-6">
                       <p className="text-gray-700 mb-3 font-medium">Subscription:</p>
                       <div className="space-y-3">
@@ -732,7 +832,7 @@ export default function UnifiedSignup() {
                     </div>
                   )}
                   
-                  {currentStep === 2 && studentType === "admin" && (
+                  {currentStep === 2 && (
                     <div className="mb-6">
                       <p className="text-gray-700 mb-3 font-medium">Subscription:</p>
                       <div className="space-y-3">
@@ -877,7 +977,7 @@ export default function UnifiedSignup() {
               )}
               
               {/* Action buttons for all sections */}
-              {(activeTab === "school" || activeTab === "college" || (activeTab === "university" && studentType === "admin")) ? (
+              {(activeTab === "school" || activeTab === "college" || activeTab === "university") ? (
                 <div className="flex space-x-4">
                   {currentStep > 1 && (
                     <button
