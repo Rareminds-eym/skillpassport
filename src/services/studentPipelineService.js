@@ -149,7 +149,7 @@ export class StudentPipelineService {
         .from('applied_jobs')
         .select(`
           *,
-          opportunity:opportunities (
+          opportunity:opportunities!fk_applied_jobs_opportunity (
             id,
             job_title,
             title,
