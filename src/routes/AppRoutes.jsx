@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import {BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Loader from "../components/Loader";
 
@@ -8,6 +8,19 @@ import AdminLayout from "../layouts/AdminLayout";
 import RecruiterLayout from "../layouts/RecruiterLayout";
 import StudentLayout from "../layouts/StudentLayout";
 import EducatorLayout from "../layouts/EducatorLayout";
+//digital passport
+import { ThemeProvider } from '../context/ThemeContext';
+import { PortfolioProvider } from '../context/PortfolioContext';
+import HomePage from '../pages/digital-pp/HomePage';
+import PortfolioPage from '../pages/digital-pp/PortfolioPage';
+import PassportPage from '../pages/digital-pp/PassportPage';
+import VideoPortfolioPage from '../pages/digital-pp/VideoPortfolioPage';
+import SettingsPage from '../pages/digital-pp/SettingsPage';
+// import ProfileSettings from './pages/settings/ProfileSettings';
+import ThemeSettings from '../pages/digital-pp/settings/ThemeSettings';
+import LayoutSettings from '../pages/digital-pp/settings/LayoutSettings';
+import ExportSettings from '../pages/digital-pp/settings/ExportSettings';
+import SharingSettings from '../pages/digital-pp/settings/SharingSettings';
 
 const Home = lazy(() => import("../pages/homepage/Home"));
 const About = lazy(() => import("../pages/homepage/About"));
@@ -168,6 +181,28 @@ const AppRoutes = () => {
             path="/student/profile/:email"
             element={<StudentPublicViewer />}
           />
+
+          {/* Digital Passport routes (public) wrapped with ThemeProvider & PortfolioProvider */}
+          <Route
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <Outlet />
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          >
+            <Route path="/portfolio" element={<PortfolioPage />} />
+            <Route path="/digital-pp/homepage" element={<HomePage />} />
+            <Route path="/passport" element={<PassportPage />} />
+            <Route path="/video-portfolio" element={<VideoPortfolioPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            {/* Settings sub-pages for digital passport */}
+            <Route path="/settings/theme" element={<ThemeSettings />} />
+            <Route path="/settings/layout" element={<LayoutSettings />} />
+            <Route path="/settings/export" element={<ExportSettings />} />
+            <Route path="/settings/sharing" element={<SharingSettings />} />
+          </Route>
         </Route>
 
         {/* ---------- College Admin ---------- */}

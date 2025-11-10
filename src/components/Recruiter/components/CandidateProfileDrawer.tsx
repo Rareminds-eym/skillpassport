@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useNavigate } from 'react-router-dom';
 // src/components/Recruiter/components/CandidateProfileDrawer.tsx
 import React, { useEffect, useState } from 'react';
 import {
@@ -584,6 +585,9 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   const [loadingCertificates, setLoadingCertificates] = useState(false);
   const [assessments, setAssessments] = useState([]);
   const [loadingAssessments, setLoadingAssessments] = useState(false);
+
+  // router navigation for View Portfolio button
+  const navigate = useNavigate();
 
   // Fetch projects and certificates when student changes
 
@@ -1761,7 +1765,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                       Schedule Interview
                     </button>
                     <button
-                      // onClick={() => setShowVerifyModal(true)}
+                      onClick={() => navigate('/digital-pp/homepage', { state: { candidate: modalCandidate } })}
                       className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100">
                       <File className="h-4 w-4 mr-2" />
                       View Portfolio
