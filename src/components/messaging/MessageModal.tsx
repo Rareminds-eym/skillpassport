@@ -44,6 +44,19 @@ export const MessageModal: React.FC<MessageModalProps> = ({
     jobTitle || 'General Inquiry'
   );
   
+  // Debug: Log conversation state
+  useEffect(() => {
+    console.log('💬 Conversation state:', {
+      hasConversation: !!conversation,
+      conversationId: conversation?.id,
+      loadingConversation,
+      studentId,
+      recruiterId,
+      applicationId,
+      opportunityId
+    });
+  }, [conversation, loadingConversation, studentId, recruiterId, applicationId, opportunityId]);
+  
   const { 
     messages, 
     isLoading: loadingMessages,
@@ -71,7 +84,23 @@ export const MessageModal: React.FC<MessageModalProps> = ({
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim() || !conversation || isSending) return;
+    console.log('🔍 Send button clicked:', {
+      hasMessage: !!newMessage.trim(),
+      hasConversation: !!conversation,
+      conversationId: conversation?.id,
+      isSending,
+      studentId,
+      recruiterId,
+      currentUserId,
+      currentUserType
+    });
+    
+    if (!newMessage.trim() || !conversation || isSending) {
+      console.log('❌ Send blocked:', {
+        reason: !newMessage.trim() ? 'No message' : !conversation ? 'No conversation' : 'Already sending'
+      });
+      return;
+    }
 
     try {
       // Determine receiver based on current user type

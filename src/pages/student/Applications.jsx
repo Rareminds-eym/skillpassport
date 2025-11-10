@@ -80,34 +80,51 @@ const Applications = () => {
         const interviewsData = await StudentPipelineService.getStudentInterviews(studentId);
         setInterviews(interviewsData);
 
-        const transformedApplications = applicationsData.map(app => ({
-          id: app.id,
-          studentId: app.student_id,
-          jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
-          company: app.opportunity?.company_name || 'N/A',
-          location: app.opportunity?.location || 'N/A',
-          salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
-            ? `$${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - $${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
-            : 'Not specified',
-          appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-          status: app.application_status,
-          logo: app.opportunity?.company_logo,
-          type: app.opportunity?.employment_type || 'N/A',
-          level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
-          lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
-          opportunityId: app.opportunity_id,
-          recruiterId: app.opportunity?.recruiter_id || null,
-
-          // Pipeline data
-          pipelineStatus: app.pipeline_status,
-          hasPipelineStatus: app.has_pipeline_status,
-          pipelineStage: app.pipeline_stage,
-          pipelineStageChangedAt: app.pipeline_stage_changed_at,
-          rejectionReason: app.rejection_reason,
-          nextAction: app.next_action,
-          nextActionDate: app.next_action_date,
-          interviews: app.interviews || []
-        }));
+        const transformedApplications = applicationsData.map(app => {
+          const recruiterId = app.opportunity?.recruiter_id || 
+                             app.pipeline_recruiter_id || 
+                             app.pipeline_status?.assigned_to || 
+                             null;
+          
+          // Debug logging for Message button issue
+          console.log('Application recruiter data:', {
+            jobTitle: app.opportunity?.job_title,
+            opportunityRecruiterId: app.opportunity?.recruiter_id,
+            pipelineRecruiterId: app.pipeline_recruiter_id,
+            assignedTo: app.pipeline_status?.assigned_to,
+            finalRecruiterId: recruiterId,
+            studentId: app.student_id
+          });
+          
+          return {
+            id: app.id,
+            studentId: app.student_id,
+            jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
+            company: app.opportunity?.company_name || 'N/A',
+            location: app.opportunity?.location || 'N/A',
+            salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
+              ? `$${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - $${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
+              : 'Not specified',
+            appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            status: app.application_status,
+            logo: app.opportunity?.company_logo,
+            type: app.opportunity?.employment_type || 'N/A',
+            level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
+            lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
+            opportunityId: app.opportunity_id,
+            recruiterId: recruiterId,
+            
+            // Pipeline data
+            pipelineStatus: app.pipeline_status,
+            hasPipelineStatus: app.has_pipeline_status,
+            pipelineStage: app.pipeline_stage,
+            pipelineStageChangedAt: app.pipeline_stage_changed_at,
+            rejectionReason: app.rejection_reason,
+            nextAction: app.next_action,
+            nextActionDate: app.next_action_date,
+            interviews: app.interviews || []
+          };
+        });
 
 
         setApplications(transformedApplications);
@@ -760,11 +777,16 @@ const Applications = () => {
                         </button>
                         <button
                           onClick={() => {
+                            if (!app.recruiterId) {
+                              alert('This job posting does not have a recruiter assigned yet. Please contact support or wait for a recruiter to be assigned.');
+                              return;
+                            }
                             setSelectedApplication(app);
                             setMessageModalOpen(true);
                           }}
-                          disabled={!app.recruiterId || !app.studentId}
+                          disabled={!app.studentId}
                           className="flex-1 lg:flex-none px-4 py-2 bg-white border-2 border-gray-300 hover:border-slate-700 text-gray-700 hover:text-slate-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={!app.recruiterId ? 'No recruiter assigned to this job' : 'Message recruiter'}
                         >
                           <MessageSquare className="w-4 h-4" />
                           Message

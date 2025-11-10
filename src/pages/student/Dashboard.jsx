@@ -53,6 +53,7 @@ import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useOpportunities } from "../../hooks/useOpportunities";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
 import { useAIJobMatching } from "../../hooks/useAIJobMatching";
+import { useStudentCertificates } from "../../hooks/useStudentCertificates";
 import { supabase } from "../../lib/supabaseClient";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
@@ -152,6 +153,17 @@ const StudentDashboard = () => {
   // Fetch achievements and badges from separate tables
   const { achievements, badges, loading: achievementsLoading } = useStudentAchievements(studentId, userEmail);
 
+  // Fetch certificates from certificates table
+  const {
+    certificates: certificatesFromTable,
+    loading: certificatesLoading,
+    error: certificatesError,
+    refresh: refreshCertificates,
+    addCertificate,
+    updateCertificate: updateCertificateInTable,
+    removeCertificate,
+  } = useStudentCertificates(studentId);
+
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
     education: educationData,
@@ -190,9 +202,13 @@ const StudentDashboard = () => {
   }, [userData.projects]);
 
   const enabledCertificates = useMemo(() => {
-    if (!Array.isArray(userData.certificates)) return [];
-    return userData.certificates.filter((cert) => cert);
-  }, [userData.certificates]);
+    // Use certificates from the certificates table
+    // Filtering already done in the query, but double-check for safety
+    if (!Array.isArray(certificatesFromTable)) return [];
+    return certificatesFromTable.filter(
+      (cert) => cert && cert.status !== 'deleted' && cert.status !== 'archived'
+    );
+  }, [certificatesFromTable]);
 
   // Fetch opportunities data from Supabase
   const {
@@ -927,7 +943,24 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="p-6 space-y-3">
-          {enabledCertificates.length === 0 ? (
+          {certificatesLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : certificatesError ? (
+            <div className="text-center py-8">
+              <p className="text-red-600 mb-3 font-medium">
+                Failed to load certificates
+              </p>
+              <Button
+                onClick={refreshCertificates}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all"
+              >
+                Retry
+              </Button>
+            </div>
+          ) : enabledCertificates.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-slate-500 font-medium">
                 No certificates uploaded yet
@@ -1981,8 +2014,19 @@ const StudentDashboard = () => {
         <CertificatesEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={userData.certificates}
-          onSave={(data) => handleSave("certificates", data)}
+          data={certificatesFromTable}
+          studentId={studentId}
+          onRefresh={async () => {
+            // Refresh certificates immediately after each operation
+            await refreshCertificates();
+            refreshRecentUpdates();
+          }}
+          onSave={async (data) => {
+            // Called when "Save All Changes" is clicked
+            await refreshCertificates();
+            refreshRecentUpdates();
+            setActiveModal(null);
+          }}
         />
       )}
     </div>

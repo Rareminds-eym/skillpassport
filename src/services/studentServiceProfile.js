@@ -198,6 +198,7 @@ export const getStudentByEmail = async (email) => {
       id: data.id,
       universityId: data.universityId,
       email: data.email || transformedProfile.email,
+      approval_status: data.approval_status || 'pending',
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
       

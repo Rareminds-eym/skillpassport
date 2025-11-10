@@ -16,6 +16,8 @@ import {
   Instagram,
   Facebook,
   X,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -120,12 +122,6 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   // Use real data only; if not found, display nothing or a message
   const displayData = realStudentData?.profile;
 
-  // Debug: Log the display data to see what we have
-  useEffect(() => {
-    if (displayData) {
-      // Data is available
-    }
-  }, [displayData]);
 
   // Generate QR code value once and keep it constant
   const qrCodeValue = React.useMemo(() => {
@@ -228,9 +224,23 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                     </div>
                   </div>
                   <div className="flex-1 pt-1">
-                    <h1 className="text-3xl font-bold text-white drop-shadow-lg">
-                      {displayData.name || "Student Name"}
-                    </h1>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+                        {displayData.name || "Student Name"}
+                      </h1>
+                      {/* Approval Status Badge */}
+                      {(realStudentData?.approval_status === 'approved') ? (
+                        <Badge className="bg-green-500 text-white border-0 px-3 py-1.5 text-xs font-semibold rounded-full shadow-lg flex items-center gap-1.5 animate-in fade-in duration-300">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Approved
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-amber-400 text-amber-900 border-0 px-3 py-1.5 text-xs font-semibold rounded-full shadow-lg flex items-center gap-1.5 animate-in fade-in duration-300">
+                          <Clock className="w-3.5 h-3.5" />
+                          Pending
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
 

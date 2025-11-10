@@ -11,7 +11,8 @@ import {
   MapPin,
   ArrowLeft,
   User,
-  Building
+  Building,
+  Clock
 } from 'lucide-react';
 import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
 import { Badge } from './ui/badge';
@@ -89,6 +90,7 @@ const StudentCard3D = () => {
   const profile = studentData.profile || {};
   const education = studentData.education?.[0] || {};
   const employabilityScore = profile.employability_score || profile.employabilityScore || 0;
+  const approvalStatus = studentData.approval_status || 'pending';
   const qrCodeValue = `${window.location.origin}/student/profile/${email}`;
 
   return (
@@ -150,7 +152,21 @@ const StudentCard3D = () => {
                         </div>
                       )}
                       <div className="flex-1">
-                        <h2 className="text-2xl font-bold text-white mb-2">{profile.name || 'Student Name'}</h2>
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
+                          <h2 className="text-2xl font-bold text-white">{profile.name || 'Student Name'}</h2>
+                          {approvalStatus === 'approved' && (
+                            <Badge className="bg-green-500 text-white border-0 px-3 py-1 text-xs font-semibold rounded-full shadow-md flex items-center gap-1.5">
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              Approved
+                            </Badge>
+                          )}
+                          {approvalStatus === 'pending' && (
+                            <Badge className="bg-amber-400 text-amber-900 border-0 px-3 py-1 text-xs font-semibold rounded-full shadow-md flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5" />
+                              Pending
+                            </Badge>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 text-white/90 mb-2">
                           <Building className="w-4 h-4" />
                           <span className="text-sm">{profile.university || 'University'}</span>

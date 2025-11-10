@@ -7,6 +7,12 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Badge } from "./ui/badge";
 import {
+  createCertificate,
+  updateCertificate as updateCertificateService,
+  deleteCertificate as deleteCertificateService,
+  uploadCertificateFile,
+} from "../../../services/certificateService";
+import {
   Plus,
   Trash2,
   Edit3,
@@ -20,6 +26,14 @@ import {
   Calendar,
   Eye,
   EyeOff,
+  Upload,
+  FileText,
+  ExternalLink,
+  Shield,
+  Download,
+  X,
+  Check,
+  AlertCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -2039,10 +2053,12 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
   );
 };
 
-export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
+export const CertificatesEditModal = ({ isOpen, onClose, data, onSave, studentId, onRefresh }) => {
   const [certificates, setCertificates] = useState(data || []);
   const [isAdding, setIsAdding] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     issuer: "",
@@ -2051,6 +2067,7 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
     description: "",
     credentialId: "",
     link: "",
+    upload: "",
   });
   const { toast } = useToast();
 
@@ -2067,11 +2084,54 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
       description: "",
       credentialId: "",
       link: "",
+      upload: "",
     });
+    setUploadedFile(null);
     setEditingIndex(null);
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type (PDF, images)
+      const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+      if (!validTypes.includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a PDF or image file (JPG, PNG).",
+          variant: "destructive",
+        });
+        return;
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please upload a file smaller than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setUploadedFile(file);
+    }
+  };
+
   const startEditing = (certificate, index) => {
+    // Handle date formatting for the date input
+    let dateValue = certificate.issued_on || certificate.issuedOn || certificate.year || certificate.date || certificate.issueDate || "";
+    
+    // If it's already in YYYY-MM-DD format, use it
+    // Otherwise, try to parse and format it
+    if (dateValue && !dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const parsedDate = new Date(dateValue);
+      if (!isNaN(parsedDate.getTime())) {
+        dateValue = parsedDate.toISOString().split('T')[0];
+      } else {
+        // Can't parse the date, leave empty for user to re-enter
+        dateValue = "";
+      }
+    }
+
     setFormData({
       title:
         certificate.title || certificate.name || certificate.certificate || "",
@@ -2080,12 +2140,7 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
         certificate.organization ||
         certificate.institution ||
         "",
-      issuedOn:
-        certificate.year ||
-        certificate.date ||
-        certificate.issueDate ||
-        certificate.issuedOn ||
-        "",
+      issuedOn: dateValue,
       level:
         certificate.level || certificate.category || certificate.type || "",
       description: certificate.description || "",
@@ -2097,12 +2152,13 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
         certificate.credentialUrl ||
         certificate.viewUrl ||
         "",
+      upload: certificate.upload || "",
     });
     setEditingIndex(index);
     setIsAdding(true);
   };
 
-  const saveCertificate = () => {
+  const saveCertificate = async () => {
     // 1️⃣ Validation
     if (!formData.title.trim()) {
       toast({
@@ -2123,85 +2179,159 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
       return;
     }
 
-    // 2️⃣ Clean up whitespace in all string fields
-    const formatted = Object.fromEntries(
-      Object.entries(formData).map(([key, value]) => [
-        key,
-        typeof value === "string" ? value.trim() : value,
-      ])
-    );
-
-    // 3️⃣ Update existing certificate
-    if (editingIndex !== null) {
-      setCertificates((prev) =>
-        prev.map((cert, idx) =>
-          idx === editingIndex
-            ? {
-                ...(cert || {}),
-                ...formatted,
-                enabled: cert?.enabled === false ? false : true,
-
-                // 🔁 Re-verification reset logic:
-                verified: false,
-                verifiedAt: null,
-                processing: true,
-                status: "pending",
-
-                // ⏱ Update timestamp
-                updatedAt: new Date().toISOString(),
-              }
-            : cert
-        )
-      );
-
+    if (!studentId) {
       toast({
-        title: "Certificate Updated",
-        description:
-          "Changes detected — verification will be reprocessed by the system.",
+        title: "Error",
+        description: "Student ID is missing. Please try again.",
+        variant: "destructive",
       });
+      return;
     }
 
-    // 4️⃣ Add new certificate
-    else {
-      setCertificates((prev) => [
-        ...prev,
-        {
-          ...formatted,
-          id: Date.now(),
-          enabled: true,
-          status: "pending",
-          verified: false,
-          verifiedAt: null,
-          processing: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ]);
+    setUploading(true);
 
+    try {
+      // 2️⃣ Upload file if provided
+      let uploadUrl = formData.upload || null;
+      if (uploadedFile) {
+        const uploadResult = await uploadCertificateFile(uploadedFile, studentId);
+        if (uploadResult.success) {
+          uploadUrl = uploadResult.url;
+        } else {
+          toast({
+            title: "Upload failed",
+            description: uploadResult.error || "Failed to upload file.",
+            variant: "destructive",
+          });
+          setUploading(false);
+          return;
+        }
+      }
+
+      // 3️⃣ Prepare certificate data
+      const certificateData = {
+        title: formData.title.trim(),
+        issuer: formData.issuer.trim(),
+        level: formData.level.trim() || null,
+        credential_id: formData.credentialId.trim() || null,
+        link: formData.link.trim() || null,
+        issued_on: formData.issuedOn.trim() || null,
+        description: formData.description.trim() || null,
+        upload: uploadUrl,
+      };
+
+      // Log only in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📋 Saving certificate:', certificateData.title);
+      }
+
+      // 4️⃣ Update existing or create new certificate
+      if (editingIndex !== null) {
+        const certToUpdate = certificates[editingIndex];
+        const result = await updateCertificateService(certToUpdate.id, certificateData);
+
+        if (result.success) {
+          // Update local state
+          setCertificates((prev) =>
+            prev.map((cert, idx) =>
+              idx === editingIndex ? result.data : cert
+            )
+          );
+
+          // Refresh parent to show updated data
+          if (onRefresh) {
+            await onRefresh();
+          }
+
+          toast({
+            title: "Certificate Updated",
+            description: "Your certificate has been updated successfully.",
+          });
+        } else {
+          toast({
+            title: "Update failed",
+            description: result.error || "Failed to update certificate.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        // Create new certificate
+        const result = await createCertificate({
+          ...certificateData,
+          student_id: studentId,
+        });
+
+        if (result.success) {
+          // Add to local state
+          setCertificates((prev) => [...prev, result.data]);
+
+          // Refresh parent to show new certificate
+          if (onRefresh) {
+            await onRefresh();
+          }
+
+          toast({
+            title: "Certificate Added",
+            description: "Your certificate has been added successfully.",
+          });
+        } else {
+          toast({
+            title: "Failed to add certificate",
+            description: result.error || "An error occurred.",
+            variant: "destructive",
+          });
+        }
+      }
+
+      // 5️⃣ Reset UI state
+      setIsAdding(false);
+      resetForm();
+    } catch (err) {
+      console.error("Error saving certificate:", err);
       toast({
-        title: "Certificate Added",
-        description:
-          "Your certificate details are being processed for verification.",
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const deleteCertificate = async (index) => {
+    const certToDelete = certificates[index];
+    if (!certToDelete?.id) return;
+
+    try {
+      const result = await deleteCertificateService(certToDelete.id);
+      
+      if (result.success) {
+        setCertificates((prev) => prev.filter((_, idx) => idx !== index));
+        
+        // Refresh parent to update the list
+        if (onRefresh) {
+          await onRefresh();
+        }
+        
+        toast({
+          title: "Certificate Deleted",
+          description: "The certificate has been removed successfully.",
+        });
+      } else {
+        toast({
+          title: "Delete failed",
+          description: result.error || "Failed to delete certificate.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Error deleting certificate:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
       });
     }
-
-    // 5️⃣ Reset UI state
-    setIsAdding(false);
-    resetForm();
-  };
-
-  const toggleCertificate = (index) => {
-    setCertificates((prev) =>
-      prev.map((cert, idx) =>
-        idx === index
-          ? { ...cert, enabled: cert.enabled === false ? true : false }
-          : cert
-      )
-    );
-  };
-
-  const deleteCertificate = (index) => {
-    setCertificates((prev) => prev.filter((_, idx) => idx !== index));
   };
 
   const handleSubmit = () => {
@@ -2218,121 +2348,209 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
         resetForm();
       }}
     >
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Edit3 className="w-5 h-5" />
-            Manage Certificates
-          </DialogTitle>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="border-b pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                <Award className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-semibold text-gray-900">
+                  My Certificates
+                </DialogTitle>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {certificates.length} {certificates.length === 1 ? 'certificate' : 'certificates'}
+                </p>
+              </div>
+            </div>
+            {!studentId && (
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                Loading profile...
+              </Badge>
+            )}
+          </div>
         </DialogHeader>
-        <div className="space-y-4">
+        
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {certificates.length === 0 && !isAdding ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <Award className="w-10 h-10 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No certificates yet
+              </h3>
+              <p className="text-sm text-gray-500 text-center max-w-sm mb-6">
+                Showcase your achievements by adding certificates from courses, training programs, or professional certifications.
+              </p>
+              <Button
+                onClick={() => setIsAdding(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Your First Certificate
+              </Button>
+            </div>
+          ) : null}
+
           {certificates.map((cert, index) => (
             <div
               key={cert.id || index}
-              className={`p-4 border rounded-lg ${
-                cert.enabled === false ? "opacity-50" : "opacity-100"
-              }`}
+              className="group relative bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-blue-300 transition-all duration-200"
             >
-              <div className="flex justify-between items-start gap-3">
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold" style={{ color: "#6A0DAD" }}>
-                      {cert.title || cert.name || "Certificate"}
-                    </h4>
-                    {cert.processing && (
-                      <Badge className="bg-orange-100 text-orange-700">
-                        <Clock className="w-3 h-3 mr-1" />
-                        Processing
+              <div className="flex gap-4">
+                {/* Icon */}
+                <div className="flex-shrink-0">
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
+                    <Award className="w-7 h-7 text-white" />
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  {/* Header with title and status */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-900 text-lg mb-1 line-clamp-2">
+                        {cert.title || cert.name || "Certificate"}
+                      </h4>
+                      {(cert.issuer || cert.organization || cert.institution) && (
+                        <p className="text-sm text-blue-600 font-medium">
+                          {cert.issuer || cert.organization || cert.institution}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Status badge */}
+                    <div className="flex items-center gap-2">
+                      {cert.approval_status && (
+                        <div>
+                          {cert.approval_status === 'approved' ? (
+                            <Badge className="bg-green-100 text-green-700 border-green-200 whitespace-nowrap">
+                              <Shield className="w-3 h-3 mr-1" />
+                              Verified
+                            </Badge>
+                          ) : cert.approval_status === 'pending' ? (
+                            <Badge className="bg-amber-100 text-amber-700 border-amber-200 whitespace-nowrap">
+                              <Clock className="w-3 h-3 mr-1" />
+                              Pending Review
+                            </Badge>
+                          ) : null}
+                        </div>
+                      )}
+                      
+                      {/* Action buttons - show on hover */}
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => startEditing(cert, index)}
+                          className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600"
+                          title="Edit certificate"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteCertificate(index)}
+                          className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                          title="Delete certificate"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metadata row */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3">
+                    {(cert.issued_on || cert.year || cert.date || cert.issueDate || cert.issuedOn) && (
+                      <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <span className="font-medium">
+                          {(() => {
+                            const dateStr = cert.issued_on || cert.year || cert.date || cert.issueDate || cert.issuedOn;
+                            const date = new Date(dateStr);
+                            if (!isNaN(date.getTime())) {
+                              return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+                            }
+                            return dateStr;
+                          })()}
+                        </span>
+                      </div>
+                    )}
+                    {cert.level && (
+                      <Badge className="bg-purple-50 text-purple-700 border-purple-200 font-medium">
+                        {cert.level}
                       </Badge>
                     )}
+                    {(cert.credential_id || cert.credentialId) && (
+                      <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                        <FileText className="w-4 h-4 text-gray-400" />
+                        <span className="font-mono text-xs">
+                          {cert.credential_id || cert.credentialId}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  {(cert.issuer || cert.organization || cert.institution) && (
-                    <p
-                      className="text-sm font-medium"
-                      style={{ color: "#6A0DAD" }}
-                    >
-                      {cert.issuer || cert.organization || cert.institution}
-                    </p>
-                  )}
-                  {(cert.year ||
-                    cert.date ||
-                    cert.issueDate ||
-                    cert.issuedOn) && (
-                    <p className="text-xs" style={{ color: "#6A0DAD" }}>
-                      {cert.year ||
-                        cert.date ||
-                        cert.issueDate ||
-                        cert.issuedOn}
-                    </p>
-                  )}
+
+                  {/* Description */}
                   {cert.description && (
-                    <p className="text-sm text-gray-600 leading-relaxed">
+                    <p className="text-sm text-gray-600 leading-relaxed mb-3 line-clamp-2">
                       {cert.description}
                     </p>
                   )}
-                  {cert.level && (
-                    <span className="inline-flex px-2 py-1 rounded bg-amber-50 text-amber-700 text-xs font-medium">
-                      {cert.level}
-                    </span>
+
+                  {/* Actions row */}
+                  {((cert.link || cert.url || cert.certificateUrl || cert.credentialUrl || cert.viewUrl) || cert.upload) && (
+                    <div className="flex items-center gap-2">
+                      {(cert.link || cert.url || cert.certificateUrl || cert.credentialUrl || cert.viewUrl) && (
+                        <a
+                          href={cert.link || cert.url || cert.certificateUrl || cert.credentialUrl || cert.viewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          View Certificate
+                        </a>
+                      )}
+                      {cert.upload && (
+                        <a
+                          href={cert.upload}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                          Download
+                        </a>
+                      )}
+                    </div>
                   )}
-                  {cert.credentialId && (
-                    <p className="text-xs text-gray-500 font-medium">
-                      Credential ID: {cert.credentialId}
-                    </p>
-                  )}
-                  {cert.link && (
-                    <a
-                      href={cert.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
-                    >
-                      View Credential
-                    </a>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => startEditing(cert, index)}
-                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                  >
-                    <Edit3 className="w-4 h-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant={cert.enabled === false ? "outline" : "default"}
-                    size="sm"
-                    onClick={() => toggleCertificate(index)}
-                    className={
-                      cert.enabled === false
-                        ? "text-gray-500 border-gray-400"
-                        : "bg-emerald-500 text-white"
-                    }
-                  >
-                    {cert.enabled === undefined || cert.enabled
-                      ? "Disable"
-                      : "Enable"}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => deleteCertificate(index)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Delete
-                  </Button>
                 </div>
               </div>
             </div>
           ))}
 
           {isAdding ? (
-            <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg space-y-4">
+            <div className="bg-gradient-to-br from-blue-50/50 to-indigo-50/50 border-2 border-blue-200 rounded-xl p-6 space-y-6 animate-in fade-in-50 duration-300">
+              {/* Form title */}
+              <div className="flex items-center gap-2 mb-2">
+                <Award className="w-5 h-5 text-blue-600" />
+                <h3 className="font-semibold text-gray-900">
+                  {editingIndex !== null ? 'Edit Certificate' : 'Add New Certificate'}
+                </h3>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="certificate-title">Certificate Title *</Label>
+                  <Label htmlFor="certificate-title" className="text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1">
+                    Certificate Title <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="certificate-title"
                     value={formData.title}
@@ -2343,11 +2561,12 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
                       }))
                     }
                     placeholder="e.g., AWS Certified Solutions Architect"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="certificate-issuer">
-                    Issuing Organization *
+                  <Label htmlFor="certificate-issuer" className="text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1">
+                    Issuing Organization <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="certificate-issuer"
@@ -2359,12 +2578,16 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
                       }))
                     }
                     placeholder="e.g., Amazon Web Services"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="certificate-issued">Issued On / Year</Label>
+                  <Label htmlFor="certificate-issued" className="text-sm font-medium text-gray-700 mb-1.5">
+                    Issued Date (Optional)
+                  </Label>
                   <Input
                     id="certificate-issued"
+                    type="date"
                     value={formData.issuedOn}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -2372,8 +2595,9 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
                         issuedOn: e.target.value,
                       }))
                     }
-                    placeholder="e.g., Apr 2024"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Select the date when you received this certificate</p>
                 </div>
                 <div>
                   <Label htmlFor="certificate-level">Level / Category</Label>
@@ -2434,53 +2658,111 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              {/* File Upload Section */}
+              <div className="space-y-2">
+                <Label htmlFor="certificate-upload" className="text-sm font-medium text-gray-700">
+                  Upload Certificate Document (Optional)
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="certificate-upload"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileChange}
+                    className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                </div>
+                {uploadedFile && (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg mt-2">
+                    <Check className="w-4 h-4 text-green-600" />
+                    <span className="text-sm text-green-700 font-medium">{uploadedFile.name}</span>
+                    <span className="text-xs text-green-600">({(uploadedFile.size / 1024).toFixed(2)} KB)</span>
+                  </div>
+                )}
+                {formData.upload && !uploadedFile && (
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg mt-2">
+                    <FileText className="w-4 h-4 text-gray-600" />
+                    <span className="text-sm text-gray-700">Current: {formData.upload.split('/').pop()}</span>
+                  </div>
+                )}
+                <div className="flex items-start gap-2 mt-2">
+                  <AlertCircle className="w-4 h-4 text-gray-400 mt-0.5" />
+                  <p className="text-xs text-gray-500">
+                    Accepted formats: PDF, JPG, PNG • Maximum size: 5MB
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
                 <Button
-                  onClick={saveCertificate}
-                  className="bg-blue-400 hover:bg-blue-500 text-white"
-                >
-                  {editingIndex !== null
-                    ? "Update Certificate"
-                    : "Add Certificate"}
-                </Button>
-                <Button
+                  type="button"
                   variant="outline"
                   onClick={() => {
                     setIsAdding(false);
                     resetForm();
                   }}
+                  disabled={uploading}
+                  className="px-6"
                 >
                   Cancel
                 </Button>
+                <Button
+                  type="button"
+                  onClick={saveCertificate}
+                  disabled={uploading}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 shadow-md hover:shadow-lg transition-all"
+                >
+                  {uploading ? (
+                    <>
+                      <Clock className="w-4 h-4 mr-2 animate-spin" />
+                      {uploadedFile ? "Uploading..." : "Saving..."}
+                    </>
+                  ) : (
+                    <>
+                      {editingIndex !== null ? (
+                        <>
+                          <Check className="w-4 h-4 mr-2" />
+                          Update Certificate
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Certificate
+                        </>
+                      )}
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
-          ) : (
+          ) : certificates.length > 0 ? (
             <Button
               onClick={() => setIsAdding(true)}
-              variant="outline"
-              className="w-full border-dashed"
+              className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-dashed border-blue-200 hover:border-blue-400 hover:from-blue-100 hover:to-indigo-100 py-6 rounded-xl transition-all duration-200 group shadow-sm hover:shadow-md"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Add New Certificate
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-500 group-hover:bg-blue-600 flex items-center justify-center transition-all duration-200 shadow-sm group-hover:scale-110">
+                  <Plus className="w-5 h-5 text-white" />
+                </div>
+                <span className="font-semibold text-base text-gray-700 group-hover:text-blue-700 transition-colors">Add Another Certificate</span>
+              </div>
             </Button>
-          )}
+          ) : null}
+        </div>
 
-          <div className="flex justify-end gap-2">
+        {/* Footer */}
+        <div className="border-t border-gray-200 bg-white px-6 py-4">
+          <div className="flex items-center justify-end">
             <Button
-              variant="outline"
               onClick={() => {
                 onClose();
                 setIsAdding(false);
                 resetForm();
               }}
+              className="px-8 py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg transition-colors shadow-sm"
             >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              className="bg-blue-400 hover:bg-blue-500"
-            >
-              Save All Changes
+              Done
             </Button>
           </div>
         </div>
