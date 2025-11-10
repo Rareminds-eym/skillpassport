@@ -190,6 +190,22 @@ const Header = () => {
     }
   }, [isMobileMenuOpen]);
 
+  // Hide header on portfolio and settings pages
+  const hiddenPaths = [
+    '/digital-pp',
+    '/portfolio',
+    '/passport',
+    '/video-portfolio',
+    '/settings/theme',
+    '/settings/layout',
+    '/settings/export',
+    '/settings/sharing'
+  ];
+  
+  if (hiddenPaths.some(path => location.pathname.startsWith(path))) {
+    return null;
+  }
+
   return (
     <header 
       ref={headerRef}

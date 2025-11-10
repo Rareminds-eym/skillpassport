@@ -355,3 +355,78 @@ code {
 .pagination li.selected a {
   pointer-events: none;
 }
+
+/* ==========================
+   Digital-Portfolio Scoped Styles
+   These styles are intentionally scoped under the
+   `.digital-portfolio` root so they only apply when
+   the digital-portfolio pages render inside a container
+   with that class (e.g. <div className="digital-portfolio">...)</>
+   ========================== */
+
+/* Background Ripple Effect Animation (scoped usage)
+   keyframes are global but used by elements inside .digital-portfolio */
+@keyframes cell-ripple {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}
+
+@layer components {
+  /* root container for digital-portfolio pages */
+  .digital-portfolio {
+    /* apply scroll behaviour and palette only inside this scope */
+    scroll-behavior: smooth;
+    @apply bg-gray-50 text-gray-900;
+  }
+
+  /* Passport 3D flip components (scoped) */
+  .digital-portfolio .passport-page {
+    perspective: 1000px;
+    transform-style: preserve-3d;
+  }
+  
+  .digital-portfolio .passport-flip {
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+  }
+  
+  .digital-portfolio .passport-flip.flipped {
+    transform: rotateY(180deg);
+  }
+  
+  .digital-portfolio .passport-front,
+  .digital-portfolio .passport-back {
+    backface-visibility: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .digital-portfolio .passport-back {
+    transform: rotateY(180deg);
+  }
+}
+
+@layer utilities {
+  /* Utilities scoped under the digital-portfolio container so they don't
+     clash with the rest of the app global utilities. Use as
+     .digital-portfolio .text-shadow on elements inside the portfolio. */
+  .digital-portfolio .text-shadow {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .digital-portfolio .glass-effect {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+}
