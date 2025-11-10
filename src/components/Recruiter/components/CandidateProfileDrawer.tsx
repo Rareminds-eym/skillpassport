@@ -1765,7 +1765,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                       Schedule Interview
                     </button>
                     <button
-                      onClick={() => navigate('/digital-pp/homepage', { state: { candidate: modalCandidate } })}
+                      onClick={() => navigate('/digital-pp/homepage', { state: { candidate: candidate } })}
                       className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100">
                       <File className="h-4 w-4 mr-2" />
                       View Portfolio

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Student, PortfolioSettings } from '../types/student';
-import { mockStudent } from '../utils/supabase';
+import { supabase } from '../lib/supabaseClient';
 
 interface PortfolioContextType {
   student: Student | null;
@@ -34,9 +34,50 @@ interface PortfolioProviderProps {
 }
 
 export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }) => {
-  const [student, setStudent] = useState<Student | null>(null);
+  const [student, _setStudent] = useState<Student | null>(null);
   const [settings, setSettings] = useState<PortfolioSettings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
+
+  const setStudent = async (studentData: Student) => {
+    setIsLoading(true);
+    try {
+      if (studentData.email) {
+        // First try to get the full student data from Supabase
+        const { data, error } = await supabase
+          .from('students')
+          .select('*')
+          .eq('email', studentData.email)
+          .single();
+
+        if (error) {
+          console.error('Error fetching student data:', error);
+          // If we can't get the data from Supabase, use the passed data
+          _setStudent(studentData);
+        } else if (data) {
+          // Merge the Supabase data with any additional data passed in
+          _setStudent({
+            ...data,
+            ...studentData,
+            profile: {
+              ...(data.profile || {}),
+              ...(studentData.profile || {})
+            }
+          });
+        } else {
+          // If no data found in Supabase, use the passed data
+          _setStudent(studentData);
+        }
+      } else {
+        // If no email (shouldn't happen), use the passed data
+        _setStudent(studentData);
+      }
+    } catch (error) {
+      console.error('Error in setStudent:', error);
+      _setStudent(studentData);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   console.log('PortfolioProvider render:', { student, isLoading });
 
@@ -52,16 +93,12 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
       console.error('Error parsing saved settings:', error);
     }
 
-    // For demo purposes, use mock data
-    // In production, you would fetch the student data based on authentication
-    try {
-      setStudent(mockStudent);
-    } catch (error) {
-      console.error('Error setting mock student:', error);
+    // If student data is passed through setStudent, don't fetch
+    // This prevents overwriting data passed from the TalentPool
+    if (!student) {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
-  }, []);
+  }, [student]);
 
   const updateSettings = (newSettings: Partial<PortfolioSettings>) => {
     const updatedSettings = { ...settings, ...newSettings };
