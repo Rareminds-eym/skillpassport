@@ -86,7 +86,7 @@ const PassportPage: React.FC = () => {
             <div className="mb-8">
               <div className="w-24 h-24 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center mx-auto border-4 border-white/40 shadow-2xl p-2">
                 <img 
-                  src="/assets/logos/bulb.png" 
+                  src="/RMLogo.webp" 
                   alt="Rareminds Logo" 
                   className="w-full h-full object-contain"
                 />
