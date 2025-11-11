@@ -14,12 +14,13 @@ import {
   PlusCircleIcon,
   CalendarDaysIcon,
   EnvelopeIcon,
-  ClockIcon
+  ClockIcon,
+  PencilIcon
 } from "@heroicons/react/24/outline"
 import SearchBar from "../../components/common/SearchBar"
 import { useClasses } from "../../hooks/useClasses"
 import ManageStudentsModal from "../../components/educator/ManageStudentsModal"
-import { createClass, EducatorClass } from "../../services/classService"
+import { createClass, EducatorClass, updateClass } from "../../services/classService"
 import toast from "react-hot-toast"
 import Pagination from "../../components/educator/Pagination"
 
@@ -137,12 +138,14 @@ const ClassDetailsDrawer = ({
   classItem,
   onClose,
   onManageStudents,
-  onAssignTask
+  onAssignTask,
+  onEdit
 }: {
   classItem: EducatorClass | null
   onClose: () => void
   onManageStudents: (classItem: EducatorClass) => void
   onAssignTask: () => void
+  onEdit: (classItem: EducatorClass) => void
 }) => {
   if (!classItem) return null
 
@@ -221,6 +224,14 @@ const ClassDetailsDrawer = ({
               Updated {formatDate(classItem.lastUpdated)}
             </div>
             <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => onEdit(classItem)}
+                className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                type="button"
+              >
+                <PencilIcon className="mr-1.5 h-4 w-4" />
+                Edit Class
+              </button>
               <button
                 onClick={() => onManageStudents(classItem)}
                 className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
@@ -376,21 +387,24 @@ const ClassDetailsDrawer = ({
   )
 }
 
-const AddClassModal = ({
+const AddEditClassModal = ({
   isOpen,
   onClose,
-  onCreated
+  onSaved,
+  editingClass
 }: {
   isOpen: boolean
   onClose: () => void
-  onCreated: (newClass: EducatorClass) => void
+  onSaved: (savedClass: EducatorClass) => void
+  editingClass?: EducatorClass | null
 }) => {
   const [name, setName] = useState("")
-  const [course, setCourse] = useState("")
+  const [grade, setGrade] = useState("")
+  const [section, setSection] = useState("")
   const [educator, setEducator] = useState("")
   const [educatorEmail, setEducatorEmail] = useState("")
-  const [department, setDepartment] = useState("")
-  const [year, setYear] = useState("")
+  const [academicYear, setAcademicYear] = useState("")
+  const [maxStudents, setMaxStudents] = useState("40")
   const [status, setStatus] = useState("Active")
   const [skillInput, setSkillInput] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -398,53 +412,88 @@ const AddClassModal = ({
   const statusOptions = ["Active", "Upcoming", "Completed"]
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen && editingClass) {
+      setName(editingClass.name)
+      setGrade(editingClass.course)
+      setSection(editingClass.department)
+      setEducator(editingClass.educator)
+      setEducatorEmail(editingClass.educatorEmail)
+      setAcademicYear(editingClass.year)
+      setMaxStudents(String(editingClass.total_students))
+      setStatus(editingClass.status)
+      setSkillInput(editingClass.skillAreas.join(", "))
+    } else if (!isOpen) {
       setName("")
-      setCourse("")
+      setGrade("")
+      setSection("")
       setEducator("")
       setEducatorEmail("")
-      setDepartment("")
-      setYear("")
+      setAcademicYear("")
+      setMaxStudents("40")
       setStatus("Active")
       setSkillInput("")
       setError(null)
       setSubmitting(false)
     }
-  }, [isOpen])
+  }, [isOpen, editingClass])
 
   if (!isOpen) return null
 
   const handleSubmit = async () => {
-    if (!name.trim() || !course.trim() || !educator.trim() || !educatorEmail.trim() || !department.trim() || !year.trim()) {
+    if (!name.trim() || !grade.trim() || !educator.trim() || !educatorEmail.trim() || !section.trim() || !academicYear.trim() || !maxStudents.trim()) {
       setError("Fill in all required fields")
+      return
+    }
+
+    const maxStudentsNum = parseInt(maxStudents)
+    if (isNaN(maxStudentsNum) || maxStudentsNum <= 0) {
+      setError("Max students must be a positive number")
       return
     }
 
     setError(null)
     setSubmitting(true)
-    const { data, error: serviceError } = await createClass({
-      name: name.trim(),
-      course: course.trim(),
-      educator: educator.trim(),
-      educatorEmail: educatorEmail.trim(),
-      department: department.trim(),
-      year: year.trim(),
-      status: status as "Active" | "Completed" | "Upcoming",
-      skillAreas: skillInput
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean)
-    })
-    setSubmitting(false)
-    if (serviceError || !data) {
-      setError(serviceError || "Unable to create class")
-      toast.error(serviceError || "Unable to create class")
-      return
-    }
 
-    toast.success("Class created")
-    onCreated(data)
-    onClose()
+    try {
+      const payload = {
+        name: name.trim(),
+        grade: grade.trim(),
+        section: section.trim(),
+        academicYear: academicYear.trim(),
+        educator: educator.trim(),
+        educatorEmail: educatorEmail.trim(),
+        maxStudents: maxStudentsNum,
+        status: status as "Active" | "Completed" | "Upcoming",
+        skillAreas: skillInput
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean)
+      }
+
+      let result
+      if (editingClass) {
+        result = await updateClass(editingClass.id, payload)
+      } else {
+        result = await createClass(payload)
+      }
+
+      const { data, error: serviceError } = result
+      
+      if (serviceError || !data) {
+        setError(serviceError || `Unable to ${editingClass ? 'update' : 'create'} class`)
+        toast.error(serviceError || `Unable to ${editingClass ? 'update' : 'create'} class`)
+        return
+      }
+
+      toast.success(`Class ${editingClass ? 'updated' : 'created'}`)
+      onSaved(data)
+      onClose()
+    } catch (err: any) {
+      setError(err.message || `Unable to ${editingClass ? 'update' : 'create'} class`)
+      toast.error(err.message || `Unable to ${editingClass ? 'update' : 'create'} class`)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -454,8 +503,8 @@ const AddClassModal = ({
         <div className="inline-block w-full max-w-2xl transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left align-middle shadow-xl transition-all sm:my-8 sm:p-6">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Create New Class</h2>
-              <p className="mt-1 text-sm text-gray-500">Enter class details to add it to your educator workspace.</p>
+              <h2 className="text-lg font-semibold text-gray-900">{editingClass ? 'Edit Class' : 'Create New Class'}</h2>
+              <p className="mt-1 text-sm text-gray-500">{editingClass ? 'Update class details' : 'Enter class details to add it to your educator workspace.'}</p>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600" type="button">
               <XMarkIcon className="h-6 w-6" />
@@ -477,57 +526,48 @@ const AddClassModal = ({
                 onChange={(e) => setName(e.target.value)}
                 type="text"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="AI Fundamentals"
+                placeholder="Science A"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Course</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Grade</label>
               <input
-                value={course}
-                onChange={(e) => setCourse(e.target.value)}
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
                 type="text"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Artificial Intelligence"
+                placeholder="10"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Educator Name</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Section</label>
               <input
-                value={educator}
-                onChange={(e) => setEducator(e.target.value)}
+                value={section}
+                onChange={(e) => setSection(e.target.value)}
                 type="text"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Dr. Asha Raman"
+                placeholder="A"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Educator Email</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Academic Year</label>
               <input
-                value={educatorEmail}
-                onChange={(e) => setEducatorEmail(e.target.value)}
-                type="email"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="asha.raman@example.edu"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Department</label>
-              <input
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
+                value={academicYear}
+                onChange={(e) => setAcademicYear(e.target.value)}
                 type="text"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Computer Science"
+                placeholder="2024-2025"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Batch Year</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Max Students</label>
               <input
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                type="text"
+                value={maxStudents}
+                onChange={(e) => setMaxStudents(e.target.value)}
+                type="number"
+                min="1"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="2025"
+                placeholder="40"
               />
             </div>
             <div>
@@ -544,14 +584,34 @@ const AddClassModal = ({
                 ))}
               </select>
             </div>
-            <div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-gray-700">Educator Name</label>
+              <input
+                value={educator}
+                onChange={(e) => setEducator(e.target.value)}
+                type="text"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Mr. John Smith"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-gray-700">Educator Email</label>
+              <input
+                value={educatorEmail}
+                onChange={(e) => setEducatorEmail(e.target.value)}
+                type="email"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="john.smith@school.edu"
+              />
+            </div>
+            <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium text-gray-700">Skill Areas (comma separated)</label>
               <input
                 value={skillInput}
                 onChange={(e) => setSkillInput(e.target.value)}
                 type="text"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="AI, Communication"
+                placeholder="Math, Science, Critical Thinking"
               />
             </div>
           </div>
@@ -571,7 +631,7 @@ const AddClassModal = ({
               disabled={submitting}
               type="button"
             >
-              {submitting ? "Creating..." : "Create Class"}
+              {submitting ? (editingClass ? 'Updating...' : 'Creating...') : (editingClass ? 'Update Class' : 'Create Class')}
             </button>
           </div>
         </div>
@@ -615,9 +675,8 @@ const ClassesPage = () => {
   const [viewMode, setViewMode] = useState("grid")
   const [showFilters, setShowFilters] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  // Add pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(25)
+  const [itemsPerPage] = useState(25)
 
   const [filters, setFilters] = useState({
     courses: [] as string[],
@@ -631,6 +690,7 @@ const ClassesPage = () => {
   const [detailClass, setDetailClass] = useState<EducatorClass | null>(null)
   const [manageStudentsClass, setManageStudentsClass] = useState<EducatorClass | null>(null)
   const [showAddClassModal, setShowAddClassModal] = useState(false)
+  const [editingClass, setEditingClass] = useState<EducatorClass | null>(null)
 
   useEffect(() => {
     setCurrentPage(1)
@@ -771,22 +831,15 @@ const ClassesPage = () => {
     })
   }, [classes, searchQuery, filters])
 
-  // Calculate pagination
   const totalItems = filteredClasses.length
   const totalPages = Math.ceil(totalItems / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const paginatedClasses = filteredClasses.slice(startIndex, endIndex)
 
-
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const handleItemsPerPageChange = (newItemsPerPage: number) => {
-    setItemsPerPage(newItemsPerPage)
-    setCurrentPage(1)
   }
 
   const handleClearFilters = () => {
@@ -806,6 +859,11 @@ const ClassesPage = () => {
     setDetailClass(matched || classItem)
   }
 
+  const handleEditClass = (classItem: EducatorClass) => {
+    setEditingClass(classItem)
+    setShowAddClassModal(true)
+  }
+
   const totalFilters =
     filters.courses.length +
     filters.years.length +
@@ -819,7 +877,6 @@ const ClassesPage = () => {
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Header - responsive layout */}
       <div className='p-4 sm:p-6 lg:p-8 mb-2'>
         <h1 className="text-xl md:text-3xl font-bold text-gray-900">Classes Management</h1>
         <p className="text-base md:text-lg mt-2 text-gray-600">Manage your classes and manage student progress here.</p>
@@ -883,56 +940,6 @@ const ClassesPage = () => {
         </div>
       </div>
 
-      <div className="lg:hidden p-4 bg-white border-b border-gray-200 space-y-4">
-        <div className="text-left">
-          <h1 className="text-xl font-semibold text-gray-900">Classes</h1>
-          <span className="text-sm text-gray-500">{filteredClasses.length} results</span>
-        </div>
-
-        <div>
-          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search classes" size="md" />
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 relative"
-            type="button"
-          >
-            <FunnelIcon className="h-4 w-4 mr-2" />
-            Filters
-            {totalFilters > 0 && (
-              <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-indigo-600 rounded-full">
-                {totalFilters}
-              </span>
-            )}
-          </button>
-          <div className="flex rounded-md shadow-sm">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === "grid"
-                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
-              type="button"
-            >
-              <Squares2X2Icon className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("table")}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === "table"
-                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
-              type="button"
-            >
-              <TableCellsIcon className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile header */}
       <div className="lg:hidden p-4 bg-white border-b border-gray-200 space-y-4">
         <div className="text-left">
           <h1 className="text-xl font-semibold text-gray-900">Classes</h1>
@@ -1074,7 +1081,10 @@ const ClassesPage = () => {
               {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
             </p>
             <button
-              onClick={() => setShowAddClassModal(true)}
+              onClick={() => {
+                setEditingClass(null)
+                setShowAddClassModal(true)
+              }}
               className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
               type="button"
             >
@@ -1102,8 +1112,8 @@ const ClassesPage = () => {
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <h3 className="font-semibold text-gray-900">{classItem.name}</h3>
-                        <p className="text-sm text-gray-500">{classItem.course}</p>
-                        <p className="text-xs text-gray-400">{classItem.department} • Batch {classItem.year}</p>
+                        <p className="text-xs text-gray-400">Section {classItem.department} • {classItem.year}</p>
+                        <p className="text-sm text-gray-500">Grade {classItem.course}</p>
                       </div>
                       <StatusBadge status={classItem.status} />
                     </div>
@@ -1119,32 +1129,34 @@ const ClassesPage = () => {
                       <div className="text-sm text-gray-600">
                         <span className="text-gray-500">Educator:</span> <span className="font-medium text-gray-900">{classItem.educator}</span>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {classItem.skillAreas.map((skill) => (
-                          <span key={skill} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
+                      {classItem.skillAreas.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {classItem.skillAreas.map((skill) => (
+                            <span key={skill} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEditClass(classItem)}
+                          className="inline-flex items-center px-3 py-1.5 border border-indigo-200 rounded text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
+                          type="button"
+                        >
+                          <PencilIcon className="h-4 w-4 mr-1" />
+                          Edit
+                        </button>
                         <button
                           onClick={() => setManageStudentsClass(classItem)}
                           className="inline-flex items-center px-3 py-1.5 border border-indigo-200 rounded text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
                           type="button"
                         >
                           <UserGroupIcon className="h-4 w-4 mr-1" />
-                          Manage Students
-                        </button>
-                        <button
-                          onClick={() => navigate("/educator/assignments")}
-                          className="inline-flex items-center px-3 py-1.5 border border-indigo-200 rounded text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
-                          type="button"
-                        >
-                          <ClipboardDocumentCheckIcon className="h-4 w-4 mr-1" />
-                          Assign Task
+                          Students
                         </button>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1154,7 +1166,7 @@ const ClassesPage = () => {
                           type="button"
                         >
                           <EyeIcon className="h-4 w-4 mr-1" />
-                          View Details
+                          View
                         </button>
                       </div>
                     </div>
@@ -1208,11 +1220,11 @@ const ClassesPage = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
-                            <button onClick={() => setManageStudentsClass(classItem)} className="text-indigo-600 hover:text-indigo-900" type="button">
-                              Manage Students
+                            <button onClick={() => handleEditClass(classItem)} className="text-indigo-600 hover:text-indigo-900" type="button">
+                              Edit
                             </button>
-                            <button onClick={() => navigate("/educator/assignments")} className="text-indigo-600 hover:text-indigo-900" type="button">
-                              Assign Task
+                            <button onClick={() => setManageStudentsClass(classItem)} className="text-indigo-600 hover:text-indigo-900" type="button">
+                              Students
                             </button>
                             <button onClick={() => handleViewDetails(classItem)} className="text-indigo-600 hover:text-indigo-900" type="button">
                               View
@@ -1241,7 +1253,6 @@ const ClassesPage = () => {
             )}
           </div>
 
-          {/* Add Pagination Component */}
           {!loading && totalPages > 1 && (
             <Pagination
               currentPage={currentPage}
@@ -1249,20 +1260,23 @@ const ClassesPage = () => {
               totalItems={totalItems}
               itemsPerPage={itemsPerPage}
               onPageChange={handlePageChange}
-              // onItemsPerPageChange={handleItemsPerPageChange}
-              // itemsPerPageOptions={[10, 25, 50, 100]}
             />
           )}
         </div>
       </div>
 
-      <AddClassModal
+      <AddEditClassModal
         isOpen={showAddClassModal}
-        onClose={() => setShowAddClassModal(false)}
-        onCreated={(newClass) => {
-          upsertClass(newClass)
+        onClose={() => {
           setShowAddClassModal(false)
+          setEditingClass(null)
         }}
+        onSaved={(savedClass) => {
+          upsertClass(savedClass)
+          setShowAddClassModal(false)
+          setEditingClass(null)
+        }}
+        editingClass={editingClass}
       />
 
       <ManageStudentsModal
@@ -1281,6 +1295,10 @@ const ClassesPage = () => {
       <ClassDetailsDrawer
         classItem={detailClass}
         onClose={() => setDetailClass(null)}
+        onEdit={(item) => {
+          handleEditClass(item)
+          setDetailClass(null)
+        }}
         onManageStudents={(item) => {
           setManageStudentsClass(item)
           setDetailClass(item)
