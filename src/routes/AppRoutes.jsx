@@ -13,6 +13,16 @@ import { ThemeProvider } from '../context/ThemeContext';
 import { PortfolioProvider } from '../context/PortfolioContext';
 import HomePage from '../pages/digital-pp/HomePage';
 import StudentDigitalPortfolioHomePage from '../pages/student/digital-pp/HomePage';
+import DigitalPortfolioPage from '../pages/digital-pp/PortfolioPage';
+import DigitalPassportPage from '../pages/digital-pp/PassportPage';
+import DigitalVideoPortfolioPage from '../pages/digital-pp/VideoPortfolioPage';
+import DigitalSettingsPage from '../pages/digital-pp/SettingsPage';
+import DigitalThemeSettings from '../pages/digital-pp/settings/ThemeSettings';
+import DigitalLayoutSettings from '../pages/digital-pp/settings/LayoutSettings';
+import DigitalExportSettings from '../pages/digital-pp/settings/ExportSettings';
+import DigitalSharingSettings from '../pages/digital-pp/settings/SharingSettings';
+import DigitalProfileSettings from '../pages/digital-pp/settings/ProfileSettings';
+import StudentDigitalPortfolioNav from '../components/digital-pp/ui/StudentDigitalPortfolioNav';
 import PortfolioPage from '../pages/digital-pp/PortfolioPage';
 import PassportPage from '../pages/digital-pp/PassportPage';
 import VideoPortfolioPage from '../pages/digital-pp/VideoPortfolioPage';
@@ -317,7 +327,7 @@ const AppRoutes = () => {
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
           
-          {/* Digital Portfolio route with required providers */}
+          {/* Digital Portfolio routes with required providers */}
           <Route
             path="digital-portfolio"
             element={
@@ -325,6 +335,123 @@ const AppRoutes = () => {
                 <PortfolioProvider>
                   <div className="-mx-6 -my-8">
                     <StudentDigitalPortfolioHomePage />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/portfolio"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalPortfolioPage />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/passport"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalPassportPage />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/video"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalVideoPortfolioPage />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/settings"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalSettingsPage />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/settings/theme"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalThemeSettings />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/settings/layout"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalLayoutSettings />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/settings/export"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalExportSettings />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/settings/sharing"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalSharingSettings />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/settings/profile"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalProfileSettings />
                   </div>
                 </PortfolioProvider>
               </ThemeProvider>
