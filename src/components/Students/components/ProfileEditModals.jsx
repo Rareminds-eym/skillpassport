@@ -330,7 +330,7 @@ export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-semibold" style={{ color: "#6A0DAD" }}>
+                    <h4 className="font-semibold">
                       {education.degree}
                     </h4>
                     <Badge className={getLevelColor(education.level)}>
@@ -354,26 +354,25 @@ export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
                   </div>
                   <p
                     className="text-sm font-medium"
-                    style={{ color: "#6A0DAD" }}
                   >
                     {education.university}
                   </p>
                   <div className="grid grid-cols-3 gap-2 text-xs mt-2">
                     <div>
-                      <span style={{ color: "#6A0DAD" }}>Department:</span>
-                      <p className="font-medium" style={{ color: "#6A0DAD" }}>
+                      <span>Department:</span>
+                      <p className="font-medium">
                         {education.department}
                       </p>
                     </div>
                     <div>
-                      <span style={{ color: "#6A0DAD" }}>Year:</span>
-                      <p className="font-medium" style={{ color: "#6A0DAD" }}>
+                      <span>Year:</span>
+                      <p className="font-medium">
                         {education.yearOfPassing}
                       </p>
                     </div>
                     <div>
-                      <span style={{ color: "#6A0DAD" }}>Grade:</span>
-                      <p className="font-medium" style={{ color: "#6A0DAD" }}>
+                      <span>Grade:</span>
+                      <p className="font-medium">
                         {education.cgpa}
                       </p>
                     </div>
@@ -1486,13 +1485,13 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <h4 className="font-medium" style={{ color: "#6A0DAD" }}>
+                  <h4 className="font-medium">
                     {exp.role}
                   </h4>
-                  <p className="text-sm" style={{ color: "#6A0DAD" }}>
+                  <p className="text-sm">
                     {exp.organization}
                   </p>
-                  <p className="text-xs" style={{ color: "#6A0DAD" }}>
+                  <p className="text-xs">
                     {exp.duration}
                   </p>
                   {exp.processing ? (
@@ -2792,7 +2791,7 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
               <div className="flex justify-between items-start gap-3">
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-semibold" style={{ color: "#6A0DAD" }}>
+                    <h4 className="font-semibold">
                       {cert.title || cert.name || "Certificate"}
                     </h4>
                     {cert.processing && (
@@ -2805,7 +2804,6 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
                   {(cert.issuer || cert.organization || cert.institution) && (
                     <p
                       className="text-sm font-medium"
-                      style={{ color: "#6A0DAD" }}
                     >
                       {cert.issuer || cert.organization || cert.institution}
                     </p>
@@ -2814,7 +2812,7 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
                     cert.date ||
                     cert.issueDate ||
                     cert.issuedOn) && (
-                    <p className="text-xs" style={{ color: "#6A0DAD" }}>
+                    <p className="text-xs">
                       {cert.year ||
                         cert.date ||
                         cert.issueDate ||
@@ -3296,7 +3294,7 @@ export const SkillsEditModal = ({
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="font-medium" style={{ color: "#6A0DAD" }}>
+                    <span className="font-medium">
                       {skill.name}
                     </span>
                     {skill.processing ? (
