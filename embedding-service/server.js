@@ -29,6 +29,20 @@ async function initializeModel() {
   return embeddingPipeline;
 }
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    service: 'Transformers.js Embedding API',
+    version: '1.0.0',
+    status: embeddingPipeline ? 'ready' : 'loading',
+    endpoints: {
+      health: '/health',
+      embed: 'POST /embed',
+      batch: 'POST /embed/batch'
+    }
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 

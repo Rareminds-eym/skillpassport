@@ -95,7 +95,7 @@ const FinalCTA = () => {
   }, []);
 
   const openCalendly = () => {
-    const url = 'https://calendly.com/d/cs8h-vpx-dwt/skillpassport_home';
+    const url = 'https://calendly.com/rareminds/institute-_marketing-clone';
     if (window.Calendly) {
       window.Calendly.initPopupWidget({ url });
     } else {
