@@ -12,6 +12,7 @@ import EducatorLayout from "../layouts/EducatorLayout";
 import { ThemeProvider } from '../context/ThemeContext';
 import { PortfolioProvider } from '../context/PortfolioContext';
 import HomePage from '../pages/digital-pp/HomePage';
+import StudentDigitalPortfolioHomePage from '../pages/student/digital-pp/HomePage';
 import PortfolioPage from '../pages/digital-pp/PortfolioPage';
 import PassportPage from '../pages/digital-pp/PassportPage';
 import VideoPortfolioPage from '../pages/digital-pp/VideoPortfolioPage';
@@ -315,6 +316,21 @@ const AppRoutes = () => {
           <Route path="assignments" element={<Assignments />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
+          
+          {/* Digital Portfolio route with required providers */}
+          <Route
+            path="digital-portfolio"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioHomePage />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          
           <Route
             path=""
             element={<Navigate to="/student/dashboard" replace />}
