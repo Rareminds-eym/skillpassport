@@ -15,7 +15,7 @@ const StudentDigitalPortfolioNav: React.FC = () => {
   return (
     <>
       {/* Floating Menu Button */}
-      <div className="fixed top-20 right-4 z-40">
+      <div className="fixed top-20 right-4 z-30">
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
@@ -38,7 +38,8 @@ const StudentDigitalPortfolioNav: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30"
+              style={{ top: '64px' }}
             />
 
             {/* Menu Panel */}
@@ -47,7 +48,8 @@ const StudentDigitalPortfolioNav: React.FC = () => {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 w-80 bg-white dark:bg-gray-900 shadow-2xl z-50 overflow-y-auto"
+              className="fixed right-0 bottom-0 w-80 bg-white dark:bg-gray-900 shadow-2xl z-40 overflow-y-auto"
+              style={{ top: '64px' }}
             >
               <div className="p-6">
                 {/* Menu Header */}
