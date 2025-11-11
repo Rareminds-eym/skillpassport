@@ -29,6 +29,11 @@ const Header: React.FC<HeaderProps> = ({
     setShowProfileMenu(false)
   }
 
+  const handleProfile = () => {
+    setShowProfileMenu(false)
+    navigate('/educator/profile')
+  }
+
   const handleSettings = () => {
     setShowProfileMenu(false)
     navigate('/educator/settings')
@@ -144,11 +149,18 @@ const Header: React.FC<HeaderProps> = ({
                     {/* Menu Items */}
                     <div className="py-1">
                       <button
-                        onClick={handleSettings}
+                        onClick={handleProfile}
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         type="button"
                       >
                         My Profile
+                      </button>
+                      <button
+                        onClick={handleSettings}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        type="button"
+                      >
+                        Settings
                       </button>
                       <div className="border-t border-gray-100" />
                       <button
