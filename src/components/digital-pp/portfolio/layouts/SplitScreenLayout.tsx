@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Github, Linkedin, Twitter, Mail, Phone, MapPin, ExternalLink, Code, Briefcase, GraduationCap, ChevronRight, Moon, Sun, User, FolderOpen } from 'lucide-react';
-import { Student, AnimationType } from '../../../../types/student';
+import { Student, AnimationType, DisplayPreferences } from '../../../../types/student';
 import { useTheme } from '../../../../context/ThemeContext';
 
 interface SplitScreenLayoutProps {
@@ -10,6 +10,7 @@ interface SplitScreenLayoutProps {
   secondaryColor: string;
   accentColor: string;
   animation?: AnimationType;
+  displayPreferences?: DisplayPreferences;
 }
 
 const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({ 
@@ -17,7 +18,15 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
   primaryColor, 
   secondaryColor, 
   accentColor,
-  animation 
+  animation,
+  displayPreferences = {
+    showSocialLinks: true,
+    showSkillBars: true,
+    showProjectImages: true,
+    enableAnimations: true,
+    showContactForm: true,
+    showDownloadResume: true,
+  }
 }) => {
   const [dividerPosition, setDividerPosition] = useState(35);
   const [isDragging, setIsDragging] = useState(false);
@@ -149,38 +158,42 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
             transition={{ delay: 0.7 }}
             className="flex space-x-4 mt-8"
           >
-            {student.github_link && (
-              <a
-                href={student.github_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-all transform hover:scale-110"
-                style={{ color: primaryColor }}
-              >
-                <Github className="w-6 h-6" />
-              </a>
-            )}
-            {student.linkedin_link && (
-              <a
-                href={student.linkedin_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-all transform hover:scale-110"
-                style={{ color: primaryColor }}
-              >
-                <Linkedin className="w-6 h-6" />
-              </a>
-            )}
-            {student.twitter_link && (
-              <a
-                href={student.twitter_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-all transform hover:scale-110"
-                style={{ color: primaryColor }}
-              >
-                <Twitter className="w-6 h-6" />
-              </a>
+            {displayPreferences.showSocialLinks && (
+              <>
+                {student.github_link && (
+                  <a
+                    href={student.github_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-all transform hover:scale-110"
+                    style={{ color: primaryColor }}
+                  >
+                    <Github className="w-6 h-6" />
+                  </a>
+                )}
+                {student.linkedin_link && (
+                  <a
+                    href={student.linkedin_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-all transform hover:scale-110"
+                    style={{ color: primaryColor }}
+                  >
+                    <Linkedin className="w-6 h-6" />
+                  </a>
+                )}
+                {student.twitter_link && (
+                  <a
+                    href={student.twitter_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-all transform hover:scale-110"
+                    style={{ color: primaryColor }}
+                  >
+                    <Twitter className="w-6 h-6" />
+                  </a>
+                )}
+              </>
             )}
           </motion.div>
         </div>

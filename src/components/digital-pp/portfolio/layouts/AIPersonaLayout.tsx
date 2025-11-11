@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Code, GraduationCap, FolderOpen, Award, TrendingUp, X, Github, Linkedin, Mail } from 'lucide-react';
-import { Student, AnimationType } from '../../../../types/student';
+import { Student, AnimationType, DisplayPreferences } from '../../../../types/student';
 
 interface AIPersonaLayoutProps {
   student: Student;
@@ -9,13 +9,22 @@ interface AIPersonaLayoutProps {
   secondaryColor: string;
   accentColor: string;
   animation?: AnimationType;
+  displayPreferences?: DisplayPreferences;
 }
 
 type ViewType = 'intro' | 'skills' | 'education' | 'projects' | 'achievements';
 
 const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({ 
   student, 
-  primaryColor
+  primaryColor,
+  displayPreferences = {
+    showSocialLinks: true,
+    showSkillBars: true,
+    showProjectImages: true,
+    enableAnimations: true,
+    showContactForm: true,
+    showDownloadResume: true,
+  }
 }) => {
   const [currentView, setCurrentView] = useState<ViewType>('intro');
   const [isAnimating, setIsAnimating] = useState(false);
@@ -105,25 +114,29 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
                 transition={{ delay: 0.6 }}
                 className="flex justify-center space-x-6 mb-12"
               >
-                {student.github_link && (
-                  <a
-                    href={student.github_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-4 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 hover:border-cyan-500 transition-all hover:shadow-lg hover:shadow-cyan-500/50"
-                  >
-                    <Github className="w-6 h-6" />
-                  </a>
-                )}
-                {student.linkedin_link && (
-                  <a
-                    href={student.linkedin_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-4 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 hover:border-cyan-500 transition-all hover:shadow-lg hover:shadow-cyan-500/50"
-                  >
-                    <Linkedin className="w-6 h-6" />
-                  </a>
+                {displayPreferences.showSocialLinks && (
+                  <>
+                    {student.github_link && (
+                      <a
+                        href={student.github_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-4 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 hover:border-cyan-500 transition-all hover:shadow-lg hover:shadow-cyan-500/50"
+                      >
+                        <Github className="w-6 h-6" />
+                      </a>
+                    )}
+                    {student.linkedin_link && (
+                      <a
+                        href={student.linkedin_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-4 bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 hover:border-cyan-500 transition-all hover:shadow-lg hover:shadow-cyan-500/50"
+                      >
+                        <Linkedin className="w-6 h-6" />
+                      </a>
+                    )}
+                  </>
                 )}
                 <a
                   href={`mailto:${student.email}`}

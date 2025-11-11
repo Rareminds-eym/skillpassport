@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Github, Linkedin, Twitter, Mail, Phone, MapPin, Calendar, Code, Briefcase, Star, Zap } from 'lucide-react';
-import { Student, AnimationType } from '../../../../types/student';
+import { Student, AnimationType, DisplayPreferences } from '../../../../types/student';
 
 interface CreativeLayoutProps {
   student: Student;
@@ -9,13 +9,22 @@ interface CreativeLayoutProps {
   secondaryColor: string;
   accentColor: string;
   animation: AnimationType;
+  displayPreferences?: DisplayPreferences;
 }
 
 const CreativeLayout: React.FC<CreativeLayoutProps> = ({ 
   student, 
   primaryColor, 
   secondaryColor, 
-  accentColor
+  accentColor,
+  displayPreferences = {
+    showSocialLinks: true,
+    showSkillBars: true,
+    showProjectImages: true,
+    enableAnimations: true,
+    showContactForm: true,
+    showDownloadResume: true,
+  }
 }) => {
 
   const containerVariants = {
@@ -112,35 +121,39 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
                 variants={itemVariants}
                 className="flex flex-wrap gap-4 justify-center lg:justify-start mb-8"
               >
-                {student.github_link && (
-                  <motion.a 
-                    href={student.github_link}
-                    whileHover={{ scale: 1.05, rotate: 5 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="p-4 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
-                  >
-                    <Github className="w-6 h-6 text-gray-700" />
-                  </motion.a>
-                )}
-                {student.linkedin_link && (
-                  <motion.a 
-                    href={student.linkedin_link}
-                    whileHover={{ scale: 1.05, rotate: -5 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="p-4 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
-                  >
-                    <Linkedin className="w-6 h-6 text-blue-600" />
-                  </motion.a>
-                )}
-                {student.twitter_link && (
-                  <motion.a 
-                    href={student.twitter_link}
-                    whileHover={{ scale: 1.05, rotate: 5 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="p-4 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
-                  >
-                    <Twitter className="w-6 h-6 text-blue-400" />
-                  </motion.a>
+                {displayPreferences.showSocialLinks && (
+                  <>
+                    {student.github_link && (
+                      <motion.a 
+                        href={student.github_link}
+                        whileHover={{ scale: 1.05, rotate: 5 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="p-4 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <Github className="w-6 h-6 text-gray-700" />
+                      </motion.a>
+                    )}
+                    {student.linkedin_link && (
+                      <motion.a 
+                        href={student.linkedin_link}
+                        whileHover={{ scale: 1.05, rotate: -5 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="p-4 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <Linkedin className="w-6 h-6 text-blue-600" />
+                      </motion.a>
+                    )}
+                    {student.twitter_link && (
+                      <motion.a 
+                        href={student.twitter_link}
+                        whileHover={{ scale: 1.05, rotate: 5 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="p-4 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <Twitter className="w-6 h-6 text-blue-400" />
+                      </motion.a>
+                    )}
+                  </>
                 )}
                 <motion.a 
                   href={`mailto:${student.email}`}
@@ -199,7 +212,7 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
       </motion.section>
 
       {/* Skills Section - Creative Cards */}
-      {student.profile.technicalSkills && student.profile.technicalSkills.length > 0 && (
+      {displayPreferences.showSkillBars && student.profile.technicalSkills && student.profile.technicalSkills.length > 0 && (
         <motion.section 
           className="py-20 relative"
           variants={containerVariants}
@@ -266,7 +279,7 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
       )}
 
       {/* Projects Section - Creative Grid */}
-      {student.profile.projects && student.profile.projects.length > 0 && (
+      {displayPreferences.showProjectImages && student.profile.projects && student.profile.projects.length > 0 && (
         <motion.section 
           className="py-20 bg-white bg-opacity-50"
           variants={containerVariants}

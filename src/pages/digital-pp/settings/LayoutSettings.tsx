@@ -3,13 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Layout, Save, Eye } from 'lucide-react';
 import { usePortfolio } from '../../../context/PortfolioContext';
 import ThemeToggle from '../../../components/digital-pp/ThemeToggle';
-import type { PortfolioLayout } from '../../../types/student';
+import type { PortfolioLayout, DisplayPreferences } from '../../../types/student';
 
 const LayoutSettings: React.FC = () => {
   const { settings, updateSettings } = usePortfolio();
   const navigate = useNavigate();
   const [selectedLayout, setSelectedLayout] = useState<PortfolioLayout>(settings.layout);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+  const [displayPreferences, setDisplayPreferences] = useState<DisplayPreferences>(
+    settings.displayPreferences || {
+      showSocialLinks: true,
+      showSkillBars: true,
+      showProjectImages: true,
+      enableAnimations: true,
+      showContactForm: true,
+      showDownloadResume: true,
+    }
+  );
 
   const layouts = [
     { 
@@ -65,7 +75,8 @@ const LayoutSettings: React.FC = () => {
 
   const handleSaveSettings = () => {
     updateSettings({
-      layout: selectedLayout
+      layout: selectedLayout,
+      displayPreferences: displayPreferences
     });
     
     setShowSaveConfirmation(true);
@@ -183,7 +194,8 @@ const LayoutSettings: React.FC = () => {
                 <span className="text-gray-700 dark:text-gray-300">Show social media links</span>
                 <input
                   type="checkbox"
-                  defaultChecked
+                  checked={displayPreferences.showSocialLinks}
+                  onChange={(e) => setDisplayPreferences({ ...displayPreferences, showSocialLinks: e.target.checked })}
                   className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                 />
               </label>
@@ -191,7 +203,8 @@ const LayoutSettings: React.FC = () => {
                 <span className="text-gray-700 dark:text-gray-300">Display skill progress bars</span>
                 <input
                   type="checkbox"
-                  defaultChecked
+                  checked={displayPreferences.showSkillBars}
+                  onChange={(e) => setDisplayPreferences({ ...displayPreferences, showSkillBars: e.target.checked })}
                   className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                 />
               </label>
@@ -199,7 +212,8 @@ const LayoutSettings: React.FC = () => {
                 <span className="text-gray-700 dark:text-gray-300">Show project images</span>
                 <input
                   type="checkbox"
-                  defaultChecked
+                  checked={displayPreferences.showProjectImages}
+                  onChange={(e) => setDisplayPreferences({ ...displayPreferences, showProjectImages: e.target.checked })}
                   className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                 />
               </label>
@@ -207,7 +221,8 @@ const LayoutSettings: React.FC = () => {
                 <span className="text-gray-700 dark:text-gray-300">Enable animations</span>
                 <input
                   type="checkbox"
-                  defaultChecked
+                  checked={displayPreferences.enableAnimations}
+                  onChange={(e) => setDisplayPreferences({ ...displayPreferences, enableAnimations: e.target.checked })}
                   className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                 />
               </label>
@@ -215,7 +230,8 @@ const LayoutSettings: React.FC = () => {
                 <span className="text-gray-700 dark:text-gray-300">Display contact form</span>
                 <input
                   type="checkbox"
-                  defaultChecked
+                  checked={displayPreferences.showContactForm}
+                  onChange={(e) => setDisplayPreferences({ ...displayPreferences, showContactForm: e.target.checked })}
                   className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                 />
               </label>
@@ -223,7 +239,8 @@ const LayoutSettings: React.FC = () => {
                 <span className="text-gray-700 dark:text-gray-300">Show download resume button</span>
                 <input
                   type="checkbox"
-                  defaultChecked
+                  checked={displayPreferences.showDownloadResume}
+                  onChange={(e) => setDisplayPreferences({ ...displayPreferences, showDownloadResume: e.target.checked })}
                   className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                 />
               </label>

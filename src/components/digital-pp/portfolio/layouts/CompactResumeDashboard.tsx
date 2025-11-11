@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Github, Linkedin, Twitter, Code, Briefcase, GraduationCap, Award, Download, FileText, ExternalLink, Calendar } from 'lucide-react';
-import { Student, AnimationType } from '../../../../types/student';
+import { Student, AnimationType, DisplayPreferences } from '../../../../types/student';
 
 interface CompactResumeDashboardProps {
   student: Student;
@@ -9,6 +9,7 @@ interface CompactResumeDashboardProps {
   secondaryColor: string;
   accentColor: string;
   animation?: AnimationType;
+  displayPreferences?: DisplayPreferences;
 }
 
 type TabType = 'skills' | 'projects' | 'achievements' | 'resume';
@@ -17,7 +18,15 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
   student, 
   primaryColor, 
   secondaryColor, 
-  accentColor 
+  accentColor,
+  displayPreferences = {
+    showSocialLinks: true,
+    showSkillBars: true,
+    showProjectImages: true,
+    enableAnimations: true,
+    showContactForm: true,
+    showDownloadResume: true,
+  }
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('skills');
   const [isDownloading, setIsDownloading] = useState(false);
@@ -128,38 +137,42 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
             transition={{ delay: 0.6 }}
             className="flex space-x-3"
           >
-            {student.github_link && (
-              <a
-                href={student.github_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                style={{ color: primaryColor }}
-              >
-                <Github className="w-5 h-5" />
-              </a>
-            )}
-            {student.linkedin_link && (
-              <a
-                href={student.linkedin_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                style={{ color: primaryColor }}
-              >
-                <Linkedin className="w-5 h-5" />
-              </a>
-            )}
-            {student.twitter_link && (
-              <a
-                href={student.twitter_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                style={{ color: primaryColor }}
-              >
-                <Twitter className="w-5 h-5" />
-              </a>
+            {displayPreferences.showSocialLinks && (
+              <>
+                {student.github_link && (
+                  <a
+                    href={student.github_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    style={{ color: primaryColor }}
+                  >
+                    <Github className="w-5 h-5" />
+                  </a>
+                )}
+                {student.linkedin_link && (
+                  <a
+                    href={student.linkedin_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    style={{ color: primaryColor }}
+                  >
+                    <Linkedin className="w-5 h-5" />
+                  </a>
+                )}
+                {student.twitter_link && (
+                  <a
+                    href={student.twitter_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    style={{ color: primaryColor }}
+                  >
+                    <Twitter className="w-5 h-5" />
+                  </a>
+                )}
+              </>
             )}
           </motion.div>
         </div>
@@ -195,33 +208,35 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
         )}
 
         {/* Download Resume Button */}
-        <div className="p-6 border-t dark:border-gray-700">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleDownloadResume}
-            disabled={isDownloading}
-            className="w-full py-3 rounded-lg font-semibold text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
-            style={{ backgroundColor: primaryColor }}
-          >
-            {isDownloading ? (
-              <>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                >
+        {displayPreferences.showDownloadResume && (
+          <div className="p-6 border-t dark:border-gray-700">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleDownloadResume}
+              disabled={isDownloading}
+              className="w-full py-3 rounded-lg font-semibold text-white shadow-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+              style={{ backgroundColor: primaryColor }}
+            >
+              {isDownloading ? (
+                <>
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  >
+                    <Download className="w-5 h-5" />
+                  </motion.div>
+                  <span>Preparing...</span>
+                </>
+              ) : (
+                <>
                   <Download className="w-5 h-5" />
-                </motion.div>
-                <span>Preparing...</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-5 h-5" />
-                <span>Download Resume</span>
-              </>
-            )}
-          </motion.button>
-        </div>
+                  <span>Download Resume</span>
+                </>
+              )}
+            </motion.button>
+          </div>
+        )}
       </motion.aside>
 
       {/* Right Content Area - Tabbed Interface */}

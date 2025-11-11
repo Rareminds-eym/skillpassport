@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Github, Linkedin, Twitter, Mail, Phone, MapPin, Calendar, Award, Code, Briefcase } from 'lucide-react';
-import { Student, AnimationType } from '../../../../types/student';
+import { Student, AnimationType, DisplayPreferences } from '../../../../types/student';
 
 interface ModernLayoutProps {
   student: Student;
@@ -9,6 +9,7 @@ interface ModernLayoutProps {
   secondaryColor: string;
   accentColor: string;
   animation: AnimationType;
+  displayPreferences?: DisplayPreferences;
 }
 
 const ModernLayout: React.FC<ModernLayoutProps> = ({ 
@@ -16,7 +17,15 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
   primaryColor, 
   secondaryColor, 
   accentColor, 
-  animation 
+  animation,
+  displayPreferences = {
+    showSocialLinks: true,
+    showSkillBars: true,
+    showProjectImages: true,
+    enableAnimations: true,
+    showContactForm: true,
+    showDownloadResume: true,
+  }
 }) => {
   const getAnimationClass = (animation: AnimationType) => {
     switch (animation) {
@@ -89,20 +98,24 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
               )}
               
               <div className="flex flex-wrap justify-center lg:justify-start gap-4 mt-8">
-                {student.github_link && (
-                  <a href={student.github_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
-                    <Github className="w-6 h-6" />
-                  </a>
-                )}
-                {student.linkedin_link && (
-                  <a href={student.linkedin_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
-                    <Linkedin className="w-6 h-6" />
-                  </a>
-                )}
-                {student.twitter_link && (
-                  <a href={student.twitter_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
-                    <Twitter className="w-6 h-6" />
-                  </a>
+                {displayPreferences.showSocialLinks && (
+                  <>
+                    {student.github_link && (
+                      <a href={student.github_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
+                        <Github className="w-6 h-6" />
+                      </a>
+                    )}
+                    {student.linkedin_link && (
+                      <a href={student.linkedin_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
+                        <Linkedin className="w-6 h-6" />
+                      </a>
+                    )}
+                    {student.twitter_link && (
+                      <a href={student.twitter_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
+                        <Twitter className="w-6 h-6" />
+                      </a>
+                    )}
+                  </>
                 )}
                 <a href={`mailto:${student.email}`} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
                   <Mail className="w-6 h-6" />
@@ -139,7 +152,7 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
       </motion.section>
 
       {/* Skills Section */}
-      {student.profile.technicalSkills && student.profile.technicalSkills.length > 0 && (
+      {displayPreferences.showSkillBars && student.profile.technicalSkills && student.profile.technicalSkills.length > 0 && (
         <motion.section 
           className="py-16"
           variants={containerVariants}
@@ -205,7 +218,7 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
                   variants={itemVariants}
                   className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300"
                 >
-                  {project.image && (
+                  {displayPreferences.showProjectImages && project.image && (
                     <img
                       src={project.image}
                       alt={project.title}

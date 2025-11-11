@@ -6,11 +6,18 @@ import type { Student, PortfolioSettings } from '../types/student';
 
 // Export portfolio as PDF
 export const exportAsPDF = async (
-  elementId: string = 'portfolio-content',
+  elementIdOrElement: string | HTMLElement = 'portfolio-content',
   filename: string = 'portfolio.pdf'
 ): Promise<void> => {
   try {
-    const element = document.getElementById(elementId);
+    let element: HTMLElement | null;
+    
+    if (typeof elementIdOrElement === 'string') {
+      element = document.getElementById(elementIdOrElement);
+    } else {
+      element = elementIdOrElement;
+    }
+    
     if (!element) {
       throw new Error('Portfolio content not found');
     }
@@ -80,11 +87,18 @@ export const exportAsJSON = (
 
 // Export as standalone HTML
 export const exportAsHTML = async (
-  elementId: string = 'portfolio-content',
+  elementIdOrElement: string | HTMLElement = 'portfolio-content',
   filename: string = 'portfolio.html'
 ): Promise<void> => {
   try {
-    const element = document.getElementById(elementId);
+    let element: HTMLElement | null;
+    
+    if (typeof elementIdOrElement === 'string') {
+      element = document.getElementById(elementIdOrElement);
+    } else {
+      element = elementIdOrElement;
+    }
+    
     if (!element) {
       throw new Error('Portfolio content not found');
     }
@@ -96,7 +110,7 @@ export const exportAsHTML = async (
           return Array.from(styleSheet.cssRules)
             .map(rule => rule.cssText)
             .join('\n');
-        } catch (e) {
+        } catch {
           return '';
         }
       })
@@ -254,14 +268,14 @@ export const exportResume = async (
       pdf.text(student.profile.email, leftMargin, yPosition);
       yPosition += 5;
     }
-    // Note: phone and location fields may not exist in StudentProfile type
-    const profile = student.profile as any;
-    if (profile.phone) {
-      pdf.text(profile.phone, leftMargin, yPosition);
+    // Note: phone and location fields are in Student object
+    const studentData = student as Student;
+    if (studentData.contact_number) {
+      pdf.text(studentData.contact_number, leftMargin, yPosition);
       yPosition += 5;
     }
-    if (profile.location) {
-      pdf.text(profile.location, leftMargin, yPosition);
+    if (studentData.district_name) {
+      pdf.text(studentData.district_name, leftMargin, yPosition);
       yPosition += 10;
     }
 

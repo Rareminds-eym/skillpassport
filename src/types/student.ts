@@ -130,6 +130,15 @@ export type PortfolioLayout = 'modern' | 'classic' | 'creative' | 'minimal' | 's
 
 export type AnimationType = 'fade' | 'slide' | 'bounce' | 'float' | 'none';
 
+export interface DisplayPreferences {
+  showSocialLinks: boolean;
+  showSkillBars: boolean;
+  showProjectImages: boolean;
+  enableAnimations: boolean;
+  showContactForm: boolean;
+  showDownloadResume: boolean;
+}
+
 export interface PortfolioSettings {
   layout: PortfolioLayout;
   primaryColor: string;
@@ -138,4 +147,5 @@ export interface PortfolioSettings {
   animation: AnimationType;
   fontSize: number;
   profileImage?: string;
+  displayPreferences?: DisplayPreferences;
 }

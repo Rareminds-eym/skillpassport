@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, FileText, Save } from 'lucide-react';
 import { usePortfolio } from '../../../context/PortfolioContext';
 import ThemeToggle from '../../../components/digital-pp/ThemeToggle';
-import { exportAsPDF, exportAsJSON, exportAsHTML, exportResume } from '../../../utils/exportppUtils';
+import { exportAsJSON, exportResume } from '../../../utils/exportppUtils';
 
 const ExportSettings: React.FC = () => {
   const navigate = useNavigate();
@@ -30,15 +30,21 @@ const ExportSettings: React.FC = () => {
     setExportType(type);
 
     try {
+      // For HTML, PDF exports, first navigate to portfolio in fullscreen mode
+      if (type === 'HTML' || type === 'PDF') {
+        // Store export intent
+        sessionStorage.setItem('pendingExport', JSON.stringify({ type, filename: getFileName(type === 'HTML' ? 'Portfolio.html' : 'Portfolio.pdf') }));
+        
+        // Navigate to portfolio
+        navigate('/portfolio');
+        setIsExporting(false);
+        return;
+      }
+
+      // For JSON and Resume, proceed directly
       switch (type) {
-        case 'PDF':
-          await exportAsPDF('root', getFileName('Portfolio.pdf'));
-          break;
         case 'JSON':
           exportAsJSON(student, settings, getFileName('Data.json'));
-          break;
-        case 'HTML':
-          await exportAsHTML('root', getFileName('Portfolio.html'));
           break;
         case 'Resume':
           await exportResume(student, getFileName('Resume.pdf'));
