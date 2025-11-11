@@ -131,6 +131,9 @@ const EducatorReports = lazy(() => import("../pages/educator/Reports"));
 const EducatorMediaManager = lazy(() =>
   import("../pages/educator/MediaManager")
 );
+const EducatorDigitalPortfolio = lazy(() =>
+  import("../pages/educator/DigitalPortfolioPage")
+);
 
 // ===== Admins (Role-Based) =====
 const CollegeDashboard = lazy(() =>
@@ -472,6 +475,7 @@ const AppRoutes = () => {
           <Route path="classes" element={<EducatorClasses />} />
           <Route path="assignments" element={<EducatorAssessments />} />
           <Route path="mentornotes" element={<EducatorMentorNotes />} />
+          <Route path="digital-portfolio" element={<EducatorDigitalPortfolio />} />
           <Route path="settings" element={<EducatorSettings />} />
           <Route path="profile" element={<EducatorProfile />} />
           <Route path="profile-debug" element={<EducatorProfileDebug />} />
