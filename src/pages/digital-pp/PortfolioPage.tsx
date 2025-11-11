@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Settings, Maximize, Minimize } from 'lucide-react';
 import { usePortfolio } from '../../context/PortfolioContext';
+import { exportAsPDF, exportAsHTML } from '../../utils/exportppUtils';
 import ModernLayout from '../../components/digital-pp/portfolio/layouts/ModernLayout';
 import CreativeLayout from '../../components/digital-pp/portfolio/layouts/CreativeLayout';
 import SplitScreenLayout from '../../components/digital-pp/portfolio/layouts/SplitScreenLayout';
@@ -26,6 +27,54 @@ const PortfolioPage: React.FC = () => {
       setIsFullscreen(false);
     }
   };
+
+  // Handle pending export from settings page
+  useEffect(() => {
+    const handlePendingExport = async () => {
+      const pendingExport = sessionStorage.getItem('pendingExport');
+      if (pendingExport) {
+        try {
+          const { type, filename } = JSON.parse(pendingExport);
+          
+          // Small delay to ensure DOM is fully rendered
+          setTimeout(async () => {
+            try {
+              // Enter fullscreen mode
+              await document.documentElement.requestFullscreen().catch(() => {
+                console.warn('Fullscreen not available');
+              });
+              setIsFullscreen(true);
+              
+              // Additional delay for fullscreen to apply
+              setTimeout(async () => {
+                // Find the layout content container - use the main content div
+                const layoutContent = document.querySelector('[data-portfolio-content]') || 
+                                    document.querySelector('.pt-20') ||
+                                    document.documentElement;
+                
+                if (type === 'HTML') {
+                  await exportAsHTML(layoutContent as HTMLElement, filename);
+                } else if (type === 'PDF') {
+                  await exportAsPDF(layoutContent as HTMLElement, filename);
+                }
+                
+                // Clean up
+                sessionStorage.removeItem('pendingExport');
+              }, 500);
+            } catch (error) {
+              console.error('Export error:', error);
+              sessionStorage.removeItem('pendingExport');
+            }
+          }, 100);
+        } catch (error) {
+          console.error('Error parsing pending export:', error);
+          sessionStorage.removeItem('pendingExport');
+        }
+      }
+    };
+
+    handlePendingExport();
+  }, []);
 
   if (isLoading) {
     return (
@@ -58,6 +107,7 @@ const PortfolioPage: React.FC = () => {
       secondaryColor: settings.secondaryColor,
       accentColor: settings.accentColor,
       animation: settings.animation,
+      displayPreferences: settings.displayPreferences,
     };
 
     switch (settings.layout) {

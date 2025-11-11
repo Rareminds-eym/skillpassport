@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Code, GraduationCap, Briefcase, Award, TrendingUp, Star, Github, ExternalLink, Calendar, MapPin, Mail, Phone, Target, BookOpen, Zap, Trophy, Sparkles } from 'lucide-react';
-import { Student, AnimationType } from '../../../../types/student';
+import { Student, AnimationType, DisplayPreferences } from '../../../../types/student';
 
 interface InfographicDashboardProps {
   student: Student;
@@ -9,13 +9,22 @@ interface InfographicDashboardProps {
   secondaryColor: string;
   accentColor: string;
   animation?: AnimationType;
+  displayPreferences?: DisplayPreferences;
 }
 
 const InfographicDashboard: React.FC<InfographicDashboardProps> = ({ 
   student, 
   primaryColor, 
   secondaryColor, 
-  accentColor 
+  accentColor,
+  displayPreferences = {
+    showSocialLinks: true,
+    showSkillBars: true,
+    showProjectImages: true,
+    enableAnimations: true,
+    showContactForm: true,
+    showDownloadResume: true,
+  }
 }) => {
   const [countedProjects, setCountedProjects] = useState(0);
   const [countedSkills, setCountedSkills] = useState(0);
@@ -396,7 +405,7 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
             )}
 
             {/* Projects Grid */}
-            {student.profile.projects && student.profile.projects.length > 0 && (
+            {displayPreferences.showProjectImages && student.profile.projects && student.profile.projects.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}

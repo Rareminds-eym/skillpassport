@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Student, PortfolioSettings } from '../types/student';
+import { Student, PortfolioSettings, DisplayPreferences } from '../types/student';
 import { supabase } from '../lib/supabaseClient';
 
 interface PortfolioContextType {
@@ -10,6 +10,15 @@ interface PortfolioContextType {
   isLoading: boolean;
 }
 
+const defaultDisplayPreferences: DisplayPreferences = {
+  showSocialLinks: true,
+  showSkillBars: true,
+  showProjectImages: true,
+  enableAnimations: true,
+  showContactForm: true,
+  showDownloadResume: true,
+};
+
 const defaultSettings: PortfolioSettings = {
   layout: 'modern',
   primaryColor: '#3b82f6',
@@ -17,6 +26,7 @@ const defaultSettings: PortfolioSettings = {
   accentColor: '#60a5fa',
   animation: 'fade',
   fontSize: 16,
+  displayPreferences: defaultDisplayPreferences,
 };
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);

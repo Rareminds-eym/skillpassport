@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GraduationCap, Briefcase, Award, Code, Trophy, MapPin, Calendar, Github, ExternalLink, ChevronRight, BookOpen } from 'lucide-react';
 import { usePortfolio } from '../../../../context/PortfolioContext';
-import type { Student, AnimationType } from '../../../../types/student';
+import type { Student, AnimationType, DisplayPreferences } from '../../../../types/student';
 
 interface JourneyMapLayoutProps {
   student?: Student;
@@ -10,11 +10,20 @@ interface JourneyMapLayoutProps {
   secondaryColor?: string;
   accentColor?: string;
   animation?: AnimationType;
+  displayPreferences?: DisplayPreferences;
 }
 
 const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
   const { student: contextStudent } = usePortfolio();
   const student = props.student || contextStudent;
+  const displayPreferences = props.displayPreferences || {
+    showSocialLinks: true,
+    showSkillBars: true,
+    showProjectImages: true,
+    enableAnimations: true,
+    showContactForm: true,
+    showDownloadResume: true,
+  };
   const [selectedMilestone, setSelectedMilestone] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<'education' | 'experience' | 'projects' | 'certifications' | 'achievements'>('education');
 
@@ -256,22 +265,24 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
               </span>
             </button>
 
-            <button
-              onClick={() => setActiveTab('projects')}
-              className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all duration-300 ${
-                activeTab === 'projects'
-                  ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg scale-105'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md'
-              }`}
-            >
-              <Code className="w-5 h-5" />
-              <span>Projects</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                activeTab === 'projects' ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
-                {projectMilestones.length}
-              </span>
-            </button>
+            {displayPreferences.showProjectImages && (
+              <button
+                onClick={() => setActiveTab('projects')}
+                className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+                  activeTab === 'projects'
+                    ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg scale-105'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md'
+                }`}
+              >
+                <Code className="w-5 h-5" />
+                <span>Projects</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  activeTab === 'projects' ? 'bg-white/20' : 'bg-gray-200'
+                }`}>
+                  {projectMilestones.length}
+                </span>
+              </button>
+            )}
 
             <button
               onClick={() => setActiveTab('certifications')}
