@@ -222,9 +222,9 @@ export default function LoginEducator() {
 
   return (
     <div className="flex items-center lg:py-10 bg-white">
-      <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[700px] overflow-hidden">
+      <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[750px]">
         {/* LEFT SIDE */}
-        <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#f1c744] to-[#b8860b]">
+        <div className="hidden lg:flex relative p-10  pb-0 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#f1c744] to-[#b8860b] overflow-visible">
           <div className="relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold leading-tight">
               Empower Learning. Guide Students to Success.
@@ -238,11 +238,11 @@ export default function LoginEducator() {
             <img
               src={educatorIllustration}
               alt="Educator illustration"
-              className="w-80 lg:w-[24rem] object-contain drop-shadow-xl "
+              className="w-96 lg:w-[30rem] xl:w-[34rem] object-contain drop-shadow-xl "
               style={{
                 alignSelf: 'flex-end',
-                marginBottom: '-30px',
-                transform: 'translateY(20px)'
+                marginBottom: '0px',
+                transform: 'translateY(0px)'
               }}
             />
 
