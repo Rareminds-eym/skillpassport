@@ -85,60 +85,156 @@ export const exportAsJSON = (
   }
 };
 
-// Export as standalone HTML
+// Export as standalone HTML - captures actual rendered portfolio
+
 export const exportAsHTML = async (
-  elementIdOrElement: string | HTMLElement = 'portfolio-content',
+  student: Student,
+  settings: PortfolioSettings,
+  preferences: any,
   filename: string = 'portfolio.html'
 ): Promise<void> => {
   try {
-    let element: HTMLElement | null;
+    // Get the main portfolio container that has the actual layout rendered
+    const portfolioContainer = document.querySelector('[data-layout-container]') || 
+                              document.querySelector('main') ||
+                              document.body;
     
-    if (typeof elementIdOrElement === 'string') {
-      element = document.getElementById(elementIdOrElement);
-    } else {
-      element = elementIdOrElement;
-    }
-    
-    if (!element) {
+    if (!portfolioContainer) {
       throw new Error('Portfolio content not found');
     }
 
-    // Get all stylesheets
-    const styles = Array.from(document.styleSheets)
-      .map(styleSheet => {
-        try {
-          return Array.from(styleSheet.cssRules)
-            .map(rule => rule.cssText)
-            .join('\n');
-        } catch {
-          return '';
-        }
-      })
-      .join('\n');
+    // Clone the content to avoid modifying the original
+    const clonedContent = portfolioContainer.cloneNode(true) as HTMLElement;
 
-    const htmlContent = `
-<!DOCTYPE html>
+    // Remove navigation, headers, and UI controls that shouldn't be in export
+    clonedContent.querySelectorAll('header, nav, .fixed, [class*="back-button"], button[type="button"]').forEach(el => {
+      const element = el as HTMLElement;
+      // Keep social media links and project buttons
+      if (!element.closest('a[href^="http"]') && 
+          !element.querySelector('svg[class*="lucide"]')?.closest('a')) {
+        el.remove();
+      }
+    });
+
+    // Convert all relative image URLs to absolute
+    clonedContent.querySelectorAll('img').forEach(img => {
+      if (img.src && !img.src.startsWith('data:') && !img.src.startsWith('http')) {
+        img.src = new URL(img.src, window.location.origin).href;
+      }
+      img.setAttribute('onerror', "this.style.display='none'");
+    });
+
+    // Remove framer-motion animation attributes to prevent errors
+    clonedContent.querySelectorAll('[style*="transform"], [style*="opacity"]').forEach(el => {
+      (el as HTMLElement).style.transform = '';
+      (el as HTMLElement).style.opacity = '1';
+    });
+
+    // Build the complete HTML document with all necessary dependencies
+    const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digital Portfolio</title>
+    <meta name="description" content="Professional portfolio of ${student.profile.name || 'Portfolio'}">
+    <title>${student.profile.name || 'Portfolio'} - Professional Portfolio</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
     <style>
-        ${styles}
-        body {
+        * {
             margin: 0;
-            padding: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            overflow-x: hidden;
+        }
+        
+        .fixed {
+            position: relative !important;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* Disable animations for export */
+        * {
+            animation-duration: 0s !important;
+            transition-duration: 0s !important;
+        }
+        
+        .bg-gradient-to-br,
+        .bg-gradient-to-r,
+        .bg-gradient-to-t {
+            background-size: 200% 200%;
+        }
+        
+        .group:hover .group-hover\\:scale-110 {
+            transform: none;
+        }
+        
+        @media print {
+            body {
+                background: white !important;
+            }
+            
+            .no-print {
+                display: none !important;
+            }
+            
+            * {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+        
+        .min-h-screen {
+            min-height: auto;
+        }
+        
+        section {
+            page-break-inside: avoid;
         }
     </style>
 </head>
 <body>
-    ${element.outerHTML}
+    ${clonedContent.innerHTML}
+    
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding: 40px 20px; margin-top: 60px;">
+        <p style="font-size: 1.1em; font-weight: 600;">Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <p style="margin-top: 10px; opacity: 0.9; font-size: 0.95em;">This portfolio was created using Rareminds Skill Ecosystem Platform</p>
+        ${preferences.includeContactDetails && student.profile.email ? `
+        <div style="margin-top: 20px;">
+            <a href="mailto:${student.profile.email}" style="color: white; text-decoration: none; opacity: 0.9;">📧 ${student.profile.email}</a>
+        </div>
+        ` : ''}
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        });
+        
+        document.querySelectorAll('[style*="transform"]').forEach(el => {
+            el.style.transform = '';
+        });
+    </script>
 </body>
-</html>
-    `.trim();
+</html>`;
 
-    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
     saveAs(blob, filename);
   } catch (error) {
     console.error('Error exporting HTML:', error);

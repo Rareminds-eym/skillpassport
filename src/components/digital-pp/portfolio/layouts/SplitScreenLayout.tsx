@@ -59,7 +59,7 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
 
   return (
     <div 
-      className="h-screen overflow-hidden flex"
+      className="h-screen overflow-hidden flex data-layout-container"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}

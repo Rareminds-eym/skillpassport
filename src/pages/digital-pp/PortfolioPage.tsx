@@ -34,36 +34,51 @@ const PortfolioPage: React.FC = () => {
       const pendingExport = sessionStorage.getItem('pendingExport');
       if (pendingExport) {
         try {
-          const { type, filename } = JSON.parse(pendingExport);
+          const { type, filename, preferences } = JSON.parse(pendingExport);
           
           // Small delay to ensure DOM is fully rendered
           setTimeout(async () => {
             try {
-              // Enter fullscreen mode
-              await document.documentElement.requestFullscreen().catch(() => {
-                console.warn('Fullscreen not available');
-              });
-              setIsFullscreen(true);
-              
-              // Additional delay for fullscreen to apply
-              setTimeout(async () => {
-                // Find the layout content container - use the main content div
-                const layoutContent = document.querySelector('[data-portfolio-content]') || 
-                                    document.querySelector('.pt-20') ||
-                                    document.documentElement;
+              if (type === 'PDF') {
+                // Enter fullscreen mode for PDF
+                await document.documentElement.requestFullscreen().catch(() => {
+                  console.warn('Fullscreen not available');
+                });
+                setIsFullscreen(true);
                 
-                if (type === 'HTML') {
-                  await exportAsHTML(layoutContent as HTMLElement, filename);
-                } else if (type === 'PDF') {
+                // Additional delay for fullscreen to apply
+                setTimeout(async () => {
+                  const layoutContent = document.querySelector('[data-portfolio-content]') || 
+                                      document.querySelector('.pt-20') ||
+                                      document.documentElement;
+                  
                   await exportAsPDF(layoutContent as HTMLElement, filename);
-                }
-                
-                // Clean up
-                sessionStorage.removeItem('pendingExport');
-              }, 500);
+                  sessionStorage.removeItem('pendingExport');
+                  
+                  // Exit fullscreen after export
+                  if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                    setIsFullscreen(false);
+                  }
+                }, 500);
+              } else if (type === 'HTML') {
+                // For HTML, we don't need fullscreen - just wait for render
+                setTimeout(async () => {
+                  if (!student || !settings) {
+                    throw new Error('Student or settings data not available');
+                  }
+                  
+                  await exportAsHTML(student, settings, preferences, filename);
+                  sessionStorage.removeItem('pendingExport');
+                  
+                  // Navigate back to export settings
+                  navigate('/settings/export');
+                }, 300);
+              }
             } catch (error) {
               console.error('Export error:', error);
               sessionStorage.removeItem('pendingExport');
+              alert('Export failed. Please try again.');
             }
           }, 100);
         } catch (error) {
@@ -74,7 +89,7 @@ const PortfolioPage: React.FC = () => {
     };
 
     handlePendingExport();
-  }, []);
+  }, [student, settings, navigate]);
 
   if (isLoading) {
     return (

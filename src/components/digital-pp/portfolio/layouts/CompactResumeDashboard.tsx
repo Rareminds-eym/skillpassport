@@ -48,7 +48,7 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
   };
 
   return (
-    <div className="h-screen flex bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    <div className="h-screen flex bg-gray-50 dark:bg-gray-900 overflow-hidden data-layout-container">
       {/* Left Fixed Sidebar - Profile & Contact */}
       <motion.aside
         initial={{ x: -100, opacity: 0 }}

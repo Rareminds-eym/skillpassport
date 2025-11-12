@@ -69,7 +69,7 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-indigo-950 dark:to-purple-950">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-indigo-950 dark:to-purple-950 data-layout-container">
       {/* Hero Header with Gradient Background */}
       <div className="relative overflow-hidden">
         {/* Animated Background Pattern */}

@@ -33,7 +33,12 @@ const ExportSettings: React.FC = () => {
       // For HTML, PDF exports, first navigate to portfolio in fullscreen mode
       if (type === 'HTML' || type === 'PDF') {
         // Store export intent
-        sessionStorage.setItem('pendingExport', JSON.stringify({ type, filename: getFileName(type === 'HTML' ? 'Portfolio.html' : 'Portfolio.pdf') }));
+           sessionStorage.setItem('pendingExport', JSON.stringify({ 
+          type, 
+          filename: getFileName(type === 'HTML' ? 'Portfolio.html' : 'Portfolio.pdf'),
+          preferences: exportPreferences,
+          layout: settings.layout
+        }));
         
         // Navigate to portfolio
         navigate('/portfolio');
@@ -43,6 +48,9 @@ const ExportSettings: React.FC = () => {
 
       // For JSON and Resume, proceed directly
       switch (type) {
+        case 'PDF':
+          await exportAsPDF(student, settings, getFileName('Portfolio.pdf'));
+          break;
         case 'JSON':
           exportAsJSON(student, settings, getFileName('Data.json'));
           break;
