@@ -22,6 +22,15 @@ import OpportunityCard from '../../components/Students/components/OpportunityCar
 import OpportunityListItem from '../../components/Students/components/OpportunityListItem';
 import OpportunityPreview from '../../components/Students/components/OpportunityPreview';
 import AdvancedFilters from '../../components/Students/components/AdvancedFilters';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious
+} from '../../components/Students/components/ui/pagination';
 const Opportunities = () => {
   // Get user context
   const { user } = useAuth();
@@ -69,6 +78,8 @@ const Opportunities = () => {
     department: [],
     postedWithin: '',
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const opportunitiesPerPage = 12;
   
   // Fetch opportunities from database
   const { 
@@ -168,6 +179,7 @@ const Opportunities = () => {
     }
   };
 
+  const advancedFiltersKey = React.useMemo(() => JSON.stringify(advancedFilters), [advancedFilters]);
   // Filter and sort opportunities
   const filteredAndSortedOpportunities = React.useMemo(() => {
     // First filter
@@ -299,6 +311,32 @@ const Opportunities = () => {
     return sorted;
   }, [opportunities, searchTerm, advancedFilters, sortBy]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedOpportunities.length / opportunitiesPerPage));
+  const paginatedOpportunities = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * opportunitiesPerPage;
+    return filteredAndSortedOpportunities.slice(startIndex, startIndex + opportunitiesPerPage);
+  }, [filteredAndSortedOpportunities, currentPage]);
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortBy, advancedFiltersKey]);
+  const pageNumbers = React.useMemo(() => {
+    if (totalPages <= 6) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+    const pages = new Set([1, totalPages, currentPage]);
+    if (currentPage - 1 > 1) pages.add(currentPage - 1);
+    if (currentPage - 2 > 1) pages.add(currentPage - 2);
+    if (currentPage + 1 < totalPages) pages.add(currentPage + 1);
+    if (currentPage + 2 < totalPages) pages.add(currentPage + 2);
+    return Array.from(pages).sort((a, b) => a - b);
+  }, [currentPage, totalPages]);
+  const shouldShowPagination = filteredAndSortedOpportunities.length > opportunitiesPerPage;
+
   // Load applied jobs on mount
   useEffect(() => {
     const loadAppliedJobs = async () => {
@@ -362,6 +400,14 @@ const Opportunities = () => {
     } catch (error) {
       console.error('❌ Error toggling save:', error);
     }
+  };
+
+  const handlePageChange = (page) => {
+    if (page < 1 || page > totalPages) {
+      return;
+    }
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleApply = async (opportunity) => {
@@ -589,38 +635,97 @@ const Opportunities = () => {
             {/* Left Side - Opportunities Grid or List */}
             <div className="lg:col-span-2">
               {filteredAndSortedOpportunities.length > 0 ? (
-                viewMode === 'grid' ? (
-                  /* Grid View */
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
-                    {filteredAndSortedOpportunities.map((opp) => (
-                  <OpportunityCard
-                    key={opp.id}
-                    opportunity={opp}
-                    onClick={() => setSelectedOpportunity(opp)}
-                    isSelected={selectedOpportunity?.id === opp.id}
-                    isApplied={appliedJobs.has(opp.id)}
-                    isSaved={savedJobs.has(opp.id)}
-                    onToggleSave={handleToggleSave}
-                  />
-                    ))}
-                  </div>
-                ) : (
-                  /* List View */
-                  <div className="space-y-2.5 sm:space-y-4">
-                    {filteredAndSortedOpportunities.map((opp) => (
-                  <OpportunityListItem
-                    key={opp.id}
-                    opportunity={opp}
-                    onClick={() => setSelectedOpportunity(opp)}
-                    isSelected={selectedOpportunity?.id === opp.id}
-                    isApplied={appliedJobs.has(opp.id)}
-                    isSaved={savedJobs.has(opp.id)}
-                    onApply={() => handleApply(opp)}
-                    onToggleSave={handleToggleSave}
-                  />
-                    ))}
-                  </div>
-                )
+                <>
+                  {viewMode === 'grid' ? (
+                    /* Grid View */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
+                      {paginatedOpportunities.map((opp) => (
+                        <OpportunityCard
+                          key={opp.id}
+                          opportunity={opp}
+                          onClick={() => setSelectedOpportunity(opp)}
+                          isSelected={selectedOpportunity?.id === opp.id}
+                          isApplied={appliedJobs.has(opp.id)}
+                          isSaved={savedJobs.has(opp.id)}
+                          onToggleSave={handleToggleSave}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    /* List View */
+                    <div className="space-y-2.5 sm:space-y-4">
+                      {paginatedOpportunities.map((opp) => (
+                        <OpportunityListItem
+                          key={opp.id}
+                          opportunity={opp}
+                          onClick={() => setSelectedOpportunity(opp)}
+                          isSelected={selectedOpportunity?.id === opp.id}
+                          isApplied={appliedJobs.has(opp.id)}
+                          isSaved={savedJobs.has(opp.id)}
+                          onApply={() => handleApply(opp)}
+                          onToggleSave={handleToggleSave}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {shouldShowPagination && (
+                    <div className="mt-4">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              href="#"
+                              className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (currentPage > 1) {
+                                  handlePageChange(currentPage - 1);
+                                }
+                              }}
+                            />
+                          </PaginationItem>
+                          {pageNumbers.map((page, index) => {
+                            const previousPage = pageNumbers[index - 1];
+                            const showEllipsis = previousPage && page - previousPage > 1;
+                            return (
+                              <React.Fragment key={page}>
+                                {showEllipsis && (
+                                  <PaginationItem>
+                                    <PaginationEllipsis />
+                                  </PaginationItem>
+                                )}
+                                <PaginationItem>
+                                  <PaginationLink
+                                    href="#"
+                                    isActive={page === currentPage}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      handlePageChange(page);
+                                    }}
+                                  >
+                                    {page}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              </React.Fragment>
+                            );
+                          })}
+                          <PaginationItem>
+                            <PaginationNext
+                              href="#"
+                              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (currentPage < totalPages) {
+                                  handlePageChange(currentPage + 1);
+                                }
+                              }}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
                   <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
@@ -635,7 +740,7 @@ const Opportunities = () => {
             </div>
 
             {/* Right Side - Job Preview */}
-            <div className="hidden lg:block lg:sticky lg:top-6 lg:self-start">
+            <div className="hidden lg:block lg:sticky lg:top-16 lg:self-start">
               <OpportunityPreview
                 opportunity={selectedOpportunity}
                 onApply={handleApply}
@@ -668,7 +773,7 @@ const Opportunities = () => {
 
         {/* Recommended Jobs Section - Premium UI */}
         {!recommendationsLoading && recommendations && recommendations.length > 0 && (
-          <div className="mb-10">
+          <div className="my-10">
             {/* Enhanced Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
