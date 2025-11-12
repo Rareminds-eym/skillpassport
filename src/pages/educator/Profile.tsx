@@ -71,13 +71,22 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      console.log('User not authenticated, redirecting to login');
-      navigate('/login/educator');
-      return;
-    }
-    loadProfile();
-  }, [isAuthenticated, navigate]);
+    // Check if user is authenticated
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.log('No authenticated user, redirecting to login');
+        navigate('/login/educator');
+        return;
+      }
+      
+      // User is authenticated, load profile
+      loadProfile();
+    };
+    
+    checkAuth();
+  }, [navigate]);
 
   const loadProfile = async () => {
     try {
@@ -554,105 +563,178 @@ const Profile = () => {
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
                   <EnvelopeIcon className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-900">{profile.email}</span>
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">Email</p>
+                    <span className="text-gray-900 font-medium">{profile.email}</span>
+                  </div>
                 </div>
                 
-                {editing ? (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      value={formData.phone || ''}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="Enter phone number"
-                    />
+                <div className="flex items-center space-x-3">
+                  <PhoneIcon className="h-5 w-5 text-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">Phone</p>
+                    {editing ? (
+                      <input
+                        type="tel"
+                        value={formData.phone_number || ''}
+                        onChange={(e) => handleInputChange('phone_number', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Enter phone number"
+                      />
+                    ) : (
+                      <span className="text-gray-900 font-medium">{profile.phone_number || 'Not provided'}</span>
+                    )}
                   </div>
-                ) : (
-                  <div className="flex items-center space-x-3">
-                    <PhoneIcon className="h-5 w-5 text-gray-400" />
-                    <span className="text-gray-900">{profile.phone || 'Not provided'}</span>
-                  </div>
-                )}
+                </div>
 
-                {editing ? (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Employee ID
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.employee_id || ''}
-                      onChange={(e) => handleInputChange('employee_id', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="Enter employee ID"
-                    />
+                <div className="flex items-center space-x-3">
+                  <MapPinIcon className="h-5 w-5 text-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">Address</p>
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={formData.address || ''}
+                        onChange={(e) => handleInputChange('address', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Enter address"
+                      />
+                    ) : (
+                      <span className="text-gray-900 font-medium">{profile.address || 'Not provided'}</span>
+                    )}
                   </div>
-                ) : (
-                  <div className="flex items-center space-x-3">
-                    <MapPinIcon className="h-5 w-5 text-gray-400" />
-                    <span className="text-gray-900">{profile.employee_id || 'Not provided'}</span>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <MapPinIcon className="h-5 w-5 text-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">City</p>
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={formData.city || ''}
+                        onChange={(e) => handleInputChange('city', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Enter city"
+                      />
+                    ) : (
+                      <span className="text-gray-900 font-medium">{profile.city || 'Not provided'}</span>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Professional Information</h3>
               <div className="space-y-4">
-                {editing ? (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Qualification
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.qualification || ''}
-                      onChange={(e) => handleInputChange('qualification', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="e.g., M.Sc. Computer Science, Ph.D. Mathematics"
-                    />
+                <div className="flex items-center space-x-3">
+                  <AcademicCapIcon className="h-5 w-5 text-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">Specialization</p>
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={formData.specialization || ''}
+                        onChange={(e) => handleInputChange('specialization', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="e.g., Computer Science"
+                      />
+                    ) : (
+                      <span className="text-gray-900 font-medium">{profile.specialization || 'Not specified'}</span>
+                    )}
                   </div>
-                ) : (
-                  <div className="flex items-center space-x-3">
-                    <AcademicCapIcon className="h-5 w-5 text-gray-400" />
-                    <span className="text-gray-900">{profile.qualification || 'Not specified'}</span>
-                  </div>
-                )}
-
-                {editing ? (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Experience (Years)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.experience_years || ''}
-                      onChange={(e) => handleInputChange('experience_years', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="Years of experience"
-                      min="0"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-3">
-                    <CalendarIcon className="h-5 w-5 text-gray-400" />
-                    <span className="text-gray-900">
-                      {profile.experience_years ? `${profile.experience_years} years experience` : 'Experience not specified'}
-                    </span>
-                  </div>
-                )}
+                </div>
 
                 <div className="flex items-center space-x-3">
-                  <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-900">{profile.school_name || 'School not specified'}</span>
+                  <AcademicCapIcon className="h-5 w-5 text-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">Qualification</p>
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={formData.qualification || ''}
+                        onChange={(e) => handleInputChange('qualification', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="e.g., M.Tech"
+                      />
+                    ) : (
+                      <span className="text-gray-900 font-medium">{profile.qualification || 'Not specified'}</span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center space-x-3">
                   <CalendarIcon className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-900">Joined {formatDate(profile.date_of_joining)}</span>
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">Experience</p>
+                    {editing ? (
+                      <input
+                        type="number"
+                        value={formData.experience_years || ''}
+                        onChange={(e) => handleInputChange('experience_years', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Years"
+                        min="0"
+                      />
+                    ) : (
+                      <span className="text-gray-900 font-medium">
+                        {profile.experience_years ? `${profile.experience_years} years` : 'Not specified'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">Designation</p>
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={formData.designation || ''}
+                        onChange={(e) => handleInputChange('designation', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="e.g., Senior Educator"
+                      />
+                    ) : (
+                      <span className="text-gray-900 font-medium">{profile.designation || 'Not specified'}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">Department</p>
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={formData.department || ''}
+                        onChange={(e) => handleInputChange('department', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="e.g., Computer Science"
+                      />
+                    ) : (
+                      <span className="text-gray-900 font-medium">{profile.department || 'Not specified'}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <CalendarIcon className="h-5 w-5 text-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">Date of Joining</p>
+                    <span className="text-gray-900 font-medium">{formatDate(profile.date_of_joining)}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">School</p>
+                    <span className="text-gray-900 font-medium">{profile.school_name || 'Not specified'}</span>
+                  </div>
                 </div>
               </div>
             </div>

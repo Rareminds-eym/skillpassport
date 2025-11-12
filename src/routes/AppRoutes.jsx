@@ -122,6 +122,7 @@ const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
 const EducatorSettings = lazy(() => import("../pages/educator/Settings"));
 const EducatorProfile = lazy(() => import("../pages/educator/Profile"));
 const EducatorProfileDebug = lazy(() => import("../pages/educator/ProfileDebug"));
+const EducatorManagement = lazy(() => import("../pages/educator/EducatorManagement"));
 const EducatorCommunication = lazy(() =>
   import("../pages/educator/Communication")
 );
@@ -148,7 +149,7 @@ const CourseMapping = lazy(() =>
 const StudentDataAdmission = lazy(() =>
   import("../pages/admin/collegeAdmin/Studentdataadmission")
 );
-const EducatorManagement = lazy(() =>
+const AdminEducatorManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/EducatorManagement")
 );
 
@@ -240,7 +241,7 @@ const AppRoutes = () => {
             path="students/data-management"
             element={<StudentDataAdmission />}
           />
-          <Route path="departments/educators" element={<EducatorManagement />} />
+          <Route path="departments/educators" element={<AdminEducatorManagement />} />
           <Route
             path=""
             element={<Navigate to="/college-admin/dashboard" replace />}
@@ -479,6 +480,7 @@ const AppRoutes = () => {
           <Route path="settings" element={<EducatorSettings />} />
           <Route path="profile" element={<EducatorProfile />} />
           <Route path="profile-debug" element={<EducatorProfileDebug />} />
+          <Route path="management" element={<EducatorManagement />} />
           <Route path="communication" element={<EducatorCommunication />} />
           <Route path="analytics" element={<EducatorAnalytics />} />
           <Route path="activities" element={<EducatorActivities />} />
