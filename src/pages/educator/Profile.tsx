@@ -460,6 +460,10 @@ const Profile = () => {
         setEditing(false);
         setFormData({});
         
+        // Notify Header component to refresh
+        console.log('📢 Emitting profile update event for header refresh')
+        window.dispatchEvent(new CustomEvent('educatorProfileUpdated'))
+        
         // Show success message
         alert('Profile saved successfully!');
       }

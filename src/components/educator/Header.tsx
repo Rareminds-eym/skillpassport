@@ -27,54 +27,68 @@ const Header: React.FC<HeaderProps> = ({
   const navigate = useNavigate()
 
   // Load educator profile for header
-  useEffect(() => {
-    const loadEducatorProfile = async () => {
-      try {
-        // Get email from localStorage (same method as ProfileFixed)
-        const storedUser = localStorage.getItem('user')
-        const storedEmail = localStorage.getItem('userEmail')
-        
-        let email = 'karthikeyan@rareminds.in' // Default fallback
-        
-        if (storedUser) {
-          try {
-            const userData = JSON.parse(storedUser)
-            email = userData.email || email
-          } catch (e) {
-            console.error('Error parsing stored user:', e)
-          }
-        } else if (storedEmail) {
-          email = storedEmail
+  const loadEducatorProfile = async () => {
+    try {
+      // Get email from localStorage (same method as ProfileFixed)
+      const storedUser = localStorage.getItem('user')
+      const storedEmail = localStorage.getItem('userEmail')
+      
+      let email = 'karthikeyan@rareminds.in' // Default fallback
+      
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser)
+          email = userData.email || email
+        } catch (e) {
+          console.error('Error parsing stored user:', e)
         }
-
-        // Fetch educator data
-        const { data: educatorData, error } = await supabase
-          .from('school_educators')
-          .select('first_name, last_name, photo_url, email, specialization')
-          .eq('email', email)
-          .maybeSingle()
-
-        if (error) {
-          console.error('Error loading educator profile for header:', error)
-          return
-        }
-
-        if (educatorData) {
-          setEducatorProfile({
-            name: educatorData.first_name && educatorData.last_name 
-              ? `${educatorData.first_name} ${educatorData.last_name}`
-              : educatorData.first_name || 'Educator',
-            photo_url: educatorData.photo_url,
-            email: educatorData.email,
-            specialization: educatorData.specialization || 'Account'
-          })
-        }
-      } catch (error) {
-        console.error('Failed to load educator profile for header:', error)
+      } else if (storedEmail) {
+        email = storedEmail
       }
+
+      // Fetch educator data
+      const { data: educatorData, error } = await supabase
+        .from('school_educators')
+        .select('first_name, last_name, photo_url, email, specialization')
+        .eq('email', email)
+        .maybeSingle()
+
+      if (error) {
+        console.error('Error loading educator profile for header:', error)
+        return
+      }
+
+      if (educatorData) {
+        setEducatorProfile({
+          name: educatorData.first_name && educatorData.last_name 
+            ? `${educatorData.first_name} ${educatorData.last_name}`
+            : educatorData.first_name || 'Educator',
+          photo_url: educatorData.photo_url,
+          email: educatorData.email,
+          specialization: educatorData.specialization || 'Account'
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load educator profile for header:', error)
+    }
+  }
+
+  useEffect(() => {
+    loadEducatorProfile()
+
+    // Listen for profile updates
+    const handleProfileUpdate = () => {
+      console.log('🔄 Header received profile update event, refreshing...')
+      loadEducatorProfile()
     }
 
-    loadEducatorProfile()
+    // Add event listener for profile updates
+    window.addEventListener('educatorProfileUpdated', handleProfileUpdate)
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('educatorProfileUpdated', handleProfileUpdate)
+    }
   }, [])
 
   const handleNotificationClick = () => {

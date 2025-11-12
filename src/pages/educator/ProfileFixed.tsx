@@ -262,31 +262,31 @@ const ProfileFixed = () => {
 
       const updateData = {
         // Personal Information
-        first_name: formatStringForDB(formData.first_name || profile.first_name),
-        last_name: formatStringForDB(formData.last_name || profile.last_name),
-        phone_number: formatStringForDB(formData.phone_number || profile.phone_number),
-        dob: formatDateForDB(formData.dob || profile.dob),
-        gender: formatStringForDB(formData.gender || profile.gender),
-        address: formatStringForDB(formData.address || profile.address),
-        city: formatStringForDB(formData.city || profile.city),
-        state: formatStringForDB(formData.state || profile.state),
-        country: formatStringForDB(formData.country || profile.country),
-        pincode: formatStringForDB(formData.pincode || profile.pincode),
+        first_name: formatStringForDB(formData.hasOwnProperty('first_name') ? formData.first_name : profile.first_name),
+        last_name: formatStringForDB(formData.hasOwnProperty('last_name') ? formData.last_name : profile.last_name),
+        phone_number: formatStringForDB(formData.hasOwnProperty('phone_number') ? formData.phone_number : profile.phone_number),
+        dob: formatDateForDB(formData.hasOwnProperty('dob') ? formData.dob : profile.dob),
+        gender: formatStringForDB(formData.hasOwnProperty('gender') ? formData.gender : profile.gender),
+        address: formatStringForDB(formData.hasOwnProperty('address') ? formData.address : profile.address),
+        city: formatStringForDB(formData.hasOwnProperty('city') ? formData.city : profile.city),
+        state: formatStringForDB(formData.hasOwnProperty('state') ? formData.state : profile.state),
+        country: formatStringForDB(formData.hasOwnProperty('country') ? formData.country : profile.country),
+        pincode: formatStringForDB(formData.hasOwnProperty('pincode') ? formData.pincode : profile.pincode),
         
         // Professional Information
-        employee_id: formatStringForDB(formData.employee_id || profile.employee_id),
-        specialization: formatStringForDB(formData.specialization || profile.specialization),
-        qualification: formatStringForDB(formData.qualification || profile.qualification),
-        experience_years: formatNumberForDB(formData.experience_years || profile.experience_years),
-        designation: formatStringForDB(formData.designation || profile.designation),
-        department: formatStringForDB(formData.department || profile.department),
-        date_of_joining: formatDateForDB(formData.date_of_joining || profile.date_of_joining),
-        subjects_handled: formData.subjects_handled || profile.subjects_handled || null,
+        employee_id: formatStringForDB(formData.hasOwnProperty('employee_id') ? formData.employee_id : profile.employee_id),
+        specialization: formatStringForDB(formData.hasOwnProperty('specialization') ? formData.specialization : profile.specialization),
+        qualification: formatStringForDB(formData.hasOwnProperty('qualification') ? formData.qualification : profile.qualification),
+        experience_years: formatNumberForDB(formData.hasOwnProperty('experience_years') ? formData.experience_years : profile.experience_years),
+        designation: formatStringForDB(formData.hasOwnProperty('designation') ? formData.designation : profile.designation),
+        department: formatStringForDB(formData.hasOwnProperty('department') ? formData.department : profile.department),
+        date_of_joining: formatDateForDB(formData.hasOwnProperty('date_of_joining') ? formData.date_of_joining : profile.date_of_joining),
+        subjects_handled: formData.hasOwnProperty('subjects_handled') ? formData.subjects_handled : (profile.subjects_handled || null),
         
         // Documents
-        resume_url: formatStringForDB(formData.resume_url || profile.resume_url),
-        id_proof_url: formatStringForDB(formData.id_proof_url || profile.id_proof_url),
-        photo_url: formatStringForDB(formData.photo_url || profile.photo_url),
+        resume_url: formatStringForDB(formData.hasOwnProperty('resume_url') ? formData.resume_url : profile.resume_url),
+        id_proof_url: formatStringForDB(formData.hasOwnProperty('id_proof_url') ? formData.id_proof_url : profile.id_proof_url),
+        photo_url: formatStringForDB(formData.hasOwnProperty('photo_url') ? formData.photo_url : profile.photo_url),
         
         // System fields
         updated_at: new Date().toISOString(),
@@ -300,6 +300,12 @@ const ProfileFixed = () => {
       });
 
       console.log('💾 Saving profile:', updateData);
+      console.log('🖼️ Photo URL debug:', {
+        'formData.photo_url': formData.photo_url,
+        'profile.photo_url': profile.photo_url,
+        'hasOwnProperty': formData.hasOwnProperty('photo_url'),
+        'final_photo_url': updateData.photo_url
+      });
 
       const { error } = await supabase
         .from('school_educators')
@@ -315,6 +321,10 @@ const ProfileFixed = () => {
       setProfile(updatedProfile);
       setEditing(false);
       setFormData({});
+      
+      // Notify Header component to refresh
+      console.log('📢 Emitting profile update event for header refresh')
+      window.dispatchEvent(new CustomEvent('educatorProfileUpdated'))
       
       alert('Profile saved successfully!');
       console.log('✅ Profile saved successfully');
