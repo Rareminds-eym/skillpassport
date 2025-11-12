@@ -30,6 +30,7 @@ interface StudentFormData {
 const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [mode, setMode] = useState<'manual' | 'csv'>('manual')
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [csvPreview, setCsvPreview] = useState<any[]>([])
@@ -74,6 +75,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         bloodGroup: ''
       })
       setError(null)
+      setSuccess(null)
       setLoading(false)
       setMode('manual')
       setCsvFile(null)
@@ -84,6 +86,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const handleInputChange = (field: keyof StudentFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     setError(null)
+    setSuccess(null)
   }
 
   const validateEmail = (email: string): boolean => {
@@ -116,8 +119,16 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
     setLoading(true)
     setError(null)
+    setSuccess(null)
 
     try {
+      // Try to refresh session if user is logged in (optional)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session) {
+        await supabase.auth.refreshSession()
+      }
+
       // Call the create-student Edge Function
       const { data, error: functionError } = await supabase.functions.invoke('create-student', {
         body: {
@@ -148,19 +159,29 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         }
       })
 
+      // Check if operation failed
       if (functionError) {
-        throw new Error(functionError.message || 'Failed to create student')
+        throw new Error('Unable to connect to server. Please try again.')
       }
-
+      
       if (!data?.success) {
         throw new Error(data?.error || 'Failed to create student')
       }
 
+      // Show success message
+      setSuccess(`✅ Student "${formData.name}" added successfully!`)
+      setError(null)
+      
+      // Call parent callback
       onSuccess?.()
-      onClose()
+      
+      // Auto-close after 2 seconds
+      setTimeout(() => {
+        onClose()
+      }, 2000)
     } catch (err: any) {
-      console.error('Error creating student:', err)
       setError(err.message || 'Failed to create student. Please try again.')
+      setSuccess(null)
     } finally {
       setLoading(false)
     }
@@ -172,6 +193,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
     setCsvFile(file)
     setError(null)
+    setSuccess(null)
 
     // Parse CSV for preview
     const reader = new FileReader()
@@ -198,7 +220,6 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         setCsvPreview(preview)
       } catch (err) {
         setError('Failed to parse CSV file')
-        console.error('CSV parse error:', err)
       }
     }
     reader.readAsText(file)
@@ -212,8 +233,16 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
     setLoading(true)
     setError(null)
+    setSuccess(null)
 
     try {
+      // Try to refresh session if user is logged in (optional)
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session) {
+        await supabase.auth.refreshSession()
+      }
+
       const reader = new FileReader()
       reader.onload = async (event) => {
         try {
@@ -272,7 +301,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
               if (functionError || !data?.success) {
                 errorCount++
-                errors.push(`Row ${i + 1}: ${functionError?.message || data?.error || 'Failed'}`)
+                // Extract the actual error message
+                const errorMsg = data?.error || functionError?.message || 'Failed'
+                errors.push(`Row ${i + 1}: ${errorMsg}`)
               } else {
                 successCount++
               }
@@ -282,15 +313,23 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             }
           }
 
-          if (errorCount > 0) {
-            setError(`Imported ${successCount} students. ${errorCount} errors:\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n...and ${errors.length - 5} more` : ''}`)
-          }
-
-          if (successCount > 0) {
+          if (successCount > 0 && errorCount === 0) {
+            // All students imported successfully
+            setSuccess(`✅ Successfully imported ${successCount} student${successCount > 1 ? 's' : ''}!`)
+            setError(null)
             onSuccess?.()
-            if (errorCount === 0) {
+            setTimeout(() => {
               onClose()
-            }
+            }, 2000)
+          } else if (successCount > 0 && errorCount > 0) {
+            // Partial success
+            setSuccess(`✅ Imported ${successCount} student${successCount > 1 ? 's' : ''} successfully`)
+            setError(`⚠️  ${errorCount} error${errorCount > 1 ? 's' : ''}:\n${errors.slice(0, 3).join('\n')}${errors.length > 3 ? `\n...and ${errors.length - 3} more` : ''}`)
+            onSuccess?.()
+          } else if (errorCount > 0) {
+            // All failed
+            setError(`❌ Failed to import students. ${errorCount} error${errorCount > 1 ? 's' : ''}:\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n...and ${errors.length - 5} more` : ''}`)
+            setSuccess(null)
           }
         } catch (err: any) {
           setError(err.message || 'Failed to process CSV file')
@@ -349,9 +388,35 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             </button>
           </div>
 
+          {/* Success Message */}
+          {success && (
+            <div className="mb-4 p-4 bg-green-50 border-l-4 border-green-400 rounded-md transition-all duration-300 ease-in-out">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-green-800">{success}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-800 whitespace-pre-line">{error}</p>
+            <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-400 rounded-md transition-all duration-300 ease-in-out">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-red-800 whitespace-pre-line">{error}</p>
+                </div>
+              </div>
             </div>
           )}
 

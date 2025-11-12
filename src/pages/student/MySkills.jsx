@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { Button } from '../../components/Students/components/ui/button';
 import { Badge } from '../../components/Students/components/ui/badge';
@@ -10,15 +10,18 @@ import {
   Edit,
   Plus,
   Bell,
-  X
+  X,
+  MessageCircle as MessageCircleIcon
 } from 'lucide-react';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useAuth } from '../../context/AuthContext';
 import { SkillsEditModal } from '../../components/Students/components/ProfileEditModals';
-import { useRecentUpdates } from '../../hooks/useRecentUpdates';
-import { useRecentUpdatesLegacy } from '../../hooks/useRecentUpdatesLegacy';
+import { useStudentRealtimeActivities } from '../../hooks/useStudentRealtimeActivities';
+import { useStudentMessageNotifications } from '../../hooks/useStudentMessageNotifications';
+import { useStudentUnreadCount } from '../../hooks/useStudentMessages';
 import { useAIJobMatching } from '../../hooks/useAIJobMatching';
 import SuggestedNextSteps from '../../components/Students/components/SuggestedNextSteps';
+import RecentUpdatesCard from '../../components/Students/components/RecentUpdatesCard';
 import {
   suggestions as mockSuggestions
 } from '../../components/Students/data/mockData';
@@ -32,30 +35,36 @@ const MySkills = () => {
   const softSkills = studentData?.softSkills || [];
   const suggestions = studentData?.suggestions || mockSuggestions;
 
-  // Fetch recent updates data from Supabase (same as Dashboard)
-  const {
-    recentUpdates,
-    loading: recentUpdatesLoading,
-    error: recentUpdatesError,
-    refreshRecentUpdates
-  } = useRecentUpdates();
+  // Get student ID for messaging
+  const studentId = studentData?.id;
 
-  // Fallback to legacy hook if Supabase Auth is not set up
-  const {
-    recentUpdates: recentUpdatesLegacy,
-    loading: recentUpdatesLoadingLegacy,
-    error: recentUpdatesErrorLegacy,
-    refreshRecentUpdates: refreshRecentUpdatesLegacy
-  } = useRecentUpdatesLegacy();
+  // Setup message notifications with hot-toast
+  useStudentMessageNotifications({
+    studentId,
+    enabled: !!studentId,
+    playSound: true,
+    onMessageReceived: () => {
+      // Refresh Recent Updates to show new message activity
+      setTimeout(() => {
+        refreshRecentUpdates();
+      }, 1000);
+    },
+  });
 
-  // Use legacy data if auth-based data is empty
-  const finalRecentUpdates = recentUpdates.length > 0 ? recentUpdates : recentUpdatesLegacy;
-  const finalLoading = recentUpdatesLoading || recentUpdatesLoadingLegacy;
-  const finalError = recentUpdatesError || recentUpdatesErrorLegacy;
-  const finalRefresh = () => {
-    refreshRecentUpdates();
-    refreshRecentUpdatesLegacy();
-  };
+  // Get unread message count with realtime updates
+  const { unreadCount } = useStudentUnreadCount(
+    studentId,
+    !!studentId
+  );
+
+  // Fetch recent updates data from recruitment tables (student-specific)
+  const {
+    activities: recentUpdates,
+    isLoading: recentUpdatesLoading,
+    isError: recentUpdatesError,
+    refetch: refreshRecentUpdates,
+    isConnected: realtimeConnected,
+  } = useStudentRealtimeActivities(userEmail, 10);
 
   // AI Job Matching - Get top 3 matched jobs for student
   const {
@@ -66,6 +75,9 @@ const MySkills = () => {
 
   const [activeModal, setActiveModal] = useState(null);
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
+
+  // Refs for Recent Updates
+  const recentUpdatesRef = useRef(null);
 
   const renderStars = (level) => {
     return [...Array(5)].map((_, i) => (
@@ -122,68 +134,44 @@ const MySkills = () => {
             {/* Sticky container for both cards */}
             <div className="sticky top-20 z-30 flex flex-col gap-6">
               {/* Recent Updates */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-                <CardHeader className="px-6 py-4 border-b border-gray-100">
-                  <CardTitle className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                      <Bell className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <span className="text-lg font-semibold text-gray-900">Recent Updates</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {finalLoading ? (
-                    <div className="flex justify-center items-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#1976D2]"></div>
-                    </div>
-                  ) : finalError ? (
-                    <div className="text-center py-8">
-                      <p className="text-red-500 mb-2">Failed to load recent updates</p>
-                      <Button
-                        onClick={finalRefresh}
-                        size="sm"
-                        className="bg-[#1976D2] hover:bg-blue-700 text-white"
-                      >
-                        Retry
-                      </Button>
-                    </div>
-                  ) : finalRecentUpdates.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">No recent updates available</p>
-                    </div>
-                  ) : (
-                    <>
-                      <div
-                        className={`space-y-2 ${showAllRecentUpdates ? 'max-h-96 overflow-y-auto pr-2 scroll-smooth recent-updates-scroll' : ''}`}
-                      >
-                        {(showAllRecentUpdates
-                          ? finalRecentUpdates
-                          : finalRecentUpdates.slice(0, 5)
-                        ).filter(update => update && update.message).map((update, idx) => (
-                          <div key={update.id || `update-${update.timestamp}-${idx}`} className="p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all flex items-start gap-3">
-                            <div className="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-900 mb-0.5">{update.message}</p>
-                              <p className="text-xs text-gray-600">{update.timestamp}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      {finalRecentUpdates.length > 5 && (
-                        <div className="px-6 mt-4">
-                          <Button
-                            variant="outline"
-                            className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-                            onClick={() => setShowAllRecentUpdates(!showAllRecentUpdates)}
-                          >
-                            {showAllRecentUpdates ? 'See Less' : 'See More'}
-                          </Button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </CardContent>
-              </div>
+              <RecentUpdatesCard
+                ref={recentUpdatesRef}
+                updates={recentUpdates}
+                loading={recentUpdatesLoading}
+                error={
+                  recentUpdatesError ? "Failed to load recent updates" : null
+                }
+                onRetry={refreshRecentUpdates}
+                emptyMessage="No recent updates available"
+                isExpanded={showAllRecentUpdates}
+                onToggle={(next) => setShowAllRecentUpdates(next)}
+                badgeContent={
+                  unreadCount > 0 ? (
+                    <Badge className="bg-red-500 hover:bg-red-500 text-white px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
+                      <MessageCircleIcon className="w-3.5 h-3.5" />
+                      {unreadCount} {unreadCount === 1 ? "message" : "messages"}
+                    </Badge>
+                  ) : null
+                }
+                getUpdateClassName={(update) => {
+                  switch (update.type) {
+                    case "shortlist_added":
+                      return "bg-yellow-50 border-yellow-300";
+                    case "offer_extended":
+                      return "bg-green-50 border-green-300";
+                    case "offer_accepted":
+                      return "bg-emerald-50 border-emerald-300";
+                    case "placement_hired":
+                      return "bg-purple-50 border-purple-300";
+                    case "stage_change":
+                      return "bg-indigo-50 border-indigo-300";
+                    case "application_rejected":
+                      return "bg-red-50 border-red-300";
+                    default:
+                      return "bg-gray-50 border-gray-200";
+                  }
+                }}
+              />
 
               {/* Suggested Next Steps */}
               <SuggestedNextSteps

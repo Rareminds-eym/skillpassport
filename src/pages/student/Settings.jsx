@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -25,42 +25,58 @@ import {
   Globe,
   AlertCircle,
   ChevronRight,
+  MessageCircleIcon,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useStudentSettings } from "../../hooks/useStudentSettings";
-import { useRecentUpdates } from "../../hooks/useRecentUpdates";
-import { useRecentUpdatesLegacy } from "../../hooks/useRecentUpdatesLegacy";
+
 import { useToast } from "../../hooks/use-toast";
+import RecentUpdatesCard from "../../components/Students/components/RecentUpdatesCard";
+import useStudentMessageNotifications from "../../hooks/useStudentMessageNotifications";
+import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
+import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
 
 const Settings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const userEmail = user?.email;
-  const { studentData, loading: studentLoading, error: studentError, updateProfile, updatePassword } = useStudentSettings(userEmail);
-
-  // Fetch recent updates
-  const {
-    recentUpdates,
-    loading: recentUpdatesLoading,
-    error: recentUpdatesError,
-    refreshRecentUpdates,
-  } = useRecentUpdates();
+  const recentUpdatesRef = useRef(null);
 
   const {
-    recentUpdates: recentUpdatesLegacy,
-    loading: recentUpdatesLoadingLegacy,
-    error: recentUpdatesErrorLegacy,
-    refreshRecentUpdates: refreshRecentUpdatesLegacy,
-  } = useRecentUpdatesLegacy();
+    studentData,
+    loading: studentLoading,
+    error: studentError,
+    updateProfile,
+    updatePassword,
+  } = useStudentSettings(userEmail);
 
-  const finalRecentUpdates =
-    recentUpdates.length > 0 ? recentUpdates : recentUpdatesLegacy;
-  const finalLoading = recentUpdatesLoading || recentUpdatesLoadingLegacy;
-  const finalError = recentUpdatesError || recentUpdatesErrorLegacy;
-  const finalRefresh = () => {
-    refreshRecentUpdates();
-    refreshRecentUpdatesLegacy();
-  };
+  // Get student ID for messaging
+  const studentId = studentData?.id;
+
+  // Setup message notifications with hot-toast
+  useStudentMessageNotifications({
+    studentId,
+    enabled: !!studentId,
+    playSound: true,
+    onMessageReceived: () => {
+      // Refresh Recent Updates to show new message activity
+      setTimeout(() => {
+        refreshRecentUpdates();
+      }, 1000);
+    },
+  });
+
+  // Get unread message count with realtime updates
+  const { unreadCount } = useStudentUnreadCount(studentId, !!studentId);
+
+  // Fetch recent updates data from recruitment tables (student-specific)
+  const {
+    activities: recentUpdates,
+    isLoading: recentUpdatesLoading,
+    isError: recentUpdatesError,
+    refetch: refreshRecentUpdates,
+    isConnected: realtimeConnected,
+  } = useStudentRealtimeActivities(userEmail, 10);
 
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
@@ -236,7 +252,10 @@ const Settings = () => {
 
     setIsSaving(true);
     try {
-      await updatePassword(passwordData.currentPassword, passwordData.newPassword);
+      await updatePassword(
+        passwordData.currentPassword,
+        passwordData.newPassword
+      );
       toast({
         title: "Success",
         description: "Password updated successfully",
@@ -325,7 +344,9 @@ const Settings = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-20">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Settings</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Error Loading Settings
+            </h2>
             <p className="text-gray-600 mb-4">{studentError}</p>
             <Button
               onClick={() => window.location.reload()}
@@ -480,146 +501,44 @@ const Settings = () => {
             </Card>
 
             {/* Recent Updates */}
-            <div className="bg-white/80 backdrop-blur-sm border-0 shadow-sm shadow-slate-200/50">
-              <CardHeader className="px-6 py-4 border-b border-gray-100">
-                <CardTitle className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <Bell className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <span className="text-lg font-semibold text-gray-900">
-                    Recent Updates
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-3 p-6">
-                {recentUpdatesLoading ? (
-                  <div className="flex justify-center items-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : recentUpdatesError ? (
-                  <div className="text-center py-8">
-                    <p className="text-red-600 mb-3 font-medium">
-                      Failed to load recent updates
-                    </p>
-                    <Button
-                      onClick={refreshRecentUpdates}
-                      size="sm"
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors"
-                    >
-                      Retry
-                    </Button>
-                  </div>
-                ) : recentUpdates.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500 font-medium">
-                      No recent updates available
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div
-                      className={`space-y-2 ${
-                        showAllRecentUpdates
-                          ? "max-h-96 overflow-y-auto pr-2 scroll-smooth recent-updates-scroll"
-                          : ""
-                      }`}
-                    >
-                      {(showAllRecentUpdates
-                        ? recentUpdates
-                        : recentUpdates.slice(0, 5)
-                      ).map((update, idx) => {
-                        // Format the message from activity structure
-                        const message =
-                          update.message ||
-                          `${update.user} ${update.action} ${update.candidate}`;
-
-                        // Determine color based on activity type
-                        const getActivityColor = (type) => {
-                          switch (type) {
-                            case "shortlist_added":
-                              return "bg-yellow-50 border-yellow-300";
-                            case "offer_extended":
-                              return "bg-green-50 border-green-300";
-                            case "offer_accepted":
-                              return "bg-emerald-50 border-emerald-300";
-                            case "placement_hired":
-                              return "bg-purple-50 border-purple-300";
-                            case "stage_change":
-                              return "bg-indigo-50 border-indigo-300";
-                            case "application_rejected":
-                              return "bg-red-50 border-red-300";
-                            default:
-                              return "bg-gray-50 border-gray-200";
-                          }
-                        };
-
-                        return (
-                          <div
-                            key={
-                              update.id || `update-${update.timestamp}-${idx}`
-                            }
-                            className={`p-3 rounded-lg border hover:shadow-sm transition-all flex items-start gap-3 ${getActivityColor(
-                              update.type
-                            )}`}
-                          >
-                            <div className="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-900 mb-0.5">
-                                {update.user && (
-                                  <span className="text-blue-700">
-                                    {update.user}
-                                  </span>
-                                )}
-                                {update.action && (
-                                  <span className="text-gray-700">
-                                    {" "}
-                                    {update.action}{" "}
-                                  </span>
-                                )}
-                                {update.candidate && (
-                                  <span className="font-semibold">
-                                    {update.candidate}
-                                  </span>
-                                )}
-                                {update.message && (
-                                  <span className="text-gray-700">
-                                    {update.message}
-                                  </span>
-                                )}
-                              </p>
-                              {update.details && (
-                                <p className="text-xs text-gray-600 mb-1">
-                                  {update.details}
-                                </p>
-                              )}
-                              <p className="text-xs text-gray-500">
-                                {typeof update.timestamp === "string" &&
-                                update.timestamp.includes("ago")
-                                  ? update.timestamp
-                                  : new Date(update.timestamp).toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {recentUpdates.length > 5 && (
-                      <div className="mt-3">
-                        <Button
-                          variant="outline"
-                          className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-                          onClick={() =>
-                            setShowAllRecentUpdates(!showAllRecentUpdates)
-                          }
-                        >
-                          {showAllRecentUpdates ? "See Less" : "See More"}
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </div>
+            <RecentUpdatesCard
+              ref={recentUpdatesRef}
+              updates={recentUpdates}
+              loading={recentUpdatesLoading}
+              error={
+                recentUpdatesError ? "Failed to load recent updates" : null
+              }
+              onRetry={refreshRecentUpdates}
+              emptyMessage="No recent updates available"
+              isExpanded={showAllRecentUpdates}
+              onToggle={(next) => setShowAllRecentUpdates(next)}
+              badgeContent={
+                unreadCount > 0 ? (
+                  <Badge className="bg-red-500 hover:bg-red-500 text-white px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 flex-nowrap text-nowrap">
+                    <MessageCircleIcon className="w-3.5 h-3.5" />
+                    {unreadCount} {unreadCount === 1 ? "message" : "messages"}
+                  </Badge>
+                ) : null
+              }
+              getUpdateClassName={(update) => {
+                switch (update.type) {
+                  case "shortlist_added":
+                    return "bg-yellow-50 border-yellow-300";
+                  case "offer_extended":
+                    return "bg-green-50 border-green-300";
+                  case "offer_accepted":
+                    return "bg-emerald-50 border-emerald-300";
+                  case "placement_hired":
+                    return "bg-purple-50 border-purple-300";
+                  case "stage_change":
+                    return "bg-indigo-50 border-indigo-300";
+                  case "application_rejected":
+                    return "bg-red-50 border-red-300";
+                  default:
+                    return "bg-gray-50 border-gray-200";
+                }
+              }}
+            />
           </div>
 
           {/* RIGHT CONTENT AREA */}
@@ -699,7 +618,10 @@ const Settings = () => {
                           type="tel"
                           value={profileData.alternatePhone}
                           onChange={(e) =>
-                            handleProfileChange("alternatePhone", e.target.value)
+                            handleProfileChange(
+                              "alternatePhone",
+                              e.target.value
+                            )
                           }
                           className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                           placeholder="Enter alternate phone number"
@@ -919,7 +841,10 @@ const Settings = () => {
                           type="text"
                           value={profileData.registrationNumber}
                           onChange={(e) =>
-                            handleProfileChange("registrationNumber", e.target.value)
+                            handleProfileChange(
+                              "registrationNumber",
+                              e.target.value
+                            )
                           }
                           className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                           placeholder="Enter registration number"
@@ -935,7 +860,10 @@ const Settings = () => {
                           type="text"
                           value={profileData.enrollmentNumber}
                           onChange={(e) =>
-                            handleProfileChange("enrollmentNumber", e.target.value)
+                            handleProfileChange(
+                              "enrollmentNumber",
+                              e.target.value
+                            )
                           }
                           className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                           placeholder="Enter enrollment number"
@@ -994,7 +922,10 @@ const Settings = () => {
                         <select
                           value={profileData.guardianRelation}
                           onChange={(e) =>
-                            handleProfileChange("guardianRelation", e.target.value)
+                            handleProfileChange(
+                              "guardianRelation",
+                              e.target.value
+                            )
                           }
                           className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                         >
