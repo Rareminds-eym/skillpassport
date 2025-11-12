@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import { 
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
@@ -10,10 +11,11 @@ import {
   ArchiveBoxIcon,
   ChevronRightIcon,
   ArrowUturnLeftIcon,
-  ChevronLeftIcon
+  ChevronLeftIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import MessageService, { Conversation } from '../../services/messageService';
 import { useMessages } from '../../hooks/useMessages';
 import { formatDistanceToNow } from 'date-fns';
@@ -22,6 +24,7 @@ import { useGlobalPresence } from '../../context/GlobalPresenceContext';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
+import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
 
 const Messages = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
@@ -30,6 +33,11 @@ const Messages = () => {
   const [showMenu, setShowMenu] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; conversationId: string | null; contactName: string }>({ 
+    isOpen: false, 
+    conversationId: null, 
+    contactName: '' 
+  });
   const menuRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const markedAsReadRef = useRef<Set<string>>(new Set());
@@ -119,7 +127,16 @@ const Messages = () => {
     const subscription = MessageService.subscribeToUserConversations(
       recruiterId,
       'recruiter',
-      () => {
+      (conversation: Conversation) => {
+        console.log('🔄 [Recruiter] Realtime UPDATE detected:', conversation);
+        
+        // CRITICAL: Ignore updates for conversations that were deleted
+        // This prevents re-fetching deleted conversations back into the cache
+        if (conversation.deleted_by_recruiter) {
+          console.log('❌ [Recruiter] Ignoring UPDATE for deleted conversation:', conversation.id);
+          return; // Don't refetch
+        }
+        
         // Invalidate conversation queries and unread count for sidebar badge
         queryClient.invalidateQueries({ 
           queryKey: ['recruiter-conversations', recruiterId],
@@ -184,6 +201,101 @@ const Messages = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+  
+  // Delete mutation with proper optimistic updates
+  const deleteMutation = useMutation({
+    mutationFn: async ({ conversationId }: { conversationId: string }) => {
+      await MessageService.deleteConversationForUser(conversationId, recruiterId!, 'recruiter');
+      return { conversationId };
+    },
+    onMutate: async ({ conversationId }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['recruiter-conversations', recruiterId] });
+      
+      // Snapshot previous value
+      const previousActive = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'active']);
+      const previousArchived = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'archived']);
+      
+      // Optimistically update: mark as deleted
+      queryClient.setQueryData(['recruiter-conversations', recruiterId, 'active'], (old: any) => {
+        if (!old) return [];
+        return old.map((conv: any) => 
+          conv.id === conversationId ? { ...conv, _pendingDelete: true } : conv
+        );
+      });
+      
+      // CRITICAL: Invalidate to trigger immediate re-render
+      queryClient.invalidateQueries({ 
+        queryKey: ['recruiter-conversations', recruiterId, 'active'],
+        refetchType: 'none' // Don't refetch, just notify subscribers
+      });
+      
+      console.log('🗑️ [Recruiter] Marked conversation as deleted:', conversationId);
+      
+      return { previousActive, previousArchived, conversationId };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousActive) {
+        queryClient.setQueryData(['recruiter-conversations', recruiterId, 'active'], context.previousActive);
+      }
+      if (context?.previousArchived) {
+        queryClient.setQueryData(['recruiter-conversations', recruiterId, 'archived'], context.previousArchived);
+      }
+      toast.error('Failed to delete conversation');
+    },
+    onSuccess: (data, variables, context) => {
+      // Immediately remove from cache
+      queryClient.setQueryData(['recruiter-conversations', recruiterId, 'active'], (old: any) => {
+        if (!old) return [];
+        return old.filter((conv: any) => conv.id !== variables.conversationId);
+      });
+      
+      // CRITICAL: Invalidate to ensure the query doesn't refetch from realtime updates
+      queryClient.invalidateQueries({ 
+        queryKey: ['recruiter-conversations', recruiterId, 'active'],
+        refetchType: 'none' // Don't refetch, just notify
+      });
+      
+      console.log('✅ [Recruiter] Conversation permanently removed from cache:', variables.conversationId);
+    }
+  });
+  
+  // Undo mutation
+  const undoMutation = useMutation({
+    mutationFn: async ({ conversationId }: { conversationId: string }) => {
+      await MessageService.restoreConversation(conversationId, recruiterId!, 'recruiter');
+      return { conversationId };
+    },
+    onMutate: async ({ conversationId }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['recruiter-conversations', recruiterId] });
+      
+      // Snapshot
+      const previousActive = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'active']);
+      const previousArchived = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'archived']);
+      
+      console.log('↩️ [Recruiter] Attempting to restore conversation:', conversationId);
+      
+      return { previousActive, previousArchived, conversationId };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousActive) {
+        queryClient.setQueryData(['recruiter-conversations', recruiterId, 'active'], context.previousActive);
+      }
+      if (context?.previousArchived) {
+        queryClient.setQueryData(['recruiter-conversations', recruiterId, 'archived'], context.previousArchived);
+      }
+      toast.error('Failed to restore conversation');
+    },
+    onSuccess: () => {
+      toast.success('Conversation restored');
+      refetchActive(); // Sync with DB
+      refetchArchived();
+    }
+  });
+  
   // Handle archive/unarchive with optimistic updates
   const handleToggleArchive = useCallback(async (conversationId: string, isArchiving: boolean) => {
     setShowMenu(null);
@@ -208,10 +320,172 @@ const Messages = () => {
       setTimeout(() => setIsTransitioning(false), 300);
     }
   }, [selectedConversationId, refetchActive, refetchArchived]);
+
+  // Handle delete conversation using mutation
+  const handleDeleteConversation = useCallback(async () => {
+    if (!deleteModal.conversationId || !recruiterId) return;
+    
+    const conversationId = deleteModal.conversationId;
+    const contactName = deleteModal.contactName;
+    
+    // Clear selection if deleting current conversation
+    if (selectedConversationId === conversationId) {
+      setSelectedConversationId(null);
+    }
+    
+    // Close modal immediately for snappy UX
+    setDeleteModal({ isOpen: false, conversationId: null, contactName: '' });
+    
+    // Trigger the mutation (handles optimistic update, API call, and cache removal)
+    deleteMutation.mutate({ conversationId });
+      
+      // Show success toast with undo option (5 seconds with timer)
+      const UndoToastComponent = ({ t, conversationId, recruiterId, contactName, onRestore }: {
+        t: any;
+        conversationId: string;
+        recruiterId: string;
+        contactName: string;
+        onRestore: () => Promise<void>;
+      }) => {
+        const [displayTime, setDisplayTime] = React.useState(5);
+        const startTimeRef = React.useRef(Date.now());
+        const rafIdRef = React.useRef<number | null>(null);
+        const progressRef = React.useRef<SVGCircleElement | null>(null);
+
+        React.useEffect(() => {
+          let lastUpdate = 0;
+          let isMounted = true;
+          const THROTTLE_MS = 50;
+
+          const animate = (timestamp: number) => {
+            if (!isMounted) return;
+
+            const elapsed = (Date.now() - startTimeRef.current) / 1000;
+            
+            if (timestamp - lastUpdate >= THROTTLE_MS) {
+              const remaining = Math.max(0, 5 - elapsed);
+              const currentProgress = (remaining / 5) * 100;
+
+              if (isMounted) {
+                setDisplayTime(remaining);
+              }
+
+              if (progressRef.current) {
+                const offset = (1 - currentProgress / 100) * 97.4;
+                progressRef.current.style.strokeDashoffset = String(offset);
+              }
+
+              lastUpdate = timestamp;
+            }
+
+            if (isMounted && elapsed < 5) {
+              rafIdRef.current = requestAnimationFrame(animate);
+            }
+          };
+
+          rafIdRef.current = requestAnimationFrame(animate);
+
+          return () => {
+            isMounted = false;
+            if (rafIdRef.current !== null) {
+              cancelAnimationFrame(rafIdRef.current);
+              rafIdRef.current = null;
+            }
+          };
+        }, []);
+
+        const handleUndo = () => {
+          toast.dismiss(t.id);
+          // Trigger undo mutation
+          undoMutation.mutate({ conversationId });
+        };
+
+        return (
+          <div className="flex items-center gap-4 min-w-[380px] max-w-[420px]">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="relative flex-shrink-0 w-11 h-11">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-gray-200" strokeWidth="2.5" />
+                  <circle
+                    ref={progressRef}
+                    cx="18" cy="18" r="15.5" fill="none"
+                    className="stroke-green-500"
+                    strokeWidth="2.5"
+                    strokeDasharray="97.4"
+                    strokeDashoffset="0"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-[13px] font-bold text-green-600 tabular-nums w-3 text-center">
+                    {Math.ceil(displayTime)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex-1 min-w-0 py-1">
+                <p className="font-semibold text-[15px] text-gray-900 leading-tight">Conversation deleted</p>
+                <p className="text-[13px] text-gray-500 mt-1 truncate">with {contactName}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleUndo}
+              className="flex-shrink-0 px-5 py-2.5 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-[15px] font-semibold rounded-xl shadow-sm hover:shadow-lg active:scale-95 transition-all duration-200"
+            >
+              Undo
+            </button>
+          </div>
+        );
+      };
+
+    // Show undo toast
+    toast.success(
+      (t: any) => (
+        <UndoToastComponent
+          t={t}
+          conversationId={conversationId}
+          recruiterId={recruiterId!}
+          contactName={contactName}
+          onRestore={async () => {}} // No longer needed, mutation handles it
+        />
+      ),
+      {
+        duration: 5000,
+        position: 'bottom-center',
+        style: {
+          background: '#fff',
+          padding: '16px 20px',
+          borderRadius: '16px',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08)',
+          border: '1px solid rgba(0, 0, 0, 0.05)',
+        },
+        icon: null,
+      }
+    );
+  }, [deleteModal.conversationId, deleteModal.contactName, recruiterId, selectedConversationId, deleteMutation, undoMutation]);
+
+  // Open delete confirmation modal
+  const openDeleteModal = useCallback((conversationId: string, contactName: string) => {
+    setShowMenu(null);
+    setDeleteModal({ isOpen: true, conversationId, contactName });
+  }, []);
   
   // Transform and filter conversations - memoized for performance
   // Include onlineUsers as dependency so contacts update when presence changes
   const filteredContacts = useMemo(() => {
+    console.log('🔄 [Recruiter] Recalculating contacts memo, conversations:', conversations.length);
+    
+    // First filter out conversations marked for deletion
+    const activeConversations = conversations.filter((conv: any) => !conv._pendingDelete);
+    
+    // Debug logging
+    const pendingCount = conversations.filter((c: any) => c._pendingDelete).length;
+    console.log(`📊 [Recruiter] Conversations: ${conversations.length} total, ${pendingCount} pending delete, ${activeConversations.length} active`);
+    
+    if (pendingCount > 0) {
+      const pendingIds = conversations.filter((c: any) => c._pendingDelete).map((c: any) => c.id);
+      console.log('❌ [Recruiter] Pending delete IDs:', pendingIds);
+    }
+    
     const parseProfile = (profile: any) => {
       if (!profile || typeof profile === 'object') return profile || {};
       try {
@@ -221,7 +495,7 @@ const Messages = () => {
       }
     };
 
-    const contacts = conversations.map(conv => {
+    const contacts = activeConversations.map((conv: any) => {
       const profile = parseProfile(conv.student?.profile);
       const studentName = profile?.name || conv.student?.email || 'Student';
       const opportunityTitle = conv.opportunity?.title || 'No job specified';
@@ -434,11 +708,14 @@ const Messages = () => {
               filteredContacts.map((contact) => (
                 <div
                   key={contact.id}
-                  className={`relative w-full flex items-center border-b border-gray-100 group ${
+                  className={`relative w-full flex items-center border-b border-gray-100 group transition-all duration-200 ${
                     selectedConversationId === contact.id 
                       ? 'bg-primary-50 border-l-4 border-l-primary-600' 
                       : 'hover:bg-gray-50 border-l-4 border-l-transparent'
                   }`}
+                  style={{
+                    animation: 'fadeInSlide 0.2s ease-out'
+                  }}
                 >
                   <button
                     onClick={() => setSelectedConversationId(contact.id)}
@@ -477,40 +754,35 @@ const Messages = () => {
                     )}
                   </button>
                   
-                  {/* Archive Menu Button */}
-                  <div className="relative pr-2" ref={showMenu === contact.id ? menuRef : null}>
+                  {/* Quick Actions on Hover */}
+                  <div className="flex items-center gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Archive/Unarchive Button */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setShowMenu(showMenu === contact.id ? null : contact.id);
+                        handleToggleArchive(contact.id, !showArchived);
                       }}
-                      className="p-2 hover:bg-gray-200 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                      title="More options"
+                      className="p-2 hover:bg-blue-100 rounded-full transition-colors"
+                      title={showArchived ? 'Unarchive conversation' : 'Archive conversation'}
                     >
-                      <EllipsisVerticalIcon className="w-5 h-5 text-gray-600" />
+                      {showArchived ? (
+                        <ArrowUturnLeftIcon className="w-5 h-5 text-blue-600" />
+                      ) : (
+                        <ArchiveBoxIcon className="w-5 h-5 text-gray-600" />
+                      )}
                     </button>
                     
-                    {/* Dropdown Menu */}
-                    {showMenu === contact.id && (
-                      <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                        <button
-                          onClick={() => handleToggleArchive(contact.id, !showArchived)}
-                          className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                        >
-                          {showArchived ? (
-                            <>
-                              <ArrowUturnLeftIcon className="w-5 h-5 text-gray-500" />
-                              <span>Unarchive Conversation</span>
-                            </>
-                          ) : (
-                            <>
-                              <ArchiveBoxIcon className="w-5 h-5 text-gray-500" />
-                              <span>Archive Conversation</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )}
+                    {/* Delete Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDeleteModal(contact.id, contact.name);
+                      }}
+                      className="p-2 hover:bg-red-100 rounded-full transition-colors"
+                      title="Delete conversation"
+                    >
+                      <TrashIcon className="w-5 h-5 text-red-600" />
+                    </button>
                   </div>
                 </div>
               ))
@@ -715,6 +987,15 @@ const Messages = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConversationModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, conversationId: null, contactName: '' })}
+        onConfirm={handleDeleteConversation}
+        contactName={deleteModal.contactName}
+        isDeleting={deleteMutation.isPending}
+      />
     </div>
   );
 };
