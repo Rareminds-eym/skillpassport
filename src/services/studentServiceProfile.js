@@ -313,6 +313,7 @@ export const getStudentByEmail = async (email) => {
     // Merge: database fields + profile fields + passport fields
     const mergedData = {
       id: data.id,
+      student_id: data.student_id,
       universityId: data.universityId,
       email: data.email || transformedProfile.email,
       createdAt: data.createdAt,
