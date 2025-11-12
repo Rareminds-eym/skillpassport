@@ -11,7 +11,9 @@ import {
   Users,
   Star,
 } from "lucide-react";
-import educatorIllustration from "../../assets/images/auth/Recruiter-illustration.png"; // ✅ replace with your educator image path
+import { supabase } from "../../lib/supabaseClient";
+import { useAuth } from "../../context/AuthContext";
+import educatorIllustration from "../../assets/images/auth/Recruiter-illustration.png";
 import FeatureCard from "./components/ui/FeatureCard";
 
 export default function LoginEducator() {
@@ -22,6 +24,7 @@ export default function LoginEducator() {
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const primary = "#4f46e5"; // Indigo
   const secondary = "#312e81"; // Deep Indigo
@@ -31,16 +34,71 @@ export default function LoginEducator() {
     setError("");
     setLoading(true);
 
-    // Simulated login (replace with API later)
-    setTimeout(() => {
+    try {
+      // Validate email format
       if (!email.includes("@")) {
         setError("Invalid email address");
         setLoading(false);
         return;
       }
-      setLoading(false);
+
+      if (!password || password.length < 6) {
+        setError("Password must be at least 6 characters");
+        setLoading(false);
+        return;
+      }
+
+      // Sign in with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) {
+        setError(authError.message || "Failed to sign in. Please check your credentials.");
+        setLoading(false);
+        return;
+      }
+
+      if (!authData.user) {
+        setError("Authentication failed. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      // Fetch educator profile from school_educators table
+      const { data: educatorData, error: educatorError } = await supabase
+        .from("school_educators")
+        .select("*")
+        .eq("user_id", authData.user.id)
+        .maybeSingle();
+
+      if (educatorError) {
+        console.error("Error fetching educator profile:", educatorError);
+      }
+
+      // Update AuthContext with user data
+      const userData = {
+        id: authData.user.id,
+        email: authData.user.email,
+        role: "educator",
+        full_name: educatorData?.first_name && educatorData?.last_name 
+          ? `${educatorData.first_name} ${educatorData.last_name}`
+          : educatorData?.first_name || authData.user.email?.split("@")[0] || "Educator",
+        educator_id: educatorData?.id,
+        school_id: educatorData?.school_id,
+      };
+
+      login(userData);
+
+      // Redirect to educator dashboard
       navigate("/educator/dashboard");
-    }, 1000);
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderForm = (isLg: boolean) => (
