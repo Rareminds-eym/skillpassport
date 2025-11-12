@@ -108,33 +108,59 @@ export const getPipelineCandidates = async (opportunityId?: number) => {
  */
 export const getPipelineCandidatesByStage = async (opportunityId: number, stage: string) => {
   try {
-    
-    const { data, error } = await supabase
+    // First, fetch pipeline candidates
+    const { data: pipelineCandidates, error: pcError } = await supabase
       .from('pipeline_candidates')
-      .select(`
-        *,
-        students (
-          id,
-          name,
-          email,
-          contact_number,
-          department,
-          university,
-          cgpa,
-          employability_score,
-          verified,
-          profile
-        )
-      `)
+      .select('*')
       .eq('opportunity_id', opportunityId)
       .eq('stage', stage)
       .eq('status', 'active')
       .order('updated_at', { ascending: false });
 
-    if (error) {
-      console.error(`[Pipeline Service] Error fetching stage ${stage}:`, error);
-      throw error;
+    if (pcError) {
+      console.error(`[Pipeline Service] Error fetching stage ${stage}:`, {
+        message: pcError.message,
+        details: pcError.details,
+        hint: pcError.hint,
+        code: pcError.code
+      });
+      throw pcError;
     }
+
+    if (!pipelineCandidates || pipelineCandidates.length === 0) {
+      return { data: [], error: null };
+    }
+
+    // Get unique student IDs
+    const studentIds = [...new Set(pipelineCandidates.map(pc => pc.student_id))];
+
+    // Fetch student data separately
+    const { data: students, error: studentsError } = await supabase
+      .from('students')
+      .select('user_id, id, name, email, contact_number, department, university, cgpa, employability_score, verified, profile')
+      .in('user_id', studentIds);
+
+    if (studentsError) {
+      console.error(`[Pipeline Service] Error fetching students for stage ${stage}:`, {
+        message: studentsError.message,
+        details: studentsError.details,
+        hint: studentsError.hint,
+        code: studentsError.code
+      });
+      // Continue without student data rather than failing completely
+    }
+
+    // Create a map of students by user_id for quick lookup
+    const studentsMap = new Map();
+    students?.forEach(student => {
+      studentsMap.set(student.user_id, student);
+    });
+
+    // Combine pipeline candidates with student data
+    const data = pipelineCandidates.map(candidate => ({
+      ...candidate,
+      students: studentsMap.get(candidate.student_id) || null
+    }));
 
 
     // Transform data to include profile fields at student level
@@ -206,21 +232,7 @@ export const getPipelineCandidatesWithFilters = async (
     // Start with base query
     let query = supabase
       .from('pipeline_candidates')
-      .select(`
-        *,
-        students (
-          id,
-          name,
-          email,
-          contact_number,
-          department,
-          university,
-          cgpa,
-          employability_score,
-          verified,
-          profile
-        )
-      `)
+      .select('*')
       .eq('opportunity_id', opportunityId)
       .eq('status', 'active');
 
@@ -299,27 +311,57 @@ export const getPipelineCandidatesWithFilters = async (
       query = query.order('updated_at', { ascending: false });
     }
 
-    const { data, error } = await query;
+    const { data: pipelineCandidates, error } = await query;
 
     if (error) throw error;
 
-    // Transform data to include profile fields at student level
-    let filteredData = data?.map(candidate => {
-      if (candidate.students && candidate.students.profile) {
-        const profile = candidate.students.profile;
+    if (!pipelineCandidates || pipelineCandidates.length === 0) {
+      return { data: [], error: null };
+    }
+
+    // Get unique student IDs
+    const studentIds = [...new Set(pipelineCandidates.map((pc: any) => pc.student_id))];
+
+    // Fetch student data separately
+    const { data: students, error: studentsError } = await supabase
+      .from('students')
+      .select('user_id, id, name, email, contact_number, department, university, cgpa, employability_score, verified, profile')
+      .in('user_id', studentIds);
+
+    if (studentsError) {
+      console.error('Error fetching students for filters:', studentsError);
+      // Continue without student data
+    }
+
+    // Create a map of students by user_id for quick lookup
+    const studentsMap = new Map();
+    students?.forEach(student => {
+      studentsMap.set(student.user_id, student);
+    });
+
+    // Combine pipeline candidates with student data and transform
+    let filteredData = pipelineCandidates.map((candidate: any) => {
+      const student = studentsMap.get(candidate.student_id);
+      
+      if (student && student.profile) {
+        const profile = student.profile;
         return {
           ...candidate,
           students: {
-            ...candidate.students,
-            dept: profile.dept || profile.department || candidate.students.department,
-            college: profile.college || profile.university || candidate.students.university,
+            ...student,
+            dept: profile.dept || profile.department || student.department,
+            college: profile.college || profile.university || student.university,
             location: profile.location || profile.city || '',
             skills: profile.skills || [],
-            ai_score_overall: profile.ai_score_overall || candidate.students.employability_score || 0
+            ai_score_overall: profile.ai_score_overall || student.employability_score || 0
           }
         };
       }
-      return candidate;
+      
+      return {
+        ...candidate,
+        students: student || null
+      };
     }) || [];
 
     // Apply client-side filters for student data (skills, department, location, AI score)

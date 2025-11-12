@@ -26,31 +26,35 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
       return await MessageService.getConversationMessages(conversationId);
     },
     enabled: enabled && !!conversationId,
-    staleTime: 30000, // Cache valid for 30 seconds
-    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    staleTime: 60000, // Cache valid for 1 minute
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     refetchInterval: false, // Disable polling - use real-time instead
     refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchOnMount: false, // Don't refetch if data exists
+    retry: 1, // Only retry once on failure
   });
 
   // Subscribe to real-time updates
   useEffect(() => {
     if (!conversationId || !enabled) return;
 
-
     const subscription = MessageService.subscribeToConversation(
       conversationId,
       (newMessage: Message) => {
-        
         // Optimistically update the cache
         queryClient.setQueryData<Message[]>(
           ['messages', conversationId],
           (oldMessages = []) => {
             // Check if message already exists (avoid duplicates)
             const exists = oldMessages.some(msg => msg.id === newMessage.id);
-            if (exists) return oldMessages;
+            if (exists) {
+              return oldMessages;
+            }
             
-            return [...oldMessages, newMessage];
+            // Add new message in sorted order by created_at
+            return [...oldMessages, newMessage].sort(
+              (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
           }
         );
       }
@@ -132,19 +136,18 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
       console.error('❌ Error sending message:', err);
     },
     onSuccess: (data) => {
-      
       // Replace optimistic message with real one
       queryClient.setQueryData<Message[]>(
         ['messages', conversationId],
         (old = []) => {
-          // Remove the optimistic message and add the real one
-          const withoutOptimistic = old.filter(msg => msg.id !== data.id && msg.id > 1000000000000);
-          return [...withoutOptimistic, data];
+          // Remove the optimistic message (temporary ID from Date.now())
+          const withoutOptimistic = old.filter(msg => msg.id < 1000000000000 && msg.id !== data.id);
+          // Add real message and sort by created_at
+          return [...withoutOptimistic, data].sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
         }
       );
-      
-      // Don't invalidate - real-time subscription will handle updates
-      // queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
     },
   });
 
@@ -166,7 +169,8 @@ export const useConversation = (
   recruiterId: string,
   applicationId?: number,
   opportunityId?: number,
-  subject?: string
+  subject?: string,
+  enabled: boolean = true
 ) => {
   const queryClient = useQueryClient();
 
@@ -177,25 +181,22 @@ export const useConversation = (
   } = useQuery({
     queryKey: ['conversation', studentId, recruiterId, applicationId],
     queryFn: async () => {
-      console.log('🔄 Fetching/creating conversation...', { studentId, recruiterId, applicationId, opportunityId });
-      try {
-        const result = await MessageService.getOrCreateConversation(
-          studentId,
-          recruiterId,
-          applicationId,
-          opportunityId,
-          subject
-        );
-        console.log('✅ Conversation created/fetched:', result);
-        return result;
-      } catch (err) {
-        console.error('❌ Failed to get/create conversation:', err);
-        throw err;
-      }
+      const result = await MessageService.getOrCreateConversation(
+        studentId,
+        recruiterId,
+        applicationId,
+        opportunityId,
+        subject
+      );
+      return result;
     },
-    enabled: !!studentId && !!recruiterId,
+    enabled: enabled && !!studentId && !!recruiterId,
     staleTime: Infinity, // Conversation doesn't change often
+    gcTime: Infinity, // Keep in cache forever
     retry: false, // Don't retry on error
+    refetchOnMount: false, // Don't refetch if data exists
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnReconnect: false, // Don't refetch on reconnect
   });
 
   // Mutation for marking messages as read
@@ -204,8 +205,20 @@ export const useConversation = (
       if (!conversation) throw new Error('No conversation');
       return await MessageService.markConversationAsRead(conversation.id, userId);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversation', studentId, recruiterId, applicationId] });
+    onSuccess: (data, userId) => {
+      // Update cache directly instead of invalidating
+      queryClient.setQueryData<Conversation>(
+        ['conversation', studentId, recruiterId, applicationId],
+        (old) => {
+          if (!old) return old;
+          const isStudent = old.student_id === userId;
+          return {
+            ...old,
+            student_unread_count: isStudent ? 0 : old.student_unread_count,
+            recruiter_unread_count: !isStudent ? 0 : old.recruiter_unread_count,
+          };
+        }
+      );
     }
   });
 

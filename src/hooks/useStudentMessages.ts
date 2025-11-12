@@ -258,7 +258,6 @@ export const useStudentUnreadCount = (studentId: string | null, enabled = true) 
 export const useStudentConversations = (studentId: string | null, enabled = true) => {
   const { setConversations, setIsLoadingConversations } = useMessageStore();
   const queryClient = useQueryClient();
-  const [updateTrigger, setUpdateTrigger] = useState(0);
   
   const {
     data: conversations = [],
@@ -272,8 +271,6 @@ export const useStudentConversations = (studentId: string | null, enabled = true
       setIsLoadingConversations(true);
       try {
         const convs = await MessageService.getUserConversations(studentId, 'student');
-        // Don't sync to zustand here - it conflicts with optimistic updates
-        // setConversations(convs);
         return convs;
       } finally {
         setIsLoadingConversations(false);
@@ -281,8 +278,10 @@ export const useStudentConversations = (studentId: string | null, enabled = true
     },
     enabled: enabled && !!studentId,
     staleTime: 60000, // 1 minute
-    refetchOnWindowFocus: true,
-    refetchInterval: false // Disable polling - use real-time instead
+    refetchOnWindowFocus: false, // Disable - rely on real-time updates
+    refetchInterval: false, // Disable polling - use real-time instead
+    refetchOnMount: false, // Only fetch if data is stale
+    retry: 1 // Only retry once on failure
   });
   
   /**
@@ -310,15 +309,6 @@ export const useStudentConversations = (studentId: string | null, enabled = true
       optimisticConversations
     );
     
-    // Force re-render by invalidating without refetching
-    queryClient.invalidateQueries({
-      queryKey: ['student-conversations', studentId],
-      refetchType: 'none'
-    });
-    
-    // Trigger state update to force re-render
-    setUpdateTrigger(prev => prev + 1);
-    
   }, [studentId, queryClient]);
 
   // Realtime subscription for conversation updates
@@ -335,8 +325,34 @@ export const useStudentConversations = (studentId: string | null, enabled = true
           table: 'conversations',
           filter: `student_id=eq.${studentId}`
         },
+        (payload) => {
+          const updatedConv = payload.new as any;
+          console.log('🔄 Realtime UPDATE detected:', updatedConv);
+          
+          // CRITICAL: Ignore updates for conversations that were deleted
+          // This prevents re-fetching deleted conversations back into the cache
+          if (updatedConv.deleted_by_student || updatedConv.deleted_by_recruiter) {
+            console.log('❌ Ignoring UPDATE for deleted conversation:', updatedConv.id);
+            return; // Don't refetch
+          }
+          
+          // Invalidate and refetch to get updated data
+          queryClient.invalidateQueries({ 
+            queryKey: ['student-conversations', studentId],
+            refetchType: 'active' // Only refetch if query is active
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'conversations',
+          filter: `student_id=eq.${studentId}`
+        },
         () => {
-          // Refetch conversations to get updated data
+          // New conversation - immediately refetch
           refetch();
         }
       )
@@ -345,17 +361,11 @@ export const useStudentConversations = (studentId: string | null, enabled = true
     return () => {
       channel.unsubscribe();
     };
-  }, [studentId, enabled, refetch]);
+  }, [studentId, enabled, refetch, queryClient]);
 
-  // Force conversations to be reactive to optimistic updates
-  const reactiveConversations = useMemo(() => {
-    // Re-compute when updateTrigger changes
-    const cached = queryClient.getQueryData<any[]>(['student-conversations', studentId]) || [];
-    return cached;
-  }, [queryClient, studentId, updateTrigger, conversations]);
-
+  // Return conversations directly from query - React Query handles reactivity
   return {
-    conversations: reactiveConversations,
+    conversations,
     isLoading,
     error,
     refetch,

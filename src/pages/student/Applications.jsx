@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Briefcase,
   Clock,
@@ -25,10 +27,13 @@ import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import AppliedJobsService from '../../services/appliedJobsService';
 import StudentPipelineService from '../../services/studentPipelineService';
-import { MessageModal } from '../../components/messaging/MessageModal';
+import MessageService from '../../services/messageService';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
+import { supabase } from '../../lib/supabaseClient';
 
 const Applications = () => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData } = useStudentDataByEmail(userEmail);
@@ -40,14 +45,13 @@ const Applications = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [messageModalOpen, setMessageModalOpen] = useState(false);
-  const [selectedApplication, setSelectedApplication] = useState(null);
   const [pipelineStatuses, setPipelineStatuses] = useState([]);
   const [interviews, setInterviews] = useState([]);
   const [showPipelineView, setShowPipelineView] = useState(true);
   const [viewDetailsModalOpen, setViewDetailsModalOpen] = useState(false);
   const [detailsApplication, setDetailsApplication] = useState(null);
   const [showPipelineStatus, setShowPipelineStatus] = useState({});
+  const [messagingApplicationId, setMessagingApplicationId] = useState(null); // Track which app is opening message
 
   useMessageNotifications({
     userId: studentId,
@@ -776,20 +780,100 @@ const Applications = () => {
                           View Details
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             if (!app.recruiterId) {
                               alert('This job posting does not have a recruiter assigned yet. Please contact support or wait for a recruiter to be assigned.');
                               return;
                             }
-                            setSelectedApplication(app);
-                            setMessageModalOpen(true);
+                            
+                            // Set loading state
+                            setMessagingApplicationId(app.id);
+                            
+                            try {
+                              console.log('🚀 Creating/getting conversation for:', {
+                                studentId: app.studentId,
+                                recruiterId: app.recruiterId,
+                                applicationId: app.id,
+                                jobTitle: app.jobTitle
+                              });
+                              
+                              // Get or create conversation
+                              const conversation = await MessageService.getOrCreateConversation(
+                                app.studentId,
+                                app.recruiterId,
+                                app.id,
+                                app.opportunityId,
+                                `Application: ${app.jobTitle}`
+                              );
+                              
+                              console.log('✅ Conversation ready:', conversation.id);
+                              
+                              // OPTIMIZATION: Immediately update React Query cache with the new conversation
+                              // This makes it instantly available when Messages page loads
+                              const cachedConversations = queryClient.getQueryData(['student-conversations', app.studentId]) || [];
+                              
+                              // Check if conversation already exists in cache
+                              const conversationExists = cachedConversations.some(c => c.id === conversation.id);
+                              
+                              if (!conversationExists) {
+                                console.log('💾 Adding conversation to cache optimistically');
+                                
+                                // Fetch recruiter data to display name and email properly
+                                let recruiterData = null;
+                                try {
+                                  const { data: recruiter } = await supabase
+                                    .from('recruiters')
+                                    .select('id, email, name, phone')
+                                    .eq('id', app.recruiterId)
+                                    .single();
+                                  
+                                  recruiterData = recruiter;
+                                  console.log('✅ Recruiter data fetched:', recruiter?.name || recruiter?.email);
+                                } catch (err) {
+                                  console.warn('⚠️ Could not fetch recruiter data:', err);
+                                }
+                                
+                                // Add the new conversation to cache with recruiter data
+                                queryClient.setQueryData(['student-conversations', app.studentId], [...cachedConversations, {
+                                  ...conversation,
+                                  last_message_at: new Date().toISOString(),
+                                  last_message_preview: 'Start a conversation...',
+                                  student_unread_count: 0,
+                                  recruiter_unread_count: 0,
+                                  // Include recruiter data for proper display
+                                  recruiter: recruiterData,
+                                  student: null
+                                }]);
+                              }
+                              
+                              // Reduced delay since cache is now pre-populated
+                              await new Promise(resolve => setTimeout(resolve, 300));
+                              
+                              // Navigate to messages with pre-selected conversation
+                              // The Messages page will handle auto-selection and force refetch if needed
+                              navigate(`/student/messages?conversation=${conversation.id}`);
+                            } catch (error) {
+                              console.error('❌ Error opening conversation:', error);
+                              alert('Failed to open conversation. Please try again.');
+                            } finally {
+                              setMessagingApplicationId(null);
+                            }
                           }}
-                          disabled={!app.studentId}
-                          className="flex-1 lg:flex-none px-4 py-2 bg-white border-2 border-gray-300 hover:border-slate-700 text-gray-700 hover:text-slate-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title={!app.recruiterId ? 'No recruiter assigned to this job' : 'Message recruiter'}
+                          disabled={!app.studentId || !app.recruiterId || messagingApplicationId === app.id}
+                          className="flex-1 lg:flex-none px-4 py-2 bg-white border-2 border-gray-300 hover:border-slate-700 text-gray-700 hover:text-slate-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md"
+                          title={!app.recruiterId ? 'No recruiter assigned to this job' : 'Message recruiter about this application'}
                         >
-                          <MessageSquare className="w-4 h-4" />
-                          Message
+                          {messagingApplicationId === app.id ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                              Preparing...
+                            </>
+                          ) : (
+                            <>
+                              <MessageSquare className="w-4 h-4" />
+                              Message
+                            </>
+                          )}
                         </button>
 
                       </div>
@@ -802,24 +886,7 @@ const Applications = () => {
         </div>
       </div>
 
-      {/* Message Modal */}
-      {selectedApplication && selectedApplication.recruiterId && selectedApplication.studentId && (
-        <MessageModal
-          isOpen={messageModalOpen}
-          onClose={() => {
-            setMessageModalOpen(false);
-            setSelectedApplication(null);
-          }}
-          studentId={selectedApplication.studentId}
-          recruiterId={selectedApplication.recruiterId}
-          studentName={studentData?.name || studentData?.profile?.name || 'Student'}
-          applicationId={selectedApplication.id}
-          opportunityId={selectedApplication.opportunityId}
-          jobTitle={selectedApplication.jobTitle}
-          currentUserId={studentId}
-          currentUserType="student"
-        />
-      )}
+      {/* Message Modal Removed - Now navigates to Messages page */}
 
       {/* View Details Modal */}
       {detailsApplication && (
