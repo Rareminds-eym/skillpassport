@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BellIcon,
@@ -8,6 +8,7 @@ import {
   ChevronDownIcon,
 } from '@heroicons/react/24/outline'
 import NotificationPanel from './NotificationPanel'
+import { supabase } from '../../lib/supabaseClient'
 
 interface HeaderProps {
   onMenuToggle: () => void
@@ -22,7 +23,59 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [educatorProfile, setEducatorProfile] = useState<any>(null)
   const navigate = useNavigate()
+
+  // Load educator profile for header
+  useEffect(() => {
+    const loadEducatorProfile = async () => {
+      try {
+        // Get email from localStorage (same method as ProfileFixed)
+        const storedUser = localStorage.getItem('user')
+        const storedEmail = localStorage.getItem('userEmail')
+        
+        let email = 'karthikeyan@rareminds.in' // Default fallback
+        
+        if (storedUser) {
+          try {
+            const userData = JSON.parse(storedUser)
+            email = userData.email || email
+          } catch (e) {
+            console.error('Error parsing stored user:', e)
+          }
+        } else if (storedEmail) {
+          email = storedEmail
+        }
+
+        // Fetch educator data
+        const { data: educatorData, error } = await supabase
+          .from('school_educators')
+          .select('first_name, last_name, photo_url, email, specialization')
+          .eq('email', email)
+          .maybeSingle()
+
+        if (error) {
+          console.error('Error loading educator profile for header:', error)
+          return
+        }
+
+        if (educatorData) {
+          setEducatorProfile({
+            name: educatorData.first_name && educatorData.last_name 
+              ? `${educatorData.first_name} ${educatorData.last_name}`
+              : educatorData.first_name || 'Educator',
+            photo_url: educatorData.photo_url,
+            email: educatorData.email,
+            specialization: educatorData.specialization || 'Account'
+          })
+        }
+      } catch (error) {
+        console.error('Failed to load educator profile for header:', error)
+      }
+    }
+
+    loadEducatorProfile()
+  }, [])
 
   const handleNotificationClick = () => {
     setShowNotifications((prev) => !prev)
@@ -118,10 +171,31 @@ const Header: React.FC<HeaderProps> = ({
                 aria-expanded={showProfileMenu}
                 type="button"
               >
-                <UserCircleIcon className="h-6 sm:h-8 w-6 sm:w-8 text-gray-400" />
+                {educatorProfile?.photo_url ? (
+                  <img
+                    src={educatorProfile.photo_url}
+                    alt={educatorProfile.name}
+                    className="h-6 sm:h-8 w-6 sm:w-8 rounded-full object-cover border border-gray-200"
+                    onError={(e) => {
+                      // Fallback to icon if image fails to load
+                      e.target.style.display = 'none'
+                      e.target.nextSibling.style.display = 'block'
+                    }}
+                  />
+                ) : null}
+                <UserCircleIcon 
+                  className={`h-6 sm:h-8 w-6 sm:w-8 text-gray-400 ${educatorProfile?.photo_url ? 'hidden' : 'block'}`} 
+                />
                 <div className="hidden sm:flex flex-col items-start">
-                  <span className="text-sm font-medium text-gray-900">Educator</span>
-                  <span className="text-xs text-gray-500">Account</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {educatorProfile?.name || 'Educator'}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {educatorProfile?.specialization || 'Computer Science'}
+                  </span>
+                  <span className="text-xs text-blue-600 font-medium">
+                    Educator
+                  </span>
                 </div>
                 <ChevronDownIcon
                   className={`hidden sm:block h-4 w-4 text-gray-500 transition-transform duration-200 ${
@@ -142,8 +216,25 @@ const Header: React.FC<HeaderProps> = ({
                   <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
                     {/* Mobile Profile Info */}
                     <div className="sm:hidden px-4 py-3 border-b border-gray-200">
-                      <p className="text-sm font-medium text-gray-900">Educator</p>
-                      <p className="text-xs text-gray-500">Account</p>
+                      <div className="flex items-center space-x-3">
+                        {educatorProfile?.photo_url ? (
+                          <img
+                            src={educatorProfile.photo_url}
+                            alt={educatorProfile.name}
+                            className="h-8 w-8 rounded-full object-cover border border-gray-200"
+                          />
+                        ) : (
+                          <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {educatorProfile?.name || 'Educator'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {educatorProfile?.specialization || 'Account'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Menu Items */}
