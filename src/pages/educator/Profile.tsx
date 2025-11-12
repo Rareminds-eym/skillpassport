@@ -69,31 +69,161 @@ const Profile = () => {
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<EducatorProfile>>({});
   const [saving, setSaving] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   useEffect(() => {
-    // Check if user is authenticated
+    let isMounted = true;
+    
+    // Check authentication from multiple sources
     const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      if (!isMounted) return;
       
-      if (!user) {
-        console.log('No authenticated user, redirecting to login');
-        navigate('/login/educator');
+      // Method 1: Try AuthContext user
+      if (authUser && authUser.email) {
+        console.log('✅ Using AuthContext user:', authUser.email);
+        if (isMounted) await loadProfileByEmail(authUser.email);
         return;
       }
       
-      // User is authenticated, load profile
-      loadProfile();
+      // Method 2: Try localStorage directly
+      const storedUser = localStorage.getItem('user');
+      const storedEmail = localStorage.getItem('userEmail');
+      
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          console.log('✅ Using localStorage user:', userData);
+          if (isMounted) await loadProfileByEmail(userData.email || storedEmail);
+          return;
+        } catch (e) {
+          console.error('Error parsing stored user:', e);
+        }
+      }
+      
+      if (storedEmail) {
+        console.log('✅ Using stored email:', storedEmail);
+        if (isMounted) await loadProfileByEmail(storedEmail);
+        return;
+      }
+      
+      // Method 3: Fallback to Supabase auth
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user && user.email) {
+        console.log('✅ Using Supabase user:', user.email);
+        if (isMounted) await loadProfileByEmail(user.email);
+        return;
+      }
+      
+      // No authentication found
+      console.log('❌ No authenticated user found, redirecting to login');
+      if (isMounted) navigate('/login/educator');
     };
     
     checkAuth();
-  }, [navigate]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-  const loadProfile = async () => {
+  const loadProfileByEmail = async (email: string) => {
+    if (loadingProfile) {
+      console.log('⏳ Profile already loading, skipping...');
+      return;
+    }
+    
+    try {
+      setLoadingProfile(true);
+      setLoading(true);
+      
+      console.log('🔍 Loading profile by email:', email);
+
+      // Try multiple approaches to fetch educator data
+      let educatorData = null;
+      let educatorError = null;
+
+      // Approach 1: Direct query by email
+      console.log('📧 Trying direct email query...');
+      const { data: directData, error: directError } = await supabase
+        .from('school_educators')
+        .select(`
+          *,
+          schools:school_id (
+            name
+          )
+        `)
+        .eq('email', email)
+        .maybeSingle();
+
+      if (directError) {
+        console.log('❌ Direct query error:', directError.message);
+        
+        // Approach 2: Try with RLS bypass (if we have service role)
+        console.log('🔓 Trying with different approach...');
+        const { data: altData, error: altError } = await supabase
+          .from('school_educators')
+          .select('*')
+          .ilike('email', email)
+          .limit(1)
+          .single();
+          
+        if (altError) {
+          console.log('❌ Alternative query error:', altError.message);
+          educatorError = altError;
+        } else {
+          educatorData = altData;
+          console.log('✅ Found data with alternative approach');
+        }
+      } else {
+        educatorData = directData;
+        console.log('✅ Found data with direct approach');
+      }
+
+      console.log('=== EDUCATOR PROFILE DEBUG (BY EMAIL) ===');
+      console.log('Email:', email);
+      console.log('Educator data:', educatorData);
+      console.log('Educator error:', educatorError);
+      console.log('Data fields:', educatorData ? Object.keys(educatorData) : 'No data');
+      
+      if (educatorData) {
+        console.log('📋 Educator details:', {
+          id: educatorData.id,
+          first_name: educatorData.first_name,
+          last_name: educatorData.last_name,
+          email: educatorData.email,
+          specialization: educatorData.specialization,
+          qualification: educatorData.qualification,
+          school_id: educatorData.school_id,
+          user_id: educatorData.user_id,
+        });
+      }
+      console.log('=== END DEBUG ===');
+
+      if (educatorData) {
+        await processEducatorData(educatorData, email);
+      } else {
+        console.log('⚠️ No educator data found, creating fallback profile');
+        await createFallbackProfile(email);
+      }
+    } catch (error) {
+      console.error('💥 Failed to load profile by email:', error);
+      await createFallbackProfile(email);
+    } finally {
+      setLoading(false);
+      setLoadingProfile(false);
+    }
+  };
+
+  const loadProfile = async (user?: any) => {
     try {
       setLoading(true);
       
-      // Get current user from Supabase Auth
-      const { data: { user } } = await supabase.auth.getUser();
+      // Get current user from Supabase Auth if not provided
+      if (!user) {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        user = currentUser;
+      }
       
       if (!user) {
         console.error('No authenticated user found');
@@ -113,122 +243,133 @@ const Profile = () => {
       console.log('User ID:', user.id);
       console.log('Educator data:', educatorData);
       console.log('Educator error:', educatorError);
-      console.log('Educator data is null?', educatorData === null);
-      console.log('Educator data is undefined?', educatorData === undefined);
-      if (educatorData) {
-        console.log('Educator fields:', {
-          id: educatorData.id,
-          first_name: educatorData.first_name,
-          last_name: educatorData.last_name,
-          email: educatorData.email,
-          specialization: educatorData.specialization,
-          qualification: educatorData.qualification,
-          experience_years: educatorData.experience_years,
-          school_id: educatorData.school_id,
-        });
-      }
-      console.log('=== END DEBUG ===');
-
+      
       if (educatorError) {
         console.error('Error fetching educator data:', educatorError);
       }
 
-      // Fetch school name if school_id exists
-      let schoolData = null;
-      if (educatorData?.school_id) {
-        const { data: school, error: schoolError } = await supabase
-          .from('schools')
-          .select('name')
-          .eq('id', educatorData.school_id)
-          .maybeSingle();
-        
-        console.log('School data:', school, 'Error:', schoolError);
-        schoolData = school;
-      }
-
-      // Create profile from school_educators data
-      const profileData: EducatorProfile = {
-        // Primary fields from school_educators
-        id: educatorData?.id || '',
-        user_id: educatorData?.user_id || user.id,
-        school_id: educatorData?.school_id || '',
-        employee_id: educatorData?.employee_id || '',
-        account_status: educatorData?.account_status || 'active',
-        created_at: educatorData?.created_at,
-        updated_at: educatorData?.updated_at,
-        metadata: educatorData?.metadata || {},
-        
-        // Professional Information
-        specialization: educatorData?.specialization || '',
-        qualification: educatorData?.qualification || '',
-        experience_years: educatorData?.experience_years || 0,
-        date_of_joining: educatorData?.date_of_joining || educatorData?.created_at || new Date().toISOString(),
-        designation: educatorData?.designation || '',
-        department: educatorData?.department || '',
-        subjects_handled: educatorData?.subjects_handled || [],
-        
-        // Personal Information
-        first_name: educatorData?.first_name || '',
-        last_name: educatorData?.last_name || '',
-        email: educatorData?.email || user.email || '',
-        phone_number: educatorData?.phone_number || '',
-        dob: educatorData?.dob || '',
-        gender: educatorData?.gender || '',
-        address: educatorData?.address || '',
-        city: educatorData?.city || '',
-        state: educatorData?.state || '',
-        country: educatorData?.country || '',
-        pincode: educatorData?.pincode || '',
-        photo_url: educatorData?.photo_url || '',
-        
-        // Documents
-        resume_url: educatorData?.resume_url || '',
-        id_proof_url: educatorData?.id_proof_url || '',
-        
-        // Verification
-        verification_status: educatorData?.verification_status || 'Pending',
-        verified_by: educatorData?.verified_by || '',
-        verified_at: educatorData?.verified_at || '',
-        
-        // Computed fields
-        full_name: educatorData?.first_name && educatorData?.last_name 
-          ? `${educatorData.first_name} ${educatorData.last_name}`
-          : educatorData?.first_name || user.user_metadata?.full_name || 'Educator',
-        phone: educatorData?.phone_number || '',
-        school_name: schoolData?.name || '',
-        
-        // Stats (placeholder for now)
-        total_students: 0,
-        verified_activities: 0,
-        pending_activities: 0,
-      };
-
-      console.log('Final profile:', profileData);
-      setProfile(profileData);
-
+      await processEducatorData(educatorData, user.email, user);
     } catch (error) {
       console.error('Failed to load profile:', error);
-      // Even if there's an error, show basic user info
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setProfile({
-          id: '',
-          user_id: user.id,
-          school_id: '',
-          email: user.email || '',
-          full_name: user.user_metadata?.full_name || 'Educator',
-          phone: '',
-          date_of_joining: new Date().toISOString(),
-          account_status: 'active',
-          metadata: {},
-          total_students: 0,
-          verified_activities: 0,
-          pending_activities: 0,
-        });
-      }
+      await createFallbackProfile(user?.email, user);
     } finally {
       setLoading(false);
     }
+  };
+
+  const processEducatorData = async (educatorData: any, email: string, user?: any) => {
+    // Extract school name from joined data or fetch separately
+    let schoolName = '';
+    
+    if (educatorData?.schools?.name) {
+      // School data was joined in the query
+      schoolName = educatorData.schools.name;
+      console.log('✅ School name from join:', schoolName);
+    } else if (educatorData?.school_id) {
+      // Fetch school name separately
+      console.log('🏫 Fetching school name for ID:', educatorData.school_id);
+      const { data: school, error: schoolError } = await supabase
+        .from('schools')
+        .select('name')
+        .eq('id', educatorData.school_id)
+        .maybeSingle();
+      
+      if (schoolError) {
+        console.log('❌ School fetch error:', schoolError.message);
+      } else {
+        schoolName = school?.name || '';
+        console.log('✅ School name fetched:', schoolName);
+      }
+    }
+
+    // Create profile from school_educators data
+    const profileData: EducatorProfile = {
+      // Primary fields from school_educators
+      id: educatorData?.id || '',
+      user_id: educatorData?.user_id || user?.id || '',
+      school_id: educatorData?.school_id || '',
+      employee_id: educatorData?.employee_id || '',
+      account_status: educatorData?.account_status || 'active',
+      created_at: educatorData?.created_at,
+      updated_at: educatorData?.updated_at,
+      metadata: educatorData?.metadata || {},
+      
+      // Professional Information
+      specialization: educatorData?.specialization || '',
+      qualification: educatorData?.qualification || '',
+      experience_years: educatorData?.experience_years || 0,
+      date_of_joining: educatorData?.date_of_joining || educatorData?.created_at || new Date().toISOString(),
+      designation: educatorData?.designation || '',
+      department: educatorData?.department || '',
+      subjects_handled: educatorData?.subjects_handled || [],
+      
+      // Personal Information
+      first_name: educatorData?.first_name && educatorData.first_name !== 'null' ? educatorData.first_name : '',
+      last_name: educatorData?.last_name && educatorData.last_name !== 'null' ? educatorData.last_name : '',
+      email: educatorData?.email || email || '',
+      phone_number: educatorData?.phone_number || '',
+      dob: educatorData?.dob || '',
+      gender: educatorData?.gender || '',
+      address: educatorData?.address || '',
+      city: educatorData?.city || '',
+      state: educatorData?.state || '',
+      country: educatorData?.country || '',
+      pincode: educatorData?.pincode || '',
+      photo_url: educatorData?.photo_url || '',
+      
+      // Documents
+      resume_url: educatorData?.resume_url || '',
+      id_proof_url: educatorData?.id_proof_url || '',
+      
+      // Verification
+      verification_status: educatorData?.verification_status || 'Pending',
+      verified_by: educatorData?.verified_by || '',
+      verified_at: educatorData?.verified_at || '',
+      
+      // Computed fields
+      full_name: educatorData?.first_name && educatorData?.last_name && 
+                 educatorData.first_name !== 'null' && educatorData.last_name !== 'null'
+        ? `${educatorData.first_name} ${educatorData.last_name}`
+        : educatorData?.first_name && educatorData.first_name !== 'null' 
+          ? educatorData.first_name 
+          : user?.user_metadata?.full_name || 'Educator',
+      phone: educatorData?.phone_number || '',
+      school_name: schoolName,
+      
+      // Stats (placeholder for now)
+      total_students: 0,
+      verified_activities: 0,
+      pending_activities: 0,
+    };
+
+    console.log('✅ Final profile created:', {
+      id: profileData.id,
+      full_name: profileData.full_name,
+      email: profileData.email,
+      specialization: profileData.specialization,
+      qualification: profileData.qualification,
+      school_name: profileData.school_name,
+    });
+    
+    setProfile(profileData);
+  };
+
+  const createFallbackProfile = async (email?: string, user?: any) => {
+    // Create basic profile from available data
+    setProfile({
+      id: '',
+      user_id: user?.id || '',
+      school_id: '',
+      email: email || '',
+      full_name: user?.user_metadata?.full_name || 'Educator',
+      phone: '',
+      date_of_joining: new Date().toISOString(),
+      account_status: 'active',
+      metadata: {},
+      total_students: 0,
+      verified_activities: 0,
+      pending_activities: 0,
+    });
   };
 
   const handleEdit = () => {
@@ -247,54 +388,84 @@ const Profile = () => {
     try {
       setSaving(true);
       
-      // Update or create school_educators record
+      const updateData = {
+        first_name: formData.first_name || profile.first_name,
+        last_name: formData.last_name || profile.last_name,
+        phone_number: formData.phone_number || profile.phone_number,
+        address: formData.address || profile.address,
+        city: formData.city || profile.city,
+        specialization: formData.specialization || profile.specialization,
+        qualification: formData.qualification || profile.qualification,
+        experience_years: parseInt(formData.experience_years as string) || profile.experience_years || 0,
+        designation: formData.designation || profile.designation,
+        department: formData.department || profile.department,
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log('💾 Saving profile data:', updateData);
+
+      let success = false;
+
+      // Try multiple update approaches
       if (profile.id) {
-        // Update existing record
-        const { error: educatorError } = await supabase
+        // Approach 1: Update by ID
+        console.log('📝 Updating by ID:', profile.id);
+        const { error: idError } = await supabase
           .from('school_educators')
-          .update({
-            specialization: formData.specialization,
-            qualification: formData.qualification,
-            experience_years: parseInt(formData.experience_years as string) || 0,
-            employee_id: formData.employee_id,
-            metadata: {
-              ...profile.metadata,
-              bio: formData.metadata?.bio,
-            }
-          })
+          .update(updateData)
           .eq('id', profile.id);
 
-        if (educatorError) {
-          console.error('Error updating educator profile:', educatorError);
-          return;
+        if (idError) {
+          console.log('❌ Update by ID failed:', idError.message);
+          
+          // Approach 2: Update by email
+          console.log('📝 Trying update by email:', profile.email);
+          const { error: emailError } = await supabase
+            .from('school_educators')
+            .update(updateData)
+            .eq('email', profile.email);
+
+          if (emailError) {
+            console.error('❌ Update by email also failed:', emailError.message);
+            throw new Error(`Failed to update profile: ${emailError.message}`);
+          } else {
+            console.log('✅ Profile updated by email successfully');
+            success = true;
+          }
+        } else {
+          console.log('✅ Profile updated by ID successfully');
+          success = true;
         }
-      } else {
-        // Create new record if it doesn't exist and we have required data
-        if (formData.specialization || formData.qualification) {
-          // You'll need a school_id for this to work - for now we'll skip creation
-          console.log('Would create new school_educators record, but need school_id');
+      } else if (profile.email) {
+        // No ID, try update by email
+        console.log('📝 Updating by email (no ID):', profile.email);
+        const { error: emailError } = await supabase
+          .from('school_educators')
+          .update(updateData)
+          .eq('email', profile.email);
+
+        if (emailError) {
+          console.error('❌ Update by email failed:', emailError.message);
+          throw new Error(`Failed to update profile: ${emailError.message}`);
+        } else {
+          console.log('✅ Profile updated by email successfully');
+          success = true;
         }
       }
 
-      // Update users table for basic info (this should always work)
-      const { error: userError } = await supabase
-        .from('users')
-        .update({
-          full_name: formData.full_name,
-          phone: formData.phone,
-        })
-        .eq('id', profile.user_id);
-
-      if (userError) {
-        console.error('Error updating user profile:', userError);
-        // Don't return here - we can still update the local state
+      if (success) {
+        // Update local profile state
+        const updatedProfile = { ...profile, ...formData };
+        setProfile(updatedProfile);
+        setEditing(false);
+        setFormData({});
+        
+        // Show success message
+        alert('Profile saved successfully!');
       }
-
-      setProfile({ ...profile, ...formData });
-      setEditing(false);
-      setFormData({});
     } catch (error) {
-      console.error('Failed to save profile:', error);
+      console.error('💥 Failed to save profile:', error);
+      alert(`Failed to save profile: ${error.message}`);
     } finally {
       setSaving(false);
     }

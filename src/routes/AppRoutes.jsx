@@ -120,7 +120,7 @@ const EducatorClasses = lazy(() => import("../pages/educator/ClassesPage"));
 const EducatorAssessments = lazy(() => import("../pages/educator/Assessments"));
 const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
 const EducatorSettings = lazy(() => import("../pages/educator/Settings"));
-const EducatorProfile = lazy(() => import("../pages/educator/Profile"));
+const EducatorProfile = lazy(() => import("../pages/educator/ProfileFixed"));
 const EducatorProfileDebug = lazy(() => import("../pages/educator/ProfileDebug"));
 const EducatorManagement = lazy(() => import("../pages/educator/EducatorManagement"));
 const EducatorCommunication = lazy(() =>
