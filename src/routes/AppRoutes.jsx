@@ -89,6 +89,7 @@ const OffersDecisions = lazy(() =>
 const Analytics = lazy(() => import("../pages/recruiter/Analytics"));
 const Activities = lazy(() => import("../pages/recruiter/Activities"));
 const RecruiterMessages = lazy(() => import("../pages/recruiter/Messages"));
+const RecruiterAI = lazy(() => import("../pages/recruiter/RecruiterAI"));
 
 const StudentDashboard = lazy(() => import("../pages/student/Dashboard"));
 const Profile = lazy(() => import("../pages/student/Profile"));
@@ -135,6 +136,7 @@ const EducatorMediaManager = lazy(() =>
 const EducatorDigitalPortfolio = lazy(() =>
   import("../pages/educator/DigitalPortfolioPage")
 );
+const EducatorAI = lazy(() => import("../pages/educator/EducatorAI"));
 
 // ===== Admins (Role-Based) =====
 const CollegeDashboard = lazy(() =>
@@ -287,6 +289,7 @@ const AppRoutes = () => {
           }
         >
           <Route path="overview" element={<Overview />} />
+          <Route path="talent-scout" element={<RecruiterAI />} />
           <Route path="talent-pool" element={<TalentPool />} />
           <Route path="requisition" element={<Requisitions />} />
           <Route path="requisition/applicants" element={<ApplicantsList />} />
@@ -472,6 +475,7 @@ const AppRoutes = () => {
 
         <Route path="/educator/*" element={<EducatorLayout />}>
           <Route path="dashboard" element={<EducatorDashboard />} />
+          <Route path="ai-copilot" element={<EducatorAI />} />
           <Route path="students" element={<EducatorStudents />} />
           <Route path="classes" element={<EducatorClasses />} />
           <Route path="assignments" element={<EducatorAssessments />} />
