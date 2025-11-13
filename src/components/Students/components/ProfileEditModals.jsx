@@ -20,8 +20,19 @@ import {
   Calendar,
   Eye,
   EyeOff,
+  Presentation,
+  FileText,
+  Video,
+  Upload,
+  Link,
+  X,
+  CalendarDays,
+  LinkIcon,
+  Github,
+  Building2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 // const VersionStatusBadge = ({ version, type }) => {
 //   if (!version) return null;
@@ -258,9 +269,18 @@ export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
     }
   };
 
-  const handleSubmit = () => {
-    onSave(educationList);
-    onClose();
+  const handleSubmit = async () => {
+    try {
+      await onSave(educationList);
+      onClose();
+    } catch (error) {
+      console.error('Error saving education:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save education details. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getLevelColor = (level) => {
@@ -310,7 +330,7 @@ export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-semibold" style={{ color: "#6A0DAD" }}>
+                    <h4 className="font-semibold">
                       {education.degree}
                     </h4>
                     <Badge className={getLevelColor(education.level)}>
@@ -334,26 +354,25 @@ export const EducationEditModal = ({ isOpen, onClose, data, onSave }) => {
                   </div>
                   <p
                     className="text-sm font-medium"
-                    style={{ color: "#6A0DAD" }}
                   >
                     {education.university}
                   </p>
                   <div className="grid grid-cols-3 gap-2 text-xs mt-2">
                     <div>
-                      <span style={{ color: "#6A0DAD" }}>Department:</span>
-                      <p className="font-medium" style={{ color: "#6A0DAD" }}>
+                      <span>Department:</span>
+                      <p className="font-medium">
                         {education.department}
                       </p>
                     </div>
                     <div>
-                      <span style={{ color: "#6A0DAD" }}>Year:</span>
-                      <p className="font-medium" style={{ color: "#6A0DAD" }}>
+                      <span>Year:</span>
+                      <p className="font-medium">
                         {education.yearOfPassing}
                       </p>
                     </div>
                     <div>
-                      <span style={{ color: "#6A0DAD" }}>Grade:</span>
-                      <p className="font-medium" style={{ color: "#6A0DAD" }}>
+                      <span>Grade:</span>
+                      <p className="font-medium">
                         {education.cgpa}
                       </p>
                     </div>
@@ -964,13 +983,22 @@ export const TrainingEditModal = ({ isOpen, onClose, data, onSave }) => {
   };
 
   // Save all changes
-  const handleSubmit = () => {
-    onSave(courses);
-    toast({
-      title: "Training Updated",
-      description: "Your training details have been saved successfully.",
-    });
-    onClose();
+  const handleSubmit = async () => {
+    try {
+      await onSave(courses);
+      toast({
+        title: "Training Updated",
+        description: "Your training details have been saved successfully.",
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error saving training:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save training details. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Render form
@@ -1419,14 +1447,23 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
     setExperiences(experiences.filter((exp) => exp.id !== id));
   };
 
-  const handleSubmit = () => {
-    onSave(experiences);
-    toast({
-      title: "Experience Updated",
-      description:
-        "Your experience details are being processed for verification.",
-    });
-    onClose();
+  const handleSubmit = async () => {
+    try {
+      await onSave(experiences);
+      toast({
+        title: "Experience Updated",
+        description:
+          "Your experience details are being processed for verification.",
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error saving experience:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save experience details. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -1448,13 +1485,13 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <h4 className="font-medium" style={{ color: "#6A0DAD" }}>
+                  <h4 className="font-medium">
                     {exp.role}
                   </h4>
-                  <p className="text-sm" style={{ color: "#6A0DAD" }}>
+                  <p className="text-sm">
                     {exp.organization}
                   </p>
-                  <p className="text-xs" style={{ color: "#6A0DAD" }}>
+                  <p className="text-xs">
                     {exp.duration}
                   </p>
                   {exp.processing ? (
@@ -1576,16 +1613,30 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
   const [projectsList, setProjectsList] = useState(data || []);
   const [isAdding, setIsAdding] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [expandedDescriptions, setExpandedDescriptions] = useState({});
+  const { toast } = useToast();
+
   const [formData, setFormData] = useState({
     title: "",
-    organization: "",
     duration: "",
     status: "",
     description: "",
+    organization: "",
     link: "",
+    githubLink: "",
     techInput: "",
+    start_date: "",
+    end_date: "",
+    certificate: null,
+    video: null,
+    ppt: null,
+    certificate_url: "",
+    video_url: "",
+    ppt_url: "",
+    certificateLink: "",
+    videoLink: "",
+    pptLink: "",
   });
-  const { toast } = useToast();
 
   useEffect(() => {
     setProjectsList(data || []);
@@ -1594,44 +1645,64 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
   const resetForm = () => {
     setFormData({
       title: "",
-      organization: "",
       duration: "",
       status: "",
       description: "",
+      organization: "",
       link: "",
+      githubLink: "",
       techInput: "",
+      start_date: "",
+      end_date: "",
+      certificate: null,
+      video: null,
+      ppt: null,
+      certificate_url: "",
+      video_url: "",
+      ppt_url: "",
+      certificateLink: "",
+      videoLink: "",
+      pptLink: "",
     });
     setEditingIndex(null);
   };
 
-  const extractTech = (project) => {
-    if (Array.isArray(project.tech) && project.tech.length) return project.tech;
-    if (Array.isArray(project.technologies) && project.technologies.length)
-      return project.technologies;
-    if (Array.isArray(project.techStack) && project.techStack.length)
-      return project.techStack;
-    if (Array.isArray(project.skills) && project.skills.length)
-      return project.skills;
-    return [];
-  };
+  const extractTech = (project) =>
+    project.tech ||
+    project.technologies ||
+    project.techStack ||
+    project.tech_stack ||
+    project.skills ||
+    [];
 
-  const formatTech = (input) => {
-    return (input || "")
+  const formatTech = (input) =>
+    (input || "")
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean);
-  };
 
   const startEditing = (project, index) => {
     setFormData({
-      title: project.title || project.name || "",
-      organization:
-        project.organization || project.company || project.client || "",
-      duration: project.duration || project.timeline || project.period || "",
+      title: project.title || "",
+      duration: project.duration || "",
       status: project.status || "",
       description: project.description || "",
-      link: project.link || project.github,
+      organization: project.organization || project.client || "",
+      link: project.link || "",
+      githubLink:
+        project.github_url || project.github_link || project.github || "",
       techInput: extractTech(project).join(", "),
+      start_date: project.start_date || "",
+      end_date: project.end_date || "",
+      certificate: null,
+      video: null,
+      ppt: null,
+      certificate_url: project.certificate_url || "",
+      video_url: project.video_url || "",
+      ppt_url: project.ppt_url || "",
+      certificateLink: project.certificate_url || "",
+      videoLink: project.video_url || "",
+      pptLink: project.ppt_url || "",
     });
     setEditingIndex(index);
     setIsAdding(true);
@@ -1639,28 +1710,67 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
 
   const prepareProject = (base, existing = {}) => {
     const techArray = formatTech(base.techInput);
-    const { techInput, ...rest } = base;
-    const trimmed = Object.fromEntries(
-      Object.entries(rest).map(([key, value]) => [
-        key,
-        typeof value === "string" ? value.trim() : value,
-      ])
-    );
-    const normalizedLink = typeof trimmed.link === "string" ? trimmed.link : "";
+    const organizationValue = base.organization?.trim() || null;
+    const enabledValue =
+      typeof base.enabled === "boolean"
+        ? base.enabled
+        : typeof existing.enabled === "boolean"
+        ? existing.enabled
+        : true;
+    let durationText = "";
+    let startLabel = "";
+    let endLabel = "";
+
+    if (base.start_date && base.end_date) {
+      const start = new Date(base.start_date);
+      const end = new Date(base.end_date);
+      const diffMs = Math.abs(end - start);
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+      // compute months/weeks/days
+      let duration = "";
+      if (diffDays >= 30) {
+        const diffMonths = Math.floor(diffDays / 30);
+        duration = `${diffMonths} month${diffMonths > 1 ? "s" : ""}`;
+      } else if (diffDays >= 14) {
+        const diffWeeks = Math.floor(diffDays / 7);
+        duration = `${diffWeeks} week${diffWeeks > 1 ? "s" : ""}`;
+      } else if (diffDays > 1) {
+        duration = `${diffDays} days`;
+      } else {
+        duration = "1 day";
+      }
+
+      // format month-year labels
+      const formatMonthYear = (date) =>
+        date.toLocaleString("default", { month: "short", year: "numeric" });
+
+      startLabel = formatMonthYear(start);
+      endLabel = formatMonthYear(end);
+
+      // final display
+      durationText = `${startLabel} – ${endLabel} (${duration})`;
+    }
+
     return {
       ...existing,
-      ...trimmed,
-      title: trimmed.title || existing.title || "",
-      organization: trimmed.organization || existing.organization || "",
-      duration: trimmed.duration || existing.duration || "",
-      status: trimmed.status || existing.status || "",
-      description: trimmed.description || existing.description || "",
-      link: normalizedLink,
-      github: normalizedLink,
+      ...base,
+      start_date: base.start_date || null,
+      end_date: base.end_date || null,
+      duration: durationText, // formatted version
+      status: base.status || "In Progress",
+      enabled: enabledValue,
       tech: techArray,
       technologies: techArray,
-      techStack: techArray,
-      skills: techArray.length ? techArray : existing.skills || [],
+      organization: organizationValue,
+      client: organizationValue,
+      certificate_url: base.certificateLink?.trim() || base.certificate_url?.trim() || null,
+      video_url: base.videoLink?.trim() || base.video_url?.trim() || null,
+      ppt_url: base.pptLink?.trim() || base.ppt_url?.trim() || null,
+      github_url: base.githubLink?.trim() || base.github_url?.trim() || null,
+      github_link: base.githubLink?.trim() || base.github_url?.trim() || null,
+      github: base.githubLink?.trim() || base.github_url?.trim() || null,
+      updatedAt: new Date().toISOString(),
     };
   };
 
@@ -1675,54 +1785,24 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
     }
 
     const newProject = prepareProject(formData);
-
     if (editingIndex !== null) {
       setProjectsList((prev) =>
-        prev.map((proj, idx) =>
-          idx === editingIndex
-            ? {
-                ...(proj || {}),
-                ...prepareProject(formData, proj),
-                enabled: proj?.enabled === false ? false : true,
-
-                // 🔁 Verification reset logic
-                verified: false,
-              processing: true,
-                verifiedAt: null,
-
-                updatedAt: new Date().toISOString(),
-              }
-            : proj
-        )
+        prev.map((proj, idx) => (idx === editingIndex ? newProject : proj))
       );
-
       toast({
         title: "Project Updated",
-        description:
-          "Changes detected — verification will be reprocessed by the system.",
+        description: "Changes saved successfully.",
       });
     } else {
-      // 🆕 new project
       setProjectsList((prev) => [
         ...prev,
-        {
-        ...newProject,
-        enabled: true,
-          verified: false,
-        processing: true,
-          verifiedAt: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        { ...newProject, createdAt: new Date().toISOString(), enabled: true },
       ]);
-
       toast({
         title: "Project Added",
-        description:
-          "Your project details are being processed for verification.",
+        description: "New project added successfully.",
       });
     }
-
     setIsAdding(false);
     resetForm();
   };
@@ -1730,269 +1810,718 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
   const toggleProject = (index) => {
     setProjectsList((prev) =>
       prev.map((project, idx) =>
-        idx === index
-          ? { ...project, enabled: project.enabled === false ? true : false }
-          : project
+        idx === index ? { ...project, enabled: !project.enabled } : project
       )
     );
   };
 
   const deleteProject = (index) => {
-    setProjectsList((prev) => prev.filter((_, idx) => idx !== index));
+    setProjectsList((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
-    onSave(
-      projectsList.map((project) => ({
-        ...project,
-        tech: extractTech(project),
-        technologies: extractTech(project),
-        techStack: extractTech(project),
-      }))
-    );
-    onClose();
+  const handleSubmit = async () => {
+    try {
+      await onSave(projectsList);
+      onClose();
+    } catch (error) {
+      console.error('Error saving projects:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save project details. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={() => {
-        onClose();
-        setIsAdding(false);
-        resetForm();
-      }}
-    >
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Edit3 className="w-5 h-5" />
-            Manage Projects
+          <DialogTitle className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+            <Edit3 className="w-5 h-5 text-blue-600" /> Manage Projects
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+
+        <div className="space-y-6 mt-4">
+          {/* Project List */}
           {projectsList.map((project, index) => (
             <div
-              key={project.id || index}
-              className={`p-4 border rounded-lg ${
-                project.enabled === false ? "opacity-50" : "opacity-100"
+              key={index}
+              className={`relative border border-gray-200 rounded-xl p-6 shadow-sm transition-opacity ${
+                project.enabled === false ? "bg-gray-50 opacity-60" : "bg-white"
               }`}
             >
-              <div className="flex justify-between items-start gap-3">
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold" style={{ color: "#6A0DAD" }}>
-                      {project.title || "Untitled Project"}
-                    </h4>
-                    {project.status && (
-                      <Badge className="bg-emerald-100 text-emerald-700">
-                        {project.status}
-                      </Badge>
-                    )}
-                    {project.processing && (
-                      <Badge className="bg-orange-100 text-orange-700">
-                        <Clock className="w-3 h-3 mr-1" />
-                        Processing
-                      </Badge>
-                    )}
-                  </div>
+              <div className="absolute top-4 right-4 flex gap-2">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="text-blue-600 bg-white border-blue-200 hover:bg-blue-50"
+                  onClick={() => startEditing(project, index)}
+                >
+                  <Edit3 className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="text-red-600 bg-red-50 border-red-200 hover:bg-red-50"
+                  onClick={() => deleteProject(index)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className={
+                    project.enabled
+                      ? "text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+                      : "text-gray-500 border-gray-300 bg-white hover:bg-gray-100"
+                  }
+                  onClick={() => toggleProject(index)}
+                  title={project.enabled ? "Disable project" : "Enable project"}
+                >
+                  {project.enabled ? (
+                    <Eye className="w-4 h-4" />
+                  ) : (
+                    <EyeOff className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
 
-                  {(project.organization ||
-                    project.company ||
-                    project.client) && (
-                    <p
-                      className="text-sm font-medium"
-                      style={{ color: "#6A0DAD" }}
+              <h2 className="text-xl font-semibold text-black w-[calc(100%-8rem)]">
+                {project.title}
+              </h2>
+              {(project.organization || project.client) && (
+                <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                  <Building2 className="w-4 h-4 text-gray-500" />
+                  {project.organization || project.client}
+                </p>
+              )}
+              {project.duration && (
+                <p className="text-sm text-gray-500 flex items-center gap-1 my-2">
+                  <CalendarDays className="w-4 h-4 text-gray-400" />
+                  {project.duration}
+                </p>
+              )}
+
+              {/* Status */}
+              <div className="flex gap-2 mt-4">
+                {project.status && (
+                  <span className="flex items-center px-3 py-1 text-xs rounded-full bg-green-50 text-green-700 border border-green-200">
+                    <CheckCircle className="w-3 h-3 mr-1" /> {project.status}
+                  </span>
+                )}
+                {project.processing && (
+                  <span className="flex items-center px-3 py-1 text-xs rounded-full bg-orange-50 text-orange-700 border border-orange-200">
+                    <Clock className="w-3 h-3 mr-1" /> Processing
+                  </span>
+                )}
+                {project.approval_status && (
+                  <span className={`flex items-center px-3 py-1 text-xs rounded-full border ${
+                    project.approval_status === 'approved'
+                      ? 'bg-green-50 text-green-700 border-green-200'
+                      : project.approval_status === 'rejected'
+                      ? 'bg-red-50 text-red-700 border-red-200'
+                      : 'bg-orange-50 text-orange-700 border-orange-200'
+                  }`}>
+                    {project.approval_status === 'approved' ? (
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                    ) : project.approval_status === 'rejected' ? (
+                      <X className="w-3 h-3 mr-1" />
+                    ) : (
+                      <Clock className="w-3 h-3 mr-1" />
+                    )}
+                    {project.approval_status.charAt(0).toUpperCase() + project.approval_status.slice(1)}
+                  </span>
+                )}
+              </div>
+
+              {project.description && (
+                <div className="mt-2">
+                  <p
+                    className={`text-sm text-gray-700 leading-relaxed ${
+                      expandedDescriptions[index]
+                        ? "line-clamp-none"
+                        : "line-clamp-3"
+                    }`}
+                  >
+                    {project.description}
+                  </p>
+                  {project.description.length > 180 && (
+                    <button
+                      onClick={() =>
+                        setExpandedDescriptions((prev) => ({
+                          ...prev,
+                          [index]: !prev[index],
+                        }))
+                      }
+                      className="mt-1 text-xs text-blue-600 hover:underline"
                     >
-                      {project.organization ||
-                        project.company ||
-                        project.client}
-                    </p>
+                      {expandedDescriptions[index] ? "Show less" : "Show more"}
+                    </button>
                   )}
-                  {(project.duration || project.timeline) && (
-                    <p className="text-xs" style={{ color: "#6A0DAD" }}>
-                      {project.duration || project.timeline}
-                    </p>
-                  )}
-                  {project.description && (
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {project.description}
-                    </p>
-                  )}
+
+                  {/* Tech Stack */}
                   {extractTech(project).length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {extractTech(project).map((techItem, techIdx) => (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {extractTech(project).map((tech, i) => (
                         <span
-                          key={techIdx}
-                          className="px-2 py-1 rounded bg-purple-50 text-purple-700 text-xs font-medium"
+                          key={i}
+                          className="px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 text-xs border border-purple-100"
                         >
-                          {techItem}
+                          {tech}
                         </span>
                       ))}
                     </div>
                   )}
-                  {project.link && (
+                </div>
+              )}
+
+              <div className="flex justify-end items-center gap-2 pt-4 mt-2 border-t border-gray-100 flex-wrap">
+                {project.link && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  >
                     <a
                       href={project.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
                     >
-                      View Project
+                      <Link className="w-4 h-4 mr-1" /> Demo
                     </a>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => startEditing(project, index)}
-                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                  >
-                    <Edit3 className="w-4 h-4 mr-1" />
-                    Edit
                   </Button>
+                )}
+                {(project.github_url || project.github_link || project.github) && (
                   <Button
-                    variant={project.enabled === false ? "outline" : "default"}
+                    asChild
+                    variant="outline"
                     size="sm"
-                    onClick={() => toggleProject(index)}
-                    className={
-                      project.enabled === false
-                        ? "text-gray-500 border-gray-400"
-                        : "bg-emerald-500 text-white"
-                    }
+                    className="text-gray-700 border-gray-300 hover:bg-gray-100"
                   >
-                    {project.enabled === undefined || project.enabled
-                      ? "Disable"
-                      : "Enable"}
+                    <a
+                      href={project.github_url || project.github_link || project.github}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Github className="w-4 h-4 mr-1" /> GitHub
+                    </a>
                   </Button>
+                )}
+                {project.certificate_url && (
                   <Button
-                    variant="destructive"
+                    asChild
+                    variant="outline"
                     size="sm"
-                    onClick={() => deleteProject(index)}
+                    className="text-green-600 border-green-200 hover:bg-green-50"
                   >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Delete
+                    <a
+                      href={project.certificate_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <FileText className="w-4 h-4 mr-1" /> Certificate
+                    </a>
                   </Button>
-                </div>
+                )}
+                {project.video_url && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    <a
+                      href={project.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Video className="w-4 h-4 mr-1" /> Video
+                    </a>
+                  </Button>
+                )}
+                {project.ppt_url && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                  >
+                    <a
+                      href={project.ppt_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Presentation className="w-4 h-4 mr-1" /> PPT
+                    </a>
+                  </Button>
+                )}
               </div>
             </div>
           ))}
 
-          {isAdding ? (
-            <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="project-title">Project Title *</Label>
-                  <Input
-                    id="project-title"
-                    value={formData.title}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        title: e.target.value,
-                      }))
-                    }
-                    placeholder="e.g., Smart Hiring Platform"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="project-organization">
-                    Organization / Client
-                  </Label>
-                  <Input
-                    id="project-organization"
-                    value={formData.organization}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        organization: e.target.value,
-                      }))
-                    }
-                    placeholder="e.g., Rareminds"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="project-duration">Duration / Timeline</Label>
-                  <Input
-                    id="project-duration"
-                    value={formData.duration}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        duration: e.target.value,
-                      }))
-                    }
-                    placeholder="e.g., Jan 2024 - Mar 2024"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="project-status">Status</Label>
-                  <Input
-                    id="project-status"
-                    value={formData.status}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        status: e.target.value,
-                      }))
-                    }
-                    placeholder="e.g., Completed"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="project-description">Description</Label>
-                <Textarea
-                  id="project-description"
-                  value={formData.description}
+          {/* Add Form */}
+          {!isAdding ? (
+            <Button
+              onClick={() => setIsAdding(true)}
+              variant="outline"
+              className="w-full border-dashed border-gray-300 text-gray-600 hover:bg-gray-50"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add New Project
+            </Button>
+          ) : (
+            <div className="p-5 border border-gray-200 rounded-xl bg-gray-50 space-y-4">
+              {/* Basic Info */}
+              <div className="space-y-2">
+                <Label htmlFor="project-title">Project Title *</Label>
+                <Input
+                  id="project-title"
+                  value={formData.title}
                   onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
+                    setFormData((p) => ({ ...p, title: e.target.value }))
                   }
-                  placeholder="Describe the project, your role, outcomes..."
+                  placeholder="e.g., Smart Hiring Platform"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="project-organization">Organization / Client</Label>
+                <Input
+                  id="project-organization"
+                  value={formData.organization}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, organization: e.target.value }))
+                  }
+                  placeholder="e.g., Acme Corp"
                 />
               </div>
 
+              {/* Timeline Section */}
+              <div className="space-y-2">
+                <Label className="font-medium text-gray-800">Timeline</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                  {/* Start Month */}
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="project-start"
+                      className="text-sm text-gray-600"
+                    >
+                      Start Date
+                    </Label>
+                    <Input
+                      type="date"
+                      id="project-start"
+                      value={formData.start_date}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          start_date: e.target.value,
+                        }))
+                      }
+                      className="border-gray-300 text-gray-700"
+                    />
+                  </div>
+
+                  {/* End Month */}
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="project-end"
+                      className="text-sm text-gray-600"
+                    >
+                      End Date
+                    </Label>
+                    <Input
+                      type="date"
+                      id="project-end"
+                      value={formData.end_date}
+                      onChange={(e) =>
+                        setFormData((p) => ({ ...p, end_date: e.target.value }))
+                      }
+                      className="border-gray-300 text-gray-700"
+                    />
+                  </div>
+                </div>
+
+                {/* Display computed duration */}
+                {formData.duration && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Duration:{" "}
+                    <span className="font-medium text-gray-700">
+                      {formData.duration}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              {/* Status Dropdown */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="project-status"
+                  className="font-medium text-gray-800"
+                >
+                  Project Status
+                </Label>
+                <select
+                  id="project-status"
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, status: e.target.value }))
+                  }
+                  className="w-full border border-gray-300 rounded-md p-2 text-sm text-gray-700 focus:ring-2 focus:ring-blue-400 focus:outline-none bg-white"
+                >
+                  <option value="">Select status...</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+
+              <div className="gap-4 space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, description: e.target.value }))
+                  }
+                  placeholder="Describe your project..."
+                />
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="project-tech">
-                    Tech Stack (comma separated)
-                  </Label>
+                <div className="space-y-2">
+                  <Label>Tech Stack (comma separated)</Label>
                   <Input
-                    id="project-tech"
                     value={formData.techInput}
                     onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        techInput: e.target.value,
-                      }))
+                      setFormData((p) => ({ ...p, techInput: e.target.value }))
                     }
                     placeholder="React, Node.js, PostgreSQL"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="project-link">Project Link</Label>
+                <div className="space-y-2">
+                  <Label>Demo Link</Label>
                   <Input
-                    id="project-link"
                     value={formData.link}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, link: e.target.value }))
+                      setFormData((p) => ({ ...p, link: e.target.value }))
                     }
                     placeholder="https://"
                   />
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label>GitHub Link (optional)</Label>
+                <Input
+                  value={formData.githubLink}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, githubLink: e.target.value }))
+                  }
+                  placeholder="https://github.com/..."
+                />
+              </div>
 
-              <div className="flex gap-2">
-                <Button
-                  onClick={saveProject}
-                  className="bg-blue-400 hover:bg-blue-500 text-white"
-                >
-                  {editingIndex !== null ? "Update Project" : "Add Project"}
-                </Button>
+              {/* ---- Evidence Section (YOUR UI KEPT EXACTLY AS IS) ---- */}
+              <div className="space-y-8">
+                {/* Header */}
+                <div className="flex items-center gap-2 pt-4">
+                  <FileText className="w-5 h-5 text-gray-700" />
+                  <Label className="text-base font-semibold text-gray-800">
+                    Project Evidence
+                    <span className="text-gray-500 font-normal text-sm ml-1">
+                      (Optional)
+                    </span>
+                  </Label>
+                </div>
+
+                {/* Evidence Rows */}
+                <div className="flex flex-col gap-6">
+                  {/* === CERTIFICATE === */}
+                  <div className="border border-gray-200 rounded-xl p-5 bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      <Label className="text-sm font-medium text-gray-800">
+                        Certificate
+                      </Label>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      {formData.certificate ? (
+                        <motion.div
+                          key="file"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="flex flex-col sm:flex-row items-start sm:items-center justify-between border border-blue-200 bg-blue-50 rounded-lg px-4 py-3 gap-3"
+                        >
+                          <div
+                            className="flex items-center gap-2 text-sm text-blue-700 max-w-full overflow-hidden"
+                            title={formData.certificate.name}
+                          >
+                            <FileText className="w-4 h-4 flex-shrink-0" />
+                            <span className="truncate max-w-[220px] sm:max-w-[300px] md:max-w-[400px]">
+                              {formData.certificate.name}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700 self-end sm:self-center"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                certificate: null,
+                              }))
+                            }
+                          >
+                            <X className="w-4 h-4" /> Remove
+                          </Button>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="upload"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="flex flex-col md:flex-row items-center gap-3"
+                        >
+                          <label
+                            htmlFor="project-certificate"
+                            className="flex items-center justify-center w-full md:w-1/2 border border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-600 cursor-pointer hover:border-blue-400 transition"
+                          >
+                            <Upload className="w-4 h-4 mr-2 text-blue-600" />
+                            Upload file
+                            <input
+                              id="project-certificate"
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              className="hidden"
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  certificate: e.target.files?.[0] || null,
+                                  certificateLink: "",
+                                }))
+                              }
+                            />
+                          </label>
+
+                          <span className="text-xs text-gray-400 text-center md:w-auto w-full">
+                            or
+                          </span>
+
+                          <div className="relative w-full md:w-1/2">
+                            <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                            <Input
+                              id="project-certificate-link"
+                              type="url"
+                              placeholder="Paste certificate link..."
+                              value={formData.certificateLink}
+                              className="pl-8 text-sm border-gray-300 focus:ring-1 focus:ring-blue-300"
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  certificateLink: e.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* === VIDEO === */}
+                  <div className="border border-gray-200 rounded-xl p-5 bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Video className="w-4 h-4 text-blue-600" />
+                      <Label className="text-sm font-medium text-gray-800">
+                        Video
+                      </Label>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      {formData.video ? (
+                        <motion.div
+                          key="file"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="flex flex-col sm:flex-row items-start sm:items-center justify-between border border-blue-200 bg-blue-50 rounded-lg px-4 py-3 gap-3"
+                        >
+                          <div
+                            className="flex items-center gap-2 text-sm text-blue-700 max-w-full overflow-hidden"
+                            title={formData.video.name}
+                          >
+                            <Video className="w-4 h-4 flex-shrink-0" />
+                            <span className="truncate max-w-[220px] sm:max-w-[300px] md:max-w-[400px]">
+                              {formData.video.name}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700 self-end sm:self-center"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                video: null,
+                              }))
+                            }
+                          >
+                            <X className="w-4 h-4" /> Remove
+                          </Button>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="upload"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="flex flex-col md:flex-row items-center gap-3"
+                        >
+                          <label
+                            htmlFor="project-video"
+                            className="flex items-center justify-center w-full md:w-1/2 border border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-600 cursor-pointer hover:border-blue-400 transition"
+                          >
+                            <Upload className="w-4 h-4 mr-2 text-blue-600" />
+                            Upload video
+                            <input
+                              id="project-video"
+                              type="file"
+                              accept=".mp4,.avi,.mov,.wmv"
+                              className="hidden"
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  video: e.target.files?.[0] || null,
+                                  videoLink: "",
+                                }))
+                              }
+                            />
+                          </label>
+
+                          <span className="text-xs text-gray-400 text-center md:w-auto w-full">
+                            or
+                          </span>
+
+                          <div className="relative w-full md:w-1/2">
+                            <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                            <Input
+                              id="project-video-link"
+                              type="url"
+                              placeholder="Paste video link (YouTube, Drive...)"
+                              value={formData.videoLink}
+                              className="pl-8 text-sm border-gray-300 focus:ring-1 focus:ring-blue-300"
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  videoLink: e.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* === PRESENTATION === */}
+                  <div className="border border-gray-200 rounded-xl p-5 bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Presentation className="w-4 h-4 text-blue-600" />
+                      <Label className="text-sm font-medium text-gray-800">
+                        Presentation (PPT)
+                      </Label>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      {formData.ppt ? (
+                        <motion.div
+                          key="file"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="flex flex-col sm:flex-row items-start sm:items-center justify-between border border-blue-200 bg-blue-50 rounded-lg px-4 py-3 gap-3"
+                        >
+                          <div
+                            className="flex items-center gap-2 text-sm text-blue-700 max-w-full overflow-hidden"
+                            title={formData.ppt.name}
+                          >
+                            <Presentation className="w-4 h-4 flex-shrink-0" />
+                            <span className="truncate max-w-[220px] sm:max-w-[300px] md:max-w-[400px]">
+                              {formData.ppt.name}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700 self-end sm:self-center"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                ppt: null,
+                              }))
+                            }
+                          >
+                            <X className="w-4 h-4" /> Remove
+                          </Button>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="upload"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="flex flex-col md:flex-row items-center gap-3"
+                        >
+                          <label
+                            htmlFor="project-ppt"
+                            className="flex items-center justify-center w-full md:w-1/2 border border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-600 cursor-pointer hover:border-blue-400 transition"
+                          >
+                            <Upload className="w-4 h-4 mr-2 text-blue-600" />
+                            Upload presentation
+                            <input
+                              id="project-ppt"
+                              type="file"
+                              accept=".ppt,.pptx,.pdf"
+                              className="hidden"
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  ppt: e.target.files?.[0] || null,
+                                  pptLink: "",
+                                }))
+                              }
+                            />
+                          </label>
+
+                          <span className="text-xs text-gray-400 text-center md:w-auto w-full">
+                            or
+                          </span>
+
+                          <div className="relative w-full md:w-1/2">
+                            <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                            <Input
+                              id="project-ppt-link"
+                              type="url"
+                              placeholder="Paste presentation link..."
+                              value={formData.pptLink}
+                              className="pl-8 text-sm border-gray-300 focus:ring-1 focus:ring-blue-300"
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  pptLink: e.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -2002,33 +2531,24 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
                 >
                   Cancel
                 </Button>
+                <Button
+                  onClick={saveProject}
+                  className="bg-blue-500 hover:bg-blue-600 text-white"
+                >
+                  {editingIndex !== null ? "Update Project" : "Add Project"}
+                </Button>
               </div>
             </div>
-          ) : (
-            <Button
-              onClick={() => setIsAdding(true)}
-              variant="outline"
-              className="w-full border-dashed"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add New Project
-            </Button>
           )}
 
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                onClose();
-                setIsAdding(false);
-                resetForm();
-              }}
-            >
-              Cancel
+          {/* Save All */}
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+            <Button variant="outline" onClick={onClose}>
+              Close
             </Button>
             <Button
               onClick={handleSubmit}
-              className="bg-blue-400 hover:bg-blue-500"
+              className="bg-blue-500 hover:bg-blue-600 text-white"
             >
               Save All Changes
             </Button>
@@ -2051,6 +2571,9 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
     description: "",
     credentialId: "",
     link: "",
+    document: null,
+    documentLink: "",
+    document_url: "",
   });
   const { toast } = useToast();
 
@@ -2067,6 +2590,9 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
       description: "",
       credentialId: "",
       link: "",
+      document: null,
+      documentLink: "",
+      document_url: "",
     });
     setEditingIndex(null);
   };
@@ -2096,6 +2622,17 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
         certificate.certificateUrl ||
         certificate.credentialUrl ||
         certificate.viewUrl ||
+        "",
+      document: null,
+      documentLink:
+        certificate.documentLink ||
+        certificate.document_url ||
+        certificate.documentUrl ||
+        "",
+      document_url:
+        certificate.document_url ||
+        certificate.documentUrl ||
+        certificate.documentLink ||
         "",
     });
     setEditingIndex(index);
@@ -2131,27 +2668,33 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
       ])
     );
 
+    const documentUrlInput = formatted.documentLink || formatted.document_url || "";
+
     // 3️⃣ Update existing certificate
     if (editingIndex !== null) {
       setCertificates((prev) =>
-        prev.map((cert, idx) =>
-          idx === editingIndex
-            ? {
-                ...(cert || {}),
-                ...formatted,
-                enabled: cert?.enabled === false ? false : true,
+        prev.map((cert, idx) => {
+          if (idx !== editingIndex) {
+            return cert;
+          }
+          const resolvedDocumentUrl = documentUrlInput;
+          return {
+            ...(cert || {}),
+            ...formatted,
+            document_url: resolvedDocumentUrl || null,
+            documentLink: resolvedDocumentUrl,
+            enabled: cert?.enabled === false ? false : true,
 
-                // 🔁 Re-verification reset logic:
-                verified: false,
-                verifiedAt: null,
-                processing: true,
-                status: "pending",
+            // 🔁 Re-verification reset logic:
+            verified: false,
+            verifiedAt: null,
+            processing: true,
+            status: "pending",
 
-                // ⏱ Update timestamp
-                updatedAt: new Date().toISOString(),
-              }
-            : cert
-        )
+            // ⏱ Update timestamp
+            updatedAt: new Date().toISOString(),
+          };
+        })
       );
 
       toast({
@@ -2163,10 +2706,13 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
 
     // 4️⃣ Add new certificate
     else {
+      const resolvedDocumentUrl = documentUrlInput;
       setCertificates((prev) => [
         ...prev,
         {
           ...formatted,
+          document_url: resolvedDocumentUrl || null,
+          documentLink: resolvedDocumentUrl,
           id: Date.now(),
           enabled: true,
           status: "pending",
@@ -2204,9 +2750,18 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
     setCertificates((prev) => prev.filter((_, idx) => idx !== index));
   };
 
-  const handleSubmit = () => {
-    onSave(certificates);
-    onClose();
+  const handleSubmit = async () => {
+    try {
+      await onSave(certificates);
+      onClose();
+    } catch (error) {
+      console.error('Error saving certificates:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save certificate details. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -2236,7 +2791,7 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
               <div className="flex justify-between items-start gap-3">
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-semibold" style={{ color: "#6A0DAD" }}>
+                    <h4 className="font-semibold">
                       {cert.title || cert.name || "Certificate"}
                     </h4>
                     {cert.processing && (
@@ -2249,7 +2804,6 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
                   {(cert.issuer || cert.organization || cert.institution) && (
                     <p
                       className="text-sm font-medium"
-                      style={{ color: "#6A0DAD" }}
                     >
                       {cert.issuer || cert.organization || cert.institution}
                     </p>
@@ -2258,7 +2812,7 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
                     cert.date ||
                     cert.issueDate ||
                     cert.issuedOn) && (
-                    <p className="text-xs" style={{ color: "#6A0DAD" }}>
+                    <p className="text-xs">
                       {cert.year ||
                         cert.date ||
                         cert.issueDate ||
@@ -2280,15 +2834,45 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
                       Credential ID: {cert.credentialId}
                     </p>
                   )}
-                  {cert.link && (
-                    <a
-                      href={cert.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
-                    >
-                      View Credential
-                    </a>
+                  {(cert.link || cert.document_url) && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {cert.link && (
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        >
+                          <a
+                            href={cert.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center"
+                          >
+                            <LinkIcon className="w-4 h-4 mr-1" />
+                            View Credential
+                          </a>
+                        </Button>
+                      )}
+                      {cert.document_url && (
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="text-green-600 border-green-200 hover:bg-green-50"
+                        >
+                          <a
+                            href={cert.document_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center"
+                          >
+                            <FileText className="w-4 h-4 mr-1" />
+                            View Document
+                          </a>
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="flex flex-col gap-2">
@@ -2434,6 +3018,117 @@ export const CertificatesEditModal = ({ isOpen, onClose, data, onSave }) => {
                 </div>
               </div>
 
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 pt-2">
+                  <FileText className="w-5 h-5 text-gray-700" />
+                  <Label className="text-base font-semibold text-gray-800">
+                    Certification Evidence
+                    <span className="text-gray-500 font-normal text-sm ml-1">
+                      (Optional)
+                    </span>
+                  </Label>
+                </div>
+
+                <div className="border border-gray-200 rounded-xl p-5 bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="w-4 h-4 text-blue-600" />
+                    <Label className="text-sm font-medium text-gray-800">
+                      Certification Document
+                    </Label>
+                  </div>
+
+                  <AnimatePresence mode="wait">
+                    {formData.document ? (
+                      <motion.div
+                        key="file"
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between border border-blue-200 bg-blue-50 rounded-lg px-4 py-3 gap-3"
+                      >
+                        <div
+                          className="flex items-center gap-2 text-sm text-blue-700 max-w-full overflow-hidden"
+                          title={formData.document.name}
+                        >
+                          <FileText className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate max-w-[220px] sm:max-w-[300px] md:max-w-[400px]">
+                            {formData.document.name}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 hover:text-red-700 self-end sm:self-center"
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              document: null,
+                              documentLink: "",
+                              document_url: "",
+                            }))
+                          }
+                        >
+                          <X className="w-4 h-4" /> Remove
+                        </Button>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="upload"
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        className="flex flex-col md:flex-row items-center gap-3"
+                      >
+                        <label
+                          htmlFor="certificate-document"
+                          className="flex items-center justify-center w-full md:w-1/2 border border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-600 cursor-pointer hover:border-blue-400 transition"
+                        >
+                          <Upload className="w-4 h-4 mr-2 text-blue-600" />
+                          Upload file
+                          <input
+                            id="certificate-document"
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            className="hidden"
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                document: e.target.files?.[0] || null,
+                                documentLink: "",
+                                document_url: "",
+                              }))
+                            }
+                          />
+                        </label>
+
+                        <span className="text-xs text-gray-400 text-center md:w-auto w-full">
+                          or
+                        </span>
+
+                        <div className="relative w-full md:w-1/2">
+                          <LinkIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                          <Input
+                            id="certificate-document-link"
+                            type="url"
+                            placeholder="Paste document link..."
+                            value={formData.documentLink}
+                            className="pl-8 text-sm border-gray-300 focus:ring-1 focus:ring-blue-300"
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setFormData((prev) => ({
+                                ...prev,
+                                documentLink: value,
+                                document_url: value,
+                              }));
+                            }}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
               <div className="flex gap-2">
                 <Button
                   onClick={saveCertificate}
@@ -2532,16 +3227,30 @@ export const SkillsEditModal = ({
     setNewSkill((prev) => ({ ...prev, level }));
   };
 
-  const handleSubmit = () => {
-    onSave(skills);
-    toast({
-      title: `${title} Updated`,
-      description: "Your skills are being processed for verification.",
-    });
-    onClose();
+  const handleSubmit = async () => {
+    try {
+      await onSave(skills);
+      toast({
+        title: `${title} Updated`,
+        description: "Your skills are being processed for verification.",
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error saving skills:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save skills. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const renderStars = (level, skillId, editable = false, isNewSkill = false) => {
+  const renderStars = (
+    level,
+    skillId,
+    editable = false,
+    isNewSkill = false
+  ) => {
     return [...Array(5)].map((_, i) => (
       <button
         key={i}
@@ -2585,7 +3294,7 @@ export const SkillsEditModal = ({
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="font-medium" style={{ color: "#6A0DAD" }}>
+                    <span className="font-medium">
                       {skill.name}
                     </span>
                     {skill.processing ? (
@@ -2726,7 +3435,6 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
   // Initialize form data when modal opens
   useEffect(() => {
     if (data && isOpen) {
-
       // Extract contact number from formatted phone string if needed
       const extractNumber = (formattedPhone) => {
         if (!formattedPhone) return "";
@@ -2769,12 +3477,17 @@ export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => {
       };
 
       const getGithubLink = () => data.github_link || data.githubLink || "";
-      const getPortfolioLink = () => data.portfolio_link || data.portfolioLink || "";
-      const getLinkedinLink = () => data.linkedin_link || data.linkedinLink || "";
+      const getPortfolioLink = () =>
+        data.portfolio_link || data.portfolioLink || "";
+      const getLinkedinLink = () =>
+        data.linkedin_link || data.linkedinLink || "";
       const getTwitterLink = () => data.twitter_link || data.twitterLink || "";
-      const getInstagramLink = () => data.instagram_link || data.instagramLink || "";
-      const getFacebookLink = () => data.facebook_link || data.facebookLink || "";
-      const getOtherSocialLinks = () => data.other_social_links || data.otherSocialLinks || [];
+      const getInstagramLink = () =>
+        data.instagram_link || data.instagramLink || "";
+      const getFacebookLink = () =>
+        data.facebook_link || data.facebookLink || "";
+      const getOtherSocialLinks = () =>
+        data.other_social_links || data.otherSocialLinks || [];
 
       const formValues = {
         name: getName(),

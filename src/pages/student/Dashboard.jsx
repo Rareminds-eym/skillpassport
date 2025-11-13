@@ -9,7 +9,6 @@ import {
 import { Button } from "../../components/Students/components/ui/button";
 import { Badge } from "../../components/Students/components/ui/badge";
 import {
-  Bell,
   TrendingUp,
   CheckCircle,
   Star,
@@ -32,6 +31,12 @@ import {
   BookOpen,
   Trophy,
   ChevronRight,
+  Link,
+  Github,
+  Presentation,
+  Video,
+  File,
+  FileText,
 } from "lucide-react";
 import {
   suggestions,
@@ -58,6 +63,7 @@ import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNot
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
 import { Toaster } from "react-hot-toast";
 import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
+import RecentUpdatesCard from "../../components/Students/components/RecentUpdatesCard";
 import { useStudentAchievements } from "../../hooks/useStudentAchievements";
 import { useNavigate } from "react-router-dom";
 // Debug utilities removed for production cleanliness
@@ -143,14 +149,21 @@ const StudentDashboard = () => {
       setTimeout(() => {
         refreshRecentUpdates();
       }, 1000);
-    }
+    },
   });
 
   // Get unread message count with realtime updates
-  const { unreadCount } = useStudentUnreadCount(studentId, !!studentId && !isViewingOthersProfile);
+  const { unreadCount } = useStudentUnreadCount(
+    studentId,
+    !!studentId && !isViewingOthersProfile
+  );
 
   // Fetch achievements and badges from separate tables
-  const { achievements, badges, loading: achievementsLoading } = useStudentAchievements(studentId, userEmail);
+  const {
+    achievements,
+    badges,
+    loading: achievementsLoading,
+  } = useStudentAchievements(studentId, userEmail);
 
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
@@ -257,7 +270,6 @@ const StudentDashboard = () => {
   useEffect(() => {
     if (!userEmail || isViewingOthersProfile) return;
 
-
     // Subscribe to real-time changes in opportunities table
     const channel = supabase
       .channel("opportunities-changes")
@@ -269,7 +281,6 @@ const StudentDashboard = () => {
           table: "opportunities",
         },
         (payload) => {
-
           // Refresh opportunities list
           refreshOpportunities();
 
@@ -313,7 +324,6 @@ const StudentDashboard = () => {
         const { data, error, count } = await supabase
           .from("opportunities")
           .select("*", { count: "exact" });
-
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
@@ -628,7 +638,11 @@ const StudentDashboard = () => {
                     {skill.category}
                   </p>
                   <div className="flex items-center gap-2">
-                    <Badge className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(skill.level)}`}>
+                    <Badge
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(
+                        skill.level
+                      )}`}
+                    >
                       {getSkillLevelText(skill.level)}
                     </Badge>
                     <div className="flex gap-0.5">
@@ -681,7 +695,7 @@ const StudentDashboard = () => {
             </button>
           </div>
         </CardHeader>
-        <CardContent className="p-6 space-y-3">
+        <CardContent className="pt-4 p-6 space-y-3">
           {enabledProjects.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-slate-500 font-medium">
@@ -697,64 +711,57 @@ const StudentDashboard = () => {
                 ? project.tech
                 : Array.isArray(project.technologies)
                 ? project.technologies
-                : Array.isArray(project.techStack)
-                ? project.techStack
+                : Array.isArray(project.tech_stack)
+                ? project.tech_stack
                 : Array.isArray(project.skills)
                 ? project.skills
                 : [];
-              const projectLink = [
-                project.link,
-                project.github,
-              ]
-                .map((value) =>
-                  typeof value === "string" ? value.trim() : value
-                )
-                .find((value) => typeof value === "string" && value.length > 0);
+
               return (
                 <div
                   key={project.id || `project-${idx}`}
-                  className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${project.enabled ? "" : "opacity-75"}`}
+                  className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${
+                    project.enabled ? "" : "opacity-75"
+                  }`}
                 >
-                  <div className="space-y-2">
-                    {/* First row: Title + Badge */}
-                    <div className="flex items-center justify-between gap-3">
-                      <h4 className="font-semibold text-gray-900 text-base">
-                        {project.title || project.name || "Untitled Project"}
-                      </h4>
-                      {project.status && (
-                        <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap">
-                          {project.status}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Second row: Organization + Duration */}
-                    <div className="flex items-center justify-between gap-3">
-                      {(project.organization ||
-                        project.company ||
-                        project.client) && (
-                        <p className="text-sm text-blue-600 font-medium truncate">
-                          {project.organization ||
-                            project.company ||
-                            project.client}
-                        </p>
-                      )}
-                      {(project.duration ||
-                        project.timeline ||
-                        project.period) && (
-                        <p className="text-xs text-gray-600 whitespace-nowrap">
-                          {project.duration ||
-                            project.timeline ||
-                            project.period}
-                        </p>
-                      )}
-                    </div>
+                  {/* First row: Title + Status */}
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="font-semibold text-gray-900 text-base">
+                      {project.title || project.name || "Untitled Project"}
+                    </h4>
+                    {project.status && (
+                      <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap">
+                        {project.status}
+                      </Badge>
+                    )}
                   </div>
 
+                  {/* Second row: Organization + Duration */}
+                  <div className="flex items-center justify-between gap-3">
+                    {(project.organization ||
+                      project.company ||
+                      project.client) && (
+                      <p className="text-sm text-blue-600 font-medium truncate">
+                        {project.organization ||
+                          project.company ||
+                          project.client}
+                      </p>
+                    )}
+                    {(project.duration ||
+                      project.timeline ||
+                      project.period) && (
+                      <p className="text-xs text-gray-600 whitespace-nowrap">
+                        {project.duration || project.timeline || project.period}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Description */}
                   {project.description && (
                     <TruncatedText text={project.description} maxLength={120} />
                   )}
 
+                  {/* Tech stack */}
                   {techList.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {techList.map((tech, techIdx) => (
@@ -767,26 +774,99 @@ const StudentDashboard = () => {
                       ))}
                     </div>
                   )}
-                  {projectLink && (
-                    <div className="pt-1">
-                      <a
-                        href={projectLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
+
+                  {/* Resource Buttons */}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {project.demo_link && (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
                       >
-                        <Button
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors"
+                        <a
+                          href={project.demo_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
                         >
-                          View Project
-                        </Button>
-                      </a>
-                    </div>
-                  )}
+                          <Link className="w-4 h-4 mr-1" /> Demo
+                        </a>
+                      </Button>
+                    )}
+                    {project.github_link && (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="text-gray-700 border-gray-300 hover:bg-gray-100"
+                      >
+                        <a
+                          href={
+                            project.github_url ||
+                            project.github_link ||
+                            project.github
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Github className="w-4 h-4 mr-1" /> GitHub
+                        </a>
+                      </Button>
+                    )}
+                    {project.video_url && (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <a
+                          href={project.video_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Video className="w-4 h-4 mr-1" /> Video
+                        </a>
+                      </Button>
+                    )}
+                    {project.ppt_url && (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                      >
+                        <a
+                          href={project.ppt_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Presentation className="w-4 h-4 mr-1" /> PPT
+                        </a>
+                      </Button>
+                    )}
+                    {project.certificate_url && (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="text-green-600 border-green-200 hover:bg-green-50"
+                      >
+                        <a
+                          href={project.certificate_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <FileText className="w-4 h-4 mr-1" /> Certificate
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })
           )}
+
           {enabledProjects.length > 2 && (
             <Button
               variant="outline"
@@ -949,7 +1029,9 @@ const StudentDashboard = () => {
               return (
                 <div
                   key={cert.id || `certificate-${idx}`}
-                  className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${cert.enabled ? "" : "opacity-75"}`}
+                  className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${
+                    cert.enabled ? "" : "opacity-75"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
@@ -1026,144 +1108,142 @@ const StudentDashboard = () => {
         </CardContent>
       </Card>
     ),
-   training: (
-  <Card
-    key="training"
-    className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
-  >
-    <CardHeader className="px-6 py-4 border-b border-gray-100">
-      <div className="flex items-center w-full justify-between">
-        <CardTitle className="flex items-center gap-3 m-0 p-0">
-          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-            <Code className="w-5 h-5 text-blue-600" />
-          </div>
-          <span className="text-lg font-semibold text-gray-900">
-            My Training
-          </span>
-        </CardTitle>
-        <button
-          className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-          title="Edit Training"
-          onClick={() => setActiveModal("training")}
-        >
-          <Edit className="w-4 h-4 text-gray-600" />
-        </button>
-      </div>
-    </CardHeader>
-
-    <CardContent className="pt-4 p-6 space-y-4">
-      {(showAllTraining
-        ? userData.training.filter((t) => t.enabled !== false)
-        : userData.training
-            .filter((t) => t.enabled !== false)
-            .slice(0, 2)
-      ).map((training, idx) => (
-        <div
-          key={training.id || `training-${training.course}-${idx}`}
-          className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all duration-200"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="font-semibold text-gray-900 text-base truncate max-w-[75%]">
-              {training.course}
-            </h4>
-            <Badge
-              className={`px-2.5 py-1 text-xs font-medium rounded-md ${
-                training.status === "completed"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-blue-100 text-blue-700"
-              }`}
+    training: (
+      <Card
+        key="training"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+      >
+        <CardHeader className="px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Code className="w-5 h-5 text-blue-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-900">
+                My Training
+              </span>
+            </CardTitle>
+            <button
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+              title="Edit Training"
+              onClick={() => setActiveModal("training")}
             >
-              {training.status === "completed" ? "Completed" : "Ongoing"}
-            </Badge>
+              <Edit className="w-4 h-4 text-gray-600" />
+            </button>
           </div>
+        </CardHeader>
 
-          {/* Meta info */}
-          <div className="text-xs text-gray-600 mb-2 space-y-1">
-            {training.provider && (
-              <div className="flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-gray-500" />
-                <span>{training.provider}</span>
-              </div>
-            )}
-            {training.duration && (
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-gray-500" />
-                <span>{training.duration}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Progress bar */}
-          <div className="mt-2">
-            <div className="flex justify-between items-center text-xs font-medium text-gray-700 mb-1">
-              <span>Progress</span>
-              <span className="text-blue-600">{training.progress}%</span>
-            </div>
-            <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${training.progress}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Skills */}
-          {Array.isArray(training.skills) && training.skills.length > 0 && (
-            <div className="mt-3">
-              <p className="text-xs font-semibold text-gray-700 mb-1">
-                Skills Covered:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {(training.showAllSkills
-                  ? training.skills
-                  : training.skills.slice(0, 4)
-                ).map((skill, i) => (
-                  <span
-                    key={`skill-${training.id}-${i}`}
-                    className="px-2.5 py-1 text-[11px] rounded-md bg-blue-50 text-blue-700 font-medium"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-              {training.skills.length > 4 && (
-                <button
-                  onClick={() =>
-                    setUserData((prev) => ({
-                      ...prev,
-                      training: prev.training.map((t) =>
-                        t.id === training.id
-                          ? { ...t, showAllSkills: !t.showAllSkills }
-                          : t
-                      ),
-                    }))
-                  }
-                  className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+        <CardContent className="pt-4 p-6 space-y-4">
+          {(showAllTraining
+            ? userData.training.filter((t) => t.enabled !== false)
+            : userData.training.filter((t) => t.enabled !== false).slice(0, 2)
+          ).map((training, idx) => (
+            <div
+              key={training.id || `training-${training.course}-${idx}`}
+              className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all duration-200"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold text-gray-900 text-base truncate max-w-[75%]">
+                  {training.course}
+                </h4>
+                <Badge
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md ${
+                    training.status === "completed"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-blue-100 text-blue-700"
+                  }`}
                 >
-                  {training.showAllSkills
-                    ? "Show Less"
-                    : `Show All (${training.skills.length})`}
-                </button>
+                  {training.status === "completed" ? "Completed" : "Ongoing"}
+                </Badge>
+              </div>
+
+              {/* Meta info */}
+              <div className="text-xs text-gray-600 mb-2 space-y-1">
+                {training.provider && (
+                  <div className="flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-gray-500" />
+                    <span>{training.provider}</span>
+                  </div>
+                )}
+                {training.duration && (
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                    <span>{training.duration}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Progress bar */}
+              <div className="mt-2">
+                <div className="flex justify-between items-center text-xs font-medium text-gray-700 mb-1">
+                  <span>Progress</span>
+                  <span className="text-blue-600">{training.progress}%</span>
+                </div>
+                <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${training.progress}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Skills */}
+              {Array.isArray(training.skills) && training.skills.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-gray-700 mb-1">
+                    Skills Covered:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(training.showAllSkills
+                      ? training.skills
+                      : training.skills.slice(0, 4)
+                    ).map((skill, i) => (
+                      <span
+                        key={`skill-${training.id}-${i}`}
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-blue-50 text-blue-700 font-medium"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                  {training.skills.length > 4 && (
+                    <button
+                      onClick={() =>
+                        setUserData((prev) => ({
+                          ...prev,
+                          training: prev.training.map((t) =>
+                            t.id === training.id
+                              ? { ...t, showAllSkills: !t.showAllSkills }
+                              : t
+                          ),
+                        }))
+                      }
+                      className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                    >
+                      {training.showAllSkills
+                        ? "Show Less"
+                        : `Show All (${training.skills.length})`}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
-      ))}
+          ))}
 
-      {/* Show More / Less Button */}
-      {userData.training.filter((t) => t.enabled !== false).length > 2 && (
-        <Button
-          variant="outline"
-          onClick={() => setShowAllTraining((v) => !v)}
-          className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-        >
-          {showAllTraining ? "Show Less" : "View All Courses"}
-        </Button>
-      )}
-    </CardContent>
-  </Card>
-),
+          {/* Show More / Less Button */}
+          {userData.training.filter((t) => t.enabled !== false).length > 2 && (
+            <Button
+              variant="outline"
+              onClick={() => setShowAllTraining((v) => !v)}
+              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+            >
+              {showAllTraining ? "Show Less" : "View All Courses"}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    ),
 
     experience: (
       <Card
@@ -1272,9 +1352,15 @@ const StudentDashboard = () => {
                   <h4 className="font-semibold text-gray-900 text-base mb-1">
                     {skill.name}
                   </h4>
-                  <p className="text-xs text-gray-600 mb-2">{skill.description}</p>
+                  <p className="text-xs text-gray-600 mb-2">
+                    {skill.description}
+                  </p>
                   <div className="flex items-center gap-2">
-                    <Badge className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(skill.level)}`}>
+                    <Badge
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(
+                        skill.level
+                      )}`}
+                    >
                       {getSkillLevelText(skill.level)}
                     </Badge>
                     <div className="flex gap-0.5">
@@ -1375,7 +1461,7 @@ const StudentDashboard = () => {
 
               {/* View Full Page Button */}
               <Button
-                onClick={() => navigate('/student/achievements')}
+                onClick={() => navigate("/student/achievements")}
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2"
               >
                 View All Achievements
@@ -1478,7 +1564,7 @@ const StudentDashboard = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-8 px-6">
       {/* Hot-toast notification container */}
-      <Toaster 
+      <Toaster
         position="top-right"
         toastOptions={{
           style: {
@@ -1490,7 +1576,7 @@ const StudentDashboard = () => {
           zIndex: 9999,
         }}
       />
-      
+
       <div className="max-w-7xl mx-auto">
         {/* Navigation Bar */}
         {/* <div className="mb-6">
@@ -1535,160 +1621,44 @@ const StudentDashboard = () => {
               {/* Sticky container for both cards */}
               <div className="sticky top-20 z-30 flex flex-col gap-6">
                 {/* Recent Updates */}
-                <div
+                <RecentUpdatesCard
                   ref={recentUpdatesRef}
-                  className="bg-white rounded-xl border border-gray-200 shadow-sm"
-                >
-                  <CardHeader className="px-6 py-4 border-b border-gray-100">
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                          <Bell className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <span className="text-lg font-semibold text-gray-900">
-                          Recent Updates
-                        </span>
-                      </div>
-                      {unreadCount > 0 && (
-                        <Badge className="bg-red-500 hover:bg-red-500 text-white px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          {unreadCount} {unreadCount === 1 ? 'message' : 'messages'}
-                        </Badge>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    {recentUpdatesLoading ? (
-                      <div className="flex justify-center items-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                      </div>
-                    ) : recentUpdatesError ? (
-                      <div className="text-center py-8">
-                        <p className="text-red-600 mb-3 font-medium">
-                          Failed to load recent updates
-                        </p>
-                        <Button
-                          onClick={refreshRecentUpdates}
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors"
-                        >
-                          Retry
-                        </Button>
-                      </div>
-                    ) : recentUpdates.length === 0 ? (
-                      <div className="text-center py-8">
-                        <p className="text-gray-500 font-medium">
-                          No recent updates available
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <div
-                          className={`space-y-2 ${
-                            showAllRecentUpdates
-                              ? "max-h-96 overflow-y-auto pr-2 scroll-smooth recent-updates-scroll"
-                              : ""
-                          }`}
-                        >
-                          {(showAllRecentUpdates
-                            ? recentUpdates
-                            : recentUpdates.slice(0, 5)
-                          ).map((update, idx) => {
-                            // Format the message from activity structure
-                            const message =
-                              update.message ||
-                              `${update.user} ${update.action} ${update.candidate}`;
-
-                            // Determine color based on activity type
-                            const getActivityColor = (type) => {
-                              switch (type) {
-                                case "shortlist_added":
-                                  return "bg-yellow-50 border-yellow-300";
-                                case "offer_extended":
-                                  return "bg-green-50 border-green-300";
-                                case "offer_accepted":
-                                  return "bg-emerald-50 border-emerald-300";
-                                case "placement_hired":
-                                  return "bg-purple-50 border-purple-300";
-                                case "stage_change":
-                                  return "bg-indigo-50 border-indigo-300";
-                                case "application_rejected":
-                                  return "bg-red-50 border-red-300";
-                                default:
-                                  return "bg-gray-50 border-gray-200";
-                              }
-                            };
-
-                            return (
-                              <div
-                                key={
-                                  update.id ||
-                                  `update-${update.timestamp}-${idx}`
-                                }
-                                className={`p-3 rounded-lg border hover:shadow-sm transition-all flex items-start gap-3 ${getActivityColor(
-                                  update.type
-                                )}`}
-                              >
-                                <div className="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0" />
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-900 mb-0.5">
-                                    {update.user && (
-                                      <span className="text-blue-700">
-                                        {update.user}
-                                      </span>
-                                    )}
-                                    {update.action && (
-                                      <span className="text-gray-700">
-                                        {" "}
-                                        {update.action}{" "}
-                                      </span>
-                                    )}
-                                    {update.candidate && (
-                                      <span className="font-semibold">
-                                        {update.candidate}
-                                      </span>
-                                    )}
-                                    {update.message && (
-                                      <span className="text-gray-700">
-                                        {update.message}
-                                      </span>
-                                    )}
-                                  </p>
-                                  {update.details && (
-                                    <p className="text-xs text-gray-600 mb-1">
-                                      {update.details}
-                                    </p>
-                                  )}
-                                  <p className="text-xs text-gray-500">
-                                    {typeof update.timestamp === "string" &&
-                                    update.timestamp.includes("ago")
-                                      ? update.timestamp
-                                      : new Date(
-                                          update.timestamp
-                                        ).toLocaleString()}
-                                  </p>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {recentUpdates.length > 5 && (
-                          <div className="mt-3">
-                            <Button
-                              variant="outline"
-                              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-                              onClick={() =>
-                                setShowAllRecentUpdates(!showAllRecentUpdates)
-                              }
-                            >
-                              {showAllRecentUpdates ? "See Less" : "See More"}
-                            </Button>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </CardContent>
-                </div>
+                  updates={recentUpdates}
+                  loading={recentUpdatesLoading}
+                  error={
+                    recentUpdatesError ? "Failed to load recent updates" : null
+                  }
+                  onRetry={refreshRecentUpdates}
+                  emptyMessage="No recent updates available"
+                  isExpanded={showAllRecentUpdates}
+                  onToggle={(next) => setShowAllRecentUpdates(next)}
+                  badgeContent={
+                    unreadCount > 0 ? (
+                      <Badge className="bg-red-500 hover:bg-red-500 text-white px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        {unreadCount} {unreadCount === 1 ? "message" : "messages"}
+                      </Badge>
+                    ) : null
+                  }
+                  getUpdateClassName={(update) => {
+                    switch (update.type) {
+                      case "shortlist_added":
+                        return "bg-yellow-50 border-yellow-300";
+                      case "offer_extended":
+                        return "bg-green-50 border-green-300";
+                      case "offer_accepted":
+                        return "bg-emerald-50 border-emerald-300";
+                      case "placement_hired":
+                        return "bg-purple-50 border-purple-300";
+                      case "stage_change":
+                        return "bg-indigo-50 border-indigo-300";
+                      case "application_rejected":
+                        return "bg-red-50 border-red-300";
+                      default:
+                        return "bg-gray-50 border-gray-200";
+                    }
+                  }}
+                />
 
                 {/* Suggested Next Steps - AI Job Matching */}
                 <Card
@@ -1712,7 +1682,10 @@ const StudentDashboard = () => {
                         </div>
                       </div>
                       {matchedJobs.length > 0 && (
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <Badge
+                          variant="outline"
+                          className="bg-green-50 text-green-700 border-green-200"
+                        >
                           <Target className="w-3 h-3 mr-1" />
                           {matchedJobs.length} Matches
                         </Badge>
@@ -1723,7 +1696,9 @@ const StudentDashboard = () => {
                     {matchingLoading ? (
                       <div className="flex items-center justify-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
-                        <p className="ml-3 text-sm text-gray-500">Finding best job matches for you...</p>
+                        <p className="ml-3 text-sm text-gray-500">
+                          Finding best job matches for you...
+                        </p>
                       </div>
                     ) : matchingError ? (
                       <div className="p-4 rounded-lg bg-red-50 border border-red-200">
@@ -1741,7 +1716,10 @@ const StudentDashboard = () => {
                             onClick={() => {
                               // Navigate to opportunities page or show details
                               if (match.opportunity?.application_link) {
-                                window.open(match.opportunity.application_link, '_blank');
+                                window.open(
+                                  match.opportunity.application_link,
+                                  "_blank"
+                                );
                               }
                             }}
                           >
@@ -1756,11 +1734,15 @@ const StudentDashboard = () => {
                             {/* Job Title & Company */}
                             <div className="mb-3">
                               <h4 className="text-base font-bold text-gray-900 mb-1 group-hover:text-amber-700 transition-colors">
-                                {match.job_title || match.opportunity?.job_title}
+                                {match.job_title ||
+                                  match.opportunity?.job_title}
                               </h4>
                               <div className="flex items-center gap-2 text-sm text-gray-600">
                                 <Building2 className="w-4 h-4" />
-                                <span className="font-medium">{match.company_name || match.opportunity?.company_name}</span>
+                                <span className="font-medium">
+                                  {match.company_name ||
+                                    match.opportunity?.company_name}
+                                </span>
                               </div>
                             </div>
 
@@ -1770,7 +1752,9 @@ const StudentDashboard = () => {
                                 {match.opportunity.employment_type && (
                                   <div className="flex items-center gap-1">
                                     <Briefcase className="w-3.5 h-3.5" />
-                                    <span>{match.opportunity.employment_type}</span>
+                                    <span>
+                                      {match.opportunity.employment_type}
+                                    </span>
                                   </div>
                                 )}
                                 {match.opportunity.location && (
@@ -1782,7 +1766,12 @@ const StudentDashboard = () => {
                                 {match.opportunity.deadline && (
                                   <div className="flex items-center gap-1 text-orange-600">
                                     <Clock className="w-3.5 h-3.5" />
-                                    <span>Deadline: {new Date(match.opportunity.deadline).toLocaleDateString()}</span>
+                                    <span>
+                                      Deadline:{" "}
+                                      {new Date(
+                                        match.opportunity.deadline
+                                      ).toLocaleDateString()}
+                                    </span>
                                   </div>
                                 )}
                               </div>
@@ -1791,25 +1780,30 @@ const StudentDashboard = () => {
                             {/* Match Reason */}
                             <div className="mb-3 p-3 bg-white/60 rounded-lg border border-amber-100">
                               <p className="text-xs text-gray-700 leading-relaxed">
-                                <span className="font-semibold text-amber-700">Why this matches: </span>
+                                <span className="font-semibold text-amber-700">
+                                  Why this matches:{" "}
+                                </span>
                                 {match.match_reason}
                               </p>
                             </div>
 
                             {/* Key Matching Skills */}
-                            {match.key_matching_skills && match.key_matching_skills.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5 mb-3">
-                                {match.key_matching_skills.slice(0, 4).map((skill, skillIdx) => (
-                                  <Badge
-                                    key={skillIdx}
-                                    variant="secondary"
-                                    className="text-xs bg-white/80 text-gray-700 border border-amber-200"
-                                  >
-                                    {skill}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
+                            {match.key_matching_skills &&
+                              match.key_matching_skills.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                  {match.key_matching_skills
+                                    .slice(0, 4)
+                                    .map((skill, skillIdx) => (
+                                      <Badge
+                                        key={skillIdx}
+                                        variant="secondary"
+                                        className="text-xs bg-white/80 text-gray-700 border border-amber-200"
+                                      >
+                                        {skill}
+                                      </Badge>
+                                    ))}
+                                </div>
+                              )}
 
                             {/* Recommendation */}
                             {match.recommendation && (
@@ -1821,7 +1815,7 @@ const StudentDashboard = () => {
                             )}
                           </div>
                         ))}
-                        
+
                         {/* Refresh Button */}
                         <Button
                           variant="outline"
@@ -1852,7 +1846,8 @@ const StudentDashboard = () => {
                         {!matchingLoading && (
                           <div className="text-center py-4">
                             <p className="text-sm text-gray-500">
-                              No job matches found at the moment. Complete your profile to get better matches!
+                              No job matches found at the moment. Complete your
+                              profile to get better matches!
                             </p>
                           </div>
                         )}
@@ -1909,7 +1904,7 @@ const StudentDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {renderCardsByPriority()}
             </div>
-            
+
             {/* Achievement Timeline - Below cards in the right column */}
             {!isViewingOthersProfile && (
               <div className="mt-5">

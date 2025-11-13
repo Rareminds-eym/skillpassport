@@ -42,11 +42,11 @@ const Hero = () => {
   const openCalendly = () => {
     if (window.Calendly) {
       window.Calendly.initPopupWidget({
-        url: 'https://calendly.com/d/cs8h-vpx-dwt/skillpassport_home'
+        url: 'https://calendly.com/rareminds/institute-_marketing-clone'
       });
     } else {
       // If script not loaded yet, open in new tab as fallback
-      window.open('https://calendly.com/d/cs8h-vpx-dwt/skillpassport_home', '_blank');
+      window.open('https://calendly.com/rareminds/institute-_marketing-clone', '_blank');
     }
   };
 

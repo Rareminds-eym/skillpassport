@@ -1,10 +1,10 @@
 import { supabase } from "../lib/supabaseClient";
 
-// ✅ Get educator by email
+// ✅ Get educator by email from school_educators table
 export async function getEducatorByEmail(email) {
   try {
     const { data, error } = await supabase
-      .from("educators")
+      .from("school_educators")
       .select("*")
       .eq("email", email)
       .maybeSingle();
@@ -27,7 +27,6 @@ export async function getEducatorByEmail(email) {
 
 // ✅ Login educator (ignores password, only checks email)
 export async function loginEducator(email, password) {
-  
   const result = await getEducatorByEmail(email);
 
   if (!result.success) {
@@ -36,18 +35,22 @@ export async function loginEducator(email, password) {
 
   const educator = result.data;
 
-  // ⚠️ Password ignored → accept any password
   return {
     success: true,
     data: {
       id: educator.id,
-      name: educator.name || "Educator",
+      name: educator.first_name && educator.last_name 
+        ? `${educator.first_name} ${educator.last_name}`
+        : educator.first_name || "Educator",
       email: educator.email,
-      institution: educator.institution,
+      school_id: educator.school_id,
+      specialization: educator.specialization,
+      qualification: educator.qualification,
+      experience_years: educator.experience_years,
+      designation: educator.designation,
       department: educator.department,
-      subjects: educator.subjects,
-      verificationStatus: educator.verificationstatus || "pending",
-      isActive: educator.isactive !== false, // default to true
+      verification_status: educator.verification_status || "Pending",
+      account_status: educator.account_status || "active",
     },
   };
 }
@@ -56,17 +59,22 @@ export async function loginEducator(email, password) {
 export async function createEducatorProfile(educatorData) {
   try {
     const { data, error } = await supabase
-      .from("educators")
+      .from("school_educators")
       .insert([
         {
-          name: educatorData.name,
+          first_name: educatorData.first_name,
+          last_name: educatorData.last_name,
           email: educatorData.email,
-          institution: educatorData.institution,
+          phone_number: educatorData.phone_number,
+          specialization: educatorData.specialization,
+          qualification: educatorData.qualification,
+          experience_years: educatorData.experience_years,
+          designation: educatorData.designation,
           department: educatorData.department,
-          subjects: educatorData.subjects,
-          verificationstatus: "pending",
-          isactive: true,
-          joindate: new Date().toISOString(),
+          school_id: educatorData.school_id, // Required field
+          user_id: educatorData.user_id, // Required field
+          account_status: "active",
+          verification_status: "Pending",
         }
       ])
       .select()
@@ -81,13 +89,12 @@ export async function createEducatorProfile(educatorData) {
       success: true,
       data: {
         id: data.id,
-        name: data.name,
+        name: `${data.first_name} ${data.last_name}`,
         email: data.email,
-        institution: data.institution,
-        department: data.department,
-        subjects: data.subjects,
-        verificationStatus: data.verificationstatus,
-        isActive: data.isactive,
+        specialization: data.specialization,
+        qualification: data.qualification,
+        verification_status: data.verification_status,
+        account_status: data.account_status,
       },
     };
   } catch (err) {

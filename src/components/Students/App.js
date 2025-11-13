@@ -8,6 +8,7 @@ import Dashboard from "./components/Dashboard";
 import ProfileEditSection from "./components/ProfileEditSection";
 import Footer from "./components/Footer";
 import { Toaster } from "./components/ui/toaster";
+import CertificatesDemo from "./components/CertificatesDemo";
 import {
   EducationEditModal,
   TrainingEditModal,
@@ -114,6 +115,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<SkillPassportDashboard />} />
+          <Route path="/certificates-demo" element={<CertificatesDemo />} />
         </Routes>
       </BrowserRouter>
     </div>

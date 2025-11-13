@@ -17,7 +17,7 @@ interface Props {
   onStudentsUpdated: (updatedClass: EducatorClass) => void
 }
 
-type AddMode = "select" | "manual" | "csv"
+type AddMode = "select" | "csv"
 type CSVStudent = { name: string; email: string; progress?: number }
 
 const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onStudentsUpdated }) => {
@@ -26,9 +26,6 @@ const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onSt
   const [directory, setDirectory] = useState<StudentDirectoryEntry[]>([])
   const [addMode, setAddMode] = useState<AddMode>("select")
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
-  const [manualName, setManualName] = useState("")
-  const [manualEmail, setManualEmail] = useState("")
-  const [manualProgress, setManualProgress] = useState<string>("")
   const [csvStudents, setCsvStudents] = useState<CSVStudent[]>([])
   const [csvError, setCsvError] = useState("")
   const [directorySearch, setDirectorySearch] = useState("")
@@ -36,9 +33,6 @@ const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onSt
   useEffect(() => {
     if (!isOpen) return
     setSelectedStudentIds([])
-    setManualName("")
-    setManualEmail("")
-    setManualProgress("")
     setAddMode("select")
     setCsvStudents([])
     setCsvError("")
@@ -212,35 +206,6 @@ const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onSt
         setCsvStudents([])
         setCsvError("")
       }
-    } else {
-      if (!manualName.trim() || !manualEmail.trim()) {
-        toast.error("Enter name and email")
-        return
-      }
-      const progressValue = manualProgress ? Number(manualProgress) : undefined
-      if (progressValue !== undefined && (Number.isNaN(progressValue) || progressValue < 0 || progressValue > 100)) {
-        toast.error("Progress must be between 0 and 100")
-        return
-      }
-      setLoading(true)
-      const { data, error } = await addStudentToClass({
-        classId: classItem.id,
-        student: {
-          name: manualName.trim(),
-          email: manualEmail.trim(),
-          progress: progressValue
-        }
-      })
-      setLoading(false)
-      if (error || !data) {
-        toast.error(error || "Unable to add student")
-        return
-      }
-      toast.success(`${manualName.trim()} added`)
-      onStudentsUpdated(data)
-      setManualName("")
-      setManualEmail("")
-      setManualProgress("")
     }
   }
 
@@ -327,15 +292,6 @@ const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onSt
                     </button>
                     <button
                       type="button"
-                      onClick={() => setAddMode("manual")}
-                      className={`flex-1 px-3 py-2 text-xs font-medium border -ml-px ${
-                        addMode === "manual" ? "border-indigo-600 text-indigo-700 bg-white" : "border-gray-200 text-gray-600 bg-gray-100"
-                      }`}
-                    >
-                      Add Manually
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => setAddMode("csv")}
                       className={`flex-1 px-3 py-2 text-xs font-medium border -ml-px ${
                         addMode === "csv" ? "border-indigo-600 text-indigo-700 bg-white" : "border-gray-200 text-gray-600 bg-gray-100"
@@ -388,41 +344,6 @@ const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onSt
                         <p className="mt-2 text-xs text-gray-500">{selectedStudentIds.length} student{selectedStudentIds.length === 1 ? "" : "s"} selected</p>
                       )}
                     </div>
-                  ) : addMode === "manual" ? (
-                    <>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Full Name</label>
-                        <input
-                          value={manualName}
-                          onChange={(e) => setManualName(e.target.value)}
-                          type="text"
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          placeholder="Student name"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
-                        <input
-                          value={manualEmail}
-                          onChange={(e) => setManualEmail(e.target.value)}
-                          type="email"
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          placeholder="student@example.edu"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Starting Progress (Optional)</label>
-                        <input
-                          value={manualProgress}
-                          onChange={(e) => setManualProgress(e.target.value)}
-                          type="number"
-                          min={0}
-                          max={100}
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          placeholder="0-100"
-                        />
-                      </div>
-                    </>
                   ) : (
                     <>
                       <div>
@@ -433,6 +354,7 @@ const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onSt
                           onChange={handleCSVChange}
                           className="w-full text-xs text-gray-600"
                         />
+                        <p className="mt-1 text-xs text-gray-500">CSV should have columns: name, email, progress (optional)</p>
                       </div>
                       {csvError && <p className="text-xs text-red-600">{csvError}</p>}
                       {csvStudents.length > 0 && (
@@ -469,8 +391,6 @@ const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onSt
                     loading ||
                     (addMode === "select"
                       ? selectedStudentIds.length === 0
-                      : addMode === "manual"
-                      ? !manualName.trim() || !manualEmail.trim()
                       : csvStudents.length === 0)
                   }
                   className="mt-6 w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed"

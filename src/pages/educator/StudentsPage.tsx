@@ -14,6 +14,8 @@ import { useStudents } from '../../hooks/useStudents';
 import { useSearch } from '../../context/SearchContext';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/educator/Pagination';
+import AddStudentModal from '../../components/educator/modals/Addstudentmodal';
+import { UserPlusIcon } from 'lucide-react';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -288,6 +290,7 @@ const StudentsPage = () => {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [sortBy, setSortBy] = useState('relevance');
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -707,9 +710,18 @@ const StudentsPage = () => {
   return (
     <div className="flex flex-col h-screen">
       {/* Header - responsive layout */}
-      <div className='p-4 sm:p-6 lg:p-8 mb-2'>
-        <h1 className="text-xl md:text-3xl font-bold text-gray-900">Students Management</h1>
-        <p className="text-base md:text-lg mt-2 text-gray-600">Manage your students and their profiles.</p>
+      <div className="p-4 sm:p-6 lg:p-8 mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl md:text-3xl font-bold text-gray-900">Students Management</h1>
+          <p className="text-base md:text-lg mt-2 text-gray-600">Manage your students and their profiles.</p>
+        </div>
+        <button
+          onClick={() => setShowAddStudentModal(true)}
+          className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
+        >
+          <UserPlusIcon className="h-5 w-5 mr-2" />
+          Add Student
+        </button>
       </div>
       <div className="px-4 sm:px-6 lg:px-8 hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
         <div className="w-80 flex-shrink-0 pr-4 text-left">
@@ -1078,6 +1090,14 @@ const StudentsPage = () => {
         }}
         student={selectedStudent}
         onSuccess={handleNoteSuccess}
+      />
+
+       <AddStudentModal
+        isOpen={showAddStudentModal}
+        onClose={() => setShowAddStudentModal(false)}
+        onSuccess={() => {
+          setShowAddStudentModal(false);
+        }}
       />
     </div>
   );

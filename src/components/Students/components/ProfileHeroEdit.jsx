@@ -16,6 +16,8 @@ import {
   Instagram,
   Facebook,
   X,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -37,9 +39,8 @@ const DetailItem = ({ label, value, highlight }) => (
   <div className="flex flex-col bg-gray-50 hover:bg-gray-100 rounded-xl p-3 transition-all shadow-sm">
     <span className="text-xs font-medium text-gray-500">{label}</span>
     <span
-      className={`text-sm mt-1 ${
-        highlight ? "text-purple-600 font-semibold" : "text-gray-900"
-      }`}
+      className={`text-sm mt-1 ${highlight ? "text-purple-600 font-semibold" : "text-gray-900"
+        }`}
     >
       {value}
     </span>
@@ -120,12 +121,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   // Use real data only; if not found, display nothing or a message
   const displayData = realStudentData?.profile;
 
-  // Debug: Log the display data to see what we have
-  useEffect(() => {
-    if (displayData) {
-      // Data is available
+  // Debug: Log student_id from database column
+  React.useEffect(() => {
+    if (realStudentData) {
+      console.log('🔍 Student ID from database:', realStudentData.student_id);
     }
-  }, [displayData]);
+  }, [realStudentData]);
+
 
   // Generate QR code value once and keep it constant
   const qrCodeValue = React.useMemo(() => {
@@ -228,9 +230,23 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                     </div>
                   </div>
                   <div className="flex-1 pt-1">
-                    <h1 className="text-3xl font-bold text-white drop-shadow-lg">
-                      {displayData.name || "Student Name"}
-                    </h1>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+                        {displayData.name || "Student Name"}
+                      </h1>
+                      {/* Approval Status Badge */}
+                      {(realStudentData?.approval_status === 'approved') ? (
+                        <Badge className="bg-green-500 text-white border-0 px-3 py-1.5 text-xs font-semibold rounded-full shadow-lg flex items-center gap-1.5 animate-in fade-in duration-300">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Approved
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-amber-400 text-amber-900 border-0 px-3 py-1.5 text-xs font-semibold rounded-full shadow-lg flex items-center gap-1.5 animate-in fade-in duration-300">
+                          <Clock className="w-3.5 h-3.5" />
+                          Pending
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -246,7 +262,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                     <CreditCard className="w-4 h-4" />
                     <span>
                       Student ID:{" "}
-                      {displayData.passportId || displayData.studentId || "N/A"}
+                      {realStudentData?.student_id || "Not Assigned"}
                     </span>
                   </div>
                 </div>
@@ -281,143 +297,143 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   displayData.twitter_link ||
                   displayData.instagram_link ||
                   displayData.facebook_link) && (
-                  <div className="ml-1 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
-                      <span className="text-xs font-medium text-white/80 px-2">
-                        Connect With Me
-                      </span>
-                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+                    <div className="ml-1 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+                        <span className="text-xs font-medium text-white/80 px-2">
+                          Connect With Me
+                        </span>
+                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {displayData.github_link && (
+                          <div className="relative group">
+                            <a
+                              href={
+                                displayData.github_link.startsWith("http")
+                                  ? displayData.github_link
+                                  : `https://${displayData.github_link}`
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative overflow-hidden flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-700 hover:to-gray-800 text-white transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105 border border-gray-700 hover:border-gray-600"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-full -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                              <Github className="w-5 h-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
+                            </a>
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                              GitHub Profile
+                            </div>
+                          </div>
+                        )}
+
+                        {displayData.portfolio_link && (
+                          <div className="relative group">
+                            <a
+                              href={
+                                displayData.portfolio_link.startsWith("http")
+                                  ? displayData.portfolio_link
+                                  : `https://${displayData.portfolio_link}`
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative overflow-hidden flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-blue-500/50 hover:scale-105 border border-blue-400"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                              <Globe className="w-5 h-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
+                            </a>
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                              Portfolio Website
+                            </div>
+                          </div>
+                        )}
+
+                        {displayData.linkedin_link && (
+                          <div className="relative group">
+                            <a
+                              href={
+                                displayData.linkedin_link.startsWith("http")
+                                  ? displayData.linkedin_link
+                                  : `https://${displayData.linkedin_link}`
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative overflow-hidden flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-blue-600/50 hover:scale-105 border border-blue-500"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                              <Linkedin className="w-5 h-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
+                            </a>
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                              LinkedIn Profile
+                            </div>
+                          </div>
+                        )}
+
+                        {displayData.twitter_link && (
+                          <div className="relative group">
+                            <a
+                              href={
+                                displayData.twitter_link.startsWith("http")
+                                  ? displayData.twitter_link
+                                  : `https://${displayData.twitter_link}`
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative overflow-hidden flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-black to-gray-900 hover:from-gray-900 hover:to-black text-white transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105 border border-gray-700"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-full -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                              <Twitter className="w-5 h-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
+                            </a>
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                              Twitter/X Profile
+                            </div>
+                          </div>
+                        )}
+
+                        {displayData.instagram_link && (
+                          <div className="relative group">
+                            <a
+                              href={
+                                displayData.instagram_link.startsWith("http")
+                                  ? displayData.instagram_link
+                                  : `https://${displayData.instagram_link}`
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative overflow-hidden flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-orange-500 hover:from-pink-600 hover:via-purple-600 hover:to-orange-600 text-white transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-pink-500/50 hover:scale-105 border border-pink-400"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                              <Instagram className="w-5 h-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
+                            </a>
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                              Instagram Profile
+                            </div>
+                          </div>
+                        )}
+
+                        {displayData.facebook_link && (
+                          <div className="relative group">
+                            <a
+                              href={
+                                displayData.facebook_link.startsWith("http")
+                                  ? displayData.facebook_link
+                                  : `https://${displayData.facebook_link}`
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative overflow-hidden flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-blue-700/50 hover:scale-105 border border-blue-600"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                              <Facebook className="w-5 h-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
+                            </a>
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                              Facebook Profile
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {displayData.github_link && (
-                        <div className="relative group">
-                          <a
-                            href={
-                              displayData.github_link.startsWith("http")
-                                ? displayData.github_link
-                                : `https://${displayData.github_link}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="relative overflow-hidden flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-700 hover:to-gray-800 text-white transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105 border border-gray-700 hover:border-gray-600"
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-full -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                            <Github className="w-5 h-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                          </a>
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                            GitHub Profile
-                          </div>
-                        </div>
-                      )}
-
-                      {displayData.portfolio_link && (
-                        <div className="relative group">
-                          <a
-                            href={
-                              displayData.portfolio_link.startsWith("http")
-                                ? displayData.portfolio_link
-                                : `https://${displayData.portfolio_link}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="relative overflow-hidden flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-blue-500/50 hover:scale-105 border border-blue-400"
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                            <Globe className="w-5 h-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                          </a>
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                            Portfolio Website
-                          </div>
-                        </div>
-                      )}
-
-                      {displayData.linkedin_link && (
-                        <div className="relative group">
-                          <a
-                            href={
-                              displayData.linkedin_link.startsWith("http")
-                                ? displayData.linkedin_link
-                                : `https://${displayData.linkedin_link}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="relative overflow-hidden flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-blue-600/50 hover:scale-105 border border-blue-500"
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                            <Linkedin className="w-5 h-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                          </a>
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                            LinkedIn Profile
-                          </div>
-                        </div>
-                      )}
-
-                      {displayData.twitter_link && (
-                        <div className="relative group">
-                          <a
-                            href={
-                              displayData.twitter_link.startsWith("http")
-                                ? displayData.twitter_link
-                                : `https://${displayData.twitter_link}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="relative overflow-hidden flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-black to-gray-900 hover:from-gray-900 hover:to-black text-white transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105 border border-gray-700"
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-full -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                            <Twitter className="w-5 h-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                          </a>
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                            Twitter/X Profile
-                          </div>
-                        </div>
-                      )}
-
-                      {displayData.instagram_link && (
-                        <div className="relative group">
-                          <a
-                            href={
-                              displayData.instagram_link.startsWith("http")
-                                ? displayData.instagram_link
-                                : `https://${displayData.instagram_link}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="relative overflow-hidden flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-orange-500 hover:from-pink-600 hover:via-purple-600 hover:to-orange-600 text-white transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-pink-500/50 hover:scale-105 border border-pink-400"
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                            <Instagram className="w-5 h-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                          </a>
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                            Instagram Profile
-                          </div>
-                        </div>
-                      )}
-
-                      {displayData.facebook_link && (
-                        <div className="relative group">
-                          <a
-                            href={
-                              displayData.facebook_link.startsWith("http")
-                                ? displayData.facebook_link
-                                : `https://${displayData.facebook_link}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="relative overflow-hidden flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-blue-700/50 hover:scale-105 border border-blue-600"
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                            <Facebook className="w-5 h-5 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300 relative z-10" />
-                          </a>
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                            Facebook Profile
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Removed Quick Edit Buttons Section */}
               </div>

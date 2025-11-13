@@ -12,6 +12,17 @@ import EducatorLayout from "../layouts/EducatorLayout";
 import { ThemeProvider } from '../context/ThemeContext';
 import { PortfolioProvider } from '../context/PortfolioContext';
 import HomePage from '../pages/digital-pp/HomePage';
+import StudentDigitalPortfolioHomePage from '../pages/student/digital-pp/HomePage';
+import DigitalPortfolioPage from '../pages/digital-pp/PortfolioPage';
+import DigitalPassportPage from '../pages/digital-pp/PassportPage';
+import DigitalVideoPortfolioPage from '../pages/digital-pp/VideoPortfolioPage';
+import DigitalSettingsPage from '../pages/digital-pp/SettingsPage';
+import DigitalThemeSettings from '../pages/digital-pp/settings/ThemeSettings';
+import DigitalLayoutSettings from '../pages/digital-pp/settings/LayoutSettings';
+import DigitalExportSettings from '../pages/digital-pp/settings/ExportSettings';
+import DigitalSharingSettings from '../pages/digital-pp/settings/SharingSettings';
+import DigitalProfileSettings from '../pages/digital-pp/settings/ProfileSettings';
+import StudentDigitalPortfolioNav from '../components/digital-pp/ui/StudentDigitalPortfolioNav';
 import PortfolioPage from '../pages/digital-pp/PortfolioPage';
 import PassportPage from '../pages/digital-pp/PassportPage';
 import VideoPortfolioPage from '../pages/digital-pp/VideoPortfolioPage';
@@ -109,6 +120,9 @@ const EducatorClasses = lazy(() => import("../pages/educator/ClassesPage"));
 const EducatorAssessments = lazy(() => import("../pages/educator/Assessments"));
 const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
 const EducatorSettings = lazy(() => import("../pages/educator/Settings"));
+const EducatorProfile = lazy(() => import("../pages/educator/ProfileFixed"));
+const EducatorProfileDebug = lazy(() => import("../pages/educator/ProfileDebug"));
+const EducatorManagement = lazy(() => import("../pages/educator/EducatorManagement"));
 const EducatorCommunication = lazy(() =>
   import("../pages/educator/Communication")
 );
@@ -117,6 +131,9 @@ const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
 const EducatorReports = lazy(() => import("../pages/educator/Reports"));
 const EducatorMediaManager = lazy(() =>
   import("../pages/educator/MediaManager")
+);
+const EducatorDigitalPortfolio = lazy(() =>
+  import("../pages/educator/DigitalPortfolioPage")
 );
 
 // ===== Admins (Role-Based) =====
@@ -132,7 +149,7 @@ const CourseMapping = lazy(() =>
 const StudentDataAdmission = lazy(() =>
   import("../pages/admin/collegeAdmin/Studentdataadmission")
 );
-const EducatorManagement = lazy(() =>
+const AdminEducatorManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/EducatorManagement")
 );
 
@@ -224,7 +241,7 @@ const AppRoutes = () => {
             path="students/data-management"
             element={<StudentDataAdmission />}
           />
-          <Route path="departments/educators" element={<EducatorManagement />} />
+          <Route path="departments/educators" element={<AdminEducatorManagement />} />
           <Route
             path=""
             element={<Navigate to="/college-admin/dashboard" replace />}
@@ -315,6 +332,138 @@ const AppRoutes = () => {
           <Route path="assignments" element={<Assignments />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
+          
+          {/* Digital Portfolio routes with required providers */}
+          <Route
+            path="digital-portfolio"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioHomePage />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/portfolio"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalPortfolioPage />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/passport"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalPassportPage />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/video"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalVideoPortfolioPage />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/settings"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalSettingsPage />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/settings/theme"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalThemeSettings />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/settings/layout"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalLayoutSettings />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/settings/export"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalExportSettings />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/settings/sharing"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalSharingSettings />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          <Route
+            path="digital-portfolio/settings/profile"
+            element={
+              <ThemeProvider>
+                <PortfolioProvider>
+                  <div className="-mx-6 -my-8">
+                    <StudentDigitalPortfolioNav />
+                    <DigitalProfileSettings />
+                  </div>
+                </PortfolioProvider>
+              </ThemeProvider>
+            }
+          />
+          
           <Route
             path=""
             element={<Navigate to="/student/dashboard" replace />}
@@ -327,7 +476,11 @@ const AppRoutes = () => {
           <Route path="classes" element={<EducatorClasses />} />
           <Route path="assignments" element={<EducatorAssessments />} />
           <Route path="mentornotes" element={<EducatorMentorNotes />} />
+          <Route path="digital-portfolio" element={<EducatorDigitalPortfolio />} />
           <Route path="settings" element={<EducatorSettings />} />
+          <Route path="profile" element={<EducatorProfile />} />
+          <Route path="profile-debug" element={<EducatorProfileDebug />} />
+          <Route path="management" element={<EducatorManagement />} />
           <Route path="communication" element={<EducatorCommunication />} />
           <Route path="analytics" element={<EducatorAnalytics />} />
           <Route path="activities" element={<EducatorActivities />} />

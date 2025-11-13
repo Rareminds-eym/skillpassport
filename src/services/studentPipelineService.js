@@ -51,7 +51,8 @@ export class StudentPipelineService {
             mode,
             stipend_or_salary,
             description,
-            experience_required
+            experience_required,
+            recruiter_id
           )
         `)
         .eq('status', 'active')
@@ -218,6 +219,8 @@ export class StudentPipelineService {
           rejection_reason: pipelineStatus?.rejection_reason || null,
           next_action: pipelineStatus?.next_action || null,
           next_action_date: pipelineStatus?.next_action_date || null,
+          // Include recruiter_id from assigned_to or opportunity
+          pipeline_recruiter_id: pipelineStatus?.assigned_to || pipelineStatus?.opportunities?.recruiter_id || null,
         };
       });
 

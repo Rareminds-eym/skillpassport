@@ -57,6 +57,7 @@ const transformAssignment = (dbAssignment) => ({
   
   // Dates - comprehensive tracking
   dueDate: dbAssignment.due_date,
+  availableFrom: dbAssignment.available_from,
   assignedDate: dbAssignment.assigned_date,
   startedDate: dbAssignment.started_date,
   submittedDate: dbAssignment.submission_date,
@@ -236,7 +237,7 @@ const Assignments = () => {
     const configs = {
       'todo': { className: 'bg-gray-50 text-gray-700 border border-gray-200', label: '📋 To Do', icon: '📋' },
       'in-progress': { className: 'bg-blue-50 text-blue-700 border border-blue-200', label: '⚡ In Progress', icon: '⚡' },
-      'submitted': { className: 'bg-purple-50 text-purple-700 border border-purple-200', label: '📤 Submitted', icon: '📤' },
+      'submitted': { className: 'bg-emerald-50 text-emerald-700 border border-emerald-200', label: '📤 Submitted', icon: '📤' },
       'graded': { className: 'bg-green-50 text-green-700 border border-green-200', label: '✅ Graded', icon: '✅' }
     };
     const config = configs[status] || configs.todo;
@@ -297,6 +298,39 @@ const Assignments = () => {
         dueDate.getMonth() === date.getMonth() &&
         dueDate.getFullYear() === date.getFullYear()
       );
+    });
+  };
+
+  // Get assignments that become available on this date
+  const getAvailableAssignmentsForDate = (date) => {
+    if (!date) return [];
+    return filteredAssignments.filter(assignment => {
+      if (!assignment.available_from) return false;
+      const availableDate = new Date(assignment.available_from);
+      return (
+        availableDate.getDate() === date.getDate() &&
+        availableDate.getMonth() === date.getMonth() &&
+        availableDate.getFullYear() === date.getFullYear()
+      );
+    });
+  };
+
+  // Check if date is within assignment duration (available_from to due_date)
+  const getActiveAssignmentsForDate = (date) => {
+    if (!date) return [];
+    return filteredAssignments.filter(assignment => {
+      if (!assignment.available_from) return false;
+      const availableDate = new Date(assignment.available_from);
+      const dueDate = new Date(assignment.dueDate);
+      const checkDate = new Date(date);
+      
+      // Set all to start of day for accurate comparison
+      availableDate.setHours(0, 0, 0, 0);
+      dueDate.setHours(0, 0, 0, 0);
+      checkDate.setHours(0, 0, 0, 0);
+      
+      // Check if date is between available and due (inclusive)
+      return checkDate >= availableDate && checkDate <= dueDate;
     });
   };
 
@@ -643,6 +677,10 @@ const Assignments = () => {
               <div className="flex flex-wrap items-center gap-4 text-xs">
                   <span className="font-semibold text-gray-600">Timeline Events:</span>
                   <div className="flex items-center gap-1.5">
+                    <span className="text-teal-600 font-bold">📅</span>
+                    <span className="text-gray-700">Available From</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
                     <span className="text-blue-600">▶</span>
                     <span className="text-gray-700">Started</span>
                   </div>
@@ -657,6 +695,10 @@ const Assignments = () => {
                   <div className="flex items-center gap-1.5">
                     <span className="text-green-600">★</span>
                     <span className="text-gray-700">Graded</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-red-600 font-bold">⏰</span>
+                    <span className="text-gray-700">Due Date</span>
                   </div>
                 </div>
               </div>
@@ -675,6 +717,8 @@ const Assignments = () => {
                 {/* Calendar days */}
                 {getCalendarDays().map((date, index) => {
                   const assignmentsOnDate = date ? getAssignmentsForDate(date) : [];
+                  const availableAssignments = date ? getAvailableAssignmentsForDate(date) : [];
+                  const activeAssignments = date ? getActiveAssignmentsForDate(date) : [];
                   const isToday = date && 
                     date.toDateString() === new Date().toDateString();
                   const today = new Date();
@@ -812,7 +856,7 @@ const Assignments = () => {
                                       <span className="text-blue-600 font-bold" title={`${assignmentsStartedToday.length} started today`}>▶</span>
                                     )}
                                     {assignmentsSubmittedToday.length > 0 && (
-                                      <span className="text-purple-600 font-bold" title={`${assignmentsSubmittedToday.length} submitted today`}>📤</span>
+                                      <span className="text-emerald-600 font-bold" title={`${assignmentsSubmittedToday.length} submitted today`}>📤</span>
                                     )}
                                     {assignmentsCompletedToday.length > 0 && (
                                       <span className="text-indigo-600 font-bold" title={`${assignmentsCompletedToday.length} completed today`}>✓</span>
@@ -826,7 +870,53 @@ const Assignments = () => {
                             )}
                           </div>
                           
-                          {/* Assignments list */}
+                          {/* Available From Assignments - Show as teal "starting" indicators */}
+                          {availableAssignments.length > 0 && (
+                            <div className="space-y-1 mb-2">
+                              {availableAssignments.slice(0, 1).map(assignment => (
+                                <button
+                                  key={`available-${assignment.id}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedAssignment(assignment);
+                                  }}
+                                  className="w-full text-left text-xs px-2 py-1.5 rounded-lg font-medium transition-all hover:shadow-md group relative bg-teal-50/80 text-teal-800 hover:bg-teal-100 border border-teal-300 border-l-4 border-l-teal-600"
+                                >
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px]">📅</span>
+                                    <span className="truncate flex-1">{assignment.title}</span>
+                                    <span className="text-[9px] text-teal-600 font-semibold">Opens</span>
+                                  </div>
+                                  
+                                  {/* Tooltip */}
+                                  <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-20 w-56 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-xl">
+                                    <div className="font-semibold mb-1">{assignment.title}</div>
+                                    <div className="text-gray-400 text-[10px] mb-2">{assignment.course}</div>
+                                    <div className="border-t border-gray-700 pt-2">
+                                      <div className="flex items-center gap-2 text-[10px] text-teal-400 mb-1">
+                                        <span>📅</span>
+                                        <span className="flex-1">Available from:</span>
+                                        <span className="font-semibold">{new Date(assignment.availableFrom).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-[10px] text-red-400">
+                                        <span>⏰</span>
+                                        <span className="flex-1">Due date:</span>
+                                        <span className="font-semibold">{new Date(assignment.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-2">
+                                        <span>📊</span>
+                                        <span className="flex-1">Points:</span>
+                                        <span className="font-semibold">{assignment.points} pts</span>
+                                      </div>
+                                    </div>
+                                    <div className="absolute top-full left-4 w-2 h-2 bg-gray-900 transform rotate-45 -mt-1" />
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {/* Due Date Assignments - Main display */}
                           {assignmentsOnDate.length > 0 && (
                             <div className="space-y-1">
                               {assignmentsOnDate.slice(0, 2).map(assignment => {
@@ -848,7 +938,7 @@ const Assignments = () => {
                                         : assignment.status === 'graded'
                                           ? 'bg-green-100 text-green-800 hover:bg-green-200'
                                           : assignment.status === 'submitted'
-                                            ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                                            ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
                                             : assignment.status === 'in-progress'
                                               ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
                                               : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
@@ -871,9 +961,9 @@ const Assignments = () => {
                                       ) : assignment.completedDate && new Date(assignment.completedDate).toDateString() === date?.toDateString() ? (
                                         <span className="text-[9px] text-indigo-600 font-bold">✓</span>
                                       ) : assignment.submittedDate && new Date(assignment.submittedDate).toDateString() === date?.toDateString() ? (
-                                        <span className="text-[9px] text-purple-600 font-bold">📤</span>
+                                        <span className="text-[9px] text-emerald-600 font-bold">📤</span>
                                       ) : assignment.status === 'submitted' && assignment.submittedDate ? (
-                                        <span className="text-[9px] text-purple-600">📤</span>
+                                        <span className="text-[9px] text-emerald-600">📤</span>
                                       ) : assignment.status === 'in-progress' && assignment.startedDate ? (
                                         <span className="text-[9px] text-blue-600">▶</span>
                                       ) : null}
@@ -886,6 +976,13 @@ const Assignments = () => {
                                       
                                       {/* Complete Timeline */}
                                       <div className="space-y-1 border-t border-gray-700 pt-2 mb-2">
+                                        {assignment.availableFrom && (
+                                          <div className="flex items-center gap-2 text-[10px] text-teal-400">
+                                            <span>📅</span>
+                                            <span className="flex-1">Available from:</span>
+                                            <span className="font-semibold">{new Date(assignment.availableFrom).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                          </div>
+                                        )}
                                         {assignment.assignedDate && (
                                           <div className="flex items-center gap-2 text-[10px] text-gray-400">
                                             <span>📋</span>
@@ -901,7 +998,7 @@ const Assignments = () => {
                                           </div>
                                         )}
                                         {assignment.submittedDate && (
-                                          <div className="flex items-center gap-2 text-[10px] text-purple-400">
+                                          <div className="flex items-center gap-2 text-[10px] text-emerald-400">
                                             <span>📤</span>
                                             <span className="flex-1">Submitted:</span>
                                             <span className="font-semibold">
@@ -1015,7 +1112,7 @@ const Assignments = () => {
                               : assignment.status === 'in-progress'
                                 ? 'bg-blue-50 text-blue-700 border-blue-200 hover:border-blue-400 hover:bg-blue-100'
                                 : assignment.status === 'submitted'
-                                  ? 'bg-purple-50 text-purple-700 border-purple-200 hover:border-purple-400 hover:bg-purple-100'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-100'
                                   : 'bg-green-50 text-green-700 border-green-200 opacity-75 cursor-not-allowed'
                           }`}
                         >
@@ -1073,7 +1170,7 @@ const Assignments = () => {
                         className={`h-full transition-all duration-500 ease-out ${
                           assignment.status === 'todo' ? 'w-0 bg-gray-400' :
                           assignment.status === 'in-progress' ? 'w-1/3 bg-blue-500' :
-                          assignment.status === 'submitted' ? 'w-2/3 bg-purple-500' :
+                          assignment.status === 'submitted' ? 'w-2/3 bg-emerald-500' :
                           'w-full bg-green-500'
                         }`}
                       />
@@ -1091,7 +1188,7 @@ const Assignments = () => {
                       {/* Step 3: Submitted */}
                       <div className={`w-2 h-2 rounded-full transition-colors ${
                         assignment.status === 'submitted' || assignment.status === 'graded'
-                          ? 'bg-purple-500' : 'bg-gray-200'
+                          ? 'bg-emerald-500' : 'bg-gray-200'
                       }`} />
                       {/* Step 4: Graded */}
                       <div className={`w-2 h-2 rounded-full transition-colors ${
@@ -1106,11 +1203,24 @@ const Assignments = () => {
                   {assignment.description}
                 </p>
 
-                {/* Due Date Row */}
+                {/* Date Information Row */}
                 <div className="flex items-center justify-between mb-5 pb-5 border-b border-gray-100">
-                  <div className="flex items-center gap-5 text-sm">
+                  <div className="flex items-center gap-5 text-sm flex-wrap">
+                    {assignment.availableFrom && (
+                      <div className="flex items-center gap-2">
+                        <CalendarIcon className="w-4 h-4 text-teal-500" />
+                        <span className="text-gray-600">Available:</span>
+                        <span className="font-semibold text-teal-700">
+                          {new Date(assignment.availableFrom).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
-                      <CalendarIcon className="w-4 h-4 text-gray-400" />
+                      <CalendarIcon className="w-4 h-4 text-red-400" />
                       <span className="text-gray-600">Due:</span>
                       <span className="font-semibold text-gray-900">
                         {new Date(assignment.dueDate).toLocaleDateString('en-US', {
@@ -1152,13 +1262,13 @@ const Assignments = () => {
                       size="sm"
                       variant="outline"
                       onClick={() => handleStatusChange(assignment.id, 'submitted')}
-                      className="border-purple-300 text-purple-700 hover:bg-purple-50 text-sm font-medium px-5 py-2.5 rounded-lg"
+                      className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-sm font-medium px-5 py-2.5 rounded-lg"
                     >
                       <Upload className="w-4 h-4 mr-2" />
                       Submit Assignment
                     </Button>
                   ) : assignment.status === 'submitted' ? (
-                    <div className="flex items-center gap-2 text-sm text-purple-600">
+                    <div className="flex items-center gap-2 text-sm text-emerald-600">
                       <Clock className="w-4 h-4" />
                       <span className="font-medium">Awaiting instructor grade</span>
                     </div>
@@ -1237,9 +1347,25 @@ const Assignments = () => {
                 </button>
               </div>
 
-              <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-4 text-sm flex-wrap">
+                {selectedAssignment.availableFrom && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon className="w-4 h-4 text-teal-500" />
+                      <span className="text-gray-600">Available:</span>
+                      <span className="font-semibold text-teal-700">
+                        {new Date(selectedAssignment.availableFrom).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                    <span className="mx-2 text-gray-300">•</span>
+                  </>
+                )}
                 <div className="flex items-center gap-2">
-                  <CalendarIcon className="w-4 h-4 text-gray-500" />
+                  <CalendarIcon className="w-4 h-4 text-red-400" />
                   <span className="text-gray-600">Due:</span>
                   <span className="font-semibold text-gray-900">
                     {new Date(selectedAssignment.dueDate).toLocaleDateString('en-US', {
@@ -1249,9 +1375,9 @@ const Assignments = () => {
                       year: 'numeric'
                     })}
                   </span>
-                  <span className="mx-2 text-gray-300">•</span>
-                  {getDaysRemaining(selectedAssignment.dueDate)}
                 </div>
+                <span className="mx-2 text-gray-300">•</span>
+                {getDaysRemaining(selectedAssignment.dueDate)}
               </div>
             </div>
 

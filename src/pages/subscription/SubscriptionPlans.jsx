@@ -5,12 +5,13 @@ import useAuth from '../../hooks/useAuth';
 import SignupModal from '../../components/Subscription/SignupModal';
 import LoginModal from '../../components/Subscription/LoginModal';
 import { isActiveOrPaused, getStatusColor, calculateDaysRemaining } from '../../utils/subscriptionHelpers';
+import { PAYMENT_CONFIG, getPlanPrice, isTestPricing } from '../../config/payment';
 
 const plans = [
   {
     id: 'basic',
     name: 'Basic',
-    price: '499',
+    price: getPlanPrice('basic'),
     duration: 'month',
     features: [
       'Access to basic skill assessments',
@@ -24,7 +25,7 @@ const plans = [
   {
     id: 'pro',
     name: 'Professional',
-    price: '999',
+    price: getPlanPrice('pro'),
     duration: 'month',
     features: [
       'All Basic features',
@@ -40,7 +41,7 @@ const plans = [
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: '1999',
+    price: getPlanPrice('enterprise'),
     duration: 'month',
     features: [
       'All Professional features',
@@ -377,6 +378,15 @@ function SubscriptionPlans() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Test Mode Indicator */}
+        {isTestPricing() && (
+          <div className="mb-6 bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 text-center">
+            <p className="text-yellow-800 font-semibold">
+              🧪 Test Mode: All plans are ₹1 for testing on {PAYMENT_CONFIG.HOSTNAME}
+            </p>
           </div>
         )}
 

@@ -13,6 +13,7 @@ import {
   ChevronDownIcon,
   PhotoIcon,
   ChatBubbleLeftRightIcon,
+  FolderIcon,
 } from "@heroicons/react/24/outline";
 
 function classNames(...classes: string[]) {
@@ -87,6 +88,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   // single items before & after dropdowns
   const topItem = { name: "Dashboard", path: "/educator/dashboard", icon: HomeIcon };
   const bottomItems = [
+    { name: "Digital Portfolio", path: "/educator/digital-portfolio", icon: FolderIcon },
     { name: "Analytics", path: "/educator/analytics", icon: ChartBarIcon },
     { name: "Reports", path: "/educator/reports", icon: DocumentChartBarIcon },
     { name: "Media Manager", path: "/educator/media", icon: PhotoIcon },

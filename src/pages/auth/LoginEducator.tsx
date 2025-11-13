@@ -11,7 +11,9 @@ import {
   Users,
   Star,
 } from "lucide-react";
-import educatorIllustration from "../../assets/images/auth/Recruiter-illustration.png"; // ✅ replace with your educator image path
+import { supabase } from "../../lib/supabaseClient";
+import { useAuth } from "../../context/AuthContext";
+import educatorIllustration from "../../../public/login/yyu.png";
 import FeatureCard from "./components/ui/FeatureCard";
 
 export default function LoginEducator() {
@@ -22,6 +24,7 @@ export default function LoginEducator() {
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const primary = "#4f46e5"; // Indigo
   const secondary = "#312e81"; // Deep Indigo
@@ -31,16 +34,71 @@ export default function LoginEducator() {
     setError("");
     setLoading(true);
 
-    // Simulated login (replace with API later)
-    setTimeout(() => {
+    try {
+      // Validate email format
       if (!email.includes("@")) {
         setError("Invalid email address");
         setLoading(false);
         return;
       }
-      setLoading(false);
+
+      if (!password || password.length < 6) {
+        setError("Password must be at least 6 characters");
+        setLoading(false);
+        return;
+      }
+
+      // Sign in with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) {
+        setError(authError.message || "Failed to sign in. Please check your credentials.");
+        setLoading(false);
+        return;
+      }
+
+      if (!authData.user) {
+        setError("Authentication failed. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      // Fetch educator profile from school_educators table
+      const { data: educatorData, error: educatorError } = await supabase
+        .from("school_educators")
+        .select("*")
+        .eq("user_id", authData.user.id)
+        .maybeSingle();
+
+      if (educatorError) {
+        console.error("Error fetching educator profile:", educatorError);
+      }
+
+      // Update AuthContext with user data
+      const userData = {
+        id: authData.user.id,
+        email: authData.user.email,
+        role: "educator",
+        full_name: educatorData?.first_name && educatorData?.last_name
+          ? `${educatorData.first_name} ${educatorData.last_name}`
+          : educatorData?.first_name || authData.user.email?.split("@")[0] || "Educator",
+        educator_id: educatorData?.id,
+        school_id: educatorData?.school_id,
+      };
+
+      login(userData);
+
+      // Redirect to educator dashboard
       navigate("/educator/dashboard");
-    }, 1000);
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderForm = (isLg: boolean) => (
@@ -49,9 +107,8 @@ export default function LoginEducator() {
       <div className="space-y-2">
         <label
           htmlFor="email"
-          className={`block text-sm font-medium ${
-            isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
-          }`}
+          className={`block text-sm font-medium ${isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
+            }`}
         >
           Email ID
         </label>
@@ -64,11 +121,10 @@ export default function LoginEducator() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter email ID"
             autoComplete="username"
-            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/70 lg:placeholder:text-gray-400 ${
-              isLg
-                ? "bg-white/90"
-                : "bg-white/20 border-2 border-white/15 backdrop-blur-sm"
-            }`}
+            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/70 lg:placeholder:text-gray-400 ${isLg
+              ? "bg-white/90"
+              : "bg-white/20 border-2 border-white/15 backdrop-blur-sm"
+              }`}
           />
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
         </div>
@@ -78,9 +134,8 @@ export default function LoginEducator() {
       <div className="space-y-2">
         <label
           htmlFor="password"
-          className={`block text-sm font-medium ${
-            isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
-          }`}
+          className={`block text-sm font-medium ${isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
+            }`}
         >
           Password
         </label>
@@ -93,11 +148,10 @@ export default function LoginEducator() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"
             autoComplete="current-password"
-            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/80 lg:placeholder:text-gray-400 ${
-              isLg
-                ? "bg-white/90"
-                : "bg-white/20 border-2 border-white/15 backdrop-blur-sm"
-            }`}
+            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/80 lg:placeholder:text-gray-400 ${isLg
+              ? "bg-white/90"
+              : "bg-white/20 border-2 border-white/15 backdrop-blur-sm"
+              }`}
           />
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
           <button
@@ -123,7 +177,7 @@ export default function LoginEducator() {
             disabled={loading}
             className="w-full py-3 text-white text-sm font-medium rounded-lg shadow-sm transition disabled:opacity-60"
             style={{
-              background: `linear-gradient(90deg, ${primary}, ${secondary})`,
+              background: `linear-gradient(90deg, #f59e0b, #d97706)`,
             }}
           >
             {loading ? "Signing in..." : "Login"}
@@ -134,7 +188,7 @@ export default function LoginEducator() {
             disabled={loading}
             className="w-full py-3 text-white text-sm font-medium rounded-lg shadow-sm transition disabled:opacity-60"
             style={{
-              background: `linear-gradient(90deg, #6366f1, #312e81)`,
+              background: `linear-gradient(90deg, #f59e0b, #d97706)`,
             }}
           >
             {loading ? "Signing in..." : "Login"}
@@ -168,9 +222,9 @@ export default function LoginEducator() {
 
   return (
     <div className="flex items-center lg:py-10 bg-white">
-      <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[700px] overflow-hidden">
+      <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[750px]">
         {/* LEFT SIDE */}
-        <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#4f46e5] to-[#312e81]">
+        <div className="hidden lg:flex relative p-10  pb-0 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#f1c744] to-[#b8860b] overflow-visible">
           <div className="relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold leading-tight">
               Empower Learning. Guide Students to Success.
@@ -180,11 +234,16 @@ export default function LoginEducator() {
             </p>
           </div>
 
-          <div className="relative z-10 flex justify-start items-end h-full mt-12">
+          <div className="relative z-10 flex justify-start items-end h-full">
             <img
               src={educatorIllustration}
               alt="Educator illustration"
-              className="w-80 lg:w-[24rem] object-contain drop-shadow-xl -ml-10"
+              className="w-96 lg:w-[30rem] xl:w-[34rem] object-contain drop-shadow-xl "
+              style={{
+                alignSelf: 'flex-end',
+                marginBottom: '0px',
+                transform: 'translateY(0px)'
+              }}
             />
 
             <motion.div

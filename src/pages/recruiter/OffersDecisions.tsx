@@ -23,6 +23,7 @@ import {
 import { useOffers, Offer } from '../../hooks/useOffers.ts';
 import OfferAdvancedFilters, { OfferFilters, OfferSortOptions } from '../../components/Recruiter/filters/OfferAdvancedFilters';
 import OfferSortButton from '../../components/Recruiter/filters/OfferSortButton';
+
 const Toast = ({
   show,
   message,
@@ -106,6 +107,11 @@ const OfferDetailsDrawer = ({
   const isExpired = () => new Date(offer.expiry_date) < new Date();
 
   const getStatusClasses = () => {
+    // Check if expired first
+    if (isExpired() && offer.status === 'pending') {
+      return "bg-gray-200 text-gray-800";
+    }
+    
     switch (offer.status) {
       case "pending":
         return "bg-yellow-100 text-yellow-800";
@@ -120,6 +126,13 @@ const OfferDetailsDrawer = ({
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const getDisplayStatus = () => {
+    if (isExpired() && offer.status === 'pending') {
+      return 'expired';
+    }
+    return offer.status;
   };
 
   return (
@@ -222,7 +235,7 @@ const OfferDetailsDrawer = ({
               <span
                 className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusClasses()}`}
               >
-                {offer.status}
+                {getDisplayStatus()}
               </span>
             </div>
 
@@ -254,7 +267,7 @@ const OfferDetailsDrawer = ({
               </span>
             </div>
 
-            {isExpiring() && (
+            {isExpiring() && !isExpired() && (
               <p className="text-xs bg-yellow-100 text-yellow-800 px-3 py-2 rounded-md">
                 ⚠️ This offer will expire soon
               </p>
@@ -878,7 +891,7 @@ const getStatusColor = (status: string) => {
     case 'rejected':
       return 'bg-red-100 text-red-800';
     case 'expired':
-      return 'bg-gray-100 text-gray-800';
+      return 'bg-red-100 text-red-800';
     case 'withdrawn':
       return 'bg-orange-100 text-orange-800';
     default:
@@ -1158,13 +1171,16 @@ const OfferCard = ({
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
+  // Determine display status (expired overrides pending)
+  const displayStatus = isExpired() && offer.status === 'pending' ? 'expired' : offer.status;
+
   return (
     <div
       className={`
         flex flex-col justify-between h-full
         bg-white rounded-xl border shadow-sm 
         hover:shadow-lg transition-shadow duration-200
-        ${isExpiring() ? "border-yellow-300 bg-yellow-50" : ""}
+        ${isExpiring() && !isExpired() ? "border-yellow-300 bg-yellow-50" : ""}
         ${isExpired() ? "border-gray-300 bg-gray-50" : ""}
       `}
     >
@@ -1181,17 +1197,18 @@ const OfferCard = ({
         <div className="flex flex-col items-end">
           <span
             className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium shadow-sm ${getStatusColor(
-              offer.status
+              displayStatus
             )}`}
           >
-            {getStatusIcon(offer.status)}
-            <span className="ml-1 capitalize">{offer.status}</span>
+            {getStatusIcon(displayStatus)}
+            <span className="ml-1 capitalize">{displayStatus}</span>
           </span>
-          {isExpiring() && (
+          {isExpiring() && !isExpired() && (
             <span className="mt-1 text-xs text-yellow-700 font-medium">
               Expires in {getDaysUntilExpiry()} day(s)
             </span>
           )}
+          
         </div>
       </div>
 
@@ -1216,8 +1233,13 @@ const OfferCard = ({
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Expires:</span>
           <span
-            className={`${isExpiring() ? "text-yellow-700 font-medium" : "text-gray-900"
-              }`}
+            className={`${
+              isExpired() 
+                ? "text-red-700 font-medium" 
+                : isExpiring() 
+                ? "text-yellow-700 font-medium" 
+                : "text-gray-900"
+            }`}
           >
             {new Date(offer.expiry_date).toLocaleDateString()}
           </span>
@@ -1271,7 +1293,7 @@ const OfferCard = ({
             View
           </button>
 
-          {offer.status === "pending" && !isExpired() && (
+          {displayStatus === "pending" && !isExpired() && (
             <button
               onClick={() => onExtend(offer)}
               className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 transition"
@@ -1281,7 +1303,7 @@ const OfferCard = ({
             </button>
           )}
 
-          {offer.status === "pending" && (
+          {displayStatus === "pending" && !isExpired() && (
             <button
               onClick={() => onWithdraw(offer)}
               className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 transition"
@@ -1317,6 +1339,21 @@ const OffersDecisions = () => {
     extendOfferExpiry,
     refreshOffers
   } = useOffers(filters, sort);
+
+  // Process offers to automatically detect expired status
+  const processedOffers = useMemo(() => {
+    const now = new Date();
+    return offers.map(offer => {
+      const isExpiredNow = new Date(offer.expiry_date) < now;
+      
+      // If offer is pending but has expired, treat it as expired for display
+      if (offer.status === 'pending' && isExpiredNow) {
+        return { ...offer, displayStatus: 'expired' as const };
+      }
+      
+      return { ...offer, displayStatus: offer.status };
+    });
+  }, [offers]);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -1391,8 +1428,6 @@ const OffersDecisions = () => {
     setShowExtendModal(true);
   };
 
-  // Accept/Reject functionality removed — use Withdraw/Extend instead
-
   const confirmExtend = async (days: number) => {
     if (selectedOffer) {
       const result = await extendOfferExpiry(selectedOffer.id, days);
@@ -1406,28 +1441,38 @@ const OffersDecisions = () => {
     }
   };
 
-  const filteredOffers = filterStatus === 'all'
-    ? offers
-    : offers.filter(offer => offer.status === filterStatus);
+  // Filter offers based on display status (including auto-expired)
+  const filteredOffers = useMemo(() => {
+    if (filterStatus === 'all') {
+      return processedOffers;
+    }
+    return processedOffers.filter(offer => {
+      const now = new Date();
+      const isExpiredNow = new Date(offer.expiry_date) < now;
+      const effectiveStatus = (offer.status === 'pending' && isExpiredNow) ? 'expired' : offer.status;
+      return effectiveStatus === filterStatus;
+    });
+  }, [processedOffers, filterStatus]);
+
   // Pagination calculations
-const totalPages = Math.ceil(filteredOffers.length / itemsPerPage);
-const startIndex = (currentPage - 1) * itemsPerPage;
-const endIndex = startIndex + itemsPerPage;
-const currentOffers = filteredOffers.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(filteredOffers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentOffers = filteredOffers.slice(startIndex, endIndex);
 
-useEffect(() => {
-  setCurrentPage(1);
-}, [filterStatus]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus]);
 
-const handlePageChange = (page: number) => {
-  setCurrentPage(page);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-};
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-const handleItemsPerPageChange = (value: number) => {
-  setItemsPerPage(value);
-  setCurrentPage(1);
-};
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(1);
+  };
 
   const acceptanceRate = stats.acceptanceRate;
   const avgTimeToOffer = offers.filter(o => o.status === 'accepted').length > 0
@@ -1618,130 +1663,131 @@ const handleItemsPerPageChange = (value: number) => {
         </div>
       </div>
 
-     {/* Filters */}
-<div className="mb-6">
-  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div className="flex items-center flex-wrap gap-2">
-      <span className="text-sm font-medium text-gray-700">Filter by status:</span>
-      {[
-        { key: 'all', label: 'All Offers' },
-        { key: 'pending', label: 'Pending' },
-        { key: 'accepted', label: 'Accepted' },
-        { key: 'rejected', label: 'Rejected' },
-        { key: 'expired', label: 'Expired' },
-        { key: 'withdrawn', label: 'Withdrawn' }
-      ].map(filter => (
-        <button
-          key={filter.key}
-          onClick={() => setFilterStatus(filter.key)}
-          className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-            filterStatus === filter.key
-              ? 'bg-primary-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          {filter.label}
-        </button>
-      ))}
-    </div>
-    
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-gray-700">Show:</span>
-      <select
-        value={itemsPerPage}
-        onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-        className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-      >
-        <option value={3}>3 per page</option>
-        <option value={6}>6 per page</option>
-        <option value={12}>12 per page</option>
-        <option value={24}>24 per page</option>
-      </select>
-    </div>
-  </div>
-</div>
-
-{/* Offers Grid */}
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-  {currentOffers.map(offer => (
-    <OfferCard
-      key={offer.id}
-      offer={offer}
-      onViewDetails={(offer: Offer) => {
-        setSelectedOffer(offer);
-        setShowDetailsDrawer(true);
-      }}
-      onWithdraw={handleWithdrawOffer}
-      onExtend={handleExtendOffer}
-    />
-  ))}
-</div>
-
-{/* Pagination */}
-{filteredOffers.length > 0 && totalPages > 1 && (
-  <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-lg border border-gray-200">
-    <div className="text-sm text-gray-700">
-      Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-      <span className="font-medium">{Math.min(endIndex, filteredOffers.length)}</span> of{' '}
-      <span className="font-medium">{filteredOffers.length}</span> offers
-    </div>
-
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => handlePageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        className="p-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        <ChevronLeftIcon className="h-5 w-5" />
-      </button>
-
-      <div className="flex items-center gap-1">
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-          const showPage =
-            page === 1 ||
-            page === totalPages ||
-            (page >= currentPage - 1 && page <= currentPage + 1);
-
-          const showEllipsis =
-            (page === 2 && currentPage > 3) ||
-            (page === totalPages - 1 && currentPage < totalPages - 2);
-
-          if (showEllipsis) {
-            return (
-              <span key={page} className="px-2 text-gray-500">
-                ...
-              </span>
-            );
-          }
-
-          if (!showPage) return null;
-
-          return (
-            <button
-              key={page}
-              onClick={() => handlePageChange(page)}
-              className={`min-w-[40px] h-10 rounded-lg text-sm font-medium transition-colors ${
-                currentPage === page
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-100 border border-gray-300'
-              }`}
+      {/* Filters */}
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center flex-wrap gap-2">
+            <span className="text-sm font-medium text-gray-700">Filter by status:</span>
+            {[
+              { key: 'all', label: 'All Offers' },
+              { key: 'pending', label: 'Pending' },
+              { key: 'accepted', label: 'Accepted' },
+              { key: 'rejected', label: 'Rejected' },
+              { key: 'expired', label: 'Expired' },
+              { key: 'withdrawn', label: 'Withdrawn' }
+            ].map(filter => (
+              <button
+                key={filter.key}
+                onClick={() => setFilterStatus(filter.key)}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  filterStatus === filter.key
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-700">Show:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              {page}
-            </button>
-          );
-        })}
+              <option value={3}>3 per page</option>
+              <option value={6}>6 per page</option>
+              <option value={12}>12 per page</option>
+              <option value={24}>24 per page</option>
+            </select>
+          </div>
+        </div>
       </div>
 
-      <button
-        onClick={() => handlePageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className="p-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        <ChevronRightIcon className="h-5 w-5" />
-      </button>
-    </div>
-  </div>
-)}
+      {/* Offers Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {currentOffers.map(offer => (
+          <OfferCard
+            key={offer.id}
+            offer={offer}
+            onViewDetails={(offer: Offer) => {
+              setSelectedOffer(offer);
+              setShowDetailsDrawer(true);
+            }}
+            onWithdraw={handleWithdrawOffer}
+            onExtend={handleExtendOffer}
+          />
+        ))}
+      </div>
+
+      {/* Pagination */}
+      {filteredOffers.length > 0 && totalPages > 1 && (
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-lg border border-gray-200">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+            <span className="font-medium">{Math.min(endIndex, filteredOffers.length)}</span> of{' '}
+            <span className="font-medium">{filteredOffers.length}</span> offers
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="p-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeftIcon className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                const showPage =
+                  page === 1 ||
+                  page === totalPages ||
+                  (page >= currentPage - 1 && page <= currentPage + 1);
+
+                const showEllipsis =
+                  (page === 2 && currentPage > 3) ||
+                  (page === totalPages - 1 && currentPage < totalPages - 2);
+
+                if (showEllipsis) {
+                  return (
+                    <span key={page} className="px-2 text-gray-500">
+                      ...
+                    </span>
+                  );
+                }
+
+                if (!showPage) return null;
+
+                return (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`min-w-[40px] h-10 rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === page
+                        ? 'bg-primary-600 text-white'
+                        : 'text-gray-700 hover:bg-gray-100 border border-gray-300'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="p-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRightIcon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Create Offer Modal */}
       <CreateOfferModal
         isOpen={showCreateModal}
