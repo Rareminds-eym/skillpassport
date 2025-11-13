@@ -102,6 +102,13 @@ const Assignments = () => {
   const [showStatusToast, setShowStatusToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showQuickTip, setShowQuickTip] = useState(true);
+  // Add state for submission modal
+const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+const [submissionData, setSubmissionData] = useState({
+  submission_type: 'text',
+  submission_content: '',
+  submission_url: ''
+});
 
   // Fetch assignments from database
   useEffect(() => {
