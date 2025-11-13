@@ -29,11 +29,18 @@ interface Opportunity {
   id: string;
   job_title: string;
   title: string;
+  company_name: string; 
+  company_logo?: string;
   department: string;
   location: string;
+  mode?: 'Remote' | 'On-site' | 'Hybrid';
   employment_type: 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
   experience_level: 'Entry' | 'Mid' | 'Senior' | 'Lead';
   salary_range_min?: number;
+  experience_required?: string;  
+  skills_required?: string[];  
+  deadline?: string;  
+  benefits?: string[];
   salary_range_max?: number;
   status: 'draft' | 'open' | 'closed' | 'on_hold';
   posted_date: string;
@@ -246,36 +253,42 @@ const Requisitions = () => {
   };
 
   const createRequisition = async (requisitionData: any): Promise<Opportunity> => {
-    const { data, error } = await supabase
-      .from('opportunities')
-      .insert({
-        title: requisitionData.job_title,
-        job_title: requisitionData.job_title,
-        company_name: 'Company Name',
-        department: requisitionData.department,
-        location: requisitionData.location,
-        employment_type: requisitionData.employment_type,
-        experience_level: requisitionData.experience_level,
-        salary_range_min: requisitionData.salary_range_min,
-        salary_range_max: requisitionData.salary_range_max,
-        status: requisitionData.status,
-        description: requisitionData.description,
-        requirements: requisitionData.requirements,
-        responsibilities: requisitionData.responsibilities,
-        applications_count: 0,
-        messages_count: 0,
-        views_count: 0,
-        created_by: user?.id,
-        posted_date: new Date().toISOString(),
-        is_active: requisitionData.status === 'open',
-        recruiter_id: requisitionData.recruiter_id
-      })
-      .select()
-      .single();
+  const { data, error } = await supabase
+    .from('opportunities')
+    .insert({
+      title: requisitionData.job_title,
+      job_title: requisitionData.job_title,
+      company_name: requisitionData.company_name,  // MODIFY THIS - use actual value
+      company_logo: requisitionData.company_logo,  // ADD THIS
+      mode: requisitionData.mode,  // ADD THIS
+      department: requisitionData.department,
+      location: requisitionData.location,
+      employment_type: requisitionData.employment_type,
+      experience_level: requisitionData.experience_level,
+      experience_required: requisitionData.experience_required,  // ADD THIS
+      skills_required: requisitionData.skills_required,  // ADD THIS
+      deadline: requisitionData.deadline,  // ADD THIS
+      benefits: requisitionData.benefits,  // ADD THIS
+      salary_range_min: requisitionData.salary_range_min,
+      salary_range_max: requisitionData.salary_range_max,
+      status: requisitionData.status,
+      description: requisitionData.description,
+      requirements: requisitionData.requirements,
+      responsibilities: requisitionData.responsibilities,
+      applications_count: 0,
+      messages_count: 0,
+      views_count: 0,
+      created_by: user?.id,
+      posted_date: new Date().toISOString(),
+      is_active: requisitionData.status === 'open',
+      recruiter_id: requisitionData.recruiter_id
+    })
+    .select()
+    .single();
 
-    if (error) throw error;
-    return data;
-  };
+  if (error) throw error;
+  return data;
+};
 
   const updateRequisition = async (id: string, updates: any): Promise<Opportunity> => {
     const { data, error } = await supabase
@@ -816,10 +829,26 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
       <div className="p-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
+  <div className="flex items-start space-x-3 flex-1">
+    {/* ADD COMPANY LOGO */}
+    {requisition.company_logo && (
+      <img 
+        src={requisition.company_logo} 
+        alt={requisition.company_name}
+        className="h-12 w-12 rounded-lg object-contain border border-gray-200"
+        onError={(e) => {
+          e.currentTarget.style.display = 'none';
+        }}
+      />
+    )}
+    
+    <div className="flex-1 min-w-0">
             <h3 className="text-lg font-semibold text-gray-900 mb-1">
               {requisition.job_title}
             </h3>
+            <p className="text-sm text-gray-600 font-medium mb-2 truncate">
+              {requisition.company_name}
+            </p>
             <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
               <span className="inline-flex items-center">
                 <BriefcaseIcon className="h-4 w-4 mr-1" />
@@ -830,6 +859,16 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
                 <MapPinIcon className="h-4 w-4 mr-1" />
                 {requisition.location}
               </span>
+              {/* ADD MODE BADGE */}
+              {requisition.mode && (
+                <>
+                  <span>•</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {requisition.mode.charAt(0).toUpperCase() + requisition.mode.slice(1)}
+                  </span>
+                </>
+              )}
+              </div>
             </div>
           </div>
           
@@ -927,10 +966,17 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
 const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuccess }: any) => {
   const [formData, setFormData] = useState({
     job_title: '',
+    company_name: '',
+    company_logo: '',
     department: '',
     location: '',
+    mode: 'On-site',
     employment_type: 'Full-time',
     experience_level: 'Mid',
+    experience_required: '',  
+    skills_required: '',
+    deadline: '',  
+    benefits: '',
     salary_range_min: '',
     salary_range_max: '',
     description: '',
@@ -1000,6 +1046,77 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Company Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.company_name}
+                  onChange={(e) => setFormData({...formData, company_name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="e.g., Tech Corp Inc."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Company Logo URL
+                </label>
+                <input
+                  type="url"
+                  value={formData.company_logo}
+                  onChange={(e) => setFormData({...formData, company_logo: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="https://example.com/logo.png"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Work Mode <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.mode}
+                  onChange={(e) => setFormData({...formData, mode: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="on-site">On-site</option>
+                  <option value="remote">Remote</option>
+                  <option value="hybrid">Hybrid</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="open">Open</option>
+                  <option value="on_hold">On Hold</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Application Deadline
+                </label>
+                <input
+                  type="date"
+                  value={formData.deadline}
+                  onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Location <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1046,24 +1163,20 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                 </select>
               </div>
 
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
+                  Experience Required
                 </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                <input
+                  type="text"
+                  value={formData.experience_required}
+                  onChange={(e) => setFormData({...formData, experience_required: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="open">Open</option>
-                  <option value="on_hold">On Hold</option>
-                  <option value="closed">Closed</option>
-                </select>
+                  placeholder="e.g., 3-5 years"
+                />
               </div>
-            </div>
-
-            <div>
+              <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Recruiter <span className="text-red-500">*</span>
               </label>
@@ -1080,6 +1193,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                   </option>
                 ))}
               </select>
+            </div>
             </div>
 
             <div className="grid grid-cols-2 gap-6">
@@ -1108,6 +1222,33 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                   placeholder="e.g., 2500000"
                 />
               </div>
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Skills Required <span className="text-xs text-gray-500">(comma-separated)</span>
+              </label>
+              <input
+                type="text"
+                value={formData.skills_required}
+                onChange={(e) => setFormData({...formData, skills_required: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="e.g., React, Node.js, TypeScript, SQL"
+              />
+            </div>
+
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Benefits <span className="text-xs text-gray-500">(one per line)</span>
+              </label>
+              <textarea
+                rows={4}
+                value={formData.benefits}
+                onChange={(e) => setFormData({...formData, benefits: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="Health insurance&#10;Remote work&#10;Learning budget"
+              />
             </div>
 
             <div>
@@ -1175,10 +1316,17 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
 const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: any) => {
   const [formData, setFormData] = useState({
     job_title: requisition.job_title,
+    company_name: requisition.company_name,  // ADD THIS
+    company_logo: requisition.company_logo,
     department: requisition.department,
     location: requisition.location,
+    mode: requisition.mode || 'on-site',  // ADD THIS with default
     employment_type: requisition.employment_type,
     experience_level: requisition.experience_level,
+    experience_required: requisition.experience_required || '',  
+    skills_required: requisition.skills_required?.join(', ') || '',  
+    deadline: requisition.deadline || '',  
+    benefits: requisition.benefits?.join('\n') || '',  
     salary_range_min: requisition.salary_range_min?.toString() || '',
     salary_range_max: requisition.salary_range_max?.toString() || '',
     description: requisition.description,
@@ -1193,6 +1341,15 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
     try {
       await onSuccess({
         ...formData,
+        company_name: formData.company_name,  
+        company_logo: formData.company_logo || null,  
+        mode: formData.mode || 'on-site',  
+        experience_required: formData.experience_required || null,  
+        skills_required: formData.skills_required 
+          ? formData.skills_required.split(',').map(s => s.trim()).filter(s => s)
+          : [],  
+        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,  
+        benefits: formData.benefits.split('\n').filter(b => b.trim()),  
         salary_range_min: formData.salary_range_min ? parseInt(formData.salary_range_min) : undefined,
         salary_range_max: formData.salary_range_max ? parseInt(formData.salary_range_max) : undefined,
         requirements: formData.requirements.split('\n').filter(r => r.trim()),
