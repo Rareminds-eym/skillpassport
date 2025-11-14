@@ -295,6 +295,96 @@ class RecruiterInsightsService {
   }
 
   /**
+   * Match certificates to job role intelligently
+   */
+  private matchCertificatesToRole(
+    certificates: Array<{ title: string; issuer?: string; level?: string }>,
+    jobTitle: string,
+    requiredSkills: string[]
+  ): Array<{ title: string; issuer?: string; level?: string }> {
+    if (!certificates || certificates.length === 0) return [];
+
+    const jobTitleLower = jobTitle.toLowerCase();
+    const skillsLower = requiredSkills.map(s => s.toLowerCase());
+
+    // Define role-specific certificate keywords
+    const roleCertificateMap: { [key: string]: string[] } = {
+      // Tech roles
+      'software': ['programming', 'developer', 'software', 'coding', 'computer science', 'web development', 'full stack', 'backend', 'frontend'],
+      'engineer': ['engineering', 'technical', 'certified engineer', 'professional engineer'],
+      'data': ['data science', 'data analysis', 'analytics', 'big data', 'machine learning', 'ai', 'tableau', 'power bi', 'sql', 'python'],
+      'cloud': ['aws', 'azure', 'google cloud', 'gcp', 'cloud practitioner', 'cloud architect', 'cloud developer', 'devops', 'kubernetes', 'docker'],
+      'security': ['security', 'cybersecurity', 'cissp', 'ceh', 'ethical hacking', 'penetration testing', 'security+'],
+      
+      // Design roles
+      'ux': ['ux', 'user experience', 'user research', 'usability', 'interaction design', 'ux design', 'google ux', 'nielsen norman'],
+      'ui': ['ui', 'user interface', 'interface design', 'visual design', 'figma', 'sketch', 'adobe xd'],
+      'design': ['design', 'graphic design', 'creative', 'adobe', 'photoshop', 'illustrator', 'branding'],
+      
+      // Business roles
+      'product': [
+        'product management', 'product owner', 'product manager', 
+        'certified product manager', 'pragmatic marketing',
+        'product-led', 'product strategy', 'product roadmap',
+        'google product management', 'meta product management'
+      ],
+      'project': ['project management', 'pmp', 'prince2', 'agile', 'scrum master', 'certified scrum', 'pmi'],
+      'business': ['business analysis', 'mba', 'business strategy', 'financial modeling', 'business intelligence'],
+      'marketing': ['marketing', 'digital marketing', 'google ads', 'facebook ads', 'seo', 'content marketing', 'hubspot', 'hootsuite'],
+      'sales': ['sales', 'salesforce', 'crm', 'sales training', 'negotiation'],
+      
+      // Consulting
+      'consultant': ['consulting', 'strategy', 'business transformation', 'change management', 'six sigma', 'lean'],
+      'management': ['management', 'leadership', 'mba', 'executive', 'organizational', 'people management'],
+      
+      // Finance
+      'finance': ['cfa', 'accounting', 'cpa', 'financial', 'chartered', 'bookkeeping', 'quickbooks'],
+      'analyst': ['analyst', 'analysis', 'financial modeling', 'excel', 'business intelligence'],
+      
+      // Other
+      'hr': ['human resources', 'hr', 'shrm', 'phr', 'talent management', 'recruitment'],
+      'legal': ['legal', 'law', 'attorney', 'paralegal', 'compliance'],
+      'healthcare': ['medical', 'healthcare', 'nursing', 'clinical', 'health'],
+    };
+
+    // Match certificates
+    const matched = certificates.filter(cert => {
+      const certTitleLower = cert.title.toLowerCase();
+      const certIssuerLower = (cert.issuer || '').toLowerCase();
+      const certText = `${certTitleLower} ${certIssuerLower}`;
+
+      // Method 1: Direct match with required skills
+      const matchesSkills = skillsLower.some(skill => 
+        certText.includes(skill) || skill.includes(certTitleLower)
+      );
+
+      if (matchesSkills) return true;
+
+      // Method 2: Match with job role keywords
+      for (const [roleKey, keywords] of Object.entries(roleCertificateMap)) {
+        if (jobTitleLower.includes(roleKey)) {
+          // Check if certificate matches any keyword for this role
+          const matchesRoleKeywords = keywords.some(keyword => certText.includes(keyword));
+          if (matchesRoleKeywords) return true;
+        }
+      }
+
+      // Method 3: Universal high-value certificates (STRICT)
+      // Only soft skills and methodologies - NOT platform names
+      const universalMethodologies = [
+        'agile', 'scrum master', 'pmp', 'six sigma', 'lean',
+        'leadership', 'communication', 'problem solving',
+        'time management', 'emotional intelligence',
+        'project management professional'
+      ];
+
+      return universalMethodologies.some(keyword => certText.includes(keyword));
+    });
+
+    return matched;
+  }
+
+  /**
    * Calculate comprehensive profile score
    */
   private calculateProfileScore(profile: {
@@ -347,18 +437,282 @@ class RecruiterInsightsService {
    */
   private generateRecommendation(matchScore: number, missingCount: number): string {
     if (matchScore >= 85) {
-      return '🌟 Excellent match - Fast-track to interview';
+      return 'Excellent match - Fast-track to interview';
     } else if (matchScore >= 70) {
-      return '✅ Strong candidate - Recommend screening call';
+      return 'Strong candidate - Recommend screening call';
     } else if (matchScore >= 55) {
       if (missingCount <= 2) {
-        return '💡 Good potential - Trainable gaps';
+        return 'Good potential - Trainable gaps';
       }
-      return '⚡ Moderate fit - Consider for junior role';
+      return 'Moderate fit - Consider for junior role';
     } else if (matchScore >= 40) {
-      return '⚠️ Some alignment - Review for specific strengths';
+      return 'Some alignment - Review for specific strengths';
     } else {
-      return '❌ Low match - Consider alternative roles';
+      return 'Low match - Consider alternative roles';
+    }
+  }
+
+  /**
+   * Analyze applicants and provide AI-powered recommendations
+   */
+  async analyzeApplicantsForRecommendation(applicants: Array<{
+    id: number;
+    student_id: string;
+    opportunity_id: number;
+    pipeline_stage?: string;
+    student: {
+      id: string;
+      name: string;
+      email: string;
+      university?: string;
+      cgpa?: string;
+      branch_field?: string;
+    };
+    opportunity: {
+      id: number;
+      job_title: string;
+      skills_required?: any;
+    };
+  }>): Promise<{
+    topRecommendations: Array<{
+      applicantId: number;
+      studentName: string;
+      positionTitle: string;
+      matchScore: number;
+      confidence: 'high' | 'medium' | 'low';
+      reasons: string[];
+      nextAction: string;
+      suggestedStage: string;
+      matchedSkills: string[];
+      missingSkills: string[];
+    }>;
+    summary: {
+      totalAnalyzed: number;
+      highPotential: number;
+      mediumPotential: number;
+      lowPotential: number;
+    };
+  }> {
+    try {
+      if (!applicants || applicants.length === 0) {
+        return {
+          topRecommendations: [],
+          summary: {
+            totalAnalyzed: 0,
+            highPotential: 0,
+            mediumPotential: 0,
+            lowPotential: 0
+          }
+        };
+      }
+
+      // Analyze each applicant
+      const recommendations = await Promise.all(
+        applicants.map(async (applicant) => {
+          try {
+            // Fetch student skills
+            const { data: skills } = await supabase
+              .from('skills')
+              .select('name, level')
+              .eq('student_id', applicant.student_id)
+              .eq('enabled', true);
+
+            // Fetch training count
+            const { count: trainingCount } = await supabase
+              .from('trainings')
+              .select('id', { count: 'exact', head: true })
+              .eq('student_id', applicant.student_id);
+
+            // Fetch certificates with details
+            const { data: certificates } = await supabase
+              .from('certificates')
+              .select('title, issuer, level')
+              .eq('student_id', applicant.student_id)
+              .eq('enabled', true);
+
+            // Get job requirements
+            const requiredSkills = Array.isArray(applicant.opportunity.skills_required)
+              ? applicant.opportunity.skills_required
+              : [];
+            
+            // Analyze certificate relevance to job role
+            const relevantCertificates = this.matchCertificatesToRole(
+              certificates || [],
+              applicant.opportunity.job_title,
+              requiredSkills
+            );
+
+            const candidateSkills = skills?.map(s => s.name) || [];
+            const certCount = certificates?.length || 0;
+            const relevantCertCount = relevantCertificates.length;
+            const candidateSkillsLower = candidateSkills.map(s => s.toLowerCase().trim());
+            const requiredSkillsLower = requiredSkills.map((s: string) => s.toLowerCase().trim());
+
+            // Normalize and deduplicate skills (e.g., "Testing" and "Test" should be one)
+            const normalizeSkill = (skill: string) => {
+              const normalized = skill.toLowerCase().trim();
+              // Remove common suffixes for matching
+              return normalized.replace(/ing$/i, '').replace(/ed$/i, '');
+            };
+
+            // Calculate matched skills with proper deduplication
+            const matchedSkillsSet = new Set<string>();
+            const matchedSkills: string[] = [];
+            
+            candidateSkills.forEach(skill => {
+              const normalizedCandidate = normalizeSkill(skill);
+              const hasMatch = requiredSkillsLower.some(req => {
+                const normalizedRequired = normalizeSkill(req);
+                return normalizedCandidate.includes(normalizedRequired) || 
+                       normalizedRequired.includes(normalizedCandidate) ||
+                       skill.toLowerCase().includes(req) || 
+                       req.includes(skill.toLowerCase());
+              });
+              
+              if (hasMatch && !matchedSkillsSet.has(normalizedCandidate)) {
+                matchedSkills.push(skill);
+                matchedSkillsSet.add(normalizedCandidate);
+              }
+            });
+
+            const missingSkills = requiredSkills.filter((req: string) => {
+              const normalizedRequired = normalizeSkill(req);
+              return !candidateSkillsLower.some(cs => {
+                const normalizedCandidate = normalizeSkill(cs);
+                return normalizedCandidate.includes(normalizedRequired) || 
+                       normalizedRequired.includes(normalizedCandidate) ||
+                       cs.includes(req.toLowerCase()) || 
+                       req.toLowerCase().includes(cs);
+              });
+            });
+
+            // Calculate profile completeness
+            const profileScore = this.calculateProfileScore({
+              hasName: !!applicant.student.name,
+              skillCount: candidateSkills.length,
+              trainingCount: trainingCount || 0,
+              certCount: certCount,
+              hasCGPA: !!applicant.student.cgpa,
+              hasResume: false,
+              hasLocation: false
+            });
+
+            // Calculate match score
+            const skillMatchPercent = requiredSkills.length > 0
+              ? (matchedSkills.length / requiredSkills.length) * 100
+              : 50;
+            const skillScore = Math.min(skillMatchPercent * 0.6, 60);
+            const profileBonus = profileScore * 0.2;
+            const trainingBonus = Math.min((trainingCount || 0) * 3, 15);
+            // Only count RELEVANT certificates (5 points each, max 10)
+            const certBonus = Math.min(relevantCertCount * 5, 10);
+            
+            const matchScore = Math.min(
+              Math.round(skillScore + profileBonus + trainingBonus + certBonus),
+              100
+            );
+
+            // Build reasons
+            const reasons: string[] = [];
+            if (matchedSkills.length > 0) {
+              reasons.push(`${matchedSkills.length}/${requiredSkills.length} required skills matched`);
+            }
+            if ((trainingCount || 0) >= 2) {
+              reasons.push(`${trainingCount} training programs completed`);
+            }
+            // Show relevant certificates with names
+            if (relevantCertCount >= 1) {
+              const certNames = relevantCertificates.slice(0, 2).map(c => c.title).join(', ');
+              const remaining = relevantCertCount > 2 ? ` +${relevantCertCount - 2} more` : '';
+              reasons.push(`Relevant certifications: ${certNames}${remaining}`);
+            } else if (certCount >= 1) {
+              reasons.push(`${certCount} certifications (not role-specific)`);
+            }
+            const cgpa = parseFloat(applicant.student.cgpa || '0');
+            if (cgpa >= 7.5) {
+              reasons.push(`Strong academic performance (${cgpa} CGPA)`);
+            }
+            if (profileScore >= 70) {
+              reasons.push(`Complete profile (${profileScore}% completeness)`);
+            }
+            // Only show university if it looks like a valid institution name
+            if (applicant.student.university && 
+                applicant.student.university.length < 100 &&
+                !applicant.student.university.toLowerCase().includes('botany') &&
+                !applicant.student.university.toLowerCase().includes('zoology')) {
+              reasons.push(`From ${applicant.student.university}`);
+            }
+
+            // Determine confidence and next action
+            let confidence: 'high' | 'medium' | 'low';
+            let nextAction: string;
+            let suggestedStage: string;
+
+            if (matchScore >= 75) {
+              confidence = 'high';
+              nextAction = 'Move to Interview - Strong alignment with requirements';
+              suggestedStage = applicant.pipeline_stage === 'sourced' ? 'screened' : 'interview_1';
+            } else if (matchScore >= 55) {
+              confidence = 'medium';
+              nextAction = 'Schedule screening call - Good potential with trainable gaps';
+              suggestedStage = 'screened';
+            } else if (matchScore >= 40) {
+              confidence = 'low';
+              nextAction = 'Review carefully - Significant skill gaps to address';
+              suggestedStage = 'screened';
+            } else {
+              confidence = 'low';
+              nextAction = 'Not recommended - Consider alternative positions or training';
+              suggestedStage = 'screened';
+            }
+
+            return {
+              applicantId: applicant.id,
+              studentName: applicant.student.name,
+              positionTitle: applicant.opportunity.job_title,
+              matchScore,
+              confidence,
+              reasons: reasons.slice(0, 4),
+              nextAction,
+              suggestedStage,
+              matchedSkills,
+              missingSkills
+            };
+          } catch (error) {
+            console.error(`Error analyzing applicant ${applicant.id}:`, error);
+            return null;
+          }
+        })
+      );
+
+      // Filter out null results, apply minimum threshold, and sort by match score
+      const validRecommendations = recommendations
+        .filter(r => r !== null && r!.matchScore > 20) // Only show candidates with greater than 20% match
+        .sort((a, b) => b!.matchScore - a!.matchScore);
+
+      // Calculate summary
+      const summary = {
+        totalAnalyzed: validRecommendations.length,
+        highPotential: validRecommendations.filter(r => r!.confidence === 'high').length,
+        mediumPotential: validRecommendations.filter(r => r!.confidence === 'medium').length,
+        lowPotential: validRecommendations.filter(r => r!.confidence === 'low').length
+      };
+
+      return {
+        topRecommendations: validRecommendations as any,
+        summary
+      };
+    } catch (error) {
+      console.error('Error analyzing applicants:', error);
+      return {
+        topRecommendations: [],
+        summary: {
+          totalAnalyzed: 0,
+          highPotential: 0,
+          mediumPotential: 0,
+          lowPotential: 0
+        }
+      };
     }
   }
 }

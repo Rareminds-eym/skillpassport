@@ -47,6 +47,58 @@ class RecruiterIntelligenceEngine {
   private conversationHistory: Map<string, any[]> = new Map();
 
   /**
+   * Main entry point - Process recruiter query with full intelligence (STREAMING)
+   */
+  async processQueryStream(
+    query: string,
+    recruiterId: string,
+    onChunk: (chunk: string) => void,
+    conversationId?: string
+  ): Promise<RecruiterAIResponse> {
+    try {
+      console.log('🎯 Recruiter AI processing (STREAMING):', query);
+
+      // Step 1: Build recruiter context
+      const recruiterContext = await buildRecruiterContext(recruiterId);
+
+      // Step 2: Get conversation history
+      const history = this.getConversationHistory(conversationId || recruiterId);
+
+      // Step 3: Classify intent
+      const classifiedIntent = await advancedIntentClassifier.classifyIntent(
+        query,
+        history,
+        recruiterContext
+      );
+      const intent = classifiedIntent.primary;
+      console.log('📊 Detected intent:', intent, `(confidence: ${(classifiedIntent.confidence * 100).toFixed(0)}%)`);
+
+      // Step 4: Generate streaming response
+      const response = await this.generateStreamingResponse(
+        query,
+        intent,
+        recruiterContext,
+        history,
+        classifiedIntent,
+        recruiterId,
+        onChunk
+      );
+
+      // Step 5: Store in conversation history
+      this.updateConversationHistory(conversationId || recruiterId, query, response.message || '', intent, classifiedIntent);
+
+      return response;
+    } catch (error) {
+      console.error('❌ Recruiter AI Error:', error);
+      return {
+        success: false,
+        error: 'I encountered an error processing your request. Please try again.',
+        message: 'I apologize, but I encountered an error. Please make sure your OpenAI API key is configured correctly.'
+      };
+    }
+  }
+
+  /**
    * Main entry point - Process recruiter query with full intelligence
    */
   async processQuery(
@@ -126,6 +178,87 @@ class RecruiterIntelligenceEngine {
     }
   }
 
+
+  /**
+   * Generate streaming response (real-time as LLM generates)
+   */
+  private async generateStreamingResponse(
+    query: string,
+    intent: RecruiterIntent,
+    recruiterContext: any,
+    history: any[],
+    classifiedIntent: any,
+    recruiterId: string,
+    onChunk: (chunk: string) => void
+  ): Promise<RecruiterAIResponse> {
+    try {
+      // For structured data queries, don't stream - return immediately
+      const nonStreamingIntents: RecruiterIntent[] = [
+        'candidate-search',
+        'candidate-query',
+        'opportunity-applications',
+        'hiring-recommendations',
+        'hiring-decision',
+        'talent-pool-analytics',
+        'skill-insights'
+      ];
+
+      if (nonStreamingIntents.includes(intent)) {
+        return await this.generateIntelligentResponse(
+          query,
+          intent,
+          recruiterContext,
+          history,
+          classifiedIntent,
+          recruiterId
+        );
+      }
+
+      // For general queries, use streaming AI
+      const prompt = buildGeneralResponsePrompt(query, recruiterContext, history);
+      const client = getOpenAIClient();
+
+      const stream = await client.chat.completions.create({
+        model: DEFAULT_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 800,
+        stream: true
+      });
+
+      let fullMessage = '';
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          fullMessage += content;
+          onChunk(content);
+        }
+      }
+
+      return {
+        success: true,
+        message: fullMessage,
+        interactive: {
+          suggestions: [
+            'Show me top candidates',
+            'Analyze my talent pool',
+            'What skills are most common?'
+          ]
+        }
+      };
+    } catch (error) {
+      console.error('Streaming error:', error);
+      // Fallback to non-streaming
+      return await this.generateIntelligentResponse(
+        query,
+        intent,
+        recruiterContext,
+        history,
+        classifiedIntent,
+        recruiterId
+      );
+    }
+  }
 
   /**
    * Generate intelligent response with appropriate format
@@ -858,6 +991,255 @@ Next Step: [action]
         };
       }
 
+      if (intent === 'job-matching') {
+        console.log('🎯 Finding candidates for open positions...');
+        
+        if (!recruiterId) {
+          return {
+            success: false,
+            message: 'Recruiter ID not found.',
+            error: 'Missing recruiter ID'
+          };
+        }
+        
+        // Parse query to extract specific position name
+        const specificPosition = this.extractPositionName(query);
+        
+        if (specificPosition) {
+          console.log('🎯 Specific position requested:', specificPosition);
+        }
+        
+        // Fetch recruiter's opportunities with optional filtering
+        let opportunitiesQuery = supabase
+          .from('opportunities')
+          .select('id, job_title, company_name, skills_required, description, location, employment_type, experience_required, is_active')
+          .eq('recruiter_id', recruiterId)
+          .eq('is_active', true);
+        
+        // Filter by specific position if mentioned
+        if (specificPosition) {
+          opportunitiesQuery = opportunitiesQuery.ilike('job_title', `%${specificPosition}%`);
+        }
+        
+        const { data: opportunities, error: oppError } = await opportunitiesQuery
+          .order('created_at', { ascending: false })
+          .limit(specificPosition ? 3 : 10);
+        
+        if (oppError) {
+          console.error('Error fetching opportunities:', oppError);
+          return {
+            success: false,
+            message: 'Error fetching your opportunities.',
+            error: oppError.message
+          };
+        }
+        
+        if (!opportunities || opportunities.length === 0) {
+          const message = specificPosition
+            ? `No active "${specificPosition}" position found. Check your job postings.`
+            : 'You don\'t have any active opportunities yet. Create one to start matching candidates!';
+          
+          return {
+            success: true,
+            message,
+            interactive: {
+              suggestions: ['Show all my opportunities', 'Find React developers', 'Show talent pool analytics']
+            }
+          };
+        }
+        
+        // Deduplicate opportunities by job_title (keep only first occurrence of each title)
+        // This handles cases where multiple opportunities have the same title
+        const uniqueOpportunities = opportunities.reduce((acc, opp) => {
+          if (!acc.find(o => o.job_title.toLowerCase() === opp.job_title.toLowerCase())) {
+            acc.push(opp);
+          }
+          return acc;
+        }, [] as typeof opportunities);
+        
+        console.log(`📊 Matching candidates to ${uniqueOpportunities.length} unique position(s)...`);
+        
+        // Use intelligent matching for each opportunity
+        const allMatches = await Promise.all(
+          uniqueOpportunities.map(async (opp) => {
+            const matches = await recruiterInsights.matchCandidatesToOpportunity(opp.id, 5);
+            return {
+              opportunity: opp,
+              matches
+            };
+          })
+        );
+        
+        // Filter out opportunities with no matches
+        const opportunitiesWithMatches = allMatches.filter(om => om.matches.length > 0);
+        const opportunitiesWithoutMatches = allMatches.filter(om => om.matches.length === 0);
+        
+        // Generate hiring recommendation for best candidate
+        let hiringRecommendation = '';
+        if (opportunitiesWithMatches.length > 0 && opportunitiesWithMatches[0].matches.length > 0) {
+          const topMatch = opportunitiesWithMatches[0].matches[0];
+          const position = opportunitiesWithMatches[0].opportunity;
+          
+          hiringRecommendation = `\nRECOMMENDED TO HIRE\n\n`;
+          hiringRecommendation += `Candidate: ${topMatch.candidate.name}\n`;
+          hiringRecommendation += `Position: ${position.job_title}\n`;
+          hiringRecommendation += `Match Score: ${topMatch.match_score}/100\n\n`;
+          hiringRecommendation += `Why this candidate:\n`;
+          
+          const reasons = [];
+          if (topMatch.matched_skills.length > 0) {
+            reasons.push(`- Has ${topMatch.matched_skills.length} required skills: ${topMatch.matched_skills.slice(0, 3).join(', ')}${topMatch.matched_skills.length > 3 ? ' and more' : ''}`);
+          }
+          if (topMatch.candidate.training_count > 0) {
+            reasons.push(`- Completed ${topMatch.candidate.training_count} training program${topMatch.candidate.training_count !== 1 ? 's' : ''}`);
+          }
+          if (topMatch.candidate.experience_count > 0) {
+            reasons.push(`- Has ${topMatch.candidate.experience_count} certificate${topMatch.candidate.experience_count !== 1 ? 's' : ''}`);
+          }
+          if (topMatch.candidate.cgpa && parseFloat(topMatch.candidate.cgpa) >= 7.5) {
+            reasons.push(`- Strong academic record (${topMatch.candidate.cgpa} CGPA)`);
+          }
+          if (topMatch.candidate.institution) {
+            reasons.push(`- From ${topMatch.candidate.institution}`);
+          }
+          if (topMatch.candidate.profile_completeness >= 70) {
+            reasons.push(`- Complete profile (${topMatch.candidate.profile_completeness}%)`);
+          }
+          
+          if (reasons.length > 0) {
+            hiringRecommendation += reasons.join('\n') + '\n';
+          }
+          
+          if (topMatch.missing_skills.length > 0) {
+            hiringRecommendation += `\nGaps to address:\n`;
+            hiringRecommendation += `- Missing: ${topMatch.missing_skills.slice(0, 3).join(', ')}${topMatch.missing_skills.length > 3 ? ' and more' : ''}\n`;
+            if (topMatch.missing_skills.length <= 2) {
+              hiringRecommendation += `- These can be learned through training\n`;
+            }
+          }
+          
+          hiringRecommendation += `\nNext Steps:\n`;
+          if (topMatch.match_score >= 70) {
+            hiringRecommendation += `1. Schedule interview immediately\n`;
+            hiringRecommendation += `2. Discuss role expectations\n`;
+            hiringRecommendation += `3. Make offer if interview goes well\n`;
+          } else {
+            hiringRecommendation += `1. Schedule screening call\n`;
+            hiringRecommendation += `2. Assess skills in detail\n`;
+            hiringRecommendation += `3. Consider training for missing skills\n`;
+          }
+          hiringRecommendation += `\n---\n`;
+        }
+        
+        if (opportunitiesWithMatches.length === 0) {
+          // Build helpful message explaining why no matches
+          const skillsNeeded = opportunities
+            .flatMap(o => (Array.isArray(o.skills_required) ? o.skills_required : []))
+            .filter(Boolean)
+            .slice(0, 8);
+          
+          const message = [
+            `⚠️ **No Matching Candidates Found**`,
+            ``,
+            `Analyzed ${opportunities.length} position${opportunities.length !== 1 ? 's' : ''}:`,
+            ...opportunities.map(o => `• ${o.job_title} at ${o.company_name}`),
+            ``,
+            `**Issue:** No candidates in your talent pool have the required skills.`,
+            ``,
+            skillsNeeded.length > 0
+              ? `**Skills Needed:** ${skillsNeeded.join(', ')}`
+              : `**Note:** Position requirements may be missing or too specific.`,
+            ``,
+            `**Solutions:**`,
+            `1. Search for candidates with these skills`,
+            `2. Broaden your talent pool`,
+            `3. Review and adjust position requirements`
+          ].join('\n');
+          
+          return {
+            success: true,
+            message,
+            data: { opportunities, matches: [] },
+            interactive: {
+              suggestions: [
+                skillsNeeded[0] ? `Find ${skillsNeeded[0]} developers` : 'Search for candidates',
+                'Show all candidates',
+                'Review talent pool analytics'
+              ]
+            }
+          };
+        }
+        
+        // Format results - simplified to avoid string manipulation issues
+        let formattedMatches = '';
+        
+        opportunitiesWithMatches.forEach(({ opportunity, matches }) => {
+          const topMatches = matches.slice(0, 5);
+          
+          formattedMatches += opportunity.job_title + ' at ' + opportunity.company_name + '\n';
+          formattedMatches += 'Location: ' + (opportunity.location || 'Remote/Flexible') + ' Type: ' + (opportunity.employment_type || 'Full-time') + '\n\n';
+          
+          topMatches.forEach((m, i) => {
+            const matchLevel = m.match_score >= 85 ? 'Excellent' : m.match_score >= 70 ? 'Good' : 'Fair';
+            const skillsText = m.matched_skills.slice(0, 4).join(', ');
+            const gapText = m.missing_skills.length > 0 
+              ? ' Gap: ' + m.missing_skills.slice(0, 3).join(', ') + (m.missing_skills.length > 3 ? ' and more' : '')
+              : '';
+            
+            formattedMatches += (i + 1) + '. ' + m.candidate.name + ' - Match ' + m.match_score + '/100 (' + matchLevel + ')\n';
+            formattedMatches += '   Skills: ' + skillsText + (m.matched_skills.length > 4 ? ' and more' : '') + gapText + '\n';
+            formattedMatches += '   ' + m.recommendation + '\n';
+          });
+          
+          formattedMatches += '\n';
+        });
+        
+        // Add summary of positions without matches
+        let noMatchSummary = '';
+        if (opportunitiesWithoutMatches.length > 0) {
+          noMatchSummary = `\n\nNo matches found for:\n${opportunitiesWithoutMatches.map(om => 
+            `- ${om.opportunity.job_title} (Required: ${(Array.isArray(om.opportunity.skills_required) ? om.opportunity.skills_required : []).slice(0, 3).join(', ') || 'No skills specified'})`
+          ).join('\n')}`;
+        }
+        
+        const totalMatches = opportunitiesWithMatches.reduce((sum, om) => sum + om.matches.length, 0);
+        
+        const message = [
+          `Candidate Matching Results`,
+          ``,
+          `Found ${totalMatches} candidate match${totalMatches !== 1 ? 'es' : ''} for ${opportunitiesWithMatches.length} position${opportunitiesWithMatches.length !== 1 ? 's' : ''}`,
+          hiringRecommendation,
+          formattedMatches,
+          noMatchSummary
+        ].filter(Boolean).join('\n');
+        
+        return {
+          success: true,
+          message,
+          data: {
+            opportunities,
+            matches: allMatches,
+            totalMatches
+          },
+          interactive: {
+            metadata: {
+              intentHandled: 'Job Matching',
+              nextSteps: [
+                'Contact top-matched candidates',
+                'Schedule screening calls with 85+ matches',
+                'Review detailed candidate profiles'
+              ],
+              encouragement: totalMatches > 0
+                ? 'Great matches found! Reach out quickly before competitors do!'
+                : 'No matches yet - broaden your search or update position requirements.'
+            },
+            suggestions: specificPosition
+              ? ['Show all my positions', 'Find more candidates', 'Who applied to this job?']
+              : ['Show React developers', 'Find Python candidates', 'Who applied to my jobs?']
+          }
+        };
+      }
+
       if (intent === 'talent-pool-analytics') {
         const analytics = await talentAnalytics.getTalentPoolAnalytics();
         
@@ -1017,6 +1399,32 @@ Next Step: [action]
       console.error('AI generation error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Extract specific position name from query
+   */
+  private extractPositionName(query: string): string | null {
+    // Pattern 1: "for/to [my/the] [position name]"
+    const pattern1 = /(?:for|to)(?:\s+(?:my|the))?\s+([A-Z][a-z]+(?:\/[A-Z][a-z]+)?(?:\s+[A-Z][a-z]+)*(?:\s+(?:role|position|job|opening))?)/;
+    const match1 = query.match(pattern1);
+    
+    if (match1) {
+      let position = match1[1].trim();
+      // Remove trailing "role", "position", "job", "opening" if present
+      position = position.replace(/\s+(role|position|job|opening)$/i, '');
+      return position;
+    }
+    
+    // Pattern 2: "[Position Name] position/role/job"
+    const pattern2 = /([A-Z][a-z]+(?:\/[A-Z][a-z]+)?(?:\s+[A-Z][a-z]+)*)\s+(position|role|job|opening)/;
+    const match2 = query.match(pattern2);
+    
+    if (match2) {
+      return match2[1].trim();
+    }
+    
+    return null;
   }
 
   /**

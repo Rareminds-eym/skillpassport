@@ -21,6 +21,7 @@ const RecruiterCopilot: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
+  const [aiStatus, setAiStatus] = useState<string>('');
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   
@@ -153,52 +154,11 @@ const RecruiterCopilot: React.FC = () => {
     }
     setIsTyping(false);
     setLoading(false);
+    setAiStatus('');
     setAutoScrollEnabled(true);
     userInteractedRef.current = false;
     isScrollingRef.current = false;
   };
-
-  const typeText = (fullText: string, messageId: string) => new Promise<void>((resolve) => {
-    setIsTyping(true);
-    setAutoScrollEnabled(true);
-    userInteractedRef.current = false;
-    isScrollingRef.current = false;
-    let i = 0;
-    const baseDelay = 14;
-    let stopped = false;
-
-    const step = () => {
-      if (stopped || typingTimerRef.current === null) {
-        setIsTyping(false);
-        resolve();
-        return;
-      }
-
-      i = Math.min(i + 1, fullText.length);
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content: fullText.slice(0, i) } : m));
-      
-      if (!userInteractedRef.current && !isScrollingRef.current) {
-        requestAnimationFrame(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-        });
-      }
-
-      if (i < fullText.length) {
-        const prevChar = fullText[i - 1];
-        let delay = baseDelay;
-        if (prevChar === '.' || prevChar === '!' || prevChar === '?') delay = 140;
-        else if (prevChar === ',' || prevChar === ';' || prevChar === ':') delay = 80;
-        else if (prevChar === '\n') delay = 60;
-        typingTimerRef.current = window.setTimeout(step, delay);
-      } else {
-        setIsTyping(false);
-        typingTimerRef.current = null;
-        resolve();
-      }
-    };
-
-    typingTimerRef.current = window.setTimeout(step, baseDelay);
-  });
 
   const handleSend = async (customQuery?: string) => {
     const queryToSend = customQuery || input.trim();
@@ -216,39 +176,86 @@ const RecruiterCopilot: React.FC = () => {
 
     setMessages(prev => [...prev, userMessage]);
     setLoading(true);
+    setAiStatus('Analyzing your request...');
     setUserScrolledUp(false);
 
     try {
-      // Get recruiter ID from user context
       const recruiterId = user?.id || 'demo-recruiter';
+      const id = (Date.now() + 1).toString();
       
-      const response = await recruiterIntelligenceEngine.processQuery(
+      // Simulate different status stages
+      const status1 = setTimeout(() => setAiStatus('Searching talent database...'), 800);
+      const status2 = setTimeout(() => setAiStatus('Processing insights...'), 1600);
+      
+      // Get response from recruiter AI (start immediately)
+      const responsePromise = recruiterIntelligenceEngine.processQuery(
         queryToSend,
         recruiterId
       );
-
-      const fullText = response.message || 'I apologize, but I could not generate a response.';
-      const id = (Date.now() + 1).toString();
       
+      // Ensure minimum loading time of 2000ms for better UX
+      const [response] = await Promise.all([
+        responsePromise,
+        new Promise(resolve => setTimeout(resolve, 2000))
+      ]);
+      
+      // Clear any pending status updates
+      clearTimeout(status1);
+      clearTimeout(status2);
+      
+      // Create empty assistant message
       const assistantMessage: Message = {
         id,
         role: 'assistant',
-        content: fullText,
-        timestamp: new Date().toISOString(),
-        interactive: response.interactive
+        content: '',
+        timestamp: new Date().toISOString()
       };
-
+      
       setMessages(prev => [...prev, assistantMessage]);
-      setUserScrolledUp(false);
       setLoading(false);
+      setIsTyping(true);
+      setAiStatus('');
 
-      // Skip typing animation if we have interactive elements
-      if (!response.interactive?.cards || response.interactive.cards.length === 0) {
-        setMessages(prev => prev.map(m => m.id === id ? { ...m, content: '' } : m));
-        await typeText(fullText, id);
-      }
+      // Type the message character by character for better UX
+      const fullMessage = response.message || 'I apologize, but I could not generate a response.';
+      let currentIndex = 0;
+      
+      const typeMessage = () => {
+        if (currentIndex < fullMessage.length) {
+          const chunkSize = Math.floor(Math.random() * 3) + 2; // 2-4 characters at a time
+          const chunk = fullMessage.substring(currentIndex, currentIndex + chunkSize);
+          currentIndex += chunkSize;
+          
+          setMessages(prev => prev.map(m => 
+            m.id === id ? { ...m, content: fullMessage.substring(0, currentIndex) } : m
+          ));
+          
+          // Auto-scroll if user hasn't scrolled up
+          if (!userInteractedRef.current && !isScrollingRef.current) {
+            requestAnimationFrame(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+            });
+          }
+          
+          typingTimerRef.current = window.setTimeout(typeMessage, 20);
+        } else {
+          // Done typing, add interactive elements
+          setMessages(prev => prev.map(m => 
+            m.id === id ? { 
+              ...m, 
+              content: fullMessage,
+              interactive: response.interactive 
+            } : m
+          ));
+          setIsTyping(false);
+        }
+      };
+      
+      typeMessage();
     } catch (error) {
       console.error('Error processing query:', error);
+      
+      // Add error message
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -256,13 +263,9 @@ const RecruiterCopilot: React.FC = () => {
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
-    } finally {
       setLoading(false);
       setIsTyping(false);
-      if (typingTimerRef.current) {
-        clearTimeout(typingTimerRef.current);
-        typingTimerRef.current = null;
-      }
+      setAiStatus('');
     }
   };
 
@@ -357,7 +360,9 @@ const RecruiterCopilot: React.FC = () => {
                     : 'bg-white text-gray-900 rounded-2xl rounded-bl-sm shadow-md'
                 } px-6 py-4`}
               >
-                <p className="whitespace-pre-wrap">{message.content}</p>
+                <pre className="font-sans whitespace-pre-wrap break-words text-sm md:text-base leading-relaxed m-0">
+                  {message.content}
+                </pre>
 
                 {/* Render interactive cards */}
                 {message.role === 'assistant' && message.interactive?.cards && (
@@ -394,15 +399,76 @@ const RecruiterCopilot: React.FC = () => {
 
         {loading && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex justify-start"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="flex flex-col items-start gap-2"
           >
-            <div className="bg-white rounded-2xl rounded-bl-sm shadow-md px-6 py-4">
-              <div className="flex gap-2">
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:0.2s]" />
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:0.4s]" />
+            {/* Status pill */}
+            {aiStatus && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100/50 shadow-sm ml-1"
+              >
+                <div className="relative flex items-center justify-center">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                  <div className="absolute w-2 h-2 bg-blue-400 rounded-full animate-ping" />
+                </div>
+                <span className="text-xs font-medium text-blue-700">{aiStatus}</span>
+              </motion.div>
+            )}
+            
+            {/* Thinking bubble with tail */}
+            <div className="relative">
+              {/* Tail */}
+              <div className="absolute bottom-1 left-2 w-3 h-3 bg-white transform rotate-45 shadow-sm" />
+              
+              {/* Main bubble */}
+              <div className="relative bg-white rounded-2xl rounded-bl-sm shadow-md px-6 py-4">
+                <div className="flex items-center gap-1.5">
+                  <motion.div
+                    className="w-2 h-2 bg-gray-400 rounded-full"
+                    animate={{
+                      y: [0, -6, 0],
+                      opacity: [0.4, 1, 0.4]
+                    }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  />
+                  <motion.div
+                    className="w-2 h-2 bg-gray-400 rounded-full"
+                    animate={{
+                      y: [0, -6, 0],
+                      opacity: [0.4, 1, 0.4]
+                    }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: 0.15
+                    }}
+                  />
+                  <motion.div
+                    className="w-2 h-2 bg-gray-400 rounded-full"
+                    animate={{
+                      y: [0, -6, 0],
+                      opacity: [0.4, 1, 0.4]
+                    }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: 0.3
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </motion.div>
