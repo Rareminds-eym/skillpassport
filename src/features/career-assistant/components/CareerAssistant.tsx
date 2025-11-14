@@ -183,72 +183,7 @@ const CareerAssistant: React.FC = () => {
     isScrollingRef.current = false;
   };
 
-  const typeText = (fullText: string, messageId: string) => new Promise<void>((resolve, reject) => {
-    setIsTyping(true);
-    setAutoScrollEnabled(true);
-    userInteractedRef.current = false;
-    isScrollingRef.current = false;
-    let i = 0;
-    const baseDelay = 14; // ms per character
-    let stopped = false;
-
-    const step = () => {
-      // Check if typing was stopped
-      if (stopped || typingTimerRef.current === null) {
-        setIsTyping(false);
-        resolve();
-        return;
-      }
-
-      // If user is actively scrolling, pause typing briefly to make scroll smooth
-      if (isScrollingRef.current) {
-        typingTimerRef.current = window.setTimeout(step, 50);
-        return;
-      }
-
-      const prevChar = fullText[Math.max(0, i - 1)];
-      i = Math.min(i + 1, fullText.length);
-
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content: fullText.slice(0, i) } : m));
-      
-      // Only auto-scroll if user hasn't manually scrolled during typing
-      if (!userInteractedRef.current) {
-        requestAnimationFrame(() => {
-          if (!userInteractedRef.current) {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-          }
-        });
-      }
-
-      if (i < fullText.length) {
-        let delay = baseDelay;
-        if (prevChar === '.' || prevChar === '!' || prevChar === '?') delay = 140;
-        else if (prevChar === ',' || prevChar === ';' || prevChar === ':') delay = 80;
-        else if (prevChar === '\n') delay = 60;
-        typingTimerRef.current = window.setTimeout(step, delay);
-      } else {
-        setIsTyping(false);
-        setAutoScrollEnabled(true);
-        userInteractedRef.current = false;
-        isScrollingRef.current = false;
-        typingTimerRef.current = null;
-        resolve();
-      }
-    };
-
-    typingTimerRef.current = window.setTimeout(step, baseDelay);
-    
-    // Return a way to stop typing
-    return {
-      stop: () => {
-        stopped = true;
-        if (typingTimerRef.current) {
-          clearTimeout(typingTimerRef.current);
-          typingTimerRef.current = null;
-        }
-      }
-    };
-  });
+  // Removed fake typing animation - using real LLM streaming now
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
@@ -269,38 +204,51 @@ const CareerAssistant: React.FC = () => {
     userInteractedRef.current = false;
 
     try {
-      // Get student ID from auth context
       const studentId = user?.id;
       if (!studentId) {
         throw new Error('Please log in to use Career AI');
       }
 
-      // Call the new intelligent engine
-      const result = await careerIntelligenceEngine.processQuery(
-        userInput,
-        studentId
-      );
-
-      const fullText = result.success ? (result.message || 'No response') : (result.error || 'An error occurred');
       const id = (Date.now() + 1).toString();
+      
+      // Create empty assistant message for streaming
       const aiMessage: Message = {
         id,
         role: 'assistant',
-        content: fullText,
-        timestamp: new Date().toISOString(),
-        interactive: result.interactive
+        content: '',
+        timestamp: new Date().toISOString()
       };
+      
       setMessages(prev => [...prev, aiMessage]);
-      // Reset scroll state for new message
-      setUserScrolledUp(false);
-      userInteractedRef.current = false;
-      // Switch from loading dots to progressive typing
       setLoading(false);
-      // Skip typing animation if we have interactive cards
-      if (!result.interactive?.cards || result.interactive.cards.length === 0) {
-        // Set initial empty content for typing effect
-        setMessages(prev => prev.map(m => m.id === id ? { ...m, content: '' } : m));
-        await typeText(fullText, id);
+      setIsTyping(true);
+
+      // Stream response from LLM in real-time
+      const result = await careerIntelligenceEngine.processQueryStream(
+        userInput,
+        studentId,
+        (chunk: string) => {
+          // Update message content as chunks arrive from LLM
+          setMessages(prev => prev.map(m => 
+            m.id === id ? { ...m, content: m.content + chunk } : m
+          ));
+          
+          // Auto-scroll if user hasn't scrolled up
+          if (!userInteractedRef.current) {
+            requestAnimationFrame(() => {
+              if (!userInteractedRef.current) {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+              }
+            });
+          }
+        }
+      );
+
+      // Update with interactive elements if any
+      if (result.interactive) {
+        setMessages(prev => prev.map(m => 
+          m.id === id ? { ...m, interactive: result.interactive } : m
+        ));
       }
     } catch (error) {
       console.error('Career AI Error:', error);

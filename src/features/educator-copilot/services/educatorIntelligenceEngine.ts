@@ -43,6 +43,58 @@ class EducatorIntelligenceEngine {
   private conversationHistory: Map<string, any[]> = new Map();
 
   /**
+   * Main entry point with STREAMING - Process query with real-time LLM response
+   */
+  async processQueryStream(
+    query: string,
+    educatorId: string,
+    onChunk: (chunk: string) => void,
+    conversationId?: string
+  ): Promise<EducatorAIResponse> {
+    try {
+      console.log('🎯 Educator AI processing (STREAMING):', query);
+
+      const educatorContext = await buildEducatorContext(educatorId);
+      const intent = await this.classifyIntent(query);
+      console.log('📊 Detected intent:', intent);
+
+      const history = this.getConversationHistory(conversationId || educatorId);
+
+      // For general queries, use streaming
+      if (intent === 'general' || intent === 'guidance-request' || intent === 'resource-recommendation') {
+        const response = await this.generateStreamingResponse(
+          query,
+          intent,
+          educatorContext,
+          history,
+          onChunk
+        );
+        
+        this.updateConversationHistory(conversationId || educatorId, query, response.message || '');
+        return response;
+      }
+
+      // For data-heavy queries, use non-streaming
+      const response = await this.generateIntelligentResponse(
+        query,
+        intent,
+        educatorContext,
+        history
+      );
+
+      this.updateConversationHistory(conversationId || educatorId, query, response.message || '');
+      return response;
+    } catch (error) {
+      console.error('❌ Educator AI Error:', error);
+      return {
+        success: false,
+        error: 'I encountered an error processing your request. Please try again.',
+        message: 'I apologize, but I encountered an error. Please make sure your OpenAI API key is configured correctly.'
+      };
+    }
+  }
+
+  /**
    * Main entry point - Process educator query with full intelligence
    */
   async processQuery(
@@ -451,6 +503,62 @@ class EducatorIntelligenceEngine {
    */
   clearHistory(conversationId: string): void {
     this.conversationHistory.delete(conversationId);
+  }
+
+  /**
+   * Generate streaming AI response (real-time as LLM generates)
+   */
+  private async generateStreamingResponse(
+    query: string,
+    intent: EducatorIntent,
+    educatorContext: any,
+    history: any[],
+    onChunk: (chunk: string) => void
+  ): Promise<EducatorAIResponse> {
+    try {
+      const systemPrompt = buildEducatorSystemPrompt(educatorContext);
+      const client = getOpenAIClient();
+
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        ...history.slice(-6), // Include last 3 exchanges
+        { role: 'user', content: query }
+      ];
+
+      const stream = await client.chat.completions.create({
+        model: DEFAULT_MODEL,
+        messages: messages as any,
+        temperature: 0.7,
+        max_tokens: 800,
+        stream: true
+      });
+
+      let fullMessage = '';
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          fullMessage += content;
+          onChunk(content);
+        }
+      }
+
+      return {
+        success: true,
+        message: fullMessage,
+        interactive: {
+          metadata: {
+            intentHandled: this.getIntentLabel(intent),
+            nextSteps: this.generateNextSteps(intent),
+            encouragement: this.getEncouragement(intent)
+          },
+          suggestions: this.generateSuggestions(intent)
+        }
+      };
+    } catch (error) {
+      console.error('Streaming error:', error);
+      // Fallback to non-streaming
+      return await this.generateIntelligentResponse(query, intent, educatorContext, history);
+    }
   }
 }
 

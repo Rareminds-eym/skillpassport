@@ -158,47 +158,7 @@ const EducatorCopilot: React.FC = () => {
     isScrollingRef.current = false;
   };
 
-  const typeText = (fullText: string, messageId: string) => new Promise<void>((resolve) => {
-    setIsTyping(true);
-    setAutoScrollEnabled(true);
-    userInteractedRef.current = false;
-    isScrollingRef.current = false;
-    let i = 0;
-    const baseDelay = 14;
-    let stopped = false;
-
-    const step = () => {
-      if (stopped || typingTimerRef.current === null) {
-        setIsTyping(false);
-        resolve();
-        return;
-      }
-
-      i = Math.min(i + 1, fullText.length);
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content: fullText.slice(0, i) } : m));
-      
-      if (!userInteractedRef.current && !isScrollingRef.current) {
-        requestAnimationFrame(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-        });
-      }
-
-      if (i < fullText.length) {
-        const prevChar = fullText[i - 1];
-        let delay = baseDelay;
-        if (prevChar === '.' || prevChar === '!' || prevChar === '?') delay = 140;
-        else if (prevChar === ',' || prevChar === ';' || prevChar === ':') delay = 80;
-        else if (prevChar === '\n') delay = 60;
-        typingTimerRef.current = window.setTimeout(step, delay);
-      } else {
-        setIsTyping(false);
-        typingTimerRef.current = null;
-        resolve();
-      }
-    };
-
-    typingTimerRef.current = window.setTimeout(step, baseDelay);
-  });
+  // Removed fake typing animation - using real LLM streaming now
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
@@ -219,31 +179,44 @@ const EducatorCopilot: React.FC = () => {
 
     try {
       const educatorId = user?.id || 'demo-educator';
-      
-      const result = await educatorIntelligenceEngine.processQuery(
-        userInput,
-        educatorId
-      );
-
-      const fullText = result.success ? (result.message || 'No response') : (result.error || 'An error occurred');
       const id = (Date.now() + 1).toString();
       
+      // Create empty assistant message for streaming
       const aiMessage: Message = {
         id,
         role: 'assistant',
-        content: fullText,
-        timestamp: new Date().toISOString(),
-        interactive: result.interactive
+        content: '',
+        timestamp: new Date().toISOString()
       };
       
       setMessages(prev => [...prev, aiMessage]);
-      setUserScrolledUp(false);
       setLoading(false);
+      setIsTyping(true);
 
-      // Skip typing animation if we have interactive elements
-      if (!result.interactive?.cards || result.interactive.cards.length === 0) {
-        setMessages(prev => prev.map(m => m.id === id ? { ...m, content: '' } : m));
-        await typeText(fullText, id);
+      // Stream response from LLM in real-time
+      const result = await educatorIntelligenceEngine.processQueryStream(
+        userInput,
+        educatorId,
+        (chunk: string) => {
+          // Update message content as chunks arrive from LLM
+          setMessages(prev => prev.map(m => 
+            m.id === id ? { ...m, content: m.content + chunk } : m
+          ));
+          
+          // Auto-scroll if user hasn't scrolled up
+          if (!userInteractedRef.current && !isScrollingRef.current) {
+            requestAnimationFrame(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+            });
+          }
+        }
+      );
+
+      // Update with interactive elements if any
+      if (result.interactive) {
+        setMessages(prev => prev.map(m => 
+          m.id === id ? { ...m, interactive: result.interactive } : m
+        ));
       }
     } catch (error) {
       console.error('Educator AI Error:', error);

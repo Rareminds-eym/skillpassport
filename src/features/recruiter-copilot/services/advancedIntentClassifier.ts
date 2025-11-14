@@ -135,6 +135,17 @@ class AdvancedIntentClassifier {
       };
     }
     
+    // CRITICAL: "Who should I hire for [POSITION]" = job-matching, NOT hiring-decision
+    // Check if query has "hire for" followed by a position name
+    if (/(?:who should i|who to|which candidate to|whom to)?\s*hire\s+for/i.test(queryLower)) {
+      console.log('🎯 Detected "hire for [position]" - job-matching');
+      return {
+        primary: 'job-matching',
+        confidence: 0.97,  // Very high confidence
+        secondaryIntents: []
+      };
+    }
+    
     // Special check for candidate name queries (check original query for proper names)
     const hasProperName = /\b[A-Z]\.?[A-Z]+[A-Z]*\b/.test(originalQuery) || /\b[A-Z][a-z]+\s+[A-Z][a-z]+\b/.test(originalQuery);
     
@@ -143,12 +154,16 @@ class AdvancedIntentClassifier {
         /applied.*for|what job|which job|which role|what role|what position/,
         hasProperName ? /.*/ : /^$/  // If has proper name + job query, match
       ],
+      'job-matching': [
+        /(?:top|best|show|find|get|recommend).*candidates?.*(?:for|to).*(?:my|the|open|these)?.*(?:position|job|role|opening|opportunity)/,
+        /candidates?.*(?:for|to).*(?:position|job|role|opening|opportunity)|match.*candidates?.*(?:position|job|role)/
+      ],
       'hiring-decision': [
         /suggest|recommend|who should|which candidate|hire|best|top/,
         /applied|applicants?|current|opportunities?/
       ],
       'opportunity-applications': [
-        /who|show|list|applied|applications?/,
+        /(?:who|show|list).*(?:applied|applications?)/,
         /my opportunities?|my jobs?|my openings?|my positions?/
       ],
       'candidate-search': [
@@ -158,10 +173,6 @@ class AdvancedIntentClassifier {
       'talent-pool-analytics': [
         /how many|total|count|statistics|stats|overview|dashboard/,
         /candidates?|talent pool|skills?/
-      ],
-      'job-matching': [
-        /match|fit|suitable|best for|candidates for/,
-        /role|position|job|opening|opportunity/
       ],
       'hiring-recommendations': [
         /ready to hire|hire now|ready for hire|which.*hire|who.*hire/,
@@ -283,13 +294,12 @@ class AdvancedIntentClassifier {
     const prompt = `Classify this recruiter query into the most appropriate intent.
 
 Available intents:
-- candidate-query: Looking up specific information about a named candidate (e.g., "John Doe applied for what role?", "What job did Sarah apply to?")
 - hiring-decision: Getting AI recommendation on which applicant to hire from current applications
-- opportunity-applications: Viewing candidates who applied to recruiter's job opportunities/openings
+- opportunity-applications: Viewing candidates who ALREADY applied to recruiter's job opportunities/openings (e.g., "who applied to my jobs?", "show applications")
+- job-matching: Finding/recommending candidates FOR specific job positions/roles (e.g., "candidates for my position", "match to role", "top candidates for my jobs")
 - hiring-recommendations: Getting AI analysis on which candidates are READY TO HIRE NOW (based on profile quality, skills)
-- candidate-search: Finding or searching for NEW candidates based on skills, experience, or other criteria
+- candidate-search: Finding or searching for NEW candidates based on skills, experience, or other criteria (e.g., "find React developers")
 - talent-pool-analytics: Analytics about the overall talent pool
-- job-matching: Matching candidates to specific job positions
 - skill-insights: Understanding skill distribution and gaps
 - market-trends: Market intelligence and competitive landscape
 - interview-guidance: Interview tips and assessment strategies
@@ -298,13 +308,15 @@ Available intents:
 - general: General questions or unclear queries
 
 CRITICAL RULES (follow these EXACTLY):
-- If query contains "Find [SKILL] developers/engineers" (e.g., "Find React developers", "Search Python engineers"), ALWAYS use "candidate-search"
-- If query mentions a SPECIFIC CANDIDATE NAME and asks "what job", "which role", "applied for", use "candidate-query"
-- If query asks "ready to hire", "hire now", "which candidates to hire", "who is hire-ready" WITHOUT mentioning skills, use "hiring-recommendations"
-- If query asks "suggest who to hire", "recommend", "which applicant", "best from applied", use "hiring-decision"
-- If query asks about "my opportunities", "my jobs", "applications", "who applied", use "opportunity-applications"
-- "candidate-search" is for FINDING/SEARCHING new people by skills/criteria, NOT evaluating existing ones
-- "hiring-recommendations" is for getting AI to analyze WHO is hire-ready, NOT finding people by skills
+- If query asks "who should I HIRE FOR [position]" or "hire for [role]" → use "job-matching" (finding candidates FOR a position)
+- If query asks "candidates FOR my positions/jobs/roles" or "top candidates FOR [role]" → use "job-matching" NOT "opportunity-applications"
+- If query asks "who APPLIED to my jobs" or "show applications" → use "opportunity-applications"
+- If query contains "Find [SKILL] developers/engineers" (e.g., "Find React developers") → use "candidate-search"
+- If query asks "ready to hire", "hire now", "who is hire-ready" → use "hiring-recommendations"
+- If query asks "suggest who to hire FROM applicants", "recommend from applied", "which applicant", "best from applied" → use "hiring-decision"
+- "job-matching" = finding/matching candidates FOR a specific position
+- "hiring-decision" = choosing BETWEEN existing applicants
+- "opportunity-applications" = viewing who applied TO positions (backward)
 
 Query: "${query}"${historyContext}
 
