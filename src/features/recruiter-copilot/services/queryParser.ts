@@ -84,7 +84,7 @@ class QueryParserService {
       const client = this.getClient();
 
       const response = await client.chat.completions.create({
-        model: 'openrouter/polaris-alpha',
+        model: 'nvidia/nemotron-nano-12b-v2-vl:free',
         messages: [
           {
             role: 'system',

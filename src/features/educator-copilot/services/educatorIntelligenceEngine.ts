@@ -33,7 +33,7 @@ const getOpenAIClient = (): OpenAI => {
   return openai;
 };
 
-const DEFAULT_MODEL = 'openrouter/polaris-alpha'; // Fast and cost-effective model
+const DEFAULT_MODEL = 'nvidia/nemotron-nano-12b-v2-vl:free'; // Fast and cost-effective model
 
 /**
  * Educator Intelligence Engine

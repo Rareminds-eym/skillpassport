@@ -37,7 +37,7 @@ const getOpenAIClient = (): OpenAI => {
   return openai;
 };
 
-const DEFAULT_MODEL = 'openrouter/polaris-alpha'; // Fast and cost-effective model
+const DEFAULT_MODEL = 'nvidia/nemotron-nano-12b-v2-vl:free'; // Fast and cost-effective model
 
 /**
  * Recruiter Intelligence Engine
@@ -153,47 +153,58 @@ class RecruiterIntelligenceEngine {
           };
         }
         
-        // Filter hire-ready candidates (good profile, has skills)
-        const hireReady = candidates.filter(c => 
-          c.profile_completeness >= 30 && c.skills.length > 0
-        ).slice(0, 10);
+        // Categorize candidates by data quality
+        const withSkills = candidates.filter(c => c.skills.length > 0);
+        const withoutSkills = candidates.filter(c => c.skills.length === 0);
+        const lowProfile = candidates.filter(c => c.profile_completeness < 30);
         
-        if (hireReady.length === 0) {
-          return {
-            success: true,
-            message: `⚠️ No candidates are currently hire-ready.\n\n**Issues found:**\n• ${candidates.filter(c => c.skills.length === 0).length} candidates have no skills listed\n• ${candidates.filter(c => c.profile_completeness < 30).length} have incomplete profiles\n\n**Recommendation:** Ask candidates to complete their profiles and add skills before hiring.`,
-            data: { candidates: candidates.slice(0, 5) }
-          };
+        // Show all candidates with skills (even if low profile completeness)
+        const candidatesToShow = withSkills.length > 0 
+          ? withSkills.slice(0, 10)
+          : candidates.slice(0, 10);
+        
+        // Data quality warning
+        let dataQualityWarning = '';
+        if (withoutSkills.length > 0) {
+          dataQualityWarning = `\n⚠️ **Data Quality Alert:**\n• ${withoutSkills.length} out of ${candidates.length} candidates have NO skills listed\n• ${lowProfile.length} have incomplete profiles (<30%)\n`;
         }
         
-        // Use AI to analyze hire-readiness
+        // Use AI to analyze candidates
         const client = getOpenAIClient();
-        const analysisPrompt = `You are a hiring expert. Analyze these candidates and recommend who is ready to hire NOW.
+        const analysisPrompt = `You are a hiring expert. Analyze these candidates and provide honest assessments.
 
-CANDIDATES:
-${hireReady.map((c, i) => `
+CANDIDATES (${candidatesToShow.length} total):
+${candidatesToShow.map((c, i) => `
 ${i + 1}. **${c.name}**
-   Skills: ${c.skills.slice(0, 5).join(', ')}${c.skills.length > 5 ? ` +${c.skills.length - 5} more` : ''}
+   Skills: ${c.skills.length > 0 ? c.skills.slice(0, 8).join(', ') : 'NO SKILLS LISTED'}${c.skills.length > 8 ? ` +${c.skills.length - 8} more` : ''}
    Profile Completeness: ${c.profile_completeness}%
    Location: ${c.location || 'Not specified'}
    University: ${c.institution || 'Not specified'}
-   CGPA: ${c.cgpa || 'Not specified'}`).join('\n')}
+   CGPA: ${c.cgpa || 'Not specified'}
+   Training: ${c.training_count || 0} courses | Certificates: ${c.experience_count || 0}`).join('\n')}
 
-Provide:
-1. **Top 3 candidates ready to hire NOW** with reasoning
-2. **Hiring readiness score** (0-100) for each
-3. **Key strengths** that make them hire-ready
-4. **Immediate next steps** for each
+Provide realistic assessment:
+1. **Top 3-5 candidates** (or all if fewer) with honest evaluation
+2. **Readiness Score** (0-100) - be realistic, not all need to be high
+3. **Strengths** and **Concerns**
+4. **Action needed** before they're interview-ready
+
+CRITICAL RULES:
+• ONLY analyze the ${candidatesToShow.length} candidates listed above - DO NOT make up statistics
+• DO NOT cite LinkedIn, Glassdoor, or external market data
+• DO NOT invent percentages like "22% YoY growth" or similar
+• If skills look generic/vague (like "testing", "life Evaluation"), flag as DATA QUALITY ISSUE
+• Be honest about data quality - if candidates lack skills, say so clearly
+• Base your analysis ONLY on the data provided above
 
 Format:
-🎯 **READY TO HIRE: [Name]**
-Readiness Score: [X]/100
-Why: [reason]
-Strengths: • [point 1] • [point 2]
-Next Step: [immediate action]`;
+**[Name]** - Readiness: [X]/100
+✅ Strengths: [list]
+⚠️ Concerns: [list]
+📋 Next Steps: [actions needed]`;
         
         const aiResponse = await client.chat.completions.create({
-          model: 'openrouter/polaris-alpha',
+          model: 'nvidia/nemotron-nano-12b-v2-vl:free',
           messages: [{ role: 'user', content: analysisPrompt }],
           temperature: 0.7,
           max_tokens: 1000
@@ -203,8 +214,16 @@ Next Step: [immediate action]`;
         
         return {
           success: true,
-          message: `👨‍💼 **Hiring Readiness Analysis**\n\nAnalyzed ${hireReady.length} hire-ready candidates from ${candidates.length} total:\n\n${recommendation}`,
-          data: { candidates: hireReady, totalAnalyzed: candidates.length },
+          message: `👨‍💼 **Candidate Analysis**\n\nAnalyzed ${candidatesToShow.length} candidates from ${candidates.length} total:\n${dataQualityWarning}\n${recommendation}`,
+          data: { 
+            candidates: candidatesToShow, 
+            totalAnalyzed: candidates.length,
+            dataQuality: {
+              withSkills: withSkills.length,
+              withoutSkills: withoutSkills.length,
+              lowProfile: lowProfile.length
+            }
+          },
           interactive: {
             metadata: {
               intentHandled: 'Hiring Readiness Recommendations',
@@ -219,6 +238,171 @@ Next Step: [immediate action]`;
               'Show candidate details',
               'Schedule interviews',
               'Compare top 2 candidates'
+            ]
+          }
+        };
+      }
+
+      // Handle specific candidate lookup queries
+      if (intent === 'candidate-query') {
+        console.log('🔍 Looking up specific candidate information...');
+        
+        if (!recruiterId) {
+          return {
+            success: false,
+            message: 'Recruiter ID not found.',
+            error: 'Missing recruiter ID'
+          };
+        }
+        
+        // Extract candidate name from query - matches patterns like "P.DURKADEVID", "John Smith", "JOHN DOE"
+        const candidateNameMatch = query.match(/\b([A-Z]\.?\s*[A-Z]+(?:[a-zA-Z]+)?|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b/);
+        const candidateName = candidateNameMatch ? candidateNameMatch[0] : '';
+        
+        if (!candidateName) {
+          return {
+            success: true,
+            message: `Could not identify a valid candidate name in your query.\n\n**Tips:**\n• Use the candidate's full name (e.g., "John Doe" or "P.DURKADEVID")\n• Check spelling and capitalization\n• Try: "Show all applicants" to see who has applied\n\n**Examples:**\n• "What jobs did John Smith apply to?"\n• "Tell me about Sarah Johnson"\n• "P.DURKADEVID applied for what role?"`
+          };
+        }
+        
+        console.log('👤 Searching for candidate:', candidateName);
+        
+        // Fetch recruiter's opportunities
+        const { data: opportunities } = await supabase
+          .from('opportunities')
+          .select('id, job_title, company_name')
+          .eq('recruiter_id', recruiterId);
+        
+        if (!opportunities || opportunities.length === 0) {
+          return {
+            success: true,
+            message: 'You don\'t have any opportunities yet.'
+          };
+        }
+        
+        const oppIds = opportunities.map(o => o.id);
+        
+        // STEP 1: Find matching students first (proper name filtering)
+        const { data: matchingStudents } = await supabase
+          .from('students')
+          .select('user_id, name, email, university, currentCgpa, city, state')
+          .ilike('name', `%${candidateName}%`);
+        
+        if (!matchingStudents || matchingStudents.length === 0) {
+          return {
+            success: true,
+            message: `No candidate found with name matching "${candidateName}".\n\nPossible reasons:\n• Name spelling might be different\n• Candidate hasn't applied to your jobs\n• Try the full exact name\n\n**Tip:** Use "Show all applicants" to see everyone who applied.`
+          };
+        }
+        
+        const studentIds = matchingStudents.map(s => s.user_id);
+        console.log(`🔍 Found ${matchingStudents.length} student(s) matching "${candidateName}":`, matchingStudents.map(s => s.name));
+        
+        // STEP 2: Get their applications in pipeline_candidates
+        const { data: pipelineCandidates } = await supabase
+          .from('pipeline_candidates')
+          .select('id, opportunity_id, student_id, stage, status, created_at')
+          .in('opportunity_id', oppIds)
+          .in('student_id', studentIds);
+        
+        // STEP 3: Get their formal applications
+        const { data: appliedJobs } = await supabase
+          .from('applied_jobs')
+          .select('id, student_id, opportunity_id, application_status, applied_at')
+          .in('opportunity_id', oppIds)
+          .in('student_id', studentIds);
+        
+        // Combine results with student data
+        const allMatches = [];
+        
+        // Create student lookup map
+        const studentMap = new Map(matchingStudents.map(s => [s.user_id, s]));
+        
+        if (pipelineCandidates && pipelineCandidates.length > 0) {
+          pipelineCandidates.forEach(candidate => {
+            const student = studentMap.get(candidate.student_id);
+            const opp = opportunities.find(o => o.id === candidate.opportunity_id);
+            allMatches.push({
+              student_id: candidate.student_id,
+              candidate_name: student?.name || 'Unknown',
+              opportunity_title: opp?.job_title || 'Unknown',
+              company: opp?.company_name || 'Unknown',
+              status: candidate.status || candidate.stage || 'In Pipeline',
+              source: 'pipeline',
+              date: candidate.created_at,
+              university: student?.university,
+              cgpa: student?.currentCgpa,
+              location: `${student?.city || ''}, ${student?.state || ''}`.trim().replace(/^,\s*|\s*,$/, '')
+            });
+          });
+        }
+        
+        if (appliedJobs && appliedJobs.length > 0) {
+          appliedJobs.forEach(application => {
+            const student = studentMap.get(application.student_id);
+            const opp = opportunities.find(o => o.id === application.opportunity_id);
+            allMatches.push({
+              student_id: application.student_id,
+              candidate_name: student?.name || 'Unknown',
+              opportunity_title: opp?.job_title || 'Unknown',
+              company: opp?.company_name || 'Unknown',
+              status: application.application_status || 'Applied',
+              source: 'applied',
+              date: application.applied_at,
+              university: student?.university,
+              cgpa: student?.currentCgpa,
+              location: `${student?.city || ''}, ${student?.state || ''}`.trim().replace(/^,\s*|\s*,$/, '')
+            });
+          });
+        }
+        
+        if (allMatches.length === 0) {
+          // Student exists but hasn't applied to this recruiter's jobs
+          const studentNames = matchingStudents.map(s => s.name).join(', ');
+          return {
+            success: true,
+            message: `Found candidate(s) matching "${candidateName}": **${studentNames}**\n\nHowever, they haven't applied to any of your opportunities yet.\n\n**Next steps:**\n• Source them for your open positions\n• Send them an invitation to apply\n• Add them to your pipeline manually`
+          };
+        }
+        
+        // Build response message
+        const uniqueCandidateNames = [...new Set(allMatches.map(m => m.candidate_name))];
+        const multipleMatches = uniqueCandidateNames.length > 1;
+        
+        const message = [
+          `👤 **${allMatches[0].candidate_name}** - Candidate Information`,
+          multipleMatches ? `⚠️ Note: Found ${uniqueCandidateNames.length} candidates matching "${candidateName}": ${uniqueCandidateNames.join(', ')}. Showing first match.` : '',
+          ``,
+          `📍 ${allMatches[0].location || 'Location not specified'}`,
+          `🎓 ${allMatches[0].university || 'University not specified'}`,
+          allMatches[0].cgpa ? `📊 CGPA: ${allMatches[0].cgpa}` : '',
+          ``,
+          `💼 **Applied to ${allMatches.length} position${allMatches.length !== 1 ? 's' : ''}:**`,
+          ``,
+          ...allMatches.map((match, i) => 
+            `${i + 1}. **${match.opportunity_title}** at ${match.company}\n   Status: ${match.status} | ${match.source === 'pipeline' ? 'Sourced' : 'Formal Application'}\n   Date: ${new Date(match.date).toLocaleDateString()}`
+          )
+        ].filter(Boolean).join('\n');
+        
+        return {
+          success: true,
+          message,
+          data: { candidate: allMatches[0].candidate_name, matches: allMatches },
+          interactive: {
+            metadata: {
+              intentHandled: 'Candidate Lookup',
+              nextSteps: [
+                'Review full candidate profile',
+                'Move candidate forward in pipeline',
+                'Schedule interview'
+              ],
+              encouragement: `Found ${allMatches.length} record${allMatches.length !== 1 ? 's' : ''} for this candidate.`
+            },
+            suggestions: [
+              'Show all applicants',
+              'Compare candidates',
+              'View pipeline status'
             ]
           }
         };
@@ -462,33 +646,43 @@ Next Step: [immediate action]`;
           };
         });
         
+        // Sort to show opportunities WITH applicants first, then by creation date
+        const sortedOpportunities = [...opportunitySummaries].sort((a, b) => {
+          // First priority: opportunities with applicants
+          if (a.applicant_count > 0 && b.applicant_count === 0) return -1;
+          if (a.applicant_count === 0 && b.applicant_count > 0) return 1;
+          // Second priority: more applicants first
+          if (a.applicant_count !== b.applicant_count) return b.applicant_count - a.applicant_count;
+          // Third priority: maintain original order (newest first from query)
+          return 0;
+        });
+        
+        // Show up to 15 opportunities (prioritizing those with applicants)
+        const displayLimit = 15;
+        const displayedOpps = sortedOpportunities.slice(0, displayLimit);
+        const hasMore = opportunities.length > displayLimit;
+        
         const message = [
           `💼 Your Opportunities & Applications:`,
           ``,
           `Total Opportunities: ${opportunities.length}`,
           `Total Applications: ${totalApplicants}`,
           ``,
-          ...opportunitySummaries.slice(0, 5).map((opp, i) => 
-            `${i + 1}. ${opp.job_title} at ${opp.company_name}\n   👥 ${opp.applicant_count} applicant${opp.applicant_count !== 1 ? 's' : ''}`
-          ),
+          totalApplicants > 0 ? `Showing opportunities with applicants first:` : `Showing ${displayedOpps.length} most recent opportunities:`,
           ``,
-          totalApplicants > 0 
-            ? `👉 Recent applicants:\n${opportunitySummaries
-                .filter(o => o.applicant_count > 0)
-                .slice(0, 3)
-                .flatMap(o => o.applicants.slice(0, 2))
-                .slice(0, 5)
-                .map((app, i) => `   ${i + 1}. ${app.students?.name || 'Unknown'} - ${app.stage || 'New'} (${app.students?.university || 'N/A'})`)
-                .join('\n')}`
-            : '⚠️ No applications yet. Share your opportunities to attract candidates!'
-        ].join('\n');
+          ...displayedOpps.map((opp, i) => 
+            `${i + 1}. **${opp.job_title}** at ${opp.company_name}\n   👥 ${opp.applicant_count} applicant${opp.applicant_count !== 1 ? 's' : ''}${opp.applicant_count > 0 ? ` - ${opp.applicants.map((a: any) => a.students?.name || 'Unknown').slice(0, 2).join(', ')}${opp.applicant_count > 2 ? ` +${opp.applicant_count - 2} more` : ''}` : ''}`
+          ),
+          hasMore ? `\n... and ${opportunities.length - displayLimit} more opportunities` : '',
+          ``
+        ].filter(Boolean).join('\n');
         
         return {
           success: true,
           message,
-          data: { opportunities: opportunitySummaries, totalApplicants },
+          data: { opportunities: sortedOpportunities, totalApplicants },
           interactive: {
-            cards: opportunitySummaries.slice(0, 5).map(opp => ({
+            cards: displayedOpps.map(opp => ({
               type: 'opportunity-summary',
               data: {
                 opportunityId: opp.id,
@@ -629,7 +823,7 @@ Next Step: [action]
 [Repeat for 2nd and 3rd]`;
         
         const aiResponse = await client.chat.completions.create({
-          model: 'openrouter/polaris-alpha',
+          model: 'nvidia/nemotron-nano-12b-v2-vl:free',
           messages: [{ role: 'user', content: analysisPrompt }],
           temperature: 0.7,
           max_tokens: 1000
@@ -865,6 +1059,9 @@ Next Step: [action]
   private getIntentLabel(intent: RecruiterIntent): string {
     const labels: Record<RecruiterIntent, string> = {
       'candidate-search': 'Candidate Search',
+      'candidate-query': 'Candidate Lookup',
+      'opportunity-applications': 'Opportunity Applications',
+      'hiring-decision': 'Hiring Decision',
       'talent-pool-analytics': 'Talent Pool Analytics',
       'job-matching': 'Job Matching',
       'hiring-recommendations': 'Hiring Recommendations',
@@ -884,6 +1081,9 @@ Next Step: [action]
   private generateNextSteps(intent: RecruiterIntent): string[] {
     const steps: Record<RecruiterIntent, string[]> = {
       'candidate-search': ['Review candidate profiles in detail', 'Schedule screening calls', 'Check availability'],
+      'candidate-query': ['View full candidate profile', 'Check application status', 'Move to next pipeline stage'],
+      'opportunity-applications': ['Review all applications', 'Contact applicants', 'Schedule interviews'],
+      'hiring-decision': ['Review AI recommendations', 'Compare finalists', 'Make hiring decision'],
       'talent-pool-analytics': ['Identify skill gaps', 'Plan targeted recruitment', 'Review location distribution'],
       'job-matching': ['Review match scores', 'Schedule interviews with top matches', 'Provide feedback'],
       'hiring-recommendations': ['Contact top candidates', 'Begin interview process', 'Check references'],
@@ -903,6 +1103,9 @@ Next Step: [action]
   private getEncouragement(intent: RecruiterIntent): string {
     const messages: Record<RecruiterIntent, string> = {
       'candidate-search': 'Great candidates are waiting! Take action to connect with them.',
+      'candidate-query': 'Review this candidate\'s full profile to make the best decision!',
+      'opportunity-applications': 'Stay on top of your applications - respond quickly to stand out!',
+      'hiring-decision': 'AI insights help you make data-driven hiring decisions!',
       'talent-pool-analytics': 'Your talent pool insights can drive strategic hiring decisions!',
       'job-matching': 'Strong matches found! Move quickly to secure top talent.',
       'hiring-recommendations': 'These candidates show great potential - reach out soon!',
@@ -958,6 +1161,9 @@ Next Step: [action]
   private generateSuggestions(intent: RecruiterIntent): string[] {
     const suggestions: Record<RecruiterIntent, string[]> = {
       'candidate-search': ['Find React developers', 'Show candidates with 3+ projects', 'Filter by location'],
+      'candidate-query': ['Show all applicants', 'View pipeline status', 'Compare candidates'],
+      'opportunity-applications': ['Show all applications', 'Review by opportunity', 'Schedule interviews'],
+      'hiring-decision': ['Who should I hire?', 'Compare top applicants', 'Show recommendations'],
       'talent-pool-analytics': ['Show skill distribution', 'Analyze by experience level', 'Check location trends'],
       'job-matching': ['Match to Software Engineer role', 'Find Data Scientist candidates', 'Show top matches'],
       'hiring-recommendations': ['Who should I interview first?', 'Show hiring-ready candidates', 'Best fits for urgent roles'],

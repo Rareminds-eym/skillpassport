@@ -122,6 +122,7 @@ export interface RecruiterContext {
 
 export type RecruiterIntent = 
   | 'candidate-search'
+  | 'candidate-query'
   | 'opportunity-applications'
   | 'hiring-decision'
   | 'talent-pool-analytics'
