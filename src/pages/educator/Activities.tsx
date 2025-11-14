@@ -2,24 +2,8 @@ import { useState, useEffect } from 'react';
 import { CheckCircle, X, Eye, Filter, Search, File, Video } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase client configuration with debugging
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-console.log('🔧 Supabase Config Debug:', {
-  hasUrl: !!supabaseUrl,
-  hasKey: !!supabaseAnonKey,
-  urlLength: supabaseUrl?.length,
-  keyLength: supabaseAnonKey?.length,
-  urlStartsWith: supabaseUrl?.substring(0, 10),
-  keyStartsWith: supabaseAnonKey?.substring(0, 10)
-});
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('❌ Missing Supabase environment variables!');
-  console.error('VITE_SUPABASE_URL:', supabaseUrl);
-  console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey);
-}
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -72,102 +56,29 @@ const Activities = () => {
 
   const fetchActivities = async () => {
     setLoading(true);
-    console.log('🔄 Starting to fetch activities...');
     
     try {
-      // Test Supabase connection first
-      console.log('🔍 Testing Supabase connection...');
-      const { data: testData, error: testError } = await supabase.from('projects').select('id').limit(1);
-      
-      if (testError) {
-        console.error('❌ Supabase connection test failed:', testError);
-        throw testError;
-      }
-      console.log('✅ Supabase connection test successful');
-
-      // Fetch projects with student data
-      console.log('📋 Fetching projects...');
       const { data: projects, error: projectsError } = await supabase
         .from('projects')
-        .select('*, students!inner(first_name, last_name)')
-        .eq('enabled', true);
+        .select('*');
 
-      console.log('📦 Projects response:', {
-        dataCount: projects?.length,
-        error: projectsError,
-        query: 'projects: *, students!inner(first_name, last_name)'
-      });
-
-      if (projectsError) {
-        console.error('❌ Projects fetch error:', projectsError);
-        console.error('🔍 Projects error details:', {
-          message: projectsError.message,
-          details: projectsError.details,
-          hint: projectsError.hint,
-          code: projectsError.code
-        });
-        throw projectsError;
-      }
-
-      // Fetch trainings with student data
-      console.log('📋 Fetching trainings...');
       const { data: trainings, error: trainingsError } = await supabase
         .from('trainings')
-        .select('*, students!inner(first_name, last_name)')
-        .eq('enabled', true);
+        .select('*');
 
-      console.log('📦 Trainings response:', {
-        dataCount: trainings?.length,
-        error: trainingsError,
-        query: 'trainings: *, students!inner(first_name, last_name)'
-      });
-
-      if (trainingsError) {
-        console.error('❌ Trainings fetch error:', trainingsError);
-        console.error('🔍 Trainings error details:', {
-          message: trainingsError.message,
-          details: trainingsError.details,
-          hint: trainingsError.hint,
-          code: trainingsError.code
-        });
-        throw trainingsError;
-      }
-
-      // Fetch certificates with student data
-      console.log('📋 Fetching certificates...');
       const { data: certificates, error: certificatesError } = await supabase
         .from('certificates')
-        .select('*, students!inner(first_name, last_name)')
-        .eq('enabled', true);
+        .select('*');
 
-      console.log('📦 Certificates response:', {
-        dataCount: certificates?.length,
-        error: certificatesError,
-        query: 'certificates: *, students!inner(first_name, last_name)'
-      });
-
-      if (certificatesError) {
-        console.error('❌ Certificates fetch error:', certificatesError);
-        console.error('🔍 Certificates error details:', {
-          message: certificatesError.message,
-          details: certificatesError.details,
-          hint: certificatesError.hint,
-          code: certificatesError.code
-        });
-        throw certificatesError;
+      if (projectsError || trainingsError || certificatesError) {
+        throw projectsError || trainingsError || certificatesError;
       }
-
-      console.log('📊 All data fetched successfully:', {
-        projects: projects?.length || 0,
-        trainings: trainings?.length || 0,
-        certificates: certificates?.length || 0
-      });
 
       const allActivities: Activity[] = [
         ...(projects || []).map((p: any) => ({
           id: p.id,
           student_id: p.student_id,
-          student: `Student ${p.student_id.substring(0, 8)}`,
+          student: ``,
           title: p.title,
           type: 'Project' as const,
           status: p.approval_status || 'pending',
@@ -219,75 +130,10 @@ const Activities = () => {
         })),
       ];
 
-      console.log('🎯 Final activities count:', allActivities.length);
       setActivities(allActivities);
 
     } catch (error) {
-      console.error('💥 Error fetching activities:', error);
-      console.error('🔍 Full error object:', JSON.stringify(error, null, 2));
-      
-      // Check if it's a relationship error
-      if (error && typeof error === 'object' && 'message' in error) {
-        const errorMessage = (error as any).message;
-        if (errorMessage.includes('relationship') || errorMessage.includes('join')) {
-          console.error('🔍 This appears to be a relationship/join error. Possible solutions:');
-          console.error('1. Check if the foreign key relationship exists in Supabase');
-          console.error('2. Verify the table names and column names match exactly');
-          console.error('3. Check if RLS policies allow this query');
-        }
-      }
-    } finally {
-      setLoading(false);
-      console.log('🏁 Fetch activities completed');
-    }
-  };
-
-  // Alternative fetch method without joins for debugging
-  const fetchActivitiesSimple = async () => {
-    console.log('🔄 Trying simple fetch without joins...');
-    setLoading(true);
-    
-    try {
-      // Fetch data without joins first
-      const { data: projects, error: projectsError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('enabled', true);
-
-      const { data: trainings, error: trainingsError } = await supabase
-        .from('trainings')
-        .select('*')
-        .eq('enabled', true);
-
-      const { data: certificates, error: certificatesError } = await supabase
-        .from('certificates')
-        .select('*')
-        .eq('enabled', true);
-
-      console.log('📊 Simple fetch results:', {
-        projects: projects?.length,
-        trainings: trainings?.length,
-        certificates: certificates?.length,
-        projectsError,
-        trainingsError,
-        certificatesError
-      });
-
-      // If simple fetch works, then try to get student data separately
-      if (projects && projects.length > 0) {
-        const studentIds = [...new Set(projects.map(p => p.student_id))];
-        console.log('👥 Fetching student data for projects:', studentIds);
-        
-        const { data: students, error: studentsError } = await supabase
-          .from('students')
-          .select('user_id, first_name, last_name')
-          .in('user_id', studentIds);
-
-        console.log('👥 Students data:', { students, studentsError });
-      }
-
-    } catch (error) {
-      console.error('💥 Simple fetch error:', error);
+      console.error('Error fetching activities:', error);
     } finally {
       setLoading(false);
     }
@@ -404,31 +250,6 @@ const Activities = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-6">
-      {/* Debug panel - remove in production */}
-      <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <div className="flex justify-between items-center">
-          <h3 className="font-semibold text-yellow-800">Debug Panel</h3>
-          <div className="flex gap-2">
-            <button
-              onClick={fetchActivities}
-              className="px-3 py-1 bg-blue-500 text-white rounded text-sm"
-            >
-              Retry Fetch
-            </button>
-            <button
-              onClick={fetchActivitiesSimple}
-              className="px-3 py-1 bg-green-500 text-white rounded text-sm"
-            >
-              Simple Fetch
-            </button>
-          </div>
-        </div>
-        <div className="mt-2 text-sm text-yellow-700">
-          <div>Activities loaded: {activities.length}</div>
-          <div>Environment vars: {supabaseUrl && supabaseAnonKey ? '✅ Loaded' : '❌ Missing'}</div>
-          <div>Check browser console for detailed debug info</div>
-        </div>
-      </div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">✅ Activity Verification</h1>
         <p className="text-gray-600">Review and approve student-submitted skill activities</p>
