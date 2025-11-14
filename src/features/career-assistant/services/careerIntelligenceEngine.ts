@@ -92,7 +92,7 @@ class CareerIntelligenceEngine {
       );
       
       // For text-heavy responses, stream them
-      const streamableTypes = ['technical-explanation', 'general-knowledge', 'how-to-guide', 'learning-guidance', 'career-advice'];
+      const streamableTypes = ['technical-explanation', 'general-knowledge', 'how-to-guide', 'learning-guidance', 'career-advice', 'general-chat'];
       
       if (streamableTypes.includes(smartAnalysis.queryType)) {
         const response = await this.routeBasedOnSmartAnalysisStream(message, smartAnalysis, studentProfile, onChunk);
