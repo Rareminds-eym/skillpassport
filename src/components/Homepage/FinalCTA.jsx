@@ -95,7 +95,7 @@ const FinalCTA = () => {
   }, []);
 
   const openCalendly = () => {
-    const url = 'https://calendly.com/rareminds/institute-_marketing-clone';
+    const url = 'https://calendly.com/d/cxdd-5y9-vr5';
     if (window.Calendly) {
       window.Calendly.initPopupWidget({ url });
     } else {
