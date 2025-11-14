@@ -31,13 +31,16 @@ async function resolveUserId(identifier: string): Promise<string | null> {
   if (studentData?.user_id) return studentData.user_id;
 
   // Try recruiters
-  const { data: recruiterData } = await supabase
-    .from("recruiters")
-    .select("id")
-    .ilike("email", identifier)
-    .maybeSingle();
+ // Try recruiters
+const { data: recruiterData } = await supabase
+  .from("recruiters")
+  .select("user_id")
+  .ilike("email", identifier)
+  .maybeSingle();
 
-  if (recruiterData?.id) return recruiterData.id;
+if (recruiterData?.user_id) return recruiterData.user_id;
+
+
 
   // Try users (admins)
   const { data: userData } = await supabase

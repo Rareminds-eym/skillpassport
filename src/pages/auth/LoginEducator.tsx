@@ -26,8 +26,6 @@ export default function LoginEducator() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const primary = "#4f46e5"; // Indigo
-  const secondary = "#312e81"; // Deep Indigo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,13 +184,14 @@ export default function LoginEducator() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 text-white text-sm font-medium rounded-lg shadow-sm transition disabled:opacity-60"
+            className="w-full py-3 text-white text-sm font-medium rounded-lg shadow-lg transition disabled:opacity-60 border border-white/40"
             style={{
               background: `linear-gradient(90deg, #f59e0b, #d97706)`,
             }}
           >
             {loading ? "Signing in..." : "Login"}
           </button>
+
         )}
       </div>
 
@@ -280,9 +279,9 @@ export default function LoginEducator() {
         <div className="relative flex items-center justify-center px-4 sm:px-8 md:px-12 py-10 lg:py-8">
           {/* Gradient bg for mobile/tablet */}
           <div
-            className="absolute inset-0 lg:hidden"
+            className="absolute inset-0 lg:hidden opacity-90"
             style={{
-              background: `linear-gradient(135deg, ${primary}, ${secondary})`,
+              background: `linear-gradient(90deg, #f59e0b, #d97706)`,
             }}
             aria-hidden
           />
