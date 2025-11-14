@@ -360,32 +360,40 @@ const CaseHighlights = () => {
                   <h4 className="text-xl font-black text-black">4Cs Framework</h4>
                 </div>
 
-                {/* Redesigned 4Cs Grid with Perfect Alignment */}
+                {/* Clean Glassmorphism 4Cs Grid */}
                 <div className="grid grid-cols-2 gap-4">
                   {/* Critical Thinking */}
-                  <div className="group relative bg-gray-50 rounded-2xl border-2 border-black p-6 hover:bg-gray-100 hover:-translate-y-1 transition-all duration-200">
-                    <div className="flex items-center justify-center h-16">
+                  <div className="group relative bg-white/20 backdrop-blur-md rounded-2xl border-2 border-black p-6 hover:bg-white/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10 transition-all duration-300 overflow-hidden">
+                    {/* Glass reflection effect */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50"></div>
+                    <div className="relative flex items-center justify-center h-16">
                       <span className="text-base font-black text-black text-center leading-tight">Critical Thinking</span>
                     </div>
                   </div>
 
                   {/* Communication */}
-                  <div className="group relative bg-gray-50 rounded-2xl border-2 border-black p-6 hover:bg-gray-100 hover:-translate-y-1 transition-all duration-200">
-                    <div className="flex items-center justify-center h-16">
+                  <div className="group relative bg-white/20 backdrop-blur-md rounded-2xl border-2 border-black p-6 hover:bg-white/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10 transition-all duration-300 overflow-hidden">
+                    {/* Glass reflection effect */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50"></div>
+                    <div className="relative flex items-center justify-center h-16">
                       <span className="text-base font-black text-black text-center leading-tight">Communication</span>
                     </div>
                   </div>
 
                   {/* Collaboration */}
-                  <div className="group relative bg-gray-50 rounded-2xl border-2 border-black p-6 hover:bg-gray-100 hover:-translate-y-1 transition-all duration-200">
-                    <div className="flex items-center justify-center h-16">
+                  <div className="group relative bg-white/20 backdrop-blur-md rounded-2xl border-2 border-black p-6 hover:bg-white/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10 transition-all duration-300 overflow-hidden">
+                    {/* Glass reflection effect */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50"></div>
+                    <div className="relative flex items-center justify-center h-16">
                       <span className="text-base font-black text-black text-center leading-tight">Collaboration</span>
                     </div>
                   </div>
 
                   {/* Creativity */}
-                  <div className="group relative bg-gray-50 rounded-2xl border-2 border-black p-6 hover:bg-gray-100 hover:-translate-y-1 transition-all duration-200">
-                    <div className="flex items-center justify-center h-16">
+                  <div className="group relative bg-white/20 backdrop-blur-md rounded-2xl border-2 border-black p-6 hover:bg-white/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10 transition-all duration-300 overflow-hidden">
+                    {/* Glass reflection effect */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50"></div>
+                    <div className="relative flex items-center justify-center h-16">
                       <span className="text-base font-black text-black text-center leading-tight">Creativity</span>
                     </div>
                   </div>
