@@ -159,8 +159,17 @@ const AdminEducatorManagement = lazy(() =>
 const SchoolAdminDashboard = lazy(() =>
   import("../pages/admin/schoolAdmin/Dashboard")
 );
+const StudentAdmissions = lazy(() =>
+  import("../pages/admin/schoolAdmin/StudentAdmissions")
+);
 const UniversityAdminDashboard = lazy(() =>
   import("../pages/admin/universityAdmin/Dashboard")
+);
+const CollegeRegistration = lazy(() =>
+  import("../pages/admin/universityAdmin/CollegeRegistration")
+);
+const StudentEnrollments = lazy(() =>
+  import("../pages/admin/universityAdmin/StudentEnrollments")
 );
 
 const AppRoutes = () => {
@@ -259,6 +268,7 @@ const AppRoutes = () => {
           }
         >
           <Route path="dashboard" element={<SchoolAdminDashboard />} />
+          <Route path="students/admissions" element={<StudentAdmissions />} />
           <Route
             path=""
             element={<Navigate to="/school-admin/dashboard" replace />}
@@ -274,6 +284,8 @@ const AppRoutes = () => {
           }
         >
           <Route path="dashboard" element={<UniversityAdminDashboard />} />
+          <Route path="colleges/registration" element={<CollegeRegistration />} />
+          <Route path="students/enrollments" element={<StudentEnrollments />} />
           <Route
             path=""
             element={<Navigate to="/university-admin/dashboard" replace />}

@@ -6,7 +6,10 @@ import {
   EyeIcon,
   ChevronDownIcon,
   StarIcon,
+  XMarkIcon,
   PencilSquareIcon,
+  EnvelopeIcon,
+  PhoneIcon,
 } from '@heroicons/react/24/outline';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/admin/Pagination';
@@ -59,11 +62,11 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: any) => {
 
 const StatusBadgeComponent = ({ status }) => {
   const statusConfig = {
+    enrolled: { color: 'bg-green-100 text-green-800', label: 'Enrolled' },
     pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
-    approved: { color: 'bg-green-100 text-green-800', label: 'Approved' },
-    rejected: { color: 'bg-red-100 text-red-800', label: 'Rejected' },
-    enrolled: { color: 'bg-blue-100 text-blue-800', label: 'Enrolled' },
-    graduated: { color: 'bg-purple-100 text-purple-800', label: 'Graduated' }
+    graduated: { color: 'bg-blue-100 text-blue-800', label: 'Graduated' },
+    withdrawn: { color: 'bg-red-100 text-red-800', label: 'Withdrawn' },
+    suspended: { color: 'bg-orange-100 text-orange-800', label: 'Suspended' }
   };
 
   const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', label: status };
@@ -89,7 +92,7 @@ const StudentCard = ({ student, onViewProfile, onAddNote }) => {
             <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
             <span className="text-sm font-medium text-gray-700 ml-1">{student.ai_score_overall || '0'}</span>
           </div>
-          <StatusBadgeComponent status={student.admission_status || 'pending'} />
+          <StatusBadgeComponent status={student.enrollment_status || 'pending'} />
         </div>
       </div>
 
@@ -134,7 +137,7 @@ const StudentCard = ({ student, onViewProfile, onAddNote }) => {
   );
 };
 
-const StudentDataAdmission = () => {
+const StudentEnrollments = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
@@ -146,9 +149,9 @@ const StudentDataAdmission = () => {
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const [filters, setFilters] = useState({
-    class: [],
-    subjects: [],
+    degree: [],
     course: [],
+    college: [],
     status: [],
     minScore: 0,
     maxScore: 100
@@ -161,41 +164,21 @@ const StudentDataAdmission = () => {
     setCurrentPage(1);
   }, [searchQuery, filters, sortBy]);
 
-  const classOptions = useMemo(() => {
-    const classCounts: any = {};
+  const degreeOptions = useMemo(() => {
+    const degreeCounts: any = {};
     students.forEach(student => {
       if (student.dept) {
-        const normalizedClass = student.dept.toLowerCase();
-        classCounts[normalizedClass] = (classCounts[normalizedClass] || 0) + 1;
+        const normalizedDegree = student.dept.toLowerCase();
+        degreeCounts[normalizedDegree] = (degreeCounts[normalizedDegree] || 0) + 1;
       }
     });
-    return Object.entries(classCounts)
-      .map(([klass, count]) => ({
-        value: klass,
-        label: klass.charAt(0).toUpperCase() + klass.slice(1),
+    return Object.entries(degreeCounts)
+      .map(([degree, count]) => ({
+        value: degree,
+        label: degree.charAt(0).toUpperCase() + degree.slice(1),
         count
       }))
       .sort((a, b) => b.count - a.count);
-  }, [students]);
-
-  const subjectOptions = useMemo(() => {
-    const subjectCounts: any = {};
-    students.forEach(student => {
-      if (student.skills && Array.isArray(student.skills)) {
-        student.skills.forEach(subject => {
-          const normalizedSubject = subject.toLowerCase();
-          subjectCounts[normalizedSubject] = (subjectCounts[normalizedSubject] || 0) + 1;
-        });
-      }
-    });
-    return Object.entries(subjectCounts)
-      .map(([subject, count]) => ({
-        value: subject,
-        label: subject.charAt(0).toUpperCase() + subject.slice(1),
-        count
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 15);
   }, [students]);
 
   const courseOptions = useMemo(() => {
@@ -212,14 +195,32 @@ const StudentDataAdmission = () => {
         label: course.charAt(0).toUpperCase() + course.slice(1),
         count
       }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 15);
+  }, [students]);
+
+  const collegeOptions = useMemo(() => {
+    const collegeCounts: any = {};
+    students.forEach(student => {
+      if (student.college) {
+        const normalizedCollege = student.college.toLowerCase();
+        collegeCounts[normalizedCollege] = (collegeCounts[normalizedCollege] || 0) + 1;
+      }
+    });
+    return Object.entries(collegeCounts)
+      .map(([college, count]) => ({
+        value: college,
+        label: college.charAt(0).toUpperCase() + college.slice(1),
+        count
+      }))
       .sort((a, b) => b.count - a.count);
   }, [students]);
 
   const statusOptions = useMemo(() => {
     const statusCounts: any = {};
     students.forEach(student => {
-      if (student.admission_status) {
-        const status = student.admission_status.toLowerCase();
+      if (student.enrollment_status) {
+        const status = student.enrollment_status.toLowerCase();
         statusCounts[status] = (statusCounts[status] || 0) + 1;
       }
     });
@@ -244,22 +245,14 @@ const StudentDataAdmission = () => {
           (student.email && student.email.toLowerCase().includes(query)) ||
           (student.phone && student.phone.includes(query)) ||
           (student.dept && student.dept.toLowerCase().includes(query)) ||
-          (student.skills && student.skills.some((s: any) => s.toLowerCase().includes(query)))
+          (student.college && student.college.toLowerCase().includes(query))
         );
       });
     }
 
-    if (filters.class.length > 0) {
+    if (filters.degree.length > 0) {
       result = result.filter(student =>
-        student.dept && filters.class.includes(student.dept.toLowerCase())
-      );
-    }
-
-    if (filters.subjects.length > 0) {
-      result = result.filter(student =>
-        student.skills?.some((subject: any) =>
-          filters.subjects.includes(subject.toLowerCase())
-        )
+        student.dept && filters.degree.includes(student.dept.toLowerCase())
       );
     }
 
@@ -271,9 +264,15 @@ const StudentDataAdmission = () => {
       );
     }
 
+    if (filters.college.length > 0) {
+      result = result.filter(student =>
+        student.college && filters.college.includes(student.college.toLowerCase())
+      );
+    }
+
     if (filters.status.length > 0) {
       result = result.filter(student =>
-        student.admission_status && filters.status.includes(student.admission_status.toLowerCase())
+        student.enrollment_status && filters.status.includes(student.enrollment_status.toLowerCase())
       );
     }
 
@@ -319,9 +318,9 @@ const StudentDataAdmission = () => {
 
   const handleClearFilters = () => {
     setFilters({
-      class: [],
-      subjects: [],
+      degree: [],
       course: [],
+      college: [],
       status: [],
       minScore: 0,
       maxScore: 100
@@ -343,17 +342,17 @@ const StudentDataAdmission = () => {
     <div className="flex flex-col h-screen">
       <div className="p-4 sm:p-6 lg:p-8 mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold text-gray-900">Student Data & Admission</h1>
-          <p className="text-base md:text-lg mt-2 text-gray-600">Manage student data and admission processes for your college.</p>
+          <h1 className="text-xl md:text-3xl font-bold text-gray-900">Enrollment & Profiles</h1>
+          <p className="text-base md:text-lg mt-2 text-gray-600">Manage student enrollments and profiles across affiliated colleges.</p>
         </div>
       </div>
 
       <div className="px-4 sm:px-6 lg:px-8 hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
         <div className="w-80 flex-shrink-0 pr-4 text-left">
           <div className="inline-flex items-baseline">
-            <h1 className="text-xl font-semibold text-gray-900">Students</h1>
+            <h1 className="text-xl font-semibold text-gray-900">Enrollments</h1>
             <span className="ml-2 text-sm text-gray-500">
-              ({totalItems} {searchQuery || filters.class.length > 0 ? 'matching' : ''} students)
+              ({totalItems} {searchQuery || filters.degree.length > 0 ? 'matching' : ''} enrollments)
             </span>
           </div>
         </div>
@@ -363,7 +362,7 @@ const StudentDataAdmission = () => {
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder="Search by name, email, course, skills..."
+              placeholder="Search by name, email, course, college..."
               size="md"
             />
           </div>
@@ -376,9 +375,9 @@ const StudentDataAdmission = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            {(filters.class.length + filters.subjects.length + filters.course.length + filters.status.length) > 0 && (
+            {(filters.degree.length + filters.course.length + filters.college.length + filters.status.length) > 0 && (
               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
-                {filters.class.length + filters.subjects.length + filters.course.length + filters.status.length}
+                {filters.degree.length + filters.course.length + filters.college.length + filters.status.length}
               </span>
             )}
           </button>
@@ -407,9 +406,9 @@ const StudentDataAdmission = () => {
 
       <div className="lg:hidden p-4 bg-white border-b border-gray-200 space-y-4">
         <div className="text-left">
-          <h1 className="text-xl font-semibold text-gray-900">Students</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Enrollments</h1>
           <span className="text-sm text-gray-500">
-            {totalItems} {searchQuery || filters.class.length > 0 ? 'matching' : ''} students
+            {totalItems} {searchQuery || filters.degree.length > 0 ? 'matching' : ''} enrollments
           </span>
         </div>
 
@@ -417,7 +416,7 @@ const StudentDataAdmission = () => {
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}
-            placeholder="Search students..."
+            placeholder="Search enrollments..."
             size="md"
           />
         </div>
@@ -468,19 +467,11 @@ const StudentDataAdmission = () => {
               </div>
 
               <div className="space-y-0">
-                <FilterSection title="Class/Year" defaultOpen>
+                <FilterSection title="Degree" defaultOpen>
                   <CheckboxGroup
-                    options={classOptions}
-                    selectedValues={filters.class}
-                    onChange={(values) => setFilters({ ...filters, class: values })}
-                  />
-                </FilterSection>
-
-                <FilterSection title="Skills">
-                  <CheckboxGroup
-                    options={subjectOptions}
-                    selectedValues={filters.subjects}
-                    onChange={(values) => setFilters({ ...filters, subjects: values })}
+                    options={degreeOptions}
+                    selectedValues={filters.degree}
+                    onChange={(values) => setFilters({ ...filters, degree: values })}
                   />
                 </FilterSection>
 
@@ -492,7 +483,15 @@ const StudentDataAdmission = () => {
                   />
                 </FilterSection>
 
-                <FilterSection title="Admission Status">
+                <FilterSection title="College">
+                  <CheckboxGroup
+                    options={collegeOptions}
+                    selectedValues={filters.college}
+                    onChange={(values) => setFilters({ ...filters, college: values })}
+                  />
+                </FilterSection>
+
+                <FilterSection title="Enrollment Status">
                   <CheckboxGroup
                     options={statusOptions}
                     selectedValues={filters.status}
@@ -560,7 +559,7 @@ const StudentDataAdmission = () => {
           <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {loading && <div className="text-sm text-gray-500">Loading students...</div>}
+                {loading && <div className="text-sm text-gray-500">Loading enrollments...</div>}
                 {error && <div className="text-sm text-red-600">{error}</div>}
                 {!loading && paginatedStudents.map((student) => (
                   <StudentCard
@@ -573,9 +572,9 @@ const StudentDataAdmission = () => {
                 {!loading && paginatedStudents.length === 0 && !error && (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500">
-                      {searchQuery || filters.class.length > 0
-                        ? 'No students match your current filters'
-                        : 'No students found.'}
+                      {searchQuery || filters.degree.length > 0
+                        ? 'No enrollments match your current filters'
+                        : 'No enrollments found.'}
                     </p>
                   </div>
                 )}
@@ -589,10 +588,10 @@ const StudentDataAdmission = () => {
                         Name
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Course
+                        College
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Skills
+                        Course
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Score
@@ -621,10 +620,10 @@ const StudentDataAdmission = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-800">{student.dept}</span>
+                          <span className="text-sm text-gray-800">{student.college}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-800">{student.skills?.slice(0, 2).join(', ')}{student.skills?.length > 2 ? '...' : ''}</span>
+                          <span className="text-sm text-gray-800">{student.dept}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -635,7 +634,7 @@ const StudentDataAdmission = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <StatusBadgeComponent status={student.admission_status} />
+                          <StatusBadgeComponent status={student.enrollment_status} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                           <button
@@ -684,4 +683,4 @@ const StudentDataAdmission = () => {
   );
 };
 
-export default StudentDataAdmission;
+export default StudentEnrollments;

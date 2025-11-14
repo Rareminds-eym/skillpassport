@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
     BellIcon,
     XMarkIcon,
@@ -6,83 +6,74 @@ import {
     ExclamationTriangleIcon,
     InformationCircleIcon,
     EyeIcon,
-    TrashIcon,
+    DocumentTextIcon,
+    UserGroupIcon,
+    ShieldCheckIcon,
 } from '@heroicons/react/24/outline'
+import { useNotifications } from '../../hooks/useNotifications'
 
-interface Notification {
-    id: string
-    type: 'success' | 'warning' | 'error' | 'info'
-    title: string
-    message: string
-    timestamp: Date
-    read: boolean
-}
+// Mock notification type
+type NotificationType =
+    | 'student_verification_required'
+    | 'verification_pending_review'
+    | 'verification_approved'
+    | 'verification_rejected'
+    | 'assignment_submitted'
+    | 'class_activity_pending'
+    | 'new_student_enrolled'
+    | 'attendance_reminder'
+    | 'system_maintenance'
+
+type FilterKey = 'all' | 'unread' | 'students' | 'assignments' | 'verifications'
 
 interface NotificationPanelProps {
     isOpen: boolean
     onClose: () => void
+    educatorEmail: string | null
 }
 
-type FilterKey = 'all' | 'unread' | 'success' | 'warning'
+const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, educatorEmail }) => {
+    const [selectedFilter, setSelectedFilter] = React.useState<FilterKey>('all')
+    const [showAll, setShowAll] = React.useState(false)
 
-const NotificationPanel: React.FC<NotificationPanelProps> = ({
-    isOpen,
-    onClose,
-}) => {
-    const [notifications, setNotifications] = useState<Notification[]>([
-        {
-            id: '1',
-            type: 'success',
-            title: 'Verification Complete',
-            message: 'John Doe\'s activity has been verified successfully.',
-            timestamp: new Date(Date.now() - 5 * 60000),
-            read: false,
-        },
-        {
-            id: '2',
-            type: 'info',
-            title: 'New Class Created',
-            message: 'Advanced Python 2025 has been added to your classes.',
-            timestamp: new Date(Date.now() - 30 * 60000),
-            read: false,
-        },
-        {
-            id: '3',
-            type: 'warning',
-            title: 'Pending Activities',
-            message: 'You have 5 activities waiting for review.',
-            timestamp: new Date(Date.now() - 2 * 60 * 60000),
-            read: true,
-        },
-        {
-            id: '4',
-            type: 'success',
-            title: 'Report Generated',
-            message: 'Your monthly performance report is ready.',
-            timestamp: new Date(Date.now() - 24 * 60 * 60000),
-            read: true,
-        },
-    ])
+    const PREVIEW_LIMIT = 4
 
-    const [selectedFilter, setSelectedFilter] = useState<FilterKey>('all')
+    // Use the unified notification system
+    const {
+        items: notifications,
+        unreadCount,
+        loading,
+        markRead,
+        markAllRead,
+    } = useNotifications(educatorEmail)
 
-    const getNotificationIcon = (type: Notification['type']) => {
+    const getNotificationIcon = (type: NotificationType) => {
         const base = 'h-5 w-5'
         switch (type) {
-            case 'success':
-                return <CheckCircleIcon className={`${base} text-emerald-500`} />
-            case 'warning':
+            case 'student_verification_required':
+            case 'verification_pending_review':
+                return <ShieldCheckIcon className={`${base} text-amber-500`} />
+            case 'verification_approved':
+                return <CheckCircleIcon className={`${base} text-green-500`} />
+            case 'verification_rejected':
+                return <ExclamationTriangleIcon className={`${base} text-red-500`} />
+            case 'assignment_submitted':
+                return <DocumentTextIcon className={`${base} text-green-500`} />
+            case 'class_activity_pending':
                 return <ExclamationTriangleIcon className={`${base} text-amber-500`} />
-            case 'error':
-                return <XMarkIcon className={`${base} text-red-500`} />
-            case 'info':
-                return <InformationCircleIcon className={`${base} text-blue-500`} />
+            case 'new_student_enrolled':
+                return <UserGroupIcon className={`${base} text-indigo-500`} />
+            case 'attendance_reminder':
+                return <ExclamationTriangleIcon className={`${base} text-orange-500`} />
+            case 'system_maintenance':
+                return <InformationCircleIcon className={`${base} text-gray-500`} />
             default:
                 return <BellIcon className={`${base} text-gray-400`} />
         }
     }
 
-    const formatTime = (date: Date) => {
+    const formatTime = (dateString: string) => {
+        const date = new Date(dateString)
         const now = new Date()
         const diffMs = now.getTime() - date.getTime()
         const diffMins = Math.floor(diffMs / 60000)
@@ -96,36 +87,27 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
         return date.toLocaleDateString()
     }
 
-    const markAsRead = (id: string) => {
-        setNotifications(
-            notifications.map((notif) =>
-                notif.id === id ? { ...notif, read: true } : notif
-            )
-        )
-    }
-
-    const markAllRead = () => {
-        setNotifications(notifications.map((notif) => ({ ...notif, read: true })))
-    }
-
-    const deleteNotification = (id: string) => {
-        setNotifications(notifications.filter((notif) => notif.id !== id))
-    }
-
-    const unreadCount = notifications.filter((n) => !n.read).length
-
     const filteredNotifications = notifications.filter((n) => {
         switch (selectedFilter) {
             case 'unread':
                 return !n.read
-            case 'success':
-                return n.type === 'success'
-            case 'warning':
-                return n.type === 'warning'
+            case 'students':
+                return ['student_verification_required', 'new_student_enrolled'].includes(n.type)
+            case 'assignments':
+                return ['assignment_submitted', 'class_activity_pending'].includes(n.type)
+            case 'verifications':
+                return ['student_verification_required', 'verification_approved', 'verification_rejected', 'verification_pending_review'].includes(n.type)
             default:
                 return true
         }
     })
+
+    // Determine which notifications to display
+    const displayedNotifications = showAll
+        ? filteredNotifications
+        : filteredNotifications.slice(0, PREVIEW_LIMIT)
+
+    const hasMoreToShow = filteredNotifications.length > PREVIEW_LIMIT
 
     const getFilterCount = (filterKey: FilterKey): number => {
         switch (filterKey) {
@@ -133,13 +115,29 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 return notifications.length
             case 'unread':
                 return notifications.filter((n) => !n.read).length
-            case 'success':
-                return notifications.filter((n) => n.type === 'success').length
-            case 'warning':
-                return notifications.filter((n) => n.type === 'warning').length
+            case 'students':
+                return notifications.filter((n) =>
+                    ['student_verification_required', 'new_student_enrolled'].includes(n.type)
+                ).length
+            case 'assignments':
+                return notifications.filter((n) =>
+                    ['assignment_submitted', 'class_activity_pending'].includes(n.type)
+                ).length
+            case 'verifications':
+                return notifications.filter((n) =>
+                    ['student_verification_required', 'verification_approved', 'verification_rejected', 'verification_pending_review'].includes(n.type)
+                ).length
             default:
                 return 0
         }
+    }
+
+    const handleMarkRead = async (id: string) => {
+        await markRead(id)
+    }
+
+    const handleMarkAllRead = async () => {
+        await markAllRead()
     }
 
     if (!isOpen) return null
@@ -177,10 +175,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         </button>
                     </div>
 
-                    {/* Mark All Read Button */}
                     {unreadCount > 0 && (
                         <button
-                            onClick={markAllRead}
+                            onClick={handleMarkAllRead}
                             className="mt-3 text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
                         >
                             Mark all as read
@@ -188,30 +185,32 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     )}
                 </div>
 
-                {/* Filter Tabs - Responsive */}
-                <div className="flex gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 border-b border-gray-100 bg-gray-50 overflow-x-auto flex-shrink-0">
-                    {(['all', 'unread', 'success', 'warning'] as FilterKey[]).map(
+                {/* Filter Tabs */}
+                <div className="flex gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50 overflow-x-auto flex-shrink-0">
+                    {(['all', 'unread', 'students', 'assignments', 'verifications'] as FilterKey[]).map(
                         (key) => {
                             const count = getFilterCount(key)
-                            const label =
-                                key === 'all'
-                                    ? 'All'
-                                    : key === 'unread'
-                                        ? 'Unread'
-                                        : key === 'success'
-                                            ? 'Success'
-                                            : 'Alerts'
+                            const labels: Record<FilterKey, string> = {
+                                all: 'All',
+                                unread: 'Unread',
+                                students: 'Students',
+                                assignments: 'Assignments',
+                                verifications: 'Verifications'
+                            }
 
                             return (
                                 <button
                                     key={key}
-                                    onClick={() => setSelectedFilter(key)}
-                                    className={`text-xs px-2 sm:px-3 py-1.5 rounded-full transition-all duration-200 font-medium whitespace-nowrap flex-shrink-0 ${selectedFilter === key
+                                    onClick={() => {
+                                        setSelectedFilter(key)
+                                        setShowAll(false) // Reset showAll when changing filters
+                                    }}
+                                    className={`text-xs px-3 py-1.5 rounded-full transition-all duration-200 font-medium whitespace-nowrap flex-shrink-0 ${selectedFilter === key
                                         ? 'bg-blue-100 text-blue-700 shadow-sm'
                                         : 'bg-white text-gray-600 hover:bg-gray-200 border border-gray-200'
                                         }`}
                                 >
-                                    {label}
+                                    {labels[key]}
                                     {count > 0 && (
                                         <span className="ml-1 text-[11px]">({count})</span>
                                     )}
@@ -221,9 +220,14 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     )}
                 </div>
 
-                {/* Notifications List - Scrollable */}
+                {/* Notifications List */}
                 <div className="overflow-y-auto flex-1">
-                    {filteredNotifications.length === 0 ? (
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center py-12 px-4">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                            <p className="text-sm text-gray-500 mt-3">Loading notifications...</p>
+                        </div>
+                    ) : displayedNotifications.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 px-4">
                             <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                                 <BellIcon className="h-6 w-6 text-gray-400" />
@@ -235,16 +239,16 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         </div>
                     ) : (
                         <ul className="divide-y divide-gray-100">
-                            {filteredNotifications.map((notification) => (
+                            {displayedNotifications.map((notification) => (
                                 <li
                                     key={notification.id}
-                                    className={`px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-gray-50 transition-all duration-200 group ${!notification.read ? 'bg-blue-50/50' : ''
+                                    className={`px-4 py-3 hover:bg-gray-50 transition-all duration-200 group ${!notification.read ? 'bg-blue-50/50' : ''
                                         }`}
                                 >
-                                    <div className="flex items-start gap-2 sm:gap-3">
+                                    <div className="flex items-start gap-3">
                                         {/* Icon */}
-                                        <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-gray-100 flex-shrink-0">
-                                            {getNotificationIcon(notification.type)}
+                                        <div className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 flex-shrink-0">
+                                            {getNotificationIcon(notification.type as NotificationType)}
                                         </div>
 
                                         {/* Content */}
@@ -262,27 +266,20 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                                             </p>
 
                                             {/* Footer */}
-                                            <div className="flex items-center justify-between mt-1.5 sm:mt-2 pt-1.5 sm:pt-2 border-t border-gray-200/50">
+                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200/50">
                                                 <span className="text-[11px] text-gray-400">
-                                                    {formatTime(notification.timestamp)}
+                                                    {formatTime(notification.created_at)}
                                                 </span>
                                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                                     {!notification.read && (
                                                         <button
-                                                            onClick={() => markAsRead(notification.id)}
+                                                            onClick={() => handleMarkRead(notification.id)}
                                                             className="text-gray-400 hover:text-blue-600 transition-colors p-1 hover:bg-blue-50 rounded"
                                                             title="Mark as read"
                                                         >
                                                             <EyeIcon className="h-4 w-4" />
                                                         </button>
                                                     )}
-                                                    <button
-                                                        onClick={() => deleteNotification(notification.id)}
-                                                        className="text-gray-400 hover:text-red-600 transition-colors p-1 hover:bg-red-50 rounded"
-                                                        title="Delete"
-                                                    >
-                                                        <TrashIcon className="h-4 w-4" />
-                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -293,11 +290,17 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     )}
                 </div>
 
-                {/* Footer */}
-                {notifications.length > 0 && (
-                    <div className="px-4 sm:px-5 py-2 sm:py-3 border-t border-gray-100 bg-gray-50 text-center flex-shrink-0">
-                        <button className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
-                            View all notifications →
+                {/* Footer with View All Button */}
+                {filteredNotifications.length > 0 && hasMoreToShow && (
+                    <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 text-center flex-shrink-0">
+                        <button
+                            onClick={() => setShowAll(!showAll)}
+                            className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                        >
+                            {showAll
+                                ? '← Show less'
+                                : `View all notifications (${filteredNotifications.length - PREVIEW_LIMIT} more) →`
+                            }
                         </button>
                     </div>
                 )}
