@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 export type NotificationType =
+  // Recruiter notifications
   | "offer_accepted"
   | "offer_declined"
   | "offer_created"
@@ -16,12 +17,23 @@ export type NotificationType =
   | "candidate_shortlisted"
   | "candidate_rejected"
   | "new_application"
+  // Educator notifications
+  | "student_verification_required"
+  | "assignment_submitted"
+  | "class_activity_pending"
+  | "student_achievement"
+  | "new_student_enrolled"
+  | "attendance_reminder"
+  // Admin notifications
+  | "approval_required"
+  | "system_alert"
+  // General
   | "system_maintenance"
   | string;
 
 export type Notification = {
   id: string;
-  recruiter_id: string;
+  recipient_id: string;
   type: NotificationType;
   title: string;
   message: string;
@@ -34,19 +46,46 @@ function isUUID(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
-// ✅ Resolve recruiterId from email or uuid
-async function resolveRecruiterId(identifier: string): Promise<string | null> {
+// ✅ Resolve user ID from email or UUID
+async function resolveUserId(identifier: string): Promise<string | null> {
   if (!identifier) return null;
   if (isUUID(identifier)) return identifier;
 
-  const { data, error } = await supabase
+  // Try educators first
+  const { data: educatorData } = await supabase
+    .from("school_educators")
+    .select("user_id")
+    .ilike("email", identifier)
+    .maybeSingle();
+
+  if (educatorData?.user_id) return educatorData.user_id;
+
+  // Try students
+  const { data: studentData } = await supabase
+    .from("students")
+    .select("user_id")
+    .ilike("email", identifier)
+    .maybeSingle();
+
+  if (studentData?.user_id) return studentData.user_id;
+
+  // Try recruiters
+  const { data: recruiterData } = await supabase
     .from("recruiters")
     .select("id")
     .ilike("email", identifier)
     .maybeSingle();
 
-  if (error) return null;
-  return data?.id ?? null;
+  if (recruiterData?.id) return recruiterData.id;
+
+  // Try users (admins)
+  const { data: userData } = await supabase
+    .from("users")
+    .select("id")
+    .ilike("email", identifier)
+    .maybeSingle();
+
+  return userData?.id ?? null;
 }
 
 type UseNotificationsReturn = {
@@ -63,37 +102,39 @@ type UseNotificationsReturn = {
   refresh: () => Promise<void>;
 };
 
-export function useNotifications(recruiterEmail?: string | null): UseNotificationsReturn {
+export function useNotifications(
+  userIdentifier?: string | null
+): UseNotificationsReturn {
   const PAGE_SIZE = 20;
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
-  const [recruiterId, setRecruiterId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
 
   const lastCursorRef = useRef<string | null>(null);
   const channelRef = useRef<any | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ✅ Step 1: Resolve recruiter ID from email
+  // ✅ Step 1: Resolve user ID from email
   useEffect(() => {
     const resolve = async () => {
-      if (!recruiterEmail) {
-        setRecruiterId(null);
+      if (!userIdentifier) {
+        setUserId(null);
         setItems([]);
         setLoading(false);
         return;
       }
-      const id = await resolveRecruiterId(recruiterEmail);
-      setRecruiterId(id);
+      const id = await resolveUserId(userIdentifier);
+      setUserId(id);
     };
     resolve();
-  }, [recruiterEmail]);
+  }, [userIdentifier]);
 
   // ✅ Step 2: Fetch notifications
   const fetchNotifications = async (reset = true) => {
-    if (!recruiterId) return;
+    if (!userId) return;
     try {
       setLoading(true);
       setError(null);
@@ -101,7 +142,7 @@ export function useNotifications(recruiterEmail?: string | null): UseNotificatio
       let query = supabase
         .from("notifications")
         .select("*")
-        .eq("recruiter_id", recruiterId)
+        .eq("recipient_id", userId)
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
 
@@ -128,7 +169,7 @@ export function useNotifications(recruiterEmail?: string | null): UseNotificatio
 
   // ✅ Step 3: Setup realtime updates
   useEffect(() => {
-    if (!recruiterId) return;
+    if (!userId) return;
     let isSubscribed = true;
     let retryCount = 0;
     const MAX_RETRIES = 3;
@@ -146,23 +187,23 @@ export function useNotifications(recruiterEmail?: string | null): UseNotificatio
       }
 
       const channel = supabase
-        .channel(`notifications-${recruiterId}`)
+        .channel(`notifications-${userId}`)
         .on(
           "postgres_changes",
           {
             event: "*",
             schema: "public",
             table: "notifications",
-            filter: `recruiter_id=eq.${recruiterId}`,
+            filter: `recipient_id=eq.${userId}`,
           },
           (payload) => {
+            const row = payload.new as Notification;
+
             if (payload.eventType === "INSERT") {
-              const newRow = payload.new as Notification;
-              setItems((prev) => [newRow, ...prev]);
+              setItems((prev) => [row, ...prev]);
             } else if (payload.eventType === "UPDATE") {
-              const updatedRow = payload.new as Notification;
               setItems((prev) =>
-                prev.map((n) => (n.id === updatedRow.id ? updatedRow : n))
+                prev.map((n) => (n.id === row.id ? row : n))
               );
             } else if (payload.eventType === "DELETE") {
               const oldRow = payload.old as Notification;
@@ -202,12 +243,12 @@ export function useNotifications(recruiterEmail?: string | null): UseNotificatio
       }
       setConnectionStatus("disconnected");
     };
-  }, [recruiterId]);
+  }, [userId]);
 
-  // ✅ Auto refresh when recruiterId changes
+  // ✅ Auto refresh when userId changes
   useEffect(() => {
-    if (recruiterId) fetchNotifications(true);
-  }, [recruiterId]);
+    if (userId) fetchNotifications(true);
+  }, [userId]);
 
   // ✅ Actions
   const markRead = async (id: string) => {
@@ -216,7 +257,10 @@ export function useNotifications(recruiterEmail?: string | null): UseNotificatio
   };
 
   const markAllRead = async () => {
-    await supabase.from("notifications").update({ read: true }).eq("recruiter_id", recruiterId);
+    await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("recipient_id", userId);
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 

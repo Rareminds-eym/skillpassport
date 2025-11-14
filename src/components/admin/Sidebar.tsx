@@ -70,7 +70,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           items: [
             {
               name: "Admissions",
-              path: "/school-admin/students/admission",
+              path: "/school-admin/students/admissions",
               icon: UserGroupIcon,
             },
             {
@@ -247,6 +247,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           title: "Student Records",
           key: "students",
           items: [
+            {
+              name: "Enrollment & Profiles",
+              path: "/university-admin/students/enrollments",
+              icon: UserGroupIcon,
+            },
             {
               name: "Centralized Results",
               path: "/university-admin/students/results",
