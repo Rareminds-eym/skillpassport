@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Plus, ArrowDown } from 'lucide-react';
+import { Send, Plus, ArrowDown, Square } from 'lucide-react';
 import { recruiterIntelligenceEngine } from '../services/recruiterIntelligenceEngine';
 import { recruiterWelcomeConfig, recruiterChatConfig } from '../config/recruiterConfig';
 import { useAuth } from '../../../context/AuthContext';
@@ -20,11 +20,18 @@ const RecruiterCopilot: React.FC = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [isTyping, setIsTyping] = useState(false);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const typingTimerRef = useRef<number | null>(null);
+  const userInteractedRef = useRef(false);
+  const isScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<number | null>(null);
+  const lastScrollTopRef = useRef(0);
 
   const scrollToBottom = (force = false) => {
     if (force || !userScrolledUp) {
@@ -44,21 +51,154 @@ const RecruiterCopilot: React.FC = () => {
     const container = messagesContainerRef.current;
     if (!container) return;
     
+    const currentScrollTop = container.scrollTop;
+    const scrollingUp = currentScrollTop < lastScrollTopRef.current;
+    lastScrollTopRef.current = currentScrollTop;
+    
     const isScrollable = container.scrollHeight > container.clientHeight;
+    
+    if (isTyping) {
+      userInteractedRef.current = true;
+      isScrollingRef.current = true;
+      
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      
+      scrollTimeoutRef.current = window.setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 150);
+    }
+    
     if (isScrollable && isUserAtBottom()) {
       setUserScrolledUp(false);
-    } else if (isScrollable && !isUserAtBottom()) {
+    } else if (isScrollable && scrollingUp && !isUserAtBottom()) {
       setUserScrolledUp(true);
     }
   };
 
   useEffect(() => {
-    scrollToBottom();
+    if (!userScrolledUp) {
+      scrollToBottom();
+    }
+    
+    const timer = setTimeout(() => {
+      if (isUserAtBottom()) {
+        setUserScrolledUp(false);
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [messages]);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = () => {
+      if (isTyping) {
+        userInteractedRef.current = true;
+        isScrollingRef.current = true;
+        
+        if (scrollTimeoutRef.current) {
+          clearTimeout(scrollTimeoutRef.current);
+        }
+        
+        scrollTimeoutRef.current = window.setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 150);
+      }
+    };
+
+    const handleTouchMove = () => {
+      if (isTyping) {
+        userInteractedRef.current = true;
+        isScrollingRef.current = true;
+        
+        if (scrollTimeoutRef.current) {
+          clearTimeout(scrollTimeoutRef.current);
+        }
+        
+        scrollTimeoutRef.current = window.setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 150);
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: true });
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [isTyping]);
+
+  const stopTyping = () => {
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    setIsTyping(false);
+    setLoading(false);
+    setAutoScrollEnabled(true);
+    userInteractedRef.current = false;
+    isScrollingRef.current = false;
+  };
+
+  const typeText = (fullText: string, messageId: string) => new Promise<void>((resolve) => {
+    setIsTyping(true);
+    setAutoScrollEnabled(true);
+    userInteractedRef.current = false;
+    isScrollingRef.current = false;
+    let i = 0;
+    const baseDelay = 14;
+    let stopped = false;
+
+    const step = () => {
+      if (stopped || typingTimerRef.current === null) {
+        setIsTyping(false);
+        resolve();
+        return;
+      }
+
+      i = Math.min(i + 1, fullText.length);
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content: fullText.slice(0, i) } : m));
+      
+      if (!userInteractedRef.current && !isScrollingRef.current) {
+        requestAnimationFrame(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+        });
+      }
+
+      if (i < fullText.length) {
+        const prevChar = fullText[i - 1];
+        let delay = baseDelay;
+        if (prevChar === '.' || prevChar === '!' || prevChar === '?') delay = 140;
+        else if (prevChar === ',' || prevChar === ';' || prevChar === ':') delay = 80;
+        else if (prevChar === '\n') delay = 60;
+        typingTimerRef.current = window.setTimeout(step, delay);
+      } else {
+        setIsTyping(false);
+        typingTimerRef.current = null;
+        resolve();
+      }
+    };
+
+    typingTimerRef.current = window.setTimeout(step, baseDelay);
+  });
 
   const handleSend = async (customQuery?: string) => {
     const queryToSend = customQuery || input.trim();
@@ -76,6 +216,7 @@ const RecruiterCopilot: React.FC = () => {
 
     setMessages(prev => [...prev, userMessage]);
     setLoading(true);
+    setUserScrolledUp(false);
 
     try {
       // Get recruiter ID from user context
@@ -86,15 +227,26 @@ const RecruiterCopilot: React.FC = () => {
         recruiterId
       );
 
+      const fullText = response.message || 'I apologize, but I could not generate a response.';
+      const id = (Date.now() + 1).toString();
+      
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id,
         role: 'assistant',
-        content: response.message || 'I apologize, but I could not generate a response.',
+        content: fullText,
         timestamp: new Date().toISOString(),
         interactive: response.interactive
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      setUserScrolledUp(false);
+      setLoading(false);
+
+      // Skip typing animation if we have interactive elements
+      if (!response.interactive?.cards || response.interactive.cards.length === 0) {
+        setMessages(prev => prev.map(m => m.id === id ? { ...m, content: '' } : m));
+        await typeText(fullText, id);
+      }
     } catch (error) {
       console.error('Error processing query:', error);
       const errorMessage: Message = {
@@ -106,6 +258,11 @@ const RecruiterCopilot: React.FC = () => {
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setLoading(false);
+      setIsTyping(false);
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = null;
+      }
     }
   };
 
@@ -254,15 +411,85 @@ const RecruiterCopilot: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Scroll to Bottom Button */}
-      {userScrolledUp && (
-        <button
-          onClick={() => scrollToBottom(true)}
-          className="fixed bottom-44 md:bottom-32 right-4 md:right-8 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-40"
-        >
-          <ArrowDown size={20} />
-        </button>
-      )}
+      {/* Floating Action Buttons - ChatGPT style */}
+      <AnimatePresence>
+        {messages.length > 0 && !showWelcome && (
+          <div className="fixed bottom-44 md:bottom-32 left-1/2 -translate-x-1/2 z-40">
+            <div className="flex items-center gap-2">
+              {/* Scroll Down Button - Shows when user scrolled up during typing */}
+              {userScrolledUp && (loading || isTyping) && (
+                <motion.button
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ 
+                    duration: 0.15,
+                    ease: [0.25, 0.1, 0.25, 1]
+                  }}
+                  whileHover={{ y: -1 }}
+                  whileTap={{ y: 0 }}
+                  onClick={() => {
+                    setUserScrolledUp(false);
+                    setAutoScrollEnabled(true);
+                    userInteractedRef.current = false;
+                    scrollToBottom(true);
+                  }}
+                  className="p-3 bg-white border border-gray-300 text-gray-700 rounded-full shadow-lg hover:shadow-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-150 ease-out flex items-center justify-center group"
+                  title="Scroll to bottom"
+                >
+                  <ArrowDown className="w-5 h-5 text-gray-700 group-hover:text-gray-900 transition-colors duration-150" />
+                </motion.button>
+              )}
+
+              {/* Stop Generating Button - Shows during loading/typing */}
+              {(loading || isTyping) && (
+                <motion.button
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ 
+                    duration: 0.15,
+                    ease: [0.25, 0.1, 0.25, 1]
+                  }}
+                  whileHover={{ y: -1 }}
+                  whileTap={{ y: 0 }}
+                  onClick={stopTyping}
+                  className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-full shadow-lg hover:shadow-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-150 ease-out flex items-center gap-2 group"
+                  title="Stop generating"
+                >
+                  <Square className="w-4 h-4 fill-gray-700 group-hover:fill-gray-900 transition-all duration-150" />
+                  <span className="text-sm font-medium">Stop generating</span>
+                </motion.button>
+              )}
+
+              {/* Scroll to Bottom Only - Shows when scrolled up but NOT typing */}
+              {userScrolledUp && !loading && !isTyping && (
+                <motion.button
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ 
+                    duration: 0.15,
+                    ease: [0.25, 0.1, 0.25, 1]
+                  }}
+                  whileHover={{ y: -1 }}
+                  whileTap={{ y: 0 }}
+                  onClick={() => {
+                    setUserScrolledUp(false);
+                    setAutoScrollEnabled(true);
+                    userInteractedRef.current = false;
+                    scrollToBottom(true);
+                  }}
+                  className="p-3 bg-white border border-gray-300 text-gray-700 rounded-full shadow-md hover:shadow-lg hover:bg-gray-50 transition-all duration-150 ease-out flex items-center justify-center"
+                  title="Scroll to bottom"
+                >
+                  <ArrowDown className="w-5 h-5 transition-transform duration-150" />
+                </motion.button>
+              )}
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Input Area - Fixed at Bottom */}
       <div className="fixed bottom-16 md:bottom-0 left-0 md:left-64 right-0 bg-white border-t border-gray-200 px-4 md:px-6 py-4 z-30">
@@ -276,11 +503,11 @@ const RecruiterCopilot: React.FC = () => {
               onKeyPress={handleKeyPress}
               placeholder={recruiterChatConfig.placeholder}
               className="flex-1 bg-transparent border-none outline-none text-gray-900 placeholder-gray-500"
-              disabled={loading}
+              disabled={loading || isTyping}
             />
             <button
               onClick={() => handleSend()}
-              disabled={!input.trim() || loading}
+              disabled={!input.trim() || loading || isTyping}
               className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Send size={20} />

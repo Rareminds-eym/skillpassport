@@ -63,7 +63,7 @@ class AdvancedIntentClassifier {
     const queryLower = query.toLowerCase().trim();
 
     // Layer 1: Instant pattern-based classification (fastest)
-    const patternResult = this.patternBasedClassification(queryLower);
+    const patternResult = this.patternBasedClassification(query, queryLower);
     
     // Use AI for better understanding - only skip AI if confidence is VERY high
     if (patternResult.confidence > 0.95) {
@@ -105,8 +105,44 @@ class AdvancedIntentClassifier {
   /**
    * Layer 1: Fast pattern-based classification
    */
-  private patternBasedClassification(queryLower: string): Partial<ClassifiedIntent> {
+  private patternBasedClassification(originalQuery: string, queryLower: string): Partial<ClassifiedIntent> {
+    // PRIORITY CHECKS: Handle skill-based searches with HIGH confidence
+    // Pattern: "Find/Search/Show [SKILL] developers/engineers/candidates"
+    const skillSearchPatterns = [
+      /(?:find|search|show|get|looking for|need|list|give me).*(?:react|angular|vue|node|python|java|javascript|typescript|ruby|go|rust|swift|kotlin|php|c\+\+|c#|\.net|sql|mongodb|postgres|aws|azure|gcp|docker|kubernetes|machine learning|data science|ai|ml|devops|frontend|backend|fullstack|full-stack).*(?:developer|engineer|programmer|candidate|student|people|talent)/i,
+      /(?:developer|engineer|programmer|candidate|student|people|talent).*(?:with|having|who knows?).*(?:react|angular|vue|node|python|java|javascript|typescript|ruby|go|rust|swift|kotlin|php|c\+\+|c#|\.net|sql|mongodb|postgres|aws|azure|gcp|docker|kubernetes|machine learning|data science|ai|ml|devops|frontend|backend|fullstack|full-stack)/i
+    ];
+    
+    for (const pattern of skillSearchPatterns) {
+      if (pattern.test(originalQuery)) {
+        console.log('🎯 Detected skill-based candidate search (high priority)');
+        return {
+          primary: 'candidate-search',
+          confidence: 0.98,  // Very high confidence to skip LLM
+          secondaryIntents: []
+        };
+      }
+    }
+    
+    // Generic skill search patterns (e.g., "Find React developers" without tech stack keywords)
+    if (/(?:find|search|show|get|looking for|need|list)\s+(?:\w+\s+)?(?:developer|engineer|programmer)s?/i.test(originalQuery)) {
+      // Likely a skill-based search even if tech stack not in our list
+      console.log('🎯 Detected generic skill search pattern');
+      return {
+        primary: 'candidate-search',
+        confidence: 0.96,  // High confidence to skip LLM
+        secondaryIntents: []
+      };
+    }
+    
+    // Special check for candidate name queries (check original query for proper names)
+    const hasProperName = /\b[A-Z]\.?[A-Z]+[A-Z]*\b/.test(originalQuery) || /\b[A-Z][a-z]+\s+[A-Z][a-z]+\b/.test(originalQuery);
+    
     const patterns = {
+      'candidate-query': [
+        /applied.*for|what job|which job|which role|what role|what position/,
+        hasProperName ? /.*/ : /^$/  // If has proper name + job query, match
+      ],
       'hiring-decision': [
         /suggest|recommend|who should|which candidate|hire|best|top/,
         /applied|applicants?|current|opportunities?/
@@ -226,7 +262,7 @@ class AdvancedIntentClassifier {
       }
     }
 
-    return this.patternBasedClassification(queryLower);
+    return this.patternBasedClassification(queryLower, queryLower);
   }
 
   /**
@@ -247,10 +283,11 @@ class AdvancedIntentClassifier {
     const prompt = `Classify this recruiter query into the most appropriate intent.
 
 Available intents:
+- candidate-query: Looking up specific information about a named candidate (e.g., "John Doe applied for what role?", "What job did Sarah apply to?")
 - hiring-decision: Getting AI recommendation on which applicant to hire from current applications
 - opportunity-applications: Viewing candidates who applied to recruiter's job opportunities/openings
 - hiring-recommendations: Getting AI analysis on which candidates are READY TO HIRE NOW (based on profile quality, skills)
-- candidate-search: Finding or searching for NEW candidates
+- candidate-search: Finding or searching for NEW candidates based on skills, experience, or other criteria
 - talent-pool-analytics: Analytics about the overall talent pool
 - job-matching: Matching candidates to specific job positions
 - skill-insights: Understanding skill distribution and gaps
@@ -260,12 +297,14 @@ Available intents:
 - pipeline-review: Reviewing recruitment pipeline status
 - general: General questions or unclear queries
 
-Important:
-- If query asks "ready to hire", "hire now", "which candidates to hire", "who is hire-ready", use "hiring-recommendations"
+CRITICAL RULES (follow these EXACTLY):
+- If query contains "Find [SKILL] developers/engineers" (e.g., "Find React developers", "Search Python engineers"), ALWAYS use "candidate-search"
+- If query mentions a SPECIFIC CANDIDATE NAME and asks "what job", "which role", "applied for", use "candidate-query"
+- If query asks "ready to hire", "hire now", "which candidates to hire", "who is hire-ready" WITHOUT mentioning skills, use "hiring-recommendations"
 - If query asks "suggest who to hire", "recommend", "which applicant", "best from applied", use "hiring-decision"
 - If query asks about "my opportunities", "my jobs", "applications", "who applied", use "opportunity-applications"
-- If query asks to "find" or "search for" NEW candidates, use "candidate-search"
-- "candidate-search" is for FINDING new people, NOT evaluating existing ones
+- "candidate-search" is for FINDING/SEARCHING new people by skills/criteria, NOT evaluating existing ones
+- "hiring-recommendations" is for getting AI to analyze WHO is hire-ready, NOT finding people by skills
 
 Query: "${query}"${historyContext}
 
@@ -277,7 +316,7 @@ Respond with ONLY a JSON object in this exact format:
 }`;
 
     const response = await client.chat.completions.create({
-      model: 'openrouter/polaris-alpha',
+      model: 'nvidia/nemotron-nano-12b-v2-vl:free',
       messages: [
         {
           role: 'system',
@@ -297,7 +336,13 @@ Respond with ONLY a JSON object in this exact format:
       throw new Error('Empty response from LLM');
     }
 
-    const parsed = JSON.parse(content);
+    // Strip markdown code blocks if present (e.g., ```json ... ```)
+    let jsonContent = content;
+    if (content.startsWith('```')) {
+      jsonContent = content.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim();
+    }
+
+    const parsed = JSON.parse(jsonContent);
     
     return {
       primary: parsed.primary as RecruiterIntent,
@@ -380,6 +425,11 @@ Respond with ONLY a JSON object in this exact format:
     entities: ClassifiedIntent['detectedEntities']
   ): string[] {
     const actionMap: Record<RecruiterIntent, string[]> = {
+      'candidate-query': [
+        'View full candidate profile',
+        'Review application details',
+        'Check candidate status in pipeline'
+      ],
       'hiring-decision': [
         'Review AI recommendation reasoning',
         'Compare top candidates',

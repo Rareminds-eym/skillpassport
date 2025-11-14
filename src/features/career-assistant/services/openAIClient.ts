@@ -32,4 +32,4 @@ export const getOpenAIClient = (): OpenAI => {
   return openai;
 };
 
-export const DEFAULT_MODEL = 'openrouter/polaris-alpha'; // Fast and cost-effective model
+export const DEFAULT_MODEL = 'nvidia/nemotron-nano-12b-v2-vl:free'; // Fast and cost-effective model
