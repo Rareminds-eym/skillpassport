@@ -122,24 +122,7 @@ export const getStudentByEmail = async (email) => {
           updatedAt
         ),
         projects (
-          id,
-          title,
-          description,
-          status,
-          start_date,
-          end_date,
-          duration,
-          organization,
-          tech_stack,
-          demo_link,
-          github_link,
-          enabled,
-          approval_status,
-          created_at,
-          updated_at,
-          certificate_url,
-          video_url,
-          ppt_url
+          *
         ),
         certificates (*)
       `)

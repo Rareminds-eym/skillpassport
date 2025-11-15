@@ -71,6 +71,10 @@ const ExportModal = ({ isOpen, onClose, student }) => {
   });
 
   const generatePDF = (student, settings) => {
+    console.log('📄 generatePDF called with student:', student.name);
+    console.log('📄 Student projects in PDF:', student.projects);
+    console.log('📄 Student projects length:', student.projects?.length || 0);
+
     const isFullProfile = settings.type === 'full_profile';
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
@@ -215,9 +219,9 @@ const ExportModal = ({ isOpen, onClose, student }) => {
           });
         }
 
-        if (project.tech_stack && Array.isArray(project.tech_stack) && project.tech_stack.length > 0) {
+        if (project.techStack && Array.isArray(project.techStack) && project.techStack.length > 0) {
           checkNewPage();
-          doc.text(`Technologies: ${project.tech_stack.join(', ')}`, margin + 10, yPos);
+          doc.text(`Technologies: ${project.techStack.join(', ')}`, margin + 10, yPos);
           yPos += lineHeight;
         }
 
@@ -916,100 +920,12 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
   const [showMentorNoteModal, setShowMentorNoteModal] = useState(false);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [projects, setProjects] = useState([]);
-  const [certificates, setCertificates] = useState([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
-  const [loadingCertificates, setLoadingCertificates] = useState(false);
-  const [assessments, setAssessments] = useState([]);
-  const [loadingAssessments, setLoadingAssessments] = useState(false);
   const navigate = useNavigate();
-  // Fetch projects and certificates when student changes
 
-  useEffect(() => {
-    if (!student?.id) return;
-
-    // Reset states
-    setProjects([]);
-    setCertificates([]);
-    setAssessments([]);
-
-    const fetchProjects = async () => {
-      setLoadingProjects(true);
-      try {
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('student_id', student.id)
-          .eq('approval_status', 'verified')
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setProjects(data || []);
-      } catch (error) {
-        console.error('Error fetching projects:', error);
-        setProjects([]);
-      } finally {
-        setLoadingProjects(false);
-      }
-    };
-
-    const fetchCertificates = async () => {
-      setLoadingCertificates(true);
-      try {
-        const { data, error } = await supabase
-          .from('certificates')
-          .select('*')
-          .eq('student_id', student.id)
-          .eq('approval_status', 'verified')
-          .order('issued_on', { ascending: false });
-
-        if (error) throw error;
-        setCertificates(data || []);
-      } catch (error) {
-        console.error('Error fetching certificates:', error);
-        setCertificates([]);
-      } finally {
-        setLoadingCertificates(false);
-      }
-    };
-
-    const fetchAssignemts = async () => {
-      setLoadingAssessments(true);
-      try {
-        const { data, error } = await supabase
-          .from('student_assignments')
-          .select(`
-            *,
-            assignments (
-              title,
-              description,
-              course_name,
-              course_code,
-              assignment_type,
-              due_date,
-              total_points,
-              skill_outcomes,
-              educator_name
-            )
-          `)
-          .eq('student_id', student.id)
-          .eq('is_deleted', false)
-          .order('updated_date', { ascending: false });
-
-        if (error) throw error;
-        setAssessments(data || []);
-      } catch (error) {
-        console.error('Error fetching assignments:', error);
-        setAssessments([]);
-      } finally {
-        setLoadingAssessments(false);
-      }
-    };
-
-    fetchProjects();
-    fetchCertificates();
-    fetchAssignemts();
-  }, [student?.id]);
+  // Use data from student prop instead of fetching again
+  const projects = student?.projects || [];
+  const certificates = student?.certificates || [];
+  const assessments = student?.assessments || [];
 
   if (!isOpen || !student) return null;
 
@@ -1022,17 +938,19 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
   let profileData: any = student;
   let rawProfile: any = {};
 
-  if (student.profile && typeof student.profile === 'string') {
-    try {
-      rawProfile = JSON.parse(student.profile);
+  if (student.profile) {
+    if (typeof student.profile === 'string') {
+      try {
+        rawProfile = JSON.parse(student.profile);
+        profileData = { ...student, ...rawProfile };
+      } catch (e) {
+        rawProfile = {};
+        profileData = student;
+      }
+    } else if (typeof student.profile === 'object') {
+      rawProfile = student.profile;
       profileData = { ...student, ...rawProfile };
-    } catch (e) {
-      rawProfile = {};
-      profileData = student;
     }
-  } else if (student.profile && typeof student.profile === 'object') {
-    rawProfile = student.profile;
-    profileData = { ...student, ...rawProfile };
   }
 
   const projectsData = projects;
@@ -1053,10 +971,13 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
     ...student,
     name: studentName,
     email: studentEmail,
-    projects: projectsData,
-    certificates: certificatesData,
+    projects: projectsData.length > 0 ? projectsData : (student.projects || []),
+    certificates: certificatesData.length > 0 ? certificatesData : (student.certificates || []),
     assessments: assessmentsData
   };
+
+  console.log('📋 modalStudent projects:', modalStudent.projects);
+  console.log('📋 modalStudent projects length:', modalStudent.projects?.length || 0);
 
   const formatLabel = (key: string) => key
     .replace(/_/g, ' ')
@@ -1078,7 +999,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
     'created_at', 'updated_at', 'last_updated'
   ]);
 
-  const primitiveEntries = Object.entries(rawProfile || {})
+  const primitiveEntries = Object.entries(profileData || {})
     .filter(([k, v]) => !knownComposite.has(k) && !excludedFields.has(k) && isPrimitive(v) && !isEmpty(v))
     .sort(([a], [b]) => a.localeCompare(b));
 
@@ -1403,12 +1324,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Projects & Portfolio</h3>
 
                     <div className="space-y-4">
-                      {loadingProjects ? (
-                        <div className="text-center py-12">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                          <p className="text-gray-500 mt-2">Loading projects...</p>
-                        </div>
-                      ) : projects && projects.length > 0 ? (
+                      {projects && projects.length > 0 ? (
                         projects.map((project: any, index: number) => {
                           const techStack = project.tech_stack
                             ? Array.isArray(project.tech_stack)
@@ -1554,12 +1470,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                     </h3>
 
                     <div className="space-y-4">
-                      {loadingAssessments ? (
-                        <div className="text-center py-12">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                          <p className="text-gray-500 mt-2">Loading assignments...</p>
-                        </div>
-                      ) : assessments && assessments.length > 0 ? (
+                      {assessments && assessments.length > 0 ? (
                         assessments.map((assessment: any, index: number) => {
                           const assignment = assessment.assignments || {};
                           const statusColors: Record<string, string> = {
@@ -1752,12 +1663,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                   <div className="p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Certificates & Credentials</h3>
                     <div className="space-y-4">
-                      {loadingCertificates ? (
-                        <div className="text-center py-12">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                          <p className="text-gray-500 mt-2">Loading certificates...</p>
-                        </div>
-                      ) : certificates && certificates.length > 0 ? (
+                      {certificates && certificates.length > 0 ? (
                         certificates.map((cert: any, index: number) => (
                           <div key={cert.id || index} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
                             <div className="flex items-start">
