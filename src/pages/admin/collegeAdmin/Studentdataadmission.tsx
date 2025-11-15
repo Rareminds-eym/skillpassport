@@ -11,7 +11,7 @@ import {
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/admin/Pagination';
 import StudentProfileDrawer from '@/components/admin/components/StudentProfileDrawer';
-import { useStudents } from '../../../hooks/useStudents';
+import { useStudents } from '../../../hooks/useAdminStudents';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
