@@ -459,6 +459,7 @@ const ProfileEditSection = ({ profileEmail }) => {
                 </div>
                 <PersonalInfoSummary 
                   data={studentData?.profile} 
+                  studentData={studentData}
                   isOwnProfile={isOwnProfile}
                 />
               </CardContent>

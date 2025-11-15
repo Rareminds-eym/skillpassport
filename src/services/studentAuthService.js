@@ -45,22 +45,9 @@ export const loginStudent = async (email, password) => {
       return { success: false, student: null, session: null, error: 'No student account found with this email.' };
     }
 
-    // Require school linkage and disallow university-college accounts
-    if (student.university_college_id) {
-      return { success: false, student: null, session: null, error: 'This login is only for school-linked students. Your account is linked to a university college.' };
-    }
 
-    if (!student.school_id) {
-      return { success: false, student: null, session: null, error: 'Your account is not linked to any school. Please contact your school administrator.' };
-    }
-
-    // Gate on student approval only
-    if (student.approval_status && student.approval_status !== 'approved') {
-      const msg = student.approval_status === 'pending'
-        ? 'Your account is pending approval. Please wait for administrator approval.'
-        : 'Your account was rejected. Please contact support.';
-      return { success: false, student: null, session: null, error: msg };
-    }
+    // Note: Students may or may not have school_id/university_college_id
+    // Allow login regardless of institutional linkage
 
     // Success: return student; caller will store in AuthContext/localStorage
     return { success: true, student, session: null, error: null };

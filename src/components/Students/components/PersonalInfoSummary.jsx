@@ -8,6 +8,7 @@ import {
   MapPin,
   GraduationCap,
   Building,
+  Building2,
   Calendar,
   Hash,
   Github,
@@ -19,8 +20,35 @@ import {
   Link as LinkIcon
 } from 'lucide-react';
 
-const PersonalInfoSummary = ({ data, isOwnProfile = true }) => {
+const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
   if (!data) return null;
+
+  // Determine institution from studentData
+  const institution = React.useMemo(() => {
+    // Priority: school_id takes precedence if both exist
+    if (studentData?.school_id && studentData?.school) {
+      return {
+        type: 'School',
+        name: studentData.school.name,
+        code: studentData.school.code,
+        city: studentData.school.city,
+        state: studentData.school.state,
+      };
+    } else if (studentData?.university_college_id && studentData?.universityCollege) {
+      // University college with parent university info
+      const college = studentData.universityCollege;
+      const university = college.universities; // nested university data
+      return {
+        type: 'University College',
+        name: college.name,
+        code: college.code,
+        universityName: university?.name,
+        city: university?.district, // Location comes from parent university
+        state: university?.state,
+      };
+    }
+    return null;
+  }, [studentData]);
 
   const infoItems = [
     {
@@ -160,6 +188,52 @@ const PersonalInfoSummary = ({ data, isOwnProfile = true }) => {
 
   return (
     <div className="space-y-4">
+      {/* Institution Card */}
+      {institution && (
+        <div className="mb-6">
+          <Card className="border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-blue-50 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center shadow-lg flex-shrink-0">
+                  <Building2 className="w-7 h-7 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-1">
+                    {institution.type}
+                  </p>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    {institution.name}
+                  </h3>
+                  {institution.universityName && (
+                    <p className="text-sm text-gray-600 mb-2">
+                      {institution.universityName}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-3 text-sm text-gray-600">
+                    {institution.code && (
+                      <div className="flex items-center gap-1">
+                        <Hash className="w-4 h-4" />
+                        <span className="font-medium">{institution.code}</span>
+                      </div>
+                    )}
+                    {(institution.city || institution.state) && (
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-4 h-4" />
+                        <span>
+                          {[institution.city, institution.state]
+                            .filter(Boolean)
+                            .join(', ')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <h3 className="text-lg font-semibold text-gray-800">Current Information</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {displayItems.map((item, index) => {

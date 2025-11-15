@@ -109,6 +109,24 @@ export const getStudentByEmail = async (email) => {
       .from('students')
       .select(`
         *,
+        schools:school_id (
+          id,
+          name,
+          code,
+          city,
+          state
+        ),
+        university_colleges:university_college_id (
+          id,
+          name,
+          code,
+          universities:university_id (
+            id,
+            name,
+            district,
+            state
+          )
+        ),
         skill_passports (
           id,
           projects,
@@ -156,6 +174,24 @@ export const getStudentByEmail = async (email) => {
         .from('students')
         .select(`
           *,
+          schools:school_id (
+            id,
+            name,
+            code,
+            city,
+            state
+          ),
+          university_colleges:university_college_id (
+            id,
+            name,
+            code,
+            universities:university_id (
+              id,
+              name,
+              district,
+              state
+            )
+          ),
           skill_passports (
             id,
             projects,
@@ -211,6 +247,24 @@ export const getStudentByEmail = async (email) => {
         .from('students')
         .select(`
           *,
+          schools:school_id (
+            id,
+            name,
+            code,
+            city,
+            state
+          ),
+          university_colleges:university_college_id (
+            id,
+            name,
+            code,
+            universities:university_id (
+              id,
+              name,
+              district,
+              state
+            )
+          ),
           skill_passports (
             id,
             projects,
@@ -343,6 +397,12 @@ export const getStudentByEmail = async (email) => {
       email: data.email || transformedProfile.email,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
+
+      // School/University College linkage
+      school_id: data.school_id,
+      university_college_id: data.university_college_id,
+      school: data.schools || null,
+      universityCollege: data.university_colleges || null,
 
       // Profile data (from students.profile JSONB)
       profile: transformedProfile,
