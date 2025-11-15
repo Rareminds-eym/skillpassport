@@ -69,6 +69,11 @@ import { useNavigate } from "react-router-dom";
 import { useStudentTraining } from "../../hooks/useStudentTraining";
 import { useStudentCertificates } from "../../hooks/useStudentCertificates";
 import { useStudentProjects } from "../../hooks/useStudentProjects";
+import { useStudentEducation } from "../../hooks/useStudentEducation";
+import { useStudentTechnicalSkills } from "../../hooks/useStudentTechnicalSkills";
+import { useStudentSoftSkills } from "../../hooks/useStudentSoftSkills";
+import { useStudentExperience } from "../../hooks/useStudentExperience";
+import { useEmployabilityScore } from "../../hooks/useEmployabilityScore";
 // Debug utilities removed for production cleanliness
 
 const StudentDashboard = () => {
@@ -164,6 +169,34 @@ const StudentDashboard = () => {
     refresh: refreshProjects
   } = useStudentProjects(studentId, !!studentId && !isViewingOthersProfile);
 
+  const {
+    education: tableEducation,
+    loading: educationLoading,
+    error: educationError,
+    refresh: refreshEducation
+  } = useStudentEducation(studentId, !!studentId && !isViewingOthersProfile);
+
+  const {
+    technicalSkills: tableTechnicalSkills,
+    loading: technicalSkillsLoading,
+    error: technicalSkillsError,
+    refresh: refreshTechnicalSkills
+  } = useStudentTechnicalSkills(studentId, !!studentId && !isViewingOthersProfile);
+
+  const {
+    softSkills: tableSoftSkills,
+    loading: softSkillsLoading,
+    error: softSkillsError,
+    refresh: refreshSoftSkills
+  } = useStudentSoftSkills(studentId, !!studentId && !isViewingOthersProfile);
+
+  const {
+    experience: tableExperience,
+    loading: experienceLoading,
+    error: experienceError,
+    refresh: refreshExperience
+  } = useStudentExperience(studentId, !!studentId && !isViewingOthersProfile);
+
   // Setup message notifications with hot-toast
   useStudentMessageNotifications({
     studentId,
@@ -239,6 +272,24 @@ const StudentDashboard = () => {
     if (!Array.isArray(certificatesData)) return [];
     return certificatesData.filter((cert) => cert && cert.enabled !== false);
   }, [tableCertificates, userData.certificates]);
+
+  // Calculate dynamic employability score based on actual TABLE data (not JSONB)
+  const {
+    employabilityScore,
+    scoreBreakdown,
+    employabilityLabel,
+    getScoreColor,
+    getScoreBgColor
+  } = useEmployabilityScore({
+    // Use table data directly for most accurate calculation
+    education: tableEducation.length > 0 ? tableEducation : userData.education,
+    technicalSkills: tableTechnicalSkills.length > 0 ? tableTechnicalSkills : userData.technicalSkills,
+    softSkills: tableSoftSkills.length > 0 ? tableSoftSkills : userData.softSkills,
+    training: tableTraining.length > 0 ? tableTraining : userData.training,
+    experience: tableExperience.length > 0 ? tableExperience : userData.experience,
+    projects: tableProjects.length > 0 ? tableProjects : userData.projects,
+    certificates: tableCertificates.length > 0 ? tableCertificates : userData.certificates
+  });
 
   // Fetch opportunities data from Supabase
   const {
@@ -371,27 +422,46 @@ const StudentDashboard = () => {
     testSupabaseDirectly();
   }, []);
 
-  // Update userData when real student data is loaded
+  // Update userData when real student data is loaded - PRIORITIZE TABLE DATA OVER JSONB
   useEffect(() => {
     if (studentData) {
       setUserData({
-        education: Array.isArray(studentData.education)
-          ? studentData.education
-          : [],
+        // Education: Use table data first, fallback to JSONB
+        education: Array.isArray(tableEducation) && tableEducation.length > 0
+          ? tableEducation
+          : Array.isArray(studentData.education)
+            ? studentData.education
+            : [],
+
+        // Training: Use table data first, fallback to JSONB
         training: Array.isArray(tableTraining) && tableTraining.length > 0
           ? tableTraining
           : Array.isArray(studentData.training)
             ? studentData.training
             : [],
-        experience: Array.isArray(studentData.experience)
-          ? studentData.experience
-          : [],
-        technicalSkills: Array.isArray(studentData.technicalSkills)
-          ? studentData.technicalSkills
-          : [],
-        softSkills: Array.isArray(studentData.softSkills)
-          ? studentData.softSkills
-          : [],
+
+        // Experience: Use table data first, fallback to JSONB
+        experience: Array.isArray(tableExperience) && tableExperience.length > 0
+          ? tableExperience
+          : Array.isArray(studentData.experience)
+            ? studentData.experience
+            : [],
+
+        // Technical Skills: Use table data first, fallback to JSONB
+        technicalSkills: Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0
+          ? tableTechnicalSkills
+          : Array.isArray(studentData.technicalSkills)
+            ? studentData.technicalSkills
+            : [],
+
+        // Soft Skills: Use table data first, fallback to JSONB
+        softSkills: Array.isArray(tableSoftSkills) && tableSoftSkills.length > 0
+          ? tableSoftSkills
+          : Array.isArray(studentData.softSkills)
+            ? studentData.softSkills
+            : [],
+
+        // Projects: Use table data first, fallback to JSONB
         projects: Array.isArray(tableProjects) && tableProjects.length > 0
           ? tableProjects
           : Array.isArray(studentData.projects)
@@ -399,6 +469,8 @@ const StudentDashboard = () => {
             : Array.isArray(studentData.profile?.projects)
               ? studentData.profile.projects
               : [],
+
+        // Certificates: Use table data first, fallback to JSONB
         certificates: Array.isArray(tableCertificates) && tableCertificates.length > 0
           ? tableCertificates
           : Array.isArray(studentData.certificates)
@@ -408,7 +480,16 @@ const StudentDashboard = () => {
               : [],
       });
     }
-  }, [studentData, tableTraining, tableCertificates, tableProjects]);
+  }, [
+    studentData,
+    tableEducation,
+    tableTraining,
+    tableExperience,
+    tableTechnicalSkills,
+    tableSoftSkills,
+    tableProjects,
+    tableCertificates
+  ]);
 
   // Save handler with DB update logic (like ProfileEditSection)
   const handleSave = async (section, data) => {
@@ -455,8 +536,16 @@ const StudentDashboard = () => {
           await refresh();
 
           // Refresh table data based on section
-          if (section === 'training') {
+          if (section === 'education') {
+            refreshEducation();
+          } else if (section === 'training') {
             refreshTraining();
+          } else if (section === 'experience') {
+            refreshExperience();
+          } else if (section === 'technicalSkills') {
+            refreshTechnicalSkills();
+          } else if (section === 'softSkills') {
+            refreshSoftSkills();
           } else if (section === 'certificates') {
             refreshCertificates();
           } else if (section === 'projects') {
