@@ -733,14 +733,17 @@ const CandidateCard = ({ candidate, onViewProfile, onShortlist, onScheduleInterv
       {/* Skills */}
       <div className="mb-3">
         <div className="flex flex-wrap gap-1">
-          {candidate.skills.slice(0, 5).map((skill, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
-            >
-              {skill}
-            </span>
-          ))}
+          {candidate.skills.slice(0, 5).map((skill, index) => {
+            const skillName = typeof skill === 'string' ? skill : skill?.name;
+            return (
+              <span
+                key={index}
+                className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
+              >
+                {skillName}
+              </span>
+            );
+          })}
           {candidate.skills.length > 5 && (
             <span className="text-xs text-gray-500">+{candidate.skills.length - 5} more</span>
           )}
@@ -3252,10 +3255,8 @@ const TalentPool = () => {
   const skillOptions = useMemo(() => {
     const skillCounts = {};
     students.forEach(student => {
-      const profile = (student as any).profile || student;
-      const skillsToCheck = student.skills || profile.skills;
-      if (skillsToCheck && Array.isArray(skillsToCheck)) {
-        skillsToCheck.forEach(skill => {
+      if (student.skills && Array.isArray(student.skills)) {
+        student.skills.forEach(skill => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
           if (skillName) {
             const normalizedSkill = skillName.toLowerCase();
@@ -3277,8 +3278,7 @@ const TalentPool = () => {
   const courseOptions = useMemo(() => {
     const courseCounts = {};
     students.forEach(student => {
-      const profile = (student as any).profile || student;
-      const dept = student.dept || profile.dept || profile.department;
+      const dept = student.dept || student.course_name || student.branch_field;
       if (dept) {
         const normalizedCourse = dept.toLowerCase();
         courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
@@ -3314,8 +3314,7 @@ const TalentPool = () => {
   const locationOptions = useMemo(() => {
     const locationCounts = {};
     students.forEach(student => {
-      const profile = (student as any).profile || student;
-      const location = student.location || profile.location;
+      const location = student.location || student.district_name;
       if (location) {
         const normalizedLocation = location.toLowerCase();
         locationCounts[normalizedLocation] = (locationCounts[normalizedLocation] || 0) + 1;
@@ -3357,8 +3356,6 @@ const TalentPool = () => {
       
       // Store match results with the matched field for sorting
       const resultsWithScores = students.map(student => {
-        // Access the profile data - handles both nested and direct structures
-        const profile = (student as any).profile || student;
         let matchedField = '';
         let isMatch = false;
         
@@ -3391,38 +3388,37 @@ const TalentPool = () => {
           });
         };
 
-        // Basic fields - check both student level and profile level
-        if (matchesField(student.name, 'name') || matchesField(profile.name, 'name')) return { student, matchedField: matchedField || student.name?.toLowerCase() || '' };
-        if (matchesField(student.email, 'email') || matchesField(profile.email, 'email')) return { student, matchedField: matchedField || student.email?.toLowerCase() || '' };
-        if (matchesField(profile.nm_id, 'nm_id')) return { student, matchedField: matchedField || 'nm_id' };
-        if (matchesField(profile.contact_number?.toString(), 'contact')) return { student, matchedField: matchedField || 'contact' };
-        if (matchesField(profile.alternate_number?.toString(), 'alternate contact')) return { student, matchedField: matchedField || 'alternate contact' };
-        if (matchesField(profile.contact_number_dial_code?.toString(), 'dial code')) return { student, matchedField: matchedField || 'dial code' };
-        if (matchesField(profile.date_of_birth, 'date of birth')) return { student, matchedField: matchedField || 'date of birth' };
-        if (matchesField(profile.imported_at, 'imported date')) return { student, matchedField: matchedField || 'imported date' };
-        if (matchesField(profile.resumeImportedAt, 'resume imported')) return { student, matchedField: matchedField || 'resume imported' };
-        if (matchesField(profile.updatedAt, 'updated at')) return { student, matchedField: matchedField || 'updated at' };
-        if (matchesField(profile.age?.toString(), 'age')) return { student, matchedField };
-        if (matchesField(profile.skill, 'skill')) return { student, matchedField };
-        if (matchesField(profile.course, 'course')) return { student, matchedField };
-        if (matchesField(profile.university, 'university')) return { student, matchedField };
-        if (matchesField(profile.branch_field, 'branch')) return { student, matchedField };
-        if (matchesField(profile.trainer_name, 'trainer')) return { student, matchedField };
-        if (matchesField(profile.district_name, 'district')) return { student, matchedField };
-        if (matchesField(profile.college_school_name, 'college')) return { student, matchedField };
-        if (matchesField(profile.registration_number?.toString(), 'registration')) return { student, matchedField };
+        // Basic fields - use direct student properties
+        if (matchesField(student.name, 'name')) return { student, matchedField: matchedField || student.name?.toLowerCase() || '' };
+        if (matchesField(student.email, 'email')) return { student, matchedField: matchedField || student.email?.toLowerCase() || '' };
+        if (matchesField(student.nm_id, 'nm_id')) return { student, matchedField: matchedField || 'nm_id' };
+        if (matchesField(student.contact_number?.toString(), 'contact')) return { student, matchedField: matchedField || 'contact' };
+        if (matchesField(student.alternate_number?.toString(), 'alternate contact')) return { student, matchedField: matchedField || 'alternate contact' };
+        if (matchesField(student.contact_dial_code?.toString(), 'dial code')) return { student, matchedField: matchedField || 'dial code' };
+        if (matchesField(student.date_of_birth, 'date of birth')) return { student, matchedField: matchedField || 'date of birth' };
+        if (matchesField(student.imported_at, 'imported date')) return { student, matchedField: matchedField || 'imported date' };
+        if (matchesField(student.updated_at, 'updated at')) return { student, matchedField: matchedField || 'updated at' };
+        if (matchesField(student.age?.toString(), 'age')) return { student, matchedField };
+        if (matchesField(student.course_name, 'course')) return { student, matchedField };
+        if (matchesField(student.university, 'university')) return { student, matchedField };
+        if (matchesField(student.branch_field, 'branch')) return { student, matchedField };
+        if (matchesField(student.trainer_name, 'trainer')) return { student, matchedField };
+        if (matchesField(student.district_name, 'district')) return { student, matchedField };
+        if (matchesField(student.college, 'college')) return { student, matchedField };
+        if (matchesField(student.registration_number?.toString(), 'registration')) return { student, matchedField };
+        if (matchesField(student.bio, 'bio')) return { student, matchedField };
         
         // Social media and portfolio links
-        if (matchesField(profile.github_link, 'github')) return { student, matchedField: matchedField || 'github' };
-        if (matchesField(profile.linkedin_link, 'linkedin')) return { student, matchedField: matchedField || 'linkedin' };
-        if (matchesField(profile.twitter_link, 'twitter')) return { student, matchedField: matchedField || 'twitter' };
-        if (matchesField(profile.facebook_link, 'facebook')) return { student, matchedField: matchedField || 'facebook' };
-        if (matchesField(profile.instagram_link, 'instagram')) return { student, matchedField: matchedField || 'instagram' };
-        if (matchesField(profile.portfolio_link, 'portfolio')) return { student, matchedField: matchedField || 'portfolio' };
+        if (matchesField(student.github_link, 'github')) return { student, matchedField: matchedField || 'github' };
+        if (matchesField(student.linkedin_link, 'linkedin')) return { student, matchedField: matchedField || 'linkedin' };
+        if (matchesField(student.twitter_link, 'twitter')) return { student, matchedField: matchedField || 'twitter' };
+        if (matchesField(student.facebook_link, 'facebook')) return { student, matchedField: matchedField || 'facebook' };
+        if (matchesField(student.instagram_link, 'instagram')) return { student, matchedField: matchedField || 'instagram' };
+        if (matchesField(student.portfolio_link, 'portfolio')) return { student, matchedField: matchedField || 'portfolio' };
         
         // Other social links array
-        if (profile.other_social_links && Array.isArray(profile.other_social_links)) {
-          const socialMatch = profile.other_social_links.some((link: any) => {
+        if (student.other_social_links && Array.isArray(student.other_social_links)) {
+          const socialMatch = student.other_social_links.some((link: any) => {
             if (typeof link === 'string' && link.toLowerCase().includes(query)) {
               if (!isMatch) matchedField = 'social link';
               isMatch = true;
@@ -3433,15 +3429,12 @@ const TalentPool = () => {
           if (socialMatch) return { student, matchedField };
         }
         
-        if (matchesField(student.dept, 'dept') || matchesField(profile.dept, 'dept')) return { student, matchedField };
-        if (matchesField(profile.department, 'department')) return { student, matchedField };
-        if (matchesField(student.college, 'college')) return { student, matchedField };
-        if (matchesField(student.location, 'location') || matchesField(profile.location, 'location')) return { student, matchedField };
+        if (matchesField(student.dept, 'dept')) return { student, matchedField };
+        if (matchesField(student.location, 'location')) return { student, matchedField };
         
-        // Skills array - handle both formats (string array and object array)
-        const skillsToCheck = student.skills || profile.skills;
-        if (skillsToCheck && Array.isArray(skillsToCheck)) {
-          const skillMatch = skillsToCheck.some((skill: any) => {
+        // Skills array - from skills table
+        if (student.skills && Array.isArray(student.skills)) {
+          const skillMatch = student.skills.some((skill: any) => {
             if (typeof skill === 'string') {
               if (skill.toLowerCase().includes(query)) {
                 if (!isMatch) matchedField = skill.toLowerCase();
@@ -3462,26 +3455,22 @@ const TalentPool = () => {
           }
         }
         
-        // Projects - search in all fields including new ones
-        if (profile.projects && Array.isArray(profile.projects)) {
-          const projectMatch = profile.projects.some((project: any) => {
+        // Projects - from projects table
+        if (student.projects && Array.isArray(student.projects)) {
+          const projectMatch = student.projects.some((project: any) => {
             if (!project) return false;
             
             if (matchesField(project.id, 'project')) return true;
             if (matchesField(project.title, 'project')) return true;
-            if (matchesField(project.tech, 'project')) return true;
-            if (matchesField(project.techStack, 'project')) return true;
-            if (matchesField(project.technologies, 'project')) return true;
+            if (matchesField(project.tech_stack, 'project')) return true;
             if (matchesField(project.description, 'project')) return true;
-            if (matchesField(project.skills, 'project')) return true;
             if (matchesField(project.status, 'project')) return true;
-            if (matchesField(project.url, 'project')) return true;
-            if (matchesField(project.demoLink, 'project')) return true;
-            if (matchesField(project.link, 'project')) return true;
-            if (matchesField(project.github, 'project')) return true;
+            if (matchesField(project.demo_link, 'project')) return true;
+            if (matchesField(project.github_link, 'project')) return true;
             if (matchesField(project.duration, 'project')) return true;
-            if (matchesField(project.startDate, 'project')) return true;
-            if (matchesField(project.endDate, 'project')) return true;
+            if (matchesField(project.start_date, 'project')) return true;
+            if (matchesField(project.end_date, 'project')) return true;
+            if (matchesField(project.organization, 'project')) return true;
             
             // Handle enabled status
             if (project.enabled === true && query.includes('enabled')) {
@@ -3495,13 +3484,6 @@ const TalentPool = () => {
               return true;
             }
             
-            // Handle processing status
-            if (project.processing === true && (query.includes('processing') || query.includes('pending'))) {
-              if (!isMatch) matchedField = 'processing project';
-              isMatch = true;
-              return true;
-            }
-            
             return false;
           });
           if (projectMatch) {
@@ -3509,52 +3491,9 @@ const TalentPool = () => {
           }
         }
         
-        // Education - check all relevant fields including new ones
-        if (profile.education && Array.isArray(profile.education)) {
-          const eduMatch = profile.education.some((edu: any) => {
-            if (!edu) return false;
-            
-            if (matchesField(edu.id, 'education')) return true;
-            if (matchesField(edu.yearOfPassing, 'education')) return true;
-            if (matchesField(edu.university, 'education')) return true;
-            if (matchesField(edu.degree, 'education')) return true;
-            if (matchesField(edu.department, 'education')) return true;
-            if (matchesField(edu.college_school_name, 'education')) return true;
-            if (matchesField(edu.level, 'education')) return true;
-            if (matchesField(edu.cgpa, 'education')) return true;
-            if (matchesField(edu.status, 'education')) return true;
-            if (matchesField(edu.startDate, 'education')) return true;
-            if (matchesField(edu.endDate, 'education')) return true;
-            
-            // Handle enabled status
-            if (edu.enabled === true && query.includes('enabled')) {
-              if (!isMatch) matchedField = 'enabled education';
-              isMatch = true;
-              return true;
-            }
-            if (edu.enabled === false && query.includes('disabled')) {
-              if (!isMatch) matchedField = 'disabled education';
-              isMatch = true;
-              return true;
-            }
-            
-            // Handle processing status
-            if (edu.processing === true && (query.includes('processing') || query.includes('pending'))) {
-              if (!isMatch) matchedField = 'processing education';
-              isMatch = true;
-              return true;
-            }
-            
-            return false;
-          });
-          if (eduMatch) {
-            return { student, matchedField };
-          }
-        }
-        
-        // Experience - comprehensive check including all fields
-        if (profile.experience && Array.isArray(profile.experience)) {
-          const expMatch = profile.experience.some((exp: any) => {
+        // Experience - from experience table
+        if (student.experience && Array.isArray(student.experience)) {
+          const expMatch = student.experience.some((exp: any) => {
             if (!exp) return false;
             
             // Check all text fields
@@ -3562,20 +3501,8 @@ const TalentPool = () => {
             if (matchesField(exp.role, 'experience')) return true;
             if (matchesField(exp.duration, 'experience')) return true;
             if (matchesField(exp.organization, 'experience')) return true;
-            if (matchesField(exp.startDate, 'experience')) return true;
-            if (matchesField(exp.endDate, 'experience')) return true;
-            
-            // Handle enabled status
-            if (exp.enabled === true && query.includes('enabled')) {
-              if (!isMatch) matchedField = 'enabled experience';
-              isMatch = true;
-              return true;
-            }
-            if (exp.enabled === false && query.includes('disabled')) {
-              if (!isMatch) matchedField = 'disabled experience';
-              isMatch = true;
-              return true;
-            }
+            if (matchesField(exp.start_date, 'experience')) return true;
+            if (matchesField(exp.end_date, 'experience')) return true;
             
             // Handle verified status search
             if (exp.verified === true && (query.includes('verified') || query === 'true')) {
@@ -3589,18 +3516,6 @@ const TalentPool = () => {
               return true;
             }
             
-            // Handle processing status search
-            if (exp.processing === true && (query.includes('processing') || query.includes('pending'))) {
-              if (!isMatch) matchedField = 'processing experience';
-              isMatch = true;
-              return true;
-            }
-            if (exp.processing === false && query.includes('processed')) {
-              if (!isMatch) matchedField = 'processed experience';
-              isMatch = true;
-              return true;
-            }
-            
             return false;
           });
           if (expMatch) {
@@ -3608,45 +3523,9 @@ const TalentPool = () => {
           }
         }
         
-        // Soft Skills - name, description, type, level, enabled, processing
-        if (profile.softSkills && Array.isArray(profile.softSkills)) {
-          const softSkillMatch = profile.softSkills.some((skill: any) => {
-            if (!skill) return false;
-            if (matchesField(skill.id, 'soft skill')) return true;
-            if (matchesField(skill.name, 'soft skill')) return true;
-            if (matchesField(skill.description, 'soft skill')) return true;
-            if (matchesField(skill.type, 'soft skill')) return true;
-            if (matchesField(skill.level, 'soft skill')) return true;
-            
-            // Handle enabled status
-            if (skill.enabled === true && query.includes('enabled')) {
-              if (!isMatch) matchedField = 'enabled soft skill';
-              isMatch = true;
-              return true;
-            }
-            if (skill.enabled === false && query.includes('disabled')) {
-              if (!isMatch) matchedField = 'disabled soft skill';
-              isMatch = true;
-              return true;
-            }
-            
-            // Handle processing status
-            if (skill.processing === true && (query.includes('processing') || query.includes('pending'))) {
-              if (!isMatch) matchedField = 'processing soft skill';
-              isMatch = true;
-              return true;
-            }
-            
-            return false;
-          });
-          if (softSkillMatch) {
-            return { student, matchedField };
-          }
-        }
-        
-        // Certificates - comprehensive search including all fields
-        if (profile.certificates && Array.isArray(profile.certificates)) {
-          const certMatch = profile.certificates.some((cert: any) => {
+        // Certificates - from certificates table
+        if (student.certificates && Array.isArray(student.certificates)) {
+          const certMatch = student.certificates.some((cert: any) => {
             if (!cert) return false;
             
             // Check all certificate fields
@@ -3656,9 +3535,9 @@ const TalentPool = () => {
             if (matchesField(cert.title, 'certificate')) return true;
             if (matchesField(cert.issuer, 'certificate')) return true;
             if (matchesField(cert.status, 'certificate')) return true;
-            if (matchesField(cert.issuedOn, 'certificate')) return true;
+            if (matchesField(cert.issued_on, 'certificate')) return true;
             if (matchesField(cert.description, 'certificate')) return true;
-            if (matchesField(cert.credentialId, 'certificate')) return true;
+            if (matchesField(cert.credential_id, 'certificate')) return true;
             
             // Handle enabled status search
             if (cert.enabled === true && query.includes('enabled')) {
@@ -3672,18 +3551,6 @@ const TalentPool = () => {
               return true;
             }
             
-            // Handle processing status search
-            if (cert.processing === true && (query.includes('processing') || query.includes('pending'))) {
-              if (!isMatch) matchedField = 'processing certificate';
-              isMatch = true;
-              return true;
-            }
-            if (cert.processing === false && query.includes('processed')) {
-              if (!isMatch) matchedField = 'processed certificate';
-              isMatch = true;
-              return true;
-            }
-            
             return false;
           });
           
@@ -3692,43 +3559,17 @@ const TalentPool = () => {
           }
         }
         
-        // Technical Skills - name, level, category
-        if (profile.technicalSkills && Array.isArray(profile.technicalSkills)) {
-          const techMatch = profile.technicalSkills.some((skill: any) => {
-            if (!skill) return false;
-            if (matchesField(skill.name, 'technical skill')) return true;
-            if (matchesField(skill.level, 'technical skill')) return true;
-            if (matchesField(skill.category, 'technical skill')) return true;
-            // Handle verified status
-            if (skill.verified === true && query.includes('verified')) {
-              if (!isMatch) matchedField = 'verified technical skill';
-              isMatch = true;
-              return true;
-            }
-            return false;
-          });
-          
-          if (techMatch) {
-            return { student, matchedField };
-          }
-        }
-        
-        // Training - if exists
-        if (profile.training && Array.isArray(profile.training)) {
-          const trainingMatch = profile.training.some((training: any) => {
+        // Trainings - from trainings table
+        if (student.trainings && Array.isArray(student.trainings)) {
+          const trainingMatch = student.trainings.some((training: any) => {
             if (!training) return false;
             if (matchesField(training.id, 'training')) return true;
-            if (matchesField(training.skill, 'training')) return true;
-            if (matchesField(training.certificateUrl, 'training')) return true;
-            if (matchesField(training.certificationDate, 'training')) return true;
-            if (matchesField(training.course, 'training')) return true;
-            if (matchesField(training.trainer, 'training')) return true;
+            if (matchesField(training.title, 'training')) return true;
+            if (matchesField(training.organization, 'training')) return true;
+            if (matchesField(training.description, 'training')) return true;
             if (matchesField(training.duration, 'training')) return true;
-            if (matchesField(training.provider, 'training')) return true;
-            if (matchesField(training.progress, 'training')) return true;
-            if (matchesField(training.hoursSpent, 'training')) return true
-            if (matchesField(training.totalModules, 'training')) return true
-            if (matchesField(training.completedModules, 'training')) return true
+            if (matchesField(training.start_date, 'training')) return true;
+            if (matchesField(training.end_date, 'training')) return true;
             return false;
           });
           if (trainingMatch) {
@@ -3753,9 +3594,7 @@ const TalentPool = () => {
     // Apply skill filters
     if (filters.skills.length > 0) {
       result = result.filter(student => {
-        const profile = (student as any).profile || student;
-        const skillsToCheck = student.skills || profile.skills;
-        return skillsToCheck?.some((skill: any) => {
+        return student.skills?.some((skill: any) => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
           return skillName && filters.skills.includes(skillName.toLowerCase());
         });
@@ -3765,8 +3604,7 @@ const TalentPool = () => {
     // Apply course/department filters
     if (filters.courses.length > 0) {
       result = result.filter(student => {
-        const profile = (student as any).profile || student;
-        const dept = student.dept || profile.dept || profile.department;
+        const dept = student.dept || student.course_name || student.branch_field;
         return dept && filters.courses.includes(dept.toLowerCase());
       });
     }
@@ -3783,8 +3621,7 @@ const TalentPool = () => {
     // Apply location filters
     if (filters.locations.length > 0) {
       result = result.filter(student => {
-        const profile = (student as any).profile || student;
-        const location = student.location || profile.location;
+        const location = student.location || student.district_name;
         return location && filters.locations.includes(location.toLowerCase());
       });
     }

@@ -289,8 +289,8 @@ const AppRoutes = () => {
           }
         >
           <Route path="overview" element={<Overview />} />
-          <Route path="talent-scout" element={<RecruiterAI />} />
-          <Route path="talent-pool" element={<TalentPool />} />
+          {/* <Route path="talent-scout" element={<RecruiterAI />} /> */}
+          {/* <Route path="talent-pool" element={<TalentPool />} /> */}
           <Route path="requisition" element={<Requisitions />} />
           <Route path="requisition/applicants" element={<ApplicantsList />} />
           <Route path="pipelines" element={<Pipelines />} />
