@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
-export const useStudentCertificates = (studentId, enabled = true) => {
-  const [certificates, setCertificates] = useState([]);
+export const useStudentProjects = (studentId, enabled = true) => {
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchCertificates = async () => {
+  const fetchProjects = async () => {
     if (!studentId || !enabled) return;
 
     try {
@@ -14,10 +14,10 @@ export const useStudentCertificates = (studentId, enabled = true) => {
       setError(null);
 
       const { data, error: fetchError } = await supabase
-        .from('certificates')
+        .from('projects')
         .select('*')
         .eq('student_id', studentId)
-        .order('issued_on', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (fetchError) {
         throw fetchError;
@@ -27,14 +27,26 @@ export const useStudentCertificates = (studentId, enabled = true) => {
       const transformedData = data.map(item => ({
         id: item.id,
         title: item.title || item.name,
-        issuer: item.issuer || item.organization,
-        issuedOn: item.issued_on,
-        level: item.level,
         description: item.description,
-        credentialId: item.credential_id,
-        link: item.link || item.certificate_url,
-        documentUrl: item.document_url,
-        status: item.status || 'active',
+        status: item.status || 'completed',
+        startDate: item.start_date,
+        endDate: item.end_date,
+        duration: item.duration,
+        organization: item.organization,
+        tech: item.tech_stack || [],
+        techStack: item.tech_stack || [],
+        technologies: item.tech_stack || [],
+        skills: item.skills_used || [],
+        demoLink: item.demo_link,
+        demo_link: item.demo_link,
+        link: item.demo_link,
+        githubLink: item.github_link,
+        github_link: item.github_link,
+        github: item.github_link,
+        github_url: item.github_link,
+        certificateUrl: item.certificate_url,
+        videoUrl: item.video_url,
+        pptUrl: item.ppt_url,
         approval_status: item.approval_status || 'pending',
         verified: item.approval_status === 'approved',
         processing: item.approval_status === 'pending',
@@ -43,9 +55,9 @@ export const useStudentCertificates = (studentId, enabled = true) => {
         updatedAt: item.updated_at
       }));
 
-      setCertificates(transformedData);
+      setProjects(transformedData);
     } catch (err) {
-      console.error('Error fetching certificates:', err);
+      console.error('Error fetching projects:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -53,15 +65,15 @@ export const useStudentCertificates = (studentId, enabled = true) => {
   };
 
   useEffect(() => {
-    fetchCertificates();
+    fetchProjects();
   }, [studentId, enabled]);
 
   const refresh = () => {
-    fetchCertificates();
+    fetchProjects();
   };
 
   return {
-    certificates,
+    projects,
     loading,
     error,
     refresh
