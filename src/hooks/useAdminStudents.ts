@@ -29,6 +29,13 @@ interface StudentRow {
   university_main?: string
   imported_at?: string
   contact_dial_code?: string
+  // Joined tables
+  skills?: any[]
+  projects?: any[]
+  certificates?: any[]
+  education?: any[]
+  experience?: any[]
+  trainings?: any[]
 }
 
 export interface StudentProfile {
@@ -135,22 +142,22 @@ function mapToUICandidate(row: StudentRow): UICandidate {
 
   const skills = subjects // Use same as subjects for now
 
-  const rawProjects = Array.isArray(passport.projects) ? passport.projects : []
-  const rawCertificates = Array.isArray(passport.certificates) ? passport.certificates : []
+  const rawProjects = Array.isArray(row.projects) ? row.projects : []
+  const rawCertificates = Array.isArray(row.certificates) ? row.certificates : []
   const rawAssessments = Array.isArray(passport.assessments) ? passport.assessments : []
 
   const projects = rawProjects
-    .filter(project => project?.verified === true || project?.status === 'verified')
+    .filter(project => project?.approval_status === 'approved' || project?.enabled === true)
     .map(project => ({
       ...project,
-      verifiedAt: project?.verifiedAt || project?.updatedAt || project?.createdAt
+      verifiedAt: project?.updated_at || project?.created_at
     }))
 
   const certificates = rawCertificates
-    .filter(certificate => certificate?.verified === true || certificate?.status === 'verified')
+    .filter(certificate => certificate?.approval_status === 'approved' || certificate?.enabled === true)
     .map(certificate => ({
       ...certificate,
-      verifiedAt: certificate?.verifiedAt || certificate?.updatedAt || certificate?.createdAt
+      verifiedAt: certificate?.updated_at || certificate?.created_at
     }))
 
   const assessments = rawAssessments
@@ -185,13 +192,13 @@ function mapToUICandidate(row: StudentRow): UICandidate {
       email: row.email || profile.email,
       contact_number: row.contact_number || profile.contact_number,
       university: college,
-      education: profile.education || [{
+      education: Array.isArray(row.education) && row.education.length > 0 ? row.education : profile.education || [{
         degree: dept,
         level: classValue,
         cgpa: (Math.random() * 3 + 7).toFixed(2), // Random CGPA 7-10
       }],
-      technicalSkills: profile.technicalSkills || [],
-      softSkills: profile.softSkills || [],
+      technicalSkills: Array.isArray(row.skills) ? row.skills.filter(skill => skill.type === 'technical') : profile.technicalSkills || [],
+      softSkills: Array.isArray(row.skills) ? row.skills.filter(skill => skill.type === 'soft') : profile.softSkills || [],
     },
     projects,
     certificates,
@@ -213,7 +220,13 @@ export function useStudents() {
       try {
         const { data, error } = await supabase
           .from('students')
-          .select('*')
+          .select(`*,
+            skills!skills_student_id_fkey(id,name,type,level,description,verified,enabled,approval_status,created_at,updated_at),
+            projects!projects_student_id_fkey(id,title,description,status,start_date,end_date,duration,tech_stack,demo_link,github_link,approval_status,certificate_url,video_url,ppt_url,organization,enabled,created_at,updated_at),
+            certificates!certificates_student_id_fkey(id,title,issuer,level,credential_id,link,issued_on,description,status,approval_status,document_url,enabled,created_at,updated_at),
+            education!education_student_id_fkey(id,level,degree,department,university,year_of_passing,cgpa,status,approval_status,created_at,updated_at),
+            experience!experience_student_id_fkey(id,organization,role,start_date,end_date,duration,verified,approval_status,created_at,updated_at),
+            trainings!trainings_student_id_fkey(id,title,organization,start_date,end_date,duration,description,approval_status,created_at,updated_at)`)
           .order('updatedAt', { ascending: false })
           .limit(500)
         if (error) throw error
