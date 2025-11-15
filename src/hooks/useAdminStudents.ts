@@ -77,6 +77,7 @@ export interface UICandidate {
   projects?: any[]
   certificates?: any[]
   assessments?: any[]
+  universityId?: string
 }
 
 function safeParseProfile(input: unknown): StudentProfile | null {
@@ -195,6 +196,7 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     projects,
     certificates,
     assessments,
+    universityId: row.universityId,
   }
 }
 
