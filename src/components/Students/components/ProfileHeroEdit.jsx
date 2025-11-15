@@ -258,13 +258,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       {displayData.university || "University"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-white">
+                  {/* <div className="flex items-center gap-2 text-white">
                     <CreditCard className="w-4 h-4" />
                     <span>
                       Student ID:{" "}
                       {realStudentData?.student_id || "Not Assigned"}
                     </span>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Tags */}

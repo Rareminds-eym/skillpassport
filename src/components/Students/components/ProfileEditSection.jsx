@@ -236,7 +236,7 @@ const ProfileEditSection = ({ profileEmail }) => {
     },
     {
       id: 'education',
-      title: 'My Education',
+      title: 'Education',
       icon: Award,
       description: 'Manage your academic qualifications - Add multiple degrees, certifications',
   color: 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-blue-200',
@@ -246,7 +246,7 @@ const ProfileEditSection = ({ profileEmail }) => {
     },
     {
       id: 'training',
-      title: 'My Training',
+      title: 'Training',
       icon: BookOpen,
       description: 'Add courses and certifications',
   color: 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-blue-200',
@@ -256,7 +256,7 @@ const ProfileEditSection = ({ profileEmail }) => {
     },
     {
       id: 'experience',
-      title: 'My Experience',
+      title: 'Experience',
       icon: Briefcase,
       description: 'Add internships and work experience',
   color: 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-blue-200',
@@ -266,7 +266,7 @@ const ProfileEditSection = ({ profileEmail }) => {
     },
     {
       id: 'softSkills',
-      title: 'My Soft Skills',
+      title: 'Soft Skills',
       icon: MessageCircle,
       description: 'Languages and communication skills',
   color: 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-blue-200',
@@ -276,7 +276,7 @@ const ProfileEditSection = ({ profileEmail }) => {
     },
     {
       id: 'technicalSkills',
-      title: 'My Technical Skills',
+      title: 'Technical Skills',
       icon: Code,
       description: 'Programming languages and technical skills',
   color: 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-blue-200',

@@ -893,7 +893,7 @@ const StudentDashboard = () => {
                 <Award className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">
-                My Education
+                Education
               </span>
               <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
                 {
@@ -1120,7 +1120,7 @@ const StudentDashboard = () => {
                 <Code className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">
-                My Training
+                Training
               </span>
             </CardTitle>
             <button
@@ -1257,7 +1257,7 @@ const StudentDashboard = () => {
                 <Users className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">
-                My Experience
+                Experience
               </span>
             </CardTitle>
             <button
@@ -1324,7 +1324,7 @@ const StudentDashboard = () => {
                 <MessageCircle className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">
-                My Soft Skills
+                Soft Skills
               </span>
             </CardTitle>
             <button

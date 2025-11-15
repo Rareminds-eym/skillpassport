@@ -436,7 +436,7 @@ const Applications = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
               <Briefcase className="w-8 h-8 text-slate-700" />
-              My Applications
+              Applications
             </h1>
             <p className="text-gray-600 mt-1">Track and manage your job applications</p>
           </div>

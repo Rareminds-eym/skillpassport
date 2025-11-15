@@ -102,7 +102,7 @@ const MyTraining = () => {
         {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">My Training</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Training</h1>
             <p className="text-gray-600">
               Track your courses, certifications, and professional development
             </p>
