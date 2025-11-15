@@ -217,7 +217,8 @@ const StudentAdmissions = () => {
   }, [students]);
 
   const filteredAndSortedStudents = useMemo(() => {
-    let result = students;
+    // Filter students associated with schools (universityId is null)
+    let result = students.filter(student => !student.universityId);
 
     if (searchQuery && searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase().trim();
