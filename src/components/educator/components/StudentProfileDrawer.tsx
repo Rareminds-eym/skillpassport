@@ -926,7 +926,9 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
   // Fetch projects and certificates when student changes
 
   useEffect(() => {
-    if (!student?.id) return;
+    // Use user_id if available, fallback to id
+    const studentId = student?.user_id || student?.id;
+    if (!studentId) return;
 
     // Reset states
     setProjects([]);
@@ -939,8 +941,9 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
         const { data, error } = await supabase
           .from('projects')
           .select('*')
-          .eq('student_id', student.id)
-          .eq('approval_status', 'verified')
+          .eq('student_id', studentId)
+          .eq('enabled', true)
+          .in('approval_status', ['approved', 'verified'])
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -959,8 +962,9 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
         const { data, error } = await supabase
           .from('certificates')
           .select('*')
-          .eq('student_id', student.id)
-          .eq('approval_status', 'verified')
+          .eq('student_id', studentId)
+          .eq('enabled', true)
+          .in('approval_status', ['approved', 'verified'])
           .order('issued_on', { ascending: false });
 
         if (error) throw error;
@@ -992,7 +996,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
               educator_name
             )
           `)
-          .eq('student_id', student.id)
+          .eq('student_id', studentId)
           .eq('is_deleted', false)
           .order('updated_date', { ascending: false });
 
@@ -1009,7 +1013,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
     fetchProjects();
     fetchCertificates();
     fetchAssignemts();
-  }, [student?.id]);
+  }, [student?.user_id, student?.id]);
 
   if (!isOpen || !student) return null;
 

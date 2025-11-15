@@ -18,8 +18,8 @@ import {
 
 const navigationItems = [
   { name: 'Overview', path: '/recruitment/overview', icon: HomeIcon },
-  { name: 'Talent Scout', path: '/recruitment/talent-scout', icon: SparklesIcon },
-  { name: 'Talent Pool', path: '/recruitment/talent-pool', icon: UsersIcon },
+  // { name: 'Talent Scout', path: '/recruitment/talent-scout', icon: SparklesIcon },
+  // { name: 'Talent Pool', path: '/recruitment/talent-pool', icon: UsersIcon },
   {
     name: 'Requisition',
     path: '/recruitment/requisition',

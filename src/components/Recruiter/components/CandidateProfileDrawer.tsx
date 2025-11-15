@@ -592,90 +592,113 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   // Fetch projects and certificates when student changes
 
   useEffect(() => {
-    if (!candidate?.id) return;
+    // Use user_id if available, fallback to id
+    const studentId = candidate?.user_id || candidate?.id;
+    if (!studentId) return;
 
-    // Reset states
-    setProjects([]);
-    setCertificates([]);
-    setAssessments([]);
+    // Check if data is already available from useStudents (prefetched)
+    const hasProjects = candidate?.projects && Array.isArray(candidate.projects) && candidate.projects.length > 0;
+    const hasCertificates = candidate?.certificates && Array.isArray(candidate.certificates) && candidate.certificates.length > 0;
+    
+    // Use prefetched data if available
+    if (hasProjects) {
+      setProjects(candidate.projects.filter(p => p.enabled !== false && ['approved', 'verified'].includes(p.approval_status)));
+    }
+    if (hasCertificates) {
+      setCertificates(candidate.certificates.filter(c => c.enabled !== false && ['approved', 'verified'].includes(c.approval_status)));
+    }
 
-    const fetchProjects = async () => {
-      setLoadingProjects(true);
-      try {
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('student_id', candidate.id)
-          .eq('approval_status', 'verified')
-          .order('created_at', { ascending: false });
+    // Fetch all data in parallel for better performance
+    const fetchAllData = async () => {
+      // Only fetch what's not already available
+      const fetchPromises = [];
 
-        if (error) throw error;
-        setProjects(data || []);
-      } catch (error) {
-        console.error('Error fetching projects:', error);
-        setProjects([]);
-      } finally {
-        setLoadingProjects(false);
+      if (!hasProjects) {
+        setLoadingProjects(true);
+        fetchPromises.push(
+          supabase
+            .from('projects')
+            .select('*')
+            .eq('student_id', studentId)
+            .eq('enabled', true)
+            .in('approval_status', ['approved', 'verified'])
+            .order('created_at', { ascending: false })
+            .then(({ data, error }) => {
+              if (error) throw error;
+              setProjects(data || []);
+              setLoadingProjects(false);
+            })
+            .catch(error => {
+              console.error('Error fetching projects:', error);
+              setProjects([]);
+              setLoadingProjects(false);
+            })
+        );
       }
-    };
 
-    const fetchCertificates = async () => {
-      setLoadingCertificates(true);
-      try {
-        const { data, error } = await supabase
-          .from('certificates')
-          .select('*')
-          .eq('student_id', candidate.id)
-          .eq('approval_status', 'verified')
-          .order('issued_on', { ascending: false });
-
-        if (error) throw error;
-        setCertificates(data || []);
-      } catch (error) {
-        console.error('Error fetching certificates:', error);
-        setCertificates([]);
-      } finally {
-        setLoadingCertificates(false);
+      if (!hasCertificates) {
+        setLoadingCertificates(true);
+        fetchPromises.push(
+          supabase
+            .from('certificates')
+            .select('*')
+            .eq('student_id', studentId)
+            .eq('enabled', true)
+            .in('approval_status', ['approved', 'verified'])
+            .order('issued_on', { ascending: false })
+            .then(({ data, error }) => {
+              if (error) throw error;
+              setCertificates(data || []);
+              setLoadingCertificates(false);
+            })
+            .catch(error => {
+              console.error('Error fetching certificates:', error);
+              setCertificates([]);
+              setLoadingCertificates(false);
+            })
+        );
       }
-    };
 
-    const fetchAssignemts = async () => {
+      // Always fetch assignments (not included in useStudents)
       setLoadingAssessments(true);
-      try {
-        const { data, error } = await supabase
+      fetchPromises.push(
+        supabase
           .from('student_assignments')
           .select(`
-              *,
-              assignments (
-                title,
-                description,
-                course_name,
-                course_code,
-                assignment_type,
-                due_date,
-                total_points,
-                skill_outcomes,
-                educator_name
-              )
-            `)
-          .eq('student_id', candidate.id)
+            *,
+            assignments (
+              title,
+              description,
+              course_name,
+              course_code,
+              assignment_type,
+              due_date,
+              total_points,
+              skill_outcomes,
+              educator_name
+            )
+          `)
+          .eq('student_id', studentId)
           .eq('is_deleted', false)
-          .order('updated_date', { ascending: false });
+          .order('updated_date', { ascending: false })
+          .then(({ data, error }) => {
+            if (error) throw error;
+            setAssessments(data || []);
+            setLoadingAssessments(false);
+          })
+          .catch(error => {
+            console.error('Error fetching assignments:', error);
+            setAssessments([]);
+            setLoadingAssessments(false);
+          })
+      );
 
-        if (error) throw error;
-        setAssessments(data || []);
-      } catch (error) {
-        console.error('Error fetching assignments:', error);
-        setAssessments([]);
-      } finally {
-        setLoadingAssessments(false);
-      }
+      // Execute all fetches in parallel
+      await Promise.all(fetchPromises);
     };
 
-    fetchProjects();
-    fetchCertificates();
-    fetchAssignemts();
-  }, [candidate?.id]);
+    fetchAllData();
+  }, [candidate?.user_id, candidate?.id, candidate?.projects, candidate?.certificates]);
 
 
 
