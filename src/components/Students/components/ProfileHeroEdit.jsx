@@ -121,6 +121,20 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   // Use real data only; if not found, display nothing or a message
   const displayData = realStudentData?.profile;
 
+  // Determine institution from relationships (school_id or university_college_id)
+  const institutionName = React.useMemo(() => {
+    if (realStudentData?.school_id && realStudentData?.school) {
+      return realStudentData.school.name;
+    } else if (realStudentData?.university_college_id && realStudentData?.universityCollege) {
+      const college = realStudentData.universityCollege;
+      const university = college.universities;
+      // Show both college and university name
+      return university?.name ? `${college.name} - ${university.name}` : college.name;
+    }
+    // Fallback to profile.university if no institutional linkage
+    return displayData?.university || "Institution";
+  }, [realStudentData, displayData]);
+
   // Debug: Log student_id from database column
   React.useEffect(() => {
     if (realStudentData) {
@@ -255,7 +269,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   <div className="flex items-center gap-2 text-white">
                     <Briefcase className="w-4 h-4" />
                     <span className="font-medium">
-                      {displayData.university || "University"}
+                      {institutionName}
                     </span>
                   </div>
                   {/* <div className="flex items-center gap-2 text-white">
