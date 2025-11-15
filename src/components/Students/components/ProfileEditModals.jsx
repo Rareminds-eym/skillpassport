@@ -1422,23 +1422,88 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
   const [newExp, setNewExp] = useState({
     role: "",
     organization: "",
-    duration: "",
+    start_date: "",
+    end_date: "",
   });
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
 
-  // Update internal state when data prop changes (Supabase data updates)
+  // Update internal state when data prop changes and recalculate durations
   useEffect(() => {
-    setExperiences(data || []);
+    if (data && Array.isArray(data)) {
+      // Recalculate duration for all experiences on load
+      const experiencesWithDuration = data.map(exp => ({
+        ...exp,
+        duration: exp.start_date 
+          ? calculateDuration(exp.start_date, exp.end_date)
+          : exp.duration || ""
+      }));
+      setExperiences(experiencesWithDuration);
+    } else {
+      setExperiences([]);
+    }
   }, [data]);
+
+  // Calculate duration from start and end dates
+  const calculateDuration = (startDate, endDate) => {
+    if (!startDate) return "";
+    
+    const start = new Date(startDate);
+    const end = endDate ? new Date(endDate) : new Date(); // Use current date if no end date
+    
+    if (isNaN(start.getTime())) return "";
+    if (endDate && isNaN(end.getTime())) return "";
+    
+    // Calculate difference in milliseconds
+    const diffMs = Math.abs(end - start);
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    
+    // Calculate years, months, and days
+    const years = Math.floor(diffDays / 365);
+    const remainingDays = diffDays % 365;
+    const months = Math.floor(remainingDays / 30);
+    const days = remainingDays % 30;
+    
+    // Build duration string
+    const parts = [];
+    if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
+    if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
+    if (days > 0 && years === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+    
+    // Format dates for display
+    const formatDate = (date) => {
+      return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    };
+    
+    const startLabel = formatDate(start);
+    const endLabel = endDate ? formatDate(end) : 'Present';
+    
+    const durationText = parts.length > 0 ? parts.join(' ') : 'Less than a month';
+    
+    return `${startLabel} - ${endLabel} (${durationText})`;
+  };
 
   const addExperience = () => {
     if (newExp.role.trim() && newExp.organization.trim()) {
+      const duration = calculateDuration(newExp.start_date, newExp.end_date);
+      
       setExperiences([
         ...experiences,
-        { ...newExp, id: Date.now(), verified: false, processing: true },
+        { 
+          ...newExp,
+          duration, // Auto-calculated duration
+          id: Date.now(), // Temporary ID, will be replaced by UUID on save
+          verified: false, 
+          processing: true,
+          approval_status: 'pending'
+        },
       ]);
-      setNewExp({ role: "", organization: "", duration: "" });
+      setNewExp({ 
+        role: "", 
+        organization: "", 
+        start_date: "",
+        end_date: "",
+      });
       setIsAdding(false);
     }
   };
@@ -1452,8 +1517,7 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
       await onSave(experiences);
       toast({
         title: "Experience Updated",
-        description:
-          "Your experience details are being processed for verification.",
+        description: "Your experience details are being processed for verification.",
       });
       onClose();
     } catch (error) {
@@ -1478,22 +1542,16 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
         <div className="space-y-4">
           {experiences.map((exp, index) => (
             <div
-              key={exp.id || index}
+              key={exp.id || `${exp.role}-${exp.organization}-${index}`}
               className={`p-4 border rounded-lg ${
                 exp.enabled === false ? "opacity-50" : "opacity-100"
               }`}
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <h4 className="font-medium">
-                    {exp.role}
-                  </h4>
-                  <p className="text-sm">
-                    {exp.organization}
-                  </p>
-                  <p className="text-xs">
-                    {exp.duration}
-                  </p>
+                  <h4 className="font-medium">{exp.role}</h4>
+                  <p className="text-sm">{exp.organization}</p>
+                  <p className="text-xs">{exp.duration}</p>
                   {exp.processing ? (
                     <Badge className="mt-2 bg-orange-100 text-orange-800">
                       <Clock className="w-3 h-3 mr-1" />
@@ -1508,32 +1566,42 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
                     )
                   )}
                 </div>
-                <Button
-                  variant={exp.enabled === false ? "outline" : "default"}
-                  size="sm"
-                  onClick={() =>
-                    setExperiences(
-                      experiences.map((e, i) =>
-                        (e.id !== undefined ? e.id : i) ===
-                        (exp.id !== undefined ? exp.id : index)
-                          ? {
-                              ...e,
-                              enabled: e.enabled === false ? true : false,
-                            }
-                          : e
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant={exp.enabled === false ? "outline" : "default"}
+                    size="sm"
+                    onClick={() =>
+                      setExperiences(
+                        experiences.map((e, i) =>
+                          (e.id !== undefined ? e.id : i) ===
+                          (exp.id !== undefined ? exp.id : index)
+                            ? {
+                                ...e,
+                                enabled: e.enabled === false ? true : false,
+                              }
+                            : e
+                        )
                       )
-                    )
-                  }
-                  className={
-                    exp.enabled === false
-                      ? "text-gray-500 border-gray-400"
-                      : "bg-emerald-500 text-white"
-                  }
-                >
-                  {exp.enabled === undefined || exp.enabled
-                    ? "Disable"
-                    : "Enable"}
-                </Button>
+                    }
+                    className={
+                      exp.enabled === false
+                        ? "text-gray-500 border-gray-400"
+                        : "bg-emerald-500 text-white"
+                    }
+                  >
+                    {exp.enabled === undefined || exp.enabled
+                      ? "Disable"
+                      : "Enable"}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => deleteExperience(exp.id)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
@@ -1557,13 +1625,45 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
                   }))
                 }
               />
-              <Input
-                placeholder="Duration (e.g., Jun 2024 - Aug 2024)"
-                value={newExp.duration}
-                onChange={(e) =>
-                  setNewExp((prev) => ({ ...prev, duration: e.target.value }))
-                }
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="start_date">Start Date</Label>
+                  <Input
+                    id="start_date"
+                    type="date"
+                    value={newExp.start_date}
+                    onChange={(e) =>
+                      setNewExp((prev) => ({ ...prev, start_date: e.target.value }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="end_date">End Date (Optional)</Label>
+                  <Input
+                    id="end_date"
+                    type="date"
+                    value={newExp.end_date}
+                    onChange={(e) =>
+                      setNewExp((prev) => ({ ...prev, end_date: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+              
+              {/* Display calculated duration preview */}
+              {newExp.start_date && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-sm text-blue-800 font-medium">
+                    Duration: {calculateDuration(newExp.start_date, newExp.end_date)}
+                  </p>
+                  {!newExp.end_date && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Leave end date empty for ongoing positions
+                    </p>
+                  )}
+                </div>
+              )}
+              
               <div className="flex gap-2">
                 <Button
                   onClick={addExperience}
