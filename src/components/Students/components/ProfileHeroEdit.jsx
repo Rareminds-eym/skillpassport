@@ -26,6 +26,14 @@ import { Button } from "./ui/button";
 import { QRCodeSVG } from "qrcode.react";
 import { studentData } from "../data/mockData";
 import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
+import { useEmployabilityScore } from "../../../hooks/useEmployabilityScore";
+import { useStudentTraining } from "../../../hooks/useStudentTraining";
+import { useStudentCertificates } from "../../../hooks/useStudentCertificates";
+import { useStudentProjects } from "../../../hooks/useStudentProjects";
+import { useStudentEducation } from "../../../hooks/useStudentEducation";
+import { useStudentTechnicalSkills } from "../../../hooks/useStudentTechnicalSkills";
+import { useStudentSoftSkills } from "../../../hooks/useStudentSoftSkills";
+import { useStudentExperience } from "../../../hooks/useStudentExperience";
 import {
   calculateEmployabilityScore,
   getDefaultEmployabilityScore,
@@ -82,31 +90,204 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     error,
   } = useStudentDataByEmail(userEmail);
 
-  // Calculate employability score and generate badges when student data changes
+  // Get student ID for table data
+  const studentId = realStudentData?.id;
+
+  // Fetch data from separate tables
+  const {
+    training: tableTraining,
+    loading: trainingLoading,
+  } = useStudentTraining(studentId, !!studentId);
+
+  const {
+    certificates: tableCertificates,
+    loading: certificatesLoading,
+  } = useStudentCertificates(studentId, !!studentId);
+
+  const {
+    projects: tableProjects,
+    loading: projectsLoading,
+  } = useStudentProjects(studentId, !!studentId);
+
+  const {
+    education: tableEducation,
+    loading: educationLoading,
+  } = useStudentEducation(studentId, !!studentId);
+
+  const {
+    technicalSkills: tableTechnicalSkills,
+    loading: technicalSkillsLoading,
+  } = useStudentTechnicalSkills(studentId, !!studentId);
+
+  const {
+    softSkills: tableSoftSkills,
+    loading: softSkillsLoading,
+  } = useStudentSoftSkills(studentId, !!studentId);
+
+  const {
+    experience: tableExperience,
+    loading: experienceLoading,
+  } = useStudentExperience(studentId, !!studentId);
+
+  // Use real data from student table instead of JSONB profile
+  const displayData = realStudentData?.profile; // Keep for achievements only
+
+  // Debug: Log all available fields in realStudentData
+  if (process.env.NODE_ENV === 'development' && realStudentData) {
+    console.log('🔍 All Student Data Fields:', Object.keys(realStudentData));
+    console.log('🔍 Student Data Values:', realStudentData);
+    console.log('🔍 Name Fields:', {
+      name: realStudentData?.name,
+      profile_name: realStudentData?.profile?.name,
+      email: realStudentData?.email,
+      userEmail: userEmail
+    });
+    console.log('🔍 School Detection Fields:', {
+      school_id: realStudentData?.school_id,
+      school_class_id: realStudentData?.school_class_id,
+      schoolClassId: realStudentData?.schoolClassId,
+      university_college_id: realStudentData?.university_college_id,
+      universityCollegeId: realStudentData?.universityCollegeId,
+      universityId: realStudentData?.universityId
+    });
+  }
+
+  // Check if student is from school or university using actual database fields
+  const isSchoolStudent = realStudentData?.school_id || realStudentData?.school_class_id || realStudentData?.schoolClassId;
+  const isUniversityStudent = realStudentData?.university_college_id || realStudentData?.universityCollegeId || realStudentData?.universityId;
+
+  // Debug: Log the detection results
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🏫 Institution Detection:', {
+      isSchoolStudent,
+      isUniversityStudent,
+      finalType: isSchoolStudent ? "School" : "University"
+    });
+  }
+
+  // Use data from students table name column only
+  const studentName = realStudentData?.name || "Student Name";
+
+  // Debug: Log name specifically
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 NAME DEBUG:', {
+      'realStudentData exists': !!realStudentData,
+      'realStudentData.name': realStudentData?.name,
+      'typeof name': typeof realStudentData?.name,
+      'name length': realStudentData?.name?.length,
+      'final studentName': studentName
+    });
+  }
+  const studentEmail = realStudentData?.email || userEmail;
+  const studentId_display = realStudentData?.student_id || "Not Assigned";
+  const approvalStatus = realStudentData?.approval_status || 'pending';
+
+  // Determine institution type and name from database fields
+  const institutionType = isSchoolStudent ? "School" : "University";
+  const institutionName = realStudentData?.college_school_name ||
+    realStudentData?.university ||
+    realStudentData?.university_main ||
+    institutionType;
+
+  // Get appropriate field/subject based on student type
+  const department = isSchoolStudent
+    ? (realStudentData?.branch_field || "Science Stream") // For school students
+    : (realStudentData?.branch_field || realStudentData?.course_name || "Computer Science"); // For university students
+
+  // Get appropriate class/year based on student type
+  const currentYear = new Date().getFullYear();
+  const classYear = isSchoolStudent
+    ? (realStudentData?.course_name || "Grade 12") // For school students
+    : `Class of ${realStudentData?.expectedGraduationDate ?
+      new Date(realStudentData.expectedGraduationDate).getFullYear() :
+      currentYear + 1}`; // For university students
+
+  // Get social media links from students table (actual column names)
+  const socialLinks = {
+    github: realStudentData?.github_link,
+    portfolio: realStudentData?.portfolio_link,
+    linkedin: realStudentData?.linkedin_link,
+    twitter: realStudentData?.twitter_link,
+    instagram: realStudentData?.instagram_link,
+    facebook: realStudentData?.facebook_link
+  };
+
+  // Prepare data for employability calculation - PRIORITIZE TABLE DATA OVER JSONB
+  const employabilityInputData = {
+    education: tableEducation.length > 0 ? tableEducation : (realStudentData?.education || []),
+    technicalSkills: tableTechnicalSkills.length > 0 ? tableTechnicalSkills : (realStudentData?.technicalSkills || []),
+    softSkills: tableSoftSkills.length > 0 ? tableSoftSkills : (realStudentData?.softSkills || []),
+    training: tableTraining.length > 0 ? tableTraining : (realStudentData?.training || []),
+    experience: tableExperience.length > 0 ? tableExperience : (realStudentData?.experience || []),
+    projects: tableProjects.length > 0 ? tableProjects : (realStudentData?.projects || []),
+    certificates: tableCertificates.length > 0 ? tableCertificates : (realStudentData?.certificates || [])
+  };
+
+  // Calculate dynamic employability score
+  const {
+    employabilityScore,
+    scoreBreakdown,
+    employabilityLabel,
+    getScoreColor,
+    getScoreBgColor
+  } = useEmployabilityScore(employabilityInputData);
+
+  // Debug logging for employability calculation and student data
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎯 Employability Score Calculation:', {
+        score: employabilityScore,
+        label: employabilityLabel,
+        breakdown: scoreBreakdown,
+        inputData: {
+          education: employabilityInputData.education?.length || 0,
+          technicalSkills: employabilityInputData.technicalSkills?.length || 0,
+          softSkills: employabilityInputData.softSkills?.length || 0,
+          training: employabilityInputData.training?.length || 0,
+          experience: employabilityInputData.experience?.length || 0,
+          projects: employabilityInputData.projects?.length || 0,
+          certificates: employabilityInputData.certificates?.length || 0,
+        }
+      });
+
+      console.log('👤 Student Data Structure:', {
+        studentName,
+        institutionType,
+        institutionName,
+        isSchoolStudent,
+        isUniversityStudent,
+        school_id: realStudentData?.school_id,
+        school_class_id: realStudentData?.school_class_id,
+        university_college_id: realStudentData?.university_college_id,
+        universityId: realStudentData?.universityId,
+        name_from_table: realStudentData?.name,
+        name_from_profile: displayData?.name
+      });
+    }
+  }, [
+    employabilityScore,
+    employabilityLabel,
+    scoreBreakdown,
+    employabilityInputData,
+    studentName,
+    institutionType,
+    institutionName,
+    isSchoolStudent,
+    isUniversityStudent,
+    realStudentData
+  ]);
+
+  // Update employability data when score changes
   useEffect(() => {
     if (realStudentData) {
-      // Pass the entire realStudentData object which contains profile, technicalSkills, softSkills, etc.
-      const scoreData = calculateEmployabilityScore(realStudentData);
+      const dynamicEmployabilityData = {
+        employabilityScore: employabilityScore,
+        level: employabilityLabel,
+        label: employabilityLabel,
+        breakdown: scoreBreakdown
+      };
 
-      // If score is 0, try with minimum score calculation
-      if (scoreData.employabilityScore === 0) {
-        const fallbackData = {
-          employabilityScore: 42,
-          level: "Moderate",
-          label: "🌱 Developing",
-          breakdown: {
-            foundational: 40,
-            century21: 35,
-            digital: 45,
-            behavior: 50,
-            career: 35,
-            bonus: 0,
-          },
-        };
-        setEmployabilityData(fallbackData);
-      } else {
-        setEmployabilityData(scoreData);
-      }
+      setEmployabilityData(dynamicEmployabilityData);
 
       // Generate badges based on student data
       const badges = generateBadges(realStudentData);
@@ -116,10 +297,19 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       setEmployabilityData(getDefaultEmployabilityScore());
       setEarnedBadges([]);
     }
-  }, [realStudentData]);
-
-  // Use real data only; if not found, display nothing or a message
-  const displayData = realStudentData?.profile;
+  }, [
+    realStudentData,
+    employabilityScore,
+    employabilityLabel,
+    scoreBreakdown,
+    tableEducation,
+    tableTechnicalSkills,
+    tableSoftSkills,
+    tableTraining,
+    tableExperience,
+    tableProjects,
+    tableCertificates
+  ]);
 
   // Debug: Log student_id from database column
   React.useEffect(() => {
@@ -131,9 +321,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
   // Generate QR code value once and keep it constant
   const qrCodeValue = React.useMemo(() => {
-    const email = userEmail || "student";
+    const email = studentEmail || userEmail || "student";
     return `${window.location.origin}/student/profile/${email}`;
-  }, [userEmail]);
+  }, [studentEmail, userEmail]);
 
   // Copy link to clipboard
   const handleCopyLink = () => {
@@ -161,19 +351,57 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     }
   };
 
-  if (!displayData) {
+  if (!realStudentData) {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-700 text-center">
         No student data found. Please check your email or contact support.
       </div>
     );
   }
-  const quickEditSections = [
+  // Dynamic sections based on student type
+  const quickEditSections = isSchoolStudent ? [
+    {
+      id: "education",
+      label: "Academic Records",
+      icon: Award,
+      color: "bg-blue-100 text-blue-700 hover:bg-blue-200",
+    },
+    {
+      id: "training",
+      label: "Courses & Training",
+      icon: GraduationCap,
+      color: "bg-green-100 text-green-700 hover:bg-green-200",
+    },
+    {
+      id: "projects",
+      label: "School Projects",
+      icon: Briefcase,
+      color: "bg-purple-100 text-purple-700 hover:bg-purple-200",
+    },
+    {
+      id: "softSkills",
+      label: "Life Skills",
+      icon: Plus,
+      color: "bg-orange-100 text-orange-700 hover:bg-orange-200",
+    },
+    {
+      id: "technicalSkills",
+      label: "Technical Skills",
+      icon: Plus,
+      color: "bg-indigo-100 text-indigo-700 hover:bg-indigo-200",
+    },
+  ] : [
     {
       id: "education",
       label: "Education",
       icon: Award,
       color: "bg-blue-100 text-blue-700 hover:bg-blue-200",
+    },
+    {
+      id: "experience",
+      label: "Experience",
+      icon: Briefcase,
+      color: "bg-purple-100 text-purple-700 hover:bg-purple-200",
     },
     {
       id: "training",
@@ -182,8 +410,8 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       color: "bg-green-100 text-green-700 hover:bg-green-200",
     },
     {
-      id: "experience",
-      label: "Experience",
+      id: "projects",
+      label: "Projects",
       icon: Briefcase,
       color: "bg-purple-100 text-purple-700 hover:bg-purple-200",
     },
@@ -195,7 +423,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     },
     {
       id: "technicalSkills",
-      label: "Technical",
+      label: "Technical Skills",
       icon: Plus,
       color: "bg-indigo-100 text-indigo-700 hover:bg-indigo-200",
     },
@@ -232,10 +460,10 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   <div className="flex-1 pt-1">
                     <div className="flex items-center gap-3 flex-wrap">
                       <h1 className="text-3xl font-bold text-white drop-shadow-lg">
-                        {displayData.name || "Student Name"}
+                        {studentName}
                       </h1>
                       {/* Approval Status Badge */}
-                      {(realStudentData?.approval_status === 'approved') ? (
+                      {(approvalStatus === 'approved') ? (
                         <Badge className="bg-green-500 text-white border-0 px-3 py-1.5 text-xs font-semibold rounded-full shadow-lg flex items-center gap-1.5 animate-in fade-in duration-300">
                           <CheckCircle className="w-3.5 h-3.5" />
                           Approved
@@ -250,19 +478,18 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   </div>
                 </div>
 
-                {/* University and Student ID */}
+                {/* School/University and Student ID */}
                 <div className="space-y-2 ml-1">
                   <div className="flex items-center gap-2 text-white">
                     <Briefcase className="w-4 h-4" />
                     <span className="font-medium">
-                      {displayData.university || "University"}
+                      {institutionName}
                     </span>
                   </div>
                   {/* <div className="flex items-center gap-2 text-white">
                     <CreditCard className="w-4 h-4" />
                     <span>
-                      Student ID:{" "}
-                      {realStudentData?.student_id || "Not Assigned"}
+                      Student ID: {studentId_display}
                     </span>
                   </div> */}
                 </div>
@@ -270,12 +497,10 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                 {/* Tags */}
                 <div className="flex flex-wrap gap-3 ml-1">
                   <Badge className="bg-white text-purple-700 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
-                    {displayData.department ||
-                      displayData.degree ||
-                      "Computer Science"}
+                    {department}
                   </Badge>
                   <Badge className="bg-white text-pink-600 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
-                    {displayData.classYear || "Class of 2025"}
+                    {classYear}
                   </Badge>
                 </div>
 
@@ -291,12 +516,12 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                 />
 
                 {/* Social Media Links - Modern Design */}
-                {(displayData.github_link ||
-                  displayData.portfolio_link ||
-                  displayData.linkedin_link ||
-                  displayData.twitter_link ||
-                  displayData.instagram_link ||
-                  displayData.facebook_link) && (
+                {(socialLinks.github ||
+                  socialLinks.portfolio ||
+                  socialLinks.linkedin ||
+                  socialLinks.twitter ||
+                  socialLinks.instagram ||
+                  socialLinks.facebook) && (
                     <div className="ml-1 space-y-3">
                       <div className="flex items-center gap-2">
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
@@ -306,13 +531,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {displayData.github_link && (
+                        {socialLinks.github && (
                           <div className="relative group">
                             <a
                               href={
-                                displayData.github_link.startsWith("http")
-                                  ? displayData.github_link
-                                  : `https://${displayData.github_link}`
+                                socialLinks.github.startsWith("http")
+                                  ? socialLinks.github
+                                  : `https://${socialLinks.github}`
                               }
                               target="_blank"
                               rel="noopener noreferrer"
@@ -327,13 +552,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                           </div>
                         )}
 
-                        {displayData.portfolio_link && (
+                        {socialLinks.portfolio && (
                           <div className="relative group">
                             <a
                               href={
-                                displayData.portfolio_link.startsWith("http")
-                                  ? displayData.portfolio_link
-                                  : `https://${displayData.portfolio_link}`
+                                socialLinks.portfolio.startsWith("http")
+                                  ? socialLinks.portfolio
+                                  : `https://${socialLinks.portfolio}`
                               }
                               target="_blank"
                               rel="noopener noreferrer"
@@ -348,13 +573,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                           </div>
                         )}
 
-                        {displayData.linkedin_link && (
+                        {socialLinks.linkedin && (
                           <div className="relative group">
                             <a
                               href={
-                                displayData.linkedin_link.startsWith("http")
-                                  ? displayData.linkedin_link
-                                  : `https://${displayData.linkedin_link}`
+                                socialLinks.linkedin.startsWith("http")
+                                  ? socialLinks.linkedin
+                                  : `https://${socialLinks.linkedin}`
                               }
                               target="_blank"
                               rel="noopener noreferrer"
@@ -369,13 +594,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                           </div>
                         )}
 
-                        {displayData.twitter_link && (
+                        {socialLinks.twitter && (
                           <div className="relative group">
                             <a
                               href={
-                                displayData.twitter_link.startsWith("http")
-                                  ? displayData.twitter_link
-                                  : `https://${displayData.twitter_link}`
+                                socialLinks.twitter.startsWith("http")
+                                  ? socialLinks.twitter
+                                  : `https://${socialLinks.twitter}`
                               }
                               target="_blank"
                               rel="noopener noreferrer"
@@ -390,13 +615,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                           </div>
                         )}
 
-                        {displayData.instagram_link && (
+                        {socialLinks.instagram && (
                           <div className="relative group">
                             <a
                               href={
-                                displayData.instagram_link.startsWith("http")
-                                  ? displayData.instagram_link
-                                  : `https://${displayData.instagram_link}`
+                                socialLinks.instagram.startsWith("http")
+                                  ? socialLinks.instagram
+                                  : `https://${socialLinks.instagram}`
                               }
                               target="_blank"
                               rel="noopener noreferrer"
@@ -411,13 +636,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                           </div>
                         )}
 
-                        {displayData.facebook_link && (
+                        {socialLinks.facebook && (
                           <div className="relative group">
                             <a
                               href={
-                                displayData.facebook_link.startsWith("http")
-                                  ? displayData.facebook_link
-                                  : `https://${displayData.facebook_link}`
+                                socialLinks.facebook.startsWith("http")
+                                  ? socialLinks.facebook
+                                  : `https://${socialLinks.facebook}`
                               }
                               target="_blank"
                               rel="noopener noreferrer"
@@ -459,9 +684,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       className="text-xs text-white font-bold mt-2 mb-4 hover:text-yellow-200 transition-colors cursor-pointer"
                     >
                       PASSPORT-ID: SP-
-                      {userEmail
-                        ? userEmail.split("@")[0].toUpperCase().slice(0, 5)
-                        : displayData.passportId || "SP-2024-8421"}
+                      {studentEmail
+                        ? studentEmail.split("@")[0].toUpperCase().slice(0, 5)
+                        : "SP-2024-8421"}
                     </button>
 
                     {/* Copy and Share Buttons */}
@@ -523,12 +748,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   {/* Score Breakdown Tooltip (Optional) */}
                   {process.env.NODE_ENV === "development" && (
                     <div className="text-xs text-white/70 mt-2 text-center">
-                      Debug: F:{employabilityData.breakdown?.foundational}% |
-                      C21:{employabilityData.breakdown?.century21}% | D:
-                      {employabilityData.breakdown?.digital}% | B:
-                      {employabilityData.breakdown?.behavior}% | Car:
-                      {employabilityData.breakdown?.career}% | Bonus:
-                      {employabilityData.breakdown?.bonus}
+                      Debug: Edu:{employabilityData.breakdown?.education || 0} |
+                      Tech:{employabilityData.breakdown?.technicalSkills || 0} |
+                      Soft:{employabilityData.breakdown?.softSkills || 0} |
+                      Train:{employabilityData.breakdown?.training || 0} |
+                      Exp:{employabilityData.breakdown?.experience || 0} |
+                      Proj:{employabilityData.breakdown?.projects || 0} |
+                      Cert:{employabilityData.breakdown?.certificates || 0}
                     </div>
                   )}
                 </div>
@@ -730,9 +956,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {displayData.name || "Student Name"}
+                  {studentName}
                 </h3>
-                <p className="text-sm text-gray-600">{displayData.university || "University"}</p>
+                <p className="text-sm text-gray-600">{institutionName}</p>
               </div>
             </div>
 

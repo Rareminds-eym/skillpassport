@@ -293,34 +293,34 @@ const CareerAssistant: React.FC = () => {
 
   const quickActions = [
     { 
-      id: 'jobs', 
-      label: 'Find Jobs', 
+      id: 'career-explore', 
+      label: 'Explore Careers', 
       icon: Briefcase, 
-      prompt: 'What jobs match my skills and experience?',
+      prompt: 'What career options are available after my studies?',
       color: 'bg-amber-100 hover:bg-amber-200 text-amber-700',
       iconBg: 'bg-amber-200'
     },
     { 
       id: 'skills', 
-      label: 'Skill Gap Analysis', 
+      label: 'Skill Development', 
       icon: Target, 
-      prompt: 'Analyze my skill gaps for my target career',
+      prompt: 'What skills should I develop for my future career?',
       color: 'bg-blue-100 hover:bg-blue-200 text-blue-700',
       iconBg: 'bg-blue-200'
     },
     { 
-      id: 'interview', 
-      label: 'Interview Prep', 
+      id: 'study-tips', 
+      label: 'Study Guidance', 
       icon: BookOpen, 
-      prompt: 'Help me prepare for upcoming interviews',
+      prompt: 'Help me with study strategies and exam preparation',
       color: 'bg-green-100 hover:bg-green-200 text-green-700',
       iconBg: 'bg-green-200'
     },
     { 
-      id: 'resume', 
-      label: 'Resume Review', 
+      id: 'college-prep', 
+      label: 'College Preparation', 
       icon: FileText, 
-      prompt: 'Review my resume and suggest improvements',
+      prompt: 'How should I prepare for college applications?',
       color: 'bg-purple-100 hover:bg-purple-200 text-purple-700',
       iconBg: 'bg-purple-200'
     },
@@ -328,7 +328,7 @@ const CareerAssistant: React.FC = () => {
       id: 'learning', 
       label: 'Learning Path', 
       icon: GraduationCap, 
-      prompt: 'Create a learning roadmap for my career goals',
+      prompt: 'Create a learning plan for my academic goals',
       color: 'bg-pink-100 hover:bg-pink-200 text-pink-700',
       iconBg: 'bg-pink-200'
     },
@@ -336,23 +336,23 @@ const CareerAssistant: React.FC = () => {
       id: 'career', 
       label: 'Career Guidance', 
       icon: TrendingUp, 
-      prompt: 'What career paths are best suited for me?',
+      prompt: 'What career paths match my interests and strengths?',
       color: 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700',
       iconBg: 'bg-indigo-200'
     },
     { 
-      id: 'network', 
-      label: 'Networking Tips', 
+      id: 'extracurricular', 
+      label: 'Activity Tips', 
       icon: Users, 
-      prompt: 'Give me networking strategies for my field',
+      prompt: 'What extracurricular activities should I pursue?',
       color: 'bg-teal-100 hover:bg-teal-200 text-teal-700',
       iconBg: 'bg-teal-200'
     },
     { 
       id: 'advice', 
-      label: 'Career Advice', 
+      label: 'Academic Advice', 
       icon: Lightbulb, 
-      prompt: 'I need career advice and guidance',
+      prompt: 'I need guidance on my academic and career choices',
       color: 'bg-orange-100 hover:bg-orange-200 text-orange-700',
       iconBg: 'bg-orange-200'
     },
@@ -390,7 +390,7 @@ const CareerAssistant: React.FC = () => {
                 transition={{ delay: 0.2 }}
                 className="text-lg text-gray-600 max-w-2xl mx-auto"
               >
-                Get personalized career guidance, job matching, skill analysis, and interview prep. 
+                Get personalized career exploration, study guidance, college preparation, and academic advice. 
                 Not sure where to start?
               </motion.p>
             </div>
@@ -680,7 +680,7 @@ const CareerAssistant: React.FC = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-              placeholder={showWelcome ? "Ask me anything about your career..." : "Type your message..."}
+              placeholder={showWelcome ? "Ask me about careers, studies, or college preparation..." : "Type your message..."}
               disabled={loading || isTyping}
               className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
             />

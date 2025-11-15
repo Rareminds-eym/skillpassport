@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
-export const useStudentTraining = (studentId, enabled = true) => {
-  const [training, setTraining] = useState([]);
+export const useStudentTechnicalSkills = (studentId, enabled = true) => {
+  const [technicalSkills, setTechnicalSkills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchTraining = async () => {
+  const fetchTechnicalSkills = async () => {
     if (!studentId || !enabled) return;
 
     try {
@@ -14,10 +14,11 @@ export const useStudentTraining = (studentId, enabled = true) => {
       setError(null);
 
       const { data, error: fetchError } = await supabase
-        .from('training')
+        .from('skills')
         .select('*')
         .eq('student_id', studentId)
-        .order('created_at', { ascending: false });
+        .eq('skill_type', 'technical')
+        .order('level', { ascending: false });
 
       if (fetchError) {
         throw fetchError;
@@ -26,26 +27,20 @@ export const useStudentTraining = (studentId, enabled = true) => {
       // Transform data to match UI expectations
       const transformedData = data.map(item => ({
         id: item.id,
-        course: item.course_name || item.title || item.name,
-        provider: item.provider || item.organization,
-        duration: item.duration,
-        status: item.status || 'completed',
-        progress: item.progress || 100,
-        skills: item.skills_covered || [],
-        startDate: item.start_date,
-        endDate: item.end_date,
-        certificateUrl: item.certificate_url,
+        name: item.name,
+        level: item.level || 3,
+        type: item.type,
         description: item.description,
-        enabled: item.enabled !== false,
-        verified: item.approval_status === 'approved',
+        verified: item.verified || item.approval_status === 'approved',
         processing: item.approval_status === 'pending',
+        enabled: item.enabled !== false,
         createdAt: item.created_at,
         updatedAt: item.updated_at
       }));
 
-      setTraining(transformedData);
+      setTechnicalSkills(transformedData);
     } catch (err) {
-      console.error('Error fetching training:', err);
+      console.error('Error fetching technical skills:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -53,15 +48,15 @@ export const useStudentTraining = (studentId, enabled = true) => {
   };
 
   useEffect(() => {
-    fetchTraining();
+    fetchTechnicalSkills();
   }, [studentId, enabled]);
 
   const refresh = () => {
-    fetchTraining();
+    fetchTechnicalSkills();
   };
 
   return {
-    training,
+    technicalSkills,
     loading,
     error,
     refresh
