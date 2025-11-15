@@ -109,6 +109,24 @@ export const getStudentByEmail = async (email) => {
       .from('students')
       .select(`
         *,
+        schools:school_id (
+          id,
+          name,
+          code,
+          city,
+          state
+        ),
+        university_colleges:university_college_id (
+          id,
+          name,
+          code,
+          universities:university_id (
+            id,
+            name,
+            district,
+            state
+          )
+        ),
         skill_passports (
           id,
           projects,
@@ -156,6 +174,24 @@ export const getStudentByEmail = async (email) => {
         .from('students')
         .select(`
           *,
+          schools:school_id (
+            id,
+            name,
+            code,
+            city,
+            state
+          ),
+          university_colleges:university_college_id (
+            id,
+            name,
+            code,
+            universities:university_id (
+              id,
+              name,
+              district,
+              state
+            )
+          ),
           skill_passports (
             id,
             projects,
@@ -211,6 +247,24 @@ export const getStudentByEmail = async (email) => {
         .from('students')
         .select(`
           *,
+          schools:school_id (
+            id,
+            name,
+            code,
+            city,
+            state
+          ),
+          university_colleges:university_college_id (
+            id,
+            name,
+            code,
+            universities:university_id (
+              id,
+              name,
+              district,
+              state
+            )
+          ),
           skill_passports (
             id,
             projects,
@@ -344,6 +398,7 @@ export const getStudentByEmail = async (email) => {
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
 
+<<<<<<< HEAD
       // Add all important table columns
       name: data.name,
       age: data.age,
@@ -394,6 +449,13 @@ export const getStudentByEmail = async (email) => {
       university_main: data.university_main,
       course_name: data.course_name,
       trainer_name: data.trainer_name,
+=======
+      // School/University College linkage
+      school_id: data.school_id,
+      university_college_id: data.university_college_id,
+      school: data.schools || null,
+      universityCollege: data.university_colleges || null,
+>>>>>>> 51384366f20dfc8d6914bbd72867e2a58f39e232
 
       // Profile data (from students.profile JSONB)
       profile: transformedProfile,

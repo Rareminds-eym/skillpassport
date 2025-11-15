@@ -311,6 +311,20 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     tableCertificates
   ]);
 
+  // Determine institution from relationships (school_id or university_college_id)
+  const institutionName = React.useMemo(() => {
+    if (realStudentData?.school_id && realStudentData?.school) {
+      return realStudentData.school.name;
+    } else if (realStudentData?.university_college_id && realStudentData?.universityCollege) {
+      const college = realStudentData.universityCollege;
+      const university = college.universities;
+      // Show both college and university name
+      return university?.name ? `${college.name} - ${university.name}` : college.name;
+    }
+    // Fallback to profile.university if no institutional linkage
+    return displayData?.university || "Institution";
+  }, [realStudentData, displayData]);
+
   // Debug: Log student_id from database column
   React.useEffect(() => {
     if (realStudentData) {

@@ -828,139 +828,118 @@ const ApplicantsList: React.FC = () => {
                   return (
                     <div
                       key={rec.applicantId}
-                      className="relative flex flex-col bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-200 border border-gray-100"
+                      className="relative flex flex-col bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-gray-200"
                     >
-                      {/* Top Pick Badge */}
-                      {index === 0 && rec.matchScore >= 70 && (
-                        <div className="absolute top-4 right-4 z-10">
-                          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full shadow-sm">
-                            <span className="text-sm">⭐</span>
-                            <span className="text-xs font-bold text-white">Top Pick</span>
+                      {/* Top Status Bar */}
+                      <div className="px-6 pt-5 pb-4">
+                        <div className="flex items-center justify-between mb-4">
+                          {/* Availability status */}
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-sm text-gray-600 font-medium">Available for work</span>
+                          </div>
+                          {/* Match score */}
+                          <div className="flex items-center gap-1.5 text-gray-500">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-sm font-medium">{rec.matchScore}%</span>
                           </div>
                         </div>
-                      )}
 
-                      {/* Main Content */}
-                      <div className="p-5 pb-4">
-                        {/* Header with Avatar, Name and Score */}
-                        <div className="flex items-start gap-3 mb-4">
+                        {/* Profile Section */}
+                        <div className="flex items-center gap-4">
                           {applicant?.student?.photo ? (
                             <img
                               src={applicant.student.photo}
                               alt={rec.studentName}
-                              className="h-14 w-14 rounded-full object-cover flex-shrink-0"
+                              className="h-16 w-16 rounded-full object-cover flex-shrink-0 border-2 border-gray-100"
                             />
                           ) : (
-                            <div className="h-14 w-14 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl flex-shrink-0">
                               {rec.studentName.charAt(0).toUpperCase()}
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-bold text-gray-900 truncate mb-1">{rec.studentName}</h3>
-                            <p className="text-sm text-gray-600 truncate">{rec.positionTitle}</p>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <div className="text-3xl font-black text-gray-900 leading-none mb-1.5">{rec.matchScore}%</div>
-                            <div className={`inline-flex px-2.5 py-1 ${config.badge} rounded-full`}>
-                              <span className="text-[10px] font-bold text-white uppercase tracking-wide">{config.statusText}</span>
-                            </div>
+                            <h3 className="text-2xl font-bold text-gray-900 truncate mb-1">{rec.studentName}</h3>
+                            <p className="text-base text-gray-600">{rec.positionTitle}</p>
                           </div>
                         </div>
+                      </div>
 
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                          {/* Skills Match */}
-                          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-3 border border-green-100">
-                            <div className="flex items-center gap-2">
-                              <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                                <span className="text-white text-xs font-bold">✓</span>
-                              </div>
-                              <div className="flex-1">
-                                <span className="text-xs text-green-700 font-semibold">Skills Match: </span>
-                                <span className="text-xl font-bold text-green-900">{rec.matchedSkills.length}/{rec.matchedSkills.length + rec.missingSkills.length}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Academic Performance */}
-                          <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-3 border border-purple-100">
-                            <div className="flex items-center gap-2">
-                              <div className="w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0">
-                                <span className="text-xs">🎓</span>
-                              </div>
-                              <div className="flex-1">
-                                <span className="text-xs text-purple-700 font-semibold">Academic: </span>
-                                <span className="text-xl font-bold text-purple-900">Strong</span>
-                              </div>
-                            </div>
+                      {/* Certificate Section */}
+                      {certNames && (
+                        <div className="px-6 pb-4">
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-lg flex-shrink-0 mt-0.5">🏆</span>
+                            <p className="text-sm text-gray-700 leading-relaxed">{certNames}</p>
                           </div>
                         </div>
+                      )}
 
-                        {/* Certificate Section */}
-                        <div className="mb-3">
-                          {certNames && (
-                            <>
-                              <div className="flex items-center gap-1.5 mb-2">
-                                <span className="text-sm">🏆</span>
-                                <span className="text-[11px] font-bold text-gray-700 uppercase tracking-wide">Certifications</span>
-                              </div>
-                              <p className="text-xs text-gray-700 leading-relaxed mb-3">{certNames}</p>
-                            </>
-                          )}
-                        </div>
-
-                        {/* Skills Pills */}
+                      {/* Skills Pills */}
+                      <div className="px-6 pb-4">
                         <div className="flex flex-wrap gap-2">
                           {rec.matchedSkills.slice(0, 4).map((skill, idx) => (
-                            <span key={idx} className="px-3 py-1.5 bg-green-50 text-green-700 text-xs font-medium rounded-lg border border-green-200">
+                            <span key={idx} className="inline-flex items-center px-3 py-2 bg-green-50 text-green-700 text-xs font-medium rounded-lg border border-green-200">
                               {skill}
                             </span>
                           ))}
                           {rec.matchedSkills.length > 4 && (
-                            <span className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg border border-gray-200">
+                            <span className="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg border border-gray-200">
                               +{rec.matchedSkills.length - 4}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Action Buttons - Modern Style */}
-                      <div className="px-5 mb-4">
+                      {/* Action Buttons Container - Dark Design */}
+                      <div className="px-6 pb-5">
                         <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-3 shadow-inner">
-                          <div className="flex items-center gap-2">
+                          <div className="grid grid-cols-2 gap-3">
                             <button
                               onClick={() => {
                                 if (applicant) {
                                   handleMoveToPipelineStage(applicant, rec.suggestedStage);
                                 }
                               }}
-                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-700/80 hover:bg-gray-700 text-white font-medium text-sm rounded-xl transition-all"
+                              className="inline-flex items-center justify-center gap-2 h-12 w-full px-4 bg-gray-700 hover:bg-gray-600 text-white font-semibold text-sm rounded-xl transition-all active:scale-95"
                             >
-                              <span className="text-base">{rec.confidence === 'high' ? '➕' : rec.confidence === 'medium' ? '📞' : '👀'}</span>
-                              <span>{rec.confidence === 'high' ? 'Hire Me' : rec.confidence === 'medium' ? 'Screen' : 'Review'}</span>
+                              <span className="text-base">➕</span>
+                              <span>{rec.confidence === 'high' ? 'Hire Me' : rec.confidence === 'medium' ? 'Contact' : 'Review'}</span>
                             </button>
                             <button
                               onClick={() => handleViewApplicant(applicant!)}
-                              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-700/80 hover:bg-gray-700 text-white font-medium text-sm rounded-xl transition-all"
+                              className="inline-flex items-center justify-center gap-2 h-12 w-full px-4 bg-gray-700 hover:bg-gray-600 text-white font-semibold text-sm rounded-xl transition-all active:scale-95"
                             >
                               <span className="text-base">📋</span>
-                              <span>View</span>
+                              <span>Copy Email</span>
                             </button>
                           </div>
                         </div>
                       </div>
 
-                      {/* Bottom Status Bar - Prominent */}
+                      {/* Bottom Status Banner */}
                       <div className={`${config.bottomColor} py-4 mt-auto`}>
                         <div className="flex items-center justify-center gap-2">
                           <span className="text-base">⚡</span>
-                          <span className={`text-sm font-bold ${config.textColor}`}>
+                          <span className="text-base font-semibold text-gray-700">
                             {rec.confidence === 'high' ? 'Currently High on Potential' : 
                              rec.confidence === 'medium' ? 'Good Match for Position' : 
                              'Needs Further Review'}
                           </span>
                         </div>
                       </div>
+
+                      {/* Top Pick Badge - Overlay */}
+                      {index === 0 && rec.matchScore >= 70 && (
+                        <div className="absolute top-3 right-3">
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full shadow-lg">
+                            <span className="text-sm">⭐</span>
+                            <span className="text-xs font-bold text-white">Top Pick</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
