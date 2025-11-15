@@ -60,6 +60,7 @@ const Badge = ({ type }) => {
 const StatusBadge = ({ status }) => {
   const statusConfig = {
     verified: { color: 'bg-green-100 text-green-800 border-green-300', label: 'Verified', icon: '✓' },
+    approved: { color: 'bg-green-100 text-green-800 border-green-300', label: 'Approved', icon: '✓' },
     pending: { color: 'bg-yellow-100 text-yellow-800 border-yellow-300', label: 'Pending', icon: '⏳' },
     rejected: { color: 'bg-red-100 text-red-800 border-red-300', label: 'Rejected', icon: '✕' },
   };
@@ -596,15 +597,10 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
   const [copied, setCopied] = useState(false);
   const [admissionNotes, setAdmissionNotes] = useState<Array<{ id: string; admin: string; date: string; note: string }>>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
-  const [projects, setProjects] = useState([]);
-  const [certificates, setCertificates] = useState([]);
-  const [loadingData, setLoadingData] = useState(false);
 
   useEffect(() => {
     if (isOpen && student?.id) {
       fetchAdmissionNotes();
-      fetchStudentProjects();
-      fetchStudentCertificates();
     }
   }, [student?.id, isOpen]);
 
@@ -627,42 +623,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
     }
   };
 
-  const fetchStudentProjects = async () => {
-    try {
-      setLoadingData(true);
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('student_id', student.id)
-        .eq('enabled', true)
-        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setProjects(data || []);
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-      setProjects([]);
-    }
-  };
-
-  const fetchStudentCertificates = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('certificates')
-        .select('*')
-        .eq('student_id', student.id)
-        .eq('enabled', true)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setCertificates(data || []);
-    } catch (error) {
-      console.error('Error fetching certificates:', error);
-      setCertificates([]);
-    } finally {
-      setLoadingData(false);
-    }
-  };
 
   if (!isOpen || !student) return null;
 
@@ -961,17 +922,12 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-medium text-gray-900">Projects</h3>
-                      <span className="text-sm text-gray-600">{projects.length} total</span>
+                      <span className="text-sm text-gray-600">{student.projects?.length || 0} total</span>
                     </div>
 
-                    {loadingData ? (
-                      <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                        <p className="text-gray-500 mt-2">Loading projects...</p>
-                      </div>
-                    ) : projects.length > 0 ? (
+                    {student.projects && student.projects.length > 0 ? (
                       <div className="grid grid-cols-1 gap-4">
-                        {projects.map((project) => (
+                        {student.projects.map((project) => (
                           <ProjectCard key={project.id} project={project} />
                         ))}
                       </div>
@@ -989,17 +945,12 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-medium text-gray-900">Certificates</h3>
-                      <span className="text-sm text-gray-600">{certificates.length} total</span>
+                      <span className="text-sm text-gray-600">{student.certificates?.length || 0} total</span>
                     </div>
 
-                    {loadingData ? (
-                      <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                        <p className="text-gray-500 mt-2">Loading certificates...</p>
-                      </div>
-                    ) : certificates.length > 0 ? (
+                    {student.certificates && student.certificates.length > 0 ? (
                       <div className="grid grid-cols-1 gap-4">
-                        {certificates.map((certificate) => (
+                        {student.certificates.map((certificate) => (
                           <CertificateCard key={certificate.id} certificate={certificate} />
                         ))}
                       </div>
