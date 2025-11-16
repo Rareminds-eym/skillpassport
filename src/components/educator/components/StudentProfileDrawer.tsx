@@ -153,7 +153,7 @@ const ExportModal = ({ isOpen, onClose, student }) => {
     const academicFields = [
       { label: 'Branch/Field', value: student.branch_field },
       { label: 'Trainer Name', value: student.trainer_name },
-      { label: 'NM ID', value: student.nm_id },
+      { label: 'student ID', value: student.nm_id },
       { label: 'Academic Score', value: student.ai_score_overall || student.academic_score },
       { label: 'CGPA', value: student.cgpa },
       { label: 'Year of Passing', value: student.year_of_passing },
@@ -446,7 +446,7 @@ const ExportModal = ({ isOpen, onClose, student }) => {
         'Phone',
         'Alternate Number',
         'Trainer Name',
-        'NM ID'
+        'Student ID'
       );
     }
 
@@ -926,8 +926,9 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
   // Fetch projects and certificates when student changes
 
   useEffect(() => {
-    // Use user_id if available, fallback to id
-    const studentId = student?.user_id || student?.id;
+    // Prefer the primary student row id for related tables, then fallback to other identifiers
+    const baseStudent: any = student || {};
+    const studentId = baseStudent.id || baseStudent.student_id || baseStudent.user_id;
     if (!studentId) return;
 
     // Reset states
@@ -1013,7 +1014,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
     fetchProjects();
     fetchCertificates();
     fetchAssignemts();
-  }, [student?.user_id, student?.id]);
+  }, [student?.id, student?.user_id]);
 
   if (!isOpen || !student) return null;
 
@@ -1031,26 +1032,52 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
       rawProfile = JSON.parse(student.profile);
       profileData = { ...student, ...rawProfile };
     } catch (e) {
-      rawProfile = {};
-      profileData = student;
+      // Fall back to using the full student object as profile source
+      rawProfile = student || {};
+      profileData = { ...student };
     }
   } else if (student.profile && typeof student.profile === 'object') {
     rawProfile = student.profile;
     profileData = { ...student, ...rawProfile };
+  } else {
+    // No separate profile field; use the student object itself so overview has fields to show
+    rawProfile = student || {};
+    profileData = { ...student };
   }
 
-  const projectsData = projects;
-  const certificatesData = certificates;
+  // Prefer live-fetched projects/certificates but fall back to joined data on the student object
+  const projectsData = projects.length > 0 ? projects : ((student as any).projects || []);
+  const certificatesData = certificates.length > 0 ? certificates : ((student as any).certificates || []);
   const assessmentsData = assessments;
 
   const verifiedProjects = projectsData.filter((project: any) => project?.approval_status === 'approved' || project?.status === 'verified');
   const verifiedCertificates = certificatesData.filter((certificate: any) => certificate?.approval_status === 'approved' || certificate?.status === 'verified');
 
+  // Map skills/experience/trainings from separate tables into the profile view shape
+  const rawSkills = Array.isArray((student as any).skills) ? (student as any).skills : [];
+  const technicalSkillsFromSkills = rawSkills.filter((s: any) => s?.type === 'technical' || s?.type === 'tech');
+  const softSkillsFromSkills = rawSkills.filter((s: any) => s?.type === 'soft');
+
+  const experienceData = Array.isArray((student as any).experience) ? (student as any).experience : [];
+  const trainingData = Array.isArray((student as any).trainings)
+    ? (student as any).trainings.map((t: any) => ({
+      course: t.title,
+      skill: undefined,
+      trainer: t.organization,
+      status: t.approval_status === 'approved' ? 'completed' : 'ongoing',
+      progress: undefined,
+    }))
+    : [];
+
   profileData = {
     ...profileData,
     projects: verifiedProjects,
     certificates: verifiedCertificates,
-    assessments: assessmentsData
+    assessments: assessmentsData,
+    technicalSkills: profileData.technicalSkills || technicalSkillsFromSkills,
+    softSkills: profileData.softSkills || softSkillsFromSkills,
+    experience: profileData.experience || experienceData,
+    training: profileData.training || trainingData,
   };
 
   const modalStudent = {
@@ -1078,7 +1105,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
 
   const knownComposite = new Set(['training', 'education', 'technicalSkills', 'softSkills', 'experience', 'projects', 'certificates', 'assessments', 'mentorNotes']);
   const excludedFields = new Set([
-    '_', 'imported_at', 'contact_number_dial_code', 'id', 'student_id',
+    '_', 'imported_at', 'contact_number_dial_code', 'id', 'student_id', 'user_id',
     'created_at', 'updated_at', 'last_updated'
   ]);
 
@@ -1208,58 +1235,80 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                     {/* Profile Info */}
                     <div>
                       <h3 className="text-lg font-medium text-gray-900 mb-4">Profile Information</h3>
-                      {primitiveEntries.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                          {primitiveEntries.map(([key, value]) => (
-                            <div key={key} className="flex flex-col">
-                              <span className="text-gray-500 text-xs mb-1">{formatLabel(key)}</span>
-                              <span className="font-medium text-gray-900 break-all">{String(value)}</span>
-                            </div>
-                          ))}
-                          {Array.isArray(profileData.education) && profileData.education.length > 0 && (
-                            <div className="flex flex-col col-span-1">
-                              <span className="text-gray-500 text-xs mb-1">Education</span>
-                              <span className="font-medium text-gray-900 break-all">
-                                {profileData.education.map((e: any) => e.degree || e.level || 'Education').join(', ')}
-                              </span>
-                            </div>
-                          )}
-                          {Array.isArray(profileData.training) && profileData.training.length > 0 && (
-                            <div className="flex flex-col col-span-1">
-                              <span className="text-gray-500 text-xs mb-1">Training</span>
-                              <span className="font-medium text-gray-900 break-all">
-                                {profileData.training.map((t: any) => t.course || t.skill || 'Training').join(', ')}
-                              </span>
-                            </div>
-                          )}
-                          {Array.isArray(profileData.technicalSkills) && profileData.technicalSkills.length > 0 && (
-                            <div className="flex flex-col col-span-1">
-                              <span className="text-gray-500 text-xs mb-1">Technical Skills</span>
-                              <span className="font-medium text-gray-900 break-all">
-                                {profileData.technicalSkills.map((s: any) => s.name).join(', ')}
-                              </span>
-                            </div>
-                          )}
-                          {Array.isArray(profileData.softSkills) && profileData.softSkills.length > 0 && (
-                            <div className="flex flex-col col-span-1">
-                              <span className="text-gray-500 text-xs mb-1">Soft Skills</span>
-                              <span className="font-medium text-gray-900 break-all">
-                                {profileData.softSkills.map((s: any) => s.name).join(', ')}
-                              </span>
-                            </div>
-                          )}
-                          {Array.isArray(profileData.experience) && profileData.experience.length > 0 && (
-                            <div className="flex flex-col col-span-1">
-                              <span className="text-gray-500 text-xs mb-1">Experience</span>
-                              <span className="font-medium text-gray-900 break-all">
-                                {profileData.experience.map((x: any) => [x.role, x.organization].filter(Boolean).join(' @ ')).join(', ')}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">No profile fields available</p>
-                      )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                        {profileData.name && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Name</span>
+                            <span className="font-medium text-gray-900 break-all">{profileData.name}</span>
+                          </div>
+                        )}
+                        {profileData.email && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Email</span>
+                            <span className="font-medium text-gray-900 break-all">{profileData.email}</span>
+                          </div>
+                        )}
+                        {profileData.age && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Age</span>
+                            <span className="font-medium text-gray-900 break-all">{profileData.age}</span>
+                          </div>
+                        )}
+                        {profileData.date_of_birth && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Date of Birth</span>
+                            <span className="font-medium text-gray-900 break-all">{formatDateValue(profileData.date_of_birth)}</span>
+                          </div>
+                        )}
+                        {profileData.contact_number && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Contact Number</span>
+                            <span className="font-medium text-gray-900 break-all">{profileData.contact_number}</span>
+                          </div>
+                        )}
+                        {profileData.alternate_number && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Alternate Number</span>
+                            <span className="font-medium text-gray-900 break-all">{profileData.alternate_number}</span>
+                          </div>
+                        )}
+                        {profileData.district_name && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">District</span>
+                            <span className="font-medium text-gray-900 break-all">{profileData.district_name}</span>
+                          </div>
+                        )}
+                        {profileData.university && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">University</span>
+                            <span className="font-medium text-gray-900 break-all">{profileData.university}</span>
+                          </div>
+                        )}
+                        {profileData.college_school_name && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">College/School</span>
+                            <span className="font-medium text-gray-900 break-all">{profileData.college_school_name}</span>
+                          </div>
+                        )}
+                        {profileData.branch_field && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Branch/Field</span>
+                            <span className="font-medium text-gray-900 break-all">{profileData.branch_field}</span>
+                          </div>
+                        )}
+                        {profileData.registration_number && (
+                          <div className="flex flex-col">
+                            <span className="text-gray-500 text-xs mb-1">Registration Number</span>
+                            <span className="font-medium text-gray-900 break-all">{profileData.registration_number}</span>
+                          </div>
+                        )}
+                        {profileData.bio && (
+                          <div className="flex flex-col col-span-1 sm:col-span-2">
+                            <span className="text-gray-500 text-xs mb-1">Bio</span>
+                            <span className="font-medium text-gray-900 break-all">{profileData.bio}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Education */}
@@ -1412,8 +1461,8 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
                           <p className="text-gray-500 mt-2">Loading projects...</p>
                         </div>
-                      ) : projects && projects.length > 0 ? (
-                        projects.map((project: any, index: number) => {
+                      ) : projectsData && projectsData.length > 0 ? (
+                        projectsData.map((project: any, index: number) => {
                           const techStack = project.tech_stack
                             ? Array.isArray(project.tech_stack)
                               ? project.tech_stack
@@ -1425,7 +1474,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                             : 'Unknown';
 
                           const approvalBadgeColor =
-                            project.approval_status === 'verified'
+                            project.approval_status === 'verified' || project.approval_status === 'approved'
                               ? 'bg-green-100 text-green-800'
                               : project.approval_status === 'pending'
                                 ? 'bg-yellow-100 text-yellow-800'
@@ -1761,8 +1810,8 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
                           <p className="text-gray-500 mt-2">Loading certificates...</p>
                         </div>
-                      ) : certificates && certificates.length > 0 ? (
-                        certificates.map((cert: any, index: number) => (
+                      ) : certificatesData && certificatesData.length > 0 ? (
+                        certificatesData.map((cert: any, index: number) => (
                           <div key={cert.id || index} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
                             <div className="flex items-start">
                               <div className="flex-shrink-0">
@@ -1773,48 +1822,61 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                                 </div>
                               </div>
                               <div className="ml-4 flex-1">
-                                <div className="flex items-start justify-between">
-                                  <div>
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
                                     <h4 className="font-medium text-gray-900">
                                       {cert.title || cert.name || `Certificate ${index + 1}`}
                                     </h4>
-
-                                    <div className="flex justify-between">
-                                      {cert.issuer && (
-                                        <p className="text-sm text-gray-600 mt-1">Issued by: {cert.issuer}</p>
-                                      )}
-                                      {cert.issued_on && (
-                                        <p className="text-xs text-gray-500 mt-1">
-                                          Issue Date: {new Date(cert.issued_on).toLocaleDateString()}
-                                        </p>
-                                      )}
-                                    </div>
-
-                                    {cert.credential_id && (
-                                      <p className="text-xs text-gray-400 mt-2">ID: {cert.credential_id}</p>
-                                    )}
-
-                                    {cert.level && (
-                                      <p className="text-xs text-gray-700 mt-2 flex items-center gap-1">
-                                        <span className="font-medium">Level:</span>
-                                        <span className="inline-block w-auto px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                          {cert.level}
-                                        </span>
-                                      </p>
-                                    )}
                                   </div>
 
-                                  {(cert.verified || cert.status === "verified") && (
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                      <ShieldCheckIcon className="h-3 w-3 mr-1" />
-                                      Verified
-                                    </span>
+                                  <div className="flex flex-col gap-1 ml-4">
+                                    {(cert.verified || cert.status === "verified") && (
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <ShieldCheckIcon className="h-3 w-3 mr-1" />
+                                        Verified
+                                      </span>
+                                    )}
+                                    {cert.status === "pending" && (
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        Pending
+                                      </span>
+                                    )}
+                                    {cert.approval_status && (
+                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${cert.approval_status === 'approved'|| cert.approval_status === 'verified'
+                                          ? 'bg-green-100 text-green-800'
+                                          : cert.approval_status === 'pending'
+                                            ? 'bg-yellow-100 text-yellow-800'
+                                            : 'bg-red-100 text-red-800'
+                                        }`}>
+                                        {cert.approval_status.charAt(0).toUpperCase() + cert.approval_status.slice(1)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  {cert.issuer && (
+                                    <p className="text-sm text-gray-600">Issued by: {cert.issuer}</p>
                                   )}
-                                  {cert.status === "pending" && (
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                      Pending
-                                    </span>
+                                  {cert.issued_on && (
+                                    <p className="text-xs text-gray-500">
+                                      Issue Date: {new Date(cert.issued_on).toLocaleDateString()}
+                                    </p>
                                   )}
+
+                                  <div className="flex items-center gap-4">
+                                    {cert.credential_id && (
+                                      <p className="text-xs text-gray-400">ID: {cert.credential_id}</p>
+                                    )}
+                                    {cert.level && (
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-xs font-medium text-gray-700">Level:</span>
+                                        <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                          {cert.level}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
 
                                 {cert.verifiedAt && (
@@ -2006,9 +2068,6 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                                 <p className="text-xs text-gray-600 mt-1">
                                   Last imported: {new Date(profileData.imported_at).toLocaleString()}
                                 </p>
-                                {profileData.nm_id && (
-                                  <p className="text-xs text-gray-500 mt-1">NM ID: {profileData.nm_id}</p>
-                                )}
                               </div>
                             </div>
                           </div>

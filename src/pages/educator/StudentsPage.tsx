@@ -218,14 +218,18 @@ const StudentCard = ({ student, onViewProfile, onAddNote }) => {
       {/* Skills */}
       <div className="mb-3">
         <div className="flex flex-wrap gap-1">
-          {student.skills.slice(0, 5).map((skill, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
-            >
-              {skill}
-            </span>
-          ))}
+          {student.skills.slice(0, 5).map((skill: any, index: number) => {
+            const label = typeof skill === 'string' ? skill : skill?.name;
+            if (!label) return null;
+            return (
+              <span
+                key={index}
+                className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
+              >
+                {label}
+              </span>
+            );
+          })}
           {student.skills.length > 5 && (
             <span className="text-xs text-gray-500">+{student.skills.length - 5} more</span>
           )}
@@ -398,8 +402,10 @@ const StudentsPage = () => {
   const yearOptions = useMemo(() => {
     const yearCounts = {};
     students.forEach(student => {
-      if (student.year) {
-        yearCounts[student.year] = (yearCounts[student.year] || 0) + 1;
+      const profile = (student as any).profile || student;
+      const year = student.year || profile.year;
+      if (year) {
+        yearCounts[year] = (yearCounts[year] || 0) + 1;
       }
     });
     return Object.entries(yearCounts)
@@ -1017,14 +1023,18 @@ const StudentsPage = () => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-1">
-                            {student.skills.slice(0, 3).map((skill, index) => (
-                              <span
-                                key={index}
-                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
-                              >
-                                {skill}
-                              </span>
-                            ))}
+                            {student.skills.slice(0, 3).map((skill: any, index: number) => {
+                              const label = typeof skill === 'string' ? skill : skill?.name;
+                              if (!label) return null;
+                              return (
+                                <span
+                                  key={index}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
+                                >
+                                  {label}
+                                </span>
+                              );
+                            })}
                             {student.skills && student.skills.length > 3 && (
                               <span className="text-xs text-gray-500">+{student.skills.length - 3}</span>
                             )}

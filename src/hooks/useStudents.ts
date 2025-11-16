@@ -92,6 +92,7 @@ interface Training {
 interface StudentRow {
   id: string
   user_id?: string
+  student_id?: string // new system-generated student identifier (replaces legacy nm_id column)
   name?: string
   email?: string
   contact_number?: string
@@ -119,7 +120,7 @@ interface StudentRow {
   portfolio_link?: string
   other_social_links?: any
   approval_status?: string
-  nm_id?: string
+  nm_id?: string // kept for backwards-compatibility with older profile JSON
   trainer_name?: string
   bio?: string
   address?: string
@@ -131,6 +132,7 @@ interface StudentRow {
   resumeUrl?: string
   profile_picture?: string
   profilePicture?: string
+  class_year?: string
   created_at?: string
   updated_at?: string
   imported_at?: string
@@ -241,7 +243,7 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     // Other fields
     age: row.age,
     bio: row.bio,
-    nm_id: row.nm_id,
+    nm_id: row.student_id || row.nm_id,
     trainer_name: row.trainer_name,
     district_name: row.district_name,
     branch_field: row.branch_field,
@@ -271,6 +273,7 @@ export function useStudents() {
           .select(`
             id,
             user_id,
+            student_id,
             name,
             email,
             contact_number,
@@ -297,7 +300,6 @@ export function useStudents() {
             portfolio_link,
             other_social_links,
             approval_status,
-            nm_id,
             trainer_name,
             bio,
             address,
