@@ -575,52 +575,52 @@ const StudentDashboard = () => {
 
   // Card components for dynamic ordering
   const allCards = {
-    institution: institutionInfo && (
-      <Card
-        key="institution"
-        className="h-full bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border-2 border-indigo-200 hover:border-indigo-400 transition-all duration-200 shadow-md hover:shadow-lg"
-      >
-        <CardHeader className="px-6 py-4 border-b border-indigo-100">
-          <CardTitle className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center shadow-md">
-              <Building2 className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-lg font-semibold text-gray-900">
-              {institutionInfo.type}
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-1">
-                {institutionInfo.name}
-              </h3>
-              {institutionInfo.universityName && (
-                <p className="text-sm text-gray-600 mb-1">
-                  {institutionInfo.universityName}
-                </p>
-              )}
-              {institutionInfo.code && (
-                <p className="text-sm text-indigo-600 font-medium">
-                  Code: {institutionInfo.code}
-                </p>
-              )}
-            </div>
-            {(institutionInfo.city || institutionInfo.state) && (
-              <div className="flex items-center gap-2 text-gray-600">
-                <MapPin className="w-4 h-4" />
-                <span className="text-sm">
-                  {[institutionInfo.city, institutionInfo.state]
-                    .filter(Boolean)
-                    .join(', ')}
-                </span>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    ),
+    // institution: institutionInfo && (
+    //   <Card
+    //     key="institution"
+    //     className="h-full bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border-2 border-indigo-200 hover:border-indigo-400 transition-all duration-200 shadow-md hover:shadow-lg"
+    //   >
+    //     <CardHeader className="px-6 py-4 border-b border-indigo-100">
+    //       <CardTitle className="flex items-center gap-3">
+    //         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center shadow-md">
+    //           <Building2 className="w-5 h-5 text-white" />
+    //         </div>
+    //         <span className="text-lg font-semibold text-gray-900">
+    //           {institutionInfo.type}
+    //         </span>
+    //       </CardTitle>
+    //     </CardHeader>
+    //     <CardContent className="p-6">
+    //       <div className="space-y-4">
+    //         <div>
+    //           <h3 className="text-2xl font-bold text-gray-900 mb-1">
+    //             {institutionInfo.name}
+    //           </h3>
+    //           {institutionInfo.universityName && (
+    //             <p className="text-sm text-gray-600 mb-1">
+    //               {institutionInfo.universityName}
+    //             </p>
+    //           )}
+    //           {institutionInfo.code && (
+    //             <p className="text-sm text-indigo-600 font-medium">
+    //               Code: {institutionInfo.code}
+    //             </p>
+    //           )}
+    //         </div>
+    //         {(institutionInfo.city || institutionInfo.state) && (
+    //           <div className="flex items-center gap-2 text-gray-600">
+    //             <MapPin className="w-4 h-4" />
+    //             <span className="text-sm">
+    //               {[institutionInfo.city, institutionInfo.state]
+    //                 .filter(Boolean)
+    //                 .join(', ')}
+    //             </span>
+    //           </div>
+    //         )}
+    //       </div>
+    //     </CardContent>
+    //   </Card>
+    // ),
     opportunities: (
       <Card
         key="opportunities"
