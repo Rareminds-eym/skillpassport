@@ -118,8 +118,23 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     }
   }, [realStudentData]);
 
-  // Use real data only; if not found, display nothing or a message
-  const displayData = realStudentData?.profile;
+  // Use individual columns instead of profile JSONB
+  const displayData = realStudentData ? {
+    name: realStudentData.name,
+    email: realStudentData.email,
+    department: realStudentData.branch_field,
+    university: realStudentData.university,
+    classYear: realStudentData.class_year || realStudentData.profile?.classYear || "Class of 2025",
+    github_link: realStudentData.github_link,
+    portfolio_link: realStudentData.portfolio_link,
+    linkedin_link: realStudentData.linkedin_link,
+    twitter_link: realStudentData.twitter_link,
+    instagram_link: realStudentData.instagram_link,
+    facebook_link: realStudentData.facebook_link,
+    degree: realStudentData.branch_field,
+    // Fallback to profile JSONB for any missing data
+    ...realStudentData.profile
+  } : null;
 
   // Determine institution from relationships (school_id or university_college_id)
   const institutionName = React.useMemo(() => {

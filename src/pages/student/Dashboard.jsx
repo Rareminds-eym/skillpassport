@@ -524,12 +524,14 @@ const StudentDashboard = () => {
     );
   };
 
-  // Determine institution info from student data
+  // Determine institution info from student data (using individual columns)
   const institutionInfo = React.useMemo(() => {
     // Debug: Log student data structure
     console.log('🏫 Institution Debug:', {
       school_id: studentData?.school_id,
       university_college_id: studentData?.university_college_id,
+      university: studentData?.university, // Individual column
+      college_school_name: studentData?.college_school_name, // Individual column
       school: studentData?.school,
       universityCollege: studentData?.universityCollege,
     });
@@ -554,6 +556,15 @@ const StudentDashboard = () => {
         universityName: university?.name,
         city: university?.district, // Location comes from parent university
         state: university?.state,
+      };
+    } else if (studentData?.university || studentData?.college_school_name) {
+      // Fallback to individual columns if no foreign key relationships
+      return {
+        type: 'Institution',
+        name: studentData.college_school_name || studentData.university,
+        code: 'N/A',
+        city: studentData.city,
+        state: studentData.state,
       };
     }
     

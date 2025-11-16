@@ -325,8 +325,8 @@ export const getStudentByEmail = async (email) => {
     // Parse the profile JSONB
     const profileData = safeJSONParse(data.profile);
 
-    // Transform profile data to consistent format
-    const transformedProfile = transformProfileData(profileData, email);
+    // Transform profile data to consistent format, prioritizing individual columns
+    const transformedProfile = transformProfileData(profileData, email, data);
 
     // Extract skill_passports data (if exists)
     const passport = data.skill_passports || {};
@@ -473,34 +473,39 @@ export const getStudentByEmail = async (email) => {
  * Input: Raw imported data with fields like registration_number, branch_field, etc.
  * Output: Structured data matching Dashboard expectations
  */
-function transformProfileData(profile, email) {
+function transformProfileData(profile, email, studentRecord = null) {
 
-  if (!profile) {
+  if (!profile && !studentRecord) {
     return null;
   }
 
-  // Calculate age from date_of_birth if available
-  const age = profile.age || calculateAge(profile.date_of_birth);
+  // Prioritize individual columns over profile JSONB
+  const data = studentRecord || {};
+  const profileData = profile || {};
 
-  // Generate passport ID from registration number
-  const passportId = profile.registration_number
-    ? `SP-${profile.registration_number}`
-    : 'SP-0000';
+  // Calculate age from date_of_birth if available (prioritize individual columns)
+  const age = data.age || profileData.age || calculateAge(data.date_of_birth || data.dateOfBirth || profileData.date_of_birth || profileData.dateOfBirth);
 
+  // Generate passport ID from registration number (prioritize individual columns)
+  const registrationNumber = data.registration_number || profileData.registration_number || profileData.registrationNumber;
+  const passportId = registrationNumber ? `SP-${registrationNumber}` : 'SP-0000';
 
-  // Format phone number
-  const phone = formatPhoneNumber(profile.contact_number, profile.contact_number_dial_code);
-  const alternatePhone = formatPhoneNumber(profile.alternate_number);
+  // Format phone number (prioritize individual columns)
+  const phone = formatPhoneNumber(
+    data.contact_number || data.contactNumber || profileData.contact_number || profileData.phone,
+    data.contact_dial_code || profileData.contact_number_dial_code
+  );
+  const alternatePhone = formatPhoneNumber(data.alternate_number || profileData.alternate_number || profileData.alternatePhone);
 
   const result = {
-    // Basic profile info
+    // Basic profile info (prioritize individual columns)
     profile: {
-      name: profile.name || 'Student',
-      email: email || profile.email || '', // Use login email if profile email is blank
+      name: data.name || profileData.name || 'Student',
+      email: email || data.email || profileData.email || '', // Use login email if profile email is blank
       passportId: passportId,
-      department: profile.branch_field || '',
-      university: profile.university || '',
-      photo: generateAvatar(profile.name),
+      department: data.branch_field || profileData.branch_field || profileData.department || '',
+      university: data.university || profileData.university || '',
+      photo: generateAvatar(data.name || profileData.name),
       verified: true, // Assume imported data is verified
       employabilityScore: 75, // Default score
       cgpa: 'N/A',
@@ -508,62 +513,63 @@ function transformProfileData(profile, email) {
       phone: phone,
       alternatePhone: alternatePhone,
       age: age,
-      dateOfBirth: profile.date_of_birth,
-      district: profile.district_name || '',
-      college: profile.college_school_name || '',
-      registrationNumber: profile.registration_number,
-      // Social Media Links
-      github_link: profile.github_link || '',
-      portfolio_link: profile.portfolio_link || '',
-      linkedin_link: profile.linkedin_link || '',
-      twitter_link: profile.twitter_link || '',
-      instagram_link: profile.instagram_link || '',
-      facebook_link: profile.facebook_link || '',
-      other_social_links: profile.other_social_links || [],
+      dateOfBirth: data.date_of_birth || data.dateOfBirth || profileData.date_of_birth || profileData.dateOfBirth,
+      district: data.district_name || profileData.district_name || profileData.district || '',
+      college: data.college_school_name || profileData.college_school_name || profileData.college || '',
+      registrationNumber: registrationNumber,
+      classYear: data.class_year || profileData.classYear || '',
+      // Social Media Links (prioritize individual columns)
+      github_link: data.github_link || profileData.github_link || '',
+      portfolio_link: data.portfolio_link || profileData.portfolio_link || '',
+      linkedin_link: data.linkedin_link || profileData.linkedin_link || '',
+      twitter_link: data.twitter_link || profileData.twitter_link || '',
+      instagram_link: data.instagram_link || profileData.instagram_link || '',
+      facebook_link: data.facebook_link || profileData.facebook_link || '',
+      other_social_links: data.other_social_links || profileData.other_social_links || [],
     },
 
-    // Education - Build from imported data OR use existing from profile
-    education: profile.education || [
+    // Education - Build from imported data OR use existing from profile (prioritize individual columns)
+    education: profileData.education || [
       {
         id: 1,
-        degree: profile.branch_field || 'Not specified',
-        university: profile.university || 'Not specified',
+        degree: data.branch_field || profileData.branch_field || 'Not specified',
+        university: data.university || profileData.university || 'Not specified',
         yearOfPassing: '',
-        cgpa: 'N/A',
+        cgpa: data.currentCgpa || 'N/A',
         level: "Bachelor's", // Assume Bachelor's from branch_field
         status: 'ongoing'
       }
     ],
 
-    // Training - Build from course and skill OR use existing from profile
-    training: profile.training || [
+    // Training - Build from course and skill OR use existing from profile (prioritize individual columns)
+    training: profileData.training || [
       {
         id: 1,
-        course: profile.course || 'No course specified',
+        course: data.course_name || profileData.course || 'No course specified',
         progress: 75, // Default progress
         status: 'ongoing',
-        skill: profile.skill || '',
-        trainer: profile.trainer_name || ''
+        skill: profileData.skill || '',
+        trainer: data.trainer_name || profileData.trainer_name || ''
       }
     ],
 
     // Experience - Use existing from profile or empty
-    experience: profile.experience || [],
+    experience: profileData.experience || [],
 
     // Technical skills - Use existing or build from skill field
-    technicalSkills: profile.technicalSkills || (profile.skill ? [
+    technicalSkills: profileData.technicalSkills || (profileData.skill ? [
       {
         id: 1,
-        name: profile.skill,
+        name: profileData.skill,
         level: 3,
         verified: true,
         icon: '🔬', // Science/lab icon
-        category: profile.course || 'Training'
+        category: data.course_name || profileData.course || 'Training'
       }
     ] : []),
 
     // Soft skills - Use existing or default set
-    softSkills: profile.softSkills || [
+    softSkills: profileData.softSkills || [
       {
         id: 1,
         name: 'Communication',
@@ -580,27 +586,27 @@ function transformProfileData(profile, email) {
       }
     ],
 
-    projects: Array.isArray(profile.projects)
-      ? profile.projects
-      : Array.isArray(profile.profile?.projects)
-        ? profile.profile.projects
-        : Array.isArray(profile.profile?.profile?.projects)
-          ? profile.profile.profile.projects
+    projects: Array.isArray(profileData.projects)
+      ? profileData.projects
+      : Array.isArray(profileData.profile?.projects)
+        ? profileData.profile.projects
+        : Array.isArray(profileData.profile?.profile?.projects)
+          ? profileData.profile.profile.projects
           : [],
-    certificates: Array.isArray(profile.certificates)
-      ? profile.certificates
-      : Array.isArray(profile.profile?.certificates)
-        ? profile.profile.certificates
-        : Array.isArray(profile.profile?.profile?.certificates)
-          ? profile.profile.profile.certificates
+    certificates: Array.isArray(profileData.certificates)
+      ? profileData.certificates
+      : Array.isArray(profileData.profile?.certificates)
+        ? profileData.profile.certificates
+        : Array.isArray(profileData.profile?.profile?.certificates)
+          ? profileData.profile.profile.certificates
           : [],
 
     // Recent updates
     recentUpdates: [
       {
         id: 1,
-        message: `Enrolled in ${profile.course || 'course'}`,
-        timestamp: profile.imported_at || new Date().toISOString(),
+        message: `Enrolled in ${data.course_name || profileData.course || 'course'}`,
+        timestamp: data.imported_at || profileData.imported_at || new Date().toISOString(),
         type: 'achievement'
       }
     ],
@@ -615,7 +621,7 @@ function transformProfileData(profile, email) {
       },
       {
         id: 2,
-        message: `Continue your training in ${profile.skill || 'your field'}`,
+        message: `Continue your training in ${profileData.skill || 'your field'}`,
         priority: 2,
         isActive: true
       }
@@ -625,7 +631,7 @@ function transformProfileData(profile, email) {
     opportunities: [
       {
         id: 1,
-        title: `${profile.skill || 'Technical'} Specialist`,
+        title: `${profileData.skill || 'Technical'} Specialist`,
         company: 'Industry Partner',
         type: 'internship',
         deadline: ''
