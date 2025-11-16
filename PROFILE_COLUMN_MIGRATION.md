@@ -97,7 +97,31 @@ Updated institution info logic to use individual columns as fallback when foreig
 ## Rollback Plan
 If issues occur, the profile JSONB column still contains all the original data and can be used as a fallback. The code is designed to gracefully fall back to profile JSONB when individual columns are empty.
 
+## Complex Data (Using Separate Tables) ✅
+
+You already have separate tables for complex data - **no JSONB columns needed**:
+
+### **Existing Separate Tables**
+```sql
+-- ✅ Already implemented as separate tables
+certificates              -- Certificates table
+education                -- Education history table  
+training                 -- Training courses table
+experience               -- Work experience table
+skills                   -- Skills table (with type: 'technical'/'soft')
+projects                 -- Projects table
+skill_passports          -- Skill passport data table
+```
+
+### **Benefits of Separate Tables**
+- ✅ Better performance than JSONB arrays
+- ✅ Proper foreign key relationships  
+- ✅ Individual record tracking and approval
+- ✅ Better querying and filtering capabilities
+- ✅ Easier to maintain and update individual records
+
 ## Next Steps
+- Run the migration script to add missing columns (class_year, verified, employability_score)
+- Verify separate tables are being used instead of profile JSONB arrays
 - Consider removing redundant data from profile JSONB after confirming migration success
 - Add database constraints to ensure data consistency
-- Update any remaining code that directly accesses profile JSONB

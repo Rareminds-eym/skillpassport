@@ -1,8 +1,15 @@
 /**
  * Employability Score Calculator
  * 
- * Calculates employability score based on student skills data from Supabase
- * Expects data structure with categorized skills arrays
+ * Calculates employability score based on student data from separate tables:
+ * - certificates table
+ * - education table  
+ * - training table
+ * - experience table
+ * - skills table (with type: 'technical'/'soft')
+ * - projects table
+ * 
+ * Falls back to individual columns and profile JSONB if separate tables are empty
  */
 
 /**
@@ -50,66 +57,115 @@ export function calculateEmployabilityScore(studentData) {
     return percentage;
   };
 
-  // Extract skills from different possible structures
+  // Extract skills from separate tables (your database structure)
   let skillsData = {
-    foundational: studentData.foundational || studentData.foundationalSkills || [],
-    century21: studentData.century21 || studentData.century21Skills || [],
-    digital: studentData.digital || studentData.digitalSkills || studentData.technicalSkills || [],
-    behavior: studentData.behavior || studentData.behaviorSkills || studentData.softSkills || [],
-    career: studentData.career || studentData.careerSkills || []
+    foundational: [],
+    century21: [],
+    digital: [],
+    behavior: [],
+    career: []
   };
 
-  // CRITICAL: Check if all skill arrays are empty and create synthetic skills
+  // 1. EDUCATION TABLE -> Foundational Skills
+  if (studentData.education && Array.isArray(studentData.education)) {
+    skillsData.foundational = studentData.education.map(edu => ({
+      name: edu.degree || edu.course || 'Academic Background',
+      rating: edu.cgpa ? Math.min(5, Math.max(1, parseFloat(edu.cgpa) / 2)) : 3,
+      verified: edu.verified || edu.approval_status === 'approved' || true,
+      category: 'education'
+    }));
+  }
+
+  // 2. SKILLS TABLE (type='technical') -> Digital Skills  
+  if (studentData.technicalSkills && Array.isArray(studentData.technicalSkills)) {
+    skillsData.digital = studentData.technicalSkills.map(skill => ({
+      name: skill.name || skill.skill_name || 'Technical Skill',
+      rating: skill.level || skill.proficiency_level || skill.rating || 3,
+      verified: skill.verified || skill.approval_status === 'approved' || false,
+      category: 'technical'
+    }));
+  }
+
+  // 3. SKILLS TABLE (type='soft') -> Behavioral Skills
+  if (studentData.softSkills && Array.isArray(studentData.softSkills)) {
+    skillsData.behavior = studentData.softSkills.map(skill => ({
+      name: skill.name || skill.skill_name || 'Soft Skill',
+      rating: skill.level || skill.proficiency_level || skill.rating || 3,
+      verified: skill.verified || skill.approval_status === 'approved' || false,
+      category: 'soft'
+    }));
+  }
+
+  // 4. TRAINING TABLE -> Career Skills
+  if (studentData.training && Array.isArray(studentData.training)) {
+    skillsData.career = studentData.training.map(training => ({
+      name: training.course || training.title || 'Professional Training',
+      rating: training.progress ? Math.min(5, training.progress / 20) : 3, // Convert progress % to 1-5 scale
+      verified: training.verified || training.approval_status === 'approved' || training.status === 'completed',
+      category: 'training'
+    }));
+  }
+
+  // 5. PROJECTS TABLE -> 21st Century Skills (Innovation, Problem Solving)
+  if (studentData.projects && Array.isArray(studentData.projects)) {
+    skillsData.century21 = studentData.projects.map(project => ({
+      name: `Project: ${project.title || 'Innovation Project'}`,
+      rating: project.status === 'completed' ? 4 : 3,
+      verified: project.verified || project.approval_status === 'approved' || false,
+      category: 'projects'
+    }));
+  }
+
+  // FALLBACK: If separate tables are empty, use profile/individual columns
   const totalCategorizedSkills = Object.values(skillsData).reduce((sum, arr) => sum + arr.length, 0);
   
-  
   if (totalCategorizedSkills === 0) {
+    console.log('📊 No data from separate tables, using fallback from individual columns...');
     
-    // Use basic profile information to create skills
-    const profile = studentData.profile || studentData;
-    
-    // Create foundational skills from education/department
-    if (profile.department || profile.branch_field || profile.degree) {
+    // Create foundational skills from individual columns
+    if (studentData.branch_field || studentData.university) {
       skillsData.foundational = [{
-        name: profile.department || profile.branch_field || profile.degree || 'Academic Background',
+        name: studentData.branch_field || 'Academic Background',
         rating: 3,
-        verified: true
+        verified: true,
+        category: 'education'
       }];
     }
     
-    // Create digital skills from course/skill data
-    if (profile.course || profile.skill) {
+    // Create digital skills from course data
+    if (studentData.course_name) {
       skillsData.digital = [{
-        name: profile.course || profile.skill || 'Technical Skills',
+        name: studentData.course_name,
         rating: 3,
-        verified: true
+        verified: true,
+        category: 'course'
       }];
     }
     
-    // Create behavioral skills (basic set)
+    // Create behavioral skills (default set)
     skillsData.behavior = [
-      { name: 'Communication', rating: 3, verified: false },
-      { name: 'Teamwork', rating: 3, verified: false }
+      { name: 'Communication', rating: 3, verified: false, category: 'default' },
+      { name: 'Teamwork', rating: 3, verified: false, category: 'default' }
     ];
     
     // Create 21st century skills
     skillsData.century21 = [
-      { name: 'Problem Solving', rating: 3, verified: false }
+      { name: 'Problem Solving', rating: 3, verified: false, category: 'default' }
     ];
     
-    // Create career skills from training/experience
-    if (studentData.training && studentData.training.length > 0) {
-      skillsData.career = studentData.training.slice(0, 2).map(training => ({
-        name: training.course || 'Professional Training',
+    // Create career skills from trainer info
+    if (studentData.trainer_name) {
+      skillsData.career = [{
+        name: 'Professional Training',
         rating: 3,
-        verified: true
-      }));
+        verified: true,
+        category: 'training'
+      }];
     } else {
       skillsData.career = [
-        { name: 'Professional Development', rating: 2, verified: false }
+        { name: 'Professional Development', rating: 2, verified: false, category: 'default' }
       ];
     }
-    
   }
 
   // Compute weighted score
@@ -143,36 +199,58 @@ export function calculateEmployabilityScore(studentData) {
   
   if (allEvidenceVerified) bonus += 2;
   
-  // Check for hackathon/internship participation
+  // EXPERIENCE TABLE - Check for work experience/internships
   const hasExperience = studentData.experience && 
     Array.isArray(studentData.experience) && 
     studentData.experience.length > 0;
   
+  // TRAINING TABLE - Check for training courses
   const hasTraining = studentData.training &&
     Array.isArray(studentData.training) &&
     studentData.training.length > 0;
   
-  const participatedHackathonOrInternship = hasExperience ||
-    hasTraining ||
-    studentData.participatedHackathonOrInternship ||
-    studentData.hackathons ||
-    studentData.internships;
-    
+  // PROJECTS TABLE - Check for project work (hackathons, etc.)
+  const hasProjects = studentData.projects &&
+    Array.isArray(studentData.projects) &&
+    studentData.projects.length > 0;
+  
+  const participatedHackathonOrInternship = hasExperience || hasTraining || hasProjects;
   if (participatedHackathonOrInternship) bonus += 1;
   
-  // Check for skill passport certificate
-  if (studentData.hasSkillPassportCertificate || studentData.certified) bonus += 2;
+  // CERTIFICATES TABLE - Check for certificates
+  const hasCertificates = studentData.certificates &&
+    Array.isArray(studentData.certificates) &&
+    studentData.certificates.length > 0;
   
-  // Additional bonuses for high skill counts
+  if (hasCertificates) bonus += 2;
+  
+  // Additional bonuses from separate tables
+  if (hasExperience && studentData.experience.some(exp => exp.verified || exp.approval_status === 'approved')) {
+    bonus += 1; // Verified work experience
+  }
+  
+  if (hasProjects && studentData.projects.some(proj => proj.approval_status === 'approved')) {
+    bonus += 1; // Approved projects
+  }
+  
+  // Additional bonuses for high skill counts from separate tables
   const totalSkillCount = allSkills.length;
-  if (totalSkillCount >= 20) bonus += 1; // Many skills documented
-  if (totalSkillCount >= 30) bonus += 1; // Extensive skill portfolio
+  const totalTechnicalSkills = studentData.technicalSkills?.length || 0;
+  const totalSoftSkills = studentData.softSkills?.length || 0;
   
-  // Education bonus
+  if (totalSkillCount >= 10) bonus += 0.5; // Good skill documentation
+  if (totalSkillCount >= 20) bonus += 1; // Many skills documented
+  if (totalTechnicalSkills >= 5) bonus += 0.5; // Strong technical skills
+  if (totalSoftSkills >= 5) bonus += 0.5; // Strong soft skills
+  
+  // EDUCATION TABLE - Education bonus
   const hasEducation = studentData.education && 
     Array.isArray(studentData.education) && 
     studentData.education.length > 0;
   if (hasEducation) bonus += 0.5;
+  
+  // Multiple education records bonus
+  if (hasEducation && studentData.education.length > 1) bonus += 0.5;
   
   // Cap bonus at 5
   if (bonus > 5) bonus = 5;
@@ -243,23 +321,70 @@ export function getDefaultEmployabilityScore() {
 export function calculateMinimumScore(studentData) {
   let baseScore = 30; // Minimum base score for being a student
   
-  const profile = studentData.profile || studentData;
+  // Use individual columns instead of profile JSONB
+  // Basic information bonuses from individual columns
+  if (studentData.name) baseScore += 5;
+  if (studentData.university) baseScore += 10;
+  if (studentData.branch_field) baseScore += 10;
+  if (studentData.course_name) baseScore += 8;
+  if (studentData.email) baseScore += 5;
+  if (studentData.contact_number) baseScore += 3;
+  if (studentData.registration_number) baseScore += 5;
   
-  // Basic information bonuses
-  if (profile.name) baseScore += 5;
-  if (profile.university) baseScore += 10;
-  if (profile.department || profile.branch_field) baseScore += 10;
-  if (profile.course) baseScore += 8;
-  if (profile.email) baseScore += 5;
+  // Separate tables bonuses
+  // EDUCATION TABLE bonus
+  if (studentData.education && Array.isArray(studentData.education) && studentData.education.length > 0) {
+    baseScore += 15;
+    // Additional bonus for verified education
+    if (studentData.education.some(edu => edu.verified || edu.approval_status === 'approved')) {
+      baseScore += 5;
+    }
+  }
   
-  // Education bonus
-  if (studentData.education && studentData.education.length > 0) baseScore += 15;
+  // TRAINING TABLE bonus
+  if (studentData.training && Array.isArray(studentData.training) && studentData.training.length > 0) {
+    baseScore += 10;
+    // Additional bonus for completed training
+    if (studentData.training.some(training => training.status === 'completed')) {
+      baseScore += 5;
+    }
+  }
   
-  // Training bonus
-  if (studentData.training && studentData.training.length > 0) baseScore += 10;
+  // EXPERIENCE TABLE bonus
+  if (studentData.experience && Array.isArray(studentData.experience) && studentData.experience.length > 0) {
+    baseScore += 12;
+    // Additional bonus for verified experience
+    if (studentData.experience.some(exp => exp.verified || exp.approval_status === 'approved')) {
+      baseScore += 5;
+    }
+  }
   
-  // Experience bonus
-  if (studentData.experience && studentData.experience.length > 0) baseScore += 12;
+  // SKILLS TABLE bonuses
+  if (studentData.technicalSkills && Array.isArray(studentData.technicalSkills) && studentData.technicalSkills.length > 0) {
+    baseScore += 8;
+  }
+  
+  if (studentData.softSkills && Array.isArray(studentData.softSkills) && studentData.softSkills.length > 0) {
+    baseScore += 6;
+  }
+  
+  // PROJECTS TABLE bonus
+  if (studentData.projects && Array.isArray(studentData.projects) && studentData.projects.length > 0) {
+    baseScore += 10;
+    // Additional bonus for approved projects
+    if (studentData.projects.some(proj => proj.approval_status === 'approved')) {
+      baseScore += 5;
+    }
+  }
+  
+  // CERTIFICATES TABLE bonus
+  if (studentData.certificates && Array.isArray(studentData.certificates) && studentData.certificates.length > 0) {
+    baseScore += 8;
+    // Additional bonus for verified certificates
+    if (studentData.certificates.some(cert => cert.verified || cert.approval_status === 'approved')) {
+      baseScore += 7;
+    }
+  }
   
   const finalScore = Math.min(baseScore, 75); // Cap at 75 for minimum score
   

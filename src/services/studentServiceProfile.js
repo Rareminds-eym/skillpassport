@@ -528,7 +528,8 @@ function transformProfileData(profile, email, studentRecord = null) {
       other_social_links: data.other_social_links || profileData.other_social_links || [],
     },
 
-    // Education - Build from imported data OR use existing from profile (prioritize individual columns)
+    // Education - Will be fetched from separate 'education' table
+    // Fallback to profile JSONB only if separate table is empty
     education: profileData.education || [
       {
         id: 1,
@@ -541,7 +542,8 @@ function transformProfileData(profile, email, studentRecord = null) {
       }
     ],
 
-    // Training - Build from course and skill OR use existing from profile (prioritize individual columns)
+    // Training - Will be fetched from separate 'training' table
+    // Fallback to profile JSONB only if separate table is empty
     training: profileData.training || [
       {
         id: 1,
@@ -553,10 +555,11 @@ function transformProfileData(profile, email, studentRecord = null) {
       }
     ],
 
-    // Experience - Use existing from profile or empty
+    // Experience - Will be fetched from separate 'experience' table
     experience: profileData.experience || [],
 
-    // Technical skills - Use existing or build from skill field
+    // Technical skills - Will be fetched from separate 'skills' table (type='technical')
+    // Fallback to profile JSONB only if separate table is empty
     technicalSkills: profileData.technicalSkills || (profileData.skill ? [
       {
         id: 1,
@@ -568,7 +571,8 @@ function transformProfileData(profile, email, studentRecord = null) {
       }
     ] : []),
 
-    // Soft skills - Use existing or default set
+    // Soft skills - Will be fetched from separate 'skills' table (type='soft')
+    // Fallback to profile JSONB only if separate table is empty
     softSkills: profileData.softSkills || [
       {
         id: 1,

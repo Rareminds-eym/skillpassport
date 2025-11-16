@@ -487,10 +487,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       onClick={() => setShowDetailsModal(true)}
                       className="text-xs text-white font-bold mt-2 mb-4 hover:text-yellow-200 transition-colors cursor-pointer"
                     >
-                      PASSPORT-ID: SP-
-                      {userEmail
-                        ? userEmail.split("@")[0].toUpperCase().slice(0, 5)
-                        : displayData.passportId || "SP-2024-8421"}
+                      PASSPORT-ID: {
+                        // Priority: 1. student_id column, 2. registration_number, 3. generated from email
+                        realStudentData?.student_id || 
+                        (realStudentData?.registration_number ? `SP-${realStudentData.registration_number}` : null) ||
+                        displayData?.passportId ||
+                        (userEmail ? `SP-${userEmail.split("@")[0].toUpperCase().slice(0, 5)}` : "SP-2024-8421")
+                      }
                     </button>
 
                     {/* Copy and Share Buttons */}
@@ -767,7 +770,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
             {/* Details Grid */}
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <DetailItem label="Student ID" value={displayData.passportId || displayData.studentId || "N/A"} />
+              <DetailItem label="Student ID" value={
+                realStudentData?.student_id || 
+                (realStudentData?.registration_number ? `SP-${realStudentData.registration_number}` : null) ||
+                displayData?.passportId || 
+                displayData?.studentId || 
+                "N/A"
+              } />
               <DetailItem label="Department" value={displayData.department || displayData.degree || "Computer Science"} />
               <DetailItem label="Class Year" value={displayData.classYear || "Class of 2025"} />
               <DetailItem label="Employability Score" value={`${employabilityData.employabilityScore}%`} highlight />

@@ -1,4 +1,6 @@
 -- Migration script to move data from profile JSONB to individual columns
+-- Since you have separate tables (certificates, education, training, experience, skills),
+-- we only need individual columns for basic profile data
 -- Run this in Supabase SQL Editor to migrate existing data
 
 -- Step 1: Update existing records to move profile data to individual columns
@@ -24,15 +26,27 @@ SET
   updated_at = NOW()
 WHERE profile IS NOT NULL;
 
--- Step 2: Add computed columns for commonly accessed profile data
--- Add a computed column for class year if needed
-ALTER TABLE students 
-ADD COLUMN IF NOT EXISTS class_year VARCHAR(20);
+-- Step 2: Add missing columns for complete profile migration
+ALTER TABLE students ADD COLUMN IF NOT EXISTS class_year VARCHAR(20);
+ALTER TABLE students ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS employability_score NUMERIC(5,2);
+ALTER TABLE students ADD COLUMN IF NOT EXISTS last_active TIMESTAMP DEFAULT NOW();
+ALTER TABLE students ADD COLUMN IF NOT EXISTS profile_completion_percentage INTEGER DEFAULT 0;
 
--- Update class year from profile if it exists
+-- Update new columns from profile JSONB if data exists
 UPDATE students 
-SET class_year = profile->>'classYear'
-WHERE profile->>'classYear' IS NOT NULL;
+SET 
+  class_year = COALESCE(class_year, profile->>'classYear'),
+  verified = COALESCE(verified, (profile->>'verified')::boolean, FALSE),
+  employability_score = COALESCE(employability_score, (profile->>'employabilityScore')::numeric),
+  last_active = COALESCE(last_active, NOW()),
+  profile_completion_percentage = COALESCE(profile_completion_percentage, 
+    CASE 
+      WHEN profile IS NOT NULL THEN 75 
+      ELSE 25 
+    END
+  )
+WHERE profile IS NOT NULL;
 
 -- Step 3: Create indexes on the new columns for better performance
 CREATE INDEX IF NOT EXISTS idx_students_name ON students(name);
@@ -60,7 +74,22 @@ SELECT
   university,
   branch_field,
   registration_number,
+  student_id,
+  class_year,
+  verified,
+  employability_score,
   github_link,
   linkedin_link
 FROM students 
 LIMIT 5;
+
+-- Step 6: Verify separate tables are being used
+SELECT 'certificates' as table_name, COUNT(*) as record_count FROM certificates
+UNION ALL
+SELECT 'education' as table_name, COUNT(*) as record_count FROM education  
+UNION ALL
+SELECT 'training' as table_name, COUNT(*) as record_count FROM training
+UNION ALL
+SELECT 'experience' as table_name, COUNT(*) as record_count FROM experience
+UNION ALL
+SELECT 'skills' as table_name, COUNT(*) as record_count FROM skills;
