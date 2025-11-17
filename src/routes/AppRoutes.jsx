@@ -173,6 +173,15 @@ const CollegeRegistration = lazy(() =>
 const StudentEnrollments = lazy(() =>
   import("../pages/admin/universityAdmin/StudentEnrollments")
 );
+const ContinuousAssessment = lazy(() =>
+  import("../pages/admin/universityAdmin/ContinuousAssessment")
+);
+const PlacementReadiness = lazy(() =>
+  import("../pages/admin/universityAdmin/PlacementReadiness")
+);
+const OutcomeBasedEducation = lazy(() =>
+  import("../pages/admin/universityAdmin/OutcomeBasedEducation")
+);
 
 const AppRoutes = () => {
   return (
@@ -288,6 +297,9 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<UniversityAdminDashboard />} />
           <Route path="colleges/registration" element={<CollegeRegistration />} />
           <Route path="students/enrollments" element={<StudentEnrollments />} />
+          <Route path="students/continuous-assessment" element={<ContinuousAssessment />} />
+          <Route path="placements/readiness" element={<PlacementReadiness />} />
+          <Route path="analytics/obe-tracking" element={<OutcomeBasedEducation />} />
           <Route
             path=""
             element={<Navigate to="/university-admin/dashboard" replace />}
