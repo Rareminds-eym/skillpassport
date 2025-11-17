@@ -200,53 +200,63 @@ const Assessments = () => {
             try {
                 setLoading(true);
                 
-                // Try to get current user, but don't fail if not authenticated
-                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                // First, try to get educator_id from localStorage
+                const storedUser = localStorage.getItem('user');
+                let educatorId = null;
                 
-                // If no authenticated user, check for development mode or use fallback
-                if (!user || authError) {
-                    // For development: allow using a test educator ID from localStorage
+                if (storedUser) {
+                    try {
+                        const parsedUser = JSON.parse(storedUser);
+                        educatorId = parsedUser.educator_id;
+                        console.log('Using educator_id from localStorage:', educatorId);
+                    } catch (e) {
+                        console.error('Error parsing stored user:', e);
+                    }
+                }
+                
+                // If not in localStorage, try to get from authenticated user and fetch educator record
+                if (!educatorId) {
+                    const { data: { user }, error: authError } = await supabase.auth.getUser();
+                    
+                    if (user && !authError) {
+                        // Fetch the school_educators record to get the educator_id
+                        const { data: educatorData, error: educatorError } = await supabase
+                            .from('school_educators')
+                            .select('id')
+                            .eq('user_id', user.id)
+                            .single();
+                        
+                        if (educatorData && !educatorError) {
+                            educatorId = educatorData.id;
+                            console.log('Fetched educator_id from database:', educatorId);
+                        }
+                    }
+                }
+                
+                // Fallback to dev mode
+                if (!educatorId) {
                     const devEducatorId = localStorage.getItem('dev_educator_id');
                     if (devEducatorId) {
-                        setCurrentEducatorId(devEducatorId);
-                        // Try to fetch assignments with dev ID
-                        try {
-                            const assignments = await getAssignmentsByEducator(devEducatorId);
-                            const transformedTasks = await Promise.all(assignments.map(async (assignment) => {
-                                const stats = await getAssignmentStatistics(assignment.assignment_id);
-                                return {
-                                    id: assignment.assignment_id,
-                                    title: assignment.title,
-                                    description: assignment.description || '',
-                                    skillTags: assignment.skill_outcomes || [],
-                                    status: assignment.is_deleted ? 'Closed' : 'Active',
-                                    assignedTo: assignment.assign_classes ? [assignment.assign_classes] : [],
-                                    deadline: assignment.due_date,
-                                    submissions: stats.submitted + stats.graded,
-                                    pending: stats.submitted,
-                                    averageScore: stats.averageGrade,
-                                    totalStudents: stats.total,
-                                    attachments: assignment.assignment_attachments?.map(a => a.file_name) || [],
-                                    rubric: []
-                                };
-                            }));
-                            setTasks(transformedTasks);
-                        } catch (err) {
-                            setTasks([]);
-                        }
-                    } else {
-                        setCurrentEducatorId(null);
-                        setTasks([]);
+                        educatorId = devEducatorId;
+                        console.log('Using dev educator_id:', educatorId);
                     }
+                }
+                
+                if (!educatorId) {
+                    console.warn('No educator_id found');
+                    setCurrentEducatorId(null);
+                    setTasks([]);
                     setError(null);
                     setLoading(false);
                     return;
                 }
                 
-                setCurrentEducatorId(user.id);
+                setCurrentEducatorId(educatorId);
                 
-                // Fetch assignments for this educator
-                const assignments = await getAssignmentsByEducator(user.id);
+                // Fetch assignments using the educator_id
+                console.log('Fetching assignments for educator_id:', educatorId);
+                const assignments = await getAssignmentsByEducator(educatorId);
+                console.log('Fetched assignments:', assignments);
                 
                 // Transform assignments to match the component's expected format
                 const transformedTasks = await Promise.all(assignments.map(async (assignment) => {
@@ -258,15 +268,15 @@ const Assessments = () => {
                         title: assignment.title,
                         description: assignment.description || '',
                         skillTags: assignment.skill_outcomes || [],
-                        status: assignment.is_deleted ? 'Closed' : 'Active', // Map to UI status
-                        assignedTo: assignment.assign_classes ? [assignment.assign_classes] : [],
+                        status: assignment.is_deleted ? 'Closed' : 'Active',
+                        assignedTo: assignment.assign_classes ? assignment.assign_classes.split(',').map(c => c.trim()) : [],
                         deadline: assignment.due_date,
                         submissions: stats.submitted + stats.graded,
                         pending: stats.submitted,
                         averageScore: stats.averageGrade,
                         totalStudents: stats.total,
                         attachments: assignment.assignment_attachments?.map(a => a.file_name) || [],
-                        rubric: [] // You can add rubric data if stored
+                        rubric: []
                     };
                 }));
                 
