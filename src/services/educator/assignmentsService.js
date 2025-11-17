@@ -202,7 +202,27 @@ export const removeAssignmentAttachment = async (attachmentId) => {
  */
 export const assignToStudents = async (assignmentId, studentIds, defaults = {}) => {
   try {
-    const studentAssignments = studentIds.map(studentId => ({
+    // First, check which students are already assigned
+    const { data: existingAssignments, error: checkError } = await supabase
+      .from('student_assignments')
+      .select('student_id')
+      .eq('assignment_id', assignmentId)
+      .in('student_id', studentIds);
+
+    if (checkError) throw checkError;
+
+    // Filter out students who are already assigned
+    const existingStudentIds = existingAssignments?.map(a => a.student_id) || [];
+    const newStudentIds = studentIds.filter(id => !existingStudentIds.includes(id));
+
+    // If no new students to assign, return empty array
+    if (newStudentIds.length === 0) {
+      console.log('All students are already assigned to this assignment');
+      return [];
+    }
+
+    // Create assignments only for new students
+    const studentAssignments = newStudentIds.map(studentId => ({
       assignment_id: assignmentId,
       student_id: studentId,
       status: defaults.status || 'todo',
