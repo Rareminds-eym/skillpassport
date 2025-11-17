@@ -1,0 +1,250 @@
+import { Project } from '../../types/project';
+
+export const mockProjects: Project[] = [
+  {
+    id: 'proj-001',
+    recruiter_id: 'rec-001',
+    title: 'E-commerce Website Development',
+    description: 'Build a modern e-commerce platform with React, Node.js, and MongoDB. The platform should support product catalog, shopping cart, payment integration, and admin dashboard.',
+    category: 'web_development',
+    budget_min: 50000,
+    budget_max: 80000,
+    currency: 'INR',
+    duration_value: 8,
+    duration_unit: 'weeks',
+    skills_required: ['React', 'Node.js', 'MongoDB', 'Express', 'Stripe API'],
+    experience_required: 'Mid',
+    deliverables: [
+      'Fully functional e-commerce website',
+      'Admin dashboard',
+      'Payment integration',
+      'Mobile responsive design',
+      'Deployment and documentation'
+    ],
+    milestones: [
+      { name: 'UI/UX Design & Prototype', amount: 15000, deadline: '2025-12-01' },
+      { name: 'Frontend Development', amount: 25000, deadline: '2025-12-15' },
+      { name: 'Backend & API Integration', amount: 25000, deadline: '2025-12-29' },
+      { name: 'Testing & Deployment', amount: 15000, deadline: '2026-01-05' }
+    ],
+    status: 'open',
+    priority: 'high',
+    visibility: 'public',
+    max_proposals: 50,
+    proposal_count: 12,
+    posted_at: '2025-11-10T10:00:00Z',
+    deadline_for_proposals: '2025-11-25T23:59:59Z',
+    project_start_date: '2025-11-20',
+    project_end_date: '2026-01-15',
+    created_at: '2025-11-10T10:00:00Z',
+    updated_at: '2025-11-15T14:30:00Z'
+  },
+  {
+    id: 'proj-002',
+    recruiter_id: 'rec-001',
+    title: 'Mobile App for Food Delivery',
+    description: 'Develop a cross-platform mobile application for food delivery using React Native. Features include real-time tracking, payment gateway, and restaurant management.',
+    category: 'mobile_app',
+    budget_min: 70000,
+    budget_max: 100000,
+    currency: 'INR',
+    duration_value: 10,
+    duration_unit: 'weeks',
+    skills_required: ['React Native', 'Firebase', 'Google Maps API', 'Redux'],
+    experience_required: 'Senior',
+    deliverables: [
+      'iOS and Android apps',
+      'Real-time order tracking',
+      'Payment integration',
+      'Push notifications',
+      'Restaurant admin panel'
+    ],
+    milestones: [
+      { name: 'App Architecture & Design', amount: 20000, deadline: '2025-12-05' },
+      { name: 'Core Features Development', amount: 35000, deadline: '2025-12-20' },
+      { name: 'Integration & Testing', amount: 25000, deadline: '2026-01-05' },
+      { name: 'Launch & Support', amount: 20000, deadline: '2026-01-15' }
+    ],
+    status: 'in_progress',
+    priority: 'urgent',
+    visibility: 'public',
+    max_proposals: 30,
+    proposal_count: 8,
+    hired_freelancer_id: 'std-005',
+    posted_at: '2025-10-20T09:00:00Z',
+    deadline_for_proposals: '2025-11-05T23:59:59Z',
+    project_start_date: '2025-11-08',
+    project_end_date: '2026-01-20',
+    created_at: '2025-10-20T09:00:00Z',
+    updated_at: '2025-11-16T16:45:00Z'
+  },
+  {
+    id: 'proj-003',
+    recruiter_id: 'rec-001',
+    title: 'Data Analysis Dashboard',
+    description: 'Create an interactive data visualization dashboard using Python, pandas, and Plotly. Should include data processing pipelines and automated reporting.',
+    category: 'data_science',
+    budget_min: 35000,
+    budget_max: 55000,
+    currency: 'INR',
+    duration_value: 6,
+    duration_unit: 'weeks',
+    skills_required: ['Python', 'Pandas', 'Plotly', 'SQL', 'Data Visualization'],
+    experience_required: 'Mid',
+    deliverables: [
+      'Interactive dashboard',
+      'Data processing scripts',
+      'Automated reports',
+      'Documentation'
+    ],
+    milestones: [
+      { name: 'Data Pipeline Setup', amount: 15000, deadline: '2025-11-28' },
+      { name: 'Dashboard Development', amount: 25000, deadline: '2025-12-12' },
+      { name: 'Testing & Optimization', amount: 15000, deadline: '2025-12-20' }
+    ],
+    status: 'open',
+    priority: 'medium',
+    visibility: 'public',
+    max_proposals: 40,
+    proposal_count: 6,
+    posted_at: '2025-11-12T11:30:00Z',
+    deadline_for_proposals: '2025-11-22T23:59:59Z',
+    project_start_date: '2025-11-25',
+    project_end_date: '2025-12-25',
+    created_at: '2025-11-12T11:30:00Z',
+    updated_at: '2025-11-14T09:20:00Z'
+  },
+  {
+    id: 'proj-004',
+    recruiter_id: 'rec-001',
+    title: 'Brand Identity & UI/UX Design',
+    description: 'Complete brand identity redesign including logo, color palette, typography, and UI/UX design for web and mobile applications.',
+    category: 'ui_ux_design',
+    budget_min: 25000,
+    budget_max: 40000,
+    currency: 'INR',
+    duration_value: 4,
+    duration_unit: 'weeks',
+    skills_required: ['Figma', 'Adobe XD', 'Illustrator', 'UI/UX Design', 'Branding'],
+    experience_required: 'Senior',
+    deliverables: [
+      'Brand style guide',
+      'Logo designs',
+      'UI/UX mockups',
+      'Design system',
+      'Prototype'
+    ],
+    milestones: [
+      { name: 'Brand Research & Concepts', amount: 10000, deadline: '2025-11-28' },
+      { name: 'UI/UX Design', amount: 20000, deadline: '2025-12-10' },
+      { name: 'Final Deliverables', amount: 10000, deadline: '2025-12-15' }
+    ],
+    status: 'completed',
+    priority: 'medium',
+    visibility: 'public',
+    max_proposals: 25,
+    proposal_count: 15,
+    hired_freelancer_id: 'std-003',
+    posted_at: '2025-10-15T14:00:00Z',
+    deadline_for_proposals: '2025-10-30T23:59:59Z',
+    project_start_date: '2025-11-01',
+    project_end_date: '2025-12-01',
+    completed_at: '2025-11-28T18:00:00Z',
+    created_at: '2025-10-15T14:00:00Z',
+    updated_at: '2025-11-28T18:00:00Z'
+  },
+  {
+    id: 'proj-005',
+    recruiter_id: 'rec-001',
+    title: 'Content Writing for Tech Blog',
+    description: 'Write 20 high-quality technical blog posts covering AI, machine learning, and software development topics. Each article should be SEO-optimized and 1500+ words.',
+    category: 'content_writing',
+    budget_min: 15000,
+    budget_max: 25000,
+    currency: 'INR',
+    duration_value: 5,
+    duration_unit: 'weeks',
+    skills_required: ['Technical Writing', 'SEO', 'AI/ML Knowledge', 'Copywriting'],
+    experience_required: 'Entry',
+    deliverables: [
+      '20 blog posts (1500+ words each)',
+      'SEO optimization',
+      'Images and graphics',
+      'Content calendar'
+    ],
+    milestones: [
+      { name: 'First 8 Articles', amount: 8000, deadline: '2025-12-05' },
+      { name: 'Next 7 Articles', amount: 7000, deadline: '2025-12-15' },
+      { name: 'Final 5 Articles', amount: 5000, deadline: '2025-12-22' }
+    ],
+    status: 'open',
+    priority: 'low',
+    visibility: 'public',
+    max_proposals: 60,
+    proposal_count: 23,
+    posted_at: '2025-11-14T08:00:00Z',
+    deadline_for_proposals: '2025-11-28T23:59:59Z',
+    project_start_date: '2025-11-30',
+    project_end_date: '2025-12-25',
+    created_at: '2025-11-14T08:00:00Z',
+    updated_at: '2025-11-16T10:15:00Z'
+  },
+  {
+    id: 'proj-006',
+    recruiter_id: 'rec-001',
+    title: 'DevOps CI/CD Pipeline Setup',
+    description: 'Set up complete CI/CD pipeline using GitHub Actions, Docker, and AWS. Includes automated testing, deployment, and monitoring.',
+    category: 'devops',
+    budget_min: 40000,
+    budget_max: 60000,
+    currency: 'INR',
+    duration_value: 3,
+    duration_unit: 'weeks',
+    skills_required: ['Docker', 'Kubernetes', 'AWS', 'GitHub Actions', 'Terraform'],
+    experience_required: 'Expert',
+    deliverables: [
+      'CI/CD pipeline configuration',
+      'Docker containerization',
+      'AWS infrastructure setup',
+      'Monitoring & alerts',
+      'Documentation'
+    ],
+    milestones: [
+      { name: 'Pipeline Setup', amount: 20000, deadline: '2025-11-30' },
+      { name: 'AWS Configuration', amount: 25000, deadline: '2025-12-10' },
+      { name: 'Testing & Handover', amount: 15000, deadline: '2025-12-15' }
+    ],
+    status: 'draft',
+    priority: 'medium',
+    visibility: 'private',
+    max_proposals: 15,
+    proposal_count: 0,
+    posted_at: '2025-11-16T12:00:00Z',
+    created_at: '2025-11-16T12:00:00Z',
+    updated_at: '2025-11-16T12:00:00Z'
+  }
+];
+
+export const getProjectById = (id: string): Project | undefined => {
+  return mockProjects.find(project => project.id === id);
+};
+
+export const getProjectsByStatus = (status: string): Project[] => {
+  if (status === 'all') return mockProjects;
+  return mockProjects.filter(project => project.status === status);
+};
+
+export const getProjectStats = () => {
+  return {
+    total: mockProjects.length,
+    open: mockProjects.filter(p => p.status === 'open').length,
+    in_progress: mockProjects.filter(p => p.status === 'in_progress').length,
+    completed: mockProjects.filter(p => p.status === 'completed').length,
+    draft: mockProjects.filter(p => p.status === 'draft').length,
+    totalBudget: mockProjects.reduce((sum, p) => sum + (p.budget_max || 0), 0),
+    avgProposals: Math.round(
+      mockProjects.reduce((sum, p) => sum + p.proposal_count, 0) / mockProjects.length
+    )
+  };
+};
+

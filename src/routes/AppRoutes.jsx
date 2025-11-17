@@ -91,6 +91,7 @@ const Analytics = lazy(() => import("../pages/recruiter/Analytics"));
 const Activities = lazy(() => import("../pages/recruiter/Activities"));
 const RecruiterMessages = lazy(() => import("../pages/recruiter/Messages"));
 const RecruiterAI = lazy(() => import("../pages/recruiter/RecruiterAI"));
+const ProjectHiringWithNav = lazy(() => import("../pages/recruiter/ProjectHiringWithNav"));
 
 const StudentDashboard = lazy(() => import("../pages/student/Dashboard"));
 const Profile = lazy(() => import("../pages/student/Profile"));
@@ -302,6 +303,7 @@ const AppRoutes = () => {
           }
         >
           <Route path="overview" element={<Overview />} />
+          <Route path="projects" element={<ProjectHiringWithNav />} />
           {/* <Route path="talent-scout" element={<RecruiterAI />} /> */}
           {/* <Route path="talent-pool" element={<TalentPool />} /> */}
           <Route path="requisition" element={<Requisitions />} />

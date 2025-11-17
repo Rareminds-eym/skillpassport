@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Student, PortfolioSettings, DisplayPreferences } from '../types/student';
-import { supabase } from '../lib/supabaseClient';
+import { getStudentPortfolioByEmail } from '../services/portfolioService';
+import { useAuth } from './AuthContext';
 
 interface PortfolioContextType {
   student: Student | null;
@@ -44,6 +45,7 @@ interface PortfolioProviderProps {
 }
 
 export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }) => {
+  const { user, loading: authLoading } = useAuth();
   const [student, _setStudent] = useState<Student | null>(null);
   const [settings, setSettings] = useState<PortfolioSettings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,44 +54,33 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
     setIsLoading(true);
     try {
       if (studentData.email) {
-        // First try to get the full student data from Supabase
-        const { data, error } = await supabase
-          .from('students')
-          .select('*')
-          .eq('email', studentData.email)
-          .single();
-
-        if (error) {
-          console.error('Error fetching student data:', error);
-          // If we can't get the data from Supabase, use the passed data
-          _setStudent(studentData);
-        } else if (data) {
-          // Merge the Supabase data with any additional data passed in
-          _setStudent({
-            ...data,
-            ...studentData,
-            profile: {
-              ...(data.profile || {}),
-              ...(studentData.profile || {})
-            }
-          });
+        // Use the new portfolio service to get full student data from relational tables
+        const result = await getStudentPortfolioByEmail(studentData.email);
+        
+        if (result.success && result.data) {
+          console.log('✅ Student portfolio data loaded via setStudent');
+          _setStudent(result.data as Student);
         } else {
-          // If no data found in Supabase, use the passed data
+          console.error('❌ Error fetching student data:', result.error);
+          // Fallback to passed data
           _setStudent(studentData);
         }
       } else {
-        // If no email (shouldn't happen), use the passed data
+        // If no email, use the passed data
         _setStudent(studentData);
       }
     } catch (error) {
-      console.error('Error in setStudent:', error);
+      console.error('❌ Error in setStudent:', error);
       _setStudent(studentData);
     } finally {
       setIsLoading(false);
     }
   };
 
-  console.log('PortfolioProvider render:', { student, isLoading });
+  console.log('PortfolioProvider render:', { 
+    student: student ? { email: student.email, name: student.name || student.profile?.name } : null, 
+    isLoading 
+  });
 
   useEffect(() => {
     // Load saved settings from localStorage
@@ -102,13 +93,61 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
     } catch (error) {
       console.error('Error parsing saved settings:', error);
     }
+  }, []);
 
-    // If student data is passed through setStudent, don't fetch
-    // This prevents overwriting data passed from the TalentPool
-    if (!student) {
-      setIsLoading(false);
-    }
-  }, [student]);
+  // Load student data when auth is ready
+  useEffect(() => {
+    const loadStudentData = async () => {
+      // Wait for auth to finish loading
+      if (authLoading) {
+        console.log('⏳ Waiting for auth to load...');
+        return;
+      }
+
+      // Check if user is authenticated
+      if (!user?.email) {
+        console.log('⚠️ No authenticated user found');
+        setIsLoading(false);
+        return;
+      }
+
+      // Don't reload if we already have the student data for this user
+      if (student && student.email === user.email) {
+        console.log('✅ Student data already loaded');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('🔍 Loading student portfolio data for authenticated user:', user.email);
+      setIsLoading(true);
+
+      try {
+        // Use the new portfolio service to fetch from relational tables
+        const result = await getStudentPortfolioByEmail(user.email);
+        
+        if (result.success && result.data) {
+          console.log('✅ Student portfolio data loaded successfully');
+          console.log('📊 Data includes:', {
+            skills: result.data.skills?.length || 0,
+            projects: result.data.projects?.length || 0,
+            education: result.data.education?.length || 0,
+            experience: result.data.experience?.length || 0,
+            certificates: result.data.certificates?.length || 0,
+            training: result.data.training?.length || 0
+          });
+          _setStudent(result.data as Student);
+        } else {
+          console.error('❌ Error fetching student portfolio data:', result.error);
+        }
+      } catch (error) {
+        console.error('❌ Error loading student portfolio data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadStudentData();
+  }, [user, authLoading, student]);
 
   const updateSettings = (newSettings: Partial<PortfolioSettings>) => {
     const updatedSettings = { ...settings, ...newSettings };
