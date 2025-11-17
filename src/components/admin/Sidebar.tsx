@@ -253,6 +253,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               icon: UserGroupIcon,
             },
             {
+              name: "Continuous Assessment",
+              path: "/university-admin/students/continuous-assessment",
+              icon: ClipboardDocumentListIcon,
+            },
+            {
               name: "Centralized Results",
               path: "/university-admin/students/results",
               icon: AcademicCapIcon,
@@ -268,6 +273,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           title: "Placement & Industry Linkages",
           key: "placements",
           items: [
+            {
+              name: "Placement Readiness",
+              path: "/university-admin/placements/readiness",
+              icon: ChartBarIcon,
+            },
             {
               name: "Company Database",
               path: "/university-admin/placements/companies",
@@ -298,6 +308,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               name: "Scheme Compliance (TNSDC)",
               path: "/university-admin/analytics/compliance",
               icon: ChartBarIcon,
+            },
+            {
+              name: "OBE Tracking",
+              path: "/university-admin/analytics/obe-tracking",
+              icon: DocumentChartBarIcon,
             },
           ],
         },
