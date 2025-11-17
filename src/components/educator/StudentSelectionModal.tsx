@@ -43,60 +43,76 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
         }
     }, [isOpen, filters]);
 
-    const fetchStudents = async () => {
-        try {
-            setLoading(true);
-            
-            let query = supabase
-                .from('students')
-                .select('id, profile');
+const fetchStudents = async () => {
+    try {
+        setLoading(true);
+        
+        let query = supabase
+            .from('students')
+            .select('*');
 
-            // Apply filters using JSONB operators
-            if (filters.department !== 'all') {
-                query = query.eq('profile->>department', filters.department);
-            }
-            if (filters.year !== 'all') {
-                query = query.eq('profile->>yearOfPassing', filters.year);
-            }
-            if (filters.search) {
-                query = query.or(
-                    `profile->>name.ilike.%${filters.search}%,` +
-                    `profile->>email.ilike.%${filters.search}%,` +
-                    `profile->>passportId.ilike.%${filters.search}%`
-                );
-            }
-
-            const { data, error } = await query;
-
-            if (error) {
-                console.error('Supabase query error:', error);
-                throw error;
-            }
-
-            
-            // Transform data to extract from profile JSONB
-            const transformedStudents = (data || []).map(student => {
-                const profile = student.profile || {};
-                return {
-                    id: student.id,
-                    name: profile.name || 'Unknown',
-                    email: profile.email || '',
-                    university: profile.university || '',
-                    branch_field: profile.department || '',
-                    college_school_name: profile.collegeName || profile.college_school_name || '',
-                    registration_number: profile.passportId || profile.registrationNumber || '',
-                    approval_status: profile.verified ? 'verified' : 'pending'
-                };
-            });
-            
-            setStudents(transformedStudents);
-        } catch (error) {
-            console.error('Error fetching students:', error);
-            alert('Failed to load students');
-        } finally {
-            setLoading(false);
+        // Apply filters - check both root level and profile JSONB
+        if (filters.department !== 'all') {
+            query = query.or(
+                `branch_field.eq.${filters.department},profile->>department.eq.${filters.department}`
+            );
         }
-    };
+        if (filters.year !== 'all') {
+            query = query.or(
+                `profile->>yearOfPassing.eq.${filters.year},profile->>year.eq.${filters.year}`
+            );
+        }
+        if (filters.search) {
+            const searchTerm = filters.search.toLowerCase();
+            query = query.or(
+                `name.ilike.%${searchTerm}%,` +
+                `email.ilike.%${searchTerm}%,` +
+                `student_id.ilike.%${searchTerm}%,` +
+                `registration_number.ilike.%${searchTerm}%,` +
+                `profile->>name.ilike.%${searchTerm}%,` +
+                `profile->>email.ilike.%${searchTerm}%,` +
+                `profile->>passportId.ilike.%${searchTerm}%`
+            );
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.error('Supabase query error:', error);
+            throw error;
+        }
+
+        // Transform data - prioritize root level fields, fall back to profile JSONB
+        const transformedStudents = (data || []).map(student => {
+            const profile = student.profile || {};
+            
+            return {
+                id: student.id || student.user_id,
+                user_id: student.user_id,
+                student_id: student.student_id,
+                name: student.name || profile.name || 'Unknown',
+                email: student.email || profile.email || '',
+                university: student.university || student.university_main || profile.university || '',
+                branch_field: student.branch_field || profile.department || profile.branch_field || '',
+                college_school_name: student.college_school_name || profile.collegeName || profile.college_school_name || '',
+                registration_number: student.registration_number || student.student_id || profile.passportId || profile.registrationNumber || profile.nm_id || '',
+                approval_status: student.approval_status || (profile.verified ? 'verified' : 'pending'),
+                contact_number: student.contact_number || student.contactNumber || profile.contact_number || '',
+                city: student.city || profile.district || '',
+                gender: student.gender || profile.gender || '',
+                age: student.age || profile.age || null,
+                bio: student.bio || profile.bio || ''
+            };
+        });
+        
+        setStudents(transformedStudents);
+    } catch (error) {
+        console.error('Error fetching students:', error);
+        alert('Failed to load students');
+    } finally {
+        setLoading(false);
+    }
+};
 
     // Get unique departments and years for filters
     const [departments, setDepartments] = useState<string[]>([]);
