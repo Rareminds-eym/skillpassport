@@ -90,75 +90,75 @@ const UniversityDashboard: React.FC = () => {
   };
 
   // ===== Top Programs by Learner Count (Real Data) =====
- const topProgramsComparison = {
-  series: [
-    { 
-      name: "Learners", 
-      data: [45146, 2487, 674, 286]  // ← PES added 
-    },
-    { 
-      name: "Programs", 
-      data: [29, 2, 9, 2]  // ← PES added 
-    }
-  ],
-  options: {
-    chart: { type: "bar", stacked: false, toolbar: { show: false } },
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: "60%",
-        borderRadius: 6,
-      },
-    },
-    colors: ["#3b82f6", "#22c55e"],
-    dataLabels: { enabled: false },
-    xaxis: {
-      categories: [
-        "Naan Mudhalvan",
-        "TNSDC",
-        "Acharya Programs",
-        "PES Programs"   // ← Added
-      ],
-      labels: {
-        style: { colors: "#6b7280", fontSize: "11px" },
-      },
-    },
-    yaxis: [
+  const topProgramsComparison = {
+    series: [
       {
-        title: { text: "Learners", style: { color: "#6b7280" } },
-        labels: {
-          style: { colors: "#6b7280" },
-          formatter: (val: number) => `${(val / 1000).toFixed(0)}K`,
-        },
+        name: "Learners",
+        data: [45146, 2487, 674, 286]  // ← PES added 
       },
       {
-        opposite: true,
-        title: { text: "Programs", style: { color: "#6b7280" } },
-        labels: {
-          style: { colors: "#6b7280" },
-        },
-      },
+        name: "Programs",
+        data: [29, 2, 9, 2]  // ← PES added 
+      }
     ],
-    legend: {
-      position: "top",
-      horizontalAlign: "right",
-      markers: { radius: 4 },
-      fontSize: "12px",
-    },
-    grid: { borderColor: "#f1f5f9" },
-    tooltip: {
-      theme: "light",
-      y: [
+    options: {
+      chart: { type: "bar", stacked: false, toolbar: { show: false } },
+      plotOptions: {
+        bar: {
+          horizontal: false,
+          columnWidth: "60%",
+          borderRadius: 6,
+        },
+      },
+      colors: ["#3b82f6", "#22c55e"],
+      dataLabels: { enabled: false },
+      xaxis: {
+        categories: [
+          "Naan Mudhalvan",
+          "TNSDC",
+          "Acharya Programs",
+          "PES Programs"   // ← Added
+        ],
+        labels: {
+          style: { colors: "#6b7280", fontSize: "11px" },
+        },
+      },
+      yaxis: [
         {
-          formatter: (val: number) => `${val.toLocaleString()} learners`,
+          title: { text: "Learners", style: { color: "#6b7280" } },
+          labels: {
+            style: { colors: "#6b7280" },
+            formatter: (val: number) => `${(val / 1000).toFixed(0)}K`,
+          },
         },
         {
-          formatter: (val: number) => `${val} programs`,
+          opposite: true,
+          title: { text: "Programs", style: { color: "#6b7280" } },
+          labels: {
+            style: { colors: "#6b7280" },
+          },
         },
       ],
+      legend: {
+        position: "top",
+        horizontalAlign: "right",
+        markers: { radius: 4 },
+        fontSize: "12px",
+      },
+      grid: { borderColor: "#f1f5f9" },
+      tooltip: {
+        theme: "light",
+        y: [
+          {
+            formatter: (val: number) => `${val.toLocaleString()} learners`,
+          },
+          {
+            formatter: (val: number) => `${val} programs`,
+          },
+        ],
+      },
     },
-  },
-};
+  };
 
 
   // ===== Top Performing Courses (Real Data from Excel) =====
@@ -266,7 +266,7 @@ const UniversityDashboard: React.FC = () => {
       </div>
 
       {/* Quick Stats Cards (Real Data) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-4">
         <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -307,6 +307,22 @@ const UniversityDashboard: React.FC = () => {
           </div>
           <p className="text-sm text-green-100 flex items-center gap-1">
             Across 354 districts
+          </p>
+        </div>
+
+        {/* Placement Readiness Score */}
+        <div className="bg-gradient-to-br from-cyan-600 to-cyan-700 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-cyan-100 text-sm mb-1">Placement Readiness</p>
+              <p className="text-3xl font-bold">82%</p>
+            </div>
+            <div className="p-3 bg-white/10 rounded-xl">
+              <Target className="h-7 w-7" />
+            </div>
+          </div>
+          <p className="text-sm text-cyan-100 flex items-center gap-1">
+            Based on skills & certifications
           </p>
         </div>
       </div>
@@ -402,15 +418,14 @@ const UniversityDashboard: React.FC = () => {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div
-                      className={`flex items-center justify-center w-9 h-9 rounded-full font-bold text-sm text-white shadow-md flex-shrink-0 ${
-                        course.rank === 1
+                      className={`flex items-center justify-center w-9 h-9 rounded-full font-bold text-sm text-white shadow-md flex-shrink-0 ${course.rank === 1
                           ? "bg-gradient-to-br from-yellow-400 to-yellow-600"
                           : course.rank === 2
-                          ? "bg-gradient-to-br from-gray-400 to-gray-600"
-                          : course.rank === 3
-                          ? "bg-gradient-to-br from-orange-400 to-orange-600"
-                          : "bg-gradient-to-br from-blue-400 to-blue-600"
-                      }`}
+                            ? "bg-gradient-to-br from-gray-400 to-gray-600"
+                            : course.rank === 3
+                              ? "bg-gradient-to-br from-orange-400 to-orange-600"
+                              : "bg-gradient-to-br from-blue-400 to-blue-600"
+                        }`}
                     >
                       #{course.rank}
                     </div>
