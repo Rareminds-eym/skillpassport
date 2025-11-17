@@ -86,6 +86,7 @@ const Interviews = lazy(() => import("../pages/recruiter/Interviews"));
 const OffersDecisions = lazy(() =>
   import("../pages/recruiter/OffersDecisions")
 );
+const VerifiedWork = lazy(() => import("../pages/recruiter/VerifiedStudentWork"));
 const Analytics = lazy(() => import("../pages/recruiter/Analytics"));
 const Activities = lazy(() => import("../pages/recruiter/Activities"));
 const RecruiterMessages = lazy(() => import("../pages/recruiter/Messages"));
@@ -309,6 +310,7 @@ const AppRoutes = () => {
           <Route path="shortlists" element={<Shortlists />} />
           <Route path="interviews" element={<Interviews />} />
           <Route path="offers-decisions" element={<OffersDecisions />} />
+          <Route path="verified-work" element={<VerifiedWork />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="activities" element={<Activities />} />
           <Route path="messages" element={<RecruiterMessages />} />
