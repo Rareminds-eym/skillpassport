@@ -90,11 +90,37 @@ const PortfolioPage: React.FC = () => {
   if (!student) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 dark:text-gray-400">No student data available</p>
-          <Link to="/" className="text-blue-600 hover:underline mt-4 inline-block">
-            Return to Home
-          </Link>
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="mb-4">
+            <svg className="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">
+            No Student Data Available
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Unable to load your profile data. This may happen if:
+          </p>
+          <ul className="text-left text-sm text-gray-500 dark:text-gray-400 space-y-2 mb-6">
+            <li>• You're not logged in as a student</li>
+            <li>• Your profile hasn't been created yet</li>
+            <li>• There's a connection issue</li>
+          </ul>
+          <div className="space-y-2">
+            <Link 
+              to="/student/profile" 
+              className="block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Go to Profile
+            </Link>
+            <Link 
+              to="/student/dashboard" 
+              className="block px-4 py-2 text-blue-600 hover:underline"
+            >
+              Return to Dashboard
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -167,7 +193,7 @@ const PortfolioPage: React.FC = () => {
                 )}
               </button>
               <Link 
-                to="/settings/layout" 
+                to="/student/digital-portfolio/settings/layout" 
                 className="flex items-center px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white hover:shadow-lg transition-all group relative overflow-hidden"
               >
                 <span className="relative z-10 flex items-center">

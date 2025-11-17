@@ -13,7 +13,8 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   EnvelopeIcon,
-  SparklesIcon
+  SparklesIcon,
+  RocketLaunchIcon
 } from '@heroicons/react/24/outline';
 
 const navigationItems = [
@@ -30,6 +31,7 @@ const navigationItems = [
     ]
   },
   { name: 'Pipelines', path: '/recruitment/pipelines', icon: RectangleStackIcon },
+  { name: 'Project Hiring', path: '/recruitment/projects', icon: RocketLaunchIcon },
   { name: 'Shortlists', path: '/recruitment/shortlists', icon: BookmarkIcon },
   { name: 'Interviews', path: '/recruitment/interviews', icon: CalendarDaysIcon },
   { name: 'Offers & Decisions', path: '/recruitment/offers-decisions', icon: DocumentTextIcon },
