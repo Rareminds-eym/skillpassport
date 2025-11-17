@@ -9,5 +9,26 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Zoho SalesIQ Widget -->
+    <script>
+      window.$zoho = window.$zoho || {};
+      $zoho.salesiq = $zoho.salesiq || {widgetcode: "siq85740827d442fdfad727c23eb50d61276e1e478af9841b5169a99498fc35da01", values:{}, ready:function(){
+        const urlParams = new URLSearchParams(window.location.search);
+        const openChat = urlParams.get('openChat');
+        
+        if (openChat === 'false' || openChat === '0') {
+          setTimeout(function() {
+            $zoho.salesiq.floatwindow.visible('hide');
+          }, 1000);
+        } else if (openChat === 'true' || openChat === '1') {
+          setTimeout(function() {
+            $zoho.salesiq.floatwindow.visible('show');
+          }, 1000);
+        }
+      }};
+    </script>
+    <script src="https://salesiq.zohopublic.in/widget?wc=siq85740827d442fdfad727c23eb50d61276e1e478af9841b5169a99498fc35da01" id="zsiqscript" defer></script>
+
   </body>
 </html>
