@@ -182,6 +182,9 @@ const PlacementReadiness = lazy(() =>
 const OutcomeBasedEducation = lazy(() =>
   import("../pages/admin/universityAdmin/OutcomeBasedEducation")
 );
+const AICounselling = lazy(() =>
+  import("../pages/admin/universityAdmin/AICounselling")
+);
 
 const AppRoutes = () => {
   return (
@@ -300,6 +303,7 @@ const AppRoutes = () => {
           <Route path="students/continuous-assessment" element={<ContinuousAssessment />} />
           <Route path="placements/readiness" element={<PlacementReadiness />} />
           <Route path="analytics/obe-tracking" element={<OutcomeBasedEducation />} />
+          <Route path="ai-counselling" element={<AICounselling />} />
           <Route
             path=""
             element={<Navigate to="/university-admin/dashboard" replace />}
