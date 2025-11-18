@@ -102,11 +102,14 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
 
   const updateEducation = async (educationData) => {
     try {
+      console.log('💾 Saving education data:', educationData);
       const result = await updateEducationByEmail(email, educationData);
       if (result.success) {
+        console.log('✅ Education saved successfully:', result.data);
         setStudentData(result.data);
         return { success: true };
       } else {
+        console.error('❌ Failed to save education:', result.error);
         throw new Error(result.error);
       }
     } catch (err) {
