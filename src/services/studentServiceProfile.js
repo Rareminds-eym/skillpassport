@@ -162,7 +162,10 @@ export const getStudentByEmail = async (email) => {
         certificates (*),
         experience (
         *
-        )
+        ),
+        skills(*),
+        trainings (*),
+        education (*) 
       `)
       .eq('email', email)
       .maybeSingle();
@@ -227,7 +230,10 @@ export const getStudentByEmail = async (email) => {
           certificates (*),
           experience (
             *
-          )
+          ),
+          skills(*),
+          trainings (*),
+          education (*) 
         `)
         .eq('profile->>email', email)
         .maybeSingle();
@@ -300,7 +306,10 @@ export const getStudentByEmail = async (email) => {
           certificates (*),
           experience (
             *
-          )
+          ),
+          skills(*),
+          trainings (*),
+          education (*) 
         `);
 
       if (allError) {
@@ -330,7 +339,80 @@ export const getStudentByEmail = async (email) => {
 
     // Extract skill_passports data (if exists)
     const passport = data.skill_passports || {};
+  // Format skills from skills table
+const tableSkills = Array.isArray(data?.skills) ? data.skills : [];
+const technicalSkills = tableSkills
+  .filter(skill => skill.type === 'technical')
+  .map(skill => ({
+    id: skill.id,
+    name: skill.name,
+    level: skill.level || 3,
+    description: skill.description || '',
+    verified: skill.verified || false,
+    enabled: skill.enabled ?? true,
+    approval_status: skill.approval_status || 'pending',
+    createdAt: skill.created_at,
+    updatedAt: skill.updated_at,
+  }));
 
+const softSkills = tableSkills
+  .filter(skill => skill.type === 'soft')
+  .map(skill => ({
+    id: skill.id,
+    name: skill.name,
+    level: skill.level || 3,
+    type: skill.name.toLowerCase(), // For UI compatibility
+    description: skill.description || '',
+    verified: skill.verified || false,
+    enabled: skill.enabled ?? true,
+    approval_status: skill.approval_status || 'pending',
+    createdAt: skill.created_at,
+    updatedAt: skill.updated_at,
+  }));
+
+  // Format education from education table
+const tableEducation = Array.isArray(data?.education) ? data.education : [];
+const formattedEducation = tableEducation.map((edu) => ({
+  id: edu.id,
+  level: edu.level || "Bachelor's",
+  degree: edu.degree || "",
+  department: edu.department || "",
+  university: edu.university || "",
+  yearOfPassing: edu.year_of_passing || "",
+  cgpa: edu.cgpa || "",
+  status: edu.status || "ongoing",
+  approval_status: edu.approval_status || "pending",
+  verified: edu.approval_status === "approved",
+  processing: edu.approval_status !== "approved",
+  enabled: edu.approval_status !== "rejected",
+  createdAt: edu.created_at,
+  updatedAt: edu.updated_at,
+}));
+
+console.log('📚 Formatted education records:', formattedEducation.length);
+
+  const tableTrainings = Array.isArray(data?.trainings) ? data.trainings : [];
+const formattedTrainings = tableTrainings.map((train) => ({
+  id: train.id,
+  title: train.title || "",
+  course: train.title || "", // Map title to course for backward compatibility
+  organization: train.organization || "",
+  start_date: train.start_date,
+  end_date: train.end_date,
+  duration: train.duration || "",
+  description: train.description || "",
+   // ✅ ADD THESE NEW FIELDS
+  status: train.status || "ongoing",
+  completedModules: train.completed_modules || 0,
+  totalModules: train.total_modules || 0,
+  hoursSpent: train.hours_spent || 0,
+  approval_status: train.approval_status || "pending",
+  verified: train.approval_status === "approved",
+  processing: train.approval_status !== "approved",
+  enabled: train.approval_status !== "rejected",
+  createdAt: train.created_at,
+  updatedAt: train.updated_at,
+}));
     const tableCertificates = Array.isArray(data?.certificates) ? data.certificates : [];
     const formattedTableCertificates = tableCertificates.map((certificate) => {
       const issuedOnValue = certificate?.issued_on || certificate?.issuedOn || null;
@@ -445,9 +527,12 @@ export const getStudentByEmail = async (email) => {
         : [],
       certificates: mergedCertificates,
       assessments: passport.assessments || [],
-
+    technicalSkills: technicalSkills.length > 0 ? technicalSkills : transformedProfile.technicalSkills,
+  softSkills: softSkills.length > 0 ? softSkills : transformedProfile.softSkills,
+  training: formattedTrainings.length > 0 ? formattedTrainings : transformedProfile.training,
       experience: formattedExperience,
-
+  // ✅ ADD THIS LINE
+  education: formattedEducation.length > 0 ? formattedEducation : transformedProfile.education,
 
       // Passport metadata:
       passportId: passport.id,
@@ -891,36 +976,199 @@ export async function updateStudentByEmail(email, updates) {
 }
 
 /**
- * Update education array in student profile
+ * Update education records in education table
  */
-export async function updateEducationByEmail(email, educationData) {
-  try {
+// export async function updateEducationByEmail(email, educationData) {
+//   try {
+//     // Find student record
+//     const findResult = await findStudentByEmail(email);
+//     if (!findResult.success) {
+//       return findResult;
+//     }
 
-    // First, find the student record using the same logic as getStudentByEmail
+//     const studentRecord = findResult.data;
+//     const studentId = studentRecord.id;
+
+//     // Get existing education records
+//     const { data: existingEducation, error: existingError } = await supabase
+//       .from('education')
+//       .select('id')
+//       .eq('student_id', studentId);
+
+//     if (existingError) {
+//       return { success: false, error: existingError.message };
+//     }
+
+//     const nowIso = new Date().toISOString();
+
+//     // Format education data for database
+//     const formatted = (educationData || [])
+//       .filter((edu) => edu && typeof edu.degree === 'string' && edu.degree.trim().length > 0)
+//       .map((edu) => {
+//         const record = {
+//           student_id: studentId,
+//           degree: edu.degree?.trim() || "",
+//           department: edu.department?.trim() || "",
+//           university: edu.university?.trim() || "",
+//           year_of_passing: edu.yearOfPassing?.trim() || "",
+//           cgpa: edu.cgpa?.trim() || "",
+//           level: edu.level?.trim() || "Bachelor's",
+//           status: edu.status?.trim() || "ongoing",
+//           updated_at: nowIso,
+//         };
+
+//         // Preserve existing ID if valid
+//         const rawId = typeof edu.id === 'string' ? edu.id.trim() : null;
+//         if (rawId && rawId.length === 36) {
+//           record.id = rawId;
+//         } else {
+//           record.id = generateUuid();
+//         }
+
+//         return record;
+//       });
+
+//     // Determine which records to delete
+//     const incomingIds = new Set(formatted.filter((record) => record.id).map((record) => record.id));
+//     const toDelete = (existingEducation || [])
+//       .filter((existing) => !incomingIds.has(existing.id))
+//       .map((existing) => existing.id);
+
+//     // Delete removed records
+//     if (toDelete.length > 0) {
+//       const { error: deleteError } = await supabase
+//         .from('education')
+//         .delete()
+//         .in('id', toDelete);
+
+//       if (deleteError) {
+//         return { success: false, error: deleteError.message };
+//       }
+//     }
+
+//     // Upsert education records
+//     if (formatted.length > 0) {
+//       const { error: upsertError } = await supabase
+//         .from('education')
+//         .upsert(formatted, { onConflict: 'id' });
+
+//       if (upsertError) {
+//         return { success: false, error: upsertError.message };
+//       }
+//     } else if ((existingEducation || []).length > 0) {
+//       // Delete all if no education data provided
+//       const { error: deleteAllError } = await supabase
+//         .from('education')
+//         .delete()
+//         .eq('student_id', studentId);
+
+//       if (deleteAllError) {
+//         return { success: false, error: deleteAllError.message };
+//       }
+//     }
+
+//     // Return updated student data
+//     return await getStudentByEmail(email);
+//   } catch (err) {
+//     console.error('❌ updateEducationByEmail exception:', err);
+//     return { success: false, error: err.message };
+//   }
+// }
+
+// /**
+//  * Helper function to find student record by email (robust method)
+//  */
+// async function findStudentByEmail(email) {
+//   try {
+
+//     // Try JSONB query first
+//     let { data: directData, error: directError } = await supabase
+//       .from('students')
+//       .select('*')
+//       .eq('profile->>email', email)
+//       .maybeSingle();
+
+//     if (directData) {
+//       return { success: true, data: directData };
+//     }
+
+
+//     // Fallback: get all students and search manually
+//     const { data: allStudents, error: allError } = await supabase
+//       .from('students')
+//       .select('*');
+
+//     if (allError) {
+//       console.error('❌ Error fetching all students:', allError);
+//       return { success: false, error: allError.message };
+//     }
+
+//     // Find student with matching email
+//     for (const student of allStudents || []) {
+//       const profile = safeJSONParse(student.profile);
+//       if (profile?.email === email) {
+//         return { success: true, data: student };
+//       }
+//     }
+
+//     console.error('❌ Student not found for email:', email);
+//     return { success: false, error: 'Student not found' };
+
+//   } catch (err) {
+//     console.error('❌ Error finding student:', err);
+//     return { success: false, error: err.message };
+//   }
+// }
+/**
+ * Update education records in education table
+ */
+export async function updateEducationByEmail(email, educationData = []) {
+  try {
+    // Find student record
     let studentRecord = null;
 
-    // Try JSONB query first
-    let { data: directData, error: directError } = await supabase
+    // Try direct email column first
+    const { data: directByEmail, error: directEmailError } = await supabase
       .from('students')
-      .select('*')
-      .eq('profile->>email', email)
+      .select('id, user_id')
+      .eq('email', email)
       .maybeSingle();
 
-    if (directData) {
-      studentRecord = directData;
-    } else {
+    if (directEmailError) {
+      return { success: false, error: directEmailError.message };
+    }
 
-      // Fallback: get all students and search manually
+    if (directByEmail) {
+      studentRecord = directByEmail;
+    }
+
+    // Try JSONB profile email
+    if (!studentRecord) {
+      const { data: profileMatch, error: profileError } = await supabase
+        .from('students')
+        .select('id, user_id, profile')
+        .eq('profile->>email', email)
+        .maybeSingle();
+
+      if (profileError) {
+        return { success: false, error: profileError.message };
+      }
+
+      if (profileMatch) {
+        studentRecord = profileMatch;
+      }
+    }
+
+    // Manual search fallback
+    if (!studentRecord) {
       const { data: allStudents, error: allError } = await supabase
         .from('students')
-        .select('*');
+        .select('id, user_id, profile');
 
       if (allError) {
-        console.error('❌ Error fetching all students:', allError);
         return { success: false, error: allError.message };
       }
 
-      // Find student with matching email
       for (const student of allStudents || []) {
         const profile = safeJSONParse(student.profile);
         if (profile?.email === email) {
@@ -931,83 +1179,113 @@ export async function updateEducationByEmail(email, educationData) {
     }
 
     if (!studentRecord) {
-      console.error('❌ Student not found for email:', email);
       return { success: false, error: 'Student not found' };
     }
 
-    const currentProfile = safeJSONParse(studentRecord.profile);
+    // ✅ Use user_id as student_id (matches FK: student_id -> students.user_id)
+    const studentId = studentRecord.user_id;
 
-    // Update education array
-    const updatedProfile = {
-      ...currentProfile,
-      education: educationData
-    };
+    console.log('📚 Updating education for student_id:', studentId);
 
+    // Get existing education records
+    const { data: existingEducation, error: existingError } = await supabase
+      .from('education')
+      .select('id')
+      .eq('student_id', studentId);
 
-    // Update using the student ID (more reliable than JSONB query)
-    const { data, error } = await supabase
-      .from('students')
-      .update({ profile: updatedProfile })
-      .eq('id', studentRecord.id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Error updating education:', error);
-      throw error;
+    if (existingError) {
+      console.error('❌ Error fetching existing education:', existingError);
+      return { success: false, error: existingError.message };
     }
 
-    return {
-      success: true,
-      data: transformProfileData(data.profile, email)
-    };
-  } catch (err) {
-    console.error('❌ Error updating education:', err);
-    return { success: false, error: err.message };
-  }
-}
+    console.log('📖 Existing education records:', existingEducation?.length || 0);
 
-/**
- * Helper function to find student record by email (robust method)
- */
-async function findStudentByEmail(email) {
-  try {
+    const nowIso = new Date().toISOString();
 
-    // Try JSONB query first
-    let { data: directData, error: directError } = await supabase
-      .from('students')
-      .select('*')
-      .eq('profile->>email', email)
-      .maybeSingle();
+    // Format education data for database
+    const formatted = (educationData || [])
+      .filter((edu) => {
+        // Must have at least a degree
+        const degreeField = edu.degree || edu.qualification;
+        return edu && typeof degreeField === 'string' && degreeField.trim().length > 0;
+      })
+      .map((edu) => {
+        const record = {
+          student_id: studentId,
+          level: edu.level?.trim() || "Bachelor's",
+          degree: (edu.degree || edu.qualification)?.trim() || "",
+          department: edu.department?.trim() || "",
+          university: edu.university?.trim() || "",
+          year_of_passing: (edu.yearOfPassing || edu.year_of_passing)?.toString().trim() || "",
+          cgpa: edu.cgpa?.toString().trim() || "",
+          status: edu.status?.trim() || "ongoing",
+          approval_status: edu.approval_status || 'pending',
+          updated_at: nowIso,
+        };
 
-    if (directData) {
-      return { success: true, data: directData };
-    }
+        // Preserve existing ID if valid UUID
+        const rawId = typeof edu.id === 'string' ? edu.id.trim() : null;
+        if (rawId && rawId.length === 36 && rawId.includes('-')) {
+          record.id = rawId;
+        } else {
+          record.id = generateUuid();
+        }
 
+        return record;
+      });
 
-    // Fallback: get all students and search manually
-    const { data: allStudents, error: allError } = await supabase
-      .from('students')
-      .select('*');
+    console.log('💾 Formatted education records to save:', formatted.length);
 
-    if (allError) {
-      console.error('❌ Error fetching all students:', allError);
-      return { success: false, error: allError.message };
-    }
+    // Determine which records to delete
+    const incomingIds = new Set(formatted.map((record) => record.id));
+    const toDelete = (existingEducation || [])
+      .filter((existing) => !incomingIds.has(existing.id))
+      .map((existing) => existing.id);
 
-    // Find student with matching email
-    for (const student of allStudents || []) {
-      const profile = safeJSONParse(student.profile);
-      if (profile?.email === email) {
-        return { success: true, data: student };
+    // Delete removed records
+    if (toDelete.length > 0) {
+      console.log('🗑️ Deleting education records:', toDelete.length);
+      const { error: deleteError } = await supabase
+        .from('education')
+        .delete()
+        .in('id', toDelete);
+
+      if (deleteError) {
+        console.error('❌ Error deleting education:', deleteError);
+        return { success: false, error: deleteError.message };
       }
     }
 
-    console.error('❌ Student not found for email:', email);
-    return { success: false, error: 'Student not found' };
+    // Upsert education records
+    if (formatted.length > 0) {
+      console.log('✍️ Upserting education records...', formatted);
+      const { data: upsertData, error: upsertError } = await supabase
+        .from('education')
+        .upsert(formatted, { onConflict: 'id' });
 
+      if (upsertError) {
+        console.error('❌ Error upserting education:', upsertError);
+        return { success: false, error: upsertError.message };
+      }
+      console.log('✅ Education records saved successfully');
+    } else if ((existingEducation || []).length > 0) {
+      // Delete all if no education data provided
+      console.log('🗑️ Deleting all education records (empty data provided)');
+      const { error: deleteAllError } = await supabase
+        .from('education')
+        .delete()
+        .eq('student_id', studentId);
+
+      if (deleteAllError) {
+        console.error('❌ Error deleting all education:', deleteAllError);
+        return { success: false, error: deleteAllError.message };
+      }
+    }
+
+    // Return updated student data
+    return await getStudentByEmail(email);
   } catch (err) {
-    console.error('❌ Error finding student:', err);
+    console.error('❌ updateEducationByEmail exception:', err);
     return { success: false, error: err.message };
   }
 }
@@ -1015,46 +1293,204 @@ async function findStudentByEmail(email) {
 /**
  * Update training array in student profile
  */
-export async function updateTrainingByEmail(email, trainingData) {
+// export async function updateTrainingByEmail(email, trainingData) {
+//   try {
+
+//     // Find student record
+//     const findResult = await findStudentByEmail(email);
+//     if (!findResult.success) {
+//       return findResult;
+//     }
+
+//     const studentRecord = findResult.data;
+//     const currentProfile = safeJSONParse(studentRecord.profile);
+
+//     const updatedProfile = {
+//       ...currentProfile,
+//       training: trainingData
+//     };
+
+
+//     const { data, error } = await supabase
+//       .from('students')
+//       .update({ profile: updatedProfile })
+//       .eq('id', studentRecord.id)
+//       .select()
+//       .single();
+
+//     if (error) {
+//       console.error('❌ Error updating training:', error);
+//       throw error;
+//     }
+
+//     return {
+//       success: true,
+//       data: transformProfileData(data.profile, email)
+//     };
+//   } catch (err) {
+//     console.error('❌ Error updating training:', err);
+//     return { success: false, error: err.message };
+//   }
+// }
+/**
+ * Update training records in trainings table
+ */
+export async function updateTrainingByEmail(email, trainingData = []) {
   try {
-
     // Find student record
-    const findResult = await findStudentByEmail(email);
-    if (!findResult.success) {
-      return findResult;
-    }
+    let studentRecord = null;
 
-    const studentRecord = findResult.data;
-    const currentProfile = safeJSONParse(studentRecord.profile);
-
-    const updatedProfile = {
-      ...currentProfile,
-      training: trainingData
-    };
-
-
-    const { data, error } = await supabase
+    const { data: directByEmail, error: directEmailError } = await supabase
       .from('students')
-      .update({ profile: updatedProfile })
-      .eq('id', studentRecord.id)
-      .select()
-      .single();
+      .select('id, user_id')
+      .eq('email', email)
+      .maybeSingle();
 
-    if (error) {
-      console.error('❌ Error updating training:', error);
-      throw error;
+    if (directEmailError) {
+      return { success: false, error: directEmailError.message };
     }
 
-    return {
-      success: true,
-      data: transformProfileData(data.profile, email)
-    };
+    if (directByEmail) {
+      studentRecord = directByEmail;
+    }
+
+    if (!studentRecord) {
+      const { data: profileMatch, error: profileError } = await supabase
+        .from('students')
+        .select('id, user_id, profile')
+        .eq('profile->>email', email)
+        .maybeSingle();
+
+      if (profileError) {
+        return { success: false, error: profileError.message };
+      }
+
+      if (profileMatch) {
+        studentRecord = profileMatch;
+      }
+    }
+
+    if (!studentRecord) {
+      const { data: allStudents, error: allError } = await supabase
+        .from('students')
+        .select('id, user_id, profile');
+
+      if (allError) {
+        return { success: false, error: allError.message };
+      }
+
+      for (const student of allStudents || []) {
+        const profile = safeJSONParse(student.profile);
+        if (profile?.email === email) {
+          studentRecord = student;
+          break;
+        }
+      }
+    }
+
+    if (!studentRecord) {
+      return { success: false, error: 'Student not found' };
+    }
+
+    // Use user_id as student_id (as per foreign key constraint)
+    const studentId = studentRecord.user_id;
+
+    // Get existing training records
+    const { data: existingTrainings, error: existingError } = await supabase
+      .from('trainings')
+      .select('id')
+      .eq('student_id', studentId);
+
+    if (existingError) {
+      return { success: false, error: existingError.message };
+    }
+
+    const nowIso = new Date().toISOString();
+
+    // Format training data for database
+    const formatted = (trainingData || [])
+      .filter((train) => {
+        // Accept either 'title' or 'course' field
+        const titleField = train.title || train.course;
+        return train && typeof titleField === 'string' && titleField.trim().length > 0;
+      })
+      .map((train) => {
+        // Map 'course' to 'title' for backward compatibility
+        const titleValue = train.title || train.course || '';
+        
+        const record = {
+          student_id: studentId,
+          title: titleValue.trim(),
+          organization: train.organization?.trim() || train.provider?.trim() || null,
+          start_date: train.start_date || train.startDate || null,
+          end_date: train.end_date || train.endDate || null,
+          duration: train.duration?.trim() || null,
+          description: train.description?.trim() || null,
+          status: train.status || 'ongoing',
+      completed_modules: train.completedModules || 0,
+      total_modules: train.totalModules || 0,
+      hours_spent: train.hoursSpent || 0,
+          approval_status: train.approval_status || 'pending',
+          updated_at: nowIso,
+        };
+
+        // Preserve existing ID if valid UUID
+        const rawId = typeof train.id === 'string' ? train.id.trim() : null;
+        if (rawId && rawId.length === 36) {
+          record.id = rawId;
+        } else {
+          record.id = generateUuid();
+        }
+
+        return record;
+      });
+
+    // Determine which records to delete
+    const incomingIds = new Set(formatted.filter((record) => record.id).map((record) => record.id));
+    const toDelete = (existingTrainings || [])
+      .filter((existing) => !incomingIds.has(existing.id))
+      .map((existing) => existing.id);
+
+    // Delete removed records
+    if (toDelete.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('trainings')
+        .delete()
+        .in('id', toDelete);
+
+      if (deleteError) {
+        return { success: false, error: deleteError.message };
+      }
+    }
+
+    // Upsert training records
+    if (formatted.length > 0) {
+      const { error: upsertError } = await supabase
+        .from('trainings')
+        .upsert(formatted, { onConflict: 'id' });
+
+      if (upsertError) {
+        return { success: false, error: upsertError.message };
+      }
+    } else if ((existingTrainings || []).length > 0) {
+      // Delete all if no training data provided
+      const { error: deleteAllError } = await supabase
+        .from('trainings')
+        .delete()
+        .eq('student_id', studentId);
+
+      if (deleteAllError) {
+        return { success: false, error: deleteAllError.message };
+      }
+    }
+
+    // Return updated student data
+    return await getStudentByEmail(email);
   } catch (err) {
-    console.error('❌ Error updating training:', err);
+    console.error('❌ updateTrainingByEmail exception:', err);
     return { success: false, error: err.message };
   }
 }
-
 /**
  * Update experience array in student profile
  */
@@ -1207,90 +1643,390 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
 /**
  * Update technical skills array in student profile
  */
-export async function updateTechnicalSkillsByEmail(email, skillsData) {
+// export async function updateTechnicalSkillsByEmail(email, skillsData) {
+//   try {
+
+//     // Find student record
+//     const findResult = await findStudentByEmail(email);
+//     if (!findResult.success) {
+//       return findResult;
+//     }
+
+//     const studentRecord = findResult.data;
+//     const currentProfile = safeJSONParse(studentRecord.profile);
+
+//     const updatedProfile = {
+//       ...currentProfile,
+//       technicalSkills: skillsData
+//     };
+
+
+//     const { data, error } = await supabase
+//       .from('students')
+//       .update({ profile: updatedProfile })
+//       .eq('id', studentRecord.id)
+//       .select()
+//       .single();
+
+//     if (error) {
+//       console.error('❌ Error updating technical skills:', error);
+//       throw error;
+//     }
+
+//     return {
+//       success: true,
+//       data: transformProfileData(data.profile, email)
+//     };
+//   } catch (err) {
+//     console.error('❌ Error updating technical skills:', err);
+//     return { success: false, error: err.message };
+//   }
+// }
+
+// /**
+//  * Update soft skills array in student profile
+//  */
+// export async function updateSoftSkillsByEmail(email, skillsData) {
+//   try {
+
+//     // Find student record
+//     const findResult = await findStudentByEmail(email);
+//     if (!findResult.success) {
+//       return findResult;
+//     }
+
+//     const studentRecord = findResult.data;
+//     const currentProfile = safeJSONParse(studentRecord.profile);
+
+//     const updatedProfile = {
+//       ...currentProfile,
+//       softSkills: skillsData
+//     };
+
+
+//     const { data, error } = await supabase
+//       .from('students')
+//       .update({ profile: updatedProfile })
+//       .eq('id', studentRecord.id)
+//       .select()
+//       .single();
+
+//     if (error) {
+//       console.error('❌ Error updating soft skills:', error);
+//       throw error;
+//     }
+
+//     return {
+//       success: true,
+//       data: transformProfileData(data.profile, email)
+//     };
+//   } catch (err) {
+//     console.error('❌ Error updating soft skills:', err);
+//     return { success: false, error: err.message };
+//   }
+// }
+
+/**
+ * Update technical skills in skills table
+ */
+export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
   try {
-
     // Find student record
-    const findResult = await findStudentByEmail(email);
-    if (!findResult.success) {
-      return findResult;
-    }
+    let studentRecord = null;
 
-    const studentRecord = findResult.data;
-    const currentProfile = safeJSONParse(studentRecord.profile);
-
-    const updatedProfile = {
-      ...currentProfile,
-      technicalSkills: skillsData
-    };
-
-
-    const { data, error } = await supabase
+    const { data: directByEmail, error: directEmailError } = await supabase
       .from('students')
-      .update({ profile: updatedProfile })
-      .eq('id', studentRecord.id)
-      .select()
-      .single();
+      .select('id, user_id')
+      .eq('email', email)
+      .maybeSingle();
 
-    if (error) {
-      console.error('❌ Error updating technical skills:', error);
-      throw error;
+    if (directEmailError) {
+      return { success: false, error: directEmailError.message };
     }
 
-    return {
-      success: true,
-      data: transformProfileData(data.profile, email)
-    };
+    if (directByEmail) {
+      studentRecord = directByEmail;
+    }
+
+    if (!studentRecord) {
+      const { data: profileMatch, error: profileError } = await supabase
+        .from('students')
+        .select('id, user_id, profile')
+        .eq('profile->>email', email)
+        .maybeSingle();
+
+      if (profileError) {
+        return { success: false, error: profileError.message };
+      }
+
+      if (profileMatch) {
+        studentRecord = profileMatch;
+      }
+    }
+
+    if (!studentRecord) {
+      const { data: allStudents, error: allError } = await supabase
+        .from('students')
+        .select('id, user_id, profile');
+
+      if (allError) {
+        return { success: false, error: allError.message };
+      }
+
+      for (const student of allStudents || []) {
+        const profile = safeJSONParse(student.profile);
+        if (profile?.email === email) {
+          studentRecord = student;
+          break;
+        }
+      }
+    }
+
+    if (!studentRecord) {
+      return { success: false, error: 'Student not found' };
+    }
+
+    // Use user_id as student_id (as per foreign key constraint)
+    const studentId = studentRecord.user_id;
+
+    // Get existing technical skills
+    const { data: existingSkills, error: existingError } = await supabase
+      .from('skills')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('type', 'technical');
+
+    if (existingError) {
+      return { success: false, error: existingError.message };
+    }
+
+    const nowIso = new Date().toISOString();
+
+    // Format technical skills data for database
+    const formatted = (skillsData || [])
+      .filter((skill) => skill && typeof skill.name === 'string' && skill.name.trim().length > 0)
+      .map((skill) => {
+        const record = {
+          student_id: studentId,
+          name: skill.name.trim(),
+          type: 'technical',
+          level: skill.level || 3, // Default to level 3 if not provided
+          description: skill.description?.trim() || null,
+          verified: skill.verified || false,
+          enabled: typeof skill.enabled === 'boolean' ? skill.enabled : true,
+          approval_status: skill.approval_status || 'pending',
+          updated_at: nowIso,
+        };
+
+        // Preserve existing ID if valid UUID
+        const rawId = typeof skill.id === 'string' ? skill.id.trim() : null;
+        if (rawId && rawId.length === 36) {
+          record.id = rawId;
+        } else {
+          record.id = generateUuid();
+        }
+
+        return record;
+      });
+
+    // Determine which records to delete
+    const incomingIds = new Set(formatted.filter((record) => record.id).map((record) => record.id));
+    const toDelete = (existingSkills || [])
+      .filter((existing) => !incomingIds.has(existing.id))
+      .map((existing) => existing.id);
+
+    // Delete removed records
+    if (toDelete.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('skills')
+        .delete()
+        .in('id', toDelete);
+
+      if (deleteError) {
+        return { success: false, error: deleteError.message };
+      }
+    }
+
+    // Upsert technical skills records
+    if (formatted.length > 0) {
+      const { error: upsertError } = await supabase
+        .from('skills')
+        .upsert(formatted, { onConflict: 'id' });
+
+      if (upsertError) {
+        return { success: false, error: upsertError.message };
+      }
+    } else if ((existingSkills || []).length > 0) {
+      // Delete all if no skills data provided
+      const { error: deleteAllError } = await supabase
+        .from('skills')
+        .delete()
+        .eq('student_id', studentId)
+        .eq('type', 'technical');
+
+      if (deleteAllError) {
+        return { success: false, error: deleteAllError.message };
+      }
+    }
+
+    // Return updated student data
+    return await getStudentByEmail(email);
   } catch (err) {
-    console.error('❌ Error updating technical skills:', err);
+    console.error('❌ updateTechnicalSkillsByEmail exception:', err);
     return { success: false, error: err.message };
   }
 }
 
 /**
- * Update soft skills array in student profile
+ * Update soft skills in skills table
  */
-export async function updateSoftSkillsByEmail(email, skillsData) {
+export async function updateSoftSkillsByEmail(email, skillsData = []) {
   try {
-
     // Find student record
-    const findResult = await findStudentByEmail(email);
-    if (!findResult.success) {
-      return findResult;
-    }
+    let studentRecord = null;
 
-    const studentRecord = findResult.data;
-    const currentProfile = safeJSONParse(studentRecord.profile);
-
-    const updatedProfile = {
-      ...currentProfile,
-      softSkills: skillsData
-    };
-
-
-    const { data, error } = await supabase
+    const { data: directByEmail, error: directEmailError } = await supabase
       .from('students')
-      .update({ profile: updatedProfile })
-      .eq('id', studentRecord.id)
-      .select()
-      .single();
+      .select('id, user_id')
+      .eq('email', email)
+      .maybeSingle();
 
-    if (error) {
-      console.error('❌ Error updating soft skills:', error);
-      throw error;
+    if (directEmailError) {
+      return { success: false, error: directEmailError.message };
     }
 
-    return {
-      success: true,
-      data: transformProfileData(data.profile, email)
-    };
+    if (directByEmail) {
+      studentRecord = directByEmail;
+    }
+
+    if (!studentRecord) {
+      const { data: profileMatch, error: profileError } = await supabase
+        .from('students')
+        .select('id, user_id, profile')
+        .eq('profile->>email', email)
+        .maybeSingle();
+
+      if (profileError) {
+        return { success: false, error: profileError.message };
+      }
+
+      if (profileMatch) {
+        studentRecord = profileMatch;
+      }
+    }
+
+    if (!studentRecord) {
+      const { data: allStudents, error: allError } = await supabase
+        .from('students')
+        .select('id, user_id, profile');
+
+      if (allError) {
+        return { success: false, error: allError.message };
+      }
+
+      for (const student of allStudents || []) {
+        const profile = safeJSONParse(student.profile);
+        if (profile?.email === email) {
+          studentRecord = student;
+          break;
+        }
+      }
+    }
+
+    if (!studentRecord) {
+      return { success: false, error: 'Student not found' };
+    }
+
+    // Use user_id as student_id (as per foreign key constraint)
+    const studentId = studentRecord.user_id;
+
+    // Get existing soft skills
+    const { data: existingSkills, error: existingError } = await supabase
+      .from('skills')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('type', 'soft');
+
+    if (existingError) {
+      return { success: false, error: existingError.message };
+    }
+
+    const nowIso = new Date().toISOString();
+
+    // Format soft skills data for database
+    const formatted = (skillsData || [])
+      .filter((skill) => skill && typeof skill.name === 'string' && skill.name.trim().length > 0)
+      .map((skill) => {
+        const record = {
+          student_id: studentId,
+          name: skill.name.trim(),
+          type: 'soft',
+          level: skill.level || 3, // Default to level 3 if not provided
+          description: skill.description?.trim() || null,
+          verified: skill.verified || false,
+          enabled: typeof skill.enabled === 'boolean' ? skill.enabled : true,
+          approval_status: skill.approval_status || 'pending',
+          updated_at: nowIso,
+        };
+
+        // Preserve existing ID if valid UUID
+        const rawId = typeof skill.id === 'string' ? skill.id.trim() : null;
+        if (rawId && rawId.length === 36) {
+          record.id = rawId;
+        } else {
+          record.id = generateUuid();
+        }
+
+        return record;
+      });
+
+    // Determine which records to delete
+    const incomingIds = new Set(formatted.filter((record) => record.id).map((record) => record.id));
+    const toDelete = (existingSkills || [])
+      .filter((existing) => !incomingIds.has(existing.id))
+      .map((existing) => existing.id);
+
+    // Delete removed records
+    if (toDelete.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('skills')
+        .delete()
+        .in('id', toDelete);
+
+      if (deleteError) {
+        return { success: false, error: deleteError.message };
+      }
+    }
+
+    // Upsert soft skills records
+    if (formatted.length > 0) {
+      const { error: upsertError } = await supabase
+        .from('skills')
+        .upsert(formatted, { onConflict: 'id' });
+
+      if (upsertError) {
+        return { success: false, error: upsertError.message };
+      }
+    } else if ((existingSkills || []).length > 0) {
+      // Delete all if no skills data provided
+      const { error: deleteAllError } = await supabase
+        .from('skills')
+        .delete()
+        .eq('student_id', studentId)
+        .eq('type', 'soft');
+
+      if (deleteAllError) {
+        return { success: false, error: deleteAllError.message };
+      }
+    }
+
+    // Return updated student data
+    return await getStudentByEmail(email);
   } catch (err) {
-    console.error('❌ Error updating soft skills:', err);
+    console.error('❌ updateSoftSkillsByEmail exception:', err);
     return { success: false, error: err.message };
   }
 }
-
-
 /**
  * Update projects in skill_passports table
  */
