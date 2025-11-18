@@ -70,7 +70,7 @@ const EducatorLayout: React.FC = () => {
         )}
 
         {/* Scrollable Content Area */}
-        <main className="flex-1 md:ml-64 overflow-hidden">
+        <main className="flex-1 md:ml-64 overflow-auto">
           <div className="h-full w-full">
             <Outlet context={{ onViewProfile: handleViewProfile }} />
           </div>

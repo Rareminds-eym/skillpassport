@@ -28,6 +28,7 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import StudentSelectionModal from '../../components/educator/StudentSelectionModal';
+import GradingModal from '@/components/educator/GradingModal';
 
 // Configuration
 const SKILL_AREAS = ['Creativity', 'Collaboration', 'Critical Thinking', 'Leadership', 'Communication', 'Problem Solving'];
@@ -97,7 +98,7 @@ const TaskCard = ({ task, onView, onEdit, onAssess, onDelete, onAssignStudents }
                                 <PencilIcon className="h-4 w-4" /> Edit Task
                             </button>
                             <button onClick={() => { onAssess(task); setShowActions(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                                <ClipboardDocumentListIcon className="h-4 w-4" /> Assess
+                                <ClipboardDocumentListIcon className="h-4 w-4" /> Grade Submissions
                             </button>
                             <button onClick={() => { onAssignStudents(task); setShowActions(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                                 <UsersIcon className="h-4 w-4" /> Assign Students
@@ -168,6 +169,7 @@ const Assessments = () => {
     const [classFilter, setClassFilter] = useState('All');
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [showDetailDrawer, setShowDetailDrawer] = useState(false);
+    const [showGradingModal, setShowGradingModal] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
     const [activeTab, setActiveTab] = useState('overview');
     const [currentEducatorId, setCurrentEducatorId] = useState(null);
@@ -201,11 +203,11 @@ const Assessments = () => {
         const fetchEducatorAndTasks = async () => {
             try {
                 setLoading(true);
-                
+
                 // First, try to get educator_id from localStorage
                 const storedUser = localStorage.getItem('user');
                 let educatorId = null;
-                
+
                 if (storedUser) {
                     try {
                         const parsedUser = JSON.parse(storedUser);
@@ -215,11 +217,11 @@ const Assessments = () => {
                         console.error('Error parsing stored user:', e);
                     }
                 }
-                
+
                 // If not in localStorage, try to get from authenticated user and fetch educator record
                 if (!educatorId) {
                     const { data: { user }, error: authError } = await supabase.auth.getUser();
-                    
+
                     if (user && !authError) {
                         // Fetch the school_educators record to get the educator_id
                         const { data: educatorData, error: educatorError } = await supabase
@@ -227,14 +229,14 @@ const Assessments = () => {
                             .select('id')
                             .eq('user_id', user.id)
                             .single();
-                        
+
                         if (educatorData && !educatorError) {
                             educatorId = educatorData.id;
                             console.log('Fetched educator_id from database:', educatorId);
                         }
                     }
                 }
-                
+
                 // Fallback to dev mode
                 if (!educatorId) {
                     const devEducatorId = localStorage.getItem('dev_educator_id');
@@ -243,7 +245,7 @@ const Assessments = () => {
                         console.log('Using dev educator_id:', educatorId);
                     }
                 }
-                
+
                 if (!educatorId) {
                     console.warn('No educator_id found');
                     setCurrentEducatorId(null);
@@ -252,17 +254,17 @@ const Assessments = () => {
                     setLoading(false);
                     return;
                 }
-                
+
                 setCurrentEducatorId(educatorId);
-                
+
                 // Fetch assignments for this educator
-                const assignments = await getAssignmentsByEducator(user.id);
-                
+                const assignments = await getAssignmentsByEducator(educatorId);
+
                 // Transform assignments to match the component's expected format
                 const transformedTasks = await Promise.all(assignments.map(async (assignment) => {
                     // Fetch statistics for each assignment
                     const stats = await getAssignmentStatistics(assignment.assignment_id);
-                    
+
                     return {
                         id: assignment.assignment_id,
                         title: assignment.title,
@@ -275,11 +277,12 @@ const Assessments = () => {
                         pending: stats.submitted,
                         averageScore: stats.averageGrade,
                         totalStudents: stats.total,
+                        totalPoints: assignment.total_points,
                         attachments: assignment.assignment_attachments?.map(a => a.file_name) || [],
                         rubric: []
                     };
                 }));
-                
+
                 setTasks(transformedTasks);
                 setError(null);
             } catch (err) {
@@ -289,7 +292,7 @@ const Assessments = () => {
                 setLoading(false);
             }
         };
-        
+
         fetchEducatorAndTasks();
     }, []);
 
@@ -324,15 +327,15 @@ const Assessments = () => {
                 alert('Please log in to create assignments');
                 return;
             }
-            
+
             const educatorId = currentEducatorId || user.educator_id;
             const educatorName = user.full_name || user.email || 'Educator';
-            
+
             if (!educatorId) {
                 alert('Educator profile not found. Please contact administrator.');
                 return;
             }
-            
+
             // Create assignment in database
             const assignmentData = {
                 title: newTask.title,
@@ -351,9 +354,9 @@ const Assessments = () => {
                 available_from: newTask.availableFrom || new Date().toISOString(),
                 allow_late_submission: newTask.allowLateSubmissions
             };
-            
+
             const createdAssignment = await createAssignment(assignmentData);
-            
+
             // Add attachments if any
             for (const attachment of newTask.attachments) {
                 await addAssignmentAttachment(createdAssignment.assignment_id, {
@@ -363,7 +366,7 @@ const Assessments = () => {
                     file_url: ''
                 });
             }
-            
+
             // Transform to UI format
             const uiTask = {
                 id: createdAssignment.assignment_id,
@@ -377,13 +380,14 @@ const Assessments = () => {
                 pending: 0,
                 averageScore: 0,
                 totalStudents: 0,
+                totalPoints: createdAssignment.total_points,
                 attachments: newTask.attachments,
                 rubric: newTask.rubric
             };
-            
+
             setTasks([...tasks, uiTask]);
             setShowTaskModal(false);
-            
+
             // Open student selection modal after creating assignment
             setNewlyCreatedAssignmentId(createdAssignment.assignment_id);
             setShowStudentSelectionModal(true);
@@ -469,19 +473,19 @@ const Assessments = () => {
         try {
             if (newlyCreatedAssignmentId && studentIds.length > 0) {
                 await assignToStudents(newlyCreatedAssignmentId, studentIds);
-                
+
                 // Refresh assignment statistics
                 const stats = await getAssignmentStatistics(newlyCreatedAssignmentId);
-                
+
                 // Update the task in the list with new student count
-                setTasks(prev => prev.map(task => 
-                    task.id === newlyCreatedAssignmentId 
+                setTasks(prev => prev.map(task =>
+                    task.id === newlyCreatedAssignmentId
                         ? { ...task, totalStudents: stats.total }
                         : task
                 ));
-                
+
             }
-            
+
             setShowStudentSelectionModal(false);
             setNewlyCreatedAssignmentId(null);
             resetTaskForm();
@@ -495,6 +499,23 @@ const Assessments = () => {
         setShowStudentSelectionModal(false);
         setNewlyCreatedAssignmentId(null);
         resetTaskForm();
+    };
+
+    const handleGradeSubmitted = async () => {
+        // Refresh the assignment statistics
+        if (selectedTask) {
+            const stats = await getAssignmentStatistics(selectedTask.id);
+            setTasks(prev => prev.map(task =>
+                task.id === selectedTask.id
+                    ? {
+                        ...task,
+                        submissions: stats.submitted + stats.graded,
+                        pending: stats.submitted,
+                        averageScore: stats.averageGrade
+                    }
+                    : task
+            ));
+        }
     };
 
     return (
@@ -674,7 +695,10 @@ const Assessments = () => {
                                 setSelectedTask(task);
                                 setShowTaskModal(true);
                             }}
-                            onAssess={(task) => alert(`Opening assessment for: ${task.title}`)}
+                            onAssess={(task) => {
+                                setSelectedTask(task);
+                                setShowGradingModal(true);
+                            }}
                             onAssignStudents={(task) => {
                                 setNewlyCreatedAssignmentId(task.id);
                                 setShowStudentSelectionModal(true);
@@ -864,8 +888,8 @@ const Assessments = () => {
                                             key={skill}
                                             onClick={() => handleSkillToggle(skill)}
                                             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${newTask.skillTags.includes(skill)
-                                                    ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-500'
-                                                    : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:border-gray-300'
+                                                ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-500'
+                                                : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:border-gray-300'
                                                 }`}
                                         >
                                             {skill}
@@ -1053,7 +1077,7 @@ const Assessments = () => {
                                 <div>
                                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Rubric Criteria</h3>
                                     <div className="space-y-2">
-                                        {selectedTask.rubric.map((r: any, idx: number) => (
+                                        {selectedTask.rubric?.map((r: any, idx: number) => (
                                             <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                                 <span className="text-sm font-medium text-gray-700">{r.criteria}</span>
                                                 <span className="text-sm font-semibold text-gray-900">{r.weight}%</span>
@@ -1106,6 +1130,19 @@ const Assessments = () => {
                     onClose={handleStudentSelectionClose}
                     onAssign={handleStudentsAssigned}
                     assignmentId={newlyCreatedAssignmentId}
+                />
+            )}
+
+            {/* Grading Modal */}
+            {showGradingModal && selectedTask && (
+                <GradingModal
+                    isOpen={showGradingModal}
+                    onClose={() => {
+                        setShowGradingModal(false);
+                        setSelectedTask(null);
+                    }}
+                    assignment={selectedTask}
+                    onGradeSubmitted={handleGradeSubmitted}
                 />
             )}
         </div>
