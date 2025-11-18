@@ -26,6 +26,7 @@ import {
     getAssignmentStatistics
 } from '../../services/educator/assignmentsService';
 import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../context/AuthContext';
 import StudentSelectionModal from '../../components/educator/StudentSelectionModal';
 
 // Configuration
@@ -157,6 +158,7 @@ const TaskCard = ({ task, onView, onEdit, onAssess, onDelete, onAssignStudents }
 
 // Main Component
 const Assessments = () => {
+    const { user, isAuthenticated } = useAuth();
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -253,10 +255,8 @@ const Assessments = () => {
                 
                 setCurrentEducatorId(educatorId);
                 
-                // Fetch assignments using the educator_id
-                console.log('Fetching assignments for educator_id:', educatorId);
-                const assignments = await getAssignmentsByEducator(educatorId);
-                console.log('Fetched assignments:', assignments);
+                // Fetch assignments for this educator
+                const assignments = await getAssignmentsByEducator(user.id);
                 
                 // Transform assignments to match the component's expected format
                 const transformedTasks = await Promise.all(assignments.map(async (assignment) => {
@@ -319,35 +319,17 @@ const Assessments = () => {
 
     const handleCreateTask = async () => {
         try {
-            // Get current user info or use dev educator ID
-            const { data: { user }, error: authError } = await supabase.auth.getUser();
-            
-            // Determine educator ID (auth user, current state, or dev mode)
-            let educatorId = currentEducatorId;
-            let educatorName = 'Educator';
-            
-            if (user && !authError) {
-                // Use authenticated user
-                educatorId = user.id;
-                educatorName = user.email || 'Educator';
-            } else if (!educatorId) {
-                // Check for dev educator ID or generate one
-                const devEducatorId = localStorage.getItem('dev_educator_id');
-                if (devEducatorId) {
-                    educatorId = devEducatorId;
-                    educatorName = 'Dev Educator';
-                } else {
-                    // Generate a new dev educator ID
-                    const newDevId = crypto.randomUUID();
-                    localStorage.setItem('dev_educator_id', newDevId);
-                    educatorId = newDevId;
-                    educatorName = 'Dev Educator';
-                    setCurrentEducatorId(newDevId);
-                }
+            // Use AuthContext user
+            if (!isAuthenticated || !user) {
+                alert('Please log in to create assignments');
+                return;
             }
             
+            const educatorId = currentEducatorId || user.educator_id;
+            const educatorName = user.full_name || user.email || 'Educator';
+            
             if (!educatorId) {
-                alert('Unable to determine educator ID');
+                alert('Educator profile not found. Please contact administrator.');
                 return;
             }
             
