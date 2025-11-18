@@ -9,15 +9,22 @@ import {
   StarIcon,
   XMarkIcon,
   PencilSquareIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
-import { useStudents } from '../../hooks/useStudents';
+import { useStudents, UICandidate } from '../../hooks/useStudents';
 import { useSearch } from '../../context/SearchContext';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/educator/Pagination';
 import AddStudentModal from '../../components/educator/modals/Addstudentmodal';
+import EditStudentModal from '../../components/educator/modals/EditStudentModal';
+import DeleteStudentModal from '../../components/educator/modals/DeleteStudentModal';
 import { UserPlusIcon } from 'lucide-react';
 
-const FilterSection = ({ title, children, defaultOpen = false }: any) => {
+const FilterSection = ({ title, children, defaultOpen = false }: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
@@ -34,7 +41,11 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   );
 };
 
-const CheckboxGroup = ({ options, selectedValues, onChange }: any) => {
+const CheckboxGroup = ({ options, selectedValues, onChange }: {
+  options: Array<{ value: string; label: string; count?: number }>;
+  selectedValues: string[];
+  onChange: (values: string[]) => void;
+}) => {
   return (
     <div className="space-y-2">
       {options.map((option) => (
@@ -61,7 +72,12 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: any) => {
   );
 };
 
-const MentorNoteModal = ({ isOpen, onClose, student, onSuccess }: any) => {
+const MentorNoteModal = ({ isOpen, onClose, student, onSuccess }: {
+  isOpen: boolean;
+  onClose: () => void;
+  student: UICandidate | null;
+  onSuccess?: () => void;
+}) => {
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -87,9 +103,9 @@ const MentorNoteModal = ({ isOpen, onClose, student, onSuccess }: any) => {
       await new Promise(resolve => setTimeout(resolve, 500));
       onSuccess?.();
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error saving note:', err);
-      setError(err.message || 'Failed to save note');
+      setError(err instanceof Error ? err.message : 'Failed to save note');
     } finally {
       setLoading(false);
     }
@@ -172,7 +188,7 @@ const MentorNoteModal = ({ isOpen, onClose, student, onSuccess }: any) => {
   );
 };
 
-const BadgeComponent = ({ badges }) => {
+const BadgeComponent = ({ badges }: { badges: string[] }) => {
   const badgeConfig = {
     self_verified: { color: 'bg-gray-100 text-gray-800', label: 'Self' },
     institution_verified: { color: 'bg-blue-100 text-blue-800', label: 'Institution' },
@@ -196,7 +212,12 @@ const BadgeComponent = ({ badges }) => {
   );
 };
 
-const StudentCard = ({ student, onViewProfile, onAddNote }) => {
+const StudentCard = ({ student, onViewProfile, onEdit, onDelete }: {
+  student: UICandidate;
+  onViewProfile: (student: UICandidate) => void;
+  onEdit: (student: UICandidate) => void;
+  onDelete: (student: UICandidate) => void;
+}) => {
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
       {/* Header */}
@@ -218,8 +239,8 @@ const StudentCard = ({ student, onViewProfile, onAddNote }) => {
       {/* Skills */}
       <div className="mb-3">
         <div className="flex flex-wrap gap-1">
-          {student.skills.slice(0, 5).map((skill: any, index: number) => {
-            const label = typeof skill === 'string' ? skill : skill?.name;
+          {student.skills.slice(0, 5).map((skill, index: number) => {
+            const label = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
             if (!label) return null;
             return (
               <span
@@ -260,21 +281,28 @@ const StudentCard = ({ student, onViewProfile, onAddNote }) => {
         <span className="text-xs text-gray-500">
           Updated {new Date(student.last_updated).toLocaleDateString()}
         </span>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => onViewProfile(student)}
             className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
             disabled={!onViewProfile}
           >
             <EyeIcon className="h-3 w-3 mr-1" />
-            View Profile
+            View
           </button>
           <button
-            onClick={() => onAddNote(student)}
-            className="inline-flex items-center px-2 py-1 border border-primary-300 rounded text-xs font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
+            onClick={() => onEdit(student)}
+            className="inline-flex items-center px-2 py-1 border border-blue-300 rounded text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
           >
             <PencilSquareIcon className="h-3 w-3 mr-1" />
-            Add Note
+            Edit
+          </button>
+          <button
+            onClick={() => onDelete(student)}
+            className="inline-flex items-center px-2 py-1 border border-red-300 rounded text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100"
+          >
+            <TrashIcon className="h-3 w-3 mr-1" />
+            Delete
           </button>
         </div>
       </div>
@@ -283,7 +311,7 @@ const StudentCard = ({ student, onViewProfile, onAddNote }) => {
 };
 
 type EducatorOutletContext = {
-  onViewProfile: (student: any) => void
+  onViewProfile: (student: UICandidate) => void
 }
 
 const StudentsPage = () => {
@@ -292,13 +320,17 @@ const StudentsPage = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState<UICandidate | null>(null);
   const [sortBy, setSortBy] = useState('relevance');
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [studentToEdit, setStudentToEdit] = useState<UICandidate | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<UICandidate | null>(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage] = useState(25);
 
   const [filters, setFilters] = useState({
     skills: [],
@@ -310,7 +342,7 @@ const StudentsPage = () => {
     maxScore: 100
   });
 
-  const { students, loading, error } = useStudents();
+  const { students, loading, error, refetch } = useStudents();
 
   // Reset to page 1 when filters or search change
   useEffect(() => {
@@ -321,11 +353,10 @@ const StudentsPage = () => {
   const skillOptions = useMemo(() => {
     const skillCounts = {};
     students.forEach(student => {
-      const profile = (student as any).profile || student;
-      const skillsToCheck = student.skills || profile.skills;
+      const skillsToCheck = student.skills;
       if (skillsToCheck && Array.isArray(skillsToCheck)) {
         skillsToCheck.forEach(skill => {
-          const skillName = typeof skill === 'string' ? skill : skill?.name;
+            const skillName = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
           if (skillName) {
             const normalizedSkill = skillName.toLowerCase();
             skillCounts[normalizedSkill] = (skillCounts[normalizedSkill] || 0) + 1;
@@ -346,8 +377,7 @@ const StudentsPage = () => {
   const courseOptions = useMemo(() => {
     const courseCounts = {};
     students.forEach(student => {
-      const profile = (student as any).profile || student;
-      const dept = student.dept || profile.dept || profile.department;
+      const dept = student.dept;
       if (dept) {
         const normalizedCourse = dept.toLowerCase();
         courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
@@ -383,8 +413,7 @@ const StudentsPage = () => {
   const locationOptions = useMemo(() => {
     const locationCounts = {};
     students.forEach(student => {
-      const profile = (student as any).profile || student;
-      const location = student.location || profile.location;
+      const location = student.location;
       if (location) {
         const normalizedLocation = location.toLowerCase();
         locationCounts[normalizedLocation] = (locationCounts[normalizedLocation] || 0) + 1;
@@ -402,8 +431,7 @@ const StudentsPage = () => {
   const yearOptions = useMemo(() => {
     const yearCounts = {};
     students.forEach(student => {
-      const profile = (student as any).profile || student;
-      const year = student.year || profile.year;
+      const year = (student as { year?: string }).year;
       if (year) {
         yearCounts[year] = (yearCounts[year] || 0) + 1;
       }
@@ -427,11 +455,10 @@ const StudentsPage = () => {
 
       // Store match results with the matched field for sorting
       const resultsWithScores = students.map(student => {
-        const profile = (student as any).profile || student;
         let matchedField = '';
         let isMatch = false;
 
-        const matchesField = (field: any, fieldName: string = ''): boolean => {
+        const matchesField = (field: unknown, fieldName: string = ''): boolean => {
           if (!field) return false;
           const fieldStr = field.toString().toLowerCase();
           if (fieldStr.includes(query)) {
@@ -442,12 +469,12 @@ const StudentsPage = () => {
           return false;
         };
 
-        const searchInArray = (arr: any[], fields: string[], arrayName: string = ''): boolean => {
+        const searchInArray = (arr: unknown[], fields: string[], arrayName: string = ''): boolean => {
           if (!arr || !Array.isArray(arr)) return false;
-          return arr.some((item: any) => {
-            if (!item) return false;
+          return arr.some((item: unknown) => {
+            if (!item || typeof item !== 'object') return false;
             return fields.some(field => {
-              const value = item[field];
+              const value = (item as Record<string, unknown>)[field];
               if (value && value.toString().toLowerCase().includes(query)) {
                 if (!isMatch) matchedField = arrayName || field;
                 isMatch = true;
@@ -459,29 +486,26 @@ const StudentsPage = () => {
         };
 
         // Basic fields
-        if (matchesField(student.name, 'name') || matchesField(profile.name, 'name')) return { student, matchedField: matchedField || student.name?.toLowerCase() || '' };
-        if (matchesField(student.email, 'email') || matchesField(profile.email, 'email')) return { student, matchedField: matchedField || student.email?.toLowerCase() || '' };
-        if (matchesField(profile.age, 'age')) return { student, matchedField };
-        if (matchesField(profile.skill, 'skill')) return { student, matchedField };
-        if (matchesField(profile.course, 'course')) return { student, matchedField };
-        if (matchesField(student.dept, 'dept') || matchesField(profile.dept, 'dept')) return { student, matchedField };
-        if (matchesField(profile.department, 'department')) return { student, matchedField };
-        if (matchesField(student.college, 'college') || matchesField(profile.college_school_name, 'college')) return { student, matchedField };
-        if (matchesField(student.location, 'location') || matchesField(profile.location, 'location')) return { student, matchedField };
-        if (matchesField(profile.university, 'university')) return { student, matchedField };
-        if (matchesField(profile.registration_number, 'registration')) return { student, matchedField };
+        if (matchesField(student.name, 'name')) return { student, matchedField: matchedField || student.name?.toLowerCase() || '' };
+        if (matchesField(student.email, 'email')) return { student, matchedField: matchedField || student.email?.toLowerCase() || '' };
+        if (matchesField(student.age, 'age')) return { student, matchedField };
+        if (matchesField(student.dept, 'dept')) return { student, matchedField };
+        if (matchesField(student.college, 'college')) return { student, matchedField };
+        if (matchesField(student.location, 'location')) return { student, matchedField };
+        if (matchesField(student.university, 'university')) return { student, matchedField };
+        if (matchesField(student.registration_number, 'registration')) return { student, matchedField };
 
         // Skills array
-        const skillsToCheck = student.skills || profile.skills;
+        const skillsToCheck = student.skills;
         if (skillsToCheck && Array.isArray(skillsToCheck)) {
-          const skillMatch = skillsToCheck.some((skill: any) => {
+          const skillMatch = skillsToCheck.some((skill) => {
             if (typeof skill === 'string') {
               if (skill.toLowerCase().includes(query)) {
                 if (!isMatch) matchedField = skill.toLowerCase();
                 isMatch = true;
                 return true;
               }
-            } else if (skill && skill.name) {
+            } else if (skill && typeof skill === 'object' && 'name' in skill && typeof skill.name === 'string') {
               if (skill.name.toLowerCase().includes(query)) {
                 if (!isMatch) matchedField = skill.name.toLowerCase();
                 isMatch = true;
@@ -494,28 +518,24 @@ const StudentsPage = () => {
         }
 
         // Projects
-        if (searchInArray(profile.projects, ['title', 'id', 'link', 'tech', 'techStack', 'technologies', 'organization', 'description', 'skills', 'status'], 'projects')) {
+        if (searchInArray(student.projects, ['title', 'description', 'organization', 'status'], 'projects')) {
           return { student, matchedField };
         }
 
-        // Education
-        if (searchInArray(profile.education, ['yearOfPassing', 'university', 'degree', 'department', 'college_school_name', 'level', 'cgpa', 'status'], 'education')) {
-          return { student, matchedField };
-        }
-
-        // Experience
-        if (profile.experience && Array.isArray(profile.experience)) {
-          const expMatch = profile.experience.some((exp: any) => {
-            if (!exp) return false;
-            if (matchesField(exp.duration, 'experience')) return true;
-            if (matchesField(exp.role, 'experience')) return true;
-            if (matchesField(exp.organization, 'experience')) return true;
-            if (exp.verified === true && (query.includes('verified') || query === 'true')) {
+        // Experience  
+        if (student.experience && Array.isArray(student.experience)) {
+          const expMatch = student.experience.some((exp) => {
+            if (!exp || typeof exp !== 'object') return false;
+            const expObj = exp as Record<string, unknown>;
+            if (matchesField(expObj.duration, 'experience')) return true;
+            if (matchesField(expObj.role, 'experience')) return true;
+            if (matchesField(expObj.organization, 'experience')) return true;
+            if (expObj.verified === true && (query.includes('verified') || query === 'true')) {
               if (!isMatch) matchedField = 'verified experience';
               isMatch = true;
               return true;
             }
-            if (exp.verified === false && (query.includes('unverified') || query.includes('not verified') || query === 'false')) {
+            if (expObj.verified === false && (query.includes('unverified') || query.includes('not verified') || query === 'false')) {
               if (!isMatch) matchedField = 'unverified experience';
               isMatch = true;
               return true;
@@ -525,63 +545,16 @@ const StudentsPage = () => {
           if (expMatch) return { student, matchedField };
         }
 
-        // Soft Skills
-        if (profile.softSkills && Array.isArray(profile.softSkills)) {
-          const softSkillMatch = profile.softSkills.some((skill: any) => {
-            if (!skill) return false;
-            if (matchesField(skill.name, 'soft skill')) return true;
-            if (matchesField(skill.description, 'soft skill')) return true;
-            if (matchesField(skill.type, 'soft skill')) return true;
-            if (matchesField(skill.level, 'soft skill')) return true;
-            return false;
-          });
-          if (softSkillMatch) return { student, matchedField };
-        }
 
         // Certificates
-        if (profile.certificates && Array.isArray(profile.certificates)) {
-          const certMatch = profile.certificates.some((cert: any) => {
-            if (!cert) return false;
-            if (matchesField(cert.level, 'certificate')) return true;
-            if (matchesField(cert.title, 'certificate')) return true;
-            if (matchesField(cert.issuedOn, 'certificate')) return true;
-            if (matchesField(cert.issuer, 'certificate')) return true;
-            if (matchesField(cert.description, 'certificate')) return true;
-            if (matchesField(cert.credentialId, 'certificate')) return true;
-            if (matchesField(cert.status, 'certificate')) return true;
-            return false;
-          });
-          if (certMatch) return { student, matchedField };
+        if (searchInArray(student.certificates, ['title', 'issuer', 'description', 'status'], 'certificates')) {
+          return { student, matchedField };
         }
 
-        // Technical Skills
-        if (profile.technicalSkills && Array.isArray(profile.technicalSkills)) {
-          const techMatch = profile.technicalSkills.some((skill: any) => {
-            if (!skill) return false;
-            if (matchesField(skill.name, 'technical skill')) return true;
-            if (matchesField(skill.level, 'technical skill')) return true;
-            if (matchesField(skill.category, 'technical skill')) return true;
-            if (skill.verified === true && query.includes('verified')) {
-              if (!isMatch) matchedField = 'verified technical skill';
-              isMatch = true;
-              return true;
-            }
-            return false;
-          });
-          if (techMatch) return { student, matchedField };
-        }
 
         // Training
-        if (profile.training && Array.isArray(profile.training)) {
-          const trainingMatch = profile.training.some((training: any) => {
-            if (!training) return false;
-            if (matchesField(training.name, 'training')) return true;
-            if (matchesField(training.title, 'training')) return true;
-            if (matchesField(training.organization, 'training')) return true;
-            if (matchesField(training.description, 'training')) return true;
-            return false;
-          });
-          if (trainingMatch) return { student, matchedField };
+        if (searchInArray(student.trainings, ['title', 'organization', 'description'], 'trainings')) {
+          return { student, matchedField };
         }
 
         return null;
@@ -598,10 +571,9 @@ const StudentsPage = () => {
     // Apply skill filters
     if (filters.skills.length > 0) {
       result = result.filter(student => {
-        const profile = (student as any).profile || student;
-        const skillsToCheck = student.skills || profile.skills;
-        return skillsToCheck?.some((skill: any) => {
-          const skillName = typeof skill === 'string' ? skill : skill?.name;
+        const skillsToCheck = student.skills;
+        return skillsToCheck?.some((skill) => {
+          const skillName = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
           return skillName && filters.skills.includes(skillName.toLowerCase());
         });
       });
@@ -610,8 +582,7 @@ const StudentsPage = () => {
     // Apply course/department filters
     if (filters.courses.length > 0) {
       result = result.filter(student => {
-        const profile = (student as any).profile || student;
-        const dept = student.dept || profile.dept || profile.department;
+        const dept = student.dept;
         return dept && filters.courses.includes(dept.toLowerCase());
       });
     }
@@ -628,8 +599,7 @@ const StudentsPage = () => {
     // Apply location filters
     if (filters.locations.length > 0) {
       result = result.filter(student => {
-        const profile = (student as any).profile || student;
-        const location = student.location || profile.location;
+        const location = student.location;
         return location && filters.locations.includes(location.toLowerCase());
       });
     }
@@ -637,7 +607,7 @@ const StudentsPage = () => {
     // Apply year filters
     if (filters.years.length > 0) {
       result = result.filter(student =>
-        filters.years.includes(student.year)
+        filters.years.includes((student as { year?: string }).year)
       );
     }
 
@@ -684,10 +654,6 @@ const StudentsPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleItemsPerPageChange = (newItemsPerPage: number) => {
-    setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1);
-  };
 
   // Clear all filters
   const handleClearFilters = () => {
@@ -702,15 +668,31 @@ const StudentsPage = () => {
     });
   };
 
-  const handleAddNoteClick = (student) => {
-    setSelectedStudent(student);
-    setShowNoteModal(true);
-  };
 
   const handleNoteSuccess = () => {
     alert(`Note added for ${selectedStudent?.name}!`);
     setShowNoteModal(false);
     setSelectedStudent(null);
+  };
+
+  const handleEditClick = (student: UICandidate) => {
+    setStudentToEdit(student);
+    setShowEditModal(true);
+  };
+
+  const handleEditSuccess = async () => {
+    // Reload students list
+    await refetch();
+  };
+
+  const handleDeleteClick = (student: UICandidate) => {
+    setStudentToDelete(student);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteSuccess = async () => {
+    // Reload students list
+    await refetch();
   };
 
   return (
@@ -957,9 +939,10 @@ const StudentsPage = () => {
                 {!loading && paginatedStudents.map((student) => (
                   <StudentCard
                     key={student.id}
-                    student={student as any}
+                    student={student}
                     onViewProfile={onViewProfile}
-                    onAddNote={handleAddNoteClick}
+                    onEdit={handleEditClick}
+                    onDelete={handleDeleteClick}
                   />
                 ))}
                 {!loading && paginatedStudents.length === 0 && !error && (
@@ -1000,7 +983,7 @@ const StudentsPage = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Location
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
@@ -1052,19 +1035,28 @@ const StudentsPage = () => {
                           {student.location}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex space-x-2">
+                          <div className="flex justify-end space-x-3">
                             <button
                               onClick={() => onViewProfile(student)}
-                              className="text-primary-600 hover:text-primary-900"
+                              className="text-blue-600 hover:text-blue-900"
                               disabled={!onViewProfile}
+                              title="View Profile"
                             >
                               View
                             </button>
                             <button
-                              onClick={() => handleAddNoteClick(student)}
-                              className="text-primary-600 hover:text-primary-900"
+                              onClick={() => handleEditClick(student)}
+                              className="text-green-600 hover:text-green-900"
+                              title="Edit Student"
                             >
-                              Add Note
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(student)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Delete Student"
+                            >
+                              Delete
                             </button>
                           </div>
                         </td>
@@ -1108,6 +1100,28 @@ const StudentsPage = () => {
         onSuccess={() => {
           setShowAddStudentModal(false);
         }}
+      />
+
+      {/* Edit Student Modal */}
+      <EditStudentModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setStudentToEdit(null);
+        }}
+        student={studentToEdit}
+        onSuccess={handleEditSuccess}
+      />
+
+      {/* Delete Student Modal */}
+      <DeleteStudentModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setStudentToDelete(null);
+        }}
+        student={studentToDelete}
+        onSuccess={handleDeleteSuccess}
       />
     </div>
   );
