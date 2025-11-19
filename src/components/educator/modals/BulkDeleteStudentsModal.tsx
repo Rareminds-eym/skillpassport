@@ -7,28 +7,27 @@ interface Student {
   id: string;
   name: string;
   email?: string;
-  dept?: string;
-  college?: string;
 }
 
-interface DeleteStudentModalProps {
+interface BulkDeleteStudentsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  student: Student | null;
+  students: Student[];
   onSuccess: () => void;
 }
 
-const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
+const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
   isOpen,
   onClose,
-  student,
+  students,
   onSuccess
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState('');
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
 
-  const handleDelete = async () => {
+  const handleBulkDelete = async () => {
     if (confirmText.toLowerCase() !== 'delete') {
       setError('Please type DELETE to confirm');
       return;
@@ -36,6 +35,7 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
 
     setLoading(true);
     setError(null);
+    setProgress({ current: 0, total: students.length });
 
     try {
       // Get the current educator's ID
@@ -47,20 +47,34 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
         return;
       }
 
-      // Perform soft delete with educator ID
-      const result = await softDeleteStudent(student.id, educatorId);
+      // Delete students one by one
+      const results = [];
+      for (let i = 0; i < students.length; i++) {
+        const student = students[i];
+        setProgress({ current: i + 1, total: students.length });
+        
+        const result = await softDeleteStudent(student.id, educatorId);
+        results.push({ student, result });
+        
+        // Small delay to avoid overwhelming the database
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      // Check if all deletions were successful
+      const failures = results.filter(r => !r.result.success);
       
-      if (result.success) {
+      if (failures.length > 0) {
+        setError(`Failed to delete ${failures.length} out of ${students.length} students`);
+      } else {
         onSuccess();
         onClose();
-      } else {
-        setError(result.error || 'Failed to delete student');
       }
     } catch (err) {
-      console.error('Error deleting student:', err);
+      console.error('Error bulk deleting students:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setLoading(false);
+      setProgress({ current: 0, total: 0 });
     }
   };
 
@@ -71,27 +85,27 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div
           className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          onClick={onClose}
+          onClick={!loading ? onClose : undefined}
         ></div>
 
-        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-          {/* Header with Warning Icon */}
+        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
+          {/* Header */}
           <div className="sm:flex sm:items-start">
             <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
               <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
             </div>
             <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
               <h3 className="text-lg font-semibold text-gray-900">
-                Delete Student
+                Delete Multiple Students
               </h3>
               <div className="mt-2">
                 <p className="text-sm text-gray-500">
                   Are you sure you want to delete{' '}
-                  <span className="font-medium text-gray-900">{student?.name}</span>?
+                  <span className="font-bold text-red-600">{students.length}</span> students?
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
-                  This action will soft delete the student from the system. The record will be marked as deleted 
-                  but can be restored later if needed.
+                  This action will soft delete all selected students from the system. 
+                  The records will be marked as deleted but can be restored later if needed.
                 </p>
               </div>
             </div>
@@ -104,23 +118,41 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
             </button>
           </div>
 
-          {/* Student Info Card */}
-          <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-md">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Email:</span>
-                <span className="font-medium text-gray-900">{student?.email || 'N/A'}</span>
+          {/* Students List */}
+          <div className="mt-4 max-h-64 overflow-y-auto border border-gray-200 rounded-md">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {students.map((student) => (
+                  <tr key={student.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900">{student.name}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500">{student.email || 'N/A'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Progress Bar */}
+          {loading && progress.total > 0 && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-sm text-gray-700 mb-2">
+                <span>Deleting students...</span>
+                <span>{progress.current} / {progress.total}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Department:</span>
-                <span className="font-medium text-gray-900">{student?.dept || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">College:</span>
-                <span className="font-medium text-gray-900">{student?.college || 'N/A'}</span>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-red-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                ></div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Confirmation Input */}
           <div className="mt-4">
@@ -150,8 +182,8 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
           {/* Warning Note */}
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <p className="text-xs text-yellow-800">
-              <strong>Note:</strong> This is a soft delete. The student data will not be permanently removed 
-              from the database and can be restored by an administrator if needed.
+              <strong>Note:</strong> This is a bulk soft delete operation. The student data will not be 
+              permanently removed from the database and can be restored by an administrator if needed.
             </p>
           </div>
 
@@ -166,7 +198,7 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
               Cancel
             </button>
             <button
-              onClick={handleDelete}
+              onClick={handleBulkDelete}
               disabled={loading || confirmText.toLowerCase() !== 'delete'}
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors inline-flex items-center"
             >
@@ -192,10 +224,10 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Deleting...
+                  Deleting... ({progress.current}/{progress.total})
                 </>
               ) : (
-                'Delete Student'
+                `Delete ${students.length} Students`
               )}
             </button>
           </div>
@@ -205,5 +237,4 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
   );
 };
 
-export default DeleteStudentModal;
-
+export default BulkDeleteStudentsModal;

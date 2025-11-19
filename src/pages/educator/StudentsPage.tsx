@@ -18,6 +18,7 @@ import Pagination from '../../components/educator/Pagination';
 import AddStudentModal from '../../components/educator/modals/Addstudentmodal';
 import EditStudentModal from '../../components/educator/modals/EditStudentModal';
 import DeleteStudentModal from '../../components/educator/modals/DeleteStudentModal';
+import BulkDeleteStudentsModal from '../../components/educator/modals/BulkDeleteStudentsModal';
 import { UserPlusIcon } from 'lucide-react';
 
 const FilterSection = ({ title, children, defaultOpen = false }: {
@@ -212,14 +213,29 @@ const BadgeComponent = ({ badges }: { badges: string[] }) => {
   );
 };
 
-const StudentCard = ({ student, onViewProfile, onEdit, onDelete }: {
+const StudentCard = ({ student, onViewProfile, onEdit, onDelete, isSelected, onToggleSelect }: {
   student: UICandidate;
   onViewProfile: (student: UICandidate) => void;
   onEdit: (student: UICandidate) => void;
   onDelete: (student: UICandidate) => void;
+  isSelected?: boolean;
+  onToggleSelect?: (studentId: string) => void;
 }) => {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+    <div className={`bg-white border rounded-lg p-4 hover:shadow-md transition-shadow ${
+      isSelected ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200'
+    }`}>
+      {/* Checkbox */}
+      {onToggleSelect && (
+        <div className="flex items-start mb-3">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelect(student.id)}
+            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mt-1"
+          />
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div>
@@ -327,6 +343,10 @@ const StudentsPage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [studentToEdit, setStudentToEdit] = useState<UICandidate | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<UICandidate | null>(null);
+  
+  // Bulk selection state
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -695,6 +715,38 @@ const StudentsPage = () => {
     await refetch();
   };
 
+  // Bulk selection handlers
+  const handleSelectAll = () => {
+    const allIds = new Set(paginatedStudents.map(s => s.id));
+    setSelectedStudentIds(allIds);
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedStudentIds(new Set());
+  };
+
+  const handleToggleStudent = (studentId: string) => {
+    const newSelected = new Set(selectedStudentIds);
+    if (newSelected.has(studentId)) {
+      newSelected.delete(studentId);
+    } else {
+      newSelected.add(studentId);
+    }
+    setSelectedStudentIds(newSelected);
+  };
+
+  const handleBulkDelete = () => {
+    setShowBulkDeleteModal(true);
+  };
+
+  const handleBulkDeleteSuccess = async () => {
+    setSelectedStudentIds(new Set());
+    await refetch();
+  };
+
+  const selectedStudents = students.filter(s => selectedStudentIds.has(s.id));
+  const allOnPageSelected = paginatedStudents.length > 0 && paginatedStudents.every(s => selectedStudentIds.has(s.id));
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header - responsive layout */}
@@ -908,15 +960,54 @@ const StudentsPage = () => {
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Bulk Actions Bar */}
+          {selectedStudentIds.size > 0 && (
+            <div className="px-4 sm:px-6 lg:px-8 py-3 bg-primary-50 border-b border-primary-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm font-medium text-primary-900">
+                    {selectedStudentIds.size} selected
+                  </span>
+                  <button
+                    onClick={handleDeselectAll}
+                    className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                  >
+                    Deselect All
+                  </button>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleBulkDelete}
+                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                  >
+                    <TrashIcon className="h-4 w-4 mr-2" />
+                    Delete {selectedStudentIds.size} Student{selectedStudentIds.size > 1 ? 's' : ''}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Results header */}
           <div className="px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-                <span className="font-medium">{Math.min(endIndex, totalItems)}</span> of{' '}
-                <span className="font-medium">{totalItems}</span> result{totalItems !== 1 ? 's' : ''}
-                {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
-              </p>
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allOnPageSelected}
+                    onChange={allOnPageSelected ? handleDeselectAll : handleSelectAll}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Select All on Page</span>
+                </label>
+                <p className="text-sm text-gray-700">
+                  Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                  <span className="font-medium">{Math.min(endIndex, totalItems)}</span> of{' '}
+                  <span className="font-medium">{totalItems}</span> result{totalItems !== 1 ? 's' : ''}
+                  {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
+                </p>
+              </div>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -943,6 +1034,8 @@ const StudentsPage = () => {
                     onViewProfile={onViewProfile}
                     onEdit={handleEditClick}
                     onDelete={handleDeleteClick}
+                    isSelected={selectedStudentIds.has(student.id)}
+                    onToggleSelect={handleToggleStudent}
                   />
                 ))}
                 {!loading && paginatedStudents.length === 0 && !error && (
@@ -1122,6 +1215,14 @@ const StudentsPage = () => {
         }}
         student={studentToDelete}
         onSuccess={handleDeleteSuccess}
+      />
+
+      {/* Bulk Delete Students Modal */}
+      <BulkDeleteStudentsModal
+        isOpen={showBulkDeleteModal}
+        onClose={() => setShowBulkDeleteModal(false)}
+        students={selectedStudents}
+        onSuccess={handleBulkDeleteSuccess}
       />
     </div>
   );
