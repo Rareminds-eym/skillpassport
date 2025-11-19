@@ -1,11 +1,11 @@
 import React from 'react';
-import { GraduationCap, Building2, CreditCard, Award } from 'lucide-react';
+import { GraduationCap, Building2, CreditCard, Award, CheckCircle, Clock } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { studentData } from '../data/mockData';
 
-const HeroSection = () => {
+const HeroSection = ({ approvalStatus = 'pending' }) => {
   return (
     <div className="bg-[#f6f7fd] py-8 px-6">
       <div className="max-w-7xl mx-auto">
@@ -27,7 +27,21 @@ const HeroSection = () => {
                     </div>
                   </div>
                   <div className="flex-1 pt-1">
-                    <h1 className="text-3xl font-bold text-[#23272e]">Sarah Johnson</h1>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h1 className="text-3xl font-bold text-[#23272e]">Sarah Johnson</h1>
+                      {approvalStatus === 'approved' && (
+                        <Badge className="bg-green-100 text-green-700 border-green-300 border px-3 py-1 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Approved
+                        </Badge>
+                      )}
+                      {approvalStatus === 'pending' && (
+                        <Badge className="bg-amber-100 text-amber-700 border-amber-300 border px-3 py-1 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          Pending
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
 

@@ -15,7 +15,10 @@ import {
   CheckCircleIcon,
   XMarkIcon,
   CalendarDaysIcon,
-  DocumentDuplicateIcon
+  DocumentDuplicateIcon,
+  ArrowsUpDownIcon,
+  ChevronUpIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import { supabase } from '../../lib/supabaseClient';
 import { 
@@ -29,6 +32,7 @@ import {
 } from '../../services/shortlistService';
 import jsPDF from 'jspdf';
 import SearchBar from '../../components/common/SearchBar';
+import AdvancedShortlistFilters, { ShortlistFilters } from '../../components/Recruiter/components/AdvancedShortlistFilters';
 
 // Define TypeScript interfaces for our data
 interface ShortlistCandidate {
@@ -557,36 +561,87 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
   };
 
   // Helper function for PDF generation using jsPDF
-  const generatePDF = (shortlist: Shortlist, settings: any) => {
+  const generatePDF = async (shortlist: Shortlist, settings: any) => {
     const isFullProfile = settings.type === 'full_profile';
     const doc = new jsPDF();
     
     // Set font
     doc.setFont('helvetica');
     
-    // Title
-    doc.setFontSize(18);
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+    
+    // Add watermark logos if enabled
+    if (settings.watermark) {
+      try {
+        // Load and add RareMinds logo at top-left
+        const rareMindsLogo = new Image();
+        rareMindsLogo.crossOrigin = 'anonymous';
+        rareMindsLogo.src = '/RareMinds.webp';
+        await new Promise((resolve, reject) => {
+          rareMindsLogo.onload = resolve;
+          rareMindsLogo.onerror = reject;
+        });
+        
+        // Convert to canvas with transparency
+        const canvas1 = document.createElement('canvas');
+        const ctx1 = canvas1.getContext('2d');
+        canvas1.width = rareMindsLogo.width;
+        canvas1.height = rareMindsLogo.height;
+        ctx1.drawImage(rareMindsLogo, 0, 0);
+        const rareMindsData = canvas1.toDataURL('image/png');
+        
+        const topLeftWidth = 50;
+        const topLeftHeight = (rareMindsLogo.height / rareMindsLogo.width) * topLeftWidth;
+        doc.addImage(rareMindsData, 'PNG', 14, 10, topLeftWidth, topLeftHeight, undefined, 'FAST');
+        
+        // Load and add RMLogo at center
+        const rmLogo = new Image();
+        rmLogo.crossOrigin = 'anonymous';
+        rmLogo.src = '/RMLogo.webp';
+        await new Promise((resolve, reject) => {
+          rmLogo.onload = resolve;
+          rmLogo.onerror = reject;
+        });
+        
+        // Convert to canvas with transparency
+        const canvas2 = document.createElement('canvas');
+        const ctx2 = canvas2.getContext('2d');
+        canvas2.width = rmLogo.width;
+        canvas2.height = rmLogo.height;
+        ctx2.drawImage(rmLogo, 0, 0);
+        const rmLogoData = canvas2.toDataURL('image/png');
+        
+        const centerWidth = 80;
+        const centerHeight = (rmLogo.height / rmLogo.width) * centerWidth;
+        const centerX = (pageWidth - centerWidth) / 2;
+        const centerY = (pageHeight - centerHeight) / 2;
+        
+        doc.addImage(rmLogoData, 'PNG', centerX, centerY, centerWidth, centerHeight, undefined, 'FAST');
+      } catch (error) {
+        console.error('Failed to load watermark images:', error);
+        // Fallback to text watermark if images fail
+        doc.setFontSize(40);
+        doc.setTextColor(200, 200, 200);
+        doc.text('RecruiterHub', 105, 150, { angle: 45, align: 'center' });
+        doc.setTextColor(0, 0, 0);
+      }
+    }
+    
+    // Title (on next line after logo)
+    doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.text(`SHORTLIST EXPORT - ${shortlist.name}`, 14, 20);
+    doc.text(`EXPORT - ${shortlist.name}`, 14, 30);
     
     // Metadata
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
-    doc.text(`Total Candidates: ${shortlist.candidates?.length || 0}`, 14, 36);
-    doc.text(`Export Type: ${isFullProfile ? 'Full Profile' : 'Mini-Profile'}`, 14, 42);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 40);
+    doc.text(`Total Candidates: ${shortlist.candidates?.length || 0}`, 14, 46);
+    doc.text(`Export Type: ${isFullProfile ? 'Full Profile' : 'Mini-Profile'}`, 14, 52);
     
-    // Add watermark if enabled
-    if (settings.watermark) {
-      doc.setFontSize(40);
-      doc.setTextColor(200, 200, 200);
-      doc.text('RecruiterHub', 105, 150, { angle: 45, align: 'center' });
-      doc.setTextColor(0, 0, 0);
-    }
-    
-    let yPos = 52;
+    let yPos = 62;
     const lineHeight = 6;
-    const pageHeight = doc.internal.pageSize.height;
     
     // Candidates
     doc.setFontSize(10);
@@ -660,8 +715,6 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
   const handleExport = async () => {
     try {
       // Fetch candidates for this shortlist
-      console.log('Exporting shortlist:', shortlist);
-      console.log('Shortlist ID:', shortlist.id);
       
       const { data: candidates, error: candidatesError } = await getShortlistCandidates(shortlist.id);
       if (candidatesError) {
@@ -669,8 +722,6 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
         throw candidatesError;
       }
       
-      console.log('Fetched candidates for export:', candidates);
-      console.log('Number of candidates:', candidates?.length || 0);
 
       // Check if there are no candidates
       if (!candidates || candidates.length === 0) {
@@ -703,7 +754,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
         downloadFile(exportContent, filename, exportSettings.format);
       } else if (exportSettings.format === 'pdf') {
         // Generate PDF using jsPDF
-        const pdfDoc = generatePDF(shortlistWithCandidates, exportSettings);
+        const pdfDoc = await generatePDF(shortlistWithCandidates, exportSettings);
         filename += '.pdf';
         // Save the PDF
         pdfDoc.save(filename);
@@ -1175,16 +1226,133 @@ const Shortlists = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Advanced Filters
+  const [advancedFilters, setAdvancedFilters] = useState<ShortlistFilters>({
+    dateRange: {},
+    status: [],
+    shared: 'all',
+    tags: [],
+    createdBy: [],
+    candidateCountRange: 'all'
+  });
 
-  // Fetch shortlists from Supabase
+  type ShortlistSortField = 'created_date' | 'name' | 'candidate_count' | 'shared' | 'share_expiry';
+  const [sortField, setSortField] = useState<ShortlistSortField>('created_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Fetch shortlists from Supabase with SQL-optimized filters
   const fetchShortlists = async () => {
     try {
       setLoading(true);
-      const { data, error } = await getShortlists();
 
+      const buildQuery = (from: 'shortlists_with_counts' | 'shortlists') => {
+        const baseSelect = from === 'shortlists' 
+          ? '*, shortlist_candidates(count)'
+          : '*';
+        let query = supabase.from(from).select(baseSelect as any);
+
+        // Search (server-side for name/description/creator)
+        if (searchQuery) {
+          const q = searchQuery.trim();
+          query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%,created_by.ilike.%${q}%`);
+        }
+
+        // Status filter
+        if (advancedFilters.status.length > 0) {
+          query = query.in('status', advancedFilters.status);
+        }
+
+        // Sharing filter
+        if (advancedFilters.shared === 'shared') {
+          query = query.eq('shared', true);
+        } else if (advancedFilters.shared === 'private') {
+          query = query.eq('shared', false);
+        }
+
+        // Tags (match any)
+        if (advancedFilters.tags.length > 0) {
+          // overlaps (ov) operator
+          // @ts-ignore - overlaps is supported by postgrest-js
+          query = (query as any).overlaps('tags', advancedFilters.tags);
+        }
+
+        // Created By
+        if (advancedFilters.createdBy.length > 0) {
+          query = query.in('created_by', advancedFilters.createdBy);
+        }
+
+        // Date range
+        if (advancedFilters.dateRange.startDate) {
+          query = query.gte('created_date', advancedFilters.dateRange.startDate);
+        }
+        if (advancedFilters.dateRange.endDate) {
+          query = query.lte('created_date', advancedFilters.dateRange.endDate);
+        }
+
+        // Candidate count range (only available on view)
+        if (from === 'shortlists_with_counts' && advancedFilters.candidateCountRange !== 'all') {
+          const map: Record<string, { min: number; max: number | null }> = {
+            '0': { min: 0, max: 0 },
+            '1-5': { min: 1, max: 5 },
+            '6-20': { min: 6, max: 20 },
+            '21-50': { min: 21, max: 50 },
+            '50+': { min: 51, max: null },
+            'all': { min: 0, max: null }
+          };
+          const r = map[advancedFilters.candidateCountRange];
+          if (r) {
+            // @ts-ignore candidate_count exists on the view
+            query = query.gte('candidate_count', r.min);
+            if (r.max !== null) {
+              // @ts-ignore
+              query = query.lte('candidate_count', r.max);
+            }
+          }
+        }
+
+        // Ordering
+        const asc = sortDirection === 'asc';
+        if (sortField === 'candidate_count') {
+          // Only order in SQL if view is used (field exists)
+          if (from === 'shortlists_with_counts') {
+            // @ts-ignore
+            query = query.order('candidate_count', { ascending: asc });
+          }
+        } else if (sortField === 'share_expiry') {
+          // Handle nulls last when sorting by expiry
+          // @ts-ignore
+          query = query.order('share_expiry', { ascending: asc, nullsFirst: !asc });
+        } else {
+          query = query.order(sortField, { ascending: asc });
+        }
+        return query;
+      };
+
+      // Try the optimized view first, fall back to base table if not available
+      let usingView = true;
+      let { data, error } = await buildQuery('shortlists_with_counts');
+      if (error) {
+        usingView = false;
+        ({ data, error } = await buildQuery('shortlists'));
+      }
       if (error) throw error;
 
-      setShortlists(data || []);
+      const rows = (data as any[]) || [];
+      const formatted = rows.map((item) => ({
+        ...item,
+        candidate_count: item.candidate_count ?? (item.shortlist_candidates?.[0]?.count ?? 0)
+      }));
+
+      // If ordering by candidate_count and we couldn't use view, sort on client
+      if (!usingView && sortField === 'candidate_count') {
+        formatted.sort((a: any, b: any) => {
+          const diff = (a.candidate_count || 0) - (b.candidate_count || 0);
+          return sortDirection === 'asc' ? diff : -diff;
+        });
+      }
+
+      setShortlists(formatted);
     } catch (error) {
       console.error('Error fetching shortlists:', error);
       alert('Failed to load shortlists');
@@ -1195,7 +1363,7 @@ const Shortlists = () => {
 
   useEffect(() => {
     fetchShortlists();
-  }, []);
+  }, [searchQuery, advancedFilters, sortField, sortDirection]);
 
   const handleShare = async (updatedShortlist: Shortlist) => {
     try {
@@ -1219,7 +1387,6 @@ const Shortlists = () => {
     try {
       // Show loading or processing state
       const processingMessage = `Preparing ${settings.format.toUpperCase()} export for "${shortlist.name}"...`;
-      console.log(processingMessage);
       
       // The actual export logic is handled in the ExportModal
       // This function just logs the activity
@@ -1296,19 +1463,59 @@ const Shortlists = () => {
           </div>
 
           {/* Middle: centered search */}
-          <div className="flex-1 px-4">
-            <div className="max-w-xl mx-auto">
+          <div className="flex-1 px-4 flex items-center gap-3">
+            <div className="max-w-xl flex-1">
               <SearchBar
                 value={searchQuery}
                 onChange={setSearchQuery}
-                placeholder="Search shortlists by name, description, creator, or tags..."
+                placeholder="Search shortlists by name, description, or creator..."
                 size="md"
               />
             </div>
+            <AdvancedShortlistFilters
+              filters={advancedFilters}
+              onFiltersChange={setAdvancedFilters}
+              onReset={() => setAdvancedFilters({ dateRange: {}, status: [], shared: 'all', tags: [], createdBy: [], candidateCountRange: 'all' })}
+              onApply={fetchShortlists}
+            />
+            {/* Sorting Dropdown */}
+            <div className="relative">
+              <select
+                value={`${sortField}-${sortDirection}`}
+                onChange={(e) => {
+                  const [field, direction] = e.target.value.split('-');
+                  setSortField(field as any);
+                  setSortDirection(direction as 'asc' | 'desc');
+                }}
+                className="pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white text-sm"
+              >
+                <optgroup label="Date">
+                  <option value="created_date-desc">Newest First</option>
+                  <option value="created_date-asc">Oldest First</option>
+                </optgroup>
+                <optgroup label="Alphabetical">
+                  <option value="name-asc">Name (A-Z)</option>
+                  <option value="name-desc">Name (Z-A)</option>
+                </optgroup>
+                <optgroup label="Candidates">
+                  <option value="candidate_count-desc">Most Candidates</option>
+                  <option value="candidate_count-asc">Fewest Candidates</option>
+                </optgroup>
+                <optgroup label="Sharing">
+                  <option value="shared-desc">Shared First</option>
+                  <option value="shared-asc">Private First</option>
+                </optgroup>
+                <optgroup label="Expiry">
+                  <option value="share_expiry-asc">Expiring Soon</option>
+                  <option value="share_expiry-desc">Expiring Last</option>
+                </optgroup>
+              </select>
+              <ArrowsUpDownIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
           </div>
 
-          {/* Right: action buttons (fixed width) */}
-          <div className="w-80 flex-shrink-0 pl-4 flex items-center justify-end space-x-3">
+          {/* Right: action buttons */}
+          <div className="flex-shrink-0 pl-4 flex items-center justify-end space-x-3">
             <button
               onClick={() => navigate('/recruitment/talent-pool')}
               className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50"
@@ -1336,14 +1543,53 @@ const Shortlists = () => {
             <p className="text-sm text-gray-600 mt-0.5">Manage and share candidate collections</p>
           </div>
 
-          {/* Search bar */}
-          <div>
+          {/* Search + Advanced Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Search shortlists..."
               size="md"
             />
+            <AdvancedShortlistFilters
+              filters={advancedFilters}
+              onFiltersChange={setAdvancedFilters}
+              onReset={() => setAdvancedFilters({ dateRange: {}, status: [], shared: 'all', tags: [], createdBy: [], candidateCountRange: 'all' })}
+              onApply={fetchShortlists}
+            />
+            <div className="relative">
+              <select
+                value={`${sortField}-${sortDirection}`}
+                onChange={(e) => {
+                  const [field, direction] = e.target.value.split('-');
+                  setSortField(field as any);
+                  setSortDirection(direction as 'asc' | 'desc');
+                }}
+                className="pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none bg-white text-sm"
+              >
+                <optgroup label="Date">
+                  <option value="created_date-desc">Newest First</option>
+                  <option value="created_date-asc">Oldest First</option>
+                </optgroup>
+                <optgroup label="Alphabetical">
+                  <option value="name-asc">Name (A-Z)</option>
+                  <option value="name-desc">Name (Z-A)</option>
+                </optgroup>
+                <optgroup label="Candidates">
+                  <option value="candidate_count-desc">Most Candidates</option>
+                  <option value="candidate_count-asc">Fewest Candidates</option>
+                </optgroup>
+                <optgroup label="Sharing">
+                  <option value="shared-desc">Shared First</option>
+                  <option value="shared-asc">Private First</option>
+                </optgroup>
+                <optgroup label="Expiry">
+                  <option value="share_expiry-asc">Expiring Soon</option>
+                  <option value="share_expiry-desc">Expiring Last</option>
+                </optgroup>
+              </select>
+              <ArrowsUpDownIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
           </div>
 
           {/* Action buttons */}
@@ -1471,10 +1717,6 @@ const Shortlists = () => {
               onView={async (sl) => {
                 // Fetch candidates for this shortlist
                 try {
-                  console.log('=== VIEW BUTTON CLICKED ===');
-                  console.log('Shortlist data:', sl);
-                  console.log('Shortlist ID:', sl.id);
-                  console.log('Candidate count from list:', sl.candidate_count);
                   
                   const { data: candidates, error } = await getShortlistCandidates(sl.id);
                   
@@ -1488,8 +1730,6 @@ const Shortlists = () => {
                     return;
                   }
                   
-                  console.log('Candidates fetched successfully:', candidates);
-                  console.log('Number of candidates:', candidates?.length);
                   
                   // Open modal even if there are no candidates (empty state handled in modal)
                   setSelectedShortlist(sl);

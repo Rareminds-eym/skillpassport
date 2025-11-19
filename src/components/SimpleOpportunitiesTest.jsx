@@ -9,7 +9,6 @@ const SimpleOpportunitiesTest = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('🚀 SimpleTest: Starting fetch...');
         
         // Test 1: Basic connection
         const { data: testData, error: testError } = await supabase
@@ -23,7 +22,6 @@ const SimpleOpportunitiesTest = () => {
           return;
         }
 
-        console.log('✅ SimpleTest Success:', testData);
         setData(testData);
       } catch (err) {
         console.error('❌ SimpleTest Exception:', err);

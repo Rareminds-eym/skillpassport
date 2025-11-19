@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { createNotification } from "./useNotifications";
 import { useAuth } from "../context/AuthContext";
+import { NotificationType } from "./useNotifications";
+import { createNotification } from "../services/notificationService"; 
 
+// -------------------- OFFER TYPES --------------------
 export interface Offer {
   id: string;
   inserted_at: string;
@@ -38,51 +40,147 @@ export interface OfferStats {
   avgCTC: string;
 }
 
-// ✅ helper: ensure recruiterId is UUID
-async function resolveRecruiterId(user: any): Promise<string | null> {
-  if (!user) return null;
-
-  // If already UUID
-  if (user.id) return user.id;
-
-  // If only email → look up recruiter in DB
-  if (user.email) {
-    const { data, error } = await supabase
-      .from("recruiters")
-      .select("id")
-      .eq("email", user.email)
-      .maybeSingle();
-
-    if (error) {
-      console.error("resolveRecruiterId error:", error);
-      return null;
-    }
-    return data?.id || null;
-  }
-
-  return null;
+export interface OfferFilters {
+  status?: string[];
+  candidateName?: string;
+  jobTitle?: string;
+  ctcBandMin?: number;
+  ctcBandMax?: number;
+  offeredCtcMin?: number;
+  offeredCtcMax?: number;
+  offerDateFrom?: string;
+  offerDateTo?: string;
+  expiryDateFrom?: string;
+  expiryDateTo?: string;
+  templates?: string[];
+  sentVia?: string[];
+  benefits?: string[];
 }
 
-export const useOffers = () => {
+export interface OfferSortOptions {
+  field: 'inserted_at' | 'updated_at' | 'offer_date' | 'expiry_date' | 'candidate_name' | 'job_title' | 'offered_ctc' | 'status' | 'template' | 'response_date';
+  direction: 'asc' | 'desc';
+  nullsPosition?: 'first' | 'last'; // Where to place NULL values
+  secondarySort?: {
+    field: 'inserted_at' | 'updated_at' | 'offer_date' | 'expiry_date' | 'candidate_name' | 'job_title';
+    direction: 'asc' | 'desc';
+  };
+}
+
+// -------------------- HOOK --------------------
+export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
   const { user } = useAuth();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch all offers
-  const fetchOffers = async () => {
+  // Fetch offers with SQL-optimized filtering
+  const fetchOffers = async (currentFilters?: OfferFilters, currentSort?: OfferSortOptions) => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from("offers")
-        .select("*")
-        .order("inserted_at", { ascending: false });
+      // Start building the query
+      let query = supabase.from("offers").select("*");
+
+      // Apply filters at SQL level for optimization
+      if (currentFilters) {
+        // Status filter (array)
+        if (currentFilters.status && currentFilters.status.length > 0) {
+          query = query.in('status', currentFilters.status);
+        }
+
+        // Candidate name search (case-insensitive)
+        if (currentFilters.candidateName) {
+          query = query.ilike('candidate_name', `%${currentFilters.candidateName}%`);
+        }
+
+        // Job title search (case-insensitive)
+        if (currentFilters.jobTitle) {
+          query = query.ilike('job_title', `%${currentFilters.jobTitle}%`);
+        }
+
+        // Offer date range
+        if (currentFilters.offerDateFrom) {
+          query = query.gte('offer_date', currentFilters.offerDateFrom);
+        }
+        if (currentFilters.offerDateTo) {
+          query = query.lte('offer_date', currentFilters.offerDateTo);
+        }
+
+        // Expiry date range
+        if (currentFilters.expiryDateFrom) {
+          query = query.gte('expiry_date', currentFilters.expiryDateFrom);
+        }
+        if (currentFilters.expiryDateTo) {
+          query = query.lte('expiry_date', currentFilters.expiryDateTo);
+        }
+
+        // Templates filter (array)
+        if (currentFilters.templates && currentFilters.templates.length > 0) {
+          query = query.in('template', currentFilters.templates);
+        }
+
+        // Sent via filter (array)
+        if (currentFilters.sentVia && currentFilters.sentVia.length > 0) {
+          query = query.in('sent_via', currentFilters.sentVia);
+        }
+
+        // Note: CTC range and benefits filtering will be done client-side
+        // as they require parsing string values or array contains operations
+      }
+
+      // Apply sorting with advanced options
+      const sortField = currentSort?.field || 'inserted_at';
+      const sortDirection = currentSort?.direction || 'desc';
+      const nullsPosition = currentSort?.nullsPosition || 'last';
+      
+      // Apply primary sort with nulls handling
+      query = query.order(sortField, { 
+        ascending: sortDirection === 'asc',
+        nullsFirst: nullsPosition === 'first'
+      });
+      
+      // Apply secondary sort for tie-breaking (improves user experience)
+      if (currentSort?.secondarySort) {
+        query = query.order(currentSort.secondarySort.field, {
+          ascending: currentSort.secondarySort.direction === 'asc'
+        });
+      } else {
+        // Default secondary sort by inserted_at for consistent ordering
+        if (sortField !== 'inserted_at') {
+          query = query.order('inserted_at', { ascending: false });
+        }
+      }
+
+      const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
+      
+      // Client-side filtering for complex conditions
+      let filteredData = data || [];
+      
+      if (currentFilters) {
+        // CTC range filtering (client-side due to string parsing)
+        if (currentFilters.offeredCtcMin !== undefined || currentFilters.offeredCtcMax !== undefined) {
+          filteredData = filteredData.filter(offer => {
+            if (!offer.offered_ctc) return false;
+            const ctcValue = parseFloat(offer.offered_ctc.replace(/[^\d.]/g, "") || "0");
+            if (currentFilters.offeredCtcMin !== undefined && ctcValue < currentFilters.offeredCtcMin) return false;
+            if (currentFilters.offeredCtcMax !== undefined && ctcValue > currentFilters.offeredCtcMax) return false;
+            return true;
+          });
+        }
 
-      setOffers(data || []);
+        // Benefits filtering (client-side for array contains)
+        if (currentFilters.benefits && currentFilters.benefits.length > 0) {
+          filteredData = filteredData.filter(offer => 
+            offer.benefits && offer.benefits.some(b => currentFilters.benefits!.includes(b))
+          );
+        }
+      }
+
+      setOffers(filteredData);
     } catch (err: any) {
       console.error("Error fetching offers:", err);
       setError(err.message || "Failed to fetch offers");
@@ -101,16 +199,15 @@ export const useOffers = () => {
         .single();
 
       if (createError) throw createError;
-
       setOffers((prev) => [data, ...prev]);
 
-      const recruiterId = await resolveRecruiterId(user);
-      if (data && recruiterId) {
+      // 🔹 Fire notification
+      if (data && user) {
         await createNotification(
-          recruiterId,
+          user.email ?? user.id,
           "offer_created",
           "New Offer Created",
-          `Offer created for ${data.candidate_name}`,
+          `Offer created for ${data.candidate_name}`
         );
       }
 
@@ -135,32 +232,30 @@ export const useOffers = () => {
         .single();
 
       if (updateError) throw updateError;
-
       setOffers((prev) => prev.map((o) => (o.id === id ? data : o)));
 
-      const recruiterId = await resolveRecruiterId(user);
-      if (data && recruiterId) {
+      // 🔹 Notification per status change
+      if (data && user) {
+        let type: NotificationType | null = null;
+        let title = "";
+        let message = "";
+
         if (data.status === "accepted") {
-          await createNotification(
-            recruiterId,
-            "offer_accepted",
-            "Offer Accepted",
-            `${data.candidate_name} accepted the offer`,
-          );
+          type = "offer_accepted";
+          title = "Offer Accepted";
+          message = `${data.candidate_name} accepted the offer`;
         } else if (data.status === "rejected") {
-          await createNotification(
-            recruiterId,
-            "offer_declined",
-            "Offer Rejected",
-            `${data.candidate_name} rejected the offer`,
-          );
+          type = "offer_declined";
+          title = "Offer Rejected";
+          message = `${data.candidate_name} rejected the offer`;
         } else if (data.status === "withdrawn") {
-          await createNotification(
-            recruiterId,
-            "offer_withdrawn",
-            "Offer Withdrawn",
-            `Offer for ${data.candidate_name} was withdrawn`,
-          );
+          type = "offer_withdrawn";
+          title = "Offer Withdrawn";
+          message = `Offer for ${data.candidate_name} was withdrawn`;
+        }
+
+        if (type) {
+          await createNotification(user.email ?? user.id, type, title, message);
         }
       }
 
@@ -174,18 +269,20 @@ export const useOffers = () => {
   // Delete an offer
   const deleteOffer = async (id: string) => {
     try {
-      const { error: deleteError } = await supabase.from("offers").delete().eq("id", id);
+      const { error: deleteError } = await supabase
+        .from("offers")
+        .delete()
+        .eq("id", id);
       if (deleteError) throw deleteError;
 
       setOffers((prev) => prev.filter((o) => o.id !== id));
 
-      const recruiterId = await resolveRecruiterId(user);
-      if (recruiterId) {
+      if (user) {
         await createNotification(
-          recruiterId,
+          user.email ?? user.id,
           "offer_declined",
           "Offer Deleted",
-          "An offer was deleted",
+          "An offer was deleted"
         );
       }
 
@@ -223,13 +320,12 @@ export const useOffers = () => {
         response_deadline: currentExpiry.toISOString(),
       });
 
-      const recruiterId = await resolveRecruiterId(user);
-      if (recruiterId) {
+      if (user) {
         await createNotification(
-          recruiterId,
+          user.email ?? user.id,
           "offer_expiring",
           "Offer Expiry Extended",
-          `Offer for ${offer.candidate_name} was extended`,
+          `Offer for ${offer.candidate_name} was extended`
         );
       }
 
@@ -288,9 +384,7 @@ export const useOffers = () => {
 
     const avgCTC =
       ctcValues.length > 0
-        ? (
-            ctcValues.reduce((sum, val) => sum + val, 0) / ctcValues.length
-          ).toFixed(1)
+        ? (ctcValues.reduce((sum, val) => sum + val, 0) / ctcValues.length).toFixed(1)
         : "0";
 
     return {
@@ -306,10 +400,11 @@ export const useOffers = () => {
     };
   }, [offers]);
 
-  // Load offers once on mount
+  // Load offers on mount and when filters/sort change
   useEffect(() => {
-    fetchOffers();
-  }, []);
+    fetchOffers(filters, sort);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, sort]);
 
   return {
     offers,

@@ -54,7 +54,6 @@ const RecruiterProfile: React.FC = () => {
     }
   };
 
-  // ✅ Fetch recruiter dynamically
   useEffect(() => {
     const fetchRecruiter = async () => {
       if (!user?.email) return;
@@ -97,10 +96,8 @@ const RecruiterProfile: React.FC = () => {
             {/* left: avatar card */}
             <div className="flex items-center gap-5 md:gap-8">
               <div
-                className="w-28 h-28 md:w-32 md:h-32 rounded-full flex items-center justify-center text-3xl md:text-4xl font-bold text-white"
-                style={{
-                  background: "linear-gradient(135deg,#0a6aba 0%,#09277f 100%)",
-                }}
+                className="w-28 h-28 md:w-32 md:h-32 rounded-full flex items-center justify-center text-3xl md:text-4xl font-bold text-white bg-primary-600"
+                
                 aria-hidden
               >
                 {initials(recruiter.name)}
@@ -155,7 +152,7 @@ const RecruiterProfile: React.FC = () => {
                   href={recruiter.website}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#0a6aba] to-[#084c7f] text-white shadow-sm hover:scale-[1.01] transition"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600  text-white shadow-sm hover:scale-[1.01] transition"
                 >
                   <ExternalLink className="w-4 h-4" /> Visit Website
                 </a>

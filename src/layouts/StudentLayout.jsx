@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { Outlet, useParams, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
+import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
 import Header from '../components/Students/components/Header';
 import ProfileHeroEdit from '../components/Students/components/ProfileHeroEdit';
 import Footer from '../components/Students/components/Footer';
+import FloatingAIButton from '../components/FloatingAIButton';
 import { Toaster } from '../components/Students/components/ui/toaster';
 import {
   EducationEditModal,
@@ -22,6 +26,7 @@ const StudentLayout = () => {
   const [activeTab, setActiveTab] = useState('skills');
   const [activeModal, setActiveModal] = useState(null);
   const location = useLocation();
+  const { user } = useAuth();
   
   // Check if viewing someone else's profile
   const isViewingOthersProfile = location.pathname.includes('/student/profile/');
@@ -51,15 +56,23 @@ const StudentLayout = () => {
     }
   };
 
+  // Check if current page is dashboard
+  const isDashboardPage = location.pathname === '/student/dashboard' || location.pathname === '/student' || location.pathname === '/student/';
+  
+  // Check if current page is Career AI
+  const isCareerAIPage = location.pathname === '/student/career-ai' || location.pathname.includes('/career-ai');
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header activeTab={activeTab} setActiveTab={setActiveTab} />
-      {!isViewingOthersProfile && <ProfileHeroEdit onEditClick={handleEditClick} />}
-      <main className="py-8 px-6">
-        <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
-      </main>
-      <Footer />
-      <Toaster />
+    <GlobalPresenceProvider userType="student">
+      <div className={isCareerAIPage ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}>
+        <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+        {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
+        <main className={isCareerAIPage ? "flex-1 overflow-hidden" : "py-8 px-6"}>
+          <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
+        </main>
+        {!isCareerAIPage && <Footer />}
+        <FloatingAIButton />
+        <Toaster />
 
       {/* Edit Modals - Only show if not viewing someone else's profile */}
       {!isViewingOthersProfile && (
@@ -104,7 +117,8 @@ const StudentLayout = () => {
           />
         </>
       )}
-    </div>
+      </div>
+    </GlobalPresenceProvider>
   );
 };
 

@@ -9,20 +9,17 @@ export const testRecentUpdates = {
    */
   async testConnection() {
     try {
-      console.log('🧪 Testing recent_updates table connection...');
       
       const { data, error, count } = await supabase
         .from('recent_updates')
         .select('*', { count: 'exact' });
         
-      console.log('🧪 Connection test result:', { data, error, count });
       
       if (error) {
         console.error('❌ Connection test failed:', error);
         return false;
       }
       
-      console.log('✅ Connection test passed');
       return true;
     } catch (err) {
       console.error('❌ Connection test error:', err);
@@ -35,7 +32,6 @@ export const testRecentUpdates = {
    */
   async createSampleData(studentEmail = 'student@test.com') {
     try {
-      console.log('🧪 Creating sample recent updates data...');
       
       // First check if student exists
       const { data: studentData, error: studentError } = await supabase
@@ -92,7 +88,6 @@ export const testRecentUpdates = {
         return false;
       }
 
-      console.log('✅ Sample data created successfully:', data);
       return true;
     } catch (err) {
       console.error('❌ Error creating sample data:', err);
@@ -104,21 +99,17 @@ export const testRecentUpdates = {
    * Run all tests
    */
   async runAllTests(studentEmail) {
-    console.log('🧪 Starting recent updates tests...');
     
     const connectionTest = await this.testConnection();
     if (!connectionTest) {
-      console.log('❌ Connection test failed, skipping other tests');
       return false;
     }
 
     const sampleDataTest = await this.createSampleData(studentEmail);
     if (!sampleDataTest) {
-      console.log('❌ Sample data creation failed');
       return false;
     }
 
-    console.log('✅ All tests passed!');
     return true;
   }
 };

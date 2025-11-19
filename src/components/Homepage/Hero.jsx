@@ -1,6 +1,34 @@
 import { ArrowUpRight, ChevronDown } from 'lucide-react';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Hero = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Load Calendly CSS
+    const link = document.createElement('link');
+    link.href = 'https://assets.calendly.com/assets/external/widget.css';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+
+    // Load Calendly widget script
+    const script = document.createElement('script');
+    script.src = 'https://assets.calendly.com/assets/external/widget.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      // Cleanup on unmount
+      if (link.parentNode) {
+        link.parentNode.removeChild(link);
+      }
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
+  }, []);
+
   const scrollToNextSection = () => {
     const nextSection = document.querySelector('#next-section');
     if (nextSection) {
@@ -8,6 +36,17 @@ const Hero = () => {
     } else {
       // Fallback: scroll by viewport height
       window.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
+    }
+  };
+
+  const openCalendly = () => {
+    if (window.Calendly) {
+      window.Calendly.initPopupWidget({
+        url: 'https://calendly.com/d/cxdd-5y9-vr5'
+      });
+    } else {
+      // If script not loaded yet, open in new tab as fallback
+      window.open('https://calendly.com/d/cxdd-5y9-vr5', '_blank');
     }
   };
 
@@ -44,7 +83,7 @@ const Hero = () => {
           </h1>
 
           {/* Subheading */}
-          <p className="text-black font-medium mb-8 sm:mb-10 max-w-2xl text-[16px] sm:text-lg md:text-xl leading-relaxed">
+          <p className="text-black font-medium mb-8 sm:mb-10 max-w-lg text-[16px] sm:text-lg md:text-xl leading-relaxed">
             The Rareminds Skill Passport gives enterprises a single source of truth for employee
             capabilities — turning training outcomes into real-time talent intelligence.
           </p>
@@ -52,32 +91,36 @@ const Hero = () => {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-5">
             {/* Book a Demo group */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 group">
               <button
+                onClick={openCalendly}
                 className="h-9 sm:h-14 px-4 sm:px-8 rounded-full bg-[#e63b2e] text-white text-xs sm:text-base font-bold uppercase tracking-wide shadow-[0_6px_20px_rgba(230,59,46,0.4)] hover:brightness-110 transition-all"
               >
                 BOOK A DEMO
               </button>
               <button
+                onClick={openCalendly}
                 aria-label="Open demo"
-                className="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-[#e63b2e] text-white shadow-[0_6px_20px_rgba(230,59,46,0.4)] flex items-center justify-center hover:brightness-110 transition-all"
+                className="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-[#e63b2e] text-white shadow-[0_6px_20px_rgba(230,59,46,0.4)] flex items-center justify-center hover:brightness-110 transition-all group-hover:-translate-x-1"
               >
-                <ArrowUpRight className="w-4 h-4 sm:w-6 sm:h-6" style={{ strokeWidth: 2.5 }} />
+                <ArrowUpRight className="w-4 h-4 sm:w-6 sm:h-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-10deg]" style={{ strokeWidth: 2.5 }} />
               </button>
             </div>
 
             {/* Explore Dashboard group */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 group">
               <button
+                onClick={() => navigate('/login/student')}
                 className="h-9 sm:h-14 px-4 sm:px-8 rounded-full bg-white text-black text-xs sm:text-base font-bold uppercase tracking-wide border-2 border-black hover:bg-gray-50 transition-all"
               >
                 EXPLORE DASHBOARD
               </button>
               <button
+                onClick={() => navigate('/login/student')}
                 aria-label="Open dashboard"
-                className="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-white text-black border-2 border-black flex items-center justify-center hover:bg-gray-50 transition-all"
+                className="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-white text-black border-2 border-black flex items-center justify-center transition-all group-hover:-translate-x-1 group-hover:bg-black group-hover:text-white"
               >
-                <ArrowUpRight className="w-4 h-4 sm:w-6 sm:h-6" style={{ strokeWidth: 2.5 }} />
+                <ArrowUpRight className="w-4 h-4 sm:w-6 sm:h-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-10deg]" style={{ strokeWidth: 2.5 }} />
               </button>
             </div>
           </div>

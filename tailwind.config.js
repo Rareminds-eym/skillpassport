@@ -2,12 +2,26 @@
 import colors from 'tailwindcss/colors'
 
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+      },
       colors: {
         // Semantic color aliases used in the app (Overview, etc.)
         primary: colors.indigo,
+        secondary: {
+          light: '#5378f1',
+          DEFAULT: '#000000',
+          red: '#e32a18',
+        },
+        // Neutral colors
+        neutral: {
+          gold: '#d4af37',
+          light: '#edf2f9',
+        },
         success: colors.emerald,
         warning: colors.amber,
         danger: colors.rose,

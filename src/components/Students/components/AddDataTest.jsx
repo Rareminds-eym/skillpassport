@@ -28,7 +28,6 @@ const AddDataTest = () => {
 
   // Test adding new education
   const testAddEducation = async () => {
-    console.log('🎓 Testing Add Education...');
     
     const currentEducation = studentData?.education || [];
     const newEducation = {
@@ -48,7 +47,6 @@ const AddDataTest = () => {
       const result = await updateEducation(updatedEducation);
       if (result.success) {
         setTestResults(prev => [...prev, '✅ Education added successfully']);
-        console.log('✅ Education saved to Supabase JSONB');
       } else {
         setTestResults(prev => [...prev, `❌ Education failed: ${result.error}`]);
       }
@@ -59,7 +57,6 @@ const AddDataTest = () => {
 
   // Test adding new training
   const testAddTraining = async () => {
-    console.log('📚 Testing Add Training...');
     
     const currentTraining = studentData?.training || [];
     const newTraining = {
@@ -78,7 +75,6 @@ const AddDataTest = () => {
       const result = await updateTraining(updatedTraining);
       if (result.success) {
         setTestResults(prev => [...prev, '✅ Training added successfully']);
-        console.log('✅ Training saved to Supabase JSONB');
       } else {
         setTestResults(prev => [...prev, `❌ Training failed: ${result.error}`]);
       }
@@ -89,7 +85,6 @@ const AddDataTest = () => {
 
   // Test adding new experience
   const testAddExperience = async () => {
-    console.log('💼 Testing Add Experience...');
     
     const currentExperience = studentData?.experience || [];
     const newExperience = {
@@ -110,7 +105,6 @@ const AddDataTest = () => {
       const result = await updateExperience(updatedExperience);
       if (result.success) {
         setTestResults(prev => [...prev, '✅ Experience added successfully']);
-        console.log('✅ Experience saved to Supabase JSONB');
       } else {
         setTestResults(prev => [...prev, `❌ Experience failed: ${result.error}`]);
       }
@@ -121,7 +115,6 @@ const AddDataTest = () => {
 
   // Test adding new technical skill
   const testAddTechnicalSkill = async () => {
-    console.log('⚡ Testing Add Technical Skill...');
     
     const currentSkills = studentData?.technicalSkills || [];
     const newSkill = {
@@ -140,7 +133,6 @@ const AddDataTest = () => {
       const result = await updateTechnicalSkills(updatedSkills);
       if (result.success) {
         setTestResults(prev => [...prev, '✅ Technical skill added successfully']);
-        console.log('✅ Technical skill saved to Supabase JSONB');
       } else {
         setTestResults(prev => [...prev, `❌ Technical skill failed: ${result.error}`]);
       }
@@ -151,7 +143,6 @@ const AddDataTest = () => {
 
   // Test adding new soft skill
   const testAddSoftSkill = async () => {
-    console.log('🤝 Testing Add Soft Skill...');
     
     const currentSoftSkills = studentData?.softSkills || [];
     const newSoftSkill = {
@@ -168,7 +159,6 @@ const AddDataTest = () => {
       const result = await updateSoftSkills(updatedSoftSkills);
       if (result.success) {
         setTestResults(prev => [...prev, '✅ Soft skill added successfully']);
-        console.log('✅ Soft skill saved to Supabase JSONB');
       } else {
         setTestResults(prev => [...prev, `❌ Soft skill failed: ${result.error}`]);
       }

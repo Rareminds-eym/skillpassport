@@ -16,10 +16,13 @@ import {
   PencilIcon,
   XMarkIcon,
   PhoneIcon,
-  EnvelopeIcon
+  EnvelopeIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 import { supabase } from '../../lib/supabaseClient';
 import { createInterview, sendReminder } from '../../services/interviewService';
+import { createNotification } from "../../services/notificationService"; // ✅ Import notification service
+import { useAuth } from "../../context/AuthContext"; // ✅ Import auth context
 
 // Define TypeScript interfaces
 interface Scorecard {
@@ -30,6 +33,16 @@ interface Scorecard {
   overall_rating: number | null;
   notes: string;
   recommendation: 'proceed' | 'maybe' | 'reject' | null;
+}
+
+interface Candidate {
+  id: string;
+  name: string;
+  email: string;
+  contact_number: string;
+  profile: any;
+  university?: string;
+  course?: string;
 }
 
 interface Interview {
@@ -131,7 +144,7 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
         status: 'completed',
         completed_date: new Date().toISOString()
       };
-      
+
       onSave(updatedInterview);
       onClose();
     } catch (error) {
@@ -147,7 +160,7 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
       scorecard.problem_solving,
       scorecard.cultural_fit
     ].filter(score => score !== null);
-    
+
     if (scores.length === 0) return null;
     return (scores.reduce((sum, score) => sum + score, 0) / scores.length).toFixed(2);
   };
@@ -160,7 +173,7 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
-        
+
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -189,12 +202,11 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
                     {[1, 2, 3, 4, 5].map(rating => (
                       <button
                         key={rating}
-                        onClick={() => setScorecard({...scorecard, [criteria.key]: rating})}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium border-2 ${
-                          scorecard[criteria.key] === rating
+                        onClick={() => setScorecard({ ...scorecard, [criteria.key]: rating })}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium border-2 ${scorecard[criteria.key] === rating
                             ? 'bg-primary-600 text-white border-primary-600'
                             : 'bg-white text-gray-600 border-gray-300 hover:border-primary-300'
-                        }`}
+                          }`}
                       >
                         {rating}
                       </button>
@@ -224,7 +236,7 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
               </label>
               <textarea
                 value={scorecard.notes}
-                onChange={(e) => setScorecard({...scorecard, notes: e.target.value})}
+                onChange={(e) => setScorecard({ ...scorecard, notes: e.target.value })}
                 rows={4}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
                 placeholder="Add detailed notes about the candidate's performance, strengths, areas for improvement..."
@@ -248,7 +260,7 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
                       name="recommendation"
                       value={rec.value}
                       checked={scorecard.recommendation === rec.value}
-                      onChange={(e) => setScorecard({...scorecard, recommendation: e.target.value})}
+                      onChange={(e) => setScorecard({ ...scorecard, recommendation: e.target.value })}
                       className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                     />
                     <span className={`ml-2 px-3 py-1 rounded-full text-sm font-medium border ${rec.color}`}>
@@ -282,8 +294,8 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
 
 const InterviewCard = ({ interview, onViewScorecard, onEditScorecard, onJoinMeeting, onSendReminder }) => {
   const isCompleted = interview.status === 'completed';
-  const hasScorecard = interview.scorecard?.overall_rating !== null;
-  
+  const hasScorecard = interview.scorecard?.overall_rating != null;
+
   const getCardColor = () => {
     if (interview.status === 'completed') {
       const recommendation = interview.scorecard?.recommendation;
@@ -310,7 +322,7 @@ const InterviewCard = ({ interview, onViewScorecard, onEditScorecard, onJoinMeet
   };
 
   const { date, time } = formatDateTime(interview.date);
-  
+
   return (
     <div className={`rounded-lg p-4 hover:shadow-md transition-shadow ${getCardColor()}`}>
       <div className="flex items-start justify-between mb-3">
@@ -381,7 +393,7 @@ const InterviewCard = ({ interview, onViewScorecard, onEditScorecard, onJoinMeet
               Join Meeting
             </button>
           )}
-          
+
           {isCompleted && hasScorecard ? (
             <button
               onClick={() => onViewScorecard(interview)}
@@ -399,7 +411,7 @@ const InterviewCard = ({ interview, onViewScorecard, onEditScorecard, onJoinMeet
               Add Scorecard
             </button>
           ) : null}
-          
+
           {!isCompleted && (
             <button
               onClick={() => onSendReminder(interview)}
@@ -423,15 +435,15 @@ const CalendarView = ({ interviews, selectedDate, onDateSelect }) => {
   const currentDate = new Date();
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  
+
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const startDate = new Date(firstDay);
   startDate.setDate(startDate.getDate() - firstDay.getDay());
-  
+
   const calendar = [];
   const current = new Date(startDate);
-  
+
   while (current <= lastDay || current.getDay() !== 0) {
     const week = [];
     for (let i = 0; i < 7; i++) {
@@ -440,7 +452,7 @@ const CalendarView = ({ interviews, selectedDate, onDateSelect }) => {
         const interviewDate = new Date(interview.date);
         return interviewDate.toDateString() === date.toDateString();
       });
-      
+
       week.push({
         date: new Date(date),
         interviews: dayInterviews,
@@ -448,11 +460,11 @@ const CalendarView = ({ interviews, selectedDate, onDateSelect }) => {
         isToday: date.toDateString() === new Date().toDateString(),
         isSelected: selectedDate && date.toDateString() === selectedDate.toDateString()
       });
-      
+
       current.setDate(current.getDate() + 1);
     }
     calendar.push(week);
-    
+
     if (current.getMonth() !== month && current.getDay() === 0) break;
   }
 
@@ -460,7 +472,7 @@ const CalendarView = ({ interviews, selectedDate, onDateSelect }) => {
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-  
+
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
@@ -470,7 +482,7 @@ const CalendarView = ({ interviews, selectedDate, onDateSelect }) => {
           {monthNames[month]} {year}
         </h3>
       </div>
-      
+
       <div className="grid grid-cols-7 gap-1 mb-2">
         {dayNames.map(day => (
           <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">
@@ -478,20 +490,17 @@ const CalendarView = ({ interviews, selectedDate, onDateSelect }) => {
           </div>
         ))}
       </div>
-      
+
       <div className="grid grid-cols-7 gap-1">
         {calendar.map((week, weekIndex) =>
           week.map((day, dayIndex) => (
             <button
               key={`${weekIndex}-${dayIndex}`}
               onClick={() => onDateSelect(day.date)}
-              className={`p-2 text-sm rounded-lg hover:bg-gray-50 ${
-                !day.isCurrentMonth ? 'text-gray-300' : 'text-gray-900'
-              } ${
-                day.isToday ? 'bg-primary-100 text-primary-900 font-semibold' : ''
-              } ${
-                day.isSelected ? 'bg-primary-600 text-white' : ''
-              }`}
+              className={`p-2 text-sm rounded-lg hover:bg-gray-50 ${!day.isCurrentMonth ? 'text-gray-300' : 'text-gray-900'
+                } ${day.isToday ? 'bg-primary-100 text-primary-900 font-semibold' : ''
+                } ${day.isSelected ? 'bg-primary-600 text-white' : ''
+                }`}
             >
               <div className="w-full">
                 <div className="text-center">{day.date.getDate()}</div>
@@ -509,16 +518,91 @@ const CalendarView = ({ interviews, selectedDate, onDateSelect }) => {
   );
 };
 
+const CandidateSearchDropdown = ({
+  candidates,
+  searchTerm,
+  onSearchChange,
+  onCandidateSelect,
+  isOpen,
+  onBlur,
+  onFocus
+}) => {
+  const filteredCandidates = candidates.filter(candidate =>
+    candidate.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          onFocus={onFocus}
+          placeholder="Search candidate by name..."
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+        />
+      </div>
+
+      {isOpen && searchTerm && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          {filteredCandidates.length > 0 ? (
+            filteredCandidates.map(candidate => (
+              <button
+                key={candidate.id}
+                onClick={() => onCandidateSelect(candidate)}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+              >
+                <div className="font-medium text-gray-900">{candidate.name}</div>
+                <div className="text-xs text-gray-500">
+                  {candidate.email} • {candidate.contact_number}
+                </div>
+                {candidate.course && (
+                  <div className="text-xs text-gray-400">{candidate.course}</div>
+                )}
+              </button>
+            ))
+          ) : (
+            <div className="px-4 py-2 text-sm text-gray-500">No candidates found</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Interviews = () => {
+  const { user } = useAuth(); // ✅ Get auth user
   const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [candidatesLoading, setCandidatesLoading] = useState(false);
+  const [candidatesLoaded, setCandidatesLoaded] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
   const [showScorecardModal, setShowScorecardModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
+  const [viewMode, setViewMode] = useState('list');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // Fetch interviews from Supabase
+  // ✅ Get recruiter ID from user or localStorage
+  const getRecruiterId = () => {
+    if (user?.id || user?.recruiter_id) {
+      return user.id || user.recruiter_id;
+    }
+
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const storedUser = JSON.parse(userStr);
+        return storedUser.id || storedUser.recruiter_id;
+      }
+    } catch (e) {
+    }
+
+    return null;
+  };
+
   const fetchInterviews = async () => {
     try {
       setLoading(true);
@@ -529,7 +613,6 @@ const Interviews = () => {
 
       if (error) throw error;
 
-      // Ensure scorecard is always an object
       const formattedData = data?.map(item => ({
         ...item,
         scorecard: item.scorecard || null
@@ -544,15 +627,71 @@ const Interviews = () => {
     }
   };
 
+  const fetchCandidates = async () => {
+    // Prevent duplicate fetches
+    if (candidatesLoaded || candidatesLoading) return;
+    
+    try {
+      setCandidatesLoading(true);
+      const { data, error } = await supabase
+        .from('students')
+        .select('*');
+
+      if (error) throw error;
+
+
+      const formattedCandidates = data?.map(candidate => {
+        const profile = typeof candidate.profile === 'string'
+          ? JSON.parse(candidate.profile)
+          : candidate.profile;
+
+        const candidateName = profile?.name || candidate.name || profile?.fullName || 'Unknown';
+
+        return {
+          id: candidate.id,
+          name: candidateName,
+          email: candidate.email || profile?.email || '',
+          contact_number: profile?.contact_number || profile?.phone || '',
+          profile: profile,
+          university: profile?.university,
+          course: profile?.course || (profile?.training && profile.training[0]?.course)
+        };
+      }) || [];
+
+      setCandidates(formattedCandidates);
+      setCandidatesLoaded(true);
+    } catch (error) {
+      console.error('Error fetching candidates:', error);
+    } finally {
+      setCandidatesLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchInterviews();
+    // ⚡ Candidates data only fetched when schedule modal opens - performance optimization
   }, []);
 
+  // ✅ Handle saving scorecard with notification
   const handleSaveScorecard = async (updatedInterview: Interview) => {
     try {
       setInterviews(prev => prev.map(interview =>
         interview.id === updatedInterview.id ? updatedInterview : interview
       ));
+
+      // ✅ Create notification when scorecard is completed
+      const recruiterId = getRecruiterId();
+      if (recruiterId) {
+        const recommendation = updatedInterview.scorecard?.recommendation || 'N/A';
+        const rating = updatedInterview.scorecard?.overall_rating || 0;
+
+        await createNotification(
+          recruiterId,
+          "interview_completed",
+          "Interview Scorecard Completed",
+          `Scorecard for ${updatedInterview.candidate_name} has been completed. Rating: ${rating}/5.0, Recommendation: ${recommendation}`
+        );
+      }
     } catch (error) {
       console.error('Error updating interview:', error);
     }
@@ -564,39 +703,53 @@ const Interviews = () => {
     }
   };
 
+  // ✅ Handle sending reminder with notification
   const handleSendReminder = async (interview: Interview) => {
     try {
-      // Send reminder via Edge Function
       const { data, error } = await sendReminder(interview.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Reminder error received:', error);
+        throw error;
+      }
 
-      // Update local state
       setInterviews(prev => prev.map(int =>
-        int.id === interview.id 
+        int.id === interview.id
           ? { ...int, reminders_sent: int.reminders_sent + 1 }
           : int
       ));
 
       alert(`Interview reminder sent successfully to ${interview.candidate_name}!`);
+
+      // ✅ Create notification for reminder sent
+      const recruiterId = getRecruiterId();
+      if (recruiterId) {
+        await createNotification(
+          recruiterId,
+          "interview_reminder",
+          "Interview Reminder Sent",
+          `Reminder sent to ${interview.candidate_name} for interview on ${new Date(interview.date).toLocaleDateString()}`
+        );
+      }
     } catch (error) {
       console.error('Error sending reminder:', error);
-      alert('Failed to send reminder. Please try again.');
+      const errorMessage = error?.message || error?.error?.message || 'Unknown error';
+      alert(`Failed to send reminder: ${errorMessage}\n\nCheck console for details.`);
     }
   };
 
-  const filteredInterviews = selectedDate 
+  const filteredInterviews = selectedDate
     ? interviews.filter(interview => {
-        const interviewDate = new Date(interview.date);
-        return interviewDate.toDateString() === selectedDate.toDateString();
-      })
+      const interviewDate = new Date(interview.date);
+      return interviewDate.toDateString() === selectedDate.toDateString();
+    })
     : interviews;
 
-  const upcomingInterviews = interviews.filter(interview => 
+  const upcomingInterviews = interviews.filter(interview =>
     new Date(interview.date) > new Date() && interview.status !== 'completed'
   );
 
-  const completedInterviews = interviews.filter(interview => 
+  const completedInterviews = interviews.filter(interview =>
     interview.status === 'completed'
   );
 
@@ -624,26 +777,24 @@ const Interviews = () => {
           <div className="flex rounded-lg border border-gray-300 p-1 bg-white">
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
-                viewMode === 'list' 
-                  ? 'bg-primary-600 text-white' 
+              className={`px-3 py-1 rounded-md text-sm font-medium ${viewMode === 'list'
+                  ? 'bg-primary-600 text-white'
                   : 'text-gray-700 hover:bg-gray-100'
-              }`}
+                }`}
             >
               List
             </button>
             <button
               onClick={() => setViewMode('calendar')}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
-                viewMode === 'calendar' 
-                  ? 'bg-primary-600 text-white' 
+              className={`px-3 py-1 rounded-md text-sm font-medium ${viewMode === 'calendar'
+                  ? 'bg-primary-600 text-white'
                   : 'text-gray-700 hover:bg-gray-100'
-              }`}
+                }`}
             >
               Calendar
             </button>
           </div>
-          <button 
+          <button
             onClick={() => setShowScheduleModal(true)}
             className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
           >
@@ -698,10 +849,10 @@ const Interviews = () => {
               <p className="text-2xl font-semibold text-gray-900">
                 {completedInterviews.filter(i => i.scorecard?.overall_rating).length > 0
                   ? (completedInterviews
-                      .filter(i => i.scorecard?.overall_rating)
-                      .reduce((sum, i) => sum + i.scorecard.overall_rating, 0) / 
+                    .filter(i => i.scorecard?.overall_rating)
+                    .reduce((sum, i) => sum + i.scorecard.overall_rating, 0) /
                     completedInterviews.filter(i => i.scorecard?.overall_rating).length
-                    ).toFixed(1)
+                  ).toFixed(1)
                   : '-'}
               </p>
             </div>
@@ -712,7 +863,7 @@ const Interviews = () => {
       {viewMode === 'calendar' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <CalendarView 
+            <CalendarView
               interviews={interviews}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
@@ -780,16 +931,31 @@ const Interviews = () => {
         onClose={() => setShowScheduleModal(false)}
         onSuccess={() => {
           setShowScheduleModal(false);
-          fetchInterviews(); // Refresh interviews list
+          fetchInterviews();
         }}
+        candidates={candidates}
+        onOpen={fetchCandidates}
+        candidatesLoading={candidatesLoading}
       />
     </div>
   );
 };
 
-const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
+const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen, candidatesLoading }) => {
+  const { user } = useAuth(); // ✅ Get auth user
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [candidateSearch, setCandidateSearch] = useState('');
+  const [showCandidateDropdown, setShowCandidateDropdown] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+
+  // ⚡ Lazy load candidates when modal opens
+  useEffect(() => {
+    if (isOpen && onOpen) {
+      onOpen();
+    }
+  }, [isOpen, onOpen]);
+
   const [formData, setFormData] = useState({
     candidate_name: '',
     candidate_email: '',
@@ -806,6 +972,53 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
     meeting_notes: ''
   });
 
+  // ✅ Get recruiter ID
+  const getRecruiterId = () => {
+    if (user?.id || user?.recruiter_id) {
+      return user.id || user.recruiter_id;
+    }
+
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const storedUser = JSON.parse(userStr);
+        return storedUser.id || storedUser.recruiter_id;
+      }
+    } catch (e) {
+    }
+
+    return null;
+  };
+
+  const handleCandidateSearch = (searchTerm) => {
+    setCandidateSearch(searchTerm);
+    setShowCandidateDropdown(true);
+
+    if (!searchTerm) {
+      setSelectedCandidate(null);
+      setFormData(prev => ({
+        ...prev,
+        candidate_name: '',
+        candidate_email: '',
+        candidate_phone: ''
+      }));
+    }
+  };
+
+  const handleCandidateSelect = (candidate) => {
+    setSelectedCandidate(candidate);
+    setCandidateSearch(candidate.name);
+    setShowCandidateDropdown(false);
+
+    setFormData(prev => ({
+      ...prev,
+      candidate_name: candidate.name,
+      candidate_email: candidate.email,
+      candidate_phone: candidate.contact_number
+    }));
+  };
+
+  // ✅ Handle scheduling with notification
   const handleSchedule = async () => {
     if (!formData.candidate_name || !formData.job_title || !formData.interviewer || !formData.date || !formData.time) {
       setError('Please fill in all required fields');
@@ -816,7 +1029,6 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
     setError(null);
 
     try {
-      // Combine date and time
       const interviewDateTime = new Date(`${formData.date}T${formData.time}`);
 
       const interviewData = {
@@ -843,8 +1055,20 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
       }
 
       alert(`Interview scheduled for ${formData.candidate_name}!`);
+
+      // ✅ Create notification for interview scheduled
+      const recruiterId = getRecruiterId();
+      if (recruiterId) {
+        await createNotification(
+          recruiterId,
+          "interview_scheduled",
+          "New Interview Scheduled",
+          `Interview scheduled with ${formData.candidate_name} for ${formData.job_title} on ${new Date(interviewDateTime).toLocaleDateString()} at ${new Date(interviewDateTime).toLocaleTimeString()}`
+        );
+      }
+
       onSuccess?.();
-      
+
       // Reset form
       setFormData({
         candidate_name: '',
@@ -861,6 +1085,8 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
         meeting_link: '',
         meeting_notes: ''
       });
+      setCandidateSearch('');
+      setSelectedCandidate(null);
     } catch (err) {
       console.error('Error scheduling interview:', err);
       setError(err.message);
@@ -871,7 +1097,6 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
 
   if (!isOpen) return null;
 
-  // Get tomorrow's date as minimum
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const minDate = tomorrow.toISOString().split('T')[0];
@@ -907,14 +1132,36 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Candidate Name <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={formData.candidate_name}
-                    onChange={(e) => setFormData({...formData, candidate_name: e.target.value})}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Jane Doe"
+                  <CandidateSearchDropdown
+                    candidates={candidates}
+                    searchTerm={candidateSearch}
+                    onSearchChange={handleCandidateSearch}
+                    onCandidateSelect={handleCandidateSelect}
+                    isOpen={showCandidateDropdown}
+                    onFocus={() => setShowCandidateDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowCandidateDropdown(false), 200)}
                   />
                 </div>
+
+                {selectedCandidate && (
+                  <div className="col-span-3 grid grid-cols-2 gap-4 p-3 bg-blue-50 rounded-md">
+                    <div className="flex items-center text-sm text-blue-700">
+                      <EnvelopeIcon className="h-4 w-4 mr-2" />
+                      <span>{formData.candidate_email}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-blue-700">
+                      <PhoneIcon className="h-4 w-4 mr-2" />
+                      <span>{formData.candidate_phone}</span>
+                    </div>
+                    {selectedCandidate.university && (
+                      <div className="col-span-2 text-xs text-blue-600">
+                        {selectedCandidate.university}
+                        {selectedCandidate.course && ` • ${selectedCandidate.course}`}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Email
@@ -922,7 +1169,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   <input
                     type="email"
                     value={formData.candidate_email}
-                    onChange={(e) => setFormData({...formData, candidate_email: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, candidate_email: e.target.value })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="jane@email.com"
                   />
@@ -934,7 +1181,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   <input
                     type="tel"
                     value={formData.candidate_phone}
-                    onChange={(e) => setFormData({...formData, candidate_phone: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, candidate_phone: e.target.value })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="+1234567890"
                   />
@@ -946,7 +1193,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   <input
                     type="text"
                     value={formData.job_title}
-                    onChange={(e) => setFormData({...formData, job_title: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="Software Engineer"
                   />
@@ -965,7 +1212,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   <input
                     type="text"
                     value={formData.interviewer}
-                    onChange={(e) => setFormData({...formData, interviewer: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, interviewer: e.target.value })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="John Smith"
                   />
@@ -977,7 +1224,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   <input
                     type="email"
                     value={formData.interviewer_email}
-                    onChange={(e) => setFormData({...formData, interviewer_email: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, interviewer_email: e.target.value })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="john@company.com"
                   />
@@ -996,7 +1243,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   <input
                     type="date"
                     value={formData.date}
-                    onChange={(e) => setFormData({...formData, date: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     min={minDate}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
@@ -1008,7 +1255,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   <input
                     type="time"
                     value={formData.time}
-                    onChange={(e) => setFormData({...formData, time: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
@@ -1018,7 +1265,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   </label>
                   <select
                     value={formData.duration}
-                    onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
+                    onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value={30}>30 minutes</option>
@@ -1034,7 +1281,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   </label>
                   <select
                     value={formData.type}
-                    onChange={(e) => setFormData({...formData, type: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="Technical">Technical</option>
@@ -1057,7 +1304,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   </label>
                   <select
                     value={formData.meeting_type}
-                    onChange={(e) => setFormData({...formData, meeting_type: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, meeting_type: e.target.value })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="meet">Google Meet</option>
@@ -1074,7 +1321,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   <input
                     type="url"
                     value={formData.meeting_link}
-                    onChange={(e) => setFormData({...formData, meeting_link: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="https://meet.google.com/abc-defg-hij"
                   />
@@ -1085,7 +1332,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess }) => {
                   </label>
                   <textarea
                     value={formData.meeting_notes}
-                    onChange={(e) => setFormData({...formData, meeting_notes: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, meeting_notes: e.target.value })}
                     rows={2}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="Any additional notes..."

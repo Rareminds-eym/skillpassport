@@ -16,8 +16,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-import FeatureCard from "./components/FeatureCard";
-import { getStudentByEmail } from "../../services/studentServiceProfile";
+import FeatureCard from "./components/ui/FeatureCard";
+import { loginStudent } from "../../services/studentAuthService";
 
 export default function LoginStudent() {
   const [email, setEmail] = useState("");
@@ -38,19 +38,38 @@ export default function LoginStudent() {
     setLoading(true);
 
     try {
-      // 🔍 Validate student email from backend
-      const result = await getStudentByEmail(email);
+      // Authenticate student with Supabase
+      const result = await loginStudent(email, password);
 
-      if (!result?.success || !result?.data) {
-        setError(
-          "No student account found with this email. Please check your email or contact support."
-        );
+      if (!result.success) {
+        if (result.isOtpSent) {
+          setError("");
+          setLoading(false);
+          alert("We’ve sent a secure login link to your email. Open it to finish signing in.");
+          return;
+        }
+        setError(result.error || "Login failed. Please check your credentials.");
         setLoading(false);
         return;
       }
 
-      // proceed with login
-      login({ name: result.data.profile.name, email, role: "student" });
+      // Store student data in context
+      const studentData = result.student;
+      login({ 
+        id: studentData.id,
+        user_id: studentData.user_id,
+        name: studentData.name || studentData.profile?.name || '',
+        email: studentData.email,
+        role: "student",
+        school_id: studentData.school_id,
+        university_college_id: studentData.university_college_id,
+        school: studentData.schools,
+        university_college: studentData.university_colleges,
+        approval_status: studentData.approval_status,
+        legacyAuth: result.isLegacy || false
+      });
+
+      // Navigate to dashboard
       navigate("/student/dashboard");
     } catch (err) {
       console.error("❌ Login error:", err);
@@ -204,7 +223,7 @@ export default function LoginStudent() {
               Your Skills. Your Passport. Your Future.
             </h2>
             <p className="mt-4 max-w-xl">
-              Unlock opportunities with your verified Skill Passport.
+              Unlock Opportunities With Your Verified Skill Passport.
             </p>
           </div>
 
@@ -215,7 +234,7 @@ export default function LoginStudent() {
               animate={{ y: [0, -10, 0] }}
               transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
             >
-              <FeatureCard title="Showcase verified skills" Icon={BadgeCheck} />
+              <FeatureCard title="Showcase Verified Skills" Icon={BadgeCheck} />
             </motion.div>
 
             <motion.div
@@ -228,7 +247,7 @@ export default function LoginStudent() {
               }}
             >
               <FeatureCard
-                title="Share with recruiters worldwide"
+                title="Share With Recruiters Worldwide"
                 Icon={Share2}
               />
             </motion.div>
@@ -238,7 +257,7 @@ export default function LoginStudent() {
               animate={{ y: [0, -8, 0] }}
               transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
             >
-              <FeatureCard title="Track employability score" Icon={Activity} />
+              <FeatureCard title="Track Employability Score" Icon={Activity} />
             </motion.div>
           </div>
         </div>

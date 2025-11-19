@@ -1,20 +1,28 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
 import Header from '../components/Recruiter/components/Header';
 import Sidebar from '../components/Recruiter/components/Sidebar';
 import MobileTabBar from '../components/Recruiter/components/MobileTabBar';
 import CandidateProfileDrawer from '../components/Recruiter/components/CandidateProfileDrawer';
+import FloatingRecruiterAIButton from '../components/FloatingRecruiterAIButton';
 import { useResponsive } from '../hooks/useresponsive';
 import { Candidate } from '../types/recruiter';
+import { useUnreadMessagesCount } from '../hooks/useUnreadMessagesCount';
 
 const RecruiterLayout = () => {
   const { isMobile } = useResponsive();
+  const { user } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [showCandidateDrawer, setShowCandidateDrawer] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const navigate = useNavigate();
+  
+  // Get unread messages count for sidebar badge
+  const { unreadCount } = useUnreadMessagesCount(user?.id);
 
   const handleMenuToggle = () => {
     setShowMobileMenu(!showMobileMenu);
@@ -35,9 +43,10 @@ const RecruiterLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <Header 
+    <GlobalPresenceProvider userType="recruiter">
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <Header
         onMenuToggle={handleMenuToggle} 
         showMobileMenu={showMobileMenu}
       />
@@ -48,6 +57,7 @@ const RecruiterLayout = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           showMobileMenu={showMobileMenu}
+          unreadMessagesCount={unreadCount}
         />
 
         {/* Main Content */}
@@ -79,7 +89,11 @@ const RecruiterLayout = () => {
           onClick={() => setShowMobileMenu(false)}
         ></div>
       )}
-    </div>
+      
+      {/* Floating AI Button */}
+      <FloatingRecruiterAIButton />
+      </div>
+    </GlobalPresenceProvider>
   );
 };
 

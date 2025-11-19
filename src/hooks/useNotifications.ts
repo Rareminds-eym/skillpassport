@@ -2,8 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-// Notification types used across the UI
 export type NotificationType =
+  // Recruiter notifications
   | "offer_accepted"
   | "offer_declined"
   | "offer_created"
@@ -17,13 +17,23 @@ export type NotificationType =
   | "candidate_shortlisted"
   | "candidate_rejected"
   | "new_application"
+  // Educator notifications
+  | "student_verification_required"
+  | "assignment_submitted"
+  | "class_activity_pending"
+  | "student_achievement"
+  | "new_student_enrolled"
+  | "attendance_reminder"
+  // Admin notifications
+  | "approval_required"
+  | "system_alert"
+  // General
   | "system_maintenance"
   | string;
 
 export type Notification = {
   id: string;
-  recruiter_id: string; // UUID
-  actor_id?: string | null;
+  recipient_id: string;
   type: NotificationType;
   title: string;
   message: string;
@@ -31,71 +41,59 @@ export type Notification = {
   created_at: string;
 };
 
-// ✅ Helper to validate UUID
+// ✅ Validate UUID format
 function isUUID(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-    value
-  );
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
-// 🔹 Resolve recruiterId (UUID or email → UUID)
-async function resolveRecruiterId(identifier: string): Promise<string | null> {
+// ✅ Resolve user ID from email or UUID
+async function resolveUserId(identifier: string): Promise<string | null> {
   if (!identifier) return null;
   if (isUUID(identifier)) return identifier;
 
-  const { data, error } = await supabase
-    .from("recruiters")
-    .select("id")
-    .eq("email", identifier)
+  // Try educators first
+  const { data: educatorData } = await supabase
+    .from("school_educators")
+    .select("user_id")
+    .ilike("email", identifier)
     .maybeSingle();
 
-  if (error) {
-    console.error("Error resolving recruiter:", error);
-    return null;
-  }
-  return data?.id ?? null;
+  if (educatorData?.user_id) return educatorData.user_id;
+
+  // Try students
+  const { data: studentData } = await supabase
+    .from("students")
+    .select("user_id")
+    .ilike("email", identifier)
+    .maybeSingle();
+
+  if (studentData?.user_id) return studentData.user_id;
+
+  // Try recruiters
+  const { data: recruiter } = await supabase
+    .from("recruiters")
+    .select("user_id")
+    .eq("email", identifier)
+    .maybeSingle();
+  if (recruiter?.user_id) return recruiter.user_id;
+
+  // Try users (admins)
+  const { data: userData } = await supabase
+    .from("users")
+    .select("id")
+    .ilike("email", identifier)
+    .maybeSingle();
+
+  return userData?.id ?? null;
 }
 
-// 🔹 Helper to create a new notification
-export const createNotification = async (
-  recruiterIdentifier: string,
-  type: NotificationType,
-  title: string,
-  message: string
-) => {
-  try {
-    const recruiterId = await resolveRecruiterId(recruiterIdentifier);
-    if (!recruiterId) return { success: false, error: "Recruiter not found" };
-
-    const { data, error } = await supabase
-      .from("notifications")
-      .insert([
-        {
-          recruiter_id: recruiterId,
-          type,
-          title,
-          message,
-          read: false,
-          created_at: new Date().toISOString(),
-        },
-      ])
-      .select();
-
-    if (error) throw error;
-    return { success: true, data };
-  } catch (err: any) {
-    console.error("Error creating notification:", err);
-    return { success: false, error: err.message };
-  }
-};
-
-// Hook return shape
 type UseNotificationsReturn = {
   items: Notification[];
   unreadCount: number;
   loading: boolean;
   error: string | null;
   hasMore: boolean;
+  connectionStatus: string;
   loadMore: () => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
@@ -104,39 +102,38 @@ type UseNotificationsReturn = {
 };
 
 export function useNotifications(
-  recruiterIdentifier?: string | null
+  userIdentifier?: string | null
 ): UseNotificationsReturn {
   const PAGE_SIZE = 20;
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
-  const [resolvedRecruiterId, setResolvedRecruiterId] = useState<string | null>(
-    null
-  );
+  const [userId, setUserId] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState("disconnected");
 
   const lastCursorRef = useRef<string | null>(null);
   const channelRef = useRef<any | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 🔹 Resolve recruiter UUID
+  // ✅ Step 1: Resolve user ID from email
   useEffect(() => {
     const resolve = async () => {
-      if (!recruiterIdentifier) {
-        setResolvedRecruiterId(null);
+      if (!userIdentifier) {
+        setUserId(null);
         setItems([]);
         setLoading(false);
         return;
       }
-      const uuid = await resolveRecruiterId(recruiterIdentifier);
-      setResolvedRecruiterId(uuid);
+      const id = await resolveUserId(userIdentifier);
+      setUserId(id);
     };
     resolve();
-  }, [recruiterIdentifier]);
+  }, [userIdentifier]);
 
-  // 🔹 Fetch notifications
+  // ✅ Step 2: Fetch notifications
   const fetchNotifications = async (reset = true) => {
-    if (!resolvedRecruiterId) return;
-
+    if (!userId) return;
     try {
       setLoading(true);
       setError(null);
@@ -144,7 +141,7 @@ export function useNotifications(
       let query = supabase
         .from("notifications")
         .select("*")
-        .eq("recruiter_id", resolvedRecruiterId)
+        .eq("recipient_id", userId)
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
 
@@ -152,124 +149,129 @@ export function useNotifications(
         query = query.lt("created_at", lastCursorRef.current);
       }
 
-      const { data, error: fetchErr } = await query;
-      if (fetchErr) throw fetchErr;
+      const { data, error } = await query;
+      if (error) throw error;
 
-      const fetched = data ?? [];
-      setItems((prev) => (reset ? fetched : [...prev, ...fetched]));
-      setHasMore(fetched.length === PAGE_SIZE);
-      lastCursorRef.current =
-        fetched.length > 0
-          ? fetched[fetched.length - 1].created_at
-          : lastCursorRef.current;
+      if (reset) setItems(data || []);
+      else setItems((prev) => [...prev, ...(data || [])]);
+
+      setHasMore((data?.length ?? 0) === PAGE_SIZE);
+      if (data && data.length > 0) {
+        lastCursorRef.current = data[data.length - 1].created_at;
+      }
     } catch (err: any) {
-      console.error("Error fetching notifications:", err);
-      setError(err?.message ?? "Failed to load notifications");
+      setError(err.message || "Failed to fetch notifications");
     } finally {
       setLoading(false);
     }
   };
 
-  // Load initial
+  // ✅ Step 3: Setup realtime updates
   useEffect(() => {
-    if (resolvedRecruiterId) {
-      fetchNotifications(true);
-    }
-  }, [resolvedRecruiterId]);
+    if (!userId) return;
+    let isSubscribed = true;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
-  // 🔹 Realtime subscription
-  useEffect(() => {
-    if (!resolvedRecruiterId) return;
+    const setupSubscription = () => {
+      if (!isSubscribed) return;
 
-    // cleanup old
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-
-    const channel = supabase
-      .channel(`notifications-${resolvedRecruiterId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications" },
-        (payload) => {
-          const newRow = payload.new as Notification;
-          const oldRow = payload.old as Notification;
-
-          // ✅ Only handle rows for this recruiter
-          if (
-            (newRow && newRow.recruiter_id === resolvedRecruiterId) ||
-            (oldRow && oldRow.recruiter_id === resolvedRecruiterId)
-          ) {
-            if (payload.eventType === "INSERT" && newRow) {
-              setItems((prev) =>
-                prev.some((n) => n.id === newRow.id) ? prev : [newRow, ...prev]
-              );
-            }
-            if (payload.eventType === "UPDATE" && newRow) {
-              setItems((prev) =>
-                prev.map((n) => (n.id === newRow.id ? newRow : n))
-              );
-            }
-            if (payload.eventType === "DELETE" && oldRow) {
-              setItems((prev) => prev.filter((n) => n.id !== oldRow.id));
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-
-    return () => {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+
+      const channel = supabase
+        .channel(`notifications-${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `recipient_id=eq.${userId}`,
+          },
+          (payload) => {
+            const row = payload.new as Notification;
+
+            if (payload.eventType === "INSERT") {
+              setItems((prev) => [row, ...prev]);
+            } else if (payload.eventType === "UPDATE") {
+              setItems((prev) =>
+                prev.map((n) => (n.id === row.id ? row : n))
+              );
+            } else if (payload.eventType === "DELETE") {
+              const oldRow = payload.old as Notification;
+              setItems((prev) => prev.filter((n) => n.id !== oldRow.id));
+            }
+          }
+        )
+        .subscribe((status) => {
+          setConnectionStatus(status);
+
+          if (status === "CLOSED" || status === "CHANNEL_ERROR") {
+            if (isSubscribed && retryCount < MAX_RETRIES) {
+              retryCount++;
+              reconnectTimeoutRef.current = setTimeout(() => {
+                setupSubscription();
+              }, 2000 * retryCount);
+            }
+          } else if (status === "SUBSCRIBED") {
+            retryCount = 0;
+          }
+        });
+
+      channelRef.current = channel;
     };
-  }, [resolvedRecruiterId]);
 
-  const loadMore = async () => fetchNotifications(false);
+    setupSubscription();
 
+    return () => {
+      isSubscribed = false;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      setConnectionStatus("disconnected");
+    };
+  }, [userId]);
+
+  // ✅ Auto refresh when userId changes
+  useEffect(() => {
+    if (userId) fetchNotifications(true);
+  }, [userId]);
+
+  // ✅ Actions
   const markRead = async (id: string) => {
+    await supabase.from("notifications").update({ read: true }).eq("id", id);
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-    try {
-      await supabase.from("notifications").update({ read: true }).eq("id", id);
-    } catch (err) {
-      console.error("markRead error:", err);
-    }
   };
 
   const markAllRead = async () => {
-    if (!resolvedRecruiterId) return;
+    await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("recipient_id", userId);
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-    try {
-      await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("recruiter_id", resolvedRecruiterId)
-        .eq("read", false);
-    } catch (err) {
-      console.error("markAllRead error:", err);
-    }
   };
 
   const remove = async (id: string) => {
+    await supabase.from("notifications").delete().eq("id", id);
     setItems((prev) => prev.filter((n) => n.id !== id));
-    try {
-      await supabase.from("notifications").delete().eq("id", id);
-    } catch (err) {
-      console.error("remove error:", err);
-    }
   };
 
-  const refresh = async () => {
-    if (resolvedRecruiterId) {
-      await fetchNotifications(true);
-    }
-  };
+  const loadMore = async () => fetchNotifications(false);
+  const refresh = async () => fetchNotifications(true);
 
-  const unreadCount = items.filter((i) => !i.read).length;
+  const unreadCount = items.filter((n) => !n.read).length;
 
   return {
     items,
@@ -277,6 +279,7 @@ export function useNotifications(
     loading,
     error,
     hasMore,
+    connectionStatus,
     loadMore,
     markRead,
     markAllRead,
@@ -284,5 +287,3 @@ export function useNotifications(
     refresh,
   };
 }
-
-export default useNotifications;

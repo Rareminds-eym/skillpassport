@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   UsersIcon,
   BookmarkIcon,
@@ -14,6 +15,7 @@ import {
 import { getDashboardData } from '../../services/dashboardService';
 import ActivityFeed from '../../components/ActivityFeed';
 import { useRealtimeActivities } from '../../hooks/useRealtimeActivities';
+import { trackSearchUsage } from '../../services/savedSearchesService';
 
 const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {
   const colorClasses = {
@@ -53,7 +55,7 @@ const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {
   );
 };
 
-const AlertCard = ({ type, title, message, time, urgent = false }) => {
+const AlertCard = ({ type, title, message, time, urgent = false, action, onActionClick }) => {
   const getIcon = () => {
     switch (type) {
       case 'warning':
@@ -76,7 +78,17 @@ const AlertCard = ({ type, title, message, time, urgent = false }) => {
         <div className="ml-3 flex-1">
           <p className="text-sm font-medium text-gray-900">{title}</p>
           <p className="mt-1 text-sm text-gray-600">{message}</p>
-          <p className="mt-2 text-xs text-gray-500">{time}</p>
+          <div className="mt-2 flex items-center justify-between">
+            <p className="text-xs text-gray-500">{time}</p>
+            {action && onActionClick && (
+              <button
+                onClick={onActionClick}
+                className="text-xs font-medium text-primary-600 hover:text-primary-700"
+              >
+                {action}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -84,6 +96,7 @@ const AlertCard = ({ type, title, message, time, urgent = false }) => {
 };
 
 const Overview = () => {
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -94,23 +107,89 @@ const Overview = () => {
   
   // Show only 4 activities by default, all when expanded
   const displayedActivities = isActivityExpanded ? realtimeActivities : realtimeActivities.slice(0, 4);
+  
+  // Handle quick search click
+  const handleQuickSearchClick = async (search) => {
+    try {
+      // Track search usage if it has an ID
+      if (search.id && !search.id.startsWith('default-')) {
+        await trackSearchUsage(search.id);
+      }
+      
+      // Navigate to talent pool with search criteria
+      const searchCriteria = search.search_criteria || {};
+      const params = new URLSearchParams();
+      
+      if (searchCriteria.query) {
+        params.append('q', searchCriteria.query);
+      }
+      if (searchCriteria.skills && searchCriteria.skills.length > 0) {
+        params.append('skills', searchCriteria.skills.join(','));
+      }
+      if (searchCriteria.location) {
+        params.append('location', searchCriteria.location);
+      }
+      if (searchCriteria.experience) {
+        params.append('experience', searchCriteria.experience);
+      }
+      
+      navigate(`/recruitment/talent-pool?${params.toString()}`);
+    } catch (error) {
+      console.error('Error handling quick search:', error);
+      // Navigate anyway even if tracking fails
+      navigate('/recruitment/talent-pool');
+    }
+  };
+  
+  // Handle alert action clicks
+  const handleAlertAction = (alert) => {
+    // Route based on alert source and ID
+    const alertId = alert.id || alert;
+    const source = alert.source;
+    
+    // Handle by source - navigate to basic pages without advanced filters
+    if (source === 'talent_pool' || alertId.startsWith('talent-pool')) {
+      navigate('/recruitment/talent-pool');
+    } else if (source === 'shortlists' || alertId.startsWith('shortlist')) {
+      navigate('/recruitment/shortlists');
+    } else if (source === 'interviews' || alertId.startsWith('interview')) {
+      navigate('/recruitment/interviews');
+    } else if (source === 'offers' || alertId.startsWith('offer')) {
+      navigate('/recruitment/offers-decisions');
+    } else if (source === 'pipelines' || alertId.startsWith('pipeline')) {
+      navigate('/recruitment/pipelines');
+    } else {
+      // Fallback for legacy alert IDs - navigate to basic pages
+      switch (alertId) {
+        case 'verification-pending':
+          navigate('/recruitment/talent-pool');
+          break;
+        case 'expiring-offers':
+          navigate('/recruitment/offers-decisions');
+          break;
+        case 'positive-feedback':
+          navigate('/recruitment/interviews');
+          break;
+        case 'upcoming-interviews':
+          navigate('/recruitment/interviews');
+          break;
+        default:
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
       setError(null);
-      console.log('🔄 Overview: Starting dashboard data fetch...');
       
       try {
         const result = await getDashboardData();
-        console.log('📊 Overview: Dashboard data result:', result);
         
         if (result.data) {
-          console.log('✅ Overview: Successfully got dashboard data, setting state...');
           setDashboardData(result.data);
           setError(null);
         } else {
-          console.log('⚠️ Overview: No data returned, using fallback');
           setError(result.error || 'No data returned from service');
         }
       } catch (err) {
@@ -118,7 +197,6 @@ const Overview = () => {
         setError(err);
       } finally {
         setLoading(false);
-        console.log('🏁 Overview: Fetch complete');
       }
     };
 
@@ -213,57 +291,12 @@ const Overview = () => {
     savedSearches: []
   });
   const alerts = data.alerts || [];
-  
-  // Debug logging
-  console.log('📊 Overview render state:', {
-    loading,
-    error: error?.message || error,
-    hasDashboardData: !!dashboardData,
-    dataSource: dashboardData ? 'database' : (error ? 'fallback' : 'empty'),
-    activityCount: data.recentActivity?.length || 0
-  });
-
-  const handleRefresh = async () => {
-    setLoading(true);
-    try {
-      const result = await getDashboardData();
-      if (result.data) {
-        setDashboardData(result.data);
-        setError(null);
-      } else {
-        setError(result.error);
-      }
-    } catch (err) {
-      setError(err);
-      console.error('Failed to refresh dashboard data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={handleRefresh}
-            className="text-sm text-primary-600 hover:text-primary-700 font-medium px-3 py-1 border border-primary-200 rounded-md hover:bg-primary-50"
-            disabled={loading}
-          >
-            {loading ? '🔄 Refreshing...' : '🔄 Refresh Data'}
-          </button>
-          {error && (
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-red-600">Database connection issue - check console</span>
-            </div>
-          )}
-          {dashboardData && (
-            <span className="text-sm text-green-600">✅ Live Database Data</span>
-          )}
-          <p className="text-sm text-gray-500">What needs your attention in 30 seconds</p>
-        </div>
       </div>
 
       {/* KPI Cards */}
@@ -337,7 +370,12 @@ const Overview = () => {
             </div>
             <div className="p-6 space-y-4">
               {alerts.map((alert) => (
-                <AlertCard key={alert.id} {...alert} />
+                <AlertCard 
+                  key={alert.id} 
+                  {...alert}
+                  action="View Details"
+                  onActionClick={() => handleAlertAction(alert)}
+                />
               ))}
             </div>
           </div>
@@ -349,14 +387,22 @@ const Overview = () => {
             </div>
             <div className="p-6">
               <div className="flex flex-wrap gap-2">
-                {(data.savedSearches || []).map((search, index) => (
-                  <button
-                    key={index}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200"
-                  >
-                    {search}
-                  </button>
-                ))}
+                {(data.savedSearches || []).map((search, index) => {
+                  const searchName = typeof search === 'string' ? search : search.name;
+                  const searchObj = typeof search === 'string' 
+                    ? { id: `search-${index}`, name: search, search_criteria: { query: search } }
+                    : search;
+                  
+                  return (
+                    <button
+                      key={searchObj.id || index}
+                      onClick={() => handleQuickSearchClick(searchObj)}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200 transition-colors cursor-pointer"
+                    >
+                      {searchName}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

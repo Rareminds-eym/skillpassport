@@ -22,20 +22,28 @@ import {
   SkeletonChart,
   EmptyState,
   ExportButton,
-  RefreshButton,
   InfoIcon,
   DrillDownModal,
   SectionHeaderWithActions
 } from '../../components/Recruiter/components/AnalyticsComponents';
 import { TrendLineChart, AreaChart, ColumnChart, BarChart, ProgressRing, Sparkline as AdvancedSparkline } from '../../components/Recruiter/components/AdvancedCharts';
 import { exportSectionToCSV, exportComprehensiveAnalytics } from '../../utils/exportUtils';
-import { getDataForPeriod, getTrendLabels, getPeriodDisplayName } from '../../utils/mockDataGenerator';
+import { getDataForPeriod, getPeriodDisplayName } from '../../utils/mockDataGenerator';
 
 // Phase 1: Import new components
 import AdvancedFilters from '../../components/Recruiter/components/AdvancedFilters';
 import DateRangePicker from '../../components/Recruiter/components/DateRangePicker';
 import ChartDownloadButton from '../../components/ChartDownloadButton';
 import { AnalyticsFilters } from '../../types/recruiter';
+
+// React Query Hooks
+import { useRecruitmentFunnel } from '../../hooks/useRecruitmentFunnel';
+import { useAnalyticsKPIs } from '../../hooks/useAnalyticsKPIs';
+import { useCoursePerformance } from '../../hooks/useCoursePerformance';
+import { useDiversityData } from '../../hooks/useDiversityData';
+import { useSpeedAnalytics } from '../../hooks/useSpeedAnalytics';
+import DiversityExportModal from '../../components/Recruiter/modals/DiversityExportModal';
+import type { FunnelRangePreset } from '../../services/analyticsService';
 
 // Enhanced KPI Card with trend indicator
 interface KpiCardProps {
@@ -51,6 +59,7 @@ interface KpiCardProps {
 const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon: Icon, iconColor, iconBg, trend, trendLabel }) => {
   const isPositive = trend && trend > 0;
   const isNegative = trend && trend < 0;
+  const showTrend = trend !== undefined && trend !== 0;
   
   return (
     <div className="group bg-white rounded-xl border border-gray-200/60 p-5 hover:shadow-lg hover:border-gray-300 transition-all duration-200 relative">
@@ -58,7 +67,7 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon: Icon, iconColor, 
         <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center shadow-sm`}>
           <Icon className={`h-6 w-6 ${iconColor}`} />
         </div>
-        {trend !== undefined && (
+        {showTrend && (
           <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg ${
             isPositive ? 'bg-green-50 text-green-700' : isNegative ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'
           }`}>
@@ -126,13 +135,13 @@ const Analytics: React.FC = () => {
     (searchParams.get('range') as any) || '30d'
   );
   const [loading, setLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(new Date());
-  const [drillDownModal, setDrillDownModal] = useState<{ isOpen: boolean; title: string; data: any }>(
-    { isOpen: false, title: '', data: null }
-  );
+  const [drillDownModal, setDrillDownModal] = useState<{ isOpen: boolean; title: string; data: any }>({
+    isOpen: false, title: '', data: null
+  });
   const [chartType, setChartType] = useState<'line' | 'area' | 'column'>(
     (searchParams.get('chart') as any) || 'line'
   );
+  const [diversityExportModalOpen, setDiversityExportModalOpen] = useState(false);
 
   // Phase 1: Advanced Filters State
   const [filters, setFilters] = useState<AnalyticsFilters>({
@@ -149,149 +158,61 @@ const Analytics: React.FC = () => {
     recruiters: []
   });
 
-  // Get dynamic data based on selected period and filters
+  // Get dynamic data based on selected period and filters (for sections other than funnel)
   const periodData = useMemo(() => {
     const baseData = getDataForPeriod(range === 'custom' ? '30d' : range);
-    
-    // Apply filters to the data
-    const hasActiveFilters = 
-      filters.departments.length > 0 ||
-      filters.jobLevels.length > 0 ||
-      filters.sources.length > 0 ||
-      filters.skills.length > 0 ||
-      filters.locations.length > 0 ||
-      filters.recruiters.length > 0;
-    
-    if (!hasActiveFilters) {
-      return baseData;
-    }
-    
-    // Calculate filter reduction factor (simulate filtered data)
-    let reductionFactor = 1.0;
-    
-    // Each active filter category reduces the dataset
-    if (filters.departments.length > 0) {
-      reductionFactor *= (filters.departments.length / 6); // 6 total departments
-    }
-    if (filters.jobLevels.length > 0) {
-      reductionFactor *= (filters.jobLevels.length / 5); // 5 total levels
-    }
-    if (filters.sources.length > 0) {
-      reductionFactor *= (filters.sources.length / 7); // 7 total sources
-    }
-    if (filters.locations.length > 0) {
-      reductionFactor *= (filters.locations.length / 7); // 7 total locations
-    }
-    if (filters.skills.length > 0) {
-      reductionFactor *= (filters.skills.length / 10); // 10 total skills
-    }
-    if (filters.recruiters.length > 0) {
-      reductionFactor *= (filters.recruiters.length / 5); // 5 total recruiters
-    }
-    
-    // Ensure minimum reduction factor
-    reductionFactor = Math.max(0.1, Math.min(1.0, reductionFactor));
-    
-    // Apply reduction to funnel data
-    const filteredFunnel = {
-      sourced: Math.round(baseData.funnel.sourced * reductionFactor),
-      screened: Math.round(baseData.funnel.screened * reductionFactor),
-      interviewed: Math.round(baseData.funnel.interviewed * reductionFactor),
-      offered: Math.round(baseData.funnel.offered * reductionFactor),
-      hired: Math.round(baseData.funnel.hired * reductionFactor)
-    };
-    
-    // Filter geography data based on location filters
-    let filteredLocations = baseData.geography.locations;
-    if (filters.locations.length > 0) {
-      filteredLocations = baseData.geography.locations
-        .filter(loc => filters.locations.includes(loc.city))
-        .map(loc => ({
-          ...loc,
-          count: Math.round(loc.count * reductionFactor)
-        }));
-      
-      // Recalculate percentages
-      const total = filteredLocations.reduce((sum, loc) => sum + loc.count, 0);
-      filteredLocations = filteredLocations.map(loc => ({
-        ...loc,
-        percentage: total > 0 ? Math.round((loc.count / total) * 100) : 0
-      }));
-    } else {
-      filteredLocations = filteredLocations.map(loc => ({
-        ...loc,
-        count: Math.round(loc.count * reductionFactor)
-      }));
-    }
-    
-    // Apply reduction to colleges
-    const filteredColleges = baseData.geography.colleges.map(college => ({
-      ...college,
-      count: Math.round(college.count * reductionFactor)
-    }));
-    
-    // Filter attribution data based on sources
-    let filteredHackathons = baseData.attribution.hackathons;
-    let filteredCourses = baseData.attribution.courses;
-    
-    if (filters.sources.length > 0) {
-      if (filters.sources.includes('Hackathon')) {
-        filteredHackathons = filteredHackathons.map(h => ({
-          ...h,
-          applications: Math.round(h.applications * reductionFactor),
-          hires: Math.round(h.hires * reductionFactor)
-        }));
-      } else {
-        filteredHackathons = [];
-      }
-      
-      if (filters.sources.includes('Course Program')) {
-        filteredCourses = filteredCourses.map(c => ({
-          ...c,
-          applications: Math.round(c.applications * reductionFactor),
-          hires: Math.round(c.hires * reductionFactor)
-        }));
-      } else {
-        filteredCourses = [];
-      }
-    } else {
-      filteredHackathons = filteredHackathons.map(h => ({
-        ...h,
-        applications: Math.round(h.applications * reductionFactor),
-        hires: Math.round(h.hires * reductionFactor)
-      }));
-      filteredCourses = filteredCourses.map(c => ({
-        ...c,
-        applications: Math.round(c.applications * reductionFactor),
-        hires: Math.round(c.hires * reductionFactor)
-      }));
-    }
-    
-    // Apply reduction to trends
-    const filteredTrends = {
-      hires: baseData.trends.hires.map(v => Math.round(v * reductionFactor)),
-      applications: baseData.trends.applications.map(v => Math.round(v * reductionFactor)),
-      timeToHire: baseData.trends.timeToHire // Speed metrics don't change with filters
-    };
-    
-    return {
-      funnel: filteredFunnel,
-      speedMetrics: baseData.speedMetrics, // Speed metrics remain consistent
-      qualityMetrics: baseData.qualityMetrics, // Quality metrics remain consistent
-      geography: {
-        locations: filteredLocations,
-        colleges: filteredColleges
-      },
-      attribution: {
-        hackathons: filteredHackathons,
-        courses: filteredCourses
-      },
-      trends: filteredTrends
-    };
-  }, [range, filters]);
+    // NOTE: Keeping mock transformations for non-funnel sections to avoid regressions.
+    return baseData;
+  }, [range]);
   
-  const trendLabels = useMemo(() => getTrendLabels(range === 'custom' ? '30d' : range), [range]);
   const periodName = useMemo(() => getPeriodDisplayName(range === 'custom' ? '30d' : range), [range]);
+
+  // Live Funnel from DB via React Query + Realtime
+  const funnelPreset = (range as FunnelRangePreset) || '30d';
+  const { data: liveFunnel } = useRecruitmentFunnel({
+    preset: funnelPreset,
+    startDate: filters.dateRange.startDate || undefined,
+    endDate: filters.dateRange.endDate || undefined,
+  });
+
+  // Live KPI Metrics from DB
+  const { data: kpiMetrics, isLoading: kpiLoading } = useAnalyticsKPIs({
+    preset: funnelPreset,
+    startDate: filters.dateRange.startDate || undefined,
+    endDate: filters.dateRange.endDate || undefined,
+  });
+
+  // Live Course Performance from DB
+  const { data: coursePerformance, isLoading: coursesLoading } = useCoursePerformance({
+    preset: funnelPreset,
+    startDate: filters.dateRange.startDate || undefined,
+    endDate: filters.dateRange.endDate || undefined,
+    limit: 4,
+  });
+
+  // Optimized Diversity Data (Geographic + Colleges) with shared WebSocket
+  const diversityData = useDiversityData({
+    preset: funnelPreset,
+    startDate: filters.dateRange.startDate || undefined,
+    endDate: filters.dateRange.endDate || undefined,
+    geoLimit: 4,
+    collegesLimit: 4,
+  });
+
+  // Destructure for easier access
+  const geographicData = diversityData.geographic.data;
+  const geoLoading = diversityData.geographic.isLoading;
+  const topColleges = diversityData.colleges.data;
+  const collegesLoading = diversityData.colleges.isLoading;
+
+  // Live Speed Analytics from DB
+  const { data: speedData, isLoading: speedLoading } = useSpeedAnalytics({
+    preset: funnelPreset,
+    startDate: filters.dateRange.startDate || undefined,
+    endDate: filters.dateRange.endDate || undefined,
+  });
+
+  const trendLabels = liveFunnel?.trendLabels || [];
 
   // Update URL when filters change
   useEffect(() => {
@@ -299,15 +220,6 @@ const Analytics: React.FC = () => {
     setSearchParams(params);
   }, [range, chartType]);
 
-  // Refresh data function
-  const handleRefresh = () => {
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLastUpdated(new Date());
-      setLoading(false);
-    }, 1000);
-  };
 
   // Drill-down handlers
   const handleDrillDown = (title: string, data: any) => {
@@ -318,7 +230,6 @@ const Analytics: React.FC = () => {
   const handleFiltersChange = (newFilters: AnalyticsFilters) => {
     setFilters(newFilters);
     // In production, trigger data refetch with filters
-    console.log('Filters changed:', newFilters);
   };
 
   const handleFiltersReset = () => {
@@ -353,46 +264,151 @@ const Analytics: React.FC = () => {
     }, 'excel');
   };
 
-  // Calculate funnel stages with dynamic conversions
+  // Calculate funnel stages from live data (without conversions)
   const funnelStages = useMemo(() => {
-    const { sourced, screened, interviewed, offered, hired } = periodData.funnel;
+    const sourced = liveFunnel?.sourced || 0;
+    const screened = liveFunnel?.screened || 0;
+    const interviewed = liveFunnel?.interviewed || 0;
+    const offered = liveFunnel?.offered || 0;
+    const hired = liveFunnel?.hired || 0;
     return [
       { key: 'sourced', label: 'Sourced', value: sourced, color: 'bg-gray-600' },
-      { 
-        key: 'screened', 
-        label: 'Screened', 
-        value: screened, 
-        color: 'bg-blue-500', 
-        conversion: sourced > 0 ? +((screened / sourced) * 100).toFixed(1) : 0 
-      },
-      { 
-        key: 'interviewed', 
-        label: 'Interviewed', 
-        value: interviewed, 
-        color: 'bg-yellow-500', 
-        conversion: screened > 0 ? +((interviewed / screened) * 100).toFixed(1) : 0 
-      },
-      { 
-        key: 'offered', 
-        label: 'Offered', 
-        value: offered, 
-        color: 'bg-green-500', 
-        conversion: interviewed > 0 ? +((offered / interviewed) * 100).toFixed(1) : 0 
-      },
-      { 
-        key: 'hired', 
-        label: 'Hired', 
-        value: hired, 
-        color: 'bg-purple-600', 
-        conversion: offered > 0 ? +((hired / offered) * 100).toFixed(1) : 0 
-      }
+      { key: 'screened', label: 'Screened', value: screened, color: 'bg-blue-500' },
+      { key: 'interviewed', label: 'Interviewed', value: interviewed, color: 'bg-yellow-500' },
+      { key: 'offered', label: 'Offered', value: offered, color: 'bg-green-500' },
+      { key: 'hired', label: 'Hired', value: hired, color: 'bg-purple-600' }
     ];
-  }, [periodData.funnel]);
+  }, [liveFunnel]);
 
-  const maxFunnel = Math.max(...funnelStages.map((s) => s.value));
-  const overallConversion = periodData.funnel.sourced > 0 
-    ? ((periodData.funnel.hired / periodData.funnel.sourced) * 100).toFixed(1)
-    : '0.0';
+  const maxFunnel = Math.max(1, ...funnelStages.map((s) => s.value));
+
+  // Generate dynamic Key Insights based on actual data
+  const keyInsights = useMemo(() => {
+    const insights: Array<{
+      type: 'success' | 'warning' | 'info';
+      text: string;
+      priority: number;
+    }> = [];
+
+    // Insight 1: Quality Score Performance
+    if (kpiMetrics?.qualityScore) {
+      if (kpiMetrics.qualityScore >= 85) {
+        insights.push({
+          type: 'success',
+          text: `High-quality talent pool with ${kpiMetrics.qualityScore} average quality score`,
+          priority: 1
+        });
+      } else if (kpiMetrics.qualityScore >= 75) {
+        insights.push({
+          type: 'info',
+          text: `Quality score of ${kpiMetrics.qualityScore} meets industry standards`,
+          priority: 2
+        });
+      } else {
+        insights.push({
+          type: 'warning',
+          text: `Quality score (${kpiMetrics.qualityScore}) below target - review screening criteria`,
+          priority: 1
+        });
+      }
+    }
+
+    // Insight 2: Speed Performance
+    if (speedData?.timeToHire) {
+      const industryAvg = 25;
+      if (speedData.timeToHire < industryAvg) {
+        const improvement = Math.round(((industryAvg - speedData.timeToHire) / industryAvg) * 100);
+        insights.push({
+          type: 'success',
+          text: `Hiring process is ${improvement}% faster than industry average (${speedData.timeToHire} vs ${industryAvg} days)`,
+          priority: 1
+        });
+      } else if (speedData.timeToHire > 30) {
+        insights.push({
+          type: 'warning',
+          text: `Time to hire (${speedData.timeToHire} days) exceeds target - identify bottlenecks`,
+          priority: 1
+        });
+      }
+    }
+
+    // Insight 3: Top Performing College
+    if (topColleges && topColleges.length > 0 && topColleges[0].count > 0) {
+      insights.push({
+        type: 'info',
+        text: `${topColleges[0].name} is top talent source with ${topColleges[0].count} candidates (${topColleges[0].percentage}%)`,
+        priority: 2
+      });
+    }
+
+    // Insight 4: Top Performing Course
+    if (coursePerformance && coursePerformance.length > 0 && coursePerformance[0].successRate > 0) {
+      const topCourse = coursePerformance[0];
+      insights.push({
+        type: 'success',
+        text: `Top performing course: ${topCourse.name} with ${topCourse.successRate}% success rate (${topCourse.hiredCandidates}/${topCourse.totalCandidates} hired)`,
+        priority: 2
+      });
+    }
+
+    // Insight 5: Geographic Diversity
+    if (geographicData && geographicData.length > 0) {
+      const totalCandidates = geographicData.reduce((sum, loc) => sum + loc.count, 0);
+      if (geographicData.length >= 3) {
+        insights.push({
+          type: 'success',
+          text: `Strong geographic diversity across ${geographicData.length} regions with ${totalCandidates} total candidates`,
+          priority: 2
+        });
+      } else if (geographicData[0] && geographicData[0].percentage > 60) {
+        insights.push({
+          type: 'info',
+          text: `High concentration in ${geographicData[0].city} (${geographicData[0].percentage}%) - consider expanding to other regions`,
+          priority: 3
+        });
+      }
+    }
+
+    // Insight 6: Hiring Momentum
+    if (kpiMetrics?.successfulHiresTrend && kpiMetrics.successfulHiresTrend !== 0) {
+      if (kpiMetrics.successfulHiresTrend > 10) {
+        insights.push({
+          type: 'success',
+          text: `Strong hiring momentum with ${Math.abs(kpiMetrics.successfulHiresTrend)}% increase in successful hires`,
+          priority: 1
+        });
+      } else if (kpiMetrics.successfulHiresTrend < -10) {
+        insights.push({
+          type: 'warning',
+          text: `Hiring declined by ${Math.abs(kpiMetrics.successfulHiresTrend)}% - review pipeline strategy`,
+          priority: 1
+        });
+      }
+    }
+
+    // Insight 7: Pipeline Growth
+    if (kpiMetrics?.totalCandidatesTrend && kpiMetrics.totalCandidatesTrend > 15) {
+      insights.push({
+        type: 'success',
+        text: `Pipeline growing rapidly with ${kpiMetrics.totalCandidatesTrend}% increase in candidates`,
+        priority: 2
+      });
+    }
+
+    // Insight 8: Speed Improvement
+    if (speedData?.fastestHire && speedData.fastestHire < 15) {
+      insights.push({
+        type: 'info',
+        text: `Fastest hire completed in just ${speedData.fastestHire} days - excellent process efficiency`,
+        priority: 3
+      });
+    }
+
+    // Sort by priority and return top 5 insights
+    return insights
+      .sort((a, b) => a.priority - b.priority)
+      .slice(0, 5);
+  }, [kpiMetrics, speedData, topColleges, coursePerformance, geographicData]);
 
   return (
     <div className="bg-gray-50 min-h-screen -m-6">
@@ -403,7 +419,6 @@ const Analytics: React.FC = () => {
             <h1 className="text-xl font-bold text-gray-900">Analytics Dashboard</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <RefreshButton onClick={handleRefresh} lastUpdated={lastUpdated} loading={loading} />
             
             {/* Phase 1: Date Range Picker */}
             <DateRangePicker
@@ -435,82 +450,68 @@ const Analytics: React.FC = () => {
       {/* Main Content Wrapper */}
       <div className="px-8 pt-4 pb-20 md:pb-6 space-y-5">
         {/* KPI Cards */}
-        {loading ? (
+        {loading || kpiLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div
-            onClick={() => handleDrillDown('Total Candidates', candidates)}
-            className="cursor-pointer hover:ring-2 hover:ring-primary-500 transition-all rounded-lg"
-          >
-            <KpiCard
-              title={
-                <div className="flex items-center gap-2">
-                  <span>Total Candidates</span>
-                  <InfoIcon content="Total number of candidates who entered the recruitment pipeline in the selected period" />
-                </div>
-              }
-              value={periodData.funnel.sourced}
-              icon={UsersIcon}
-              iconColor="text-blue-600"
-              iconBg="bg-blue-50"
-              trend={12}
-              trendLabel="from last period"
-            />
-          </div>
-          <div
-            onClick={() => handleDrillDown('Successful Hires', candidates.slice(0, periodData.funnel.hired))}
-            className="cursor-pointer hover:ring-2 hover:ring-primary-500 transition-all rounded-lg"
-          >
-            <KpiCard
-              title={
-                <div className="flex items-center gap-2">
-                  <span>Successful Hires</span>
-                  <InfoIcon content="Number of candidates successfully hired and onboarded" />
-                </div>
-              }
-              value={periodData.funnel.hired}
-              icon={CheckCircleIcon}
-              iconColor="text-green-600"
-              iconBg="bg-green-50"
-              trend={8}
-              trendLabel="from last period"
-            />
-          </div>
-          <div className="cursor-pointer hover:ring-2 hover:ring-primary-500 transition-all rounded-lg">
-            <KpiCard
-              title={
-                <div className="flex items-center gap-2">
-                  <span>Time to Hire</span>
-                  <InfoIcon content="Average number of days from candidate sourcing to hiring" />
-                </div>
-              }
-              value={`${periodData.speedMetrics.median_time_to_hire} days`}
-              icon={ClockIcon}
-              iconColor="text-indigo-600"
-              iconBg="bg-indigo-50"
-              trend={-15}
-              trendLabel="faster than last period"
-            />
-          </div>
-          <div className="cursor-pointer hover:ring-2 hover:ring-primary-500 transition-all rounded-lg">
-            <KpiCard
-              title={
-                <div className="flex items-center gap-2">
-                  <span>Quality Score</span>
-                  <InfoIcon content="Average AI-powered quality score of hired candidates" />
-                </div>
-              }
-              value={periodData.qualityMetrics.avg_ai_score_hired}
-              icon={StarIcon}
-              iconColor="text-yellow-600"
-              iconBg="bg-yellow-50"
-              trend={3}
-              trendLabel="from last period"
-            />
-          </div>
+          <KpiCard
+            title={
+              <div className="flex items-center gap-2">
+                <span>Total Candidates</span>
+                <InfoIcon content="Total number of candidates who entered the recruitment pipeline in the selected period" />
+              </div>
+            }
+            value={kpiMetrics?.totalCandidates ?? 0}
+            icon={UsersIcon}
+            iconColor="text-blue-600"
+            iconBg="bg-blue-50"
+            trend={kpiMetrics?.totalCandidatesTrend ?? 0}
+            trendLabel="from last period"
+          />
+          <KpiCard
+            title={
+              <div className="flex items-center gap-2">
+                <span>Successful Hires</span>
+                <InfoIcon content="Number of candidates successfully hired and onboarded" />
+              </div>
+            }
+            value={kpiMetrics?.successfulHires ?? 0}
+            icon={CheckCircleIcon}
+            iconColor="text-green-600"
+            iconBg="bg-green-50"
+            trend={kpiMetrics?.successfulHiresTrend ?? 0}
+            trendLabel="from last period"
+          />
+          <KpiCard
+            title={
+              <div className="flex items-center gap-2">
+                <span>Time to Hire</span>
+                <InfoIcon content="Average number of days from candidate sourcing to hiring" />
+              </div>
+            }
+            value={`${kpiMetrics?.timeToHire ?? 23} days`}
+            icon={ClockIcon}
+            iconColor="text-indigo-600"
+            iconBg="bg-indigo-50"
+            trend={kpiMetrics?.timeToHireTrend ?? 0}
+            trendLabel={kpiMetrics?.timeToHireTrend && kpiMetrics.timeToHireTrend < 0 ? 'faster than last period' : 'from last period'}
+          />
+          <KpiCard
+            title={
+              <div className="flex items-center gap-2">
+                <span>Quality Score</span>
+                <InfoIcon content="Average AI-powered quality score of hired candidates" />
+              </div>
+            }
+            value={kpiMetrics?.qualityScore ?? 85.2}
+            icon={StarIcon}
+            iconColor="text-yellow-600"
+            iconBg="bg-yellow-50"
+            trend={kpiMetrics?.qualityScoreTrend ?? 0}
+            trendLabel="from last period"
+          />
         </div>
       )}
 
@@ -592,21 +593,21 @@ const Analytics: React.FC = () => {
               {/* Render selected chart type */}
               {chartType === 'line' && (
                 <TrendLineChart 
-                  data={periodData.trends.hires}
+                  data={liveFunnel?.hiresTrend || []}
                   labels={trendLabels}
                   height={150}
                 />
               )}
               {chartType === 'area' && (
                 <AreaChart 
-                  data={periodData.trends.hires}
+                  data={liveFunnel?.hiresTrend || []}
                   labels={trendLabels}
                   height={150}
                 />
               )}
               {chartType === 'column' && (
                 <ColumnChart 
-                  data={periodData.trends.hires}
+                  data={liveFunnel?.hiresTrend || []}
                   labels={trendLabels}
                   height={150}
                 />
@@ -617,12 +618,7 @@ const Analytics: React.FC = () => {
                 <div key={stage.key}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">{stage.label}</span>
-                    <div className="flex items-center gap-3">
-                      {stage.conversion && (
-                        <span className="text-xs text-gray-500">{stage.conversion}% conversion</span>
-                      )}
-                      <span className="text-sm font-bold text-gray-900">{stage.value}</span>
-                    </div>
+                    <span className="text-sm font-bold text-gray-900">{stage.value}</span>
                   </div>
                   <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden">
                     <div
@@ -632,13 +628,6 @@ const Analytics: React.FC = () => {
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <p className="text-xs font-medium text-gray-600 mb-1 uppercase tracking-wide">Overall Conversion Rate</p>
-                <p className="text-3xl font-bold text-blue-600">{overallConversion}%</p>
-                <p className="text-xs text-gray-600 mt-1">From sourced to hired</p>
-              </div>
             </div>
           </div>
         </div>
@@ -710,50 +699,84 @@ const Analytics: React.FC = () => {
           <ChartDownloadButton
             chartId="speed-analytics-section"
             chartName="Speed_Analytics"
-            data={[
-              { metric: 'Time to First Response', days: periodData.speedMetrics.median_time_to_first_response },
-              { metric: 'Time to Hire', days: periodData.speedMetrics.median_time_to_hire },
-              { metric: 'Interview to Offer', days: periodData.speedMetrics.avg_interview_to_offer },
-              { metric: 'Fastest Hire', days: periodData.speedMetrics.fastest_hire }
-            ]}
+            data={speedData ? [
+              { metric: 'Time to First Response', days: speedData.timeToFirstResponse },
+              { metric: 'Time to Hire', days: speedData.timeToHire },
+              { metric: 'Interview to Offer', days: speedData.interviewToOffer },
+              { metric: 'Fastest Hire', days: speedData.fastestHire }
+            ] : []}
             compact
           />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-blue-100 mb-3">
-              <ClockIcon className="h-7 w-7 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 mb-1">{periodData.speedMetrics.median_time_to_first_response} days</p>
-            <p className="text-xs font-medium text-gray-600">Time to First Response</p>
+        {speedLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-32 bg-gray-100 rounded-lg animate-pulse" />
+            ))}
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-green-100 mb-3">
-              <CheckCircleIcon className="h-7 w-7 text-green-600" />
+        ) : speedData ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-blue-100 mb-3">
+                  <ClockIcon className="h-7 w-7 text-blue-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mb-1">
+                  {speedData.timeToFirstResponse < 1 && speedData.timeToFirstResponse > 0
+                    ? `${Math.round(speedData.timeToFirstResponse * 24)} hrs`
+                    : `${speedData.timeToFirstResponse} days`}
+                </p>
+                <p className="text-xs font-medium text-gray-600">Time to First Response</p>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-green-100 mb-3">
+                  <CheckCircleIcon className="h-7 w-7 text-green-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mb-1">
+                  {speedData.timeToHire < 1 && speedData.timeToHire > 0
+                    ? `${Math.round(speedData.timeToHire * 24)} hrs`
+                    : `${speedData.timeToHire} days`}
+                </p>
+                <p className="text-xs font-medium text-gray-600">Time to Hire</p>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-yellow-100 mb-3">
+                  <CalendarIcon className="h-7 w-7 text-yellow-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mb-1">
+                  {speedData.interviewToOffer < 1 && speedData.interviewToOffer > 0
+                    ? `${Math.round(speedData.interviewToOffer * 24)} hrs`
+                    : `${speedData.interviewToOffer} days`}
+                </p>
+                <p className="text-xs font-medium text-gray-600">Interview to Offer</p>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-purple-100 mb-3">
+                  <BoltIcon className="h-7 w-7 text-purple-600" />
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mb-1">
+                  {speedData.fastestHire < 1 && speedData.fastestHire > 0
+                    ? `${Math.round(speedData.fastestHire * 24)} hrs`
+                    : `${speedData.fastestHire} days`}
+                </p>
+                <p className="text-xs font-medium text-gray-600">Fastest Hire</p>
+              </div>
             </div>
-            <p className="text-2xl font-bold text-gray-900 mb-1">{periodData.speedMetrics.median_time_to_hire} days</p>
-            <p className="text-xs font-medium text-gray-600">Time to Hire</p>
-          </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-yellow-100 mb-3">
-              <CalendarIcon className="h-7 w-7 text-yellow-600" />
+            <div className="mt-6 pt-6 border-t border-gray-200 flex items-center gap-2 text-sm">
+              <SparklesIcon className="h-5 w-5 text-green-600" />
+              <span className="text-gray-700">Process Efficiency</span>
+              <span className="font-semibold text-green-600">
+                {speedData.timeToHire < 25 
+                  ? `${Math.round(((25 - speedData.timeToHire) / 25) * 100)}% faster than industry average (25 days)`
+                  : 'Within industry average (25 days)'}
+              </span>
             </div>
-            <p className="text-2xl font-bold text-gray-900 mb-1">{periodData.speedMetrics.avg_interview_to_offer} days</p>
-            <p className="text-xs font-medium text-gray-600">Interview to Offer</p>
+          </>
+        ) : (
+          <div className="p-6 text-center text-gray-500 text-sm">
+            No speed data available for this period
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-purple-100 mb-3">
-              <BoltIcon className="h-7 w-7 text-purple-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 mb-1">{periodData.speedMetrics.fastest_hire} days</p>
-            <p className="text-xs font-medium text-gray-600">Fastest Hire</p>
-          </div>
-        </div>
-        <div className="mt-6 pt-6 border-t border-gray-200 flex items-center gap-2 text-sm">
-          <SparklesIcon className="h-5 w-5 text-green-600" />
-          <span className="text-gray-700">Process Efficiency</span>
-          <span className="font-semibold text-green-600">28% faster than industry average (25 days)</span>
-        </div>
+        )}
       </div>
 
       {/* Diversity & Geography Section */}
@@ -763,70 +786,105 @@ const Analytics: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">Diversity & Geography</h2>
             <p className="text-sm text-gray-600 mt-1">Understanding where your talent comes from</p>
           </div>
-          <ChartDownloadButton
-            chartId="geography-section"
-            chartName="Geography_Analysis"
-            data={periodData.geography}
-            compact
-          />
+          <button
+            onClick={() => setDiversityExportModalOpen(true)}
+            onMouseEnter={() => {
+              // Prefetch data on hover for faster modal rendering
+              if (!geographicData || !topColleges) {
+                diversityData.refetchAll();
+              }
+            }}
+            className="inline-flex items-center justify-center w-8 h-8 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Export Diversity & Geography"
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+          </button>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Geographic Distribution */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Geographic Distribution</h3>
-            <div className="space-y-4">
-              {periodData.geography.locations.map((l: any) => (
-                <div key={l.city}>
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <div className="flex items-center gap-2">
-                      <MapPinIcon className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-700">{l.city}</span>
+            {geoLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : geographicData && geographicData.length > 0 ? (
+              <>
+                <div className="space-y-4">
+                  {geographicData.map((l) => (
+                    <div key={l.city}>
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <div className="flex items-center gap-2">
+                          <MapPinIcon className="h-4 w-4 text-gray-400" />
+                          <span className="text-gray-700">{l.city}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-500">({l.percentage}%)</span>
+                          <span className="text-sm font-bold text-gray-900">{l.count}</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-100 h-2 rounded-full">
+                        <div
+                          className="bg-blue-500 h-2 rounded-full"
+                          style={{ width: `${l.percentage}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray-500">({l.percentage}%)</span>
-                      <span className="text-sm font-bold text-gray-900">{l.count}</span>
-                    </div>
-                  </div>
-                  <div className="w-full bg-gray-100 h-2 rounded-full">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full"
-                      style={{ width: `${l.percentage}%` }}
-                    />
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <p className="text-xs text-gray-500">Total Hires: <span className="font-bold text-gray-900">{periodData.funnel.hired}</span></p>
-            </div>
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-500">Total Candidates: <span className="font-bold text-gray-900">{geographicData.reduce((sum, l) => sum + l.count, 0)}</span></p>
+                </div>
+              </>
+            ) : (
+              <div className="p-6 text-center text-gray-500 text-sm">
+                No geographic data available for this period
+              </div>
+            )}
           </div>
 
           {/* Top Hiring Colleges */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Top Hiring Colleges</h3>
-            <div className="space-y-3">
-              {periodData.geography.colleges.map((c: any, idx: number) => (
-                <div key={c.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
-                      {idx + 1}
+            {collegesLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-14 bg-gray-100 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : topColleges && topColleges.length > 0 ? (
+              <>
+                <div className="space-y-3">
+                  {topColleges.map((c, idx) => (
+                    <div key={c.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
+                          {idx + 1}
+                        </div>
+                        <span className="text-sm text-gray-700">{c.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 bg-gray-200 h-1.5 rounded-full">
+                          <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${c.percentage}%` }} />
+                        </div>
+                        <span className="text-sm font-bold text-gray-900 w-6 text-right">{c.count}</span>
+                      </div>
                     </div>
-                    <span className="text-sm text-gray-700">{c.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-16 bg-gray-200 h-1.5 rounded-full">
-                      <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${(c.count / periodData.funnel.hired) * 100}%` }} />
-                    </div>
-                    <span className="text-sm font-bold text-gray-900 w-6 text-right">{c.count}</span>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-blue-700 font-medium">Diversity Index</p>
-              <p className="text-sm text-blue-900 mt-1">Good distribution across 4 institutions</p>
-            </div>
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-blue-700 font-medium">Diversity Index</p>
+                  <p className="text-sm text-blue-900 mt-1">Good distribution across {topColleges.length} institutions</p>
+                </div>
+              </>
+            ) : (
+              <div className="p-6 text-center text-gray-500 text-sm">
+                No college data available for this period
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -881,32 +939,44 @@ const Analytics: React.FC = () => {
           {/* Course Performance */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Course Performance</h3>
-            <div className="space-y-3">
-              {periodData.attribution.courses.map((c: any) => (
-                <div key={c.name} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <AcademicCapIcon className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium text-gray-900">{c.name}</span>
+            {coursesLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-24 bg-gray-100 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : coursePerformance && coursePerformance.length > 0 ? (
+              <div className="space-y-3">
+                {coursePerformance.map((c) => (
+                  <div key={c.name} className="p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <AcademicCapIcon className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-gray-900">{c.name}</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 mt-3">
+                      <div>
+                        <p className="text-xs text-gray-500">Candidates</p>
+                        <p className="text-lg font-bold text-gray-900">{c.totalCandidates}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Hired</p>
+                        <p className="text-lg font-bold text-green-600">{c.hiredCandidates}/{c.totalCandidates}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Success Rate</p>
+                        <p className="text-lg font-bold text-indigo-600">{c.successRate}%</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-3 mt-3">
-                    <div>
-                      <p className="text-xs text-gray-500">Candidates</p>
-                      <p className="text-lg font-bold text-gray-900">{c.applications}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Hires</p>
-                      <p className="text-lg font-bold text-green-600">{c.hires}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Success Rate</p>
-                      <p className="text-lg font-bold text-indigo-600">{((c.hires / c.applications) * 100).toFixed(1)}%</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center text-gray-500 text-sm">
+                No course data available for this period
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -914,14 +984,7 @@ const Analytics: React.FC = () => {
       {/* Executive Summary */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900 mb-6">Executive Summary</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-blue-100 mb-3">
-              <BoltIcon className="h-6 w-6 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 mb-1">{overallConversion}%</p>
-            <p className="text-xs font-medium text-gray-600">Overall Conversion</p>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
           <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-yellow-100 mb-3">
               <StarIcon className="h-6 w-6 text-yellow-600" />
@@ -949,41 +1012,44 @@ const Analytics: React.FC = () => {
       {/* Key Insights */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Key Insights</h2>
-        <ul className="space-y-3">
-          <li className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
-              <CheckCircleIcon className="h-4 w-4 text-green-600" />
-            </div>
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">{periodData.qualityMetrics.external_audited_percentage}% of hires are externally audited</span> (above industry average)
-            </p>
-          </li>
-          <li className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
-              <CheckCircleIcon className="h-4 w-4 text-green-600" />
-            </div>
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">18-day hiring process is 28% faster</span> than competitors
-            </p>
-          </li>
-          <li className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
-              <CheckCircleIcon className="h-4 w-4 text-green-600" />
-            </div>
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">Top performing course: GMP with 6.7% success rate</span>
-            </p>
-          </li>
-          <li className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
-              <CheckCircleIcon className="h-4 w-4 text-green-600" />
-            </div>
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">Geographic diversity across 4 major cities</span>
-            </p>
-          </li>
-        </ul>
+        {keyInsights.length > 0 ? (
+          <ul className="space-y-3">
+            {keyInsights.map((insight, index) => {
+              const iconBgColor = 
+                insight.type === 'success' ? 'bg-green-100' : 
+                insight.type === 'warning' ? 'bg-yellow-100' : 
+                'bg-blue-100';
+              const iconColor = 
+                insight.type === 'success' ? 'text-green-600' : 
+                insight.type === 'warning' ? 'text-yellow-600' : 
+                'text-blue-600';
+              
+              return (
+                <li key={index} className="flex items-start gap-3">
+                  <div className={`flex-shrink-0 w-6 h-6 rounded-full ${iconBgColor} flex items-center justify-center mt-0.5`}>
+                    <CheckCircleIcon className={`h-4 w-4 ${iconColor}`} />
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    <span className="font-semibold">{insight.text}</span>
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-500 text-center py-4">
+            No insights available yet. Data will appear as your pipeline grows.
+          </p>
+        )}
       </div>
+
+        {/* Diversity Export Modal */}
+        <DiversityExportModal
+          isOpen={diversityExportModalOpen}
+          onClose={() => setDiversityExportModalOpen(false)}
+          geographicData={geographicData}
+          collegesData={topColleges}
+        />
 
         {/* Drill-down Modal */}
         <DrillDownModal

@@ -14,7 +14,7 @@ import {
   EyeOff,
   AlertCircle,
 } from "lucide-react";
-import FeatureCard from "./components/FeatureCard";
+import FeatureCard from "./components/ui/FeatureCard";
 import { loginRecruiter } from "../../services/recruiterProfile";
 
 export default function LoginRecruiter() {
@@ -103,7 +103,7 @@ export default function LoginRecruiter() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter any password"
+            placeholder="Enter your password"
             autoComplete="current-password"
             className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/80 lg:placeholder:text-gray-400 ${
               isLg
@@ -188,7 +188,7 @@ export default function LoginRecruiter() {
               Hire Smarter. Trust Skills, Not Just Resumes.
             </h2>
             <p className="mt-4 max-w-xl text-[#edf2f9]">
-              Access verified Skill Passports of students across India & beyond.
+Access Verified Skill Passports Of Students Across India & Beyond.
             </p>
           </div>
 
@@ -204,7 +204,7 @@ export default function LoginRecruiter() {
               animate={{ y: [0, -10, 0] }}
               transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
             >
-              <FeatureCard title="Verified skills" Icon={CheckCircle} />
+              <FeatureCard title="Verified Skills" Icon={CheckCircle} />
             </motion.div>
 
             <motion.div
@@ -216,7 +216,7 @@ export default function LoginRecruiter() {
                 ease: "easeInOut",
               }}
             >
-              <FeatureCard title="Faster hiring" Icon={Zap} />
+              <FeatureCard title="Faster Hiring" Icon={Zap} />
             </motion.div>
 
             <motion.div
@@ -224,7 +224,7 @@ export default function LoginRecruiter() {
               animate={{ y: [0, -8, 0] }}
               transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
             >
-              <FeatureCard title="AI recommendations" Icon={BarChart3} />
+              <FeatureCard title="AI Recommendations" Icon={BarChart3} />
             </motion.div>
           </div>
         </div>

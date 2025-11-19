@@ -37,25 +37,6 @@ code {
   background: #94a3b8;
 }
 
-/* Custom scrollbar for Recent Updates */
-.recent-updates-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-
-.recent-updates-scroll::-webkit-scrollbar-track {
-  background: #F3F8FF;
-  border-radius: 10px;
-}
-
-.recent-updates-scroll::-webkit-scrollbar-thumb {
-  background: #2196F3;
-  border-radius: 10px;
-}
-
-.recent-updates-scroll::-webkit-scrollbar-thumb:hover {
-  background: #1976D2;
-}
-
 /* Mobile-friendly tap highlights */
 * {
   -webkit-tap-highlight-color: transparent;
@@ -68,6 +49,16 @@ code {
   }
   50% {
     opacity: 0.5;
+  }
+}
+
+/* Subtle pulse animation for floating button */
+@keyframes pulse-subtle {
+  0%, 100% {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 0 rgba(99, 102, 241, 0.5);
+  }
+  50% {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 10px rgba(99, 102, 241, 0);
   }
 }
 
@@ -91,9 +82,25 @@ code {
   }
 }
 
+/* Fade In with Slide Animation for Messages */
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 /* Custom animations for the orbital timeline */
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .animate-ping {
@@ -121,6 +128,12 @@ code {
 /* Backdrop blur */
 .backdrop-blur-lg {
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.backdrop-blur-xl {
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
 }
 
 /* Custom gradients */
@@ -245,6 +258,29 @@ code {
   height: 1px;
 }
 
+
+.tab-link {
+  position: relative;
+  color: #0a6aba;
+  transition: color 0.3s ease;
+}
+
+.tab-link::before {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 3px;
+  background-color: #0a6aba; /* blue color */
+  bottom: -4px;
+  left: 0;
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+.tab-link:hover::before {
+  width: 100%;
+}
+
 /* Responsive typography scale */
 :root {
   --fs-h1: clamp(2rem, 1.6rem + 2vw, 3rem);
@@ -281,6 +317,40 @@ code {
   }
 }
 
+/* Animated signup button */
+.signup-button {
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 1000ms;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.signup-button::before {
+  content: "";
+  position: absolute;
+  left: -50px;
+  top: 0;
+  width: 0;
+  height: 100%;
+  background-color: #ef4444;
+  transform: skewX(45deg);
+  z-index: -1;
+  transition: width 1000ms;
+}
+
+.signup-button:hover {
+  color: #ffffff !important;
+  transform: scale(1.05);
+  box-shadow: 4px 5px 17px -4px #ef4444;
+}
+
+.signup-button:hover::before {
+  width: 250%;
+}
+
 /* Optional typography helpers for special cases */
 .text-hero { font-size: clamp(2.25rem, 1.3rem + 3.2vw, 4rem); line-height: 1.05; }
 .text-subhero { font-size: clamp(1rem, 0.9rem + 0.8vw, 1.375rem); }
@@ -289,3 +359,106 @@ code {
 .text-case-subtitle { font-size: clamp(1rem, 0.92rem + 0.7vw, 1.5rem); }
 /* Stat number sizing for mobile */
 .text-stat { font-size: clamp(2rem, 1.2rem + 3vw, 2.75rem); line-height: 1.1; }
+
+/* React Paginate Custom Styles */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pagination li {
+  display: inline-block;
+}
+
+.pagination li a {
+  cursor: pointer;
+  user-select: none;
+}
+
+.pagination li.disabled a {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pagination li.selected a {
+  pointer-events: none;
+}
+
+/* ==========================
+   Digital-Portfolio Scoped Styles
+   These styles are intentionally scoped under the
+   `.digital-portfolio` root so they only apply when
+   the digital-portfolio pages render inside a container
+   with that class (e.g. <div className="digital-portfolio">...)</>
+   ========================== */
+
+/* Background Ripple Effect Animation (scoped usage)
+   keyframes are global but used by elements inside .digital-portfolio */
+@keyframes cell-ripple {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}
+
+@layer components {
+  /* root container for digital-portfolio pages */
+  .digital-portfolio {
+    /* apply scroll behaviour and palette only inside this scope */
+    scroll-behavior: smooth;
+    @apply bg-gray-50 text-gray-900;
+  }
+
+  /* Passport 3D flip components (scoped) */
+  .digital-portfolio .passport-page {
+    perspective: 1000px;
+    transform-style: preserve-3d;
+  }
+  
+  .digital-portfolio .passport-flip {
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+  }
+  
+  .digital-portfolio .passport-flip.flipped {
+    transform: rotateY(180deg);
+  }
+  
+  .digital-portfolio .passport-front,
+  .digital-portfolio .passport-back {
+    backface-visibility: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .digital-portfolio .passport-back {
+    transform: rotateY(180deg);
+  }
+}
+
+@layer utilities {
+  /* Utilities scoped under the digital-portfolio container so they don't
+     clash with the rest of the app global utilities. Use as
+     .digital-portfolio .text-shadow on elements inside the portfolio. */
+  .digital-portfolio .text-shadow {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .digital-portfolio .glass-effect {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+}

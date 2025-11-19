@@ -354,6 +354,7 @@ export const sendReminder = async (interviewId: string, recipientEmail?: string,
     }
 
     // Call the Edge Function
+    
     const { data, error } = await supabase.functions.invoke('send-interview-reminder', {
       body: {
         interviewId,
@@ -362,10 +363,17 @@ export const sendReminder = async (interviewId: string, recipientEmail?: string,
       }
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Edge Function error:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      throw error;
+    }
+    
     return { data, error: null };
   } catch (error) {
     console.error('Error sending reminder:', error);
+    console.error('Error message:', error?.message);
+    console.error('Error context:', error?.context);
     return { data: null, error };
   }
 };

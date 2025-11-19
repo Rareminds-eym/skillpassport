@@ -5,14 +5,16 @@
  */
 
 import { useState, useEffect } from 'react';
-import { 
-  getStudentByEmail, 
+import {
+  getStudentByEmail,
   updateStudentByEmail,
   updateEducationByEmail,
   updateTrainingByEmail,
   updateExperienceByEmail,
   updateTechnicalSkillsByEmail,
-  updateSoftSkillsByEmail
+  updateSoftSkillsByEmail,
+  updateProjectsByEmail,
+  updateCertificatesByEmail
 } from '../services/studentServiceProfile';
 
 export const useStudentDataByEmail = (email, fallbackToMock = true) => {
@@ -31,21 +33,18 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         setLoading(true);
         setError(null);
 
-        console.log('📧 Fetching data for email:', email);
 
         const result = await getStudentByEmail(email);
 
         if (result.success && result.data) {
-          console.log('✅ Student data loaded:', result.data);
           setStudentData(result.data);
           setError(null);
         } else {
-          console.warn('⚠️ No data found for email:', email);
           // Check if it's an RLS error
           const errorMsg = result.error || 'Student not found';
-          if (errorMsg.toLowerCase().includes('row-level security') || 
-              errorMsg.toLowerCase().includes('rls') ||
-              errorMsg.toLowerCase().includes('permission denied')) {
+          if (errorMsg.toLowerCase().includes('row-level security') ||
+            errorMsg.toLowerCase().includes('rls') ||
+            errorMsg.toLowerCase().includes('permission denied')) {
             setError('⚠️ Database access blocked. Please disable RLS in Supabase. See FIX_RLS.md');
             console.error('🔒 RLS is blocking access! Run this in Supabase SQL Editor:');
             console.error('ALTER TABLE students DISABLE ROW LEVEL SECURITY;');
@@ -68,25 +67,21 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
 
   const refresh = async () => {
     if (!email) {
-      console.warn('⚠️ refresh: No email provided');
       return;
     }
-    
-    console.log('🔄 refresh: Fetching fresh data for:', email);
+
     setLoading(true);
     const result = await getStudentByEmail(email);
-    
+
     if (result.success) {
-      console.log('✅ refresh: Fresh data loaded:', result.data);
       setStudentData(result.data);
       setError(null);
     } else {
       console.error('❌ refresh: Error loading data:', result.error);
       setError(result.error);
     }
-    
+
     setLoading(false);
-    console.log('🔄 refresh: Complete');
   };
 
   // Update functions that work with JSONB profile
@@ -180,6 +175,23 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
     }
   };
 
+  const updateProjects = async (projectsData) => {
+    const result = await updateProjectsByEmail(email, projectsData);
+    if (result.success) {
+      // Refresh data after successful update
+      await refresh();
+    }
+    return result;
+  };
+
+  const updateCertificates = async (certificatesData) => {
+    const result = await updateCertificatesByEmail(email, certificatesData);
+    if (result.success) {
+      setStudentData(result.data);
+    }
+    return result;
+  };
+
   return {
     studentData,
     loading,
@@ -190,6 +202,8 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
     updateTraining,
     updateExperience,
     updateTechnicalSkills,
-    updateSoftSkills
+    updateSoftSkills,
+    updateProjects,      // ADD THIS
+    updateCertificates,  // ADD THIS
   };
 };

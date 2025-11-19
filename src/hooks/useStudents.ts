@@ -1,107 +1,259 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
-// Raw DB row type (minimal)
-interface StudentRow {
+// Skill from skills table
+interface Skill {
   id: string
-  universityId?: string
-  profile?: any
-  createdAt?: string
-  updatedAt?: string
+  student_id: string
+  name: string
+  type?: string
+  level?: number
+  description?: string
+  verified?: boolean
+  enabled?: boolean
+  approval_status?: string
+  created_at?: string
+  updated_at?: string
 }
 
-export interface StudentProfile {
+// Project from projects table
+interface Project {
+  id: string
+  student_id: string
+  title: string
+  description?: string
+  status?: string
+  start_date?: string
+  end_date?: string
+  duration?: string
+  tech_stack?: string[]
+  demo_link?: string
+  github_link?: string
+  approval_status?: string
+  certificate_url?: string
+  video_url?: string
+  ppt_url?: string
+  organization?: string
+  enabled?: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+// Certificate from certificates table
+interface Certificate {
+  id: string
+  student_id: string
+  title: string
+  issuer?: string
+  level?: string
+  credential_id?: string
+  link?: string
+  issued_on?: string
+  description?: string
+  status?: string
+  approval_status?: string
+  document_url?: string
+  enabled?: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+// Experience from experience table
+interface Experience {
+  id: string
+  student_id: string
+  organization?: string
+  role?: string
+  start_date?: string
+  end_date?: string
+  duration?: string
+  verified?: boolean
+  approval_status?: string
+  created_at?: string
+  updated_at?: string
+}
+
+// Training from trainings table
+interface Training {
+  id: string
+  student_id: string
+  title: string
+  organization?: string
+  start_date?: string
+  end_date?: string
+  duration?: string
+  description?: string
+  approval_status?: string
+  created_at?: string
+  updated_at?: string
+}
+
+// Raw DB row type (based on actual students table schema)
+interface StudentRow {
+  id: string
+  user_id?: string
+  student_id?: string // new system-generated student identifier (replaces legacy nm_id column)
   name?: string
   email?: string
-  registration_number?: number | string
-  contact_number_dial_code?: number | string
-  contact_number?: number | string
-  alternate_number?: number | string
+  contact_number?: string
+  alternate_number?: string
+  contact_dial_code?: string
   date_of_birth?: string
-  branch_field?: string
-  nm_id?: string
-  trainer_name?: string
-  university?: string
-  district_name?: string
-  college_school_name?: string
+  dateOfBirth?: string
   age?: number
-  course?: string
-  skill?: string
+  gender?: string
+  bloodGroup?: string
+  district_name?: string
+  university?: string
+  university_main?: string
+  branch_field?: string
+  college_school_name?: string
+  course_name?: string
+  registration_number?: string
+  enrollmentNumber?: string
+  enrollment_number?: string
+  github_link?: string
+  linkedin_link?: string
+  twitter_link?: string
+  facebook_link?: string
+  instagram_link?: string
+  portfolio_link?: string
+  other_social_links?: any
+  approval_status?: string
+  nm_id?: string // kept for backwards-compatibility with older profile JSON
+  trainer_name?: string
+  bio?: string
+  address?: string
+  city?: string
+  state?: string
+  country?: string
+  pincode?: string
+  resume_url?: string
+  resumeUrl?: string
+  profile_picture?: string
+  profilePicture?: string
+  class_year?: string
+  created_at?: string
+  updated_at?: string
   imported_at?: string
+  // Related data from joins
+  skills?: Skill[]
+  projects?: Project[]
+  certificates?: Certificate[]
+  experience?: Experience[]
+  trainings?: Training[]
 }
 
 export interface UICandidate {
   id: string
+  user_id?: string
   name: string
   email?: string
   phone?: string
   location?: string
   college?: string
   dept?: string
-  skills: string[]
+  university?: string
+  registration_number?: string
+  skills: any[]
+  projects: any[]
+  certificates: any[]
+  experience: any[]
+  trainings: any[]
   badges: string[]
   ai_score_overall: number
   last_updated?: string
-}
-
-function safeParseProfile(input: unknown): StudentProfile | null {
-  if (!input) return null
-  try {
-    // If it's already an object, return it
-    if (typeof input === 'object') return input as StudentProfile
-    let text = String(input)
-    // Handle double-encoded JSON strings like: "{\"name\":...}"
-    // Remove wrapping quotes if present
-    if (text.startsWith('"') && text.endsWith('"')) {
-      try {
-        text = JSON.parse(text)
-      } catch {
-        // fallthrough; will try to parse as-is below
-      }
-    }
-    const firstParse = JSON.parse(text)
-    // Sometimes it's actually a quoted JSON string inside
-    if (typeof firstParse === 'string') {
-      return JSON.parse(firstParse) as StudentProfile
-    }
-    return firstParse as StudentProfile
-  } catch {
-    return null
-  }
+  // Social links
+  github_link?: string
+  linkedin_link?: string
+  twitter_link?: string
+  facebook_link?: string
+  instagram_link?: string
+  portfolio_link?: string
+  other_social_links?: any
+  // Other fields
+  age?: number
+  bio?: string
+  nm_id?: string
+  trainer_name?: string
+  district_name?: string
+  branch_field?: string
+  course_name?: string
+  contact_number?: string
+  alternate_number?: string
+  contact_dial_code?: string
+  date_of_birth?: string
+  imported_at?: string
+  updated_at?: string
 }
 
 function mapToUICandidate(row: StudentRow): UICandidate {
-  const profile = safeParseProfile(row.profile) || {}
-
-  const name = profile.name || 'Unknown'
-  const email = profile.email
-  const dial = profile.contact_number_dial_code ? String(profile.contact_number_dial_code).replace(/\.0$/, '') : ''
-  const phoneNum = profile.contact_number ? String(profile.contact_number).replace(/\.0$/, '') : ''
-  const altNum = profile.alternate_number ? String(profile.alternate_number).replace(/\.0$/, '') : ''
+  // Format phone number - handle both camelCase and snake_case
+  const dial = row.contact_dial_code ? String(row.contact_dial_code).replace(/\.0$/, '') : ''
+  const phoneNum = (row.contactNumber || row.contact_number) ? String(row.contactNumber || row.contact_number).replace(/\.0$/, '') : ''
+  const altNum = row.alternate_number ? String(row.alternate_number).replace(/\.0$/, '') : ''
   const phone = phoneNum || altNum ? `${dial ? '+' + dial + ' ' : ''}${phoneNum || altNum}` : undefined
 
-  const college = profile.college_school_name || profile.university
-  const dept = profile.branch_field || profile.course
-  const location = profile.district_name
+  const college = row.college_school_name || row.university
+  const dept = row.branch_field || row.course_name
+  const location = row.district_name
 
-  // Split skills on common separators
-  const skills = (profile.skill || '')
-    .split(/[,;|&]/)
-    .map(s => s.trim())
-    .filter(Boolean)
+  // Use skills from the skills table (already fetched via join)
+  const skills = Array.isArray(row.skills) ? row.skills.filter(s => s.enabled !== false) : []
+  
+  // Use projects from the projects table
+  const projects = Array.isArray(row.projects) ? row.projects.filter(p => p.enabled !== false) : []
+  
+  // Use certificates from the certificates table
+  const certificates = Array.isArray(row.certificates) ? row.certificates.filter(c => c.enabled !== false) : []
+  
+  // Use experience from the experience table
+  const experience = Array.isArray(row.experience) ? row.experience : []
+  
+  // Use trainings from the trainings table
+  const trainings = Array.isArray(row.trainings) ? row.trainings : []
 
   return {
     id: row.id,
-    name,
-    email,
+    user_id: row.user_id,
+    name: row.name || 'Unknown',
+    email: row.email,
     phone,
     college,
     dept,
+    university: row.university_main || row.university,
     location,
+    registration_number: row.registration_number || row.enrollmentNumber || row.enrollment_number,
     skills,
+    projects,
+    certificates,
+    experience,
+    trainings,
     badges: ['institution_verified'],
     ai_score_overall: 0,
-    last_updated: row.updatedAt || profile.imported_at || row.createdAt,
+    last_updated: row.updatedAt || row.updated_at || row.imported_at || row.createdAt || row.created_at,
+    // Social links
+    github_link: row.github_link,
+    linkedin_link: row.linkedin_link,
+    twitter_link: row.twitter_link,
+    facebook_link: row.facebook_link,
+    instagram_link: row.instagram_link,
+    portfolio_link: row.portfolio_link,
+    other_social_links: row.other_social_links,
+    // Other fields
+    age: row.age,
+    bio: row.bio,
+    nm_id: row.student_id || row.nm_id,
+    trainer_name: row.trainer_name,
+    district_name: row.district_name,
+    branch_field: row.branch_field,
+    course_name: row.course_name,
+    contact_number: row.contactNumber || row.contact_number,
+    alternate_number: row.alternate_number,
+    contact_dial_code: row.contact_dial_code,
+    date_of_birth: row.dateOfBirth || row.date_of_birth,
+    imported_at: row.imported_at,
+    updated_at: row.updatedAt || row.updated_at,
   }
 }
 
@@ -118,8 +270,125 @@ export function useStudents() {
       try {
         const { data, error } = await supabase
           .from('students')
-          .select('id, universityId, profile, createdAt, updatedAt')
-          .order('updatedAt', { ascending: false })
+          .select(`
+            id,
+            user_id,
+            student_id,
+            name,
+            email,
+            contact_number,
+            alternate_number,
+            contact_dial_code,
+            date_of_birth,
+            dateOfBirth,
+            age,
+            gender,
+            bloodGroup,
+            district_name,
+            university,
+            university_main,
+            branch_field,
+            college_school_name,
+            course_name,
+            registration_number,
+            enrollmentNumber,
+            github_link,
+            linkedin_link,
+            twitter_link,
+            facebook_link,
+            instagram_link,
+            portfolio_link,
+            other_social_links,
+            approval_status,
+            trainer_name,
+            bio,
+            address,
+            city,
+            state,
+            country,
+            pincode,
+            resumeUrl,
+            profilePicture,
+            contactNumber,
+            created_at,
+            createdAt,
+            updated_at,
+            updatedAt,
+            imported_at,
+            skills!skills_student_id_fkey(
+              id,
+              name,
+              type,
+              level,
+              description,
+              verified,
+              enabled,
+              approval_status,
+              created_at,
+              updated_at
+            ),
+            projects!projects_student_id_fkey(
+              id,
+              title,
+              description,
+              status,
+              start_date,
+              end_date,
+              duration,
+              tech_stack,
+              demo_link,
+              github_link,
+              approval_status,
+              certificate_url,
+              video_url,
+              ppt_url,
+              organization,
+              enabled,
+              created_at,
+              updated_at
+            ),
+            certificates!certificates_student_id_fkey(
+              id,
+              title,
+              issuer,
+              level,
+              credential_id,
+              link,
+              issued_on,
+              description,
+              status,
+              approval_status,
+              document_url,
+              enabled,
+              created_at,
+              updated_at
+            ),
+            experience!experience_student_id_fkey(
+              id,
+              organization,
+              role,
+              start_date,
+              end_date,
+              duration,
+              verified,
+              approval_status,
+              created_at,
+              updated_at
+            ),
+            trainings!trainings_student_id_fkey(
+              id,
+              title,
+              organization,
+              start_date,
+              end_date,
+              duration,
+              description,
+              approval_status,
+              created_at,
+              updated_at
+            )
+          `)
+          .order('updated_at', { ascending: false })
           .limit(500)
         if (error) throw error
         if (!isMounted) return
