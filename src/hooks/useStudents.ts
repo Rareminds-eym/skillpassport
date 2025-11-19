@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 // Skill from skills table
@@ -118,7 +118,7 @@ interface StudentRow {
   facebook_link?: string
   instagram_link?: string
   portfolio_link?: string
-  other_social_links?: any
+  other_social_links?: Record<string, unknown>
   approval_status?: string
   nm_id?: string // kept for backwards-compatibility with older profile JSON
   trainer_name?: string
@@ -155,11 +155,11 @@ export interface UICandidate {
   dept?: string
   university?: string
   registration_number?: string
-  skills: any[]
-  projects: any[]
-  certificates: any[]
-  experience: any[]
-  trainings: any[]
+  skills: Skill[]
+  projects: Project[]
+  certificates: Certificate[]
+  experience: Experience[]
+  trainings: Training[]
   badges: string[]
   ai_score_overall: number
   last_updated?: string
@@ -170,7 +170,7 @@ export interface UICandidate {
   facebook_link?: string
   instagram_link?: string
   portfolio_link?: string
-  other_social_links?: any
+  other_social_links?: Record<string, unknown>
   // Other fields
   age?: number
   bio?: string
@@ -262,146 +262,150 @@ export function useStudents() {
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
+  const fetchStudents = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select(`
+          id,
+          user_id,
+          student_id,
+          name,
+          email,
+          contact_number,
+          alternate_number,
+          contact_dial_code,
+          date_of_birth,
+          dateOfBirth,
+          age,
+          gender,
+          bloodGroup,
+          district_name,
+          university,
+          university_main,
+          branch_field,
+          college_school_name,
+          course_name,
+          registration_number,
+          enrollmentNumber,
+          github_link,
+          linkedin_link,
+          twitter_link,
+          facebook_link,
+          instagram_link,
+          portfolio_link,
+          other_social_links,
+          approval_status,
+          trainer_name,
+          bio,
+          address,
+          city,
+          state,
+          country,
+          pincode,
+          resumeUrl,
+          profilePicture,
+          contactNumber,
+          created_at,
+          createdAt,
+          updated_at,
+          updatedAt,
+          imported_at,
+          skills!skills_student_id_fkey(
+            id,
+            name,
+            type,
+            level,
+            description,
+            verified,
+            enabled,
+            approval_status,
+            created_at,
+            updated_at
+          ),
+          projects!projects_student_id_fkey(
+            id,
+            title,
+            description,
+            status,
+            start_date,
+            end_date,
+            duration,
+            tech_stack,
+            demo_link,
+            github_link,
+            approval_status,
+            certificate_url,
+            video_url,
+            ppt_url,
+            organization,
+            enabled,
+            created_at,
+            updated_at
+          ),
+          certificates!certificates_student_id_fkey(
+            id,
+            title,
+            issuer,
+            level,
+            credential_id,
+            link,
+            issued_on,
+            description,
+            status,
+            approval_status,
+            document_url,
+            enabled,
+            created_at,
+            updated_at
+          ),
+          experience!experience_student_id_fkey(
+            id,
+            organization,
+            role,
+            start_date,
+            end_date,
+            duration,
+            verified,
+            approval_status,
+            created_at,
+            updated_at
+          ),
+          trainings!trainings_student_id_fkey(
+            id,
+            title,
+            organization,
+            start_date,
+            end_date,
+            duration,
+            description,
+            approval_status,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('is_deleted', false)
+        .order('updated_at', { ascending: false })
+        .limit(500)
+      if (error) throw error
+      const mapped = (data as StudentRow[]).map(mapToUICandidate)
+      setData(mapped)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load students')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     let isMounted = true
-    const fetchStudents = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const { data, error } = await supabase
-          .from('students')
-          .select(`
-            id,
-            user_id,
-            student_id,
-            name,
-            email,
-            contact_number,
-            alternate_number,
-            contact_dial_code,
-            date_of_birth,
-            dateOfBirth,
-            age,
-            gender,
-            bloodGroup,
-            district_name,
-            university,
-            university_main,
-            branch_field,
-            college_school_name,
-            course_name,
-            registration_number,
-            enrollmentNumber,
-            github_link,
-            linkedin_link,
-            twitter_link,
-            facebook_link,
-            instagram_link,
-            portfolio_link,
-            other_social_links,
-            approval_status,
-            trainer_name,
-            bio,
-            address,
-            city,
-            state,
-            country,
-            pincode,
-            resumeUrl,
-            profilePicture,
-            contactNumber,
-            created_at,
-            createdAt,
-            updated_at,
-            updatedAt,
-            imported_at,
-            skills!skills_student_id_fkey(
-              id,
-              name,
-              type,
-              level,
-              description,
-              verified,
-              enabled,
-              approval_status,
-              created_at,
-              updated_at
-            ),
-            projects!projects_student_id_fkey(
-              id,
-              title,
-              description,
-              status,
-              start_date,
-              end_date,
-              duration,
-              tech_stack,
-              demo_link,
-              github_link,
-              approval_status,
-              certificate_url,
-              video_url,
-              ppt_url,
-              organization,
-              enabled,
-              created_at,
-              updated_at
-            ),
-            certificates!certificates_student_id_fkey(
-              id,
-              title,
-              issuer,
-              level,
-              credential_id,
-              link,
-              issued_on,
-              description,
-              status,
-              approval_status,
-              document_url,
-              enabled,
-              created_at,
-              updated_at
-            ),
-            experience!experience_student_id_fkey(
-              id,
-              organization,
-              role,
-              start_date,
-              end_date,
-              duration,
-              verified,
-              approval_status,
-              created_at,
-              updated_at
-            ),
-            trainings!trainings_student_id_fkey(
-              id,
-              title,
-              organization,
-              start_date,
-              end_date,
-              duration,
-              description,
-              approval_status,
-              created_at,
-              updated_at
-            )
-          `)
-          .order('updated_at', { ascending: false })
-          .limit(500)
-        if (error) throw error
-        if (!isMounted) return
-        const mapped = (data as StudentRow[]).map(mapToUICandidate)
-        setData(mapped)
-      } catch (e: any) {
-        if (!isMounted) return
-        setError(e?.message || 'Failed to load students')
-      } finally {
-        if (isMounted) setLoading(false)
-      }
+    const wrappedFetch = async () => {
+      if (!isMounted) return
+      await fetchStudents()
     }
-    fetchStudents()
+    wrappedFetch()
     return () => {
       isMounted = false
     }
@@ -409,5 +413,5 @@ export function useStudents() {
 
   const stats = useMemo(() => ({ count: data.length }), [data])
 
-  return { students: data, loading, error, stats }
+  return { students: data, loading, error, stats, refetch: fetchStudents }
 }
