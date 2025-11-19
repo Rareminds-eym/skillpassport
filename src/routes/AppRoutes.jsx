@@ -186,6 +186,10 @@ const AICounselling = lazy(() =>
   import("../pages/admin/universityAdmin/AICounselling")
 );
 
+const AttendanceTracking = lazy(() =>
+  import("../pages/admin/collegeAdmin/Attendancetracking")
+);
+
 const AppRoutes = () => {
   return (
     <Suspense fallback={<Loader />}>
@@ -271,6 +275,8 @@ const AppRoutes = () => {
             path=""
             element={<Navigate to="/college-admin/dashboard" replace />}
           />
+            <Route path="students/attendance" element={<AttendanceTracking />} />
+
         </Route>
 
         <Route
