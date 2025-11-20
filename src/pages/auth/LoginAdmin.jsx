@@ -157,7 +157,7 @@ const LoginAdmin = () => {
         </Card>
 
         {/* Demo Credentials */}
-        <Card className="bg-slate-50 border">
+        {/* <Card className="bg-slate-50 border">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-gray-700">
               Demo Login Credentials
@@ -181,7 +181,7 @@ const LoginAdmin = () => {
               </div>
             ))}
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
   );
