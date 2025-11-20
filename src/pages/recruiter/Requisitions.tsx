@@ -91,6 +91,10 @@ const Requisitions = () => {
     salaryRange: {},
     applicationCountRange: 'all'
   });
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(8);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Load recruiters and current recruiter
   useEffect(() => {
@@ -99,9 +103,18 @@ const Requisitions = () => {
   }, [user]);
 
   // Load requisitions from Supabase
-  useEffect(() => {
-    loadRequisitions();
-  }, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection]);
+  // useEffect(() => {
+  //   loadRequisitions();
+  // }, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection]);
+  // Load requisitions when pagination changes
+useEffect(() => {
+  loadRequisitions();
+}, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection, currentPage, itemsPerPage]);
+
+// Reset to page 1 when filters change
+useEffect(() => {
+  setCurrentPage(1);
+}, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection]);
 
   const loadRecruiters = async () => {
     try {
@@ -149,9 +162,12 @@ const Requisitions = () => {
     setLoading(true);
     try {
       // Build Supabase query with SQL-optimized filters
+      // let query = supabase
+      //   .from('opportunities')
+      //   .select('*');
       let query = supabase
-        .from('opportunities')
-        .select('*');
+  .from('opportunities')
+  .select('*', { count: 'exact' });
 
       // Apply search query filter (case-insensitive)
       if (searchQuery) {
@@ -222,7 +238,19 @@ const Requisitions = () => {
       // Apply sorting (SQL-optimized)
       query = query.order(sortField, { ascending: sortDirection === 'asc' });
 
-      const { data, error } = await query;
+      // const { data, error } = await query;
+      // 🆕 ADD THESE 5 LINES HERE:
+// Apply pagination
+const from = (currentPage - 1) * itemsPerPage;
+const to = from + itemsPerPage - 1;
+query = query.range(from, to);
+
+const { data, error, count } = await query;  // ✅ CHANGED: Added 'count'
+// 🆕 ADD THIS LINE HERE
+console.log("Fetched cards from DB:", data?.length, "out of total:", count);
+// 🆕 ADD THIS LINE HERE:
+// Set total count for pagination
+setTotalCount(count || 0);
 
       if (error) {
         console.error('Error loading opportunities:', error);
@@ -395,7 +423,15 @@ const Requisitions = () => {
       ? <ChevronUpIcon className="h-4 w-4 text-primary-600" />
       : <ChevronDownIcon className="h-4 w-4 text-primary-600" />;
   };
+   
+  // 🆕🆕🆕 ADD THESE LINES HERE 🆕🆕🆕
+const totalPages = Math.ceil(totalCount / itemsPerPage);
+const startItem = (currentPage - 1) * itemsPerPage + 1;
+const endItem = Math.min(currentPage * itemsPerPage, totalCount);
 
+const goToPage = (page: number) => {
+  setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+};
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -430,10 +466,13 @@ const Requisitions = () => {
           </div>
           
           {/* Results Count & Sort Info */}
-          {requisitions.length > 0 && (
+          {/* {requisitions.length > 0 && ( */}
+          {totalCount > 0 && (
             <div className="hidden md:flex items-center px-3 py-2 bg-gray-100 rounded-md text-xs text-gray-600">
-              <span className="font-medium">{requisitions.length}</span>
-              <span className="mx-1">results</span>
+              {/* <span className="font-medium">{requisitions.length}</span>
+              <span className="mx-1">results</span> */}
+              <span className="font-medium">{totalCount}</span>
+  <span className="mx-1">total results</span>
               {sortField && (
                 <>
                   <span className="mx-1">•</span>
@@ -744,6 +783,92 @@ const Requisitions = () => {
             </table>
           </div>
         )}
+        {/* 🆕🆕🆕 PAGINATION UI STARTS HERE 🆕🆕🆕 */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg shadow-sm">
+          {/* Mobile pagination */}
+          <div className="flex flex-1 justify-between sm:hidden">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+
+          {/* Desktop pagination */}
+          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+             <div>
+    <p className="text-sm text-gray-700">
+      Showing <span className="font-medium">{startItem}</span> to{' '}
+      <span className="font-medium">{endItem}</span> of{' '}
+      <span className="font-medium">{totalCount}</span> results
+    </p>
+  </div>
+             <div>
+    <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+
+      {/* Previous Button */}
+      <button
+        onClick={() => goToPage(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="relative inline-flex items-center rounded-l-md px-3 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <ChevronUpIcon className="h-5 w-5 rotate-[-90deg] mr-1" aria-hidden="true" />
+        <span>Previous</span>
+      </button>
+                
+                {/* Page Numbers */}
+      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+        let pageNum;
+
+        if (totalPages <= 5) {
+          pageNum = i + 1;
+        } else if (currentPage <= 3) {
+          pageNum = i + 1;
+        } else if (currentPage >= totalPages - 2) {
+          pageNum = totalPages - 4 + i;
+        } else {
+          pageNum = currentPage - 2 + i;
+        }
+                  
+                  return (
+                     <button
+            key={pageNum}
+            onClick={() => goToPage(pageNum)}
+            className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+              currentPage === pageNum
+                ? 'z-10 bg-primary-600 text-white'
+                : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            {pageNum}
+          </button>
+                  );
+                })}
+                
+                 {/* Next Button */}
+      <button
+        onClick={() => goToPage(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="relative inline-flex items-center rounded-r-md px-3 py-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <span>Next</span>
+        <ChevronUpIcon className="h-5 w-5 rotate-90 ml-1" aria-hidden="true" />
+      </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
 
       {/* Modals */}
