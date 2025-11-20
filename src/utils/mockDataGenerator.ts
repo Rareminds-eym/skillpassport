@@ -18,10 +18,29 @@ interface PeriodData {
     fastest_hire: number;
   };
   qualityMetrics: {
+    total_hired: number;
+    avg_cgpa: number;
     external_audited_percentage: number;
     avg_ai_score_hired: number;
     rubric_pass_rate: number;
     top_skills_hired: string[];
+    gender_diversity: {
+      male_percentage: number;
+      female_percentage: number;
+    };
+    ageDemographics: {
+      averageAge: number;
+      distribution: Array<{
+        range: string;
+        count: number;
+        percentage: number;
+      }>;
+    };
+    topCourses: Array<{
+      name: string;
+      count: number;
+      percentage: number;
+    }>;
   };
   geography: {
     locations: Array<{ city: string; count: number; percentage: number }>;
@@ -66,10 +85,10 @@ export const getDataForPeriod = (range: TimeRange): PeriodData => {
 
   // Quality metrics (tend to be more stable)
   const qualityVariation = {
-    '7d': { audited: 22, score: 89.5, pass: 78 },
-    '30d': { audited: 18, score: 87.3, pass: 73 },
-    '90d': { audited: 16, score: 86.1, pass: 71 },
-    'ytd': { audited: 15, score: 85.2, pass: 69 }
+    '7d': { audited: 22, score: 89.5, pass: 78, hired: Math.round(hired), cgpa: 8.2 },
+    '30d': { audited: 18, score: 87.3, pass: 73, hired: Math.round(hired), cgpa: 7.9 },
+    '90d': { audited: 16, score: 86.1, pass: 71, hired: Math.round(hired), cgpa: 7.8 },
+    'ytd': { audited: 15, score: 85.2, pass: 69, hired: Math.round(hired), cgpa: 7.7 }
   };
 
   // Geography data varies by period
@@ -228,10 +247,31 @@ export const getDataForPeriod = (range: TimeRange): PeriodData => {
     },
     speedMetrics: speedVariation[range],
     qualityMetrics: {
+      total_hired: qualityVariation[range].hired,
+      avg_cgpa: qualityVariation[range].cgpa,
       external_audited_percentage: qualityVariation[range].audited,
       avg_ai_score_hired: qualityVariation[range].score,
       rubric_pass_rate: qualityVariation[range].pass,
-      top_skills_hired: topSkills[range]
+      top_skills_hired: topSkills[range],
+      gender_diversity: {
+        male_percentage: 58,
+        female_percentage: 42
+      },
+      ageDemographics: {
+        averageAge: 23,
+        distribution: [
+          { range: '18-21', count: Math.round(hired * 0.3), percentage: 30 },
+          { range: '22-25', count: Math.round(hired * 0.45), percentage: 45 },
+          { range: '26-30', count: Math.round(hired * 0.20), percentage: 20 },
+          { range: '30+', count: Math.round(hired * 0.05), percentage: 5 }
+        ]
+      },
+      topCourses: [
+        { name: 'GMP', count: Math.round(hired * 0.35), percentage: 35 },
+        { name: 'FSQM', count: Math.round(hired * 0.30), percentage: 30 },
+        { name: 'MC', count: Math.round(hired * 0.25), percentage: 25 },
+        { name: 'Others', count: Math.round(hired * 0.10), percentage: 10 }
+      ]
     },
     geography: geoData[range],
     attribution: attributionData[range],
@@ -262,10 +302,15 @@ export const getPreviousPeriodData = (range: TimeRange): PeriodData => {
       fastest_hire: currentData.speedMetrics.fastest_hire + 2
     },
     qualityMetrics: {
+      total_hired: Math.round(currentData.qualityMetrics.total_hired * reductionFactor),
+      avg_cgpa: Math.max(6.0, currentData.qualityMetrics.avg_cgpa - 0.2),
       external_audited_percentage: Math.max(10, currentData.qualityMetrics.external_audited_percentage - 2),
       avg_ai_score_hired: currentData.qualityMetrics.avg_ai_score_hired - 1.5,
       rubric_pass_rate: Math.max(60, currentData.qualityMetrics.rubric_pass_rate - 3),
-      top_skills_hired: currentData.qualityMetrics.top_skills_hired
+      top_skills_hired: currentData.qualityMetrics.top_skills_hired,
+      gender_diversity: currentData.qualityMetrics.gender_diversity,
+      ageDemographics: currentData.qualityMetrics.ageDemographics,
+      topCourses: currentData.qualityMetrics.topCourses
     },
     geography: currentData.geography,
     attribution: currentData.attribution,
