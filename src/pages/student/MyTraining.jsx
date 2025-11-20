@@ -289,7 +289,7 @@ const MyTraining = () => {
                                 <Badge
                                   key={idx}
                                   variant="secondary"
-                                  className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-md font-medium"
+                                  className="text-xs bg-blue-50 text-white border border-blue-200 px-2.5 py-1 rounded-md font-medium"
                                 >
                                   {skill}
                                 </Badge>

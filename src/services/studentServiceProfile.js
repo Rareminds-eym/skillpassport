@@ -391,28 +391,93 @@ const formattedEducation = tableEducation.map((edu) => ({
 
 console.log('📚 Formatted education records:', formattedEducation.length);
 
-  const tableTrainings = Array.isArray(data?.trainings) ? data.trainings : [];
-const formattedTrainings = tableTrainings.map((train) => ({
-  id: train.id,
-  title: train.title || "",
-  course: train.title || "", // Map title to course for backward compatibility
-  organization: train.organization || "",
-  start_date: train.start_date,
-  end_date: train.end_date,
-  duration: train.duration || "",
-  description: train.description || "",
-   // ✅ ADD THESE NEW FIELDS
-  status: train.status || "ongoing",
-  completedModules: train.completed_modules || 0,
-  totalModules: train.total_modules || 0,
-  hoursSpent: train.hours_spent || 0,
-  approval_status: train.approval_status || "pending",
-  verified: train.approval_status === "approved",
-  processing: train.approval_status !== "approved",
-  enabled: train.approval_status !== "rejected",
-  createdAt: train.created_at,
-  updatedAt: train.updated_at,
-}));
+// const tableTrainings = Array.isArray(data?.trainings) ? data.trainings : [];
+  
+// const formattedTrainings = tableTrainings.map((train) => ({
+//   id: train.id,
+//   title: train.title || "",
+//   course: train.title || "", // Map title to course for backward compatibility
+//   organization: train.organization || "",
+//   start_date: train.start_date,
+//   end_date: train.end_date,
+//   duration: train.duration || "",
+//   description: train.description || "",
+//   status: train.status || "ongoing",
+//   completedModules: train.completed_modules || 0,
+//   totalModules: train.total_modules || 0,
+//   hoursSpent: train.hours_spent || 0,
+//   approval_status: train.approval_status || "pending",
+//   verified: train.approval_status === "approved",
+//   processing: train.approval_status !== "approved",
+//   enabled: train.approval_status !== "rejected",
+//   createdAt: train.created_at,
+//   updatedAt: train.updated_at,
+// }));
+const tableTrainings = Array.isArray(data?.trainings) ? data.trainings : [];
+
+// Fetch all training IDs
+const trainingIds = tableTrainings.map(t => t.id).filter(Boolean);
+
+// Fetch all certificates linked to these trainings
+const { data: trainingCertificates } = await supabase
+  .from('certificates')
+  .select('training_id, document_url, title, issuer')
+  .in('training_id', trainingIds);
+
+// Fetch all skills linked to these trainings
+const { data: trainingSkills } = await supabase
+  .from('skills')
+  .select('training_id, name')
+  .in('training_id', trainingIds)
+  .eq('type', 'technical');
+
+console.log('🔗 Found', trainingCertificates?.length || 0, 'training certificates');
+console.log('🔗 Found', trainingSkills?.length || 0, 'training skills');
+
+const formattedTrainings = tableTrainings.map((train) => {
+  // Find certificate for this specific training
+  const cert = (trainingCertificates || []).find(c => c.training_id === train.id);
+  
+  // Find skills for this specific training
+  const skills = (trainingSkills || [])
+    .filter(s => s.training_id === train.id)
+    .map(s => s.name);
+
+  return {
+    id: train.id,
+    title: train.title || "",
+    course: train.title || "",
+    organization: train.organization || "",
+    provider: train.organization || "",
+    start_date: train.start_date,
+    end_date: train.end_date,
+    startDate: train.start_date,
+    endDate: train.end_date,
+    duration: train.duration || "",
+    description: train.description || "",
+    
+    // From trainings table
+    status: train.status || "ongoing",
+    completedModules: train.completed_modules || 0,
+    totalModules: train.total_modules || 0,
+    hoursSpent: train.hours_spent || 0,
+    
+    // From certificates table (linked by training_id)
+    certificateUrl: cert?.document_url || "",
+    
+    // From skills table (linked by training_id)
+    skills: skills,
+    
+    approval_status: train.approval_status || "pending",
+    verified: train.approval_status === "approved",
+    processing: train.approval_status !== "approved",
+    enabled: train.approval_status !== "rejected",
+    createdAt: train.created_at,
+    updatedAt: train.updated_at,
+  };
+});
+
+console.log('📚 Formatted training records:', formattedTrainings.length);
     const tableCertificates = Array.isArray(data?.certificates) ? data.certificates : [];
     const formattedTableCertificates = tableCertificates.map((certificate) => {
       const issuedOnValue = certificate?.issued_on || certificate?.issuedOn || null;
@@ -1290,7 +1355,7 @@ export async function updateEducationByEmail(email, educationData = []) {
   }
 }
 
-/**
+/** 1
  * Update training array in student profile
  */
 // export async function updateTrainingByEmail(email, trainingData) {
@@ -1332,12 +1397,497 @@ export async function updateEducationByEmail(email, educationData = []) {
 //     return { success: false, error: err.message };
 //   }
 // }
-/**
+
+/**2
  * Update training records in trainings table
  */
+// export async function updateTrainingByEmail(email, trainingData = []) {
+//   try {
+//     // Find student record
+//     let studentRecord = null;
+
+//     const { data: directByEmail, error: directEmailError } = await supabase
+//       .from('students')
+//       .select('id, user_id')
+//       .eq('email', email)
+//       .maybeSingle();
+
+//     if (directEmailError) {
+//       return { success: false, error: directEmailError.message };
+//     }
+
+//     if (directByEmail) {
+//       studentRecord = directByEmail;
+//     }
+
+//     if (!studentRecord) {
+//       const { data: profileMatch, error: profileError } = await supabase
+//         .from('students')
+//         .select('id, user_id, profile')
+//         .eq('profile->>email', email)
+//         .maybeSingle();
+
+//       if (profileError) {
+//         return { success: false, error: profileError.message };
+//       }
+
+//       if (profileMatch) {
+//         studentRecord = profileMatch;
+//       }
+//     }
+
+//     if (!studentRecord) {
+//       const { data: allStudents, error: allError } = await supabase
+//         .from('students')
+//         .select('id, user_id, profile');
+
+//       if (allError) {
+//         return { success: false, error: allError.message };
+//       }
+
+//       for (const student of allStudents || []) {
+//         const profile = safeJSONParse(student.profile);
+//         if (profile?.email === email) {
+//           studentRecord = student;
+//           break;
+//         }
+//       }
+//     }
+
+//     if (!studentRecord) {
+//       return { success: false, error: 'Student not found' };
+//     }
+
+//     // Use user_id as student_id (as per foreign key constraint)
+//     const studentId = studentRecord.user_id;
+
+//     // Get existing training records
+//     const { data: existingTrainings, error: existingError } = await supabase
+//       .from('trainings')
+//       .select('id')
+//       .eq('student_id', studentId);
+
+//     if (existingError) {
+//       return { success: false, error: existingError.message };
+//     }
+
+//     const nowIso = new Date().toISOString();
+
+//     // Format training data for database
+//     const formatted = (trainingData || [])
+//       .filter((train) => {
+//         // Accept either 'title' or 'course' field
+//         const titleField = train.title || train.course;
+//         return train && typeof titleField === 'string' && titleField.trim().length > 0;
+//       })
+//       .map((train) => {
+//         // Map 'course' to 'title' for backward compatibility
+//         const titleValue = train.title || train.course || '';
+        
+//         const record = {
+//           student_id: studentId,
+//           title: titleValue.trim(),
+//           organization: train.organization?.trim() || train.provider?.trim() || null,
+//           start_date: train.start_date || train.startDate || null,
+//           end_date: train.end_date || train.endDate || null,
+//           duration: train.duration?.trim() || null,
+//           description: train.description?.trim() || null,
+//           status: train.status || 'ongoing',
+//       completed_modules: train.completedModules || 0,
+//       total_modules: train.totalModules || 0,
+//       hours_spent: train.hoursSpent || 0,
+//           approval_status: train.approval_status || 'pending',
+//           updated_at: nowIso,
+//         };
+
+//         // Preserve existing ID if valid UUID
+//         const rawId = typeof train.id === 'string' ? train.id.trim() : null;
+//         if (rawId && rawId.length === 36) {
+//           record.id = rawId;
+//         } else {
+//           record.id = generateUuid();
+//         }
+
+//         return record;
+//       });
+
+//     // Determine which records to delete
+//     const incomingIds = new Set(formatted.filter((record) => record.id).map((record) => record.id));
+//     const toDelete = (existingTrainings || [])
+//       .filter((existing) => !incomingIds.has(existing.id))
+//       .map((existing) => existing.id);
+
+//     // Delete removed records
+//     if (toDelete.length > 0) {
+//       const { error: deleteError } = await supabase
+//         .from('trainings')
+//         .delete()
+//         .in('id', toDelete);
+
+//       if (deleteError) {
+//         return { success: false, error: deleteError.message };
+//       }
+//     }
+
+//     // Upsert training records
+//     if (formatted.length > 0) {
+//       const { error: upsertError } = await supabase
+//         .from('trainings')
+//         .upsert(formatted, { onConflict: 'id' });
+
+//       if (upsertError) {
+//         return { success: false, error: upsertError.message };
+//       }
+//     } else if ((existingTrainings || []).length > 0) {
+//       // Delete all if no training data provided
+//       const { error: deleteAllError } = await supabase
+//         .from('trainings')
+//         .delete()
+//         .eq('student_id', studentId);
+
+//       if (deleteAllError) {
+//         return { success: false, error: deleteAllError.message };
+//       }
+//     }
+
+//     // Return updated student data
+//     return await getStudentByEmail(email);
+//   } catch (err) {
+//     console.error('❌ updateTrainingByEmail exception:', err);
+//     return { success: false, error: err.message };
+//   }
+// }
+
+// 3
+// export async function updateTrainingByEmail(email, trainingData = []) {
+//   try {
+//     console.log('🎓 Starting training update for:', email);
+//     console.log('📦 Training data received:', trainingData.length, 'records');
+
+//     // Find student record
+//     let studentRecord = null;
+
+//     const { data: directByEmail, error: directEmailError } = await supabase
+//       .from('students')
+//       .select('id, user_id')
+//       .eq('email', email)
+//       .maybeSingle();
+
+//     if (directEmailError) {
+//       return { success: false, error: directEmailError.message };
+//     }
+
+//     if (directByEmail) {
+//       studentRecord = directByEmail;
+//     }
+
+//     if (!studentRecord) {
+//       const { data: profileMatch, error: profileError } = await supabase
+//         .from('students')
+//         .select('id, user_id, profile')
+//         .eq('profile->>email', email)
+//         .maybeSingle();
+
+//       if (profileError) {
+//         return { success: false, error: profileError.message };
+//       }
+
+//       if (profileMatch) {
+//         studentRecord = profileMatch;
+//       }
+//     }
+
+//     if (!studentRecord) {
+//       const { data: allStudents, error: allError } = await supabase
+//         .from('students')
+//         .select('id, user_id, profile');
+
+//       if (allError) {
+//         return { success: false, error: allError.message };
+//       }
+
+//       for (const student of allStudents || []) {
+//         const profile = safeJSONParse(student.profile);
+//         if (profile?.email === email) {
+//           studentRecord = student;
+//           break;
+//         }
+//       }
+//     }
+
+//     if (!studentRecord) {
+//       return { success: false, error: 'Student not found' };
+//     }
+
+//     const studentId = studentRecord.user_id;
+//     console.log('✅ Found student with user_id:', studentId);
+
+//     // Get existing training records
+//     const { data: existingTrainings, error: existingError } = await supabase
+//       .from('trainings')
+//       .select('id')
+//       .eq('student_id', studentId);
+
+//     if (existingError) {
+//       return { success: false, error: existingError.message };
+//     }
+
+//     console.log('📚 Existing trainings:', existingTrainings?.length || 0);
+
+//     const nowIso = new Date().toISOString();
+
+//     // Format training data for database
+//     const formatted = (trainingData || [])
+//       .filter((train) => {
+//         const titleField = train.title || train.course;
+//         return train && typeof titleField === 'string' && titleField.trim().length > 0;
+//       })
+//       .map((train) => {
+//         const titleValue = train.title || train.course || '';
+        
+//         const record = {
+//           student_id: studentId,
+//           title: titleValue.trim(),
+//           organization: train.organization?.trim() || train.provider?.trim() || null,
+//           start_date: train.start_date || train.startDate || null,
+//           end_date: train.end_date || train.endDate || null,
+//           duration: train.duration?.trim() || null,
+//           description: train.description?.trim() || null,
+//           status: train.status || 'ongoing',
+//           completed_modules: train.completedModules || 0,
+//           total_modules: train.totalModules || 0,
+//           hours_spent: train.hoursSpent || 0,
+//           approval_status: train.approval_status || 'pending',
+//           updated_at: nowIso,
+//         };
+
+//         // Preserve existing ID if valid UUID
+//         const rawId = typeof train.id === 'string' ? train.id.trim() : null;
+//         if (rawId && rawId.length === 36) {
+//           record.id = rawId;
+//         } else {
+//           record.id = generateUuid();
+//         }
+
+//         // Store certificateUrl and skills for later use
+//         record._certificateUrl = train.certificateUrl?.trim() || null;
+//         record._skills = Array.isArray(train.skills) ? train.skills : [];
+
+//         return record;
+//       });
+
+//     console.log('💾 Formatted training records:', formatted.length);
+
+//     // Determine which records to delete
+//     const incomingIds = new Set(formatted.map((record) => record.id));
+//     const toDelete = (existingTrainings || [])
+//       .filter((existing) => !incomingIds.has(existing.id))
+//       .map((existing) => existing.id);
+
+//     // Delete removed records and their related data
+//     if (toDelete.length > 0) {
+//       console.log('🗑️ Deleting', toDelete.length, 'training records');
+
+//       // Delete related certificates
+//       await supabase
+//         .from('certificates')
+//         .delete()
+//         .in('training_id', toDelete);
+
+//       // Delete related skills
+//       await supabase
+//         .from('skills')
+//         .delete()
+//         .in('training_id', toDelete);
+
+//       // Delete trainings
+//       const { error: deleteError } = await supabase
+//         .from('trainings')
+//         .delete()
+//         .in('id', toDelete);
+
+//       if (deleteError) {
+//         console.error('❌ Error deleting trainings:', deleteError);
+//         return { success: false, error: deleteError.message };
+//       }
+//     }
+
+//     // Upsert training records (without certificateUrl and skills)
+//     if (formatted.length > 0) {
+//       // Remove temporary fields before upserting
+//       const cleanedFormatted = formatted.map(({ _certificateUrl, _skills, ...rest }) => rest);
+
+//       const { error: upsertError } = await supabase
+//         .from('trainings')
+//         .upsert(cleanedFormatted, { onConflict: 'id' });
+
+//       if (upsertError) {
+//         console.error('❌ Error upserting trainings:', upsertError);
+//         return { success: false, error: upsertError.message };
+//       }
+
+//       console.log('✅ Training records saved');
+
+//       // Now save related certificates and skills
+//       for (const record of formatted) {
+//         const trainingId = record.id;
+//         const certificateUrl = record._certificateUrl;
+//         const skills = record._skills;
+
+//         console.log(`\n🔗 Processing related data for training: ${record.title}`);
+
+//         // ===== SAVE CERTIFICATE =====
+//         if (certificateUrl && certificateUrl.length > 0) {
+//           console.log('  📜 Saving certificate...');
+
+//           // Check if certificate already exists for this training
+//           const { data: existingCert } = await supabase
+//             .from('certificates')
+//             .select('id')
+//             .eq('training_id', trainingId)
+//             .maybeSingle();
+
+//           const certRecord = {
+//             student_id: studentId,
+//             training_id: trainingId,
+//             title: `${record.title} - Certificate`,
+//             issuer: record.organization || 'Training Provider',
+//             document_url: certificateUrl,
+//             status: 'active',
+//             approval_status: 'pending',
+//             enabled: true,
+//             updated_at: nowIso,
+//           };
+
+//           if (existingCert) {
+//             // Update existing certificate
+//             const { error: certUpdateError } = await supabase
+//               .from('certificates')
+//               .update(certRecord)
+//               .eq('id', existingCert.id);
+
+//             if (certUpdateError) {
+//               console.error('  ❌ Error updating certificate:', certUpdateError);
+//             } else {
+//               console.log('  ✅ Certificate updated');
+//             }
+//           } else {
+//             // Insert new certificate
+//             certRecord.id = generateUuid();
+//             certRecord.created_at = nowIso;
+
+//             const { error: certInsertError } = await supabase
+//               .from('certificates')
+//               .insert([certRecord]);
+
+//             if (certInsertError) {
+//               console.error('  ❌ Error inserting certificate:', certInsertError);
+//             } else {
+//               console.log('  ✅ Certificate created');
+//             }
+//           }
+//         } else {
+//           // No certificate URL, delete any existing certificate for this training
+//           await supabase
+//             .from('certificates')
+//             .delete()
+//             .eq('training_id', trainingId);
+//           console.log('  🗑️ Certificate removed (no URL provided)');
+//         }
+
+//         // ===== SAVE SKILLS =====
+//         if (Array.isArray(skills) && skills.length > 0) {
+//           console.log(`  🎯 Saving ${skills.length} skills...`);
+
+//           // Delete existing skills for this training
+//           await supabase
+//             .from('skills')
+//             .delete()
+//             .eq('training_id', trainingId);
+
+//           // Insert new skills
+//           const skillRecords = skills
+//             .filter(skill => typeof skill === 'string' && skill.trim().length > 0)
+//             .map(skill => ({
+//               id: generateUuid(),
+//               student_id: studentId,
+//               training_id: trainingId,
+//               name: skill.trim(),
+//               type: 'technical',
+//               level: 3,
+//               description: `Learned from ${record.title}`,
+//               verified: false,
+//               enabled: true,
+//               approval_status: 'pending',
+//               created_at: nowIso,
+//               updated_at: nowIso,
+//             }));
+
+//           if (skillRecords.length > 0) {
+//             const { error: skillsInsertError } = await supabase
+//               .from('skills')
+//               .insert(skillRecords);
+
+//             if (skillsInsertError) {
+//               console.error('  ❌ Error inserting skills:', skillsInsertError);
+//             } else {
+//               console.log(`  ✅ ${skillRecords.length} skills saved`);
+//             }
+//           }
+//         } else {
+//           // No skills, delete any existing skills for this training
+//           await supabase
+//             .from('skills')
+//             .delete()
+//             .eq('training_id', trainingId);
+//           console.log('  🗑️ Skills removed (none provided)');
+//         }
+//       }
+//     } else if ((existingTrainings || []).length > 0) {
+//       // Delete all if no training data provided
+//       console.log('🗑️ Deleting all training records (empty data provided)');
+
+//       const trainingIds = existingTrainings.map(t => t.id);
+
+//       // Delete related certificates
+//       await supabase
+//         .from('certificates')
+//         .delete()
+//         .in('training_id', trainingIds);
+
+//       // Delete related skills
+//       await supabase
+//         .from('skills')
+//         .delete()
+//         .in('training_id', trainingIds);
+
+//       // Delete trainings
+//       const { error: deleteAllError } = await supabase
+//         .from('trainings')
+//         .delete()
+//         .eq('student_id', studentId);
+
+//       if (deleteAllError) {
+//         console.error('❌ Error deleting all trainings:', deleteAllError);
+//         return { success: false, error: deleteAllError.message };
+//       }
+//     }
+
+//     console.log('🎉 Training update completed successfully');
+
+//     // Return updated student data
+//     return await getStudentByEmail(email);
+//   } catch (err) {
+//     console.error('❌ updateTrainingByEmail exception:', err);
+//     return { success: false, error: err.message };
+//   }
+// }
 export async function updateTrainingByEmail(email, trainingData = []) {
   try {
-    // Find student record
+    console.log('🎓 Starting training update for:', email);
+    console.log('📦 Training data received:', trainingData.length, 'records');
+
+    // Find student record (keep existing code)
     let studentRecord = null;
 
     const { data: directByEmail, error: directEmailError } = await supabase
@@ -1392,8 +1942,8 @@ export async function updateTrainingByEmail(email, trainingData = []) {
       return { success: false, error: 'Student not found' };
     }
 
-    // Use user_id as student_id (as per foreign key constraint)
     const studentId = studentRecord.user_id;
+    console.log('✅ Found student with user_id:', studentId);
 
     // Get existing training records
     const { data: existingTrainings, error: existingError } = await supabase
@@ -1405,17 +1955,17 @@ export async function updateTrainingByEmail(email, trainingData = []) {
       return { success: false, error: existingError.message };
     }
 
+    console.log('📚 Existing trainings:', existingTrainings?.length || 0);
+
     const nowIso = new Date().toISOString();
 
     // Format training data for database
     const formatted = (trainingData || [])
       .filter((train) => {
-        // Accept either 'title' or 'course' field
         const titleField = train.title || train.course;
         return train && typeof titleField === 'string' && titleField.trim().length > 0;
       })
       .map((train) => {
-        // Map 'course' to 'title' for backward compatibility
         const titleValue = train.title || train.course || '';
         
         const record = {
@@ -1427,9 +1977,9 @@ export async function updateTrainingByEmail(email, trainingData = []) {
           duration: train.duration?.trim() || null,
           description: train.description?.trim() || null,
           status: train.status || 'ongoing',
-      completed_modules: train.completedModules || 0,
-      total_modules: train.totalModules || 0,
-      hours_spent: train.hoursSpent || 0,
+          completed_modules: train.completedModules || 0,
+          total_modules: train.totalModules || 0,
+          hours_spent: train.hoursSpent || 0,
           approval_status: train.approval_status || 'pending',
           updated_at: nowIso,
         };
@@ -1442,47 +1992,252 @@ export async function updateTrainingByEmail(email, trainingData = []) {
           record.id = generateUuid();
         }
 
+        // Store certificateUrl and skills for later use
+        record._certificateUrl = train.certificateUrl?.trim() || null;
+        record._skills = Array.isArray(train.skills) ? train.skills : [];
+
         return record;
       });
 
+    console.log('💾 Formatted training records:', formatted.length);
+
     // Determine which records to delete
-    const incomingIds = new Set(formatted.filter((record) => record.id).map((record) => record.id));
+    const incomingIds = new Set(formatted.map((record) => record.id));
     const toDelete = (existingTrainings || [])
       .filter((existing) => !incomingIds.has(existing.id))
       .map((existing) => existing.id);
 
-    // Delete removed records
+    // Delete removed records and their related data
     if (toDelete.length > 0) {
+      console.log('🗑️ Deleting', toDelete.length, 'training records');
+
+      // Delete related certificates
+      await supabase
+        .from('certificates')
+        .delete()
+        .in('training_id', toDelete);
+
+      // Delete related skills
+      await supabase
+        .from('skills')
+        .delete()
+        .in('training_id', toDelete);
+
+      // Delete trainings
       const { error: deleteError } = await supabase
         .from('trainings')
         .delete()
         .in('id', toDelete);
 
       if (deleteError) {
+        console.error('❌ Error deleting trainings:', deleteError);
         return { success: false, error: deleteError.message };
       }
     }
 
-    // Upsert training records
+    // Upsert training records (without certificateUrl and skills)
     if (formatted.length > 0) {
+      // Remove temporary fields before upserting
+      const cleanedFormatted = formatted.map(({ _certificateUrl, _skills, ...rest }) => rest);
+
       const { error: upsertError } = await supabase
         .from('trainings')
-        .upsert(formatted, { onConflict: 'id' });
+        .upsert(cleanedFormatted, { onConflict: 'id' });
 
       if (upsertError) {
+        console.error('❌ Error upserting trainings:', upsertError);
         return { success: false, error: upsertError.message };
+      }
+
+      console.log('✅ Training records saved');
+
+      // ===== NOW SAVE ONLY CERTIFICATE URL AND SKILLS =====
+      for (const record of formatted) {
+        const trainingId = record.id;
+        const certificateUrl = record._certificateUrl;
+        const skills = record._skills;
+
+        console.log(`\n🔗 Processing related data for training: ${record.title}`);
+
+        // ===== SAVE ONLY CERTIFICATE URL =====
+        if (certificateUrl && certificateUrl.length > 0) {
+          console.log('  📜 Checking for existing certificate...');
+
+          // Check if certificate already exists for this training
+          const { data: existingCert } = await supabase
+            .from('certificates')
+            .select('id, document_url')
+            .eq('training_id', trainingId)
+            .maybeSingle();
+
+          if (existingCert) {
+            // ✅ Only update document_url if it changed
+            if (existingCert.document_url !== certificateUrl) {
+              const { error: certUpdateError } = await supabase
+                .from('certificates')
+                .update({ 
+                  document_url: certificateUrl,
+                  updated_at: nowIso 
+                })
+                .eq('id', existingCert.id);
+
+              if (certUpdateError) {
+                console.error('  ❌ Error updating certificate URL:', certUpdateError);
+              } else {
+                console.log('  ✅ Certificate URL updated');
+              }
+            } else {
+              console.log('  ℹ️ Certificate URL unchanged');
+            }
+          } else {
+            // ✅ Create new certificate with ONLY required fields
+            const certRecord = {
+              id: generateUuid(),
+              student_id: studentId,
+              training_id: trainingId,
+              title: `${record.title} - Certificate`,
+              document_url: certificateUrl,
+              status: 'active',
+              approval_status: 'pending',
+              enabled: true,
+              created_at: nowIso,
+              updated_at: nowIso,
+            };
+
+            const { error: certInsertError } = await supabase
+              .from('certificates')
+              .insert([certRecord]);
+
+            if (certInsertError) {
+              console.error('  ❌ Error inserting certificate:', certInsertError);
+            } else {
+              console.log('  ✅ Certificate created with URL');
+            }
+          }
+        } else {
+          // No certificate URL, delete any existing certificate for this training
+          const { error: deleteError } = await supabase
+            .from('certificates')
+            .delete()
+            .eq('training_id', trainingId);
+
+          if (!deleteError) {
+            console.log('  🗑️ Certificate removed (no URL provided)');
+          }
+        }
+
+        // ===== SAVE ONLY SKILL NAMES =====
+        if (Array.isArray(skills) && skills.length > 0) {
+          console.log(`  🎯 Processing ${skills.length} skills...`);
+
+          // Get existing skills for this training
+          const { data: existingSkills } = await supabase
+            .from('skills')
+            .select('id, name')
+            .eq('training_id', trainingId)
+            .eq('type', 'technical');
+
+          const existingSkillNames = new Set(
+            (existingSkills || []).map(s => s.name.toLowerCase().trim())
+          );
+
+          const newSkillNames = skills
+            .filter(skill => typeof skill === 'string' && skill.trim().length > 0)
+            .map(skill => skill.trim());
+
+          // Find skills to add (not in existing)
+          const skillsToAdd = newSkillNames.filter(
+            skillName => !existingSkillNames.has(skillName.toLowerCase())
+          );
+
+          // Find skills to remove (in existing but not in new)
+          const newSkillNamesSet = new Set(newSkillNames.map(s => s.toLowerCase()));
+          const skillIdsToDelete = (existingSkills || [])
+            .filter(s => !newSkillNamesSet.has(s.name.toLowerCase().trim()))
+            .map(s => s.id);
+
+          // Delete removed skills
+          if (skillIdsToDelete.length > 0) {
+            await supabase
+              .from('skills')
+              .delete()
+              .in('id', skillIdsToDelete);
+            console.log(`  🗑️ Removed ${skillIdsToDelete.length} skills`);
+          }
+
+          // ✅ Add new skills with ONLY required fields
+          if (skillsToAdd.length > 0) {
+            const skillRecords = skillsToAdd.map(skillName => ({
+              id: generateUuid(),
+              student_id: studentId,
+              training_id: trainingId,
+              name: skillName,
+              type: 'technical',
+              // level: 3,
+              // verified: false,
+              // enabled: true,
+              // approval_status: 'pending',
+              created_at: nowIso,
+              updated_at: nowIso,
+            }));
+
+            const { error: skillsInsertError } = await supabase
+              .from('skills')
+              .insert(skillRecords);
+
+            if (skillsInsertError) {
+              console.error('  ❌ Error inserting skills:', skillsInsertError);
+            } else {
+              console.log(`  ✅ Added ${skillsToAdd.length} new skills`);
+            }
+          }
+
+          if (skillsToAdd.length === 0 && skillIdsToDelete.length === 0) {
+            console.log('  ℹ️ Skills unchanged');
+          }
+        } else {
+          // No skills, delete any existing skills for this training
+          const { error: deleteError } = await supabase
+            .from('skills')
+            .delete()
+            .eq('training_id', trainingId);
+
+          if (!deleteError) {
+            console.log('  🗑️ All skills removed (none provided)');
+          }
+        }
       }
     } else if ((existingTrainings || []).length > 0) {
       // Delete all if no training data provided
+      console.log('🗑️ Deleting all training records (empty data provided)');
+
+      const trainingIds = existingTrainings.map(t => t.id);
+
+      // Delete related certificates
+      await supabase
+        .from('certificates')
+        .delete()
+        .in('training_id', trainingIds);
+
+      // Delete related skills
+      await supabase
+        .from('skills')
+        .delete()
+        .in('training_id', trainingIds);
+
+      // Delete trainings
       const { error: deleteAllError } = await supabase
         .from('trainings')
         .delete()
         .eq('student_id', studentId);
 
       if (deleteAllError) {
+        console.error('❌ Error deleting all trainings:', deleteAllError);
         return { success: false, error: deleteAllError.message };
       }
     }
+
+    console.log('🎉 Training update completed successfully');
 
     // Return updated student data
     return await getStudentByEmail(email);
