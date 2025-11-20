@@ -5,6 +5,7 @@ export { default as BusinessImpact } from './BusinessImpact';
 export { default as BuiltForCorporates } from './BuiltForCorporates';
 export { default as SecurityCompliance } from './SecurityCompliance';
 export { default as HowItWorks } from './HowItWorks';
+export { default as ProductWalkthrough } from './ProductWalkthrough';
 export { default as CaseHighlights } from './CaseHighlights';
 export { default as FinalCTA } from './FinalCTA';
 
