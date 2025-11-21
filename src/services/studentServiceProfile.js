@@ -421,7 +421,7 @@ const trainingIds = tableTrainings.map(t => t.id).filter(Boolean);
 // Fetch all certificates linked to these trainings
 const { data: trainingCertificates } = await supabase
   .from('certificates')
-  .select('training_id, document_url, title, issuer')
+  .select('training_id, link')
   .in('training_id', trainingIds);
 
 // Fetch all skills linked to these trainings
@@ -463,7 +463,7 @@ const formattedTrainings = tableTrainings.map((train) => {
     hoursSpent: train.hours_spent || 0,
     
     // From certificates table (linked by training_id)
-    certificateUrl: cert?.document_url || "",
+    certificateUrl: cert?.link|| "",
     
     // From skills table (linked by training_id)
     skills: skills,
@@ -486,7 +486,7 @@ console.log('📚 Formatted training records:', formattedTrainings.length);
       const approvalStatus = typeof approvalSource === "string" ? approvalSource.toLowerCase() : "pending";
       const statusSource = certificate?.status || (certificate?.enabled === false ? "disabled" : "active");
       const statusValue = typeof statusSource === "string" ? statusSource.toLowerCase() : "active";
-      const documentUrlValue = certificate?.document_url || null;
+      const documentUrlValue = certificate?.link || null;
       return {
         id: certificate?.id,
         title: certificate?.title || "",
@@ -2066,7 +2066,7 @@ export async function updateTrainingByEmail(email, trainingData = []) {
           // Check if certificate already exists for this training
           const { data: existingCert } = await supabase
             .from('certificates')
-            .select('id, document_url')
+            .select('id, link')
             .eq('training_id', trainingId)
             .maybeSingle();
 
@@ -2076,7 +2076,7 @@ export async function updateTrainingByEmail(email, trainingData = []) {
               const { error: certUpdateError } = await supabase
                 .from('certificates')
                 .update({ 
-                  document_url: certificateUrl,
+                  link: certificateUrl,
                   updated_at: nowIso 
                 })
                 .eq('id', existingCert.id);
@@ -2096,7 +2096,7 @@ export async function updateTrainingByEmail(email, trainingData = []) {
               student_id: studentId,
               training_id: trainingId,
               title: `${record.title} - Certificate`,
-              document_url: certificateUrl,
+              link: certificateUrl,
               status: 'active',
               approval_status: 'pending',
               enabled: true,
@@ -2549,6 +2549,7 @@ export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
       .from('skills')
       .select('id')
       .eq('student_id', studentId)
+      .is('training_id', null) 
       .eq('type', 'technical');
 
     if (existingError) {
@@ -2700,6 +2701,7 @@ export async function updateSoftSkillsByEmail(email, skillsData = []) {
       .from('skills')
       .select('id')
       .eq('student_id', studentId)
+      .is('training_id', null) 
       .eq('type', 'soft');
 
     if (existingError) {

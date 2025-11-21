@@ -1312,141 +1312,298 @@ const StudentDashboard = () => {
         </CardContent>
       </Card>
     ),
-    training: (
-      <Card
-        key="training"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
-      >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center w-full justify-between">
-            <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Code className="w-5 h-5 text-blue-600" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900">
-                Training
-              </span>
-            </CardTitle>
-            <button
-              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-              title="Edit Training"
-              onClick={() => setActiveModal("training")}
-            >
-              <Edit className="w-4 h-4 text-gray-600" />
-            </button>
-          </div>
-        </CardHeader>
+    // training: (
+    //   <Card
+    //     key="training"
+    //     className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+    //   >
+    //     <CardHeader className="px-6 py-4 border-b border-gray-100">
+    //       <div className="flex items-center w-full justify-between">
+    //         <CardTitle className="flex items-center gap-3 m-0 p-0">
+    //           <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+    //             <Code className="w-5 h-5 text-blue-600" />
+    //           </div>
+    //           <span className="text-lg font-semibold text-gray-900">
+    //             Training
+    //           </span>
+    //         </CardTitle>
+    //         <button
+    //           className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+    //           title="Edit Training"
+    //           onClick={() => setActiveModal("training")}
+    //         >
+    //           <Edit className="w-4 h-4 text-gray-600" />
+    //         </button>
+    //       </div>
+    //     </CardHeader>
 
-        <CardContent className="pt-4 p-6 space-y-4">
-          {(showAllTraining
-            ? userData.training.filter((t) => t.enabled !== false)
-            : userData.training.filter((t) => t.enabled !== false).slice(0, 2)
-          ).map((training, idx) => (
-            <div
-              key={training.id || `training-${training.course}-${idx}`}
-              className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all duration-200"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-semibold text-gray-900 text-base truncate max-w-[75%]">
-                  {training.course}
-                </h4>
-                <Badge
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md ${training.status === "completed"
+    //     <CardContent className="pt-4 p-6 space-y-4">
+    //       {(showAllTraining
+    //         ? userData.training.filter((t) => t.enabled !== false)
+    //         : userData.training.filter((t) => t.enabled !== false).slice(0, 2)
+    //       ).map((training, idx) => (
+    //         <div
+    //           key={training.id || `training-${training.course}-${idx}`}
+    //           className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all duration-200"
+    //         >
+    //           {/* Header */}
+    //           <div className="flex items-center justify-between mb-2">
+    //             <h4 className="font-semibold text-gray-900 text-base truncate max-w-[75%]">
+    //               {training.course}
+    //             </h4>
+    //             <Badge
+    //               className={`px-2.5 py-1 text-xs font-medium rounded-md ${training.status === "completed"
+    //                 ? "bg-green-100 text-green-700"
+    //                 : "bg-blue-100 text-blue-700"
+    //                 }`}
+    //             >
+    //               {training.status === "completed" ? "Completed" : "Ongoing"}
+    //             </Badge>
+    //           </div>
+
+    //           {/* Meta info */}
+    //           <div className="text-xs text-gray-600 mb-2 space-y-1">
+    //             {training.provider && (
+    //               <div className="flex items-center gap-1.5">
+    //                 <BookOpen className="w-3.5 h-3.5 text-gray-500" />
+    //                 <span>{training.provider}</span>
+    //               </div>
+    //             )}
+    //             {training.duration && (
+    //               <div className="flex items-center gap-1.5">
+    //                 <Calendar className="w-3.5 h-3.5 text-gray-500" />
+    //                 <span>{training.duration}</span>
+    //               </div>
+    //             )}
+    //           </div>
+
+    //           {/* Progress bar */}
+    //           <div className="mt-2">
+    //             <div className="flex justify-between items-center text-xs font-medium text-gray-700 mb-1">
+    //               <span>Progress</span>
+    //               <span className="text-blue-600">{training.progress}%</span>
+    //             </div>
+    //             <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
+    //               <div
+    //                 className="h-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
+    //                 style={{ width: `${training.progress}%` }}
+    //               />
+    //             </div>
+    //           </div>
+
+    //           {/* Skills */}
+    //           {Array.isArray(training.skills) && training.skills.length > 0 && (
+    //             <div className="mt-3">
+    //               <p className="text-xs font-semibold text-gray-700 mb-1">
+    //                 Skills Covered:
+    //               </p>
+    //               <div className="flex flex-wrap gap-2">
+    //                 {(training.showAllSkills
+    //                   ? training.skills
+    //                   : training.skills.slice(0, 4)
+    //                 ).map((skill, i) => (
+    //                   <span
+    //                     key={`skill-${training.id}-${i}`}
+    //                     className="px-2.5 py-1 text-[11px] rounded-md bg-blue-50 text-blue-700 font-medium"
+    //                   >
+    //                     {skill}
+    //                   </span>
+    //                 ))}
+    //               </div>
+    //               {training.skills.length > 4 && (
+    //                 <button
+    //                   onClick={() =>
+    //                     setUserData((prev) => ({
+    //                       ...prev,
+    //                       training: prev.training.map((t) =>
+    //                         t.id === training.id
+    //                           ? { ...t, showAllSkills: !t.showAllSkills }
+    //                           : t
+    //                       ),
+    //                     }))
+    //                   }
+    //                   className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+    //                 >
+    //                   {training.showAllSkills
+    //                     ? "Show Less"
+    //                     : `Show All (${training.skills.length})`}
+    //                 </button>
+    //               )}
+    //             </div>
+    //           )}
+    //         </div>
+    //       ))}
+
+    //       {/* Show More / Less Button */}
+    //       {userData.training.filter((t) => t.enabled !== false).length > 2 && (
+    //         <Button
+    //           variant="outline"
+    //           onClick={() => setShowAllTraining((v) => !v)}
+    //           className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+    //         >
+    //           {showAllTraining ? "Show Less" : "View All Courses"}
+    //         </Button>
+    //       )}
+    //     </CardContent>
+    //   </Card>
+    // ),
+    training: (
+  <Card
+    key="training"
+    className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+  >
+    <CardHeader className="px-6 py-4 border-b border-gray-100">
+      <div className="flex items-center w-full justify-between">
+        <CardTitle className="flex items-center gap-3 m-0 p-0">
+          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+            <Code className="w-5 h-5 text-blue-600" />
+          </div>
+          <span className="text-lg font-semibold text-gray-900">Training</span>
+        </CardTitle>
+        <button
+          className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+          title="Edit Training"
+          onClick={() => setActiveModal("training")}
+        >
+          <Edit className="w-4 h-4 text-gray-600" />
+        </button>
+      </div>
+    </CardHeader>
+
+    <CardContent className="pt-4 p-6 space-y-4">
+      {(showAllTraining
+        ? userData.training.filter((t) => t.enabled !== false)
+        : userData.training.filter((t) => t.enabled !== false).slice(0, 2)
+      ).map((training, idx) => {
+        // Calculate progress
+        const statusLower = (training.status || "").toLowerCase();
+        let progressValue = 0;
+        if (statusLower === "completed") {
+          progressValue = 100;
+        } else if (training.total_modules > 0) {
+          const completed = Math.min(training.completed_modules, training.total_modules);
+          progressValue = Math.round((completed / training.total_modules) * 100);
+        }
+
+        return (
+          <div
+            key={training.id || `training-${training.course}-${idx}`}
+            className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all duration-200"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-semibold text-gray-900 text-base truncate max-w-[75%]">
+                {training.course}
+              </h4>
+              <Badge
+                className={`px-2.5 py-1 text-xs font-medium rounded-md ${
+                  training.status === "completed"
                     ? "bg-green-100 text-green-700"
                     : "bg-blue-100 text-blue-700"
-                    }`}
-                >
-                  {training.status === "completed" ? "Completed" : "Ongoing"}
-                </Badge>
-              </div>
+                }`}
+              >
+                {training.status === "completed" ? "Completed" : "Ongoing"}
+              </Badge>
+            </div>
 
-              {/* Meta info */}
-              <div className="text-xs text-gray-600 mb-2 space-y-1">
-                {training.provider && (
-                  <div className="flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 text-gray-500" />
-                    <span>{training.provider}</span>
-                  </div>
-                )}
-                {training.duration && (
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-gray-500" />
-                    <span>{training.duration}</span>
-                  </div>
-                )}
-              </div>
+            {/* Meta info */}
+            <div className="text-xs text-gray-600 mb-2 space-y-1">
+              {training.provider && (
+                <div className="flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-gray-500" />
+                  <span>{training.provider}</span>
+                </div>
+              )}
+              {training.duration && (
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                  <span>{training.duration}</span>
+                </div>
+              )}
+            </div>
 
-              {/* Progress bar */}
+            {/* Progress bar */}
+            {(training.total_modules > 0 || training.completed_modules > 0 || training.hours_spent > 0) && (
               <div className="mt-2">
+                {/* Progress Header */}
                 <div className="flex justify-between items-center text-xs font-medium text-gray-700 mb-1">
                   <span>Progress</span>
-                  <span className="text-blue-600">{training.progress}%</span>
+                  <span className="text-blue-600">{progressValue}%</span>
                 </div>
+
+                {/* Progress Bar */}
                 <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className="h-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${training.progress}%` }}
+                    style={{ width: `${progressValue}%` }}
                   />
                 </div>
-              </div>
 
-              {/* Skills */}
-              {Array.isArray(training.skills) && training.skills.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs font-semibold text-gray-700 mb-1">
-                    Skills Covered:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {(training.showAllSkills
-                      ? training.skills
-                      : training.skills.slice(0, 4)
-                    ).map((skill, i) => (
+                {/* Modules & Hours Info */}
+                <div className="text-xs text-gray-500 mt-1 space-x-2">
+                  {training.completed_modules != null && training.total_modules != null && (
+                    <span>
+                      Modules: {training.completed_modules}/{training.total_modules}
+                    </span>
+                  )}
+                  {training.hours_spent != null && <span>Hours Spent: {training.hours_spent}</span>}
+                </div>
+              </div>
+            )}
+
+            {/* Skills */}
+            {Array.isArray(training.skills) && training.skills.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-semibold text-gray-700 mb-1">Skills Covered:</p>
+                <div className="flex flex-wrap gap-2">
+                  {(training.showAllSkills ? training.skills : training.skills.slice(0, 4)).map(
+                    (skill, i) => (
                       <span
                         key={`skill-${training.id}-${i}`}
                         className="px-2.5 py-1 text-[11px] rounded-md bg-blue-50 text-blue-700 font-medium"
                       >
                         {skill}
                       </span>
-                    ))}
-                  </div>
-                  {training.skills.length > 4 && (
-                    <button
-                      onClick={() =>
-                        setUserData((prev) => ({
-                          ...prev,
-                          training: prev.training.map((t) =>
-                            t.id === training.id
-                              ? { ...t, showAllSkills: !t.showAllSkills }
-                              : t
-                          ),
-                        }))
-                      }
-                      className="text-xs text-blue-600 hover:text-blue-800 mt-1"
-                    >
-                      {training.showAllSkills
-                        ? "Show Less"
-                        : `Show All (${training.skills.length})`}
-                    </button>
+                    )
                   )}
                 </div>
-              )}
-            </div>
-          ))}
+                {training.skills.length > 4 && (
+                  <button
+                    onClick={() =>
+                      setUserData((prev) => ({
+                        ...prev,
+                        training: prev.training.map((t) =>
+                          t.id === training.id ? { ...t, showAllSkills: !t.showAllSkills } : t
+                        ),
+                      }))
+                    }
+                    className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                  >
+                    {training.showAllSkills
+                      ? "Show Less"
+                      : `Show All (${training.skills.length})`}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
 
-          {/* Show More / Less Button */}
-          {userData.training.filter((t) => t.enabled !== false).length > 2 && (
-            <Button
-              variant="outline"
-              onClick={() => setShowAllTraining((v) => !v)}
-              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-            >
-              {showAllTraining ? "Show Less" : "View All Courses"}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    ),
+      {/* Show More / Less Button */}
+      {userData.training.filter((t) => t.enabled !== false).length > 2 && (
+        <Button
+          variant="outline"
+          onClick={() => setShowAllTraining((v) => !v)}
+          className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+        >
+          {showAllTraining ? "Show Less" : "View All Courses"}
+        </Button>
+      )}
+    </CardContent>
+  </Card>
+),
+
 
     experience: (() => {
       // Check if student is from university (not school)
