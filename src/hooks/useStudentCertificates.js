@@ -17,6 +17,7 @@ export const useStudentCertificates = (studentId, enabled = true) => {
         .from('certificates')
         .select('*')
         .eq('student_id', studentId)
+        .is('training_id', null) 
         .order('issued_on', { ascending: false });
 
       if (fetchError) {
