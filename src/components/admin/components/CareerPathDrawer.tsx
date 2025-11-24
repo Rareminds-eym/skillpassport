@@ -259,8 +259,35 @@ IMPORTANT INSTRUCTIONS:
             </div>
           )}
 
-          {careerPath && !isLoading && (
+          {careerPath && !isLoading && !error && (
             <>
+              {/* Data Source Indicator */}
+              {careerPath.studentData && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
+                  <p className="font-semibold text-blue-900 mb-1">📊 Data Sources:</p>
+                  <div className="flex flex-wrap gap-2 text-blue-700">
+                    {careerPath.studentData.skills?.length > 0 && (
+                      <span className="bg-white px-2 py-1 rounded">✓ {careerPath.studentData.skills.length} Skills</span>
+                    )}
+                    {careerPath.studentData.certificates?.length > 0 && (
+                      <span className="bg-white px-2 py-1 rounded">✓ {careerPath.studentData.certificates.length} Certificates</span>
+                    )}
+                    {careerPath.studentData.projects?.length > 0 && (
+                      <span className="bg-white px-2 py-1 rounded">✓ {careerPath.studentData.projects.length} Projects</span>
+                    )}
+                    {careerPath.studentData.education?.length > 0 && (
+                      <span className="bg-white px-2 py-1 rounded">✓ {careerPath.studentData.education.length} Education</span>
+                    )}
+                    {careerPath.studentData.experience?.length > 0 && (
+                      <span className="bg-white px-2 py-1 rounded">✓ {careerPath.studentData.experience.length} Experience</span>
+                    )}
+                    {careerPath.studentData.trainings?.length > 0 && (
+                      <span className="bg-white px-2 py-1 rounded">✓ {careerPath.studentData.trainings.length} Trainings</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Career Overview */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white rounded-lg p-4 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow">
@@ -296,50 +323,55 @@ IMPORTANT INSTRUCTIONS:
               {/* Strengths & Gaps */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Strengths */}
-                <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                {careerPath.strengths && careerPath.strengths.length > 0 && (
+                  <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                      </div>
+                      <h3 className="font-bold text-gray-900">Strengths</h3>
                     </div>
-                    <h3 className="font-bold text-gray-900">Strengths</h3>
+                    <ul className="space-y-2.5">
+                      {careerPath.strengths.map((strength, idx) => (
+                        <li key={idx} className="text-sm text-gray-700 flex items-start">
+                          <span className="text-green-500 mr-2 font-bold">✓</span>
+                          <span>{strength}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="space-y-2.5">
-                    {careerPath.strengths.map((strength, idx) => (
-                      <li key={idx} className="text-sm text-gray-700 flex items-start">
-                        <span className="text-green-500 mr-2 font-bold">✓</span>
-                        <span>{strength}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                )}
 
                 {/* Skill Gaps */}
-                <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <div className="p-2 bg-orange-100 rounded-lg">
-                      <LightBulbIcon className="h-5 w-5 text-orange-600" />
+                {careerPath.gaps && careerPath.gaps.length > 0 && (
+                  <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <div className="p-2 bg-orange-100 rounded-lg">
+                        <LightBulbIcon className="h-5 w-5 text-orange-600" />
+                      </div>
+                      <h3 className="font-bold text-gray-900">Skill Gaps</h3>
                     </div>
-                    <h3 className="font-bold text-gray-900">Skill Gaps</h3>
+                    <ul className="space-y-2.5">
+                      {careerPath.gaps.map((gap, idx) => (
+                        <li key={idx} className="text-sm text-gray-700 flex items-start">
+                          <span className="text-orange-500 mr-2 font-bold">→</span>
+                          <span>{gap}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="space-y-2.5">
-                    {careerPath.gaps.map((gap, idx) => (
-                      <li key={idx} className="text-sm text-gray-700 flex items-start">
-                        <span className="text-orange-500 mr-2 font-bold">→</span>
-                        <span>{gap}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                )}
               </div>
 
               {/* Recommended Career Path */}
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                  <MapIcon className="h-5 w-5 mr-2 text-primary-600" />
-                  Recommended Career Path
-                </h3>
-                <div className="space-y-3">
-                  {careerPath.recommendedPath.map((step, idx) => (
+              {careerPath.recommendedPath && careerPath.recommendedPath.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                    <MapIcon className="h-5 w-5 mr-2 text-primary-600" />
+                    Recommended Career Path
+                  </h3>
+                  <div className="space-y-3">
+                    {careerPath.recommendedPath.map((step, idx) => (
                     <div
                       key={idx}
                       className={`border rounded-lg overflow-hidden transition-all ${getLevelBadgeColor(
@@ -454,8 +486,9 @@ IMPORTANT INSTRUCTIONS:
                       )}
                     </div>
                   ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Alternative Paths */}
               {careerPath.alternativePaths && careerPath.alternativePaths.length > 0 && (
