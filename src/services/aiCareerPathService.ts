@@ -23,6 +23,8 @@ export interface StudentProfile {
   experience?: string[];
   trainings?: string[];
   interests?: string[];
+  projects?: string[];
+  education?: string[];
 }
 
 export interface CareerPathStep {
@@ -50,6 +52,16 @@ export interface CareerPathResponse {
   actionItems: string[];
   nextSteps: string[];
   generatedAt: string;
+  // Store original student data for chat context
+  studentData?: {
+    skills?: string[];
+    certificates?: string[];
+    experience?: string[];
+    trainings?: string[];
+    interests?: string[];
+    projects?: string[];
+    education?: string[];
+  };
 }
 
 const CAREER_PATH_SYSTEM_PROMPT = `You are an expert career counsellor and AI career path advisor specializing in student career development. Your role is to analyze student profiles and generate comprehensive, personalized career development paths.
@@ -94,10 +106,12 @@ function buildStudentProfileContext(student: StudentProfile): string {
   }
   
   if (student.certificates && student.certificates.length > 0) {
-    context += `\nCertificates & Credentials:\n`;
+    context += `\nCertificates & Credentials (${student.certificates.length} total):\n`;
     student.certificates.forEach(cert => {
       context += `  • ${cert}\n`;
     });
+  } else {
+    context += `\nCertificates & Credentials: None listed\n`;
   }
   
   if (student.experience && student.experience.length > 0) {
@@ -111,6 +125,20 @@ function buildStudentProfileContext(student: StudentProfile): string {
     context += `\nTrainings & Courses:\n`;
     student.trainings.forEach(training => {
       context += `  • ${training}\n`;
+    });
+  }
+  
+  if (student.projects && student.projects.length > 0) {
+    context += `\nProjects:\n`;
+    student.projects.forEach(project => {
+      context += `  • ${project}\n`;
+    });
+  }
+  
+  if (student.education && student.education.length > 0) {
+    context += `\nEducation:\n`;
+    student.education.forEach(edu => {
+      context += `  • ${edu}\n`;
     });
   }
   
@@ -161,6 +189,11 @@ function parseCareerPathResponse(content: string): CareerPathResponse {
 
 export async function generateCareerPath(student: StudentProfile): Promise<CareerPathResponse> {
   try {
+    // Validate API key
+    if (!import.meta.env.VITE_OPENAI_API_KEY) {
+      throw new Error('API key is not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
+    }
+
     const profileContext = buildStudentProfileContext(student);
     
     const userPrompt = `Based on the following student profile, generate a comprehensive career development path with focus on:
@@ -196,6 +229,7 @@ Generate a detailed JSON response with:
 Be specific with Indian job market context if the college is in India. Include realistic salary ranges based on 2024-2025 market rates.
 Ensure all arrays are properly formatted and the JSON is valid.`;
 
+    console.log('Calling OpenRouter API...');
     const completion = await openai.chat.completions.create({
       model: 'openai/gpt-4o-mini',
       messages: [
@@ -210,7 +244,12 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
       ],
       max_tokens: 1500,
       temperature: 0.7,
+    }).catch((err) => {
+      console.error('OpenRouter API call failed:', err);
+      throw err;
     });
+    
+    console.log('API response received');
 
     const responseContent = completion.choices[0]?.message?.content || '';
     
@@ -221,12 +260,33 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
     const careerPath = parseCareerPathResponse(responseContent);
     careerPath.studentName = student.name;
     
+    // Store original student data for chat context
+    careerPath.studentData = {
+      skills: student.skills,
+      certificates: student.certificates,
+      experience: student.experience,
+      trainings: student.trainings,
+      interests: student.interests,
+      projects: student.projects,
+      education: student.education,
+    };
+    
     return careerPath;
   } catch (error) {
     console.error('Error generating career path:', error);
     
     if (error instanceof OpenAI.APIError) {
-      throw new Error(`OpenAI API Error: ${error.message}`);
+      if (error.status === 402) {
+        throw new Error('Insufficient credits. Please add credits at https://openrouter.ai/settings/credits');
+      }
+      if (error.status === 401) {
+        throw new Error('Invalid API key. Please check your VITE_OPENAI_API_KEY in .env file.');
+      }
+      throw new Error(`API Error: ${error.message}`);
+    }
+    
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error. Please check your internet connection and try again.');
     }
     
     if (error instanceof SyntaxError) {

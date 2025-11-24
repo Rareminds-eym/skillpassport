@@ -366,9 +366,13 @@ const StudentDataAdmission = () => {
         : student.profile?.technicalSkills?.map((s: any) => s.name || s) || [];
       
       const certificates = Array.isArray(student.certificates)
-        ? student.certificates.map((c: any) => 
-            typeof c === 'string' ? c : `${c.title || c.name} - ${c.issuer || 'Verified'}`
-          ).filter(Boolean)
+        ? student.certificates.map((c: any) => {
+            if (typeof c === 'string') return c;
+            const title = c.title || c.name || 'Certificate';
+            const issuer = c.issuer ? ` (Issuer: ${c.issuer})` : '';
+            const level = c.level ? ` [Level: ${c.level}]` : '';
+            return `${title}${issuer}${level}`;
+          }).filter(Boolean)
         : [];
       
       const experience = Array.isArray(student.experience)
@@ -382,6 +386,29 @@ const StudentDataAdmission = () => {
             typeof t === 'string' ? t : `${t.title} - ${t.organization || 'Completed'}`
           ).filter(Boolean)
         : [];
+      
+      const projects = Array.isArray(student.projects)
+        ? student.projects.map((p: any) => {
+            if (typeof p === 'string') return p;
+            const title = p.title || 'Project';
+            const tech = p.tech_stack ? ` (Tech: ${p.tech_stack})` : '';
+            const org = p.organization ? ` - ${p.organization}` : '';
+            return `${title}${tech}${org}`;
+          }).filter(Boolean)
+        : [];
+      
+      const education = Array.isArray(student.education)
+        ? student.education.map((e: any) => {
+            if (typeof e === 'string') return e;
+            const degree = e.degree || e.level || 'Degree';
+            const dept = e.department ? ` in ${e.department}` : '';
+            const univ = e.university ? ` from ${e.university}` : '';
+            const cgpa = e.cgpa ? ` (CGPA: ${e.cgpa})` : '';
+            return `${degree}${dept}${univ}${cgpa}`;
+          }).filter(Boolean)
+        : student.profile?.education?.map((e: any) => 
+            `${e.degree || 'Degree'} (CGPA: ${e.cgpa || 'N/A'})`
+          ) || [];
       
       // Extract interests from profile or generate from dept
       const interests = student.interests || 
@@ -406,9 +433,12 @@ const StudentDataAdmission = () => {
         experience,
         trainings,
         interests,
+        projects,
+        education,
       };
 
       console.log('Generating career path with profile:', studentProfile);
+      console.log('Skills:', skills.length, 'Certificates:', certificates.length, 'Projects:', projects.length, 'Education:', education.length);
       const generatedPath = await generateCareerPath(studentProfile);
       console.log('Career path generated:', generatedPath);
       setCareerPath(generatedPath);

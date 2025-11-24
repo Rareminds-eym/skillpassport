@@ -75,13 +75,54 @@ export const CareerPathDrawer: React.FC<CareerPathDrawerProps> = ({
     setChatLoading(true);
 
     try {
+      const studentData = careerPath.studentData || {};
+      
       const careerContext = `
 Student: ${careerPath.studentName}
 Current Role: ${careerPath.currentRole}
 Career Goal: ${careerPath.careerGoal}
+Overall Score: ${careerPath.overallScore}%
+
+STUDENT'S ACTUAL DATA FROM DATABASE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Skills (${studentData.skills?.length || 0}): 
+${studentData.skills?.length ? studentData.skills.map((s, i) => `${i + 1}. ${s}`).join('\n') : 'None listed'}
+
+Certificates (${studentData.certificates?.length || 0}): 
+${studentData.certificates?.length ? studentData.certificates.map((c, i) => `${i + 1}. ${c}`).join('\n') : 'None listed'}
+
+Projects (${studentData.projects?.length || 0}): 
+${studentData.projects?.length ? studentData.projects.map((p, i) => `${i + 1}. ${p}`).join('\n') : 'None listed'}
+
+Education (${studentData.education?.length || 0}): 
+${studentData.education?.length ? studentData.education.map((e, i) => `${i + 1}. ${e}`).join('\n') : 'None listed'}
+
+Experience (${studentData.experience?.length || 0}): 
+${studentData.experience?.length ? studentData.experience.map((e, i) => `${i + 1}. ${e}`).join('\n') : 'None listed'}
+
+Trainings (${studentData.trainings?.length || 0}): 
+${studentData.trainings?.length ? studentData.trainings.map((t, i) => `${i + 1}. ${t}`).join('\n') : 'None listed'}
+
+Interests: ${studentData.interests?.length ? studentData.interests.join(', ') : 'None listed'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CAREER PATH ANALYSIS:
 Strengths: ${careerPath.strengths.join(', ')}
 Skill Gaps: ${careerPath.gaps.join(', ')}
 Career Path: ${careerPath.recommendedPath.map(s => s.roleTitle).join(' → ')}
+Action Items: ${careerPath.actionItems.join('; ')}
+Next Steps: ${careerPath.nextSteps.join('; ')}
+Alternative Paths: ${careerPath.alternativePaths.join('; ')}
+
+Detailed Career Steps:
+${careerPath.recommendedPath.map((step, idx) => `
+Step ${idx + 1}: ${step.roleTitle} (${step.level})
+- Timeline: ${step.timeline}
+- Skills Needed: ${step.skillsNeeded.join(', ')}
+- Skills to Gain: ${step.skillsToGain.join(', ')}
+- Learning Resources: ${step.learningResources.join('; ')}
+${step.salaryRange ? `- Salary Range: ${step.salaryRange}` : ''}
+`).join('\n')}
 `;
 
       const completion = await openai.chat.completions.create({
@@ -89,10 +130,17 @@ Career Path: ${careerPath.recommendedPath.map(s => s.roleTitle).join(' → ')}
         messages: [
           {
             role: 'system',
-            content: `You are a helpful career counselor assistant. You're discussing a career development path with context:
+            content: `You are a helpful career counselor assistant. You're discussing a career development path with the following context:
 ${careerContext}
 
-Answer questions about the career path, provide advice, clarify steps, suggest resources, and help with career planning. Be concise, supportive, and practical.`,
+IMPORTANT INSTRUCTIONS:
+- When asked about certificates, skills, or specific data, list ALL items from the context above - do not summarize or skip any
+- If asked "list certificates" or "what certificates", provide the COMPLETE list from the context
+- If specific information is not in the context, clearly state "I don't have that specific information in the career path data"
+- Do NOT make up or suggest certificates/skills that aren't mentioned in the context
+- Answer questions about the career path, provide advice, clarify steps, and help with career planning
+- Be concise but COMPLETE when listing data
+- Reference specific details from the career path when answering`,
           },
           ...chatMessages.map(msg => ({
             role: msg.role,
@@ -116,9 +164,21 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
       setChatMessages(prev => [...prev, assistantMessage]);
     } catch (err) {
       console.error('Chat error:', err);
+      let errorText = 'Sorry, I encountered an error. Please try again.';
+      
+      if (err instanceof Error) {
+        if (err.message.includes('fetch')) {
+          errorText = 'Network error. Please check your internet connection.';
+        } else if (err.message.includes('402')) {
+          errorText = 'Insufficient API credits. Please add credits to continue chatting.';
+        } else if (err.message.includes('401')) {
+          errorText = 'API authentication error. Please check your API key configuration.';
+        }
+      }
+      
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: errorText,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, errorMessage]);
@@ -221,31 +281,31 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
             <>
               {/* Career Overview */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg p-4 border border-primary-200">
-                  <p className="text-sm text-primary-700 font-medium">Current Level</p>
-                  <p className="text-2xl font-bold text-primary-900 mt-1">
+                <div className="bg-white rounded-lg p-4 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Current Level</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">
                     {careerPath.currentRole}
                   </p>
                 </div>
-                <div className="bg-gradient-to-br from-success-50 to-success-100 rounded-lg p-4 border border-success-200">
-                  <p className="text-sm text-success-700 font-medium">Career Goal</p>
-                  <p className="text-lg font-bold text-success-900 mt-1">
+                <div className="bg-white rounded-lg p-4 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Career Goal</p>
+                  <p className="text-lg font-bold text-gray-900 mt-1">
                     {careerPath.careerGoal}
                   </p>
                 </div>
               </div>
 
               {/* Overall Score */}
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-gray-700 font-medium">Career Readiness Score</span>
-                  <span className="text-2xl font-bold text-primary-600">
+                  <span className="text-sm text-gray-600 font-semibold">Career Readiness Score</span>
+                  <span className="text-3xl font-bold text-gray-900">
                     {careerPath.overallScore}%
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-primary-500 to-primary-600 h-2 rounded-full transition-all duration-500"
+                    className="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-500"
                     style={{ width: `${careerPath.overallScore}%` }}
                   />
                 </div>
@@ -254,10 +314,12 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
               {/* Strengths & Gaps */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Strengths */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2 mb-3">
-                    <CheckCircleIcon className="h-5 w-5 text-green-600" />
-                    <h3 className="font-semibold text-green-900">Strengths</h3>
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                    </div>
+                    <h3 className="font-bold text-gray-900">Strengths</h3>
                   </div>
                   <ul className="space-y-2">
                     {careerPath.strengths.map((strength: any, idx) => {
@@ -273,10 +335,12 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
                 </div>
 
                 {/* Skill Gaps */}
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2 mb-3">
-                    <LightBulbIcon className="h-5 w-5 text-amber-600" />
-                    <h3 className="font-semibold text-amber-900">Skill Gaps</h3>
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <LightBulbIcon className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <h3 className="font-bold text-gray-900">Skill Gaps</h3>
                   </div>
                   <ul className="space-y-2">
                     {careerPath.gaps.map((gap: any, idx) => {
@@ -425,8 +489,9 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
 
               {/* Alternative Paths */}
               {careerPath.alternativePaths && careerPath.alternativePaths.length > 0 && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-indigo-900 mb-2">
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm">
+                  <h3 className="font-bold text-gray-900 mb-3 flex items-center">
+                    <span className="text-indigo-600 mr-2">↗</span>
                     Alternative Career Directions
                   </h3>
                   <ul className="space-y-2">
@@ -448,8 +513,8 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
 
               {/* Action Items */}
               {careerPath.actionItems && careerPath.actionItems.length > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-blue-900 mb-3">
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm">
+                  <h3 className="font-bold text-gray-900 mb-4">
                     Immediate Action Items
                   </h3>
                   <ol className="space-y-2">
@@ -473,8 +538,8 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
 
               {/* Next Steps */}
               {careerPath.nextSteps && careerPath.nextSteps.length > 0 && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-purple-900 mb-3">
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm">
+                  <h3 className="font-bold text-gray-900 mb-4">
                     Next Steps (This Month)
                   </h3>
                   <ul className="space-y-2">
@@ -495,15 +560,17 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
               )}
 
               {/* Chat Section */}
-              <div className="border-t pt-6">
+              <div className="border-t-2 border-gray-200 pt-6">
                 <button
                   onClick={() => setShowChat(!showChat)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-primary-50 to-primary-100 hover:from-primary-100 hover:to-primary-200 rounded-lg transition-colors border border-primary-200"
+                  className="w-full flex items-center justify-between px-5 py-4 bg-white hover:bg-gray-50 rounded-lg transition-colors border-2 border-gray-200 shadow-sm hover:shadow-md"
                 >
-                  <div className="flex items-center space-x-2">
-                    <ChatBubbleLeftRightIcon className="h-5 w-5 text-primary-600" />
-                    <span className="font-semibold text-primary-900">
-                      Ask Questions About Your Career Path
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <span className="font-bold text-gray-900">
+                      Ask Questions About {careerPath.studentName}'s Career Path
                     </span>
                   </div>
                   <ChevronDownIcon
@@ -513,9 +580,9 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
                 </button>
 
                 {showChat && (
-                  <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="mt-4 border-2 border-gray-200 rounded-lg overflow-hidden shadow-sm">
                     {/* Chat Messages */}
-                    <div className="h-96 overflow-y-auto bg-gray-50 p-4 space-y-4">
+                    <div className="h-96 overflow-y-auto bg-gradient-to-b from-gray-50 to-white p-4 space-y-4">
                       {chatMessages.length === 0 && (
                         <div className="text-center text-gray-500 py-8">
                           <ChatBubbleLeftRightIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />
