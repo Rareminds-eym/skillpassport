@@ -114,9 +114,21 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
       setChatMessages(prev => [...prev, assistantMessage]);
     } catch (err) {
       console.error('Chat error:', err);
+      let errorText = 'Sorry, I encountered an error. Please try again.';
+      
+      if (err instanceof Error) {
+        if (err.message.includes('fetch')) {
+          errorText = 'Network error. Please check your internet connection.';
+        } else if (err.message.includes('402')) {
+          errorText = 'Insufficient API credits. Please add credits to continue chatting.';
+        } else if (err.message.includes('401')) {
+          errorText = 'API authentication error. Please check your API key configuration.';
+        }
+      }
+      
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: errorText,
         timestamp: new Date(),
       };
       setChatMessages(prev => [...prev, errorMessage]);
@@ -203,31 +215,31 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
             <>
               {/* Career Overview */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg p-4 border border-primary-200">
-                  <p className="text-sm text-primary-700 font-medium">Current Level</p>
-                  <p className="text-2xl font-bold text-primary-900 mt-1">
+                <div className="bg-white rounded-lg p-4 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Current Level</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">
                     {careerPath.currentRole}
                   </p>
                 </div>
-                <div className="bg-gradient-to-br from-success-50 to-success-100 rounded-lg p-4 border border-success-200">
-                  <p className="text-sm text-success-700 font-medium">Career Goal</p>
-                  <p className="text-lg font-bold text-success-900 mt-1">
+                <div className="bg-white rounded-lg p-4 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Career Goal</p>
+                  <p className="text-lg font-bold text-gray-900 mt-1">
                     {careerPath.careerGoal}
                   </p>
                 </div>
               </div>
 
               {/* Overall Score */}
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-gray-700 font-medium">Career Readiness Score</span>
-                  <span className="text-2xl font-bold text-primary-600">
+                  <span className="text-sm text-gray-600 font-semibold">Career Readiness Score</span>
+                  <span className="text-3xl font-bold text-gray-900">
                     {careerPath.overallScore}%
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-primary-500 to-primary-600 h-2 rounded-full transition-all duration-500"
+                    className="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-500"
                     style={{ width: `${careerPath.overallScore}%` }}
                   />
                 </div>
@@ -236,15 +248,17 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
               {/* Strengths & Gaps */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Strengths */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2 mb-3">
-                    <CheckCircleIcon className="h-5 w-5 text-green-600" />
-                    <h3 className="font-semibold text-green-900">Strengths</h3>
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                    </div>
+                    <h3 className="font-bold text-gray-900">Strengths</h3>
                   </div>
-                  <ul className="space-y-2">
+                  <ul className="space-y-2.5">
                     {careerPath.strengths.map((strength, idx) => (
-                      <li key={idx} className="text-sm text-green-800 flex items-start">
-                        <span className="mr-2">•</span>
+                      <li key={idx} className="text-sm text-gray-700 flex items-start">
+                        <span className="text-green-500 mr-2 font-bold">✓</span>
                         <span>{strength}</span>
                       </li>
                     ))}
@@ -252,15 +266,17 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
                 </div>
 
                 {/* Skill Gaps */}
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2 mb-3">
-                    <LightBulbIcon className="h-5 w-5 text-amber-600" />
-                    <h3 className="font-semibold text-amber-900">Skill Gaps</h3>
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <LightBulbIcon className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <h3 className="font-bold text-gray-900">Skill Gaps</h3>
                   </div>
-                  <ul className="space-y-2">
+                  <ul className="space-y-2.5">
                     {careerPath.gaps.map((gap, idx) => (
-                      <li key={idx} className="text-sm text-amber-800 flex items-start">
-                        <span className="mr-2">•</span>
+                      <li key={idx} className="text-sm text-gray-700 flex items-start">
+                        <span className="text-orange-500 mr-2 font-bold">→</span>
                         <span>{gap}</span>
                       </li>
                     ))}
@@ -395,17 +411,18 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
 
               {/* Alternative Paths */}
               {careerPath.alternativePaths && careerPath.alternativePaths.length > 0 && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-indigo-900 mb-2">
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm">
+                  <h3 className="font-bold text-gray-900 mb-3 flex items-center">
+                    <span className="text-indigo-600 mr-2">↗</span>
                     Alternative Career Directions
                   </h3>
-                  <ul className="space-y-2">
+                  <ul className="space-y-2.5">
                     {careerPath.alternativePaths.map((path, idx) => (
                       <li
                         key={idx}
-                        className="text-sm text-indigo-800 flex items-start"
+                        className="text-sm text-gray-700 flex items-start pl-4"
                       >
-                        <span className="mr-2">→</span>
+                        <span className="text-indigo-500 mr-2">•</span>
                         <span>{path}</span>
                       </li>
                     ))}
@@ -415,18 +432,18 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
 
               {/* Action Items */}
               {careerPath.actionItems && careerPath.actionItems.length > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-blue-900 mb-3">
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm">
+                  <h3 className="font-bold text-gray-900 mb-4">
                     Immediate Action Items
                   </h3>
-                  <ol className="space-y-2">
+                  <ol className="space-y-3">
                     {careerPath.actionItems.map((item, idx) => (
                       <li
                         key={idx}
-                        className="text-sm text-blue-800 flex items-start"
+                        className="text-sm text-gray-700 flex items-start"
                       >
-                        <span className="mr-3 font-bold text-blue-600">
-                          {idx + 1}.
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-bold text-xs flex items-center justify-center mr-3 mt-0.5">
+                          {idx + 1}
                         </span>
                         <span>{item}</span>
                       </li>
@@ -437,17 +454,19 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
 
               {/* Next Steps */}
               {careerPath.nextSteps && careerPath.nextSteps.length > 0 && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-purple-900 mb-3">
+                <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm">
+                  <h3 className="font-bold text-gray-900 mb-4">
                     Next Steps (This Month)
                   </h3>
-                  <ul className="space-y-2">
+                  <ul className="space-y-3">
                     {careerPath.nextSteps.map((step, idx) => (
                       <li
                         key={idx}
-                        className="text-sm text-purple-800 flex items-start"
+                        className="text-sm text-gray-700 flex items-start"
                       >
-                        <span className="mr-2">✓</span>
+                        <span className="flex-shrink-0 w-5 h-5 rounded border-2 border-purple-500 text-purple-600 font-bold text-xs flex items-center justify-center mr-3 mt-0.5">
+                          ✓
+                        </span>
                         <span>{step}</span>
                       </li>
                     ))}
@@ -456,28 +475,30 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
               )}
 
               {/* Chat Section */}
-              <div className="border-t pt-6">
+              <div className="border-t-2 border-gray-200 pt-6">
                 <button
                   onClick={() => setShowChat(!showChat)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-primary-50 to-primary-100 hover:from-primary-100 hover:to-primary-200 rounded-lg transition-colors border border-primary-200"
+                  className="w-full flex items-center justify-between px-5 py-4 bg-white hover:bg-gray-50 rounded-lg transition-colors border-2 border-gray-200 shadow-sm hover:shadow-md"
                 >
-                  <div className="flex items-center space-x-2">
-                    <ChatBubbleLeftRightIcon className="h-5 w-5 text-primary-600" />
-                    <span className="font-semibold text-primary-900">
-                      Ask Questions About Your Career Path
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <span className="font-bold text-gray-900">
+                      Ask Questions About {careerPath.studentName}'s Career Path
                     </span>
                   </div>
                   <ChevronDownIcon
-                    className={`h-5 w-5 text-primary-600 transition-transform ${
+                    className={`h-5 w-5 text-gray-600 transition-transform ${
                       showChat ? 'transform rotate-180' : ''
                     }`}
                   />
                 </button>
 
                 {showChat && (
-                  <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="mt-4 border-2 border-gray-200 rounded-lg overflow-hidden shadow-sm">
                     {/* Chat Messages */}
-                    <div className="h-96 overflow-y-auto bg-gray-50 p-4 space-y-4">
+                    <div className="h-96 overflow-y-auto bg-gradient-to-b from-gray-50 to-white p-4 space-y-4">
                       {chatMessages.length === 0 && (
                         <div className="text-center text-gray-500 py-8">
                           <ChatBubbleLeftRightIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />

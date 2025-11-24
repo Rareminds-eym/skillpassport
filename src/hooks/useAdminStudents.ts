@@ -218,7 +218,10 @@ export function useStudents() {
       setLoading(true)
       setError(null)
       try {
-        const { data, error } = await supabase
+        console.log('Fetching students from Supabase...');
+        
+        // Try full query first
+        let result = await supabase
           .from('students')
           .select(`*,
             skills!skills_student_id_fkey(id,name,type,level,description,verified,enabled,approval_status,created_at,updated_at),
@@ -228,16 +231,42 @@ export function useStudents() {
             experience!experience_student_id_fkey(id,organization,role,start_date,end_date,duration,verified,approval_status,created_at,updated_at),
             trainings!trainings_student_id_fkey(id,title,organization,start_date,end_date,duration,description,approval_status,created_at,updated_at)`)
           .order('updatedAt', { ascending: false })
-          .limit(500)
-        if (error) throw error
-        if (!isMounted) return
-        const mapped = (data as StudentRow[]).map(mapToUICandidate)
-        setData(mapped)
+          .limit(500);
+        
+        // If full query fails, try simpler query
+        if (result.error) {
+          console.warn('Full query failed, trying simple query:', result.error);
+          result = await supabase
+            .from('students')
+            .select('*')
+            .order('updatedAt', { ascending: false })
+            .limit(500);
+        }
+        
+        if (result.error) {
+          console.error('Supabase query error:', result.error);
+          throw result.error;
+        }
+        
+        if (!isMounted) return;
+        
+        console.log(`Fetched ${result.data?.length || 0} students`);
+        const mapped = (result.data as StudentRow[]).map(mapToUICandidate);
+        setData(mapped);
       } catch (e: any) {
-        if (!isMounted) return
-        setError(e?.message || 'Failed to load students')
+        console.error('Error in fetchStudents:', e);
+        if (!isMounted) return;
+        
+        let errorMessage = 'Failed to load students';
+        if (e?.message?.includes('fetch')) {
+          errorMessage = 'Network error: Unable to connect to database. Please check your internet connection.';
+        } else if (e?.message) {
+          errorMessage = `Database error: ${e.message}`;
+        }
+        
+        setError(errorMessage);
       } finally {
-        if (isMounted) setLoading(false)
+        if (isMounted) setLoading(false);
       }
     }
     fetchStudents()

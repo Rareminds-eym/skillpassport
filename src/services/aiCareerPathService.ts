@@ -161,6 +161,11 @@ function parseCareerPathResponse(content: string): CareerPathResponse {
 
 export async function generateCareerPath(student: StudentProfile): Promise<CareerPathResponse> {
   try {
+    // Validate API key
+    if (!import.meta.env.VITE_OPENAI_API_KEY) {
+      throw new Error('API key is not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
+    }
+
     const profileContext = buildStudentProfileContext(student);
     
     const userPrompt = `Based on the following student profile, generate a comprehensive career development path with focus on:
@@ -196,6 +201,7 @@ Generate a detailed JSON response with:
 Be specific with Indian job market context if the college is in India. Include realistic salary ranges based on 2024-2025 market rates.
 Ensure all arrays are properly formatted and the JSON is valid.`;
 
+    console.log('Calling OpenRouter API...');
     const completion = await openai.chat.completions.create({
       model: 'openai/gpt-4o-mini',
       messages: [
@@ -210,7 +216,12 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
       ],
       max_tokens: 1500,
       temperature: 0.7,
+    }).catch((err) => {
+      console.error('OpenRouter API call failed:', err);
+      throw err;
     });
+    
+    console.log('API response received');
 
     const responseContent = completion.choices[0]?.message?.content || '';
     
@@ -226,7 +237,17 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
     console.error('Error generating career path:', error);
     
     if (error instanceof OpenAI.APIError) {
-      throw new Error(`OpenAI API Error: ${error.message}`);
+      if (error.status === 402) {
+        throw new Error('Insufficient credits. Please add credits at https://openrouter.ai/settings/credits');
+      }
+      if (error.status === 401) {
+        throw new Error('Invalid API key. Please check your VITE_OPENAI_API_KEY in .env file.');
+      }
+      throw new Error(`API Error: ${error.message}`);
+    }
+    
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error. Please check your internet connection and try again.');
     }
     
     if (error instanceof SyntaxError) {
