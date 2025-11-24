@@ -1466,6 +1466,7 @@
 // export default MentorNotes;
 import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { useAuth } from '../../context/AuthContext';
 import {
   User,
   Calendar,
@@ -1483,20 +1484,15 @@ import {
   getMentorNotes,
   saveMentorNote,
 } from "../../services/educator/mentorNotes";
-
-/**
- * MentorNotes.jsx
- * Upgraded UI: responsive grid, icons, modals, pagination & polished design
- *
- * Drop this file into your project replacing the original MentorNotes.jsx.
- */
-
 const MentorNotes = () => {
   // main data
   const [students, setStudents] = useState([]);
   const [notes, setNotes] = useState([]);
 
   // form state for adding new note
+  const [loading, setLoading] = useState(false);
+  const [currentEducatorId, setCurrentEducatorId] = useState(null);
+
   const [selectedStudent, setSelectedStudent] = useState("");
   const [selectedQuickNotes, setSelectedQuickNotes] = useState([]);
   const [feedback, setFeedback] = useState("");
@@ -1576,28 +1572,88 @@ const MentorNotes = () => {
   const displayStudents =
     searchTerm.trim() === "" ? filteredStudents.slice(0, 8) : filteredStudents;
 
-  // load mentor + lists
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+ 
+useEffect(() => {
+  const loadMentorData = async () => {
+    try {
+      setLoading(true);
 
-        const info = await getLoggedInMentor(user.id);
-        setMentorInfo(info);
+      let educatorId = null;
 
-        const s = await getStudents();
-        setStudents(s || []);
-
-        const n = await getMentorNotes();
-        setNotes(n || []);
-      } catch (err) {
-        console.error("Failed to load initial data", err);
+      // 1️⃣ Try localStorage → user object
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser.educator_id) {
+            educatorId = parsedUser.educator_id;
+            console.log("Using educator_id from localStorage:", educatorId);
+          }
+        } catch (err) {
+          console.error("Error parsing stored user:", err);
+        }
       }
-    };
-    load();
-  }, []);
+
+      // 2️⃣ If not found, get supabase user and fetch educator record
+      if (!educatorId) {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (user && !authError) {
+          const { data: educatorRecord, error: educatorFetchError } = await supabase
+            .from("school_educators")
+            .select("id")
+            .eq("user_id", user.id)
+            .single();
+
+          if (educatorRecord && !educatorFetchError) {
+            educatorId = educatorRecord.id;
+            console.log("Fetched educator_id from DB:", educatorId);
+          }
+        }
+      }
+
+      // 3️⃣ Fallback → dev_educator_id
+      if (!educatorId) {
+        const devEducatorId = localStorage.getItem("dev_educator_id");
+        if (devEducatorId) {
+          educatorId = devEducatorId;
+          console.log("Using dev_educator_id:", educatorId);
+        }
+      }
+
+      // 4️⃣ If still not found
+      if (!educatorId) {
+        console.warn("No educator_id found anywhere!");
+        setCurrentEducatorId(null);
+        setNotes([]);
+        setStudents([]);
+        setMentorInfo(null);
+        setLoading(false);
+        return;
+      }
+
+      // 5️⃣ Store final educator_id
+      setCurrentEducatorId(educatorId);
+
+      // 6️⃣ Load all mentor data now
+      const s = await getStudents();
+      setStudents(s || []);
+
+      const n = await getMentorNotes();
+      setNotes(n || []);
+
+      setMentorInfo({ mentor_id: educatorId });
+
+    } catch (err) {
+      console.error("Error loading educator or data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadMentorData();
+}, []);
+
 
   // -------------------------
   // helper: refresh notes
@@ -1613,43 +1669,79 @@ const MentorNotes = () => {
   // -------------------------
   // Add new note
   // -------------------------
-  const handleSave = async () => {
+  // const handleSave = async () => {
+  //   if (!selectedStudent) {
+  //     alert("Please select a student");
+  //     return;
+  //   }
+  //   if (!mentorInfo) {
+  //     alert("Mentor profile not found!");
+  //     return;
+  //   }
+
+  //   const payload = {
+  //     student_id: selectedStudent,
+  //     mentor_type: mentorInfo.mentor_type,
+  //     school_educator_id:
+  //       mentorInfo.mentor_type === "school" ? mentorInfo.mentor_id : null,
+  //     college_lecturer_id:
+  //       mentorInfo.mentor_type === "college" ? mentorInfo.mentor_id : null,
+  //     quick_notes: selectedQuickNotes,
+  //     feedback,
+  //     action_points: actionPoints,
+  //   };
+
+  //   try {
+  //     await saveMentorNote(payload);
+  //     await refreshNotes();
+  //     // reset form
+  //     setSelectedQuickNotes([]);
+  //     setFeedback("");
+  //     setActionPoints("");
+  //     setOtherNote("");
+  //     setIsOtherSelected(false);
+  //     alert("Saved successfully!");
+  //   } catch (err) {
+  //     console.error(err);
+  //     alert("Failed to save note.");
+  //   }
+  // };
+const handleSaveNote = async () => {
+  try {
+    if (!currentEducatorId) {
+      alert("Educator ID missing!");
+      return;
+    }
+
     if (!selectedStudent) {
-      alert("Please select a student");
+      alert("Please select a student!");
       return;
     }
-    if (!mentorInfo) {
-      alert("Mentor profile not found!");
-      return;
-    }
+
+    // Always school educator for now
+    const mentor_type = "school";
 
     const payload = {
       student_id: selectedStudent,
-      mentor_type: mentorInfo.mentor_type,
-      school_educator_id:
-        mentorInfo.mentor_type === "school" ? mentorInfo.mentor_id : null,
-      college_lecturer_id:
-        mentorInfo.mentor_type === "college" ? mentorInfo.mentor_id : null,
-      quick_notes: selectedQuickNotes,
-      feedback,
-      action_points: actionPoints,
+      mentor_type: mentor_type,                 // ✅ NOT NULL
+      school_educator_id: currentEducatorId,    // ✅ ALWAYS SET
+      college_lecturer_id: null,                // ❌ Not used
+      quick_notes: selectedQuickNotes || [],    // ✅ safe
+      feedback: feedback || "",
+      action_points: actionPoints || "",
     };
 
-    try {
-      await saveMentorNote(payload);
-      await refreshNotes();
-      // reset form
-      setSelectedQuickNotes([]);
-      setFeedback("");
-      setActionPoints("");
-      setOtherNote("");
-      setIsOtherSelected(false);
-      alert("Saved successfully!");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to save note.");
-    }
-  };
+    console.log("Saving Payload:", payload);
+
+    await saveMentorNote(payload);
+
+    alert("Note saved successfully!");
+    refreshNotes(); // optional
+  } catch (err) {
+    console.error("Save note failed:", err);
+    alert("Failed to save note.");
+  }
+};
 
   // -------------------------
   // update & delete helpers
@@ -1991,7 +2083,7 @@ const MentorNotes = () => {
             {/* Action Buttons */}
           <div className="flex items-center gap-3 pt-3">
             <button 
-              onClick={handleSave} 
+              onClick={handleSaveNote} 
               className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
             >
               Save Note
@@ -2249,3 +2341,36 @@ const MentorNotes = () => {
 };
 
 export default MentorNotes;
+ // load mentor + lists
+//   useEffect(() => {
+//     const load = async () => {
+//   try {
+//     const {
+//       data: { user },
+//     } = await supabase.auth.getUser();
+
+//     if (!user) {
+//       console.error("No logged-in user found!");
+//       return; // ⛔ stop execution
+//     }
+
+//     const info = await getLoggedInMentor(user.id);
+
+//     if (!info) {
+//       console.error("Mentor profile not found for this user!");
+//       setMentorInfo(null);
+//     } else {
+//       setMentorInfo(info);
+//     }
+
+//     const s = await getStudents();
+//     setStudents(s || []);
+
+//     const n = await getMentorNotes();
+//     setNotes(n || []);
+//   } catch (err) {
+//     console.error("Failed to load initial data", err);
+//   }
+// };
+// load();
+//   }, []);
