@@ -313,9 +313,8 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
                             </div>
                           </div>
                           <ChevronDownIcon
-                            className={`h-5 w-5 text-gray-400 transition-transform ${
-                              expandedStep === idx ? 'transform rotate-180' : ''
-                            }`}
+                            className={`h-5 w-5 text-gray-400 transition-transform ${expandedStep === idx ? 'transform rotate-180' : ''
+                              }`}
                           />
                         </div>
                       </button>
@@ -375,15 +374,22 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
                               </h5>
                             </div>
                             <ul className="space-y-1">
-                              {step.learningResources.map((resource, ridx) => (
-                                <li
-                                  key={ridx}
-                                  className="text-sm text-gray-700 flex items-start"
-                                >
-                                  <span className="mr-2">→</span>
-                                  <span>{resource}</span>
-                                </li>
-                              ))}
+                              {step.learningResources.map((resource: any, ridx) => {
+                                // Handle both string and object formats
+                                const resourceText = typeof resource === 'string'
+                                  ? resource
+                                  : resource?.path || resource?.description || JSON.stringify(resource);
+
+                                return (
+                                  <li
+                                    key={ridx}
+                                    className="text-sm text-gray-700 flex items-start"
+                                  >
+                                    <span className="mr-2">→</span>
+                                    <span>{resourceText}</span>
+                                  </li>
+                                );
+                              })}
                             </ul>
                           </div>
                         </div>
@@ -468,9 +474,8 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
                     </span>
                   </div>
                   <ChevronDownIcon
-                    className={`h-5 w-5 text-primary-600 transition-transform ${
-                      showChat ? 'transform rotate-180' : ''
-                    }`}
+                    className={`h-5 w-5 text-primary-600 transition-transform ${showChat ? 'transform rotate-180' : ''
+                      }`}
                   />
                 </button>
 
@@ -494,17 +499,15 @@ Answer questions about the career path, provide advice, clarify steps, suggest r
                           className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                           <div
-                            className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                              msg.role === 'user'
-                                ? 'bg-primary-600 text-white'
-                                : 'bg-white border border-gray-200 text-gray-900'
-                            }`}
+                            className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.role === 'user'
+                              ? 'bg-primary-600 text-white'
+                              : 'bg-white border border-gray-200 text-gray-900'
+                              }`}
                           >
                             <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                             <p
-                              className={`text-xs mt-1 ${
-                                msg.role === 'user' ? 'text-primary-200' : 'text-gray-500'
-                              }`}
+                              className={`text-xs mt-1 ${msg.role === 'user' ? 'text-primary-200' : 'text-gray-500'
+                                }`}
                             >
                               {msg.timestamp.toLocaleTimeString([], {
                                 hour: '2-digit',

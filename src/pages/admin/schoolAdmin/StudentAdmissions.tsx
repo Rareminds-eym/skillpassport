@@ -10,11 +10,14 @@ import {
   PencilSquareIcon,
   EnvelopeIcon,
   PhoneIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/admin/Pagination';
 import StudentProfileDrawer from '@/components/admin/components/StudentProfileDrawer';
+import CareerPathDrawer from '@/components/admin/components/CareerPathDrawer';
 import { useStudents } from '../../../hooks/useAdminStudents';
+import { generateCareerPath, type CareerPathResponse, type StudentProfile } from '@/services/aiCareerPathService';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -77,7 +80,7 @@ const StatusBadgeComponent = ({ status }) => {
   );
 };
 
-const StudentCard = ({ student, onViewProfile, onAddNote }) => {
+const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-3">
@@ -115,13 +118,21 @@ const StudentCard = ({ student, onViewProfile, onAddNote }) => {
         <span className="text-xs text-gray-500">
           {student.profile?.education?.[0]?.level || 'N/A'}
         </span>
-        <div className="flex space-x-2">
+        <div className="flex space-x-1 flex-wrap gap-1">
           <button
             onClick={() => onViewProfile(student)}
             className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
             <EyeIcon className="h-3 w-3 mr-1" />
             View
+          </button>
+          <button
+            onClick={() => onViewCareerPath(student)}
+            className="inline-flex items-center px-2 py-1 border border-yellow-300 rounded text-xs font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
+            title="AI Career Path"
+          >
+            <SparklesIcon className="h-3 w-3 mr-1" />
+            Career
           </button>
           <button
             onClick={() => onAddNote(student)}
@@ -143,6 +154,10 @@ const StudentAdmissions = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [sortBy, setSortBy] = useState('relevance');
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showCareerPathDrawer, setShowCareerPathDrawer] = useState(false);
+  const [careerPath, setCareerPath] = useState<CareerPathResponse | null>(null);
+  const [careerPathLoading, setCareerPathLoading] = useState(false);
+  const [careerPathError, setCareerPathError] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -313,6 +328,39 @@ const StudentAdmissions = () => {
     setSelectedStudent(student);
     setShowDrawer(true);
     // TODO: Optionally set a tab to notes when opened
+  };
+
+  const handleViewCareerPath = async (student: any) => {
+    setCareerPathLoading(true);
+    setCareerPathError(null);
+    setCareerPath(null);
+    setShowCareerPathDrawer(true); // Open drawer immediately
+
+    try {
+      const studentProfile: StudentProfile = {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        dept: student.profile?.education?.[0]?.degree || '',
+        college: student.college || student.profile?.university || '',
+        currentCgpa: student.profile?.education?.[0]?.cgpa || 0,
+        ai_score_overall: student.score || 0,
+        skills: student.skills || [],
+        certificates: student.certificates || [],
+        experience: student.experience || [],
+        trainings: student.trainings || [],
+        interests: student.interests || [],
+      };
+
+      const generatedPath = await generateCareerPath(studentProfile);
+      setCareerPath(generatedPath);
+    } catch (err) {
+      console.error('Error generating career path:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate career path';
+      setCareerPathError(errorMessage);
+    } finally {
+      setCareerPathLoading(false);
+    }
   };
 
   return (
@@ -536,6 +584,7 @@ const StudentAdmissions = () => {
                     student={student}
                     onViewProfile={handleViewProfile}
                     onAddNote={handleAddNoteClick}
+                    onViewCareerPath={handleViewCareerPath}
                   />
                 ))}
                 {!loading && paginatedStudents.length === 0 && !error && (
@@ -607,6 +656,13 @@ const StudentAdmissions = () => {
                             View
                           </button>
                           <button
+                            onClick={() => handleViewCareerPath(student)}
+                            className="text-yellow-600 hover:text-yellow-900"
+                            title="AI Career Path"
+                          >
+                            Career
+                          </button>
+                          <button
                             onClick={() => handleAddNoteClick(student)}
                             className="text-primary-600 hover:text-primary-900"
                           >
@@ -641,6 +697,19 @@ const StudentAdmissions = () => {
           setShowDrawer(false);
           setSelectedStudent(null);
         }}
+      />
+
+      {/* Career Path Drawer */}
+      <CareerPathDrawer
+        isOpen={showCareerPathDrawer}
+        onClose={() => {
+          setShowCareerPathDrawer(false);
+          setCareerPath(null);
+          setCareerPathError(null);
+        }}
+        careerPath={careerPath}
+        isLoading={careerPathLoading}
+        error={careerPathError}
       />
     </div>
   );
