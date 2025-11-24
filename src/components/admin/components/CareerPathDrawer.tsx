@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   XMarkIcon,
   ChevronDownIcon,
@@ -9,8 +9,27 @@ import {
   SparklesIcon,
   ArrowPathIcon,
   BookOpenIcon,
+  PaperAirplaneIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import { CareerPathResponse } from '@/services/aiCareerPathService';
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+  dangerouslyAllowBrowser: true,
+  defaultHeaders: {
+    'HTTP-Referer': window.location.origin,
+    'X-Title': 'Career Path Chat',
+  },
+});
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
 
 interface CareerPathDrawerProps {
   isOpen: boolean;
@@ -28,6 +47,83 @@ export const CareerPathDrawer: React.FC<CareerPathDrawerProps> = ({
   error = null,
 }) => {
   const [expandedStep, setExpandedStep] = useState<number>(0);
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages]);
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || !careerPath) return;
+
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content: chatInput,
+      timestamp: new Date(),
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setChatLoading(true);
+
+    try {
+      const careerContext = `
+Student: ${careerPath.studentName}
+Current Role: ${careerPath.currentRole}
+Career Goal: ${careerPath.careerGoal}
+Strengths: ${careerPath.strengths.join(', ')}
+Skill Gaps: ${careerPath.gaps.join(', ')}
+Career Path: ${careerPath.recommendedPath.map(s => s.roleTitle).join(' → ')}
+`;
+
+      const completion = await openai.chat.completions.create({
+        model: 'openai/gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a helpful career counselor assistant. You're discussing a career development path with context:
+${careerContext}
+
+Answer questions about the career path, provide advice, clarify steps, suggest resources, and help with career planning. Be concise, supportive, and practical.`,
+          },
+          ...chatMessages.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          {
+            role: 'user',
+            content: chatInput,
+          },
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+      });
+
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.',
+        timestamp: new Date(),
+      };
+
+      setChatMessages(prev => [...prev, assistantMessage]);
+    } catch (err) {
+      console.error('Chat error:', err);
+      const errorMessage: ChatMessage = {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.',
+        timestamp: new Date(),
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -358,6 +454,112 @@ export const CareerPathDrawer: React.FC<CareerPathDrawerProps> = ({
                   </ul>
                 </div>
               )}
+
+              {/* Chat Section */}
+              <div className="border-t pt-6">
+                <button
+                  onClick={() => setShowChat(!showChat)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-primary-50 to-primary-100 hover:from-primary-100 hover:to-primary-200 rounded-lg transition-colors border border-primary-200"
+                >
+                  <div className="flex items-center space-x-2">
+                    <ChatBubbleLeftRightIcon className="h-5 w-5 text-primary-600" />
+                    <span className="font-semibold text-primary-900">
+                      Ask Questions About Your Career Path
+                    </span>
+                  </div>
+                  <ChevronDownIcon
+                    className={`h-5 w-5 text-primary-600 transition-transform ${
+                      showChat ? 'transform rotate-180' : ''
+                    }`}
+                  />
+                </button>
+
+                {showChat && (
+                  <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+                    {/* Chat Messages */}
+                    <div className="h-96 overflow-y-auto bg-gray-50 p-4 space-y-4">
+                      {chatMessages.length === 0 && (
+                        <div className="text-center text-gray-500 py-8">
+                          <ChatBubbleLeftRightIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                          <p className="text-sm">Ask me anything about your career path!</p>
+                          <p className="text-xs mt-1">
+                            For example: "What courses should I take first?" or "How can I improve my skills?"
+                          </p>
+                        </div>
+                      )}
+
+                      {chatMessages.map((msg, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                              msg.role === 'user'
+                                ? 'bg-primary-600 text-white'
+                                : 'bg-white border border-gray-200 text-gray-900'
+                            }`}
+                          >
+                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            <p
+                              className={`text-xs mt-1 ${
+                                msg.role === 'user' ? 'text-primary-200' : 'text-gray-500'
+                              }`}
+                            >
+                              {msg.timestamp.toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+
+                      {chatLoading && (
+                        <div className="flex justify-start">
+                          <div className="bg-white border border-gray-200 rounded-lg px-4 py-2">
+                            <div className="flex space-x-2">
+                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
+                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div ref={chatEndRef} />
+                    </div>
+
+                    {/* Chat Input */}
+                    <div className="bg-white border-t border-gray-200 p-4">
+                      <div className="flex space-x-2">
+                        <input
+                          type="text"
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSendMessage();
+                            }
+                          }}
+                          placeholder="Ask a question about your career path..."
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          disabled={chatLoading}
+                        />
+                        <button
+                          onClick={handleSendMessage}
+                          disabled={!chatInput.trim() || chatLoading}
+                          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                        >
+                          <PaperAirplaneIcon className="h-5 w-5" />
+                          <span>Send</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Generated Info */}
               <div className="text-xs text-gray-500 text-center pt-4 border-t">

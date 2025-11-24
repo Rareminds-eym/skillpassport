@@ -353,33 +353,69 @@ const StudentDataAdmission = () => {
   };
 
   const handleViewCareerPath = async (student: any) => {
+    console.log('Career button clicked for student:', student);
     setCareerPathLoading(true);
     setCareerPathError(null);
     setCareerPath(null);
+    setShowCareerPathDrawer(true);
 
     try {
+      // Extract comprehensive data from student object
+      const skills = Array.isArray(student.skills) 
+        ? student.skills.map((s: any) => typeof s === 'string' ? s : s.name || s.title).filter(Boolean)
+        : student.profile?.technicalSkills?.map((s: any) => s.name || s) || [];
+      
+      const certificates = Array.isArray(student.certificates)
+        ? student.certificates.map((c: any) => 
+            typeof c === 'string' ? c : `${c.title || c.name} - ${c.issuer || 'Verified'}`
+          ).filter(Boolean)
+        : [];
+      
+      const experience = Array.isArray(student.experience)
+        ? student.experience.map((e: any) => 
+            typeof e === 'string' ? e : `${e.role || e.title} at ${e.organization || e.company} (${e.duration || 'N/A'})`
+          ).filter(Boolean)
+        : student.profile?.experience?.map((e: any) => `${e.role} at ${e.company}`) || [];
+      
+      const trainings = Array.isArray(student.trainings)
+        ? student.trainings.map((t: any) => 
+            typeof t === 'string' ? t : `${t.title} - ${t.organization || 'Completed'}`
+          ).filter(Boolean)
+        : [];
+      
+      // Extract interests from profile or generate from dept
+      const interests = student.interests || 
+        student.profile?.interests || 
+        [student.dept, `${student.dept} Development`, 'Career Growth'];
+
+      // Get CGPA from education or profile
+      const cgpa = student.profile?.education?.[0]?.cgpa || 
+        student.cgpa || 
+        (student.ai_score_overall ? (student.ai_score_overall / 10).toFixed(2) : undefined);
+
       const studentProfile: StudentProfile = {
         id: student.id,
         name: student.name,
         email: student.email,
         dept: student.dept,
         college: student.college,
-        currentCgpa: student.cgpa,
-        ai_score_overall: student.ai_score_overall,
-        skills: student.skills || [],
-        certificates: student.certificates || [],
-        experience: student.experience || [],
-        trainings: student.trainings || [],
-        interests: student.interests || [],
+        currentCgpa: cgpa ? parseFloat(cgpa) : undefined,
+        ai_score_overall: student.ai_score_overall || 0,
+        skills,
+        certificates,
+        experience,
+        trainings,
+        interests,
       };
 
+      console.log('Generating career path with profile:', studentProfile);
       const generatedPath = await generateCareerPath(studentProfile);
+      console.log('Career path generated:', generatedPath);
       setCareerPath(generatedPath);
-      setShowCareerPathDrawer(true);
     } catch (err) {
+      console.error('Career path error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate career path';
       setCareerPathError(errorMessage);
-      setShowCareerPathDrawer(true);
     } finally {
       setCareerPathLoading(false);
     }

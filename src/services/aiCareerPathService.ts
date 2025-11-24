@@ -2,7 +2,12 @@ import OpenAI from 'openai';
 
 const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
   dangerouslyAllowBrowser: true,
+  defaultHeaders: {
+    'HTTP-Referer': window.location.origin,
+    'X-Title': 'Career Path Generator',
+  },
 });
 
 export interface StudentProfile {
@@ -29,6 +34,8 @@ export interface CareerPathStep {
   skillsNeeded: string[];
   skillsToGain: string[];
   learningResources: string[];
+  salaryRange?: string;
+  keyResponsibilities?: string[];
 }
 
 export interface CareerPathResponse {
@@ -45,22 +52,24 @@ export interface CareerPathResponse {
   generatedAt: string;
 }
 
-const CAREER_PATH_SYSTEM_PROMPT = `You are an expert career counsellor and AI career path advisor. Your role is to analyze student profiles and generate comprehensive, personalized career development paths based on their:
-- Current skills and certifications
-- Educational background and GPA
-- Interests and career aspirations
-- Work experience
-- Technical and soft skills
-- Training and professional development
+const CAREER_PATH_SYSTEM_PROMPT = `You are an expert career counsellor and AI career path advisor specializing in student career development. Your role is to analyze student profiles and generate comprehensive, personalized career development paths.
+
+Analyze the student based on:
+1. **Skill-Based Roles**: Match their technical skills to relevant job roles and positions
+2. **Interest Alignment**: Consider their stated interests and career aspirations
+3. **Skill Gap Analysis**: Identify missing skills needed for target roles
+4. **Development Roadmap**: Create a step-by-step skill development plan
+5. **Salary Expectations**: Provide realistic salary ranges for each career stage
 
 Generate career paths that are:
-1. Realistic and achievable based on current profile
-2. Aligned with industry trends and job market demands
-3. Practical with specific skill gaps and development areas
-4. Actionable with concrete next steps
-5. Diversified with alternative career directions
+- Realistic and achievable based on current profile
+- Aligned with industry trends and job market demands (2024-2025)
+- Practical with specific skill gaps and development areas
+- Actionable with concrete next steps and learning resources
+- Include salary expectations for each role level
+- Diversified with alternative career directions
 
-Always format your response as valid JSON. Be specific, encouraging, and data-driven.`;
+Always format your response as valid JSON. Be specific, encouraging, and data-driven with current market insights.`;
 
 function buildStudentProfileContext(student: StudentProfile): string {
   let context = `\n=== STUDENT PROFILE ===\n`;
@@ -140,6 +149,8 @@ function parseCareerPathResponse(content: string): CareerPathResponse {
       skillsNeeded: Array.isArray(step.skillsNeeded) ? step.skillsNeeded : [],
       skillsToGain: Array.isArray(step.skillsToGain) ? step.skillsToGain : [],
       learningResources: Array.isArray(step.learningResources) ? step.learningResources : [],
+      salaryRange: step.salaryRange || 'Market rate',
+      keyResponsibilities: Array.isArray(step.keyResponsibilities) ? step.keyResponsibilities : [],
     })) : [],
     alternativePaths: Array.isArray(parsed.alternativePaths) ? parsed.alternativePaths : [],
     actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems : [],
@@ -152,33 +163,41 @@ export async function generateCareerPath(student: StudentProfile): Promise<Caree
   try {
     const profileContext = buildStudentProfileContext(student);
     
-    const userPrompt = `Based on the following student profile, generate a comprehensive career development path. Consider their skills, interests, background, and market demands.
+    const userPrompt = `Based on the following student profile, generate a comprehensive career development path with focus on:
+1. Skill-based job/role recommendations
+2. Interest-aligned career paths
+3. Detailed skill gap analysis
+4. Skill development roadmap
+5. Realistic salary expectations
 
 ${profileContext}
 
 Generate a detailed JSON response with:
-1. Current assessed role/level (entry, junior, mid, senior, lead)
-2. Career goal based on interests and skills
-3. Overall career readiness score (0-100)
-4. Key strengths (3-5 items)
-5. Skill gaps to address (3-5 items)
-6. Recommended career path with 3-4 progression steps, each containing:
-   - roleTitle: Job title or position
+1. **currentRole**: Current assessed role/level based on skills (entry, junior, mid, senior, lead)
+2. **careerGoal**: Primary career goal based on interests and skills
+3. **overallScore**: Career readiness score (0-100) based on skills, experience, and education
+4. **strengths**: Key strengths (4-6 items) - what they're good at
+5. **gaps**: Skill gaps to address (4-6 items) - what they need to learn
+6. **recommendedPath**: Career progression with 3-4 steps, each containing:
+   - roleTitle: Specific job title (e.g., "Junior Full Stack Developer")
    - level: entry/junior/mid/senior/lead
    - timeline: Duration (e.g., "1-2 years")
-   - estimatedTimeline: Detailed timeline
-   - description: Role description and responsibilities
-   - skillsNeeded: Current relevant skills (array)
-   - skillsToGain: Skills to develop (array)
-   - learningResources: Recommended courses/resources (array)
-7. Alternative career paths (2-3 different directions)
-8. Immediate action items (3-4 items)
-9. Next steps for this month (3-4 items)
+   - estimatedTimeline: Detailed timeline explanation
+   - description: Role description and what they'll do
+   - skillsNeeded: Skills they already have that match this role (array)
+   - skillsToGain: New skills to develop for this role (array)
+   - learningResources: Specific courses/platforms/certifications (array)
+   - salaryRange: Expected salary in INR/USD (e.g., "₹4-6 LPA" or "$50k-70k")
+   - keyResponsibilities: Main job responsibilities (array, 3-4 items)
+7. **alternativePaths**: 2-3 different career directions they could pursue
+8. **actionItems**: Immediate action items to start (4-5 items)
+9. **nextSteps**: Specific next steps for this month (4-5 items)
 
+Be specific with Indian job market context if the college is in India. Include realistic salary ranges based on 2024-2025 market rates.
 Ensure all arrays are properly formatted and the JSON is valid.`;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'openai/gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -189,7 +208,7 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
           content: userPrompt,
         },
       ],
-      max_tokens: 2500,
+      max_tokens: 1500,
       temperature: 0.7,
     });
 
@@ -241,7 +260,7 @@ Generate a detailed JSON response with:
 Ensure all arrays are properly formatted and the JSON is valid.`;
 
   const stream = await openai.chat.completions.create({
-    model: 'gpt-4o',
+    model: 'openai/gpt-4o-mini',
     messages: [
       {
         role: 'system',
@@ -252,7 +271,7 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
         content: userPrompt,
       },
     ],
-    max_tokens: 2500,
+    max_tokens: 1500,
     temperature: 0.7,
     stream: true,
   });
