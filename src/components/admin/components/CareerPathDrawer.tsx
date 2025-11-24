@@ -37,6 +37,7 @@ interface CareerPathDrawerProps {
   careerPath: CareerPathResponse | null;
   isLoading?: boolean;
   error?: string | null;
+  onRetry?: () => void;
 }
 
 export const CareerPathDrawer: React.FC<CareerPathDrawerProps> = ({
@@ -45,6 +46,7 @@ export const CareerPathDrawer: React.FC<CareerPathDrawerProps> = ({
   careerPath,
   isLoading = false,
   error = null,
+  onRetry,
 }) => {
   const [expandedStep, setExpandedStep] = useState<number>(0);
   const [showChat, setShowChat] = useState(false);
@@ -253,9 +255,25 @@ IMPORTANT INSTRUCTIONS:
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-800 font-medium">Error generating career path</p>
-              <p className="text-red-700 text-sm mt-1">{error}</p>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                  <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <p className="text-red-800 font-medium text-lg mb-2">Failed to Generate Career Path</p>
+                <p className="text-red-700 text-sm mb-4">{error}</p>
+                {onRetry && (
+                  <button
+                    onClick={onRetry}
+                    className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors shadow-sm"
+                  >
+                    <ArrowPathIcon className="h-5 w-5 mr-2" />
+                    Try Again
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -340,7 +358,20 @@ IMPORTANT INSTRUCTIONS:
                       ))}
                     </ul>
                   </div>
+                  
                 )}
+                  <ul className="space-y-2">
+                    {careerPath.strengths.map((strength: any, idx) => {
+                      const strengthText = typeof strength === 'string' ? strength : strength?.text || strength?.description || JSON.stringify(strength);
+                      return (
+                        <li key={idx} className="text-sm text-green-800 flex items-start">
+                          <span className="mr-2">•</span>
+                          <span>{strengthText}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
 
                 {/* Skill Gaps */}
                 {careerPath.gaps && careerPath.gaps.length > 0 && (
@@ -360,7 +391,20 @@ IMPORTANT INSTRUCTIONS:
                       ))}
                     </ul>
                   </div>
+                
                 )}
+                  <ul className="space-y-2">
+                    {careerPath.gaps.map((gap: any, idx) => {
+                      const gapText = typeof gap === 'string' ? gap : gap?.text || gap?.description || JSON.stringify(gap);
+                      return (
+                        <li key={idx} className="text-sm text-amber-800 flex items-start">
+                          <span className="mr-2">•</span>
+                          <span>{gapText}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               </div>
 
               {/* Recommended Career Path */}
@@ -409,9 +453,8 @@ IMPORTANT INSTRUCTIONS:
                             </div>
                           </div>
                           <ChevronDownIcon
-                            className={`h-5 w-5 text-gray-400 transition-transform ${
-                              expandedStep === idx ? 'transform rotate-180' : ''
-                            }`}
+                            className={`h-5 w-5 text-gray-400 transition-transform ${expandedStep === idx ? 'transform rotate-180' : ''
+                              }`}
                           />
                         </div>
                       </button>
@@ -471,15 +514,22 @@ IMPORTANT INSTRUCTIONS:
                               </h5>
                             </div>
                             <ul className="space-y-1">
-                              {step.learningResources.map((resource, ridx) => (
-                                <li
-                                  key={ridx}
-                                  className="text-sm text-gray-700 flex items-start"
-                                >
-                                  <span className="mr-2">→</span>
-                                  <span>{resource}</span>
-                                </li>
-                              ))}
+                              {step.learningResources.map((resource: any, ridx) => {
+                                // Handle both string and object formats
+                                const resourceText = typeof resource === 'string'
+                                  ? resource
+                                  : resource?.path || resource?.description || JSON.stringify(resource);
+
+                                return (
+                                  <li
+                                    key={ridx}
+                                    className="text-sm text-gray-700 flex items-start"
+                                  >
+                                    <span className="mr-2">→</span>
+                                    <span>{resourceText}</span>
+                                  </li>
+                                );
+                              })}
                             </ul>
                           </div>
                         </div>
@@ -497,16 +547,19 @@ IMPORTANT INSTRUCTIONS:
                     <span className="text-indigo-600 mr-2">↗</span>
                     Alternative Career Directions
                   </h3>
-                  <ul className="space-y-2.5">
-                    {careerPath.alternativePaths.map((path, idx) => (
-                      <li
-                        key={idx}
-                        className="text-sm text-gray-700 flex items-start pl-4"
-                      >
-                        <span className="text-indigo-500 mr-2">•</span>
-                        <span>{path}</span>
-                      </li>
-                    ))}
+                  <ul className="space-y-2">
+                    {careerPath.alternativePaths.map((path: any, idx) => {
+                      const pathText = typeof path === 'string' ? path : path?.path || path?.title || path?.description || JSON.stringify(path);
+                      return (
+                        <li
+                          key={idx}
+                          className="text-sm text-indigo-800 flex items-start"
+                        >
+                          <span className="mr-2">→</span>
+                          <span>{pathText}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
@@ -517,18 +570,21 @@ IMPORTANT INSTRUCTIONS:
                   <h3 className="font-bold text-gray-900 mb-4">
                     Immediate Action Items
                   </h3>
-                  <ol className="space-y-3">
-                    {careerPath.actionItems.map((item, idx) => (
-                      <li
-                        key={idx}
-                        className="text-sm text-gray-700 flex items-start"
-                      >
-                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-bold text-xs flex items-center justify-center mr-3 mt-0.5">
-                          {idx + 1}
-                        </span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
+                  <ol className="space-y-2">
+                    {careerPath.actionItems.map((item: any, idx) => {
+                      const itemText = typeof item === 'string' ? item : item?.text || item?.action || item?.description || JSON.stringify(item);
+                      return (
+                        <li
+                          key={idx}
+                          className="text-sm text-blue-800 flex items-start"
+                        >
+                          <span className="mr-3 font-bold text-blue-600">
+                            {idx + 1}.
+                          </span>
+                          <span>{itemText}</span>
+                        </li>
+                      );
+                    })}
                   </ol>
                 </div>
               )}
@@ -539,18 +595,19 @@ IMPORTANT INSTRUCTIONS:
                   <h3 className="font-bold text-gray-900 mb-4">
                     Next Steps (This Month)
                   </h3>
-                  <ul className="space-y-3">
-                    {careerPath.nextSteps.map((step, idx) => (
-                      <li
-                        key={idx}
-                        className="text-sm text-gray-700 flex items-start"
-                      >
-                        <span className="flex-shrink-0 w-5 h-5 rounded border-2 border-purple-500 text-purple-600 font-bold text-xs flex items-center justify-center mr-3 mt-0.5">
-                          ✓
-                        </span>
-                        <span>{step}</span>
-                      </li>
-                    ))}
+                  <ul className="space-y-2">
+                    {careerPath.nextSteps.map((step: any, idx) => {
+                      const stepText = typeof step === 'string' ? step : step?.text || step?.step || step?.description || JSON.stringify(step);
+                      return (
+                        <li
+                          key={idx}
+                          className="text-sm text-purple-800 flex items-start"
+                        >
+                          <span className="mr-2">✓</span>
+                          <span>{stepText}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
@@ -570,9 +627,8 @@ IMPORTANT INSTRUCTIONS:
                     </span>
                   </div>
                   <ChevronDownIcon
-                    className={`h-5 w-5 text-gray-600 transition-transform ${
-                      showChat ? 'transform rotate-180' : ''
-                    }`}
+                    className={`h-5 w-5 text-primary-600 transition-transform ${showChat ? 'transform rotate-180' : ''
+                      }`}
                   />
                 </button>
 
@@ -596,17 +652,15 @@ IMPORTANT INSTRUCTIONS:
                           className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                           <div
-                            className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                              msg.role === 'user'
-                                ? 'bg-primary-600 text-white'
-                                : 'bg-white border border-gray-200 text-gray-900'
-                            }`}
+                            className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.role === 'user'
+                              ? 'bg-primary-600 text-white'
+                              : 'bg-white border border-gray-200 text-gray-900'
+                              }`}
                           >
                             <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                             <p
-                              className={`text-xs mt-1 ${
-                                msg.role === 'user' ? 'text-primary-200' : 'text-gray-500'
-                              }`}
+                              className={`text-xs mt-1 ${msg.role === 'user' ? 'text-primary-200' : 'text-gray-500'
+                                }`}
                             >
                               {msg.timestamp.toLocaleTimeString([], {
                                 hour: '2-digit',
