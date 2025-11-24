@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 // Raw DB row type (minimal)
@@ -71,7 +71,7 @@ export interface UICandidate {
   dept?: string
   class?: string
   subjects?: string[]
-  skills: string[]
+  skills: string[] | any[]
   badges: string[]
   ai_score_overall: number
   score?: number
@@ -83,6 +83,10 @@ export interface UICandidate {
   profile?: any
   projects?: any[]
   certificates?: any[]
+  education?: any[]
+  experience?: any[]
+  trainings?: any[]
+  interests?: string[]
   assessments?: any[]
   universityId?: string
 }
@@ -140,24 +144,52 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     .map(s => s.trim())
     .filter(Boolean)
 
-  const skills = subjects // Use same as subjects for now
+  // Extract skills from the joined skills table
+  const rawSkills = Array.isArray(row.skills) ? row.skills : []
+  const skills = rawSkills.length > 0 
+    ? rawSkills.map(s => s.name || s.title || s).filter(Boolean)
+    : subjects // Fallback to subjects if no skills table data
 
   const rawProjects = Array.isArray(row.projects) ? row.projects : []
   const rawCertificates = Array.isArray(row.certificates) ? row.certificates : []
+  const rawEducation = Array.isArray(row.education) ? row.education : []
+  const rawExperience = Array.isArray(row.experience) ? row.experience : []
+  const rawTrainings = Array.isArray(row.trainings) ? row.trainings : []
   const rawAssessments = Array.isArray(passport.assessments) ? passport.assessments : []
 
   const projects = rawProjects
-    .filter(project => project?.approval_status === 'approved' || project?.enabled === true)
+    .filter(project => project?.approval_status === 'approved' || project?.enabled === true || !project?.approval_status)
     .map(project => ({
       ...project,
       verifiedAt: project?.updated_at || project?.created_at
     }))
 
   const certificates = rawCertificates
-    .filter(certificate => certificate?.approval_status === 'approved' || certificate?.enabled === true)
+    .filter(certificate => certificate?.approval_status === 'approved' || certificate?.enabled === true || !certificate?.approval_status)
     .map(certificate => ({
       ...certificate,
       verifiedAt: certificate?.updated_at || certificate?.created_at
+    }))
+
+  const education = rawEducation
+    .filter(edu => edu?.approval_status === 'approved' || !edu?.approval_status)
+    .map(edu => ({
+      ...edu,
+      verifiedAt: edu?.updated_at || edu?.created_at
+    }))
+
+  const experience = rawExperience
+    .filter(exp => exp?.approval_status === 'approved' || !exp?.approval_status)
+    .map(exp => ({
+      ...exp,
+      verifiedAt: exp?.updated_at || exp?.created_at
+    }))
+
+  const trainings = rawTrainings
+    .filter(training => training?.approval_status === 'approved' || !training?.approval_status)
+    .map(training => ({
+      ...training,
+      verifiedAt: training?.updated_at || training?.created_at
     }))
 
   const assessments = rawAssessments
@@ -178,7 +210,6 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     class: classValue,
     location,
     subjects,
-    skills,
     badges: ['institution_verified'],
     ai_score_overall: 0,
     score,
@@ -192,16 +223,21 @@ function mapToUICandidate(row: StudentRow): UICandidate {
       email: row.email || profile.email,
       contact_number: row.contact_number || profile.contact_number,
       university: college,
-      education: Array.isArray(row.education) && row.education.length > 0 ? row.education : profile.education || [{
+      education: education.length > 0 ? education : profile.education || [{
         degree: dept,
         level: classValue,
         cgpa: (Math.random() * 3 + 7).toFixed(2), // Random CGPA 7-10
       }],
-      technicalSkills: Array.isArray(row.skills) ? row.skills.filter(skill => skill.type === 'technical') : profile.technicalSkills || [],
-      softSkills: Array.isArray(row.skills) ? row.skills.filter(skill => skill.type === 'soft') : profile.softSkills || [],
+      technicalSkills: rawSkills.filter(skill => skill.type === 'technical'),
+      softSkills: rawSkills.filter(skill => skill.type === 'soft'),
     },
+    // Include all related table data at the top level for career path generation
+    skills: rawSkills.length > 0 ? rawSkills : skills, // Use raw skills from table, fallback to derived skills
     projects,
     certificates,
+    education,
+    experience,
+    trainings,
     assessments,
     universityId: row.universityId,
   }
@@ -251,6 +287,20 @@ export function useStudents() {
         if (!isMounted) return;
         
         console.log(`Fetched ${result.data?.length || 0} students`);
+        
+        // Log sample data to verify related tables are loaded
+        if (result.data && result.data.length > 0) {
+          const sample = result.data[0] as StudentRow;
+          console.log('Sample student data structure:', {
+            hasSkills: Array.isArray(sample.skills) && sample.skills.length > 0,
+            hasCertificates: Array.isArray(sample.certificates) && sample.certificates.length > 0,
+            hasProjects: Array.isArray(sample.projects) && sample.projects.length > 0,
+            hasEducation: Array.isArray(sample.education) && sample.education.length > 0,
+            hasExperience: Array.isArray(sample.experience) && sample.experience.length > 0,
+            hasTrainings: Array.isArray(sample.trainings) && sample.trainings.length > 0,
+          });
+        }
+        
         const mapped = (result.data as StudentRow[]).map(mapToUICandidate);
         setData(mapped);
       } catch (e: any) {
