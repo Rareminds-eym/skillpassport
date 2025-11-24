@@ -158,6 +158,7 @@ const StudentAdmissions = () => {
   const [careerPath, setCareerPath] = useState<CareerPathResponse | null>(null);
   const [careerPathLoading, setCareerPathLoading] = useState(false);
   const [careerPathError, setCareerPathError] = useState<string | null>(null);
+  const [currentStudentForCareer, setCurrentStudentForCareer] = useState<any>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -331,20 +332,26 @@ const StudentAdmissions = () => {
   };
 
   const handleViewCareerPath = async (student: any) => {
+    setCurrentStudentForCareer(student); // Store for retry
     setCareerPathLoading(true);
     setCareerPathError(null);
     setCareerPath(null);
     setShowCareerPathDrawer(true); // Open drawer immediately
 
     try {
+      // Validate student data
+      if (!student || !student.id) {
+        throw new Error('Invalid student data');
+      }
+
       const studentProfile: StudentProfile = {
         id: student.id,
         name: student.name,
         email: student.email,
-        dept: student.profile?.education?.[0]?.degree || '',
+        dept: student.profile?.education?.[0]?.degree || student.dept || '',
         college: student.college || student.profile?.university || '',
-        currentCgpa: student.profile?.education?.[0]?.cgpa || 0,
-        ai_score_overall: student.score || 0,
+        currentCgpa: student.profile?.education?.[0]?.cgpa || student.cgpa || 0,
+        ai_score_overall: student.score || student.ai_score_overall || 0,
         skills: student.skills || [],
         certificates: student.certificates || [],
         experience: student.experience || [],
@@ -352,14 +359,43 @@ const StudentAdmissions = () => {
         interests: student.interests || [],
       };
 
+      console.log('Generating career path for:', studentProfile.name);
+
       const generatedPath = await generateCareerPath(studentProfile);
+
+      if (!generatedPath) {
+        throw new Error('No career path was generated');
+      }
+
+      console.log('Career path generated successfully');
       setCareerPath(generatedPath);
     } catch (err) {
       console.error('Error generating career path:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate career path';
+
+      // Provide user-friendly error messages
+      let errorMessage = 'Failed to generate career path';
+
+      if (err instanceof Error) {
+        if (err.message.includes('API')) {
+          errorMessage = 'AI service is currently unavailable. Please check your API key configuration or try again later.';
+        } else if (err.message.includes('network') || err.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (err.message.includes('JSON') || err.message.includes('parse')) {
+          errorMessage = 'Failed to process AI response. Please try again.';
+        } else {
+          errorMessage = `Error: ${err.message}`;
+        }
+      }
+
       setCareerPathError(errorMessage);
     } finally {
       setCareerPathLoading(false);
+    }
+  };
+
+  const handleRetryCareerPath = () => {
+    if (currentStudentForCareer) {
+      handleViewCareerPath(currentStudentForCareer);
     }
   };
 
@@ -704,12 +740,13 @@ const StudentAdmissions = () => {
         isOpen={showCareerPathDrawer}
         onClose={() => {
           setShowCareerPathDrawer(false);
-          setCareerPath(null);
           setCareerPathError(null);
+          setCareerPath(null);
         }}
         careerPath={careerPath}
         isLoading={careerPathLoading}
         error={careerPathError}
+        onRetry={handleRetryCareerPath}
       />
     </div>
   );

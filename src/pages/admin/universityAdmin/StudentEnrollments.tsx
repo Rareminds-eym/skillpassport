@@ -159,6 +159,7 @@ const StudentEnrollments = () => {
   const [careerPath, setCareerPath] = useState<CareerPathResponse | null>(null);
   const [careerPathLoading, setCareerPathLoading] = useState(false);
   const [careerPathError, setCareerPathError] = useState<string | null>(null);
+  const [currentStudentForCareer, setCurrentStudentForCareer] = useState<any>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -353,19 +354,26 @@ const StudentEnrollments = () => {
   };
 
   const handleViewCareerPath = async (student: any) => {
+    setCurrentStudentForCareer(student); // Store for retry
     setCareerPathLoading(true);
     setCareerPathError(null);
     setCareerPath(null);
+    setShowCareerPathDrawer(true); // Open drawer immediately
 
     try {
+      // Validate student data
+      if (!student || !student.id) {
+        throw new Error('Invalid student data');
+      }
+
       const studentProfile: StudentProfile = {
         id: student.id,
         name: student.name,
         email: student.email,
         dept: student.dept,
         college: student.college,
-        currentCgpa: student.cgpa,
-        ai_score_overall: student.ai_score_overall,
+        currentCgpa: student.cgpa || 0,
+        ai_score_overall: student.ai_score_overall || 0,
         skills: student.skills || [],
         certificates: student.certificates || [],
         experience: student.experience || [],
@@ -373,15 +381,43 @@ const StudentEnrollments = () => {
         interests: student.interests || [],
       };
 
+      console.log('Generating career path for:', studentProfile.name);
+
       const generatedPath = await generateCareerPath(studentProfile);
+
+      if (!generatedPath) {
+        throw new Error('No career path was generated');
+      }
+
+      console.log('Career path generated successfully');
       setCareerPath(generatedPath);
-      setShowCareerPathDrawer(true);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate career path';
+      console.error('Error generating career path:', err);
+
+      // Provide user-friendly error messages
+      let errorMessage = 'Failed to generate career path';
+
+      if (err instanceof Error) {
+        if (err.message.includes('API')) {
+          errorMessage = 'AI service is currently unavailable. Please check your API key configuration or try again later.';
+        } else if (err.message.includes('network') || err.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (err.message.includes('JSON') || err.message.includes('parse')) {
+          errorMessage = 'Failed to process AI response. Please try again.';
+        } else {
+          errorMessage = `Error: ${err.message}`;
+        }
+      }
+
       setCareerPathError(errorMessage);
-      setShowCareerPathDrawer(true);
     } finally {
       setCareerPathLoading(false);
+    }
+  };
+
+  const handleRetryCareerPath = () => {
+    if (currentStudentForCareer) {
+      handleViewCareerPath(currentStudentForCareer);
     }
   };
 
@@ -740,12 +776,13 @@ const StudentEnrollments = () => {
         isOpen={showCareerPathDrawer}
         onClose={() => {
           setShowCareerPathDrawer(false);
-          setCareerPath(null);
           setCareerPathError(null);
+          setCareerPath(null);
         }}
         careerPath={careerPath}
         isLoading={careerPathLoading}
         error={careerPathError}
+        onRetry={handleRetryCareerPath}
       />
     </div>
   );
