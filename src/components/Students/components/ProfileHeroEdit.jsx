@@ -138,10 +138,10 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
   // Determine institution from relationships (school_id or university_college_id)
   const institutionName = React.useMemo(() => {
-    if (realStudentData?.school_id && realStudentData?.school) {
-      return realStudentData.school.name;
-    } else if (realStudentData?.university_college_id && realStudentData?.universityCollege) {
-      const college = realStudentData.universityCollege;
+    if (realStudentData?.school_id && realStudentData?.schools) {
+      return realStudentData.schools.name;
+    } else if (realStudentData?.university_college_id && realStudentData?.university_colleges) {
+      const college = realStudentData.university_colleges;
       const university = college.universities;
       // Show both college and university name
       return university?.name ? `${college.name} - ${university.name}` : college.name;
@@ -150,10 +150,16 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     return displayData?.university || "Institution";
   }, [realStudentData, displayData]);
 
-  // Debug: Log student_id from database column
+  // Debug: Log student_id and school fields from database
   React.useEffect(() => {
     if (realStudentData) {
       console.log('🔍 Student ID from database:', realStudentData.student_id);
+      console.log('🏫 School ID:', realStudentData.school_id);
+      console.log('📚 Grade:', realStudentData.grade);
+      console.log('📝 Section:', realStudentData.section);
+      console.log('🎯 Roll Number:', realStudentData.roll_number);
+      console.log('🎓 Admission Number:', realStudentData.admission_number);
+      console.log('📦 Full realStudentData:', realStudentData);
     }
   }, [realStudentData]);
 
@@ -295,6 +301,38 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                     </span>
                   </div> */}
                 </div>
+
+                {/* School-specific fields - Display when school_id is not null */}
+                {realStudentData?.school_id && (
+                  <div className="ml-1 bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+                    <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4" />
+                      School Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* <div className="flex flex-col">
+                        <span className="text-xs text-white/70">Name</span>
+                        <span className="text-sm text-white font-medium">{realStudentData.name || 'N/A'}</span>
+                      </div> */}
+                      <div className="flex flex-col">
+                        <span className="text-xs text-white/70">Grade</span>
+                        <span className="text-sm text-white font-medium">{realStudentData.grade || 'N/A'}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs text-white/70">Section</span>
+                        <span className="text-sm text-white font-medium">{realStudentData.section || 'N/A'}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs text-white/70">Roll Number</span>
+                        <span className="text-sm text-white font-medium">{realStudentData.roll_number || 'N/A'}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs text-white/70">Admission Number</span>
+                        <span className="text-sm text-white font-medium">{realStudentData.admission_number || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-3 ml-1">
