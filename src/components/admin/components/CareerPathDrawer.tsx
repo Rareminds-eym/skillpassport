@@ -73,13 +73,54 @@ export const CareerPathDrawer: React.FC<CareerPathDrawerProps> = ({
     setChatLoading(true);
 
     try {
+      const studentData = careerPath.studentData || {};
+      
       const careerContext = `
 Student: ${careerPath.studentName}
 Current Role: ${careerPath.currentRole}
 Career Goal: ${careerPath.careerGoal}
+Overall Score: ${careerPath.overallScore}%
+
+STUDENT'S ACTUAL DATA FROM DATABASE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Skills (${studentData.skills?.length || 0}): 
+${studentData.skills?.length ? studentData.skills.map((s, i) => `${i + 1}. ${s}`).join('\n') : 'None listed'}
+
+Certificates (${studentData.certificates?.length || 0}): 
+${studentData.certificates?.length ? studentData.certificates.map((c, i) => `${i + 1}. ${c}`).join('\n') : 'None listed'}
+
+Projects (${studentData.projects?.length || 0}): 
+${studentData.projects?.length ? studentData.projects.map((p, i) => `${i + 1}. ${p}`).join('\n') : 'None listed'}
+
+Education (${studentData.education?.length || 0}): 
+${studentData.education?.length ? studentData.education.map((e, i) => `${i + 1}. ${e}`).join('\n') : 'None listed'}
+
+Experience (${studentData.experience?.length || 0}): 
+${studentData.experience?.length ? studentData.experience.map((e, i) => `${i + 1}. ${e}`).join('\n') : 'None listed'}
+
+Trainings (${studentData.trainings?.length || 0}): 
+${studentData.trainings?.length ? studentData.trainings.map((t, i) => `${i + 1}. ${t}`).join('\n') : 'None listed'}
+
+Interests: ${studentData.interests?.length ? studentData.interests.join(', ') : 'None listed'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CAREER PATH ANALYSIS:
 Strengths: ${careerPath.strengths.join(', ')}
 Skill Gaps: ${careerPath.gaps.join(', ')}
 Career Path: ${careerPath.recommendedPath.map(s => s.roleTitle).join(' → ')}
+Action Items: ${careerPath.actionItems.join('; ')}
+Next Steps: ${careerPath.nextSteps.join('; ')}
+Alternative Paths: ${careerPath.alternativePaths.join('; ')}
+
+Detailed Career Steps:
+${careerPath.recommendedPath.map((step, idx) => `
+Step ${idx + 1}: ${step.roleTitle} (${step.level})
+- Timeline: ${step.timeline}
+- Skills Needed: ${step.skillsNeeded.join(', ')}
+- Skills to Gain: ${step.skillsToGain.join(', ')}
+- Learning Resources: ${step.learningResources.join('; ')}
+${step.salaryRange ? `- Salary Range: ${step.salaryRange}` : ''}
+`).join('\n')}
 `;
 
       const completion = await openai.chat.completions.create({
@@ -87,10 +128,17 @@ Career Path: ${careerPath.recommendedPath.map(s => s.roleTitle).join(' → ')}
         messages: [
           {
             role: 'system',
-            content: `You are a helpful career counselor assistant. You're discussing a career development path with context:
+            content: `You are a helpful career counselor assistant. You're discussing a career development path with the following context:
 ${careerContext}
 
-Answer questions about the career path, provide advice, clarify steps, suggest resources, and help with career planning. Be concise, supportive, and practical.`,
+IMPORTANT INSTRUCTIONS:
+- When asked about certificates, skills, or specific data, list ALL items from the context above - do not summarize or skip any
+- If asked "list certificates" or "what certificates", provide the COMPLETE list from the context
+- If specific information is not in the context, clearly state "I don't have that specific information in the career path data"
+- Do NOT make up or suggest certificates/skills that aren't mentioned in the context
+- Answer questions about the career path, provide advice, clarify steps, and help with career planning
+- Be concise but COMPLETE when listing data
+- Reference specific details from the career path when answering`,
           },
           ...chatMessages.map(msg => ({
             role: msg.role,

@@ -23,6 +23,8 @@ export interface StudentProfile {
   experience?: string[];
   trainings?: string[];
   interests?: string[];
+  projects?: string[];
+  education?: string[];
 }
 
 export interface CareerPathStep {
@@ -50,6 +52,16 @@ export interface CareerPathResponse {
   actionItems: string[];
   nextSteps: string[];
   generatedAt: string;
+  // Store original student data for chat context
+  studentData?: {
+    skills?: string[];
+    certificates?: string[];
+    experience?: string[];
+    trainings?: string[];
+    interests?: string[];
+    projects?: string[];
+    education?: string[];
+  };
 }
 
 const CAREER_PATH_SYSTEM_PROMPT = `You are an expert career counsellor and AI career path advisor specializing in student career development. Your role is to analyze student profiles and generate comprehensive, personalized career development paths.
@@ -94,10 +106,12 @@ function buildStudentProfileContext(student: StudentProfile): string {
   }
   
   if (student.certificates && student.certificates.length > 0) {
-    context += `\nCertificates & Credentials:\n`;
+    context += `\nCertificates & Credentials (${student.certificates.length} total):\n`;
     student.certificates.forEach(cert => {
       context += `  • ${cert}\n`;
     });
+  } else {
+    context += `\nCertificates & Credentials: None listed\n`;
   }
   
   if (student.experience && student.experience.length > 0) {
@@ -111,6 +125,20 @@ function buildStudentProfileContext(student: StudentProfile): string {
     context += `\nTrainings & Courses:\n`;
     student.trainings.forEach(training => {
       context += `  • ${training}\n`;
+    });
+  }
+  
+  if (student.projects && student.projects.length > 0) {
+    context += `\nProjects:\n`;
+    student.projects.forEach(project => {
+      context += `  • ${project}\n`;
+    });
+  }
+  
+  if (student.education && student.education.length > 0) {
+    context += `\nEducation:\n`;
+    student.education.forEach(edu => {
+      context += `  • ${edu}\n`;
     });
   }
   
@@ -231,6 +259,17 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
 
     const careerPath = parseCareerPathResponse(responseContent);
     careerPath.studentName = student.name;
+    
+    // Store original student data for chat context
+    careerPath.studentData = {
+      skills: student.skills,
+      certificates: student.certificates,
+      experience: student.experience,
+      trainings: student.trainings,
+      interests: student.interests,
+      projects: student.projects,
+      education: student.education,
+    };
     
     return careerPath;
   } catch (error) {
