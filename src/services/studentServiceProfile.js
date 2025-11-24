@@ -370,24 +370,46 @@ const softSkills = tableSkills
     updatedAt: skill.updated_at,
   }));
 
-  // Format education from education table
+//   // Format education from education table
+// const tableEducation = Array.isArray(data?.education) ? data.education : [];
+// const formattedEducation = tableEducation.map((edu) => ({
+//   id: edu.id,
+//   level: edu.level || "Bachelor's",
+//   degree: edu.degree || "",
+//   department: edu.department || "",
+//   university: edu.university || "",
+//   yearOfPassing: edu.year_of_passing || "",
+//   cgpa: edu.cgpa || "",
+//   status: edu.status || "ongoing",
+//   approval_status: edu.approval_status || "pending",
+//   verified: edu.approval_status === "approved",
+//   processing: edu.approval_status !== "approved",
+//   enabled: edu.approval_status !== "rejected",
+//   createdAt: edu.created_at,
+//   updatedAt: edu.updated_at,
+// }));
+
+// console.log('📚 Formatted education records:', formattedEducation.length);
+// Format education from education table
 const tableEducation = Array.isArray(data?.education) ? data.education : [];
-const formattedEducation = tableEducation.map((edu) => ({
-  id: edu.id,
-  level: edu.level || "Bachelor's",
-  degree: edu.degree || "",
-  department: edu.department || "",
-  university: edu.university || "",
-  yearOfPassing: edu.year_of_passing || "",
-  cgpa: edu.cgpa || "",
-  status: edu.status || "ongoing",
-  approval_status: edu.approval_status || "pending",
-  verified: edu.approval_status === "approved",
-  processing: edu.approval_status !== "approved",
-  enabled: edu.approval_status !== "rejected",
-  createdAt: edu.created_at,
-  updatedAt: edu.updated_at,
-}));
+const formattedEducation = tableEducation
+  .filter((edu) => edu.approval_status === 'approved' || edu.approval_status === 'verified') // Only show approved/verified
+  .map((edu) => ({
+    id: edu.id,
+    level: edu.level || "Bachelor's",
+    degree: edu.degree || "",
+    department: edu.department || "",
+    university: edu.university || "",
+    yearOfPassing: edu.year_of_passing || "",
+    cgpa: edu.cgpa || "",
+    status: edu.status || "ongoing",
+    approval_status: edu.approval_status || "pending",
+    verified: edu.approval_status === "approved" || edu.approval_status === "verified",
+    processing: false, // Already filtered, so won't be pending
+    enabled: true, // Already filtered, so all are enabled
+    createdAt: edu.created_at,
+    updatedAt: edu.updated_at,
+  }));
 
 console.log('📚 Formatted education records:', formattedEducation.length);
 
@@ -413,33 +435,113 @@ console.log('📚 Formatted education records:', formattedEducation.length);
 //   createdAt: train.created_at,
 //   updatedAt: train.updated_at,
 // }));
+// const tableTrainings = Array.isArray(data?.trainings) ? data.trainings : [];
+
+// // Fetch all training IDs
+// const trainingIds = tableTrainings.map(t => t.id).filter(Boolean);
+
+// // Fetch all certificates linked to these trainings
+// const { data: trainingCertificates } = await supabase
+//   .from('certificates')
+//   .select('training_id, link')
+//   .in('training_id', trainingIds);
+
+// // Fetch all skills linked to these trainings
+// const { data: trainingSkills } = await supabase
+//   .from('skills')
+//   .select('training_id, name')
+//   .in('training_id', trainingIds)
+//   .eq('type', 'technical');
+
+// console.log('🔗 Found', trainingCertificates?.length || 0, 'training certificates');
+// console.log('🔗 Found', trainingSkills?.length || 0, 'training skills');
+
+// const formattedTrainings = tableTrainings.map((train) => {
+//   // Find certificate for this specific training
+//   const cert = (trainingCertificates || []).find(c => c.training_id === train.id);
+  
+//   // Find skills for this specific training
+//   const skills = (trainingSkills || [])
+//     .filter(s => s.training_id === train.id)
+//     .map(s => s.name);
+
+//   return {
+//     id: train.id,
+//     title: train.title || "",
+//     course: train.title || "",
+//     organization: train.organization || "",
+//     provider: train.organization || "",
+//     start_date: train.start_date,
+//     end_date: train.end_date,
+//     startDate: train.start_date,
+//     endDate: train.end_date,
+//     duration: train.duration || "",
+//     description: train.description || "",
+    
+//     // From trainings table
+//     status: train.status || "ongoing",
+//     completedModules: train.completed_modules || 0,
+//     totalModules: train.total_modules || 0,
+//     hoursSpent: train.hours_spent || 0,
+    
+//     // From certificates table (linked by training_id)
+//     certificateUrl: cert?.link|| "",
+    
+//     // From skills table (linked by training_id)
+//     skills: skills,
+    
+//     approval_status: train.approval_status || "pending",
+//     verified: train.approval_status === "approved",
+//     processing: train.approval_status !== "approved",
+//     enabled: train.approval_status !== "rejected",
+//     createdAt: train.created_at,
+//     updatedAt: train.updated_at,
+//   };
+// });
+
+// console.log('📚 Formatted training records:', formattedTrainings.length);
 const tableTrainings = Array.isArray(data?.trainings) ? data.trainings : [];
 
-// Fetch all training IDs
-const trainingIds = tableTrainings.map(t => t.id).filter(Boolean);
+// Filter to only approved/verified trainings first
+const approvedTrainings = tableTrainings.filter(
+  (train) => train.approval_status === 'approved' || train.approval_status === 'verified'
+);
 
-// Fetch all certificates linked to these trainings
-const { data: trainingCertificates } = await supabase
-  .from('certificates')
-  .select('training_id, link')
-  .in('training_id', trainingIds);
+// Fetch all training IDs (only from approved trainings)
+const trainingIds = approvedTrainings.map(t => t.id).filter(Boolean);
 
-// Fetch all skills linked to these trainings
-const { data: trainingSkills } = await supabase
-  .from('skills')
-  .select('training_id, name')
-  .in('training_id', trainingIds)
-  .eq('type', 'technical');
+// Only fetch certificates and skills if there are approved trainings
+let trainingCertificates = [];
+let trainingSkills = [];
 
-console.log('🔗 Found', trainingCertificates?.length || 0, 'training certificates');
-console.log('🔗 Found', trainingSkills?.length || 0, 'training skills');
+if (trainingIds.length > 0) {
+  // Fetch all certificates linked to these trainings
+  const { data: certData } = await supabase
+    .from('certificates')
+    .select('training_id, link')
+    .in('training_id', trainingIds);
+  
+  trainingCertificates = certData || [];
 
-const formattedTrainings = tableTrainings.map((train) => {
+  // Fetch all skills linked to these trainings
+  const { data: skillsData } = await supabase
+    .from('skills')
+    .select('training_id, name')
+    .in('training_id', trainingIds)
+    .eq('type', 'technical');
+  
+  trainingSkills = skillsData || [];
+}
+
+console.log('🔗 Found', trainingCertificates.length, 'training certificates');
+console.log('🔗 Found', trainingSkills.length, 'training skills');
+
+const formattedTrainings = approvedTrainings.map((train) => {
   // Find certificate for this specific training
-  const cert = (trainingCertificates || []).find(c => c.training_id === train.id);
+  const cert = trainingCertificates.find(c => c.training_id === train.id);
   
   // Find skills for this specific training
-  const skills = (trainingSkills || [])
+  const skills = trainingSkills
     .filter(s => s.training_id === train.id)
     .map(s => s.name);
 
@@ -463,15 +565,15 @@ const formattedTrainings = tableTrainings.map((train) => {
     hoursSpent: train.hours_spent || 0,
     
     // From certificates table (linked by training_id)
-    certificateUrl: cert?.link|| "",
+    certificateUrl: cert?.link || "",
     
     // From skills table (linked by training_id)
     skills: skills,
     
-    approval_status: train.approval_status || "pending",
-    verified: train.approval_status === "approved",
-    processing: train.approval_status !== "approved",
-    enabled: train.approval_status !== "rejected",
+    approval_status: train.approval_status,
+    verified: true, // Already filtered, so all are verified
+    processing: false, // Already filtered, so won't be pending
+    enabled: true, // Already filtered, so all are enabled
     createdAt: train.created_at,
     updatedAt: train.updated_at,
   };
@@ -520,21 +622,38 @@ console.log('📚 Formatted training records:', formattedTrainings.length);
 
     const mergedCertificates = formattedTableCertificates.length > 0 ? formattedTableCertificates : passportCertificates;
 
+    // const tableExperience = Array.isArray(data?.experience) ? data.experience : [];
+    // const formattedExperience = tableExperience.map((exp) => ({
+    //   id: exp.id,
+    //   organization: exp.organization || "",
+    //   role: exp.role || "",
+    //   start_date: exp.start_date,
+    //   end_date: exp.end_date,
+    //   duration: exp.duration || "",
+    //   verified: exp.verified || false,
+    //   approval_status: exp.approval_status || "pending",
+    //   processing: exp.approval_status !== "approved",
+    //   enabled: exp.approval_status !== "rejected",
+    //   createdAt: exp.created_at,
+    //   updatedAt: exp.updated_at,
+    // }));
     const tableExperience = Array.isArray(data?.experience) ? data.experience : [];
-    const formattedExperience = tableExperience.map((exp) => ({
-      id: exp.id,
-      organization: exp.organization || "",
-      role: exp.role || "",
-      start_date: exp.start_date,
-      end_date: exp.end_date,
-      duration: exp.duration || "",
-      verified: exp.verified || false,
-      approval_status: exp.approval_status || "pending",
-      processing: exp.approval_status !== "approved",
-      enabled: exp.approval_status !== "rejected",
-      createdAt: exp.created_at,
-      updatedAt: exp.updated_at,
-    }));
+const formattedExperience = tableExperience
+  .filter((exp) => exp.approval_status === 'approved' || exp.approval_status === 'verified') // Only show approved/verified
+  .map((exp) => ({
+    id: exp.id,
+    organization: exp.organization || "",
+    role: exp.role || "",
+    start_date: exp.start_date,
+    end_date: exp.end_date,
+    duration: exp.duration || "",
+    verified: exp.verified || exp.approval_status === 'approved' || exp.approval_status === 'verified',
+    approval_status: exp.approval_status || "pending",
+    processing: false, // Already filtered, so won't be pending
+    enabled: true, // Already filtered, so all are enabled
+    createdAt: exp.created_at,
+    updatedAt: exp.updated_at,
+  }));
 
     // Merge: database fields + profile fields + passport fields
     const mergedData = {
