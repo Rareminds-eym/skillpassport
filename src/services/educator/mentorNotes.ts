@@ -1,30 +1,31 @@
 // api/mentorNotes.js
 import { supabase } from "../../lib/supabaseClient"
-export const getLoggedInMentor = async (userId) => {
-  // 1️⃣ Check school educator
-  let { data: school, error: schoolErr } = await supabase
-    .from("school_educators")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
+// export const getLoggedInMentor = async (userId) => {
+//   // 1️⃣ Check school educator
+//   let { data: school, error: schoolErr } = await supabase
+//     .from("school_educators")
+//     .select("id")
+//     .eq("user_id", userId)
+//     .maybeSingle();
 
-  if (school) {
-    return { mentor_type: "school", mentor_id: school.id };
-  }
+//   if (school) {
+//     return { mentor_type: "school", mentor_id: school.id };
+//   }
 
-  // 2️⃣ Check college lecturer
-  let { data: lecturer, error: lecErr } = await supabase
-    .from("college_lecturers")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
+//   // 2️⃣ Check college lecturer
+//   let { data: lecturer, error: lecErr } = await supabase
+//     .from("college_lecturers")
+//     .select("id")
+//     .eq("user_id", userId)
+//     .maybeSingle();
 
-  if (lecturer) {
-    return { mentor_type: "college", mentor_id: lecturer.id };
-  }
+//   if (lecturer) {
+//     return { mentor_type: "college", mentor_id: lecturer.id };
+//   }
 
-  return null;
-};
+//   return null;
+// };
+
 
 // ⭐ Save a new mentor note
 export const saveMentorNote = async ({
