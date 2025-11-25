@@ -1,5 +1,5 @@
-import { supabase } from '../lib/supabaseClient';
-import { checkAuthentication } from './authService';
+import { supabase } from '../../lib/supabaseClient';
+import { checkAuthentication } from '../authService';
 
 /**
  * Subscription Service
@@ -15,7 +15,7 @@ export const createSubscription = async (subscriptionData) => {
   try {
     // Check authentication first
     const authResult = await checkAuthentication();
-    
+
     if (!authResult.isAuthenticated) {
       return {
         success: false,
@@ -27,12 +27,12 @@ export const createSubscription = async (subscriptionData) => {
     const userId = authResult.user.id;
     const userRole = authResult.role;
 
-    // Validate that user has student role
-    if (userRole !== 'student') {
+    // Validate that user has student or educator role
+    if (userRole !== 'student' && userRole !== 'educator') {
       return {
         success: false,
         data: null,
-        error: 'Only students can purchase subscriptions'
+        error: 'Only students and educators can purchase subscriptions'
       };
     }
 
@@ -118,7 +118,7 @@ export const getActiveSubscription = async () => {
   try {
     // Check authentication first
     const authResult = await checkAuthentication();
-    
+
     if (!authResult.isAuthenticated) {
       return {
         success: false,
@@ -129,15 +129,29 @@ export const getActiveSubscription = async () => {
 
     const userId = authResult.user.id;
 
-    // Query for active subscription with the most recent one first
+    // Query for active subscription
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
       .eq('user_id', userId)
-      .eq('status', 'active')
+      .in('status', ['active', 'paused'])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+    
+    // If subscription found, fetch user details from public.users table
+    if (data && !error) {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('entity_type, role')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (!userError && userData) {
+        // Attach user data to subscription
+        data.users = userData;
+      }
+    }
 
     if (error) {
       console.error('❌ Error fetching subscription:', error);
@@ -157,6 +171,19 @@ export const getActiveSubscription = async () => {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+      
+      // Fetch user details if subscription found
+      if (recentSub && !recentError) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('entity_type, role')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (!userError && userData) {
+          recentSub.users = userData;
+        }
+      }
 
       if (recentError) {
         console.error('❌ Error fetching recent subscription:', recentError);
@@ -193,7 +220,7 @@ export const getUserSubscriptions = async (includeAll = false) => {
   try {
     // Check authentication first
     const authResult = await checkAuthentication();
-    
+
     if (!authResult.isAuthenticated) {
       return {
         success: false,
@@ -205,8 +232,8 @@ export const getUserSubscriptions = async (includeAll = false) => {
     const userId = authResult.user.id;
 
     // Optimize query - select only needed fields for billing history
-    const selectFields = includeAll 
-      ? '*' 
+    const selectFields = includeAll
+      ? '*'
       : 'id,created_at,subscription_start_date,plan_amount,status,plan_type,billing_cycle,razorpay_subscription_id';
 
     // Query for all user subscriptions
@@ -251,7 +278,7 @@ export const updateSubscriptionStatus = async (subscriptionId, status) => {
   try {
     // Check authentication first
     const authResult = await checkAuthentication();
-    
+
     if (!authResult.isAuthenticated) {
       return {
         success: false,
@@ -308,7 +335,7 @@ export const updateSubscriptionPayment = async (subscriptionId, paymentData) => 
   try {
     // Check authentication first
     const authResult = await checkAuthentication();
-    
+
     if (!authResult.isAuthenticated) {
       return {
         success: false,
@@ -368,7 +395,7 @@ export const cancelSubscription = async (subscriptionId, cancellationReason = 'N
   try {
     // Check authentication first
     const authResult = await checkAuthentication();
-    
+
     if (!authResult.isAuthenticated) {
       return {
         success: false,
@@ -400,7 +427,7 @@ export const cancelSubscription = async (subscriptionId, cancellationReason = 'N
     if (subscription.razorpay_subscription_id) {
       const { cancelRazorpaySubscription } = await import('./razorpayService');
       const razorpayResult = await cancelRazorpaySubscription(subscription.razorpay_subscription_id);
-      
+
       if (!razorpayResult.success) {
         console.warn('⚠️ Razorpay cancellation failed, continuing with local cancellation:', razorpayResult.error);
       }
@@ -474,7 +501,7 @@ export const pauseSubscription = async (subscriptionId, pauseMonths = 1) => {
   try {
     // Check authentication first
     const authResult = await checkAuthentication();
-    
+
     if (!authResult.isAuthenticated) {
       return {
         success: false,
@@ -514,7 +541,7 @@ export const pauseSubscription = async (subscriptionId, pauseMonths = 1) => {
     if (subscription.razorpay_subscription_id) {
       const { pauseRazorpaySubscription } = await import('./razorpayService');
       const razorpayResult = await pauseRazorpaySubscription(subscription.razorpay_subscription_id, pauseMonths);
-      
+
       if (!razorpayResult.success) {
         console.warn('⚠️ Razorpay pause failed:', razorpayResult.error);
         return {
@@ -576,7 +603,7 @@ export const resumeSubscription = async (subscriptionId) => {
   try {
     // Check authentication first
     const authResult = await checkAuthentication();
-    
+
     if (!authResult.isAuthenticated) {
       return {
         success: false,
@@ -665,7 +692,7 @@ export const resumeSubscription = async (subscriptionId) => {
 export const checkActiveSubscription = async () => {
   try {
     const result = await getActiveSubscription();
-    
+
     if (!result.success) {
       return {
         hasSubscription: false,
@@ -730,7 +757,7 @@ export const getSubscriptionPayments = async (subscriptionId) => {
 export const getUserPayments = async () => {
   try {
     const authResult = await checkAuthentication();
-    
+
     if (!authResult.isAuthenticated) {
       return {
         success: false,

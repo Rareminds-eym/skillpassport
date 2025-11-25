@@ -38,8 +38,16 @@ serve(async (req) => {
     }
 
     // Get Razorpay credentials from environment
-    const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
-    const RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
+    // Use TEST credentials if available (for localhost/Netlify), otherwise use production credentials
+    const TEST_RAZORPAY_KEY_ID = Deno.env.get("TEST_RAZORPAY_KEY_ID");
+    const TEST_RAZORPAY_KEY_SECRET = Deno.env.get("TEST_RAZORPAY_KEY_SECRET");
+    const PROD_RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
+    const PROD_RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
+
+    // Prefer TEST credentials if both are set, otherwise use production
+    const RAZORPAY_KEY_ID = TEST_RAZORPAY_KEY_ID || PROD_RAZORPAY_KEY_ID;
+    const RAZORPAY_KEY_SECRET = TEST_RAZORPAY_KEY_SECRET || PROD_RAZORPAY_KEY_SECRET;
+
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
@@ -50,6 +58,10 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Log which credentials are being used (without exposing the actual keys)
+    const usingTestCredentials = !!TEST_RAZORPAY_KEY_ID;
+    console.log(`Using ${usingTestCredentials ? 'TEST' : 'PRODUCTION'} Razorpay credentials`);
 
     // Create Supabase client with user auth
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -200,6 +212,8 @@ serve(async (req) => {
     console.log(`Order created successfully: ${order.id} for user: ${user.id}`);
 
     // ===== LOG ORDER TO DATABASE =====
+    console.log(`Attempting to save order to database: ${order.id} for user ${user.id}`);
+
     const { error: dbError } = await supabase
       .from('razorpay_orders')
       .insert({
@@ -217,8 +231,17 @@ serve(async (req) => {
       });
 
     if (dbError) {
-      console.error("Failed to log order to database:", dbError);
-      // Don't fail the request, order was created in Razorpay
+      console.error("CRITICAL: Failed to log order to database:", JSON.stringify(dbError));
+      // We should probably fail here if we can't save the order, otherwise verification will fail
+      return new Response(
+        JSON.stringify({
+          error: "Order created but failed to save to database. Please try again.",
+          details: dbError.message
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } else {
+      console.log("Successfully saved order to database");
     }
 
     // ===== RETURN SUCCESS =====
@@ -240,9 +263,9 @@ serve(async (req) => {
       timestamp: new Date().toISOString()
     });
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: false,
-        error: "Unable to process order. Please try again later." 
+        error: "Unable to process order. Please try again later."
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

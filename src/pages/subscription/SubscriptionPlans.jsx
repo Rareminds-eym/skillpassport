@@ -1,68 +1,25 @@
-import { useState, useCallback, useMemo, memo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useCallback, useMemo, memo, useEffect } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Check, Shield, Clock, TrendingUp, Calendar } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import SignupModal from '../../components/Subscription/SignupModal';
 import LoginModal from '../../components/Subscription/LoginModal';
+import SchoolSignupModal from '../../components/Subscription/SchoolSignupModal';
+import SchoolLoginModal from '../../components/Subscription/SchoolLoginModal';
+import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal';
+import CollegeLoginModal from '../../components/Subscription/CollegeLoginModal';
+import EducatorSignupModal from '../../components/Subscription/EducatorSignupModal';
+import EducatorLoginModal from '../../components/Subscription/EducatorLoginModal';
 import { isActiveOrPaused, getStatusColor, calculateDaysRemaining } from '../../utils/subscriptionHelpers';
-import { PAYMENT_CONFIG, getPlanPrice, isTestPricing } from '../../config/payment';
-
-const plans = [
-  {
-    id: 'basic',
-    name: 'Basic',
-    price: getPlanPrice('basic'),
-    duration: 'month',
-    features: [
-      'Access to basic skill assessments',
-      'Limited profile visibility',
-      'Basic analytics',
-      'Email support'
-    ],
-    color: 'bg-blue-600',
-    recommended: false
-  },
-  {
-    id: 'pro',
-    name: 'Professional',
-    price: getPlanPrice('pro'),
-    duration: 'month',
-    features: [
-      'All Basic features',
-      'Advanced skill assessments',
-      'Priority profile visibility',
-      'Detailed analytics',
-      'Priority support',
-      'Personalized recommendations'
-    ],
-    color: 'bg-blue-600',
-    recommended: true
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: getPlanPrice('enterprise'),
-    duration: 'month',
-    features: [
-      'All Professional features',
-      'Custom skill assessments',
-      'Premium profile visibility',
-      'Advanced analytics',
-      '24/7 Premium support',
-      'Custom integrations',
-      'Dedicated account manager'
-    ],
-    color: 'bg-blue-600',
-    recommended: false
-  }
-];
+import { PAYMENT_CONFIG, isTestPricing } from '../../config/payment';
+import { getEntityContent, parseStudentType } from '../../utils/getEntityContent';
 
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 
 // Memoized PlanCard component
-const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRemaining }) => {
-  const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(plans.find(p => p.id === subscriptionData.plan)?.price || 0);
-  const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(plans.find(p => p.id === subscriptionData.plan)?.price || 0);
+const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRemaining, allPlans }) => {
+  const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
+  const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
 
   return (
     <div
@@ -163,19 +120,38 @@ function SubscriptionPlans() {
   const [planToSelect, setPlanToSelect] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { type, mode } = useParams();
   
   // Use new authentication hook
   const { isAuthenticated, user, role, loading: authLoading } = useAuth();
   
-  const { studentType, mode } = useMemo(() => {
-    const params = new URLSearchParams(location.search);
-    return {
-      studentType: params.get('type'),
-      mode: params.get('mode')
-    };
-  }, [location.search]);
+  // Get dynamic content based on entity type
+  const { title, subtitle, heroMessage, plans, ctaText, entity, role: pageRole } = useMemo(() => {
+    return getEntityContent(type || 'student');
+  }, [type]);
+
+  const studentType = type || 'student';
+
+  // Determine which modals to use
+  const { SignupComponent, LoginComponent } = useMemo(() => {
+    if (pageRole === 'admin') {
+      if (entity === 'school') return { SignupComponent: SchoolSignupModal, LoginComponent: SchoolLoginModal };
+      if (entity === 'college') return { SignupComponent: CollegeSignupModal, LoginComponent: CollegeLoginModal };
+    }
+    if (pageRole === 'educator') {
+      return { SignupComponent: EducatorSignupModal, LoginComponent: EducatorLoginModal };
+    }
+    // Default (Students and University Admin fallback)
+    return { SignupComponent: SignupModal, LoginComponent: LoginModal };
+  }, [entity, pageRole]);
   
-  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError } = useSubscriptionQuery();
+  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionQuery();
+
+  // Combined loading state - wait for both auth and subscription data
+  const isFullyLoaded = useMemo(
+    () => !authLoading && !subscriptionLoading,
+    [authLoading, subscriptionLoading]
+  );
 
   // Memoize subscription status checks for better performance
   const hasActiveOrPausedSubscription = useMemo(
@@ -187,6 +163,47 @@ function SubscriptionPlans() {
     () => subscriptionData ? plans.find(p => p.id === subscriptionData.plan) : null,
     [subscriptionData]
   );
+
+  // Compute whether redirect should occur
+  const shouldRedirect = useMemo(
+    () => isAuthenticated && hasActiveOrPausedSubscription,
+    [isAuthenticated, hasActiveOrPausedSubscription]
+  );
+
+  // Error logging for subscription fetch failures
+  useEffect(() => {
+    if (subscriptionError && isAuthenticated) {
+      console.error('[Subscription Routing] Subscription fetch error:', {
+        error: subscriptionError,
+        message: subscriptionError?.message,
+        userId: user?.id,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [subscriptionError, isAuthenticated, user?.id]);
+
+  // Automatic redirect logic for users with active or paused subscriptions
+  useEffect(() => {
+    if (isFullyLoaded && shouldRedirect) {
+      // Extract and preserve query parameters
+      const queryParams = location.search;
+      const redirectUrl = `/subscription/manage${queryParams}`;
+      
+      // Development mode logging
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Subscription Routing] Redirecting to manage page', {
+          status: subscriptionData?.status,
+          hasSubscription: hasActiveOrPausedSubscription,
+          isAuthenticated,
+          targetUrl: redirectUrl,
+          preservedParams: queryParams
+        });
+      }
+      
+      // Perform redirect with replace to prevent back button issues
+      navigate(redirectUrl, { replace: true });
+    }
+  }, [isFullyLoaded, shouldRedirect, navigate, location.search, subscriptionData, hasActiveOrPausedSubscription, isAuthenticated]);
 
   const handlePlanSelection = useCallback((plan) => {
     // If user has subscription and clicks manage on current plan
@@ -268,8 +285,8 @@ function SubscriptionPlans() {
     [subscriptionData?.endDate]
   );
 
-  // Show loading state while checking authentication
-  if (authLoading) {
+  // Show loading state while checking authentication or subscription data
+  if (!isFullyLoaded) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -283,6 +300,27 @@ function SubscriptionPlans() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+        {/* Error banner for subscription fetch failures */}
+        {subscriptionError && isAuthenticated && (
+          <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-lg p-4">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-red-800 font-medium mb-2">
+                  Unable to load subscription status. Please refresh the page.
+                </p>
+                <p className="text-red-600 text-sm">
+                  {subscriptionError?.message || 'An error occurred while fetching your subscription data.'}
+                </p>
+              </div>
+              <button
+                onClick={refreshSubscription}
+                className="ml-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
         {/* Enhanced subscription status banner - Show only for authenticated users with active or paused subscription */}
         {isAuthenticated && hasActiveOrPausedSubscription && (
           <div className="mb-8">
@@ -390,17 +428,25 @@ function SubscriptionPlans() {
           </div>
         )}
 
+        {/* Hero Section with Entity-Specific Messaging */}
+        {heroMessage && (
+          <div className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+            <p className="text-center text-lg font-medium text-gray-800">
+              {heroMessage}
+            </p>
+          </div>
+        )}
+
         <div className="text-center">
               <h1 className="text-4xl font-bold text-gray-900 mb-4">
                 {isAuthenticated && hasActiveOrPausedSubscription
                   ? 'Manage or Upgrade Your Plan' 
-                  : 'Choose Your Plan'}
+                  : title}
               </h1>
               <p className="text-lg text-gray-600 mb-8">
                 {isAuthenticated && hasActiveOrPausedSubscription
                   ? 'Upgrade to unlock more features or manage your current subscription'
-                  : 'Select the plan that best suits your needs'
-                }
+                  : subtitle}
               </p>
             </div>
 
@@ -409,6 +455,7 @@ function SubscriptionPlans() {
                 <PlanCard
                   key={plan.id}
                   plan={plan}
+                  allPlans={plans}
                   isCurrentPlan={isAuthenticated && hasActiveOrPausedSubscription && subscriptionData?.plan === plan.id}
                   onSelect={handlePlanSelection}
                   subscriptionData={isAuthenticated && hasActiveOrPausedSubscription ? subscriptionData : null}
@@ -419,7 +466,7 @@ function SubscriptionPlans() {
       </div>
 
       {/* Signup Modal */}
-      <SignupModal
+      <SignupComponent
         isOpen={showSignupModal}
         onClose={handleCloseSignupModal}
         selectedPlan={planToSelect}
@@ -429,7 +476,7 @@ function SubscriptionPlans() {
       />
 
       {/* Login Modal */}
-      <LoginModal
+      <LoginComponent
         isOpen={showLoginModal}
         onClose={handleCloseLoginModal}
         selectedPlan={planToSelect}

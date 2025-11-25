@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 import { useSupabaseAuth } from '../../context/SupabaseAuthContext';
-import { getActiveSubscription } from '../../services/subscriptionService';
+import { getActiveSubscription } from '../../services/Subscriptions/subscriptionService';
 import { queryLogger } from '../../utils/queryLogger';
 import { isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
@@ -71,7 +71,10 @@ const formatSubscriptionData = (data) => {
     billingCycle: data.billing_cycle,
     razorpaySubscriptionId: data.razorpay_subscription_id,
     cancelledAt: data.cancelled_at,
-    cancellationReason: data.cancellation_reason
+    cancellationReason: data.cancellation_reason,
+    // user_role column removed from database - using entity_type from users table instead
+    entityType: data.users?.entity_type || null,
+    userTableRole: data.users?.role || null
   };
 };
 

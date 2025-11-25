@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test College Dropdown</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .info {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>College Dropdown Test</h1>
+    
+    <div id="status" class="info">Loading colleges...</div>
+    
+    <label for="collegeSelect">Select College:</label>
+    <select id="collegeSelect">
+        <option value="">Choose your college</option>
+    </select>
+    
+    <div id="selectedInfo" class="info" style="display: none;">
+        <h3>Selected College:</h3>
+        <pre id="selectedData"></pre>
+    </div>
+    
+    <div id="rawData" class="info">
+        <h3>Raw Data from Database:</h3>
+        <pre id="rawDataContent"></pre>
+    </div>
+
+    <script type="module">
+        // Load environment variables
+        const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+        
+        // For testing, you can hardcode these temporarily:
+        // const SUPABASE_URL = 'your-url-here';
+        // const SUPABASE_ANON_KEY = 'your-key-here';
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        async function loadColleges() {
+            const statusDiv = document.getElementById('status');
+            const selectElement = document.getElementById('collegeSelect');
+            const rawDataContent = document.getElementById('rawDataContent');
+            
+            try {
+                statusDiv.textContent = 'Fetching colleges from database...';
+                
+                const { data, error } = await supabaseClient
+                    .from('colleges')
+                    .select('id, name, city, state')
+                    .order('name');
+                
+                if (error) {
+                    throw error;
+                }
+                
+                console.log('Colleges fetched:', data);
+                rawDataContent.textContent = JSON.stringify(data, null, 2);
+                
+                if (!data || data.length === 0) {
+                    statusDiv.className = 'error';
+                    statusDiv.textContent = 'No colleges found in database';
+                    return;
+                }
+                
+                // Populate dropdown
+                data.forEach(college => {
+                    const option = document.createElement('option');
+                    option.value = college.id;
+                    
+                    // Build display text
+                    let displayText = college.name;
+                    if (college.city) displayText += ` - ${college.city}`;
+                    if (college.state) displayText += `, ${college.state}`;
+                    
+                    option.textContent = displayText;
+                    selectElement.appendChild(option);
+                });
+                
+                statusDiv.className = 'success';
+                statusDiv.textContent = `✅ Successfully loaded ${data.length} colleges`;
+                
+            } catch (error) {
+                console.error('Error loading colleges:', error);
+                statusDiv.className = 'error';
+                statusDiv.textContent = `❌ Error: ${error.message}`;
+                rawDataContent.textContent = JSON.stringify(error, null, 2);
+            }
+        }
+        
+        // Handle selection change
+        document.getElementById('collegeSelect').addEventListener('change', (e) => {
+            const selectedDiv = document.getElementById('selectedInfo');
+            const selectedData = document.getElementById('selectedData');
+            
+            if (e.target.value) {
+                const selectedOption = e.target.options[e.target.selectedIndex];
+                selectedDiv.style.display = 'block';
+                selectedData.textContent = JSON.stringify({
+                    id: e.target.value,
+                    text: selectedOption.textContent
+                }, null, 2);
+            } else {
+                selectedDiv.style.display = 'none';
+            }
+        });
+        
+        // Load colleges on page load
+        loadColleges();
+    </script>
+</body>
+</html>

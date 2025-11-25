@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import {BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Loader from "../components/Loader";
 
@@ -41,6 +41,12 @@ const SubscriptionPlans = lazy(() =>
 );
 const PaymentCompletion = lazy(() =>
   import("../pages/subscription/PaymentCompletion")
+);
+const PaymentSuccess = lazy(() =>
+  import("../pages/subscription/PaymentSuccess")
+);
+const PaymentFailure = lazy(() =>
+  import("../pages/subscription/PaymentFailure")
 );
 const MySubscription = lazy(() =>
   import("../pages/subscription/MySubscription")
@@ -219,6 +225,7 @@ const AppRoutes = () => {
           <Route path="/login/admin" element={<LoginAdmin />} />
           <Route path="/login/educator" element={<EducatorLogin />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/register/:type" element={<Register />} />
           <Route
             path="/signup/recruitment-recruiter"
             element={<SignupRecruiter />}
@@ -231,7 +238,11 @@ const AppRoutes = () => {
             element={<UniversityAdmin />}
           />
           <Route path="/subscription/plans" element={<SubscriptionPlans />} />
+          <Route path="/subscription/plans/:type" element={<SubscriptionPlans />} />
+          <Route path="/subscription/plans/:type/:mode" element={<SubscriptionPlans />} />
           <Route path="/subscription/payment" element={<PaymentCompletion />} />
+          <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
+          <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
           <Route path="/subscription/manage" element={<SubscriptionManage />} />
           {/* Legacy route - redirect to new manage route */}
           <Route
@@ -291,7 +302,7 @@ const AppRoutes = () => {
             path=""
             element={<Navigate to="/college-admin/dashboard" replace />}
           />
-            <Route path="students/attendance" element={<AttendanceTracking />} />
+          <Route path="students/attendance" element={<AttendanceTracking />} />
 
         </Route>
 
@@ -393,7 +404,7 @@ const AppRoutes = () => {
           <Route path="assignments" element={<Assignments />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
-          
+
           {/* Digital Portfolio routes with required providers */}
           <Route
             path="digital-portfolio"
@@ -524,7 +535,7 @@ const AppRoutes = () => {
               </ThemeProvider>
             }
           />
-          
+
           <Route
             path=""
             element={<Navigate to="/student/dashboard" replace />}
