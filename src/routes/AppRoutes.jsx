@@ -143,7 +143,9 @@ const EducatorAI = lazy(() => import("../pages/educator/EducatorAI"));
 
 // Teacher pages (for teachers using the system)
 const LessonPlanCreate = lazy(() => import("../pages/teacher/LessonPlanCreate"));
+const LessonPlansList = lazy(() => import("../pages/teacher/LessonPlansList"));
 const MyTimetable = lazy(() => import("../pages/teacher/MyTimetable"));
+const LessonPlanApprovals = lazy(() => import("../pages/admin/schoolAdmin/LessonPlanApprovals"));
 
 // ===== Admins (Role-Based) =====
 const CollegeDashboard = lazy(() =>
@@ -306,6 +308,7 @@ const AppRoutes = () => {
           <Route path="teachers/list" element={<TeacherList />} />
           <Route path="teachers/onboarding" element={<TeacherOnboarding />} />
           <Route path="teachers/timetable" element={<TeacherTimetable />} />
+          <Route path="lesson-plans/approvals" element={<LessonPlanApprovals />} />
           <Route
             path=""
             element={<Navigate to="/school-admin/dashboard" replace />}
@@ -546,6 +549,7 @@ const AppRoutes = () => {
           <Route path="activities" element={<EducatorActivities />} />
           <Route path="reports" element={<EducatorReports />} />
           <Route path="media" element={<EducatorMediaManager />} />
+          <Route path="lesson-plans" element={<LessonPlansList />} />
           <Route path="lesson-plans/create" element={<LessonPlanCreate />} />
           <Route path="my-timetable" element={<MyTimetable />} />
           <Route
