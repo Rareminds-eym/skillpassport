@@ -194,7 +194,7 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
           </div>
         </motion.section>
       )}
-
+      
       {/* Projects Section */}
       {student.profile.projects && student.profile.projects.length > 0 && (
         <motion.section 

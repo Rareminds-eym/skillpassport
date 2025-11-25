@@ -90,14 +90,17 @@ export const getStudentPortfolioByEmail = async (email) => {
         .from('skills')
         .select('*')
         .eq('student_id', userId)
+        .in('approval_status', ['verified', 'approved'])
         .eq('enabled', true)
         .order('created_at', { ascending: false }),
+
       
       // Trainings
       supabase
         .from('trainings')
         .select('*')
         .eq('student_id', userId)
+        .in('approval_status', ['verified', 'approved'])
         .order('start_date', { ascending: false }),
       
       // Projects
@@ -106,6 +109,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .select('*')
         .eq('student_id', userId)
         .eq('enabled', true)
+        .in('approval_status', ['verified', 'approved'])
         .order('start_date', { ascending: false }),
       
       // Certificates
@@ -113,6 +117,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .from('certificates')
         .select('*')
         .eq('student_id', userId)
+        .in('approval_status', ['verified', 'approved'])
         .order('issued_on', { ascending: false }),
       
       // Education
@@ -120,6 +125,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .from('education')
         .select('*')
         .eq('student_id', userId)
+        .in('approval_status', ['verified', 'approved'])
         .order('year_of_passing', { ascending: false }),
       
       // Experience
@@ -127,6 +133,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .from('experience')
         .select('*')
         .eq('student_id', userId)
+        .in('approval_status', ['verified', 'approved'])
         .order('start_date', { ascending: false })
     ]);
 
