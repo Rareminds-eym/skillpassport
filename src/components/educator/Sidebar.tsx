@@ -14,7 +14,7 @@ import {
   PhotoIcon,
   ChatBubbleLeftRightIcon,
   FolderIcon,
-  SparklesIcon,
+  BookOpenIcon,
 } from "@heroicons/react/24/outline";
 
 function classNames(...classes: string[]) {
@@ -61,6 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { name: "Students", path: "/educator/students", icon: UserGroupIcon },
         { name: "Classes", path: "/educator/classes", icon: AcademicCapIcon },
+        { name: "Courses", path: "/educator/courses", icon: BookOpenIcon },
       ],
     },
     {
