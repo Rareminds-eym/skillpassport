@@ -18,7 +18,7 @@ jobs:
       with:
         node-version: 18
 
-    # ⭐ IMPORTANT: Create .env.production on the fly
+    # ⭐ Create .env.production dynamically
     - name: Create .env.production
       run: |
         echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" > .env.production
@@ -28,8 +28,9 @@ jobs:
     - name: Install dependencies
       run: npm install
 
+    # ⭐ Build project (no --mode required)
     - name: Build Vite project
-      run: npm run build --mode production
+      run: npm run build
 
     - name: Deploy to Hostinger via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
