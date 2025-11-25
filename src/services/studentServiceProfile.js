@@ -670,6 +670,12 @@ const formattedExperience = tableExperience
       school: data.schools || null,
       universityCollege: data.university_colleges || null,
 
+      // School Information Fields
+      grade: data.grade,
+      section: data.section,
+      roll_number: data.roll_number,
+      admission_number: data.admission_number,
+
       // Profile data (from students.profile JSONB)
       profile: transformedProfile,
 
