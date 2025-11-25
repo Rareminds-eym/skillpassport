@@ -152,7 +152,8 @@ const PortfolioPage: React.FC = () => {
       case 'journey':
         return <JourneyMapLayout {...layoutProps} />;
       default:
-        return <ModernLayout {...layoutProps} />;
+        // Default to Infographic Dashboard for students
+        return <InfographicDashboard {...layoutProps} />;
     }
   };
   
