@@ -825,7 +825,7 @@ const StudentDashboard = () => {
         </CardHeader>
         <CardContent className="pt-4 p-6 space-y-3">
           {userData.technicalSkills.filter(
-            (skill) => skill.enabled !== false && skill.approval_status === 'approved'
+            (skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified'
           ).length === 0 ? (
             <div className="text-center py-8">
               <p className="text-slate-500 font-medium">
@@ -835,10 +835,10 @@ const StudentDashboard = () => {
           ) : (
             (showAllTechnicalSkills
               ? userData.technicalSkills.filter(
-                (skill) => skill.enabled !== false && skill.approval_status === 'approved'
+                (skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified'
               )
               : userData.technicalSkills
-                .filter((skill) => skill.enabled !== false && skill.approval_status === 'approved')
+                .filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
                 .slice(0, 2)
             ).map((skill, idx) => (
               <div
@@ -870,7 +870,7 @@ const StudentDashboard = () => {
               </div>
             ))
           )}
-          {userData.technicalSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved')
+          {userData.technicalSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
             .length > 2 && (
               <Button
                 variant="outline"
@@ -1097,6 +1097,231 @@ const StudentDashboard = () => {
         </CardContent>
       </Card>
     ),
+    // education: (
+    //   <Card
+    //     key="education"
+    //     className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+    //   >
+    //     <CardHeader className="px-6 py-4 border-b border-gray-100">
+    //       <div className="flex items-center w-full justify-between">
+    //         <CardTitle className="flex items-center gap-3 m-0 p-0">
+    //           <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+    //             <Award className="w-5 h-5 text-blue-600" />
+    //           </div>
+    //           <span className="text-lg font-semibold text-gray-900">
+    //             Education
+    //           </span>
+    //           <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
+    //             {
+    //               userData.education.filter(
+    //                 (education) => education.enabled !== false
+    //               ).length
+    //             }
+    //           </Badge>
+    //         </CardTitle>
+    //         <button
+    //           className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+    //           title="Edit Education"
+    //           onClick={() => setActiveModal("education")}
+    //         >
+    //           <Edit className="w-4 h-4 text-gray-600" />
+    //         </button>
+    //       </div>
+    //     </CardHeader>
+    //     <CardContent className="pt-4 p-6 space-y-3">
+    //       {(showAllEducation
+    //         ? userData.education.filter(
+    //           (education) => education.enabled !== false
+    //         )
+    //         : userData.education
+    //           .filter((education) => education.enabled !== false)
+    //           .slice(0, 2)
+    //       ).map((education, idx) => (
+    //         <div
+    //           key={education.id || `edu-${idx}`}
+    //           className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
+    //         >
+    //           <div className="flex items-center justify-between mb-3">
+    //             <div>
+    //               <h4 className="font-semibold text-gray-900 text-base mb-0.5">
+    //                 {education.degree || "N/A"}
+    //               </h4>
+    //               <p className="text-gray-600 text-sm">
+    //                 {education.university || "N/A"}
+    //               </p>
+    //             </div>
+    //             <Badge
+    //               className={`px-2.5 py-1 text-xs font-medium rounded-md ${education.status === "ongoing"
+    //                 ? "bg-blue-100 text-blue-700"
+    //                 : "bg-green-100 text-green-700"
+    //                 }`}
+    //             >
+    //               {education.status || "N/A"}
+    //             </Badge>
+    //           </div>
+    //           <div className="flex gap-6 text-xs">
+    //             <div key={`edu-level-${education.id}`}>
+    //               <p className="text-gray-500 mb-0.5">Level</p>
+    //               <p className="font-medium text-gray-900">
+    //                 {education.level || "N/A"}
+    //               </p>
+    //             </div>
+    //             <div key={`edu-year-${education.id}`}>
+    //               <p className="text-gray-500 mb-0.5">Year</p>
+    //               <p className="font-medium text-gray-900">
+    //                 {education.yearOfPassing || "N/A"}
+    //               </p>
+    //             </div>
+    //             <div key={`edu-grade-${education.id}`}>
+    //               <p className="text-gray-500 mb-0.5">Grade</p>
+    //               <p className="font-medium text-gray-900">
+    //                 {education.cgpa || "N/A"}
+    //               </p>
+    //             </div>
+    //           </div>
+    //         </div>
+    //       ))}
+    //       {userData.education.filter((education) => education.enabled !== false)
+    //         .length > 2 && (
+    //           <Button
+    //             variant="outline"
+    //             onClick={() => setShowAllEducation((v) => !v)}
+    //             className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+    //           >
+    //             {showAllEducation ? "Show Less" : "View All Qualifications"}
+    //           </Button>
+    //         )}
+    //     </CardContent>
+    //   </Card>
+    // ),
+    // certificates: (
+    //   <Card
+    //     key="certificates"
+    //     className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+    //   >
+    //     <CardHeader className="px-6 py-4 border-b border-gray-100">
+    //       <div className="flex items-center w-full justify-between">
+    //         <CardTitle className="flex items-center gap-3 m-0 p-0">
+    //           <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+    //             <Medal className="w-5 h-5 text-blue-600" />
+    //           </div>
+    //           <span className="text-lg font-semibold text-gray-900">
+    //             Certificates
+    //           </span>
+    //           <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
+    //             {enabledCertificates.length}
+    //           </Badge>
+    //         </CardTitle>
+    //         <button
+    //           className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+    //           title="Manage Certificates"
+    //           onClick={() => setActiveModal("certificates")}
+    //         >
+    //           <Edit className="w-4 h-4 text-gray-600" />
+    //         </button>
+    //       </div>
+    //     </CardHeader>
+    //     <CardContent className="pt-4 p-6 space-y-3">
+    //       {enabledCertificates.length === 0 ? (
+    //         <div className="text-center py-8">
+    //           <p className="text-slate-500 font-medium">
+    //             No certificates uploaded yet
+    //           </p>
+    //         </div>
+    //       ) : (
+    //         (showAllCertificates
+    //           ? enabledCertificates
+    //           : enabledCertificates.slice(0, 2)
+    //         ).map((cert, idx) => {
+    //           const certificateLink =
+    //             cert.link ||
+    //             cert.url ||
+    //             cert.certificateUrl ||
+    //             cert.credentialUrl ||
+    //             cert.viewUrl;
+    //           const issuedOn =
+    //             cert.year || cert.date || cert.issueDate || cert.issuedOn;
+    //           return (
+    //             <div
+    //               key={cert.id || `certificate-${idx}`}
+    //               className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${cert.enabled ? "" : "opacity-75"
+    //                 }`}
+    //             >
+    //               <div className="flex items-start justify-between gap-3">
+    //                 <div className="space-y-1">
+    //                   <h4 className="font-semibold text-gray-900 text-base">
+    //                     {cert.title ||
+    //                       cert.name ||
+    //                       cert.certificate ||
+    //                       "Certificate"}
+    //                   </h4>
+    //                   <div className="flex items-center justify-between gap-3 mt-2">
+    //                     {(cert.issuer ||
+    //                       cert.organization ||
+    //                       cert.institution) && (
+    //                         <p className="text-sm text-blue-600 font-medium">
+    //                           {cert.issuer ||
+    //                             cert.organization ||
+    //                             cert.institution}
+    //                         </p>
+    //                       )}
+    //                     {issuedOn && (
+    //                       <p className="text-xs text-gray-600">{issuedOn}</p>
+    //                     )}
+    //                   </div>
+    //                   {cert.credentialId && (
+    //                     <div className="text-xs text-gray-500 font-medium">
+    //                       Credential ID: {cert.credentialId}
+    //                     </div>
+    //                   )}
+    //                 </div>
+    //               </div>
+    //               {cert.description && (
+    //                 <TruncatedText text={cert.description} maxLength={120} />
+    //               )}
+
+    //               {(cert.level || cert.category || cert.type) && (
+    //                 <div className="flex flex-wrap gap-2">
+    //                   <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
+    //                     {cert.level || cert.category || cert.type}
+    //                   </span>
+    //                 </div>
+    //               )}
+
+    //               {certificateLink && (
+    //                 <div className="pt-1">
+    //                   <a
+    //                     href={certificateLink}
+    //                     target="_blank"
+    //                     rel="noopener noreferrer"
+    //                   >
+    //                     <Button
+    //                       size="sm"
+    //                       className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors"
+    //                     >
+    //                       View Credential
+    //                     </Button>
+    //                   </a>
+    //                 </div>
+    //               )}
+    //             </div>
+    //           );
+    //         })
+    //       )}
+    //       {enabledCertificates.length > 2 && (
+    //         <Button
+    //           variant="outline"
+    //           onClick={() => setShowAllCertificates((v) => !v)}
+    //           className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+    //         >
+    //           {showAllCertificates
+    //             ? "Show Less"
+    //             : `View All Certificates (${enabledCertificates.length})`}
+    //         </Button>
+    //       )}
+    //     </CardContent>
+    //   </Card>
+    // ),
     education: (
       <Card
         key="education"
@@ -1114,7 +1339,9 @@ const StudentDashboard = () => {
               <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
                 {
                   userData.education.filter(
-                    (education) => education.enabled !== false
+                    (education) => 
+                      education.enabled !== false && 
+                      (education.approval_status === "verified" || education.approval_status === "approved")
                   ).length
                 }
               </Badge>
@@ -1131,10 +1358,15 @@ const StudentDashboard = () => {
         <CardContent className="pt-4 p-6 space-y-3">
           {(showAllEducation
             ? userData.education.filter(
-              (education) => education.enabled !== false
+              (education) => 
+                education.enabled !== false && 
+                (education.approval_status === "verified" || education.approval_status === "approved")
             )
             : userData.education
-              .filter((education) => education.enabled !== false)
+              .filter((education) => 
+                education.enabled !== false && 
+                (education.approval_status === "verified" || education.approval_status === "approved")
+              )
               .slice(0, 2)
           ).map((education, idx) => (
             <div
@@ -1181,8 +1413,10 @@ const StudentDashboard = () => {
               </div>
             </div>
           ))}
-          {userData.education.filter((education) => education.enabled !== false)
-            .length > 2 && (
+          {userData.education.filter((education) => 
+            education.enabled !== false && 
+            (education.approval_status === "verified" || education.approval_status === "approved")
+          ).length > 2 && (
               <Button
                 variant="outline"
                 onClick={() => setShowAllEducation((v) => !v)}
@@ -1191,134 +1425,6 @@ const StudentDashboard = () => {
                 {showAllEducation ? "Show Less" : "View All Qualifications"}
               </Button>
             )}
-        </CardContent>
-      </Card>
-    ),
-    certificates: (
-      <Card
-        key="certificates"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
-      >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center w-full justify-between">
-            <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Medal className="w-5 h-5 text-blue-600" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900">
-                Certificates
-              </span>
-              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
-                {enabledCertificates.length}
-              </Badge>
-            </CardTitle>
-            <button
-              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-              title="Manage Certificates"
-              onClick={() => setActiveModal("certificates")}
-            >
-              <Edit className="w-4 h-4 text-gray-600" />
-            </button>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-4 p-6 space-y-3">
-          {enabledCertificates.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-slate-500 font-medium">
-                No certificates uploaded yet
-              </p>
-            </div>
-          ) : (
-            (showAllCertificates
-              ? enabledCertificates
-              : enabledCertificates.slice(0, 2)
-            ).map((cert, idx) => {
-              const certificateLink =
-                cert.link ||
-                cert.url ||
-                cert.certificateUrl ||
-                cert.credentialUrl ||
-                cert.viewUrl;
-              const issuedOn =
-                cert.year || cert.date || cert.issueDate || cert.issuedOn;
-              return (
-                <div
-                  key={cert.id || `certificate-${idx}`}
-                  className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${cert.enabled ? "" : "opacity-75"
-                    }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <h4 className="font-semibold text-gray-900 text-base">
-                        {cert.title ||
-                          cert.name ||
-                          cert.certificate ||
-                          "Certificate"}
-                      </h4>
-                      <div className="flex items-center justify-between gap-3 mt-2">
-                        {(cert.issuer ||
-                          cert.organization ||
-                          cert.institution) && (
-                            <p className="text-sm text-blue-600 font-medium">
-                              {cert.issuer ||
-                                cert.organization ||
-                                cert.institution}
-                            </p>
-                          )}
-                        {issuedOn && (
-                          <p className="text-xs text-gray-600">{issuedOn}</p>
-                        )}
-                      </div>
-                      {cert.credentialId && (
-                        <div className="text-xs text-gray-500 font-medium">
-                          Credential ID: {cert.credentialId}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {cert.description && (
-                    <TruncatedText text={cert.description} maxLength={120} />
-                  )}
-
-                  {(cert.level || cert.category || cert.type) && (
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
-                        {cert.level || cert.category || cert.type}
-                      </span>
-                    </div>
-                  )}
-
-                  {certificateLink && (
-                    <div className="pt-1">
-                      <a
-                        href={certificateLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors"
-                        >
-                          View Credential
-                        </Button>
-                      </a>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-          {enabledCertificates.length > 2 && (
-            <Button
-              variant="outline"
-              onClick={() => setShowAllCertificates((v) => !v)}
-              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-            >
-              {showAllCertificates
-                ? "Show Less"
-                : `View All Certificates (${enabledCertificates.length})`}
-            </Button>
-          )}
         </CardContent>
       </Card>
     ),
@@ -1481,9 +1587,13 @@ const StudentDashboard = () => {
     </CardHeader>
 
     <CardContent className="pt-4 p-6 space-y-4">
-      {(showAllTraining
+      {/* {(showAllTraining
         ? userData.training.filter((t) => t.enabled !== false)
         : userData.training.filter((t) => t.enabled !== false).slice(0, 2)
+      ).map((training, idx) => { */}
+       {(showAllTraining
+        ? userData.training.filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved"))
+        : userData.training.filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved")).slice(0, 2)
       ).map((training, idx) => {
         // Calculate progress
         const statusLower = (training.status || "").toLowerCase();
@@ -1615,111 +1725,173 @@ const StudentDashboard = () => {
 ),
 
 
-    experience: (() => {
-      // Check if student is from university (not school)
-      // Use database fields: school_id/school_class_id indicates school, university_college_id indicates university
-      const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
-      const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+    // experience: (() => {
+    //   // Check if student is from university (not school)
+    //   // Use database fields: school_id/school_class_id indicates school, university_college_id indicates university
+    //   const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
+    //   const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
 
-      // Fallback: Check education level if database fields are not available
-      const hasHighSchoolOnly = userData.education.length > 0 &&
-        userData.education.every(edu =>
-          edu.level && edu.level.toLowerCase().includes('high school')
-        );
+    //   // Fallback: Check education level if database fields are not available
+    //   const hasHighSchoolOnly = userData.education.length > 0 &&
+    //     userData.education.every(edu =>
+    //       edu.level && edu.level.toLowerCase().includes('high school')
+    //     );
 
-      // Debug logging
-      console.log('Experience Card Debug:', {
-        isSchoolStudent,
-        isUniversityStudent,
-        hasHighSchoolOnly,
-        studentData: studentData ? 'loaded' : 'not loaded',
-        school_id: studentData?.school_id,
-        school_class_id: studentData?.school_class_id,
-        university_college_id: studentData?.university_college_id,
-        universityId: studentData?.universityId,
-        education: userData.education
-      });
+    //   // Debug logging
+    //   console.log('Experience Card Debug:', {
+    //     isSchoolStudent,
+    //     isUniversityStudent,
+    //     hasHighSchoolOnly,
+    //     studentData: studentData ? 'loaded' : 'not loaded',
+    //     school_id: studentData?.school_id,
+    //     school_class_id: studentData?.school_class_id,
+    //     university_college_id: studentData?.university_college_id,
+    //     universityId: studentData?.universityId,
+    //     education: userData.education
+    //   });
 
-      // Hide experience card for school students
-      if (isSchoolStudent || hasHighSchoolOnly) {
-        console.log('Hiding Experience card - student is from school');
-        return null;
-      }
+    //   // Hide experience card for school students
+    //   if (isSchoolStudent || hasHighSchoolOnly) {
+    //     console.log('Hiding Experience card - student is from school');
+    //     return null;
+    //   }
 
-      // Also hide if no university affiliation is found
-      if (!isUniversityStudent) {
-        console.log('Hiding Experience card - no university affiliation found');
-        return null;
-      }
+    //   // Also hide if no university affiliation is found
+    //   if (!isUniversityStudent) {
+    //     console.log('Hiding Experience card - no university affiliation found');
+    //     return null;
+    //   }
 
-      return (
-        <Card
-          key="experience"
-          className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
-        >
-          <CardHeader className="px-6 py-4 border-b border-gray-100">
-            <div className="flex items-center w-full justify-between">
-              <CardTitle className="flex items-center gap-3 m-0 p-0">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-blue-600" />
-                </div>
-                <span className="text-lg font-semibold text-gray-900">
-                  Experience
-                </span>
-              </CardTitle>
-              <button
-                className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-                title="Edit Experience"
-                onClick={() => setActiveModal("experience")}
-              >
-                <Edit className="w-4 h-4 text-gray-600" />
-              </button>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-4 p-6 space-y-3">
-            {(showAllExperience
-              ? userData.experience.filter((exp) => exp.enabled !== false)
-              : userData.experience
-                .filter((exp) => exp.enabled !== false)
-                .slice(0, 2)
-            ).map((exp, idx) => (
-              <div
-                key={exp.id || `${exp.role}-${exp.organization}-${idx}`}
-                className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-gray-900 text-base mb-1">
-                      {exp.role}
-                    </p>
-                    <p className="text-blue-600 text-sm font-medium mb-1">
-                      {exp.organization}
-                    </p>
-                    <p className="text-xs text-gray-600">{exp.duration}</p>
-                  </div>
-                  {exp.verified && (
-                    <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" />
-                      Verified
-                    </Badge>
-                  )}
-                </div>
+    //   return (
+    //     <Card
+    //       key="experience"
+    //       className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+    //     >
+    //       <CardHeader className="px-6 py-4 border-b border-gray-100">
+    //         <div className="flex items-center w-full justify-between">
+    //           <CardTitle className="flex items-center gap-3 m-0 p-0">
+    //             <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+    //               <Users className="w-5 h-5 text-blue-600" />
+    //             </div>
+    //             <span className="text-lg font-semibold text-gray-900">
+    //               Experience
+    //             </span>
+    //           </CardTitle>
+    //           <button
+    //             className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+    //             title="Edit Experience"
+    //             onClick={() => setActiveModal("experience")}
+    //           >
+    //             <Edit className="w-4 h-4 text-gray-600" />
+    //           </button>
+    //         </div>
+    //       </CardHeader>
+    //       <CardContent className="pt-4 p-6 space-y-3">
+    //         {(showAllExperience
+    //           ? userData.experience.filter((exp) => exp.enabled !== false)
+    //           : userData.experience
+    //             .filter((exp) => exp.enabled !== false)
+    //             .slice(0, 2)
+    //         ).map((exp, idx) => (
+    //           <div
+    //             key={exp.id || `${exp.role}-${exp.organization}-${idx}`}
+    //             className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
+    //           >
+    //             <div className="flex items-center justify-between">
+    //               <div>
+    //                 <p className="font-semibold text-gray-900 text-base mb-1">
+    //                   {exp.role}
+    //                 </p>
+    //                 <p className="text-blue-600 text-sm font-medium mb-1">
+    //                   {exp.organization}
+    //                 </p>
+    //                 <p className="text-xs text-gray-600">{exp.duration}</p>
+    //               </div>
+    //               {exp.verified && (
+    //                 <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+    //                   <CheckCircle className="w-3 h-3" />
+    //                   Verified
+    //                 </Badge>
+    //               )}
+    //             </div>
+    //           </div>
+    //         ))}
+    //         {userData.experience.filter((exp) => exp.enabled !== false).length >
+    //           2 && (
+    //             <Button
+    //               variant="outline"
+    //               onClick={() => setShowAllExperience((v) => !v)}
+    //               className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+    //             >
+    //               {showAllExperience ? "Show Less" : "View All Experience"}
+    //             </Button>
+    //           )}
+    //       </CardContent>
+    //     </Card>
+    //   );
+    // })(),
+    experience: (
+  <Card key="experience" className="h-full border-t-4 border-t-indigo-500 shadow-lg hover:shadow-xl transition-shadow cursor-pointer" onClick={() => navigate('/student/my-experience')}>
+    <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50">
+      <CardTitle className="flex items-center justify-between text-indigo-700">
+        <div className="flex items-center gap-2">
+          <Users className="w-5 h-5" />
+          My Experience
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveModal('experience');
+            }}
+            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 p-1"
+            title="Edit Experience"
+          >
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 p-1"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/student/my-experience');
+            }}
+          >
+            View All →
+          </Button>
+        </div>
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      {userData.experience
+        ?.filter(exp => 
+          exp.enabled !== false && 
+          (exp.approval_status === "verified" || exp.approval_status === "approved")
+        )
+        .slice(0, 2)
+        .map((exp, index) => (
+          <div key={index} className="p-4 bg-gradient-to-r from-indigo-50 to-white rounded-lg border-l-4 border-l-indigo-400 hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="font-semibold text-sm text-gray-800">{exp.role}</p>
+                <p className="text-sm text-indigo-600 font-medium">{exp.organization}</p>
+                <p className="text-xs text-gray-600 mt-1">{exp.duration}</p>
               </div>
-            ))}
-            {userData.experience.filter((exp) => exp.enabled !== false).length >
-              2 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAllExperience((v) => !v)}
-                  className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-                >
-                  {showAllExperience ? "Show Less" : "View All Experience"}
-                </Button>
+              {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
+                <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Verified
+                </Badge>
               )}
-          </CardContent>
-        </Card>
-      );
-    })(),
+            </div>
+          </div>
+        ))}
+    </CardContent>
+  </Card>
+),
     softSkills: (
       <Card
         key="softSkills"
@@ -1745,7 +1917,7 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="pt-4 p-6 space-y-3">
-          {userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved')
+          {userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
             .length === 0 ? (
             <div className="text-center py-8">
               <p className="text-slate-500 font-medium">
@@ -1754,9 +1926,9 @@ const StudentDashboard = () => {
             </div>
           ) : (
             (showAllSoftSkills
-              ? userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved')
+              ? userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
               : userData.softSkills
-                .filter((skill) => skill.enabled !== false && skill.approval_status === 'approved')
+                .filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
                 .slice(0, 2)
             ).map((skill, idx) => (
               <div
@@ -1788,7 +1960,7 @@ const StudentDashboard = () => {
               </div>
             ))
           )}
-          {userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved')
+          {userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
             .length > 2 && (
               <Button
                 variant="outline"
@@ -1798,6 +1970,134 @@ const StudentDashboard = () => {
                 {showAllSoftSkills ? "Show Less" : "View All Soft Skills"}
               </Button>
             )}
+        </CardContent>
+      </Card>
+    ),
+    certificates: (
+      <Card
+        key="certificates"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+      >
+        <CardHeader className="px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Medal className="w-5 h-5 text-blue-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-900">
+                Certificates
+              </span>
+              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
+                {enabledCertificates.length}
+              </Badge>
+            </CardTitle>
+            <button
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+              title="Manage Certificates"
+              onClick={() => setActiveModal("certificates")}
+            >
+              <Edit className="w-4 h-4 text-gray-600" />
+            </button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 space-y-3">
+          {enabledCertificates.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-slate-500 font-medium">
+                No certificates uploaded yet
+              </p>
+            </div>
+          ) : (
+            (showAllCertificates
+              ? enabledCertificates
+              : enabledCertificates.slice(0, 2)
+            ).map((cert, idx) => {
+              const certificateLink =
+                cert.link ||
+                cert.url ||
+                cert.certificateUrl ||
+                cert.credentialUrl ||
+                cert.viewUrl;
+              const issuedOn =
+                cert.year || cert.date || cert.issueDate || cert.issuedOn;
+              return (
+                <div
+                  key={cert.id || `certificate-${idx}`}
+                  className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${cert.enabled ? "" : "opacity-75"
+                    }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <h4 className="font-semibold text-gray-900 text-base">
+                        {cert.title ||
+                          cert.name ||
+                          cert.certificate ||
+                          "Certificate"}
+                      </h4>
+                      <div className="flex items-center justify-between gap-3 mt-2">
+                        {(cert.issuer ||
+                          cert.organization ||
+                          cert.institution) && (
+                            <p className="text-sm text-blue-600 font-medium">
+                              {cert.issuer ||
+                                cert.organization ||
+                                cert.institution}
+                            </p>
+                          )}
+                        {issuedOn && (
+                          <p className="text-xs text-gray-600">{issuedOn}</p>
+                        )}
+                      </div>
+                      {cert.credentialId && (
+                        <div className="text-xs text-gray-500 font-medium">
+                          Credential ID: {cert.credentialId}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {cert.description && (
+                    <TruncatedText text={cert.description} maxLength={120} />
+                  )}
+
+                  {(cert.level || cert.category || cert.type) && (
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
+                        {cert.level || cert.category || cert.type}
+                      </span>
+                    </div>
+                  )}
+
+                  {certificateLink && (
+                    <div className="pt-1">
+                      <a
+                        href={certificateLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors"
+                        >
+                          View Credential
+                        </Button>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+          {enabledCertificates.length > 2 && (
+            <Button
+              variant="outline"
+              onClick={() => setShowAllCertificates((v) => !v)}
+              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+            >
+              {showAllCertificates
+                ? "Show Less"
+                : `View All Certificates (${enabledCertificates.length})`}
+            </Button>
+          )}
         </CardContent>
       </Card>
     ),
