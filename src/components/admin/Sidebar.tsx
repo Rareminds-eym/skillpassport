@@ -107,20 +107,20 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           key: "academics",
           items: [
             {
-              name: "Curriculum Setup",
+              name: "Curriculum Builder",
               path: "/school-admin/academics/curriculum",
               icon: BookOpenIcon,
             },
             {
-              name: "Lesson Plans & Exams",
-              path: "/school-admin/academics/lessons",
+              name: "Lesson Plans",
+              path: "/school-admin/academics/lesson-plans",
               icon: ClipboardIcon,
             },
             {
-              name: "Grading",
-              path: "/school-admin/academics/grading",
-              icon: ChartBarIcon,
-            },
+              name: "Exams & Assessments",
+              path: "/school-admin/academics/exams",
+              icon: ClipboardDocumentListIcon,
+            }
           ],
         },
         {
@@ -128,19 +128,19 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           key: "communication",
           items: [
             {
-              name: "Parent Access",
+              name: "Parent Portal",
               path: "/school-admin/communication/parents",
+              icon: UserGroupIcon,
+            },
+            {
+              name: "Message Center",
+              path: "/school-admin/communication/messages",
               icon: BellIcon,
             },
             {
-              name: "Circulars & Feedback",
+              name: "Parent Communication",
               path: "/school-admin/communication/circulars",
               icon: ClipboardDocumentListIcon,
-            },
-            {
-              name: "Grievance Handling",
-              path: "/school-admin/communication/grievances",
-              icon: DocumentChartBarIcon,
             },
           ],
         },
