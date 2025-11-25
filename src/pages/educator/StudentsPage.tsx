@@ -467,174 +467,137 @@ const StudentsPage = () => {
 
   // Enhanced filter and sort with comprehensive search - WITH LEXICOGRAPHICAL ORDERING
   const filteredAndSortedStudents = useMemo(() => {
-    let result = students;
+    let result = [...students];
 
-    // Apply comprehensive search query filter with lexicographical sorting
+    // Helper function to check for a match
+    const getMatchField = (student: UICandidate, query: string): string | null => {
+      const q = query.toLowerCase();
+
+      const check = (field: unknown): boolean => field ? field.toString().toLowerCase().includes(q) : false;
+      
+      const checkArray = (arr: unknown[], fields: string[]): string | null => {
+        if (!arr || !Array.isArray(arr)) return null;
+        for (const item of arr) {
+          if (!item || typeof item !== 'object') continue;
+          for (const field of fields) {
+            const value = (item as Record<string, unknown>)[field];
+            if (value && value.toString().toLowerCase().includes(q)) {
+              return value.toString().toLowerCase();
+            }
+          }
+        }
+        return null;
+      };
+
+      if (check(student.name)) return student.name?.toLowerCase() ?? 'name';
+      if (check(student.email)) return student.email?.toLowerCase() ?? 'email';
+      if (check(student.age)) return 'age';
+      if (check(student.dept)) return student.dept.toLowerCase();
+      if (check(student.college)) return student.college.toLowerCase();
+      if (check(student.location)) return student.location.toLowerCase();
+      if (check(student.university)) return student.university.toLowerCase();
+      if (check(student.registration_number)) return 'registration';
+
+      // Skills array
+      const skillsToCheck = student.skills;
+      if (skillsToCheck && Array.isArray(skillsToCheck)) {
+        for (const skill of skillsToCheck) {
+          if (typeof skill === 'string') {
+            if (skill.toLowerCase().includes(q)) return skill.toLowerCase();
+          } else if (skill && typeof skill === 'object' && 'name' in skill && typeof skill.name === 'string') {
+            if (skill.name.toLowerCase().includes(q)) return skill.name.toLowerCase();
+          }
+        }
+      }
+      
+      const projectMatch = checkArray(student.projects, ['title', 'description', 'organization', 'status']);
+      if (projectMatch) return projectMatch;
+
+      const certificateMatch = checkArray(student.certificates, ['title', 'issuer', 'description', 'status']);
+      if (certificateMatch) return certificateMatch;
+
+      const trainingMatch = checkArray(student.trainings, ['title', 'organization', 'description']);
+      if (trainingMatch) return trainingMatch;
+      
+      // Experience needs special handling
+      if (student.experience && Array.isArray(student.experience)) {
+        for (const exp of student.experience) {
+          if (!exp || typeof exp !== 'object') continue;
+          if (check(exp.duration)) return 'experience duration';
+          if (check(exp.role)) return exp.role!.toLowerCase();
+          if (check(exp.organization)) return exp.organization!.toLowerCase();
+          if (exp.verified === true && (q.includes('verified') || q === 'true')) return 'verified experience';
+          if (exp.verified === false && (q.includes('unverified') || q.includes('not verified') || q === 'false')) return 'unverified experience';
+        }
+      }
+
+      return null;
+    };
+
+    // Apply comprehensive search query filter
     if (searchQuery && searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase().trim();
-
-      // Store match results with the matched field for sorting
-      const resultsWithScores = students.map(student => {
-        let matchedField = '';
-        let isMatch = false;
-
-        const matchesField = (field: unknown, fieldName: string = ''): boolean => {
-          if (!field) return false;
-          const fieldStr = field.toString().toLowerCase();
-          if (fieldStr.includes(query)) {
-            if (!isMatch) matchedField = fieldName || fieldStr;
-            isMatch = true;
-            return true;
-          }
-          return false;
-        };
-
-        const searchInArray = (arr: unknown[], fields: string[], arrayName: string = ''): boolean => {
-          if (!arr || !Array.isArray(arr)) return false;
-          return arr.some((item: unknown) => {
-            if (!item || typeof item !== 'object') return false;
-            return fields.some(field => {
-              const value = (item as Record<string, unknown>)[field];
-              if (value && value.toString().toLowerCase().includes(query)) {
-                if (!isMatch) matchedField = arrayName || field;
-                isMatch = true;
-                return true;
-              }
-              return false;
-            });
-          });
-        };
-
-        // Basic fields
-        if (matchesField(student.name, 'name')) return { student, matchedField: matchedField || student.name?.toLowerCase() || '' };
-        if (matchesField(student.email, 'email')) return { student, matchedField: matchedField || student.email?.toLowerCase() || '' };
-        if (matchesField(student.age, 'age')) return { student, matchedField };
-        if (matchesField(student.dept, 'dept')) return { student, matchedField };
-        if (matchesField(student.college, 'college')) return { student, matchedField };
-        if (matchesField(student.location, 'location')) return { student, matchedField };
-        if (matchesField(student.university, 'university')) return { student, matchedField };
-        if (matchesField(student.registration_number, 'registration')) return { student, matchedField };
-
-        // Skills array
-        const skillsToCheck = student.skills;
-        if (skillsToCheck && Array.isArray(skillsToCheck)) {
-          const skillMatch = skillsToCheck.some((skill) => {
-            if (typeof skill === 'string') {
-              if (skill.toLowerCase().includes(query)) {
-                if (!isMatch) matchedField = skill.toLowerCase();
-                isMatch = true;
-                return true;
-              }
-            } else if (skill && typeof skill === 'object' && 'name' in skill && typeof skill.name === 'string') {
-              if (skill.name.toLowerCase().includes(query)) {
-                if (!isMatch) matchedField = skill.name.toLowerCase();
-                isMatch = true;
-                return true;
-              }
-            }
-            return false;
-          });
-          if (skillMatch) return { student, matchedField };
-        }
-
-        // Projects
-        if (searchInArray(student.projects, ['title', 'description', 'organization', 'status'], 'projects')) {
-          return { student, matchedField };
-        }
-
-        // Experience  
-        if (student.experience && Array.isArray(student.experience)) {
-          const expMatch = student.experience.some((exp) => {
-            if (!exp || typeof exp !== 'object') return false;
-            const expObj = exp as Record<string, unknown>;
-            if (matchesField(expObj.duration, 'experience')) return true;
-            if (matchesField(expObj.role, 'experience')) return true;
-            if (matchesField(expObj.organization, 'experience')) return true;
-            if (expObj.verified === true && (query.includes('verified') || query === 'true')) {
-              if (!isMatch) matchedField = 'verified experience';
-              isMatch = true;
-              return true;
-            }
-            if (expObj.verified === false && (query.includes('unverified') || query.includes('not verified') || query === 'false')) {
-              if (!isMatch) matchedField = 'unverified experience';
-              isMatch = true;
-              return true;
-            }
-            return false;
-          });
-          if (expMatch) return { student, matchedField };
-        }
-
-
-        // Certificates
-        if (searchInArray(student.certificates, ['title', 'issuer', 'description', 'status'], 'certificates')) {
-          return { student, matchedField };
-        }
-
-
-        // Training
-        if (searchInArray(student.trainings, ['title', 'organization', 'description'], 'trainings')) {
-          return { student, matchedField };
-        }
-
-        return null;
-      }).filter(item => item !== null);
+      
+      const resultsWithScores = students
+        .map(student => ({
+          student,
+          matchedField: getMatchField(student, query),
+        }))
+        .filter((item): item is { student: UICandidate; matchedField: string } => item.matchedField !== null);
 
       // Sort results lexicographically by matched field
-      resultsWithScores.sort((a, b) => {
-        return a.matchedField.localeCompare(b.matchedField);
-      });
+      resultsWithScores.sort((a, b) => a.matchedField.localeCompare(b.matchedField));
 
       result = resultsWithScores.map(item => item.student);
     }
 
-    // Apply skill filters
-    if (filters.skills.length > 0) {
-      result = result.filter(student => {
-        const skillsToCheck = student.skills;
-        return skillsToCheck?.some((skill) => {
-          const skillName = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
-          return skillName && filters.skills.includes(skillName.toLowerCase());
-        });
-      });
-    }
-
-    // Apply course/department filters
-    if (filters.courses.length > 0) {
-      result = result.filter(student => {
-        const dept = student.dept;
-        return dept && filters.courses.includes(dept.toLowerCase());
-      });
-    }
-
-    // Apply badge filters
-    if (filters.badges.length > 0) {
-      result = result.filter(student =>
-        student.badges?.some(badge =>
-          filters.badges.includes(badge)
-        )
-      );
-    }
-
-    // Apply location filters
-    if (filters.locations.length > 0) {
-      result = result.filter(student => {
-        const location = student.location;
-        return location && filters.locations.includes(location.toLowerCase());
-      });
-    }
-
-    // Apply year filters
-    if (filters.years.length > 0) {
-      result = result.filter(student =>
-        filters.years.includes((student as { year?: string }).year)
-      );
-    }
-
-    // Apply AI score range filter
+    // Apply filters
     result = result.filter(student => {
+      // Skill filters
+      if (filters.skills.length > 0) {
+        const studentSkills = student.skills?.map(s => (typeof s === 'string' ? s : s.name)?.toLowerCase()) ?? [];
+        if (!filters.skills.every(fs => studentSkills.includes(fs.toLowerCase()))) {
+          return false;
+        }
+      }
+      
+      // Course/department filters
+      if (filters.courses.length > 0) {
+        const dept = student.dept?.toLowerCase();
+        if (!dept || !filters.courses.includes(dept)) {
+          return false;
+        }
+      }
+
+      // Badge filters
+      if (filters.badges.length > 0) {
+        if (!student.badges?.some(badge => filters.badges.includes(badge))) {
+          return false;
+        }
+      }
+
+      // Location filters
+      if (filters.locations.length > 0) {
+        const location = student.location?.toLowerCase();
+        if (!location || !filters.locations.includes(location)) {
+          return false;
+        }
+      }
+      
+      // Year filters
+      if (filters.years.length > 0) {
+        if (!filters.years.includes((student as { year?: string }).year)) {
+          return false;
+        }
+      }
+
+      // AI score range filter
       const score = student.ai_score_overall || 0;
-      return score >= filters.minScore && score <= filters.maxScore;
+      if (score < filters.minScore || score > filters.maxScore) {
+        return false;
+      }
+      
+      return true;
     });
 
     // Apply sorting (only if not already sorted by search relevance)
