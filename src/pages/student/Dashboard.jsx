@@ -649,7 +649,7 @@ const StudentDashboard = () => {
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6 space-y-3">
+        <CardContent className="pt-4 p-6 space-y-3">
           {(() => {
             console.log({
               loading: opportunitiesLoading,
@@ -823,44 +823,54 @@ const StudentDashboard = () => {
             </button>
           </div>
         </CardHeader>
-        <CardContent className="p-6 space-y-3">
-          {(showAllTechnicalSkills
-            ? userData.technicalSkills.filter(
-              (skill) => skill.enabled !== false
-            )
-            : userData.technicalSkills
-              .filter((skill) => skill.enabled !== false)
-              .slice(0, 2)
-          ).map((skill, idx) => (
-            <div
-              key={skill.id || `tech-skill-${idx}`}
-              className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
-            >
-              <div className="flex items-start justify-between">
-                <div key={`tech-skill-info-${skill.id}`} className="flex-1">
-                  <h4 className="font-semibold text-gray-900 text-base mb-1">
-                    {skill.name}
-                  </h4>
-                  <p className="text-xs text-gray-600 font-medium mb-2">
-                    {skill.category}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(
-                        skill.level
-                      )}`}
-                    >
-                      {getSkillLevelText(skill.level)}
-                    </Badge>
-                    <div className="flex gap-0.5">
-                      {renderStars(skill.level)}
+        <CardContent className="pt-4 p-6 space-y-3">
+          {userData.technicalSkills.filter(
+            (skill) => skill.enabled !== false && skill.approval_status === 'approved'
+          ).length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-slate-500 font-medium">
+                No technical skills have been added or verified.
+              </p>
+            </div>
+          ) : (
+            (showAllTechnicalSkills
+              ? userData.technicalSkills.filter(
+                (skill) => skill.enabled !== false && skill.approval_status === 'approved'
+              )
+              : userData.technicalSkills
+                .filter((skill) => skill.enabled !== false && skill.approval_status === 'approved')
+                .slice(0, 2)
+            ).map((skill, idx) => (
+              <div
+                key={skill.id || `tech-skill-${idx}`}
+                className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
+              >
+                <div className="flex items-start justify-between">
+                  <div key={`tech-skill-info-${skill.id}`} className="flex-1">
+                    <h4 className="font-semibold text-gray-900 text-base mb-1">
+                      {skill.name}
+                    </h4>
+                    <p className="text-xs text-gray-600 font-medium mb-2">
+                      {skill.category}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(
+                          skill.level
+                        )}`}
+                      >
+                        {getSkillLevelText(skill.level)}
+                      </Badge>
+                      <div className="flex gap-0.5">
+                        {renderStars(skill.level)}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-          {userData.technicalSkills.filter((skill) => skill.enabled !== false)
+            ))
+          )}
+          {userData.technicalSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved')
             .length > 2 && (
               <Button
                 variant="outline"
@@ -1118,7 +1128,7 @@ const StudentDashboard = () => {
             </button>
           </div>
         </CardHeader>
-        <CardContent className="p-6 space-y-3">
+        <CardContent className="pt-4 p-6 space-y-3">
           {(showAllEducation
             ? userData.education.filter(
               (education) => education.enabled !== false
@@ -1211,7 +1221,7 @@ const StudentDashboard = () => {
             </button>
           </div>
         </CardHeader>
-        <CardContent className="p-6 space-y-3">
+        <CardContent className="pt-4 p-6 space-y-3">
           {enabledCertificates.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-slate-500 font-medium">
@@ -1666,7 +1676,7 @@ const StudentDashboard = () => {
               </button>
             </div>
           </CardHeader>
-          <CardContent className="p-6 space-y-3">
+          <CardContent className="pt-4 p-6 space-y-3">
             {(showAllExperience
               ? userData.experience.filter((exp) => exp.enabled !== false)
               : userData.experience
@@ -1734,42 +1744,51 @@ const StudentDashboard = () => {
             </button>
           </div>
         </CardHeader>
-        <CardContent className="p-6 space-y-3">
-          {(showAllSoftSkills
-            ? userData.softSkills.filter((skill) => skill.enabled !== false)
-            : userData.softSkills
-              .filter((skill) => skill.enabled !== false)
-              .slice(0, 2)
-          ).map((skill, idx) => (
-            <div
-              key={skill.id || `soft-skill-${idx}`}
-              className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
-            >
-              <div className="flex items-start justify-between">
-                <div key={`skill-info-${skill.id}`} className="flex-1">
-                  <h4 className="font-semibold text-gray-900 text-base mb-1">
-                    {skill.name}
-                  </h4>
-                  <p className="text-xs text-gray-600 mb-2">
-                    {skill.description}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(
-                        skill.level
-                      )}`}
-                    >
-                      {getSkillLevelText(skill.level)}
-                    </Badge>
-                    <div className="flex gap-0.5">
-                      {renderStars(skill.level)}
+        <CardContent className="pt-4 p-6 space-y-3">
+          {userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved')
+            .length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-slate-500 font-medium">
+                No soft skills have been added or verified.
+              </p>
+            </div>
+          ) : (
+            (showAllSoftSkills
+              ? userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved')
+              : userData.softSkills
+                .filter((skill) => skill.enabled !== false && skill.approval_status === 'approved')
+                .slice(0, 2)
+            ).map((skill, idx) => (
+              <div
+                key={skill.id || `soft-skill-${idx}`}
+                className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
+              >
+                <div className="flex items-start justify-between">
+                  <div key={`skill-info-${skill.id}`} className="flex-1">
+                    <h4 className="font-semibold text-gray-900 text-base mb-1">
+                      {skill.name}
+                    </h4>
+                    <p className="text-xs text-gray-600 mb-2">
+                      {skill.description}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(
+                          skill.level
+                        )}`}
+                      >
+                        {getSkillLevelText(skill.level)}
+                      </Badge>
+                      <div className="flex gap-0.5">
+                        {renderStars(skill.level)}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-          {userData.softSkills.filter((skill) => skill.enabled !== false)
+            ))
+          )}
+          {userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved')
             .length > 2 && (
               <Button
                 variant="outline"
@@ -2353,7 +2372,7 @@ const StudentDashboard = () => {
           onClose={() => setActiveModal(null)}
           data={userData.softSkills}
           onSave={(data) => handleSave("softSkills", data)}
-          title="Edit Soft Skills"
+          title="Soft Skills"
         />
       )}
 
@@ -2363,7 +2382,7 @@ const StudentDashboard = () => {
           onClose={() => setActiveModal(null)}
           data={userData.technicalSkills}
           onSave={(data) => handleSave("technicalSkills", data)}
-          title="Edit Technical Skills"
+          title="Technical Skills"
         />
       )}
 
