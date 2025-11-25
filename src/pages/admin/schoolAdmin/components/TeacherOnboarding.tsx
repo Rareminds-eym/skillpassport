@@ -8,12 +8,31 @@ interface SubjectExpertise {
   years_experience: number;
 }
 
+interface ClassAssignment {
+  class_name: string;
+  subject: string;
+}
+
+interface Experience {
+  organization: string;
+  position: string;
+  start_date: string;
+  end_date: string;
+  description: string;
+}
+
 const TeacherOnboardingPage: React.FC = () => {
+  const [currentSection, setCurrentSection] = useState<"personal" | "subjects" | "experience" | "documents">("personal");
+  const [generatedTeacherId, setGeneratedTeacherId] = useState<string>("");
+  
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
     email: "",
     phone: "",
+    date_of_birth: "",
+    address: "",
+    qualification: "",
   });
 
   const [documents, setDocuments] = useState({
@@ -23,10 +42,26 @@ const TeacherOnboardingPage: React.FC = () => {
   });
 
   const [subjects, setSubjects] = useState<SubjectExpertise[]>([]);
+  const [classes, setClasses] = useState<ClassAssignment[]>([]);
+  const [experiences, setExperiences] = useState<Experience[]>([]);
+  
   const [currentSubject, setCurrentSubject] = useState<SubjectExpertise>({
     name: "",
     proficiency: "intermediate",
     years_experience: 0,
+  });
+
+  const [currentClass, setCurrentClass] = useState<ClassAssignment>({
+    class_name: "",
+    subject: "",
+  });
+
+  const [currentExperience, setCurrentExperience] = useState<Experience>({
+    organization: "",
+    position: "",
+    start_date: "",
+    end_date: "",
+    description: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -34,6 +69,18 @@ const TeacherOnboardingPage: React.FC = () => {
 
   const handleFileChange = (field: keyof typeof documents, files: FileList | null) => {
     if (!files) return;
+
+    // Validate file size (5 MB max)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB in bytes
+    const invalidFiles = Array.from(files).filter(file => file.size > MAX_FILE_SIZE);
+    
+    if (invalidFiles.length > 0) {
+      setMessage({
+        type: "error",
+        text: `File(s) exceed 5 MB limit: ${invalidFiles.map(f => f.name).join(", ")}`
+      });
+      return;
+    }
 
     if (field === "experience_letters") {
       setDocuments((prev) => ({
@@ -62,6 +109,26 @@ const TeacherOnboardingPage: React.FC = () => {
     setSubjects(subjects.filter((_, i) => i !== index));
   };
 
+  const addClass = () => {
+    if (!currentClass.class_name.trim() || !currentClass.subject.trim()) return;
+    setClasses([...classes, currentClass]);
+    setCurrentClass({ class_name: "", subject: "" });
+  };
+
+  const removeClass = (index: number) => {
+    setClasses(classes.filter((_, i) => i !== index));
+  };
+
+  const addExperience = () => {
+    if (!currentExperience.organization.trim() || !currentExperience.position.trim()) return;
+    setExperiences([...experiences, currentExperience]);
+    setCurrentExperience({ organization: "", position: "", start_date: "", end_date: "", description: "" });
+  };
+
+  const removeExperience = (index: number) => {
+    setExperiences(experiences.filter((_, i) => i !== index));
+  };
+
   const uploadFile = async (file: File, path: string): Promise<string> => {
     const fileExt = file.name.split(".").pop();
     const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -77,7 +144,7 @@ const TeacherOnboardingPage: React.FC = () => {
     return data.publicUrl;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, action: "draft" | "submit" | "approve" | "reject") => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
@@ -99,6 +166,13 @@ const TeacherOnboardingPage: React.FC = () => {
       // Get current user's school_id (you'll need to implement this based on your auth)
       const { data: userData } = await supabase.auth.getUser();
       
+      // Determine status based on action
+      let status = "pending";
+      if (action === "draft") status = "pending";
+      else if (action === "submit") status = "documents_uploaded";
+      else if (action === "approve") status = "active";
+      else if (action === "reject") status = "inactive";
+
       // Insert teacher record
       const { data: teacher, error } = await supabase
         .from("teachers")
@@ -108,23 +182,28 @@ const TeacherOnboardingPage: React.FC = () => {
           id_proof_url: idProofUrl,
           experience_letters_url: experienceUrls,
           subject_expertise: subjects,
-          onboarding_status: "documents_uploaded",
-          school_id: userData?.user?.user_metadata?.school_id, // Adjust based on your auth structure
+          class_assignments: classes,
+          work_experience: experiences,
+          onboarding_status: status,
+          school_id: userData?.user?.user_metadata?.school_id,
         })
         .select()
         .single();
 
       if (error) throw error;
 
+      setGeneratedTeacherId(teacher.teacher_id);
       setMessage({
         type: "success",
-        text: `Teacher onboarded successfully! Teacher ID: ${teacher.teacher_id}`,
+        text: `Teacher ${action === "draft" ? "saved as draft" : action === "approve" ? "approved" : action === "reject" ? "rejected" : "onboarded"} successfully! Teacher ID: ${teacher.teacher_id}`,
       });
 
       // Reset form
-      setFormData({ first_name: "", last_name: "", email: "", phone: "" });
+      setFormData({ first_name: "", last_name: "", email: "", phone: "", date_of_birth: "", address: "", qualification: "" });
       setDocuments({ degree_certificate: null, id_proof: null, experience_letters: [] });
       setSubjects([]);
+      setClasses([]);
+      setExperiences([]);
     } catch (error: any) {
       setMessage({ type: "error", text: error.message || "Failed to onboard teacher" });
     } finally {

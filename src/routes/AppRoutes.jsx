@@ -172,7 +172,7 @@ const TeacherOnboarding = lazy(() =>
   import("../pages/admin/schoolAdmin/components/TeacherOnboarding")
 );
 const TeacherTimetable = lazy(() =>
-  import("../pages/admin/schoolAdmin/components/TimetableAllocation")
+  import("../pages/admin/schoolAdmin/components/TimetableBuilderEnhanced")
 );
 const UniversityAdminDashboard = lazy(() =>
   import("../pages/admin/universityAdmin/Dashboard")

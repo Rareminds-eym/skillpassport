@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS teachers (
   last_name VARCHAR(100) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   phone VARCHAR(20),
+  date_of_birth DATE,
+  address TEXT,
+  qualification VARCHAR(200),
   
   -- Onboarding Documents
   degree_certificate_url TEXT,
@@ -20,6 +23,8 @@ CREATE TABLE IF NOT EXISTS teachers (
   
   -- Subject Expertise
   subject_expertise JSONB DEFAULT '[]'::jsonb, -- Array of subjects with proficiency
+  class_assignments JSONB DEFAULT '[]'::jsonb, -- Array of class assignments
+  work_experience JSONB DEFAULT '[]'::jsonb, -- Array of work experience
   
   -- Status
   onboarding_status VARCHAR(20) DEFAULT 'pending' CHECK (onboarding_status IN ('pending', 'documents_uploaded', 'verified', 'active', 'inactive')),
