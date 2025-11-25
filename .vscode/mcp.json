@@ -1,0 +1,12 @@
+{
+	"servers": {
+		"supabase-remote": {
+			"url": "https://mcp.supabase.com/mcp?project_ref=dpooleduinyyzxgrcwko",
+			"type": "http",
+			"headers": {
+				"Authorization": "Bearer sbp_aa71be87b032c6af9497e37ba5f59e72c58b15d8"
+			}
+		}
+	},
+	"inputs": []
+}

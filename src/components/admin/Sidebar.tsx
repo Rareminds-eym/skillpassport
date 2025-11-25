@@ -22,6 +22,7 @@ import {
   ClipboardIcon,
   FolderOpenIcon,
   SparklesIcon,
+  CheckBadgeIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../../context/AuthContext";
 import { TrophyIcon } from "lucide-react";
@@ -178,6 +179,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               name: "Skill Badges",
               path: "/school-admin/skills/badges",
               icon: ChartPieIcon,
+            },
+            {
+              name: "Skill Verifications",
+              path: "/school-admin/skill-verifications",
+              icon: CheckBadgeIcon,
             },
           ],
         },
@@ -347,7 +353,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             path: "/college-admin/departments/management",
             icon: BuildingOffice2Icon,
           },
-          
+
           {
             name: "Faculty Management",
             path: "/college-admin/departments/educators",
@@ -431,6 +437,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             name: "Feedback & Certification",
             path: "/college-admin/training/certifications",
             icon: AcademicCapIcon,
+          },
+          {
+            name: "Skill Verifications",
+            path: "/college-admin/skill-verifications",
+            icon: CheckBadgeIcon,
           },
         ],
       },

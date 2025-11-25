@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import {BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Loader from "../components/Loader";
 
@@ -191,6 +191,10 @@ const AttendanceTracking = lazy(() =>
   import("../pages/admin/collegeAdmin/Attendancetracking")
 );
 
+const SkillVerifications = lazy(() =>
+  import("../pages/admin/SkillVerifications")
+);
+
 const AppRoutes = () => {
   return (
     <Suspense fallback={<Loader />}>
@@ -272,11 +276,12 @@ const AppRoutes = () => {
             element={<StudentDataAdmission />}
           />
           <Route path="departments/educators" element={<AdminEducatorManagement />} />
+          <Route path="skill-verifications" element={<SkillVerifications />} />
           <Route
             path=""
             element={<Navigate to="/college-admin/dashboard" replace />}
           />
-            <Route path="students/attendance" element={<AttendanceTracking />} />
+          <Route path="students/attendance" element={<AttendanceTracking />} />
 
         </Route>
 
@@ -290,6 +295,9 @@ const AppRoutes = () => {
         >
           <Route path="dashboard" element={<SchoolAdminDashboard />} />
           <Route path="students/admissions" element={<StudentAdmissions />} />
+          <Route path="dashboard" element={<SchoolAdminDashboard />} />
+          <Route path="students/admissions" element={<StudentAdmissions />} />
+          <Route path="skill-verifications" element={<SkillVerifications />} />
           <Route
             path=""
             element={<Navigate to="/school-admin/dashboard" replace />}
@@ -311,6 +319,8 @@ const AppRoutes = () => {
           <Route path="placements/readiness" element={<PlacementReadiness />} />
           <Route path="analytics/obe-tracking" element={<OutcomeBasedEducation />} />
           <Route path="ai-counselling" element={<AICounselling />} />
+          <Route path="ai-counselling" element={<AICounselling />} />
+          <Route path="skill-verifications" element={<SkillVerifications />} />
           <Route
             path=""
             element={<Navigate to="/university-admin/dashboard" replace />}
@@ -374,7 +384,7 @@ const AppRoutes = () => {
           <Route path="assignments" element={<Assignments />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
-          
+
           {/* Digital Portfolio routes with required providers */}
           <Route
             path="digital-portfolio"
@@ -505,7 +515,7 @@ const AppRoutes = () => {
               </ThemeProvider>
             }
           />
-          
+
           <Route
             path=""
             element={<Navigate to="/student/dashboard" replace />}
