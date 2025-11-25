@@ -212,6 +212,31 @@ const AttendanceTracking = lazy(() =>
   import("../pages/admin/collegeAdmin/Attendancetracking")
 );
 
+
+const CurriculumBuilder = lazy(() =>
+  import("../pages/admin/schoolAdmin/CurriculumBuilder")
+);
+const LessonPlan = lazy(() => import("../pages/admin/schoolAdmin/LessonPlan"));
+const ExamsAssessments = lazy(() =>
+  import("../pages/admin/schoolAdmin/ExamsAssessments")
+);
+
+// Parent & Communication routes
+const ParentPortal = lazy(() =>
+  import("../pages/admin/schoolAdmin/ParentPortal")
+);
+const MessageCenter = lazy(() =>
+  import("../pages/admin/schoolAdmin/MessageCenter")
+);
+const CircularsFeedback = lazy(() =>
+  import("../pages/admin/schoolAdmin/CircularsFeedback")
+);
+
+// Settings
+const SchoolAdminSettings = lazy(() =>
+  import("../pages/admin/schoolAdmin/Settings")
+);
+
 const AppRoutes = () => {
   return (
     <Suspense fallback={<Loader />}>
@@ -320,6 +345,20 @@ const AppRoutes = () => {
           <Route path="teachers/onboarding" element={<TeacherOnboarding />} />
           <Route path="teachers/timetable" element={<TeacherTimetable />} />
           <Route path="lesson-plans/approvals" element={<LessonPlanApprovals />} />
+          {/* Academic Management System Routes */}
+          <Route path="academics/curriculum" element={<CurriculumBuilder />} />
+          <Route path="academics/lesson-plans" element={<LessonPlan />} />
+          <Route path="academics/exams" element={<ExamsAssessments />} />
+          {/* Parent & Communication Routes */}
+          <Route path="communication/parents" element={<ParentPortal />} />
+          <Route path="communication/messages" element={<MessageCenter />} />
+          <Route
+            path="communication/circulars"
+            element={<CircularsFeedback />}
+          />
+
+          {/* Settings */}
+          <Route path="settings" element={<SchoolAdminSettings />} />
           <Route
             path=""
             element={<Navigate to="/school-admin/dashboard" replace />}
