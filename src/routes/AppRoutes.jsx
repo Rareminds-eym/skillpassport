@@ -117,6 +117,7 @@ const EducatorDashboard = lazy(() => import("../pages/educator/Dashboard"));
 const EducatorLogin = lazy(() => import("../pages/auth/LoginEducator"));
 const EducatorStudents = lazy(() => import("../pages/educator/StudentsPage"));
 const EducatorClasses = lazy(() => import("../pages/educator/ClassesPage"));
+const EducatorCourses = lazy(() => import("../pages/educator/Courses"));
 const EducatorAssessments = lazy(() => import("../pages/educator/Assessments"));
 const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
 const EducatorSettings = lazy(() => import("../pages/educator/Settings"));
@@ -474,6 +475,7 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<EducatorDashboard />} />
           <Route path="students" element={<EducatorStudents />} />
           <Route path="classes" element={<EducatorClasses />} />
+          <Route path="courses" element={<EducatorCourses />} />
           <Route path="assignments" element={<EducatorAssessments />} />
           <Route path="mentornotes" element={<EducatorMentorNotes />} />
           <Route path="digital-portfolio" element={<EducatorDigitalPortfolio />} />
