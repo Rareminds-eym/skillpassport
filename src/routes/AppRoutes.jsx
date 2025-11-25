@@ -165,6 +165,15 @@ const SchoolAdminDashboard = lazy(() =>
 const StudentAdmissions = lazy(() =>
   import("../pages/admin/schoolAdmin/StudentAdmissions")
 );
+const TeacherList = lazy(() =>
+  import("../pages/admin/schoolAdmin/components/TeacherList")
+);
+const TeacherOnboarding = lazy(() =>
+  import("../pages/admin/schoolAdmin/components/TeacherOnboarding")
+);
+const TeacherTimetable = lazy(() =>
+  import("../pages/admin/schoolAdmin/components/TimetableAllocation")
+);
 const UniversityAdminDashboard = lazy(() =>
   import("../pages/admin/universityAdmin/Dashboard")
 );
@@ -290,6 +299,9 @@ const AppRoutes = () => {
         >
           <Route path="dashboard" element={<SchoolAdminDashboard />} />
           <Route path="students/admissions" element={<StudentAdmissions />} />
+          <Route path="teachers/list" element={<TeacherList />} />
+          <Route path="teachers/onboarding" element={<TeacherOnboarding />} />
+          <Route path="teachers/timetable" element={<TeacherTimetable />} />
           <Route
             path=""
             element={<Navigate to="/school-admin/dashboard" replace />}
