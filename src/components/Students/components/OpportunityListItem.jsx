@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, DollarSign, Briefcase, Bookmark } from 'lucide-react';
+import { MapPin, Briefcase, Bookmark } from 'lucide-react';
 
 const OpportunityListItem = ({ 
   opportunity, 
@@ -21,9 +21,9 @@ const OpportunityListItem = ({
 
   const formatSalary = (min, max) => {
     if (!min && !max) return null;
-    if (min && max) return `$ ${min.toLocaleString()} - $ ${max.toLocaleString()}`;
-    if (min) return `$ ${min.toLocaleString()}+`;
-    return `Up to $ ${max.toLocaleString()}`;
+    if (min && max) return `₹ ${min.toLocaleString()} - ₹ ${max.toLocaleString()}`;
+    if (min) return `₹ ${min.toLocaleString()}+`;
+    return `Up to ₹ ${max.toLocaleString()}`;
   };
 
   // Generate consistent color based on company name
@@ -93,9 +93,6 @@ const OpportunityListItem = ({
       {/* Salary with Icon Box */}
       {salary && (
         <div className="hidden sm:flex items-center gap-3">
-          <div className="w-14 h-14 bg-green-500 rounded-2xl flex items-center justify-center flex-shrink-0">
-            <DollarSign className="w-6 h-6 text-white" strokeWidth={2.5} />
-          </div>
           <div>
             <p className="font-bold text-gray-900 text-lg">
               {salary}

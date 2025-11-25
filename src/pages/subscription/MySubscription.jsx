@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
-import { getUserSubscriptions, cancelSubscription, pauseSubscription, resumeSubscription } from '../../services/subscriptionService';
+import { getUserSubscriptions, cancelSubscription, pauseSubscription, resumeSubscription } from '../../services/Subscriptions/subscriptionService';
 import { getSubscriptionStatusChecks, calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil } from '../../utils/subscriptionHelpers';
 
 const plans = [
@@ -396,14 +396,22 @@ function MySubscription() {
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <h1 className="text-2xl font-semibold text-neutral-900 mb-2">My Subscription</h1>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 {user?.email && (
                   <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-neutral-100 text-neutral-700">
+                    <Mail className="w-3 h-3 mr-1.5" />
                     {user.email}
+                  </span>
+                )}
+                {subscriptionData?.entityType && (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-700 capitalize">
+                    <Circle className="w-2 h-2 mr-1.5 fill-purple-600" />
+                    {subscriptionData.entityType.replace('-', ' ')}
                   </span>
                 )}
                 {role && (
                   <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-700 capitalize">
+                    <Shield className="w-3 h-3 mr-1.5" />
                     {role}
                   </span>
                 )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Briefcase, X, ExternalLink, Star, Bookmark, Clock, DollarSign, Users, TrendingUp, Award, CheckCircle2, Calendar } from 'lucide-react';
+import { MapPin, Briefcase, X, ExternalLink, Star, Bookmark, Clock, Users, TrendingUp, Award, CheckCircle2, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -52,9 +52,9 @@ const OpportunityPreview = ({
 
   const formatSalary = (min, max) => {
     if (!min && !max) return 'Competitive';
-    if (min && max) return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
-    if (min) return `$${min.toLocaleString()}+`;
-    return `Up to $${max.toLocaleString()}`;
+    if (min && max) return `₹${min.toLocaleString()} - ₹${max.toLocaleString()}`;
+    if (min) return `₹${min.toLocaleString()}+`;
+    return `Up to ₹${max.toLocaleString()}`;
   };
 
   const parseJsonField = (field) => {
@@ -163,7 +163,6 @@ const OpportunityPreview = ({
         {/* Salary & Type Tags */}
         <div className="relative z-10 flex items-center gap-2 mt-4">
           <div className="flex items-center gap-1.5 bg-white bg-opacity-20 backdrop-blur-sm px-3 py-1.5 rounded-full">
-            <DollarSign className="w-4 h-4 text-white" />
             <span className="text-sm font-semibold text-white">
               {formatSalary(opportunity.salary_range_min, opportunity.salary_range_max)}
             </span>

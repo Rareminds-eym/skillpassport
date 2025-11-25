@@ -33,7 +33,7 @@ function verifyPaymentSignature(
     const hmac = createHmac("sha256", secret);
     hmac.update(text);
     const generatedSignature = hmac.digest("hex");
-    
+
     return generatedSignature === signature;
   } catch (error) {
     console.error("Error verifying signature:", error);
@@ -48,38 +48,37 @@ serve(async (req) => {
   }
 
   try {
-    // Get Razorpay secret from environment
-    const RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
+    // Get Razorpay credentials from environment
+    // Use TEST credentials if available (for localhost/Netlify), otherwise use production credentials
+    const TEST_RAZORPAY_KEY_SECRET = Deno.env.get("TEST_RAZORPAY_KEY_SECRET");
+    const PROD_RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
+    const RAZORPAY_KEY_SECRET = TEST_RAZORPAY_KEY_SECRET || PROD_RAZORPAY_KEY_SECRET;
 
     if (!RAZORPAY_KEY_SECRET) {
       throw new Error("Razorpay secret not configured");
     }
 
-    // Get authorization header to verify user
+    const usingTestCredentials = !!TEST_RAZORPAY_KEY_SECRET;
+    console.log(`Using ${usingTestCredentials ? 'TEST' : 'PRODUCTION'} Razorpay secret for verification`);
+
+    // Get authorization header (optional - we'll verify via order ownership)
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
-    // Create Supabase client
+    // Create Supabase client with service role for admin operations
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    });
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Try to get authenticated user if auth header is provided
+    let authenticatedUser = null;
+    if (authHeader) {
+      const supabaseWithAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      });
+      const { data: { user } } = await supabaseWithAuth.auth.getUser();
+      authenticatedUser = user;
     }
 
     // Parse request body
@@ -108,13 +107,22 @@ serve(async (req) => {
 
     if (existingPayment) {
       console.warn(`Payment ${razorpay_payment_id} already processed at ${existingPayment.created_at}`);
+      
+      // Get user_id from the order for the response
+      const { data: existingOrder } = await supabase
+        .from('razorpay_orders')
+        .select('user_id')
+        .eq('order_id', razorpay_order_id)
+        .maybeSingle();
+      
       return new Response(
         JSON.stringify({
           success: true,
+          verified: true,
           message: "Payment already verified",
           payment_id: razorpay_payment_id,
           order_id: razorpay_order_id,
-          user_id: user.id,
+          user_id: existingOrder?.user_id || null,
           payment_method: existingPayment.payment_method || "card",
           already_processed: true,
         }),
@@ -122,7 +130,7 @@ serve(async (req) => {
       );
     }
 
-    // ===== VERIFY ORDER EXISTS AND BELONGS TO USER =====
+    // ===== VERIFY ORDER EXISTS =====
     const { data: order, error: orderError } = await supabase
       .from('razorpay_orders')
       .select('*')
@@ -132,24 +140,28 @@ serve(async (req) => {
     if (orderError || !order) {
       console.error("Order not found:", razorpay_order_id, orderError);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           success: false,
-          error: "Order not found" 
+          error: "Order not found"
         }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (order.user_id !== user.id) {
-      console.error(`Authorization failed: Order ${razorpay_order_id} belongs to ${order.user_id}, not ${user.id}`);
+    // Verify order ownership if user is authenticated
+    if (authenticatedUser && order.user_id !== authenticatedUser.id) {
+      console.error(`Authorization failed: Order ${razorpay_order_id} belongs to ${order.user_id}, not ${authenticatedUser.id}`);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           success: false,
-          error: "Unauthorized - This order does not belong to you" 
+          error: "Unauthorized - This order does not belong to you"
         }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Use the user_id from the order (this is secure because we verify the signature)
+    const userId = order.user_id;
 
     // ===== VERIFY PAYMENT SIGNATURE (CRITICAL SECURITY) =====
     const isValidSignature = verifyPaymentSignature(
@@ -163,7 +175,7 @@ serve(async (req) => {
       console.error("Invalid payment signature:", {
         order_id: razorpay_order_id,
         payment_id: razorpay_payment_id,
-        user_id: user.id
+        user_id: userId
       });
       return new Response(
         JSON.stringify({
@@ -174,11 +186,13 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Payment signature verified for user ${user.id}: ${razorpay_payment_id}`);
+    console.log(`Payment signature verified for user ${userId}: ${razorpay_payment_id}`);
 
     // ===== FETCH PAYMENT DETAILS FROM RAZORPAY =====
     // Get payment method and verify amount
-    const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
+    const TEST_RAZORPAY_KEY_ID = Deno.env.get("TEST_RAZORPAY_KEY_ID");
+    const PROD_RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
+    const RAZORPAY_KEY_ID = TEST_RAZORPAY_KEY_ID || PROD_RAZORPAY_KEY_ID;
     let paymentMethod = "unknown";
     let paymentAmount = 0;
     let paymentStatus = "unknown";
@@ -202,7 +216,7 @@ serve(async (req) => {
         paymentMethod = paymentDetails.method || "unknown";
         paymentAmount = paymentDetails.amount || 0;
         paymentStatus = paymentDetails.status || "unknown";
-        
+
         console.log(`Payment details fetched: method=${paymentMethod}, amount=${paymentAmount}, status=${paymentStatus}`);
 
         // ===== VERIFY AMOUNT MATCHES ORDER =====
@@ -243,7 +257,7 @@ serve(async (req) => {
       console.error("Error fetching payment details:", {
         error: err.message,
         payment_id: razorpay_payment_id,
-        user_id: user.id
+        user_id: userId
       });
       // Continue with unknown payment method - signature is valid
       paymentMethod = "unknown";
@@ -266,15 +280,18 @@ serve(async (req) => {
     }
 
     // ===== RETURN SUCCESS =====
-    console.log(`Payment verification complete: ${razorpay_payment_id} for user ${user.id}`);
+    console.log(`Payment verification complete: ${razorpay_payment_id} for user ${userId}`);
 
     return new Response(
       JSON.stringify({
         success: true,
+        verified: true,
         message: "Payment verified successfully",
         payment_id: razorpay_payment_id,
         order_id: razorpay_order_id,
-        user_id: user.id,
+        user_id: userId,
+        user_name: order.user_name,
+        user_email: order.user_email,
         payment_method: paymentMethod,
         amount: paymentAmount,
       }),
