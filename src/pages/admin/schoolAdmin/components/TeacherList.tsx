@@ -34,7 +34,7 @@ const TeacherListPage: React.FC = () => {
   const loadTeachers = async () => {
     setLoading(true);
     const { data } = await supabase
-      .from("teachers")
+      .from("school_educators")
       .select("*")
       .order("created_at", { ascending: false });
 
@@ -92,7 +92,7 @@ const TeacherListPage: React.FC = () => {
 
   const updateTeacherStatus = async (teacherId: string, newStatus: string) => {
     const { error } = await supabase
-      .from("teachers")
+      .from("school_educators")
       .update({ onboarding_status: newStatus })
       .eq("id", teacherId);
 

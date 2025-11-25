@@ -55,10 +55,10 @@ const TimetableAllocationPage: React.FC = () => {
 
   const loadTeachers = async () => {
     const { data } = await supabase
-      .from("teachers")
-      .select("id, teacher_id, first_name, last_name")
+      .from("school_educators")
+      .select("id, teacher_id, email")
       .eq("onboarding_status", "active")
-      .order("first_name");
+      .order("email");
     
     if (data) setTeachers(data);
   };
