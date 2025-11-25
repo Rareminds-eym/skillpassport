@@ -18,11 +18,18 @@ jobs:
       with:
         node-version: 18
 
+    # ⭐ IMPORTANT: Create .env.production on the fly
+    - name: Create .env.production
+      run: |
+        echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" > .env.production
+        echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env.production
+        echo "VITE_OPENAI_API_KEY=${{ secrets.VITE_OPENAI_API_KEY }}" >> .env.production
+
     - name: Install dependencies
       run: npm install
 
     - name: Build Vite project
-      run: npm run build
+      run: npm run build --mode production
 
     - name: Deploy to Hostinger via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
