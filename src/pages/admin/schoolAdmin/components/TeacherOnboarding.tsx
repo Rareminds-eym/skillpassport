@@ -1,7 +1,9 @@
 import React, { useState } from "react";
-import { Upload, FileText, CheckCircle, AlertCircle, X } from "lucide-react";
+import { Upload, FileText, CheckCircle, AlertCircle, X, Shield } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
 import { validateTeacherOnboarding, validateDocument } from "../../../../utils/teacherValidation";
+import { useUserRole } from "../../../../hooks/useUserRole";
+import RoleDebugger from "../../../../components/debug/RoleDebugger";
 
 interface SubjectExpertise {
   name: string;
@@ -23,6 +25,7 @@ interface Experience {
 }
 
 const TeacherOnboardingPage: React.FC = () => {
+  const { role, canAddTeacher, canApproveTeacher, isPrincipal, isITAdmin, isSchoolAdmin, loading: roleLoading } = useUserRole();
   const [currentSection, setCurrentSection] = useState<"personal" | "subjects" | "experience" | "documents">("personal");
   const [generatedTeacherId, setGeneratedTeacherId] = useState<string>("");
   
@@ -34,6 +37,7 @@ const TeacherOnboardingPage: React.FC = () => {
     date_of_birth: "",
     address: "",
     qualification: "",
+    role: "subject_teacher" as "school_admin" | "principal" | "it_admin" | "class_teacher" | "subject_teacher",
   });
 
   const [documents, setDocuments] = useState({
@@ -243,7 +247,7 @@ const TeacherOnboardingPage: React.FC = () => {
       });
 
       // Reset form
-      setFormData({ first_name: "", last_name: "", email: "", phone: "", date_of_birth: "", address: "", qualification: "" });
+      setFormData({ first_name: "", last_name: "", email: "", phone: "", date_of_birth: "", address: "", qualification: "", role: "subject_teacher" });
       setDocuments({ degree_certificate: null, id_proof: null, experience_letters: [] });
       setSubjects([]);
       setClasses([]);
@@ -255,6 +259,32 @@ const TeacherOnboardingPage: React.FC = () => {
     }
   };
 
+  // Check permissions
+  if (roleLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!canAddTeacher()) {
+    return (
+      <>
+        <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+            <Shield className="h-12 w-12 text-red-500 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-red-900 mb-2">Access Denied</h3>
+            <p className="text-red-700">
+              You don't have permission to add teachers. Only School Admin, Principal, and IT Admin can add teachers.
+            </p>
+          </div>
+        </div>
+        <RoleDebugger />
+      </>
+    );
+  }
+
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
@@ -265,6 +295,13 @@ const TeacherOnboardingPage: React.FC = () => {
         <p className="text-gray-600 text-sm sm:text-base">
           Add new teachers with documents and subject expertise
         </p>
+        <div className="mt-2 flex items-center gap-2">
+          <Shield className="h-4 w-4 text-indigo-600" />
+          <span className="text-sm text-indigo-600 font-medium">
+            Your Role: {role === 'school_admin' ? 'School Admin' : role === 'principal' ? 'Principal' : 'IT Admin'} 
+            {canApproveTeacher() ? ' (Can Create & Approve)' : ' (Can Create Only)'}
+          </span>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
@@ -286,7 +323,7 @@ const TeacherOnboardingPage: React.FC = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={(e) => handleSubmit(e, canApproveTeacher() ? "approve" : "submit")} className="space-y-6">
         {/* Personal Information */}
         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
@@ -333,6 +370,30 @@ const TeacherOnboardingPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Teacher Role *
+              </label>
+              <select
+                required
+                value={formData.role}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              >
+                <option value="subject_teacher">Subject Teacher</option>
+                <option value="class_teacher">Class Teacher</option>
+                {(isSchoolAdmin || isPrincipal) && <option value="it_admin">IT Admin</option>}
+                {(isSchoolAdmin || isPrincipal) && <option value="principal">Principal</option>}
+                {(isSchoolAdmin || isPrincipal) && <option value="school_admin">School Admin</option>}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                {formData.role === 'school_admin' && 'Full access: Can add teachers, approve classes, and approve timetables'}
+                {formData.role === 'principal' && 'Full access: Can add teachers, approve classes, and approve timetables'}
+                {formData.role === 'it_admin' && 'Can add teachers, create class assignments, and update timetables'}
+                {formData.role === 'class_teacher' && 'Can view timetables only'}
+                {formData.role === 'subject_teacher' && 'Can view timetables only'}
+              </p>
             </div>
           </div>
         </div>
@@ -493,16 +554,33 @@ const TeacherOnboardingPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Submit Button */}
-        <div className="flex justify-end">
+        {/* Submit Buttons */}
+        <div className="flex justify-end gap-3">
+          {!canApproveTeacher() && (
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e, "draft")}
+              disabled={loading}
+              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition font-medium"
+            >
+              {loading ? "Saving..." : "Save as Draft"}
+            </button>
+          )}
           <button
-            type="submit"
+            type="button"
+            onClick={(e) => handleSubmit(e, canApproveTeacher() ? "approve" : "submit")}
             disabled={loading}
             className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition font-medium"
           >
-            {loading ? "Onboarding..." : "Onboard Teacher"}
+            {loading ? "Processing..." : canApproveTeacher() ? "Create & Approve" : "Submit for Approval"}
           </button>
         </div>
+        
+        {!canApproveTeacher() && (
+          <p className="text-sm text-gray-600 text-right mt-2">
+            Note: Teacher will need Principal approval before becoming active
+          </p>
+        )}
       </form>
       </div>
     </div>
