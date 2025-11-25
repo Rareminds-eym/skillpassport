@@ -9,8 +9,7 @@ import {
   Target,
   Award,
   Clock,
-  MapPin,
-  DollarSign
+  MapPin
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 

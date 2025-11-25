@@ -7,8 +7,7 @@ import {
   ChevronDown,
   Grid3x3,
   List,
-  MapPin,
-  DollarSign
+  MapPin
 } from 'lucide-react';
 import { useOpportunities } from '../../hooks/useOpportunities';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';

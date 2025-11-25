@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSupabaseAuth } from '../../context/SupabaseAuthContext';
-import { getActiveSubscription } from '../../services/subscriptionService';
+import { getActiveSubscription } from '../../services/Subscriptions/subscriptionService';
 
 export const useSubscription = () => {
   const { user } = useSupabaseAuth();

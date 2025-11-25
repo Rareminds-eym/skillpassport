@@ -9,7 +9,6 @@ import {
   Calendar,
   Building2,
   MapPin,
-  DollarSign,
   Eye,
   Filter,
   Search,
@@ -107,7 +106,7 @@ const Applications = () => {
             company: app.opportunity?.company_name || 'N/A',
             location: app.opportunity?.location || 'N/A',
             salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
-              ? `$${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - $${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
+              ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
               : 'Not specified',
             appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
             status: app.application_status,
@@ -544,7 +543,6 @@ const Applications = () => {
                             <span>{app.location}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <DollarSign className="w-4 h-4" />
                             <span>{app.salary}</span>
                           </div>
                           <div className="flex items-center gap-1.5">

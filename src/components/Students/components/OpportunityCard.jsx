@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, DollarSign, Bookmark } from 'lucide-react';
+import { MapPin, Bookmark } from 'lucide-react';
 
 const OpportunityCard = ({ 
   opportunity, 
@@ -20,9 +20,9 @@ const OpportunityCard = ({
 
   const formatSalary = (min, max) => {
     if (!min && !max) return null;
-    if (min && max) return `$ ${min.toLocaleString()} - $ ${max.toLocaleString()}`;
-    if (min) return `$ ${min.toLocaleString()}+`;
-    return `Up to $ ${max.toLocaleString()}`;
+    if (min && max) return `₹ ${min.toLocaleString()} - ₹ ${max.toLocaleString()}`;
+    if (min) return `₹ ${min.toLocaleString()}+`;
+    return `Up to ₹ ${max.toLocaleString()}`;
   };
 
   // Generate consistent color based on company name
@@ -122,7 +122,6 @@ const OpportunityCard = ({
         {/* Salary */}
         {salary && (
           <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm text-gray-500">
-            <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>{salary}</span>
           </div>
         )}

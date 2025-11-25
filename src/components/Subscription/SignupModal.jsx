@@ -1,21 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Phone, Eye, EyeOff, AlertCircle, Info } from 'lucide-react';
+import { X, Mail, Lock, User, Phone, Eye, EyeOff, AlertCircle, Info, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { signUpWithRole } from '../../services/authService';
 import { supabase } from '../../lib/supabaseClient';
+import { getModalContent, parseStudentType } from '../../utils/getEntityContent';
+import { completeStudentRegistration, getAllColleges } from '../../services/studentService';
 
 // Cache for email checks to avoid repeated queries
 const emailCheckCache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export default function SignupModal({ isOpen, onClose, selectedPlan, studentType, onSignupSuccess, onSwitchToLogin }) {
+  // Debug: Log props when component renders (uncomment for debugging)
+  // console.log('🎯 SignupModal Props:', { isOpen, studentType, selectedPlan });
+  
+  // Get entity-specific modal content
+  const { signupTitle, description } = getModalContent(studentType || 'student');
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     phone: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    collegeId: '' // For college students
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -24,7 +33,33 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
   const [existingUserInfo, setExistingUserInfo] = useState(null);
+  const [colleges, setColleges] = useState([]);
+  const [loadingColleges, setLoadingColleges] = useState(false);
   const navigate = useNavigate();
+
+  // Load colleges if student type is college
+  useEffect(() => {
+    const loadColleges = async () => {
+      // Parse studentType to get entity (handles both "college" and "college-student")
+      const { entity } = parseStudentType(studentType);
+      
+      if (entity === 'college' && isOpen) {
+        console.log('🔍 Loading colleges for student type:', studentType, '→ entity:', entity);
+        setLoadingColleges(true);
+        const result = await getAllColleges();
+        console.log('📊 College fetch result:', result);
+        if (result.success) {
+          console.log('✅ Colleges loaded:', result.data?.length || 0, 'colleges');
+          setColleges(result.data || []);
+        } else {
+          console.error('❌ Failed to load colleges:', result.error);
+        }
+        setLoadingColleges(false);
+      }
+    };
+
+    loadColleges();
+  }, [studentType, isOpen]);
 
   // Check if email already exists in the database
   useEffect(() => {
@@ -184,8 +219,8 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
     setLoading(true);
 
     try {
-      // Call authentication service to sign up user with role
-      const result = await signUpWithRole(
+      // Step 1: Create auth user
+      const authResult = await signUpWithRole(
         formData.email,
         formData.password,
         {
@@ -196,22 +231,43 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
         }
       );
 
-      if (!result.success) {
-        setErrors({ submit: result.error || 'Registration failed. Please try again.' });
+      if (!authResult.success) {
+        setErrors({ submit: authResult.error || 'Registration failed. Please try again.' });
         setLoading(false);
         return;
       }
 
-      
+      const userId = authResult.user.id;
+
+      // Step 2: Create user and student records in database
+      const registrationResult = await completeStudentRegistration(userId, {
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        studentType: studentType, // 'school', 'college', or 'university'
+        schoolId: null, // Can be selected later or in extended form
+        collegeId: formData.collegeId || null // Selected college for college students
+      });
+
+      if (!registrationResult.success) {
+        console.error('❌ Failed to create student records:', registrationResult.error);
+        // Auth user was created but database records failed
+        // We should still proceed but log the error
+        setErrors({ 
+          submit: 'Account created but profile setup incomplete. Please contact support if you experience issues.' 
+        });
+      }
+
       // Store user data temporarily for payment flow
       const userData = {
-        id: result.user.id,
+        id: userId,
         name: formData.fullName,
         email: formData.email,
         phone: formData.phone,
         role: 'student',
         studentType: studentType,
-        isNewUser: true
+        isNewUser: true,
+        studentRecord: registrationResult.data?.student || null
       };
 
       // Store in localStorage temporarily
@@ -279,9 +335,9 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
 
               {/* Header */}
               <div className="p-6 pb-4 border-b border-gray-100">
-                <h2 className="text-2xl font-bold text-gray-900">Create Your Account</h2>
+                <h2 className="text-2xl font-bold text-gray-900">{signupTitle}</h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  Sign up to purchase the {selectedPlan?.name} plan
+                  {description}
                 </p>
                 {selectedPlan && (
                   <div className="mt-3 p-3 bg-blue-50 rounded-lg">
@@ -399,6 +455,59 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
                     </p>
                   )}
                 </div>
+
+                {/* College Selection (only for college students) */}
+                {parseStudentType(studentType).entity === 'college' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Select Your College <span className="text-gray-500 text-xs">(Optional)</span>
+                    </label>
+                    <div className="relative">
+                      <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
+                      <select
+                        name="collegeId"
+                        value={formData.collegeId}
+                        onChange={handleInputChange}
+                        disabled={loadingColleges}
+                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                          backgroundPosition: 'right 0.5rem center',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundSize: '1.5em 1.5em'
+                        }}
+                      >
+                        <option value="">Choose your college</option>
+                        {colleges.length > 0 ? (
+                          colleges.map((college) => (
+                            <option key={college.id} value={college.id}>
+                              {college.name}{college.city ? ` - ${college.city}` : ''}{college.state ? `, ${college.state}` : ''}
+                            </option>
+                          ))
+                        ) : (
+                          !loadingColleges && <option value="" disabled>No colleges available</option>
+                        )}
+                      </select>
+                    </div>
+                    {loadingColleges && (
+                      <p className="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                        Loading colleges...
+                      </p>
+                    )}
+                    {!loadingColleges && colleges.length === 0 && (
+                      <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        No colleges found. You can add this later in your profile.
+                      </p>
+                    )}
+                    {!loadingColleges && colleges.length > 0 && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        💡 Linking your college helps us personalize your experience
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Password */}
                 <div>
