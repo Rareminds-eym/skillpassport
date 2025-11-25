@@ -147,7 +147,7 @@ const Dashboard = () => {
   const pieChartSeries = skillAnalytics?.skillDistribution.map(item => item.count) || [];
 
   return (
-    <div className="space-y-8 p-4 sm:p-6 lg:p-8" data-testid="educator-dashboard">
+    <div className="h-full overflow-x-hidden space-y-8 p-4 sm:p-6 lg:p-8" data-testid="educator-dashboard">
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
@@ -189,7 +189,7 @@ const Dashboard = () => {
       {/* Featured Modules Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Mentor Notes Module */}
-        <div 
+        <div
           onClick={() => navigate('/educator/mentornotes')}
           className="group bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300"
         >
@@ -214,7 +214,7 @@ const Dashboard = () => {
         </div>
 
         {/* Verification Module */}
-        <div 
+        <div
           onClick={() => navigate('/educator/activities')}
           className="group bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-6 text-white cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300"
         >
@@ -239,7 +239,7 @@ const Dashboard = () => {
         </div>
 
         {/* Analytics Module */}
-        <div 
+        <div
           onClick={() => navigate('/educator/analytics')}
           className="group bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-6 text-white cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300"
         >
@@ -306,17 +306,32 @@ const Dashboard = () => {
       </div>
 
       {/* Announcements Panel */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Announcements</h2>
-        <div className="flex gap-3 mb-4">
-          <input type="text" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg" placeholder="Type announcement..." />
-          <button className="px-4 py-2 bg-emerald-600 text-white rounded-lg">Send</button>
+
+        {/* Input Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+          <input
+            type="text"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg w-full text-sm"
+            placeholder="Type announcement..."
+          />
+          <button className="px-4 py-2 bg-emerald-600 text-white rounded-lg w-full sm:w-auto text-sm">
+            Send
+          </button>
         </div>
+
+        {/* Announcements List */}
         <ul className="space-y-2">
-          <li className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">Submit project by Friday</li>
-          <li className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">School event on Monday</li>
+          <li className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">
+            Submit project by Friday
+          </li>
+          <li className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">
+            School event on Monday
+          </li>
         </ul>
       </div>
+
 
       {/* Quick Actions */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -375,8 +390,8 @@ const Dashboard = () => {
       </div>
 
       {/* Recent Activities Feed */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Recent Activity Submissions</h2>
           <button
             onClick={() => navigate('/educator/activities')}
@@ -386,6 +401,7 @@ const Dashboard = () => {
             View All
           </button>
         </div>
+
         <div className="divide-y divide-gray-200">
           {loading ? (
             <div className="p-6 text-center text-gray-500">Loading activities...</div>
@@ -397,30 +413,48 @@ const Dashboard = () => {
             recentActivities.map((activity) => (
               <div
                 key={activity.id}
-                className="p-6 hover:bg-gray-50 cursor-pointer transition-colors"
+                className="p-4 sm:p-6 hover:bg-gray-50 cursor-pointer transition-colors"
                 onClick={() => navigate(`/educator/activities/${activity.id}`)}
                 data-testid="activity-item"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-base font-medium text-gray-900">{activity.title}</h3>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(activity.status)}`}>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
+
+                  {/* Left Info Block */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <h3 className="text-base font-medium text-gray-900 truncate max-w-[200px] sm:max-w-none">
+                        {activity.title}
+                      </h3>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(
+                          activity.status
+                        )}`}
+                      >
                         {activity.status}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 mb-2">{activity.studentName} • {activity.category}</p>
-                    <p className="text-sm text-gray-500 line-clamp-2">{activity.description}</p>
+
+                    <p className="text-sm text-gray-600">
+                      {activity.studentName} • {activity.category}
+                    </p>
+
+                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                      {activity.description}
+                    </p>
                   </div>
-                  <span className="text-sm text-gray-500 whitespace-nowrap ml-4">
+
+                  {/* Right Date */}
+                  <span className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">
                     {formatDate(activity.submittedDate)}
                   </span>
+
                 </div>
               </div>
             ))
           )}
         </div>
       </div>
+
     </div>
   );
 };

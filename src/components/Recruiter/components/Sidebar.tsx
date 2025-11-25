@@ -12,12 +12,15 @@ import {
   CogIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  EnvelopeIcon
+  EnvelopeIcon,
+  SparklesIcon,
+  RocketLaunchIcon
 } from '@heroicons/react/24/outline';
 
 const navigationItems = [
   { name: 'Overview', path: '/recruitment/overview', icon: HomeIcon },
-  { name: 'Talent Pool', path: '/recruitment/talent-pool', icon: UsersIcon },
+  // { name: 'Talent Scout', path: '/recruitment/talent-scout', icon: SparklesIcon },
+  // { name: 'Talent Pool', path: '/recruitment/talent-pool', icon: UsersIcon },
   {
     name: 'Requisition',
     path: '/recruitment/requisition',
@@ -28,9 +31,11 @@ const navigationItems = [
     ]
   },
   { name: 'Pipelines', path: '/recruitment/pipelines', icon: RectangleStackIcon },
+  { name: 'Project Hiring', path: '/recruitment/projects', icon: RocketLaunchIcon },
   { name: 'Shortlists', path: '/recruitment/shortlists', icon: BookmarkIcon },
   { name: 'Interviews', path: '/recruitment/interviews', icon: CalendarDaysIcon },
   { name: 'Offers & Decisions', path: '/recruitment/offers-decisions', icon: DocumentTextIcon },
+  {name: 'Verified Work', path: '/recruitment/verified-work', icon: UsersIcon},
   { name: 'Messages', path: '/recruitment/messages', icon: EnvelopeIcon },
   { name: 'Analytics', path: '/recruitment/analytics', icon: ChartBarIcon },
   { name: 'Settings', path: '/recruitment/settings', icon: CogIcon }

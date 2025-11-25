@@ -134,10 +134,14 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
     // Get unique student IDs
     const studentIds = [...new Set(pipelineCandidates.map(pc => pc.student_id))];
 
-    // Fetch student data separately
+    // Fetch student data with relational tables
     const { data: students, error: studentsError } = await supabase
       .from('students')
-      .select('user_id, id, name, email, contact_number, department, university, cgpa, employability_score, verified, profile')
+      .select(`
+        user_id, id, name, email, contact_number, 
+        college_school_name, university, branch_field, course_name, district_name,
+        skills!skills_student_id_fkey(id, name, enabled, approval_status)
+      `)
       .in('user_id', studentIds);
 
     if (studentsError) {
@@ -153,7 +157,22 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
     // Create a map of students by user_id for quick lookup
     const studentsMap = new Map();
     students?.forEach(student => {
-      studentsMap.set(student.user_id, student);
+      // Filter skills to only enabled ones (include all approval statuses)
+      const enabledSkills = Array.isArray(student.skills) 
+        ? student.skills
+            .filter((s: any) => s.enabled)
+            .map((s: any) => s.name)
+        : [];
+      
+      studentsMap.set(student.user_id, {
+        ...student,
+        // Map actual DB columns to UI-friendly names
+        dept: student.branch_field || student.course_name,
+        college: student.college_school_name || student.university,
+        location: student.district_name,
+        ai_score_overall: 0, // AI score not stored in students table directly
+        skills: enabledSkills
+      });
     });
 
     // Combine pipeline candidates with student data
@@ -162,43 +181,7 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
       students: studentsMap.get(candidate.student_id) || null
     }));
 
-
-    // Transform data to include profile fields at student level
-    const transformedData = data?.map((candidate, index) => {
-      console.log({
-        id: candidate.id,
-        student_id: candidate.student_id,
-        candidate_name: candidate.candidate_name,
-        has_students: !!candidate.students,
-        has_profile: !!(candidate.students?.profile)
-      });
-
-      if (candidate.students && candidate.students.profile) {
-        const profile = candidate.students.profile;
-        console.log({
-          dept: profile.dept,
-          college: profile.college,
-          skills_count: profile.skills?.length || 0,
-          ai_score: profile.ai_score_overall
-        });
-
-        return {
-          ...candidate,
-          students: {
-            ...candidate.students,
-            dept: profile.dept || profile.department || candidate.students.department,
-            college: profile.college || profile.university || candidate.students.university,
-            location: profile.location || profile.city || '',
-            skills: profile.skills || [],
-            ai_score_overall: profile.ai_score_overall || candidate.students.employability_score || 0
-          }
-        };
-      }
-      
-      return candidate;
-    });
-
-    return { data: transformedData, error: null };
+    return { data, error: null };
   } catch (error) {
     console.error('[Pipeline Service] Error fetching pipeline candidates by stage:', error);
     return { data: null, error };
@@ -322,10 +305,14 @@ export const getPipelineCandidatesWithFilters = async (
     // Get unique student IDs
     const studentIds = [...new Set(pipelineCandidates.map((pc: any) => pc.student_id))];
 
-    // Fetch student data separately
+    // Fetch student data with relational tables
     const { data: students, error: studentsError } = await supabase
       .from('students')
-      .select('user_id, id, name, email, contact_number, department, university, cgpa, employability_score, verified, profile')
+      .select(`
+        user_id, id, name, email, contact_number, 
+        college_school_name, university, branch_field, course_name, district_name,
+        skills!skills_student_id_fkey(id, name, enabled, approval_status)
+      `)
       .in('user_id', studentIds);
 
     if (studentsError) {
@@ -336,27 +323,27 @@ export const getPipelineCandidatesWithFilters = async (
     // Create a map of students by user_id for quick lookup
     const studentsMap = new Map();
     students?.forEach(student => {
-      studentsMap.set(student.user_id, student);
+      // Filter skills to only enabled ones (include all approval statuses)
+      const enabledSkills = Array.isArray(student.skills) 
+        ? student.skills
+            .filter((s: any) => s.enabled)
+            .map((s: any) => s.name)
+        : [];
+      
+      studentsMap.set(student.user_id, {
+        ...student,
+        // Map actual DB columns to UI-friendly names
+        dept: student.branch_field || student.course_name,
+        college: student.college_school_name || student.university,
+        location: student.district_name,
+        ai_score_overall: 0, // AI score not stored in students table directly
+        skills: enabledSkills
+      });
     });
 
-    // Combine pipeline candidates with student data and transform
+    // Combine pipeline candidates with student data
     let filteredData = pipelineCandidates.map((candidate: any) => {
       const student = studentsMap.get(candidate.student_id);
-      
-      if (student && student.profile) {
-        const profile = student.profile;
-        return {
-          ...candidate,
-          students: {
-            ...student,
-            dept: profile.dept || profile.department || student.department,
-            college: profile.college || profile.university || student.university,
-            location: profile.location || profile.city || '',
-            skills: profile.skills || [],
-            ai_score_overall: profile.ai_score_overall || student.employability_score || 0
-          }
-        };
-      }
       
       return {
         ...candidate,
@@ -487,20 +474,20 @@ export const addCandidateToPipeline = async (pipelineData: {
   next_action_notes?: string;
 }) => {
   try {
-    // Fetch student's AI score and employability data
+    // Fetch student's AI score and employability data from relational tables
     let aiScore = null;
     let employabilityScore = null;
     
     try {
       const { data: studentData, error: studentError } = await supabase
         .from('students')
-        .select('profile')
-        .eq('id', pipelineData.student_id)
+        .select('ai_score_overall, employability_score')
+        .eq('user_id', pipelineData.student_id)
         .single();
       
       if (!studentError && studentData) {
-        aiScore = studentData.profile?.ai_score_overall || null;
-        employabilityScore = studentData.profile?.employability_score || null;
+        aiScore = studentData.ai_score_overall || null;
+        employabilityScore = studentData.employability_score || null;
       }
     } catch (e) {
     }

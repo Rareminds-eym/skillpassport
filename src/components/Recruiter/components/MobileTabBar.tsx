@@ -1,16 +1,18 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   HomeIcon,
   UsersIcon,
   RectangleStackIcon,
   CalendarDaysIcon,
-  EllipsisHorizontalIcon
+  EllipsisHorizontalIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 
 const mobileNavItems = [
   { name: 'Overview', key: 'overview', icon: HomeIcon },
+  { name: 'AI', key: 'ai_copilot', icon: SparklesIcon },
   { name: 'Pool', key: 'talent_pool', icon: UsersIcon },
-  { name: 'Pipelines', key: 'pipelines', icon: RectangleStackIcon },
   { name: 'Interviews', key: 'interviews', icon: CalendarDaysIcon },
   { name: 'More', key: 'more', icon: EllipsisHorizontalIcon },
 ];
@@ -20,6 +22,22 @@ function classNames(...classes) {
 }
 
 const MobileTabBar = ({ activeTab, setActiveTab, onMoreMenuToggle }) => {
+  const navigate = useNavigate();
+  
+  const handleNavigation = (key) => {
+    const routes = {
+      'overview': '/recruitment/overview',
+      'ai_copilot': '/recruitment/talent-scout',
+      'talent_pool': '/recruitment/talent-pool',
+      'interviews': '/recruitment/interviews'
+    };
+    
+    if (routes[key]) {
+      navigate(routes[key]);
+      setActiveTab(key);
+    }
+  };
+  
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
       <nav className="flex">
@@ -33,7 +51,7 @@ const MobileTabBar = ({ activeTab, setActiveTab, onMoreMenuToggle }) => {
                 if (item.key === 'more') {
                   onMoreMenuToggle();
                 } else {
-                  setActiveTab(item.key);
+                  handleNavigation(item.key);
                 }
               }}
               className={classNames(

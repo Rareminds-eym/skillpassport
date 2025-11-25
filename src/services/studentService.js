@@ -544,6 +544,110 @@ export const getSuggestions = async (studentId) => {
   }
 };
 
+// ==================== EDUCATOR STUDENT MANAGEMENT ====================
+
+/**
+ * Update student information (for educators)
+ */
+export const updateStudent = async (studentId, updates) => {
+  try {
+    const { error } = await supabase
+      .from('students')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', studentId);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating student:', error);
+    return {
+      success: false,
+      error: error?.message || 'Failed to update student'
+    };
+  }
+};
+
+/**
+ * Soft delete a student (marks as deleted without removing from database)
+ */
+export const softDeleteStudent = async (studentId, deletedBy) => {
+  try {
+    const { error } = await supabase
+      .from('students')
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+        deleted_by: deletedBy || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', studentId);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting student:', error);
+    return {
+      success: false,
+      error: error?.message || 'Failed to delete student'
+    };
+  }
+};
+
+/**
+ * Restore a soft-deleted student
+ */
+export const restoreStudent = async (studentId) => {
+  try {
+    const { error } = await supabase
+      .from('students')
+      .update({
+        is_deleted: false,
+        deleted_at: null,
+        deleted_by: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', studentId);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error restoring student:', error);
+    return {
+      success: false,
+      error: error?.message || 'Failed to restore student'
+    };
+  }
+};
+
+/**
+ * Get a single student by ID
+ */
+export const getStudentById = async (studentId) => {
+  try {
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .eq('id', studentId)
+      .single();
+
+    if (error) throw error;
+
+    return { data };
+  } catch (error) {
+    console.error('Error fetching student:', error);
+    return {
+      data: null,
+      error: error?.message || 'Failed to fetch student'
+    };
+  }
+};
+
 // ==================== COMPLETE STUDENT DATA ====================
 
 /**

@@ -86,9 +86,12 @@ const Interviews = lazy(() => import("../pages/recruiter/Interviews"));
 const OffersDecisions = lazy(() =>
   import("../pages/recruiter/OffersDecisions")
 );
+const VerifiedWork = lazy(() => import("../pages/recruiter/VerifiedStudentWork"));
 const Analytics = lazy(() => import("../pages/recruiter/Analytics"));
 const Activities = lazy(() => import("../pages/recruiter/Activities"));
 const RecruiterMessages = lazy(() => import("../pages/recruiter/Messages"));
+const RecruiterAI = lazy(() => import("../pages/recruiter/RecruiterAI"));
+const ProjectHiringWithNav = lazy(() => import("../pages/recruiter/ProjectHiringWithNav"));
 
 const StudentDashboard = lazy(() => import("../pages/student/Dashboard"));
 const Profile = lazy(() => import("../pages/student/Profile"));
@@ -136,6 +139,7 @@ const EducatorMediaManager = lazy(() =>
 const EducatorDigitalPortfolio = lazy(() =>
   import("../pages/educator/DigitalPortfolioPage")
 );
+const EducatorAI = lazy(() => import("../pages/educator/EducatorAI"));
 
 // ===== Admins (Role-Based) =====
 const CollegeDashboard = lazy(() =>
@@ -158,8 +162,33 @@ const AdminEducatorManagement = lazy(() =>
 const SchoolAdminDashboard = lazy(() =>
   import("../pages/admin/schoolAdmin/Dashboard")
 );
+const StudentAdmissions = lazy(() =>
+  import("../pages/admin/schoolAdmin/StudentAdmissions")
+);
 const UniversityAdminDashboard = lazy(() =>
   import("../pages/admin/universityAdmin/Dashboard")
+);
+const CollegeRegistration = lazy(() =>
+  import("../pages/admin/universityAdmin/CollegeRegistration")
+);
+const StudentEnrollments = lazy(() =>
+  import("../pages/admin/universityAdmin/StudentEnrollments")
+);
+const ContinuousAssessment = lazy(() =>
+  import("../pages/admin/universityAdmin/ContinuousAssessment")
+);
+const PlacementReadiness = lazy(() =>
+  import("../pages/admin/universityAdmin/PlacementReadiness")
+);
+const OutcomeBasedEducation = lazy(() =>
+  import("../pages/admin/universityAdmin/OutcomeBasedEducation")
+);
+const AICounselling = lazy(() =>
+  import("../pages/admin/universityAdmin/AICounselling")
+);
+
+const AttendanceTracking = lazy(() =>
+  import("../pages/admin/collegeAdmin/Attendancetracking")
 );
 
 const AppRoutes = () => {
@@ -247,6 +276,8 @@ const AppRoutes = () => {
             path=""
             element={<Navigate to="/college-admin/dashboard" replace />}
           />
+            <Route path="students/attendance" element={<AttendanceTracking />} />
+
         </Route>
 
         <Route
@@ -258,6 +289,7 @@ const AppRoutes = () => {
           }
         >
           <Route path="dashboard" element={<SchoolAdminDashboard />} />
+          <Route path="students/admissions" element={<StudentAdmissions />} />
           <Route
             path=""
             element={<Navigate to="/school-admin/dashboard" replace />}
@@ -273,6 +305,12 @@ const AppRoutes = () => {
           }
         >
           <Route path="dashboard" element={<UniversityAdminDashboard />} />
+          <Route path="colleges/registration" element={<CollegeRegistration />} />
+          <Route path="students/enrollments" element={<StudentEnrollments />} />
+          <Route path="students/continuous-assessment" element={<ContinuousAssessment />} />
+          <Route path="placements/readiness" element={<PlacementReadiness />} />
+          <Route path="analytics/obe-tracking" element={<OutcomeBasedEducation />} />
+          <Route path="ai-counselling" element={<AICounselling />} />
           <Route
             path=""
             element={<Navigate to="/university-admin/dashboard" replace />}
@@ -288,13 +326,16 @@ const AppRoutes = () => {
           }
         >
           <Route path="overview" element={<Overview />} />
-          <Route path="talent-pool" element={<TalentPool />} />
+          <Route path="projects" element={<ProjectHiringWithNav />} />
+          {/* <Route path="talent-scout" element={<RecruiterAI />} /> */}
+          {/* <Route path="talent-pool" element={<TalentPool />} /> */}
           <Route path="requisition" element={<Requisitions />} />
           <Route path="requisition/applicants" element={<ApplicantsList />} />
           <Route path="pipelines" element={<Pipelines />} />
           <Route path="shortlists" element={<Shortlists />} />
           <Route path="interviews" element={<Interviews />} />
           <Route path="offers-decisions" element={<OffersDecisions />} />
+          <Route path="verified-work" element={<VerifiedWork />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="activities" element={<Activities />} />
           <Route path="messages" element={<RecruiterMessages />} />
@@ -473,6 +514,7 @@ const AppRoutes = () => {
 
         <Route path="/educator/*" element={<EducatorLayout />}>
           <Route path="dashboard" element={<EducatorDashboard />} />
+          <Route path="ai-copilot" element={<EducatorAI />} />
           <Route path="students" element={<EducatorStudents />} />
           <Route path="classes" element={<EducatorClasses />} />
           <Route path="courses" element={<EducatorCourses />} />

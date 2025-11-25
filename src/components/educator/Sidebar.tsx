@@ -89,6 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // single items before & after dropdowns
   const topItem = { name: "Dashboard", path: "/educator/dashboard", icon: HomeIcon };
+  const aiCopilotItem = { name: "Teaching Intelligence", path: "/educator/ai-copilot", icon: SparklesIcon };
   const bottomItems = [
     { name: "Digital Portfolio", path: "/educator/digital-portfolio", icon: FolderIcon },
     { name: "Analytics", path: "/educator/analytics", icon: ChartBarIcon },
@@ -125,6 +126,28 @@ const Sidebar: React.FC<SidebarProps> = ({
             )}
           />
           <span>{topItem.name}</span>
+        </button>
+
+        {/* 🌟 Teaching Intelligence - Featured */}
+        <button
+          onClick={() => handleNavigation(aiCopilotItem.name, aiCopilotItem.path)}
+          className={classNames(
+            location.pathname.startsWith(aiCopilotItem.path)
+              ? "bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-600 border-l-2 border-purple-500"
+              : "text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 hover:text-purple-600",
+            "group w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 relative overflow-hidden"
+          )}
+        >
+          <aiCopilotItem.icon
+            className={classNames(
+              location.pathname.startsWith(aiCopilotItem.path)
+                ? "text-purple-600"
+                : "text-gray-400 group-hover:text-purple-500",
+              "h-5 w-5 flex-shrink-0"
+            )}
+          />
+          <span className="whitespace-nowrap flex-1 truncate">{aiCopilotItem.name}</span>
+          <span className="ml-auto text-xs font-semibold px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full flex-shrink-0">NEW</span>
         </button>
 
         {/* 2️⃣ Dropdowns */}

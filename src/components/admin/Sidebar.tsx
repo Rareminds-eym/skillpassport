@@ -21,6 +21,7 @@ import {
   BuildingLibraryIcon,
   ClipboardIcon,
   FolderOpenIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../../context/AuthContext";
 import { TrophyIcon } from "lucide-react";
@@ -70,7 +71,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           items: [
             {
               name: "Admissions",
-              path: "/school-admin/students/admission",
+              path: "/school-admin/students/admissions",
               icon: UserGroupIcon,
             },
             {
@@ -248,6 +249,16 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           key: "students",
           items: [
             {
+              name: "Enrollment & Profiles",
+              path: "/university-admin/students/enrollments",
+              icon: UserGroupIcon,
+            },
+            {
+              name: "Continuous Assessment",
+              path: "/university-admin/students/continuous-assessment",
+              icon: ClipboardDocumentListIcon,
+            },
+            {
               name: "Centralized Results",
               path: "/university-admin/students/results",
               icon: AcademicCapIcon,
@@ -263,6 +274,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           title: "Placement & Industry Linkages",
           key: "placements",
           items: [
+            {
+              name: "Placement Readiness",
+              path: "/university-admin/placements/readiness",
+              icon: ChartBarIcon,
+            },
             {
               name: "Company Database",
               path: "/university-admin/placements/companies",
@@ -293,6 +309,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               name: "Scheme Compliance (TNSDC)",
               path: "/university-admin/analytics/compliance",
               icon: ChartBarIcon,
+            },
+            {
+              name: "OBE Tracking",
+              path: "/university-admin/analytics/obe-tracking",
+              icon: DocumentChartBarIcon,
             },
           ],
         },
@@ -544,6 +565,29 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           />
           <span>Dashboard</span>
         </button>
+
+        {/* AI Counselling - university_admin only */}
+        {role === "university_admin" && (
+          <button
+            onClick={() => handleNavigation("AI Counselling", "/university-admin/ai-counselling")}
+            className={classNames(
+              location.pathname === "/university-admin/ai-counselling"
+                ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
+                : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
+              "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
+            )}
+          >
+            <SparklesIcon
+              className={classNames(
+                location.pathname === "/university-admin/ai-counselling"
+                  ? "text-indigo-600"
+                  : "text-gray-400 group-hover:text-indigo-500",
+                "h-5 w-5 flex-shrink-0"
+              )}
+            />
+            <span>AI Counselling</span>
+          </button>
+        )}
 
         {/* Collapsible Groups */}
         {navGroups.map((group) => (

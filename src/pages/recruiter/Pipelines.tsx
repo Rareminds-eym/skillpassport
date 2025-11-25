@@ -872,7 +872,12 @@ const Pipelines = ({ onViewProfile }) => {
               skills: Array.isArray(pc.students?.skills) ? pc.students.skills : [],
               ai_score_overall: pc.students?.ai_score_overall || 0,
               last_updated: pc.updated_at || pc.created_at,
-              student_id: pc.student_id
+              student_id: pc.student_id,
+              stage: pc.stage,
+              source: pc.source,
+              next_action: pc.next_action,
+              next_action_date: pc.next_action_date,
+              added_at: pc.added_at || pc.created_at
             }));
         });
         
@@ -916,7 +921,12 @@ const Pipelines = ({ onViewProfile }) => {
                 skills: Array.isArray(pc.students?.skills) ? pc.students.skills : [],
                 ai_score_overall: pc.students?.ai_score_overall || 0,
                 last_updated: pc.updated_at || pc.created_at,
-                student_id: pc.student_id
+                student_id: pc.student_id,
+                stage: pc.stage,
+                source: pc.source,
+                next_action: pc.next_action,
+                next_action_date: pc.next_action_date,
+                added_at: pc.added_at || pc.created_at
               }));
           });
         }
@@ -943,7 +953,12 @@ const Pipelines = ({ onViewProfile }) => {
               skills: Array.isArray(pc.students?.skills) ? pc.students.skills : [],
               ai_score_overall: pc.students?.ai_score_overall || 0,
               last_updated: pc.updated_at || pc.created_at,
-              student_id: pc.student_id
+              student_id: pc.student_id,
+              stage: pc.stage,
+              source: pc.source,
+              next_action: pc.next_action,
+              next_action_date: pc.next_action_date,
+              added_at: pc.added_at || pc.created_at
             };
             return mappedCandidate;
           });

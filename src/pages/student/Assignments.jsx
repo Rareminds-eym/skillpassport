@@ -102,6 +102,13 @@ const Assignments = () => {
   const [showStatusToast, setShowStatusToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showQuickTip, setShowQuickTip] = useState(true);
+  // Add state for submission modal
+const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+const [submissionData, setSubmissionData] = useState({
+  submission_type: 'text',
+  submission_content: '',
+  submission_url: ''
+});
 
   // Fetch assignments from database
   useEffect(() => {
@@ -363,7 +370,7 @@ const Assignments = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                 <ClipboardList className="w-8 h-8 text-blue-600" />
-                My Assignments
+                Assignments
               </h1>
               <p className="text-sm text-gray-600 mt-2">Track and manage your course assignments</p>
             </div>

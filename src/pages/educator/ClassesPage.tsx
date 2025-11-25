@@ -876,7 +876,7 @@ const ClassesPage = () => {
   const isEmpty = !loading && paginatedClasses.length === 0 && !error && !searchQuery && totalFilters === 0
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex  overflow-y-auto mb-4 flex-col h-screen">
       <div className='p-4 sm:p-6 lg:p-8 mb-2'>
         <h1 className="text-xl md:text-3xl font-bold text-gray-900">Classes Management</h1>
         <p className="text-base md:text-lg mt-2 text-gray-600">Manage your classes and manage student progress here.</p>
@@ -989,7 +989,7 @@ const ClassesPage = () => {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 relative">
         {showFilters && (
           <>
             <div className="fixed inset-0 z-40 bg-gray-900/40 lg:hidden" onClick={() => setShowFilters(false)} />

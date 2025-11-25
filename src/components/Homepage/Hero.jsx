@@ -42,11 +42,11 @@ const Hero = () => {
   const openCalendly = () => {
     if (window.Calendly) {
       window.Calendly.initPopupWidget({
-        url: 'https://calendly.com/rareminds/institute-_marketing-clone'
+        url: 'https://calendly.com/d/cxdd-5y9-vr5'
       });
     } else {
       // If script not loaded yet, open in new tab as fallback
-      window.open('https://calendly.com/rareminds/institute-_marketing-clone', '_blank');
+      window.open('https://calendly.com/d/cxdd-5y9-vr5', '_blank');
     }
   };
 

@@ -1,143 +1,141 @@
-import { useState, useEffect } from 'react';
-import {
-  getCertificatesByStudentId,
-  createCertificate,
-  updateCertificate,
-  deleteCertificate,
-  uploadCertificateFile
-} from '../services/certificateService';
+// import { useState, useEffect } from 'react';
+// import { supabase } from '../lib/supabaseClient';
 
-/**
- * Custom hook for managing student certificates
- * @param {string} studentId - Student's user ID (UUID)
- * @returns {Object} Certificates data and CRUD functions
- */
-export const useStudentCertificates = (studentId) => {
+// export const useStudentCertificates = (studentId, enabled = true) => {
+//   const [certificates, setCertificates] = useState([]);
+//   const [loading, setLoading] = useState(false);
+//   const [error, setError] = useState(null);
+
+//   const fetchCertificates = async () => {
+//     if (!studentId || !enabled) return;
+
+//     try {
+//       setLoading(true);
+//       setError(null);
+
+//       const { data, error: fetchError } = await supabase
+//         .from('certificates')
+//         .select('*')
+//         .eq('student_id', studentId)
+//         .is('training_id', null) 
+//         .order('issued_on', { ascending: false });
+
+//       if (fetchError) {
+//         throw fetchError;
+//       }
+
+//       // Transform data to match UI expectations
+//       const transformedData = data.map(item => ({
+//         id: item.id,
+//         title: item.title || item.name,
+//         issuer: item.issuer || item.organization,
+//         issuedOn: item.issued_on,
+//         level: item.level,
+//         description: item.description,
+//         credentialId: item.credential_id,
+//         link: item.link || item.certificate_url,
+//         documentUrl: item.document_url,
+//         status: item.status || 'active',
+//         approval_status: item.approval_status || 'pending',
+//         verified: item.approval_status === 'approved',
+//         processing: item.approval_status === 'pending',
+//         enabled: item.enabled !== false,
+//         createdAt: item.created_at,
+//         updatedAt: item.updated_at
+//       }));
+
+//       setCertificates(transformedData);
+//     } catch (err) {
+//       console.error('Error fetching certificates:', err);
+//       setError(err.message);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   useEffect(() => {
+//     fetchCertificates();
+//   }, [studentId, enabled]);
+
+//   const refresh = () => {
+//     fetchCertificates();
+//   };
+
+//   return {
+//     certificates,
+//     loading,
+//     error,
+//     refresh
+//   };
+// };
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
+
+export const useStudentCertificates = (studentId, enabled = true) => {
   const [certificates, setCertificates] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch certificates
   const fetchCertificates = async () => {
-    // Don't fetch if no studentId yet
-    if (!studentId) {
-      setLoading(false);
-      setCertificates([]);
-      return;
-    }
+    if (!studentId || !enabled) return;
 
-    setLoading(true);
-    setError(null);
-    
-    const result = await getCertificatesByStudentId(studentId);
-    
-    if (result.success) {
-      setCertificates(result.data || []);
+    try {
+      setLoading(true);
       setError(null);
-    } else {
-      setError(result.error);
-      setCertificates([]);
+
+      const { data, error: fetchError } = await supabase
+        .from('certificates')
+        .select('*')
+        .eq('student_id', studentId)
+        .is('training_id', null)
+        .in('approval_status', ['approved', 'verified']) // Only approved or verified
+        .order('issued_on', { ascending: false });
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      // Transform data to match UI expectations
+      const transformedData = data.map(item => ({
+        id: item.id,
+        title: item.title || item.name,
+        issuer: item.issuer || item.organization,
+        issuedOn: item.issued_on,
+        level: item.level,
+        description: item.description,
+        credentialId: item.credential_id,
+        link: item.link || item.certificate_url,
+        documentUrl: item.document_url,
+        status: item.status || 'active',
+        approval_status: item.approval_status,
+        verified: true, // Already filtered, so all are verified
+        processing: false, // Already filtered, so won't be pending
+        enabled: item.enabled !== false,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at
+      }));
+
+      setCertificates(transformedData);
+    } catch (err) {
+      console.error('Error fetching certificates:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
-  // Load certificates when studentId becomes available
   useEffect(() => {
     fetchCertificates();
-  }, [studentId]);
+  }, [studentId, enabled]);
 
-  // Add new certificate
-  const addCertificate = async (certificateData, file = null) => {
-    if (!studentId) {
-      return { success: false, error: 'Student ID is required' };
-    }
-
-    try {
-      let uploadUrl = null;
-
-      // Upload file if provided
-      if (file) {
-        const uploadResult = await uploadCertificateFile(file, studentId);
-        if (uploadResult.success) {
-          uploadUrl = uploadResult.url;
-        } else {
-          return { success: false, error: uploadResult.error };
-        }
-      }
-
-      // Create certificate record
-      const result = await createCertificate({
-        ...certificateData,
-        student_id: studentId,
-        upload: uploadUrl,
-      });
-
-      if (result.success) {
-        await fetchCertificates(); // Refresh list
-      }
-
-      return result;
-    } catch (err) {
-      console.error('Error in addCertificate:', err);
-      return { success: false, error: err.message || 'Failed to add certificate' };
-    }
-  };
-
-  // Update existing certificate
-  const updateExistingCertificate = async (certificateId, updates, file = null) => {
-    if (!studentId) {
-      return { success: false, error: 'Student ID is required' };
-    }
-
-    try {
-      let uploadUrl = updates.upload;
-
-      // Upload new file if provided
-      if (file) {
-        const uploadResult = await uploadCertificateFile(file, studentId);
-        if (uploadResult.success) {
-          uploadUrl = uploadResult.url;
-        } else {
-          return { success: false, error: uploadResult.error };
-        }
-      }
-
-      // Update certificate record
-      const result = await updateCertificate(certificateId, {
-        ...updates,
-        upload: uploadUrl,
-      });
-
-      if (result.success) {
-        await fetchCertificates(); // Refresh list
-      }
-
-      return result;
-    } catch (err) {
-      console.error('Error in updateExistingCertificate:', err);
-      return { success: false, error: err.message || 'Failed to update certificate' };
-    }
-  };
-
-  // Delete certificate
-  const removeCertificate = async (certificateId) => {
-    const result = await deleteCertificate(certificateId);
-    
-    if (result.success) {
-      await fetchCertificates(); // Refresh list
-    }
-
-    return result;
+  const refresh = () => {
+    fetchCertificates();
   };
 
   return {
     certificates,
     loading,
     error,
-    refresh: fetchCertificates,
-    addCertificate,
-    updateCertificate: updateExistingCertificate,
-    removeCertificate,
+    refresh
   };
 };

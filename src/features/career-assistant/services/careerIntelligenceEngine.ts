@@ -45,6 +45,85 @@ export interface IntelligenceContext {
 
 class CareerIntelligenceEngine {
   /**
+   * Main entry point with STREAMING - Process query with real-time LLM response
+   */
+  async processQueryStream(
+    message: string,
+    studentId: string,
+    onChunk: (chunk: string) => void
+  ): Promise<EnhancedAIResponse> {
+    const startTime = Date.now();
+
+    try {
+      console.log('🧠 Intelligence Engine (STREAMING) - Processing query:', message);
+      
+      // Fast-path for simple general queries - use streaming
+      if (this.isSimpleGeneralQuery(message)) {
+        console.log('⚡ Fast-path: Streaming simple general query');
+        return await this.handleSimpleGeneralQueryStream(message, studentId, onChunk, startTime);
+      }
+
+      // Load student profile
+      const studentProfile = await fetchStudentProfile(studentId);
+      if (!studentProfile) {
+        return {
+          success: false,
+          error: 'Unable to load your profile. Please try again.'
+        };
+      }
+
+      // Smart Query Analyzer
+      const smartAnalysis = await smartQueryAnalyzer.analyzeQuery(
+        message,
+        {
+          skills: studentProfile.profile?.technicalSkills?.map((s: any) => s.name) || [],
+          recentActivity: 'Active'
+        }
+      );
+      
+      console.log('🎯 Smart Analysis:', smartAnalysis.queryType);
+      
+      conversationMemoryService.addUserMessage(
+        studentId,
+        message,
+        smartAnalysis.queryType,
+        smartAnalysis.topic.domain,
+        { smartAnalysis }
+      );
+      
+      // For text-heavy responses, stream them
+      const streamableTypes = ['technical-explanation', 'general-knowledge', 'how-to-guide', 'learning-guidance', 'career-advice', 'general-chat'];
+      
+      if (streamableTypes.includes(smartAnalysis.queryType)) {
+        const response = await this.routeBasedOnSmartAnalysisStream(message, smartAnalysis, studentProfile, onChunk);
+        
+        if (response.success && response.message) {
+          conversationMemoryService.addAssistantMessage(studentId, response.message);
+        }
+        
+        await this.logServiceUsage(studentId, smartAnalysis.queryType, message, response, Date.now() - startTime);
+        return response;
+      }
+      
+      // For structured data responses (jobs, projects), use regular non-streaming
+      const response = await this.routeBasedOnSmartAnalysis(message, smartAnalysis, studentProfile);
+      
+      if (response.success && response.message) {
+        conversationMemoryService.addAssistantMessage(studentId, response.message);
+      }
+      
+      await this.logServiceUsage(studentId, smartAnalysis.queryType, message, response, Date.now() - startTime);
+      return response;
+    } catch (error: any) {
+      console.error('❌ Intelligence Engine Error:', error);
+      return {
+        success: false,
+        error: 'I encountered an issue processing your request. Please try again.'
+      };
+    }
+  }
+
+  /**
    * Main entry point - Process any career query with full intelligence
    */
   async processQuery(
@@ -1750,6 +1829,132 @@ Provide 3-5 practical project ideas that:
       return {
         success: false,
         error: 'I encountered an issue answering your question. Please try again.'
+      };
+    }
+  }
+
+  /**
+   * Handle simple general knowledge queries WITH STREAMING
+   */
+  private async handleSimpleGeneralQueryStream(
+    message: string,
+    studentId: string,
+    onChunk: (chunk: string) => void,
+    startTime: number
+  ): Promise<AIResponse> {
+    try {
+      const client = getOpenAIClient();
+      const stream = await client.chat.completions.create({
+        model: DEFAULT_MODEL,
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are a helpful assistant. Provide clear, concise, and accurate answers to general knowledge questions. Keep responses brief (2-4 sentences) unless more detail is specifically needed.'
+          },
+          { role: 'user', content: message }
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+        stream: true
+      });
+
+      let fullMessage = '';
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          fullMessage += content;
+          onChunk(content);
+        }
+      }
+
+      const response: AIResponse = {
+        success: true,
+        message: fullMessage || 'I\'m not sure about that. Could you rephrase your question?'
+      };
+
+      await this.logServiceUsage(
+        studentId,
+        'general-knowledge-stream',
+        message,
+        response,
+        Date.now() - startTime
+      );
+
+      return response;
+    } catch (error: any) {
+      console.error('Error handling simple query stream:', error);
+      return {
+        success: false,
+        error: 'I encountered an issue answering your question. Please try again.'
+      };
+    }
+  }
+
+  /**
+   * Route to streaming handlers for text-heavy responses
+   */
+  private async routeBasedOnSmartAnalysisStream(
+    message: string,
+    analysis: any,
+    studentProfile: StudentProfile,
+    onChunk: (chunk: string) => void
+  ): Promise<EnhancedAIResponse> {
+    // For now, use a generic streaming AI handler
+    // You can expand this to route to specific streaming handlers later
+    return await this.streamAIResponse(message, analysis, studentProfile, onChunk);
+  }
+
+  /**
+   * Generic streaming AI response handler
+   */
+  private async streamAIResponse(
+    message: string,
+    analysis: any,
+    studentProfile: StudentProfile,
+    onChunk: (chunk: string) => void
+  ): Promise<EnhancedAIResponse> {
+    try {
+      const client = getOpenAIClient();
+      
+      const systemPrompt = `You are Career AI, a professional career advisor helping ${studentProfile.profile?.name || 'a student'}. 
+Provide thoughtful, actionable advice. Be encouraging but realistic.`;
+
+      const stream = await client.chat.completions.create({
+        model: DEFAULT_MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: message }
+        ],
+        temperature: 0.7,
+        max_tokens: 800,
+        stream: true
+      });
+
+      let fullMessage = '';
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          fullMessage += content;
+          onChunk(content);
+        }
+      }
+
+      return {
+        success: true,
+        message: fullMessage,
+        interactive: {
+          suggestions: [
+            { id: '1', label: 'Find jobs', query: 'Show me job opportunities' },
+            { id: '2', label: 'Create learning path', query: 'Create a learning roadmap' },
+            { id: '3', label: 'Get career advice', query: 'What career paths suit me?' }
+          ]
+        }
+      };
+    } catch (error: any) {
+      console.error('Error in streaming AI response:', error);
+      return {
+        success: false,
+        error: 'I encountered an issue. Please try again.'
       };
     }
   }

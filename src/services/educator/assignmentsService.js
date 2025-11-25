@@ -129,9 +129,9 @@ export const deleteAssignment = async (assignmentId) => {
   try {
     const { error } = await supabase
       .from('assignments')
-      .update({ 
-        is_deleted: true, 
-        updated_date: new Date().toISOString() 
+      .update({
+        is_deleted: true,
+        updated_date: new Date().toISOString()
       })
       .eq('assignment_id', assignmentId);
 
@@ -202,25 +202,55 @@ export const removeAssignmentAttachment = async (attachmentId) => {
  */
 export const assignToStudents = async (assignmentId, studentIds, defaults = {}) => {
   try {
-    const studentAssignments = studentIds.map(studentId => ({
+    // Get already assigned students
+    const { data: existingAssignments, error: checkError } = await supabase
+      .from('student_assignments')
+      .select('student_id')
+      .eq('assignment_id', assignmentId)
+      .in('student_id', studentIds);
+
+    if (checkError) throw checkError;
+
+    const existingStudentIds = existingAssignments?.map(a => a.student_id) || [];
+    const newStudentIds = studentIds.filter(id => !existingStudentIds.includes(id));
+
+    if (newStudentIds.length === 0) {
+      return [];
+    }
+
+    // STEP 1: Convert students.id → students.user_id
+    const { data: userIdMappings, error: mapError } = await supabase
+      .from('students')
+      .select('id, user_id')
+      .in('id', newStudentIds);
+
+    if (mapError) throw mapError;
+
+    const mappedStudentIds = userIdMappings.map(s => s.user_id);
+
+    // STEP 2: Create assignment objects
+    const studentAssignments = mappedStudentIds.map(uid => ({
       assignment_id: assignmentId,
-      student_id: studentId,
+      student_id: uid,                       // FIXED
       status: defaults.status || 'todo',
       priority: defaults.priority || 'medium'
     }));
 
+    // STEP 3: Insert new rows
     const { data, error } = await supabase
       .from('student_assignments')
       .insert(studentAssignments)
       .select();
 
     if (error) throw error;
+
     return data || [];
   } catch (error) {
     console.error('Error assigning to students:', error);
     throw error;
   }
 };
+
 
 /**
  * Get all students assigned to a specific assignment with their submission status
@@ -245,12 +275,12 @@ export const getAssignmentStudents = async (assignmentId) => {
       .order('assigned_date', { ascending: false });
 
     if (error) throw error;
-    
+
     // Flatten the response and extract from profile JSONB
     const flattenedData = data?.map(item => {
       const student = item.students;
       const profile = student?.profile || {};
-      
+
       return {
         ...item,
         student: {
@@ -264,7 +294,7 @@ export const getAssignmentStudents = async (assignmentId) => {
         }
       };
     }) || [];
-    
+
     return flattenedData;
   } catch (error) {
     console.error('Error fetching assignment students:', error);
@@ -332,7 +362,7 @@ export const getAssignmentStatistics = async (assignmentId) => {
     const gradesArray = data
       .filter(a => a.grade_percentage !== null)
       .map(a => a.grade_percentage);
-    
+
     if (gradesArray.length > 0) {
       stats.averageGrade = Math.round(
         gradesArray.reduce((sum, grade) => sum + grade, 0) / gradesArray.length

@@ -66,6 +66,9 @@ import AchievementsTimeline from "../../components/Students/components/Achieveme
 import RecentUpdatesCard from "../../components/Students/components/RecentUpdatesCard";
 import { useStudentAchievements } from "../../hooks/useStudentAchievements";
 import { useNavigate } from "react-router-dom";
+import { useStudentTraining } from "../../hooks/useStudentTraining";
+import { useStudentCertificates } from "../../hooks/useStudentCertificates";
+import { useStudentProjects } from "../../hooks/useStudentProjects";
 // Debug utilities removed for production cleanliness
 
 const StudentDashboard = () => {
@@ -139,6 +142,28 @@ const StudentDashboard = () => {
   // Get student ID for messaging
   const studentId = studentData?.id;
 
+  // Fetch data from separate tables
+  const {
+    training: tableTraining,
+    loading: trainingLoading,
+    error: trainingError,
+    refresh: refreshTraining
+  } = useStudentTraining(studentId, !!studentId && !isViewingOthersProfile);
+
+  const {
+    certificates: tableCertificates,
+    loading: certificatesLoading,
+    error: certificatesError,
+    refresh: refreshCertificates
+  } = useStudentCertificates(studentId, !!studentId && !isViewingOthersProfile);
+
+  const {
+    projects: tableProjects,
+    loading: projectsLoading,
+    error: projectsError,
+    refresh: refreshProjects
+  } = useStudentProjects(studentId, !!studentId && !isViewingOthersProfile);
+
   // Setup message notifications with hot-toast
   useStudentMessageNotifications({
     studentId,
@@ -198,14 +223,22 @@ const StudentDashboard = () => {
   }, [studentData?.profile?.technicalSkills]);
 
   const enabledProjects = useMemo(() => {
-    if (!Array.isArray(userData.projects)) return [];
-    return userData.projects.filter((project) => project);
-  }, [userData.projects]);
+    // Prioritize table data over profile data
+    const projectsData = Array.isArray(tableProjects) && tableProjects.length > 0
+      ? tableProjects
+      : userData.projects;
+    if (!Array.isArray(projectsData)) return [];
+    return projectsData.filter((project) => project && project.enabled !== false);
+  }, [tableProjects, userData.projects]);
 
   const enabledCertificates = useMemo(() => {
-    if (!Array.isArray(userData.certificates)) return [];
-    return userData.certificates.filter((cert) => cert);
-  }, [userData.certificates]);
+    // Prioritize table data over profile data
+    const certificatesData = Array.isArray(tableCertificates) && tableCertificates.length > 0
+      ? tableCertificates
+      : userData.certificates;
+    if (!Array.isArray(certificatesData)) return [];
+    return certificatesData.filter((cert) => cert && cert.enabled !== false);
+  }, [tableCertificates, userData.certificates]);
 
   // Fetch opportunities data from Supabase
   const {
@@ -345,9 +378,11 @@ const StudentDashboard = () => {
         education: Array.isArray(studentData.education)
           ? studentData.education
           : [],
-        training: Array.isArray(studentData.training)
-          ? studentData.training
-          : [],
+        training: Array.isArray(tableTraining) && tableTraining.length > 0
+          ? tableTraining
+          : Array.isArray(studentData.training)
+            ? studentData.training
+            : [],
         experience: Array.isArray(studentData.experience)
           ? studentData.experience
           : [],
@@ -357,23 +392,23 @@ const StudentDashboard = () => {
         softSkills: Array.isArray(studentData.softSkills)
           ? studentData.softSkills
           : [],
-        projects: Array.isArray(studentData.projects)
-          ? studentData.projects
-          : Array.isArray(studentData.profile?.projects)
-          ? studentData.profile.projects
-          : Array.isArray(studentData.profile?.profile?.projects)
-          ? studentData.profile.profile.projects
-          : [],
-        certificates: Array.isArray(studentData.certificates)
-          ? studentData.certificates
-          : Array.isArray(studentData.profile?.certificates)
-          ? studentData.profile.certificates
-          : Array.isArray(studentData.profile?.profile?.certificates)
-          ? studentData.profile.profile.certificates
-          : [],
+        projects: Array.isArray(tableProjects) && tableProjects.length > 0
+          ? tableProjects
+          : Array.isArray(studentData.projects)
+            ? studentData.projects
+            : Array.isArray(studentData.profile?.projects)
+              ? studentData.profile.projects
+              : [],
+        certificates: Array.isArray(tableCertificates) && tableCertificates.length > 0
+          ? tableCertificates
+          : Array.isArray(studentData.certificates)
+            ? studentData.certificates
+            : Array.isArray(studentData.profile?.certificates)
+              ? studentData.profile.certificates
+              : [],
       });
     }
-  }, [studentData]);
+  }, [studentData, tableTraining, tableCertificates, tableProjects]);
 
   // Save handler with DB update logic (like ProfileEditSection)
   const handleSave = async (section, data) => {
@@ -419,6 +454,15 @@ const StudentDashboard = () => {
           // Refresh from database to ensure sync
           await refresh();
 
+          // Refresh table data based on section
+          if (section === 'training') {
+            refreshTraining();
+          } else if (section === 'certificates') {
+            refreshCertificates();
+          } else if (section === 'projects') {
+            refreshProjects();
+          }
+
           // Refresh Recent Updates to show the new activity
           refreshRecentUpdates();
         }
@@ -432,9 +476,8 @@ const StudentDashboard = () => {
     return [...Array(5)].map((_, i) => (
       <Star
         key={i}
-        className={`w-4 h-4 ${
-          i < level ? "fill-[#FFD700] text-[#FFD700]" : "text-gray-300"
-        }`}
+        className={`w-4 h-4 ${i < level ? "fill-[#FFD700] text-[#FFD700]" : "text-gray-300"
+          }`}
       />
     ));
   };
@@ -481,8 +524,114 @@ const StudentDashboard = () => {
     );
   };
 
+  // Determine institution info from student data (using individual columns)
+  const institutionInfo = React.useMemo(() => {
+    // Debug: Log student data structure
+    console.log('🏫 Institution Debug:', {
+      school_id: studentData?.school_id,
+      university_college_id: studentData?.university_college_id,
+      university: studentData?.university, // Individual column
+      college_school_name: studentData?.college_school_name, // Individual column
+      school: studentData?.school,
+      universityCollege: studentData?.universityCollege,
+    });
+
+    // Priority: school_id takes precedence if both exist
+    if (studentData?.school_id && studentData?.school) {
+      return {
+        type: 'School',
+        name: studentData.school.name,
+        code: studentData.school.code,
+        city: studentData.school.city,
+        state: studentData.school.state,
+      };
+    } else if (studentData?.university_college_id && studentData?.universityCollege) {
+      // University college with parent university info
+      const college = studentData.universityCollege;
+      const university = college.universities; // nested university data
+      return {
+        type: 'University College',
+        name: college.name,
+        code: college.code,
+        universityName: university?.name,
+        city: university?.district, // Location comes from parent university
+        state: university?.state,
+      };
+    } else if (studentData?.university || studentData?.college_school_name) {
+      // Fallback to individual columns if no foreign key relationships
+      return {
+        type: 'Institution',
+        name: studentData.college_school_name || studentData.university,
+        code: 'N/A',
+        city: studentData.city,
+        state: studentData.state,
+      };
+    }
+    
+    // Fallback: Show error if ID exists but data is null (broken foreign key)
+    if (studentData?.school_id && !studentData?.school) {
+      console.error('⚠️ School ID exists but school data is null. School may have been deleted.');
+      return {
+        type: 'School',
+        name: 'School Not Found',
+        code: 'N/A',
+        city: null,
+        state: null,
+        error: true,
+      };
+    }
+    
+    return null;
+  }, [studentData]);
+
   // Card components for dynamic ordering
   const allCards = {
+    // institution: institutionInfo && (
+    //   <Card
+    //     key="institution"
+    //     className="h-full bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border-2 border-indigo-200 hover:border-indigo-400 transition-all duration-200 shadow-md hover:shadow-lg"
+    //   >
+    //     <CardHeader className="px-6 py-4 border-b border-indigo-100">
+    //       <CardTitle className="flex items-center gap-3">
+    //         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center shadow-md">
+    //           <Building2 className="w-5 h-5 text-white" />
+    //         </div>
+    //         <span className="text-lg font-semibold text-gray-900">
+    //           {institutionInfo.type}
+    //         </span>
+    //       </CardTitle>
+    //     </CardHeader>
+    //     <CardContent className="p-6">
+    //       <div className="space-y-4">
+    //         <div>
+    //           <h3 className="text-2xl font-bold text-gray-900 mb-1">
+    //             {institutionInfo.name}
+    //           </h3>
+    //           {institutionInfo.universityName && (
+    //             <p className="text-sm text-gray-600 mb-1">
+    //               {institutionInfo.universityName}
+    //             </p>
+    //           )}
+    //           {institutionInfo.code && (
+    //             <p className="text-sm text-indigo-600 font-medium">
+    //               Code: {institutionInfo.code}
+    //             </p>
+    //           )}
+    //         </div>
+    //         {(institutionInfo.city || institutionInfo.state) && (
+    //           <div className="flex items-center gap-2 text-gray-600">
+    //             <MapPin className="w-4 h-4" />
+    //             <span className="text-sm">
+    //               {[institutionInfo.city, institutionInfo.state]
+    //                 .filter(Boolean)
+    //                 .join(', ')}
+    //             </span>
+    //           </div>
+    //         )}
+    //       </div>
+    //     </CardContent>
+    //   </Card>
+    // ),
     opportunities: (
       <Card
         key="opportunities"
@@ -533,10 +682,40 @@ const StudentDashboard = () => {
                 No opportunities available at the moment
               </p>
             </div>
-          ) : (
-            (showAllOpportunities
-              ? opportunities
-              : opportunities.slice(0, 2)
+          ) : (() => {
+            // Filter opportunities based on student type
+            const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
+            const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+
+            // Fallback: Check education level if database fields are not available
+            const hasHighSchoolOnly = userData.education.length > 0 &&
+              userData.education.every(edu =>
+                edu.level && edu.level.toLowerCase().includes('high school')
+              );
+
+            let filteredOpportunities = opportunities;
+
+            if (isSchoolStudent || hasHighSchoolOnly) {
+              // School students: Show only internships (employment_type = 'internship')
+              filteredOpportunities = opportunities.filter(opp =>
+                opp.employment_type && opp.employment_type.toLowerCase() === 'internship'
+              );
+            } else if (isUniversityStudent) {
+              // University students: Show intern level and other experience levels (but not school internships)
+              filteredOpportunities = opportunities.filter(opp =>
+                opp.experience_level && (
+                  opp.experience_level.toLowerCase().includes('intern') ||
+                  opp.experience_level.toLowerCase().includes('entry') ||
+                  opp.experience_level.toLowerCase().includes('mid') ||
+                  opp.experience_level.toLowerCase().includes('senior') ||
+                  opp.experience_level.toLowerCase().includes('lead')
+                )
+              );
+            }
+
+            return (showAllOpportunities
+              ? filteredOpportunities
+              : filteredOpportunities.slice(0, 2)
             ).map((opp, idx) => (
               <div
                 key={opp.id || `${opp.title}-${opp.company_name}-${idx}`}
@@ -577,18 +756,46 @@ const StudentDashboard = () => {
                 </div>
               </div>
             ))
-          )}
-          {opportunities.length > 2 && (
-            <Button
-              variant="outline"
-              onClick={() => setShowAllOpportunities((v) => !v)}
-              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-            >
-              {showAllOpportunities
-                ? "Show Less"
-                : `View All Opportunities (${opportunities.length})`}
-            </Button>
-          )}
+          })()}
+          {(() => {
+            // Use the same filtering logic for the count
+            const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
+            const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+            const hasHighSchoolOnly = userData.education.length > 0 &&
+              userData.education.every(edu =>
+                edu.level && edu.level.toLowerCase().includes('high school')
+              );
+
+            let filteredOpportunities = opportunities;
+
+            if (isSchoolStudent || hasHighSchoolOnly) {
+              filteredOpportunities = opportunities.filter(opp =>
+                opp.employment_type && opp.employment_type.toLowerCase() === 'internship'
+              );
+            } else if (isUniversityStudent) {
+              filteredOpportunities = opportunities.filter(opp =>
+                opp.experience_level && (
+                  opp.experience_level.toLowerCase().includes('intern') ||
+                  opp.experience_level.toLowerCase().includes('entry') ||
+                  opp.experience_level.toLowerCase().includes('mid') ||
+                  opp.experience_level.toLowerCase().includes('senior') ||
+                  opp.experience_level.toLowerCase().includes('lead')
+                )
+              );
+            }
+
+            return filteredOpportunities.length > 2 && (
+              <Button
+                variant="outline"
+                onClick={() => setShowAllOpportunities((v) => !v)}
+                className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+              >
+                {showAllOpportunities
+                  ? "Show Less"
+                  : `View All Opportunities (${filteredOpportunities.length})`}
+              </Button>
+            );
+          })()}
         </CardContent>
       </Card>
     ),
@@ -619,11 +826,11 @@ const StudentDashboard = () => {
         <CardContent className="p-6 space-y-3">
           {(showAllTechnicalSkills
             ? userData.technicalSkills.filter(
-                (skill) => skill.enabled !== false
-              )
+              (skill) => skill.enabled !== false
+            )
             : userData.technicalSkills
-                .filter((skill) => skill.enabled !== false)
-                .slice(0, 2)
+              .filter((skill) => skill.enabled !== false)
+              .slice(0, 2)
           ).map((skill, idx) => (
             <div
               key={skill.id || `tech-skill-${idx}`}
@@ -655,16 +862,16 @@ const StudentDashboard = () => {
           ))}
           {userData.technicalSkills.filter((skill) => skill.enabled !== false)
             .length > 2 && (
-            <Button
-              variant="outline"
-              onClick={() => setShowAllTechnicalSkills((v) => !v)}
-              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-            >
-              {showAllTechnicalSkills
-                ? "Show Less"
-                : "View All Technical Skills"}
-            </Button>
-          )}
+              <Button
+                variant="outline"
+                onClick={() => setShowAllTechnicalSkills((v) => !v)}
+                className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+              >
+                {showAllTechnicalSkills
+                  ? "Show Less"
+                  : "View All Technical Skills"}
+              </Button>
+            )}
         </CardContent>
       </Card>
     ),
@@ -710,19 +917,18 @@ const StudentDashboard = () => {
               const techList = Array.isArray(project.tech)
                 ? project.tech
                 : Array.isArray(project.technologies)
-                ? project.technologies
-                : Array.isArray(project.tech_stack)
-                ? project.tech_stack
-                : Array.isArray(project.skills)
-                ? project.skills
-                : [];
+                  ? project.technologies
+                  : Array.isArray(project.tech_stack)
+                    ? project.tech_stack
+                    : Array.isArray(project.skills)
+                      ? project.skills
+                      : [];
 
               return (
                 <div
                   key={project.id || `project-${idx}`}
-                  className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${
-                    project.enabled ? "" : "opacity-75"
-                  }`}
+                  className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${project.enabled ? "" : "opacity-75"
+                    }`}
                 >
                   {/* First row: Title + Status */}
                   <div className="flex items-center justify-between gap-3">
@@ -741,19 +947,19 @@ const StudentDashboard = () => {
                     {(project.organization ||
                       project.company ||
                       project.client) && (
-                      <p className="text-sm text-blue-600 font-medium truncate">
-                        {project.organization ||
-                          project.company ||
-                          project.client}
-                      </p>
-                    )}
+                        <p className="text-sm text-blue-600 font-medium truncate">
+                          {project.organization ||
+                            project.company ||
+                            project.client}
+                        </p>
+                      )}
                     {(project.duration ||
                       project.timeline ||
                       project.period) && (
-                      <p className="text-xs text-gray-600 whitespace-nowrap">
-                        {project.duration || project.timeline || project.period}
-                      </p>
-                    )}
+                        <p className="text-xs text-gray-600 whitespace-nowrap">
+                          {project.duration || project.timeline || project.period}
+                        </p>
+                      )}
                   </div>
 
                   {/* Description */}
@@ -893,7 +1099,7 @@ const StudentDashboard = () => {
                 <Award className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">
-                My Education
+                Education
               </span>
               <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
                 {
@@ -915,11 +1121,11 @@ const StudentDashboard = () => {
         <CardContent className="p-6 space-y-3">
           {(showAllEducation
             ? userData.education.filter(
-                (education) => education.enabled !== false
-              )
+              (education) => education.enabled !== false
+            )
             : userData.education
-                .filter((education) => education.enabled !== false)
-                .slice(0, 2)
+              .filter((education) => education.enabled !== false)
+              .slice(0, 2)
           ).map((education, idx) => (
             <div
               key={education.id || `edu-${idx}`}
@@ -935,11 +1141,10 @@ const StudentDashboard = () => {
                   </p>
                 </div>
                 <Badge
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md ${
-                    education.status === "ongoing"
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-green-100 text-green-700"
-                  }`}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md ${education.status === "ongoing"
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-green-100 text-green-700"
+                    }`}
                 >
                   {education.status || "N/A"}
                 </Badge>
@@ -968,14 +1173,14 @@ const StudentDashboard = () => {
           ))}
           {userData.education.filter((education) => education.enabled !== false)
             .length > 2 && (
-            <Button
-              variant="outline"
-              onClick={() => setShowAllEducation((v) => !v)}
-              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-            >
-              {showAllEducation ? "Show Less" : "View All Qualifications"}
-            </Button>
-          )}
+              <Button
+                variant="outline"
+                onClick={() => setShowAllEducation((v) => !v)}
+                className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+              >
+                {showAllEducation ? "Show Less" : "View All Qualifications"}
+              </Button>
+            )}
         </CardContent>
       </Card>
     ),
@@ -1029,9 +1234,8 @@ const StudentDashboard = () => {
               return (
                 <div
                   key={cert.id || `certificate-${idx}`}
-                  className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${
-                    cert.enabled ? "" : "opacity-75"
-                  }`}
+                  className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${cert.enabled ? "" : "opacity-75"
+                    }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
@@ -1045,12 +1249,12 @@ const StudentDashboard = () => {
                         {(cert.issuer ||
                           cert.organization ||
                           cert.institution) && (
-                          <p className="text-sm text-blue-600 font-medium">
-                            {cert.issuer ||
-                              cert.organization ||
-                              cert.institution}
-                          </p>
-                        )}
+                            <p className="text-sm text-blue-600 font-medium">
+                              {cert.issuer ||
+                                cert.organization ||
+                                cert.institution}
+                            </p>
+                          )}
                         {issuedOn && (
                           <p className="text-xs text-gray-600">{issuedOn}</p>
                         )}
@@ -1108,210 +1312,404 @@ const StudentDashboard = () => {
         </CardContent>
       </Card>
     ),
+    // training: (
+    //   <Card
+    //     key="training"
+    //     className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+    //   >
+    //     <CardHeader className="px-6 py-4 border-b border-gray-100">
+    //       <div className="flex items-center w-full justify-between">
+    //         <CardTitle className="flex items-center gap-3 m-0 p-0">
+    //           <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+    //             <Code className="w-5 h-5 text-blue-600" />
+    //           </div>
+    //           <span className="text-lg font-semibold text-gray-900">
+    //             Training
+    //           </span>
+    //         </CardTitle>
+    //         <button
+    //           className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+    //           title="Edit Training"
+    //           onClick={() => setActiveModal("training")}
+    //         >
+    //           <Edit className="w-4 h-4 text-gray-600" />
+    //         </button>
+    //       </div>
+    //     </CardHeader>
+
+    //     <CardContent className="pt-4 p-6 space-y-4">
+    //       {(showAllTraining
+    //         ? userData.training.filter((t) => t.enabled !== false)
+    //         : userData.training.filter((t) => t.enabled !== false).slice(0, 2)
+    //       ).map((training, idx) => (
+    //         <div
+    //           key={training.id || `training-${training.course}-${idx}`}
+    //           className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all duration-200"
+    //         >
+    //           {/* Header */}
+    //           <div className="flex items-center justify-between mb-2">
+    //             <h4 className="font-semibold text-gray-900 text-base truncate max-w-[75%]">
+    //               {training.course}
+    //             </h4>
+    //             <Badge
+    //               className={`px-2.5 py-1 text-xs font-medium rounded-md ${training.status === "completed"
+    //                 ? "bg-green-100 text-green-700"
+    //                 : "bg-blue-100 text-blue-700"
+    //                 }`}
+    //             >
+    //               {training.status === "completed" ? "Completed" : "Ongoing"}
+    //             </Badge>
+    //           </div>
+
+    //           {/* Meta info */}
+    //           <div className="text-xs text-gray-600 mb-2 space-y-1">
+    //             {training.provider && (
+    //               <div className="flex items-center gap-1.5">
+    //                 <BookOpen className="w-3.5 h-3.5 text-gray-500" />
+    //                 <span>{training.provider}</span>
+    //               </div>
+    //             )}
+    //             {training.duration && (
+    //               <div className="flex items-center gap-1.5">
+    //                 <Calendar className="w-3.5 h-3.5 text-gray-500" />
+    //                 <span>{training.duration}</span>
+    //               </div>
+    //             )}
+    //           </div>
+
+    //           {/* Progress bar */}
+    //           <div className="mt-2">
+    //             <div className="flex justify-between items-center text-xs font-medium text-gray-700 mb-1">
+    //               <span>Progress</span>
+    //               <span className="text-blue-600">{training.progress}%</span>
+    //             </div>
+    //             <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
+    //               <div
+    //                 className="h-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
+    //                 style={{ width: `${training.progress}%` }}
+    //               />
+    //             </div>
+    //           </div>
+
+    //           {/* Skills */}
+    //           {Array.isArray(training.skills) && training.skills.length > 0 && (
+    //             <div className="mt-3">
+    //               <p className="text-xs font-semibold text-gray-700 mb-1">
+    //                 Skills Covered:
+    //               </p>
+    //               <div className="flex flex-wrap gap-2">
+    //                 {(training.showAllSkills
+    //                   ? training.skills
+    //                   : training.skills.slice(0, 4)
+    //                 ).map((skill, i) => (
+    //                   <span
+    //                     key={`skill-${training.id}-${i}`}
+    //                     className="px-2.5 py-1 text-[11px] rounded-md bg-blue-50 text-blue-700 font-medium"
+    //                   >
+    //                     {skill}
+    //                   </span>
+    //                 ))}
+    //               </div>
+    //               {training.skills.length > 4 && (
+    //                 <button
+    //                   onClick={() =>
+    //                     setUserData((prev) => ({
+    //                       ...prev,
+    //                       training: prev.training.map((t) =>
+    //                         t.id === training.id
+    //                           ? { ...t, showAllSkills: !t.showAllSkills }
+    //                           : t
+    //                       ),
+    //                     }))
+    //                   }
+    //                   className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+    //                 >
+    //                   {training.showAllSkills
+    //                     ? "Show Less"
+    //                     : `Show All (${training.skills.length})`}
+    //                 </button>
+    //               )}
+    //             </div>
+    //           )}
+    //         </div>
+    //       ))}
+
+    //       {/* Show More / Less Button */}
+    //       {userData.training.filter((t) => t.enabled !== false).length > 2 && (
+    //         <Button
+    //           variant="outline"
+    //           onClick={() => setShowAllTraining((v) => !v)}
+    //           className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+    //         >
+    //           {showAllTraining ? "Show Less" : "View All Courses"}
+    //         </Button>
+    //       )}
+    //     </CardContent>
+    //   </Card>
+    // ),
     training: (
-      <Card
-        key="training"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
-      >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center w-full justify-between">
-            <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Code className="w-5 h-5 text-blue-600" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900">
-                My Training
-              </span>
-            </CardTitle>
-            <button
-              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-              title="Edit Training"
-              onClick={() => setActiveModal("training")}
-            >
-              <Edit className="w-4 h-4 text-gray-600" />
-            </button>
+  <Card
+    key="training"
+    className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+  >
+    <CardHeader className="px-6 py-4 border-b border-gray-100">
+      <div className="flex items-center w-full justify-between">
+        <CardTitle className="flex items-center gap-3 m-0 p-0">
+          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+            <Code className="w-5 h-5 text-blue-600" />
           </div>
-        </CardHeader>
+          <span className="text-lg font-semibold text-gray-900">Training</span>
+        </CardTitle>
+        <button
+          className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+          title="Edit Training"
+          onClick={() => setActiveModal("training")}
+        >
+          <Edit className="w-4 h-4 text-gray-600" />
+        </button>
+      </div>
+    </CardHeader>
 
-        <CardContent className="pt-4 p-6 space-y-4">
-          {(showAllTraining
-            ? userData.training.filter((t) => t.enabled !== false)
-            : userData.training.filter((t) => t.enabled !== false).slice(0, 2)
-          ).map((training, idx) => (
-            <div
-              key={training.id || `training-${training.course}-${idx}`}
-              className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all duration-200"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-semibold text-gray-900 text-base truncate max-w-[75%]">
-                  {training.course}
-                </h4>
-                <Badge
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md ${
-                    training.status === "completed"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-blue-100 text-blue-700"
-                  }`}
-                >
-                  {training.status === "completed" ? "Completed" : "Ongoing"}
-                </Badge>
-              </div>
+    <CardContent className="pt-4 p-6 space-y-4">
+      {(showAllTraining
+        ? userData.training.filter((t) => t.enabled !== false)
+        : userData.training.filter((t) => t.enabled !== false).slice(0, 2)
+      ).map((training, idx) => {
+        // Calculate progress
+        const statusLower = (training.status || "").toLowerCase();
+        let progressValue = 0;
+        if (statusLower === "completed") {
+          progressValue = 100;
+        } else if (training.total_modules > 0) {
+          const completed = Math.min(training.completed_modules, training.total_modules);
+          progressValue = Math.round((completed / training.total_modules) * 100);
+        }
 
-              {/* Meta info */}
-              <div className="text-xs text-gray-600 mb-2 space-y-1">
-                {training.provider && (
-                  <div className="flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 text-gray-500" />
-                    <span>{training.provider}</span>
-                  </div>
-                )}
-                {training.duration && (
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-gray-500" />
-                    <span>{training.duration}</span>
-                  </div>
-                )}
-              </div>
+        return (
+          <div
+            key={training.id || `training-${training.course}-${idx}`}
+            className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all duration-200"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-semibold text-gray-900 text-base truncate max-w-[75%]">
+                {training.course}
+              </h4>
+              <Badge
+                className={`px-2.5 py-1 text-xs font-medium rounded-md ${
+                  training.status === "completed"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-blue-100 text-blue-700"
+                }`}
+              >
+                {training.status === "completed" ? "Completed" : "Ongoing"}
+              </Badge>
+            </div>
 
-              {/* Progress bar */}
+            {/* Meta info */}
+            <div className="text-xs text-gray-600 mb-2 space-y-1">
+              {training.provider && (
+                <div className="flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-gray-500" />
+                  <span>{training.provider}</span>
+                </div>
+              )}
+              {training.duration && (
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                  <span>{training.duration}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Progress bar */}
+            {(training.total_modules > 0 || training.completed_modules > 0 || training.hours_spent > 0) && (
               <div className="mt-2">
+                {/* Progress Header */}
                 <div className="flex justify-between items-center text-xs font-medium text-gray-700 mb-1">
                   <span>Progress</span>
-                  <span className="text-blue-600">{training.progress}%</span>
+                  <span className="text-blue-600">{progressValue}%</span>
                 </div>
+
+                {/* Progress Bar */}
                 <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className="h-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${training.progress}%` }}
+                    style={{ width: `${progressValue}%` }}
                   />
                 </div>
-              </div>
 
-              {/* Skills */}
-              {Array.isArray(training.skills) && training.skills.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs font-semibold text-gray-700 mb-1">
-                    Skills Covered:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {(training.showAllSkills
-                      ? training.skills
-                      : training.skills.slice(0, 4)
-                    ).map((skill, i) => (
+                {/* Modules & Hours Info */}
+                <div className="text-xs text-gray-500 mt-1 space-x-2">
+                  {training.completed_modules != null && training.total_modules != null && (
+                    <span>
+                      Modules: {training.completed_modules}/{training.total_modules}
+                    </span>
+                  )}
+                  {training.hours_spent != null && <span>Hours Spent: {training.hours_spent}</span>}
+                </div>
+              </div>
+            )}
+
+            {/* Skills */}
+            {Array.isArray(training.skills) && training.skills.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-semibold text-gray-700 mb-1">Skills Covered:</p>
+                <div className="flex flex-wrap gap-2">
+                  {(training.showAllSkills ? training.skills : training.skills.slice(0, 4)).map(
+                    (skill, i) => (
                       <span
                         key={`skill-${training.id}-${i}`}
                         className="px-2.5 py-1 text-[11px] rounded-md bg-blue-50 text-blue-700 font-medium"
                       >
                         {skill}
                       </span>
-                    ))}
-                  </div>
-                  {training.skills.length > 4 && (
-                    <button
-                      onClick={() =>
-                        setUserData((prev) => ({
-                          ...prev,
-                          training: prev.training.map((t) =>
-                            t.id === training.id
-                              ? { ...t, showAllSkills: !t.showAllSkills }
-                              : t
-                          ),
-                        }))
-                      }
-                      className="text-xs text-blue-600 hover:text-blue-800 mt-1"
-                    >
-                      {training.showAllSkills
-                        ? "Show Less"
-                        : `Show All (${training.skills.length})`}
-                    </button>
+                    )
                   )}
                 </div>
-              )}
-            </div>
-          ))}
-
-          {/* Show More / Less Button */}
-          {userData.training.filter((t) => t.enabled !== false).length > 2 && (
-            <Button
-              variant="outline"
-              onClick={() => setShowAllTraining((v) => !v)}
-              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-            >
-              {showAllTraining ? "Show Less" : "View All Courses"}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    ),
-
-    experience: (
-      <Card
-        key="experience"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
-      >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center w-full justify-between">
-            <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-600" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900">
-                My Experience
-              </span>
-            </CardTitle>
-            <button
-              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-              title="Edit Experience"
-              onClick={() => setActiveModal("experience")}
-            >
-              <Edit className="w-4 h-4 text-gray-600" />
-            </button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6 space-y-3">
-          {(showAllExperience
-            ? userData.experience.filter((exp) => exp.enabled !== false)
-            : userData.experience
-                .filter((exp) => exp.enabled !== false)
-                .slice(0, 2)
-          ).map((exp, idx) => (
-            <div
-              key={exp.id || `${exp.role}-${exp.organization}-${idx}`}
-              className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-gray-900 text-base mb-1">
-                    {exp.role}
-                  </p>
-                  <p className="text-blue-600 text-sm font-medium mb-1">
-                    {exp.organization}
-                  </p>
-                  <p className="text-xs text-gray-600">{exp.duration}</p>
-                </div>
-                {exp.verified && (
-                  <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" />
-                    Verified
-                  </Badge>
+                {training.skills.length > 4 && (
+                  <button
+                    onClick={() =>
+                      setUserData((prev) => ({
+                        ...prev,
+                        training: prev.training.map((t) =>
+                          t.id === training.id ? { ...t, showAllSkills: !t.showAllSkills } : t
+                        ),
+                      }))
+                    }
+                    className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                  >
+                    {training.showAllSkills
+                      ? "Show Less"
+                      : `Show All (${training.skills.length})`}
+                  </button>
                 )}
               </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Show More / Less Button */}
+      {userData.training.filter((t) => t.enabled !== false).length > 2 && (
+        <Button
+          variant="outline"
+          onClick={() => setShowAllTraining((v) => !v)}
+          className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+        >
+          {showAllTraining ? "Show Less" : "View All Courses"}
+        </Button>
+      )}
+    </CardContent>
+  </Card>
+),
+
+
+    experience: (() => {
+      // Check if student is from university (not school)
+      // Use database fields: school_id/school_class_id indicates school, university_college_id indicates university
+      const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
+      const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+
+      // Fallback: Check education level if database fields are not available
+      const hasHighSchoolOnly = userData.education.length > 0 &&
+        userData.education.every(edu =>
+          edu.level && edu.level.toLowerCase().includes('high school')
+        );
+
+      // Debug logging
+      console.log('Experience Card Debug:', {
+        isSchoolStudent,
+        isUniversityStudent,
+        hasHighSchoolOnly,
+        studentData: studentData ? 'loaded' : 'not loaded',
+        school_id: studentData?.school_id,
+        school_class_id: studentData?.school_class_id,
+        university_college_id: studentData?.university_college_id,
+        universityId: studentData?.universityId,
+        education: userData.education
+      });
+
+      // Hide experience card for school students
+      if (isSchoolStudent || hasHighSchoolOnly) {
+        console.log('Hiding Experience card - student is from school');
+        return null;
+      }
+
+      // Also hide if no university affiliation is found
+      if (!isUniversityStudent) {
+        console.log('Hiding Experience card - no university affiliation found');
+        return null;
+      }
+
+      return (
+        <Card
+          key="experience"
+          className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+        >
+          <CardHeader className="px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center w-full justify-between">
+              <CardTitle className="flex items-center gap-3 m-0 p-0">
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-blue-600" />
+                </div>
+                <span className="text-lg font-semibold text-gray-900">
+                  Experience
+                </span>
+              </CardTitle>
+              <button
+                className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+                title="Edit Experience"
+                onClick={() => setActiveModal("experience")}
+              >
+                <Edit className="w-4 h-4 text-gray-600" />
+              </button>
             </div>
-          ))}
-          {userData.experience.filter((exp) => exp.enabled !== false).length >
-            2 && (
-            <Button
-              variant="outline"
-              onClick={() => setShowAllExperience((v) => !v)}
-              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-            >
-              {showAllExperience ? "Show Less" : "View All Experience"}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    ),
+          </CardHeader>
+          <CardContent className="p-6 space-y-3">
+            {(showAllExperience
+              ? userData.experience.filter((exp) => exp.enabled !== false)
+              : userData.experience
+                .filter((exp) => exp.enabled !== false)
+                .slice(0, 2)
+            ).map((exp, idx) => (
+              <div
+                key={exp.id || `${exp.role}-${exp.organization}-${idx}`}
+                className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-gray-900 text-base mb-1">
+                      {exp.role}
+                    </p>
+                    <p className="text-blue-600 text-sm font-medium mb-1">
+                      {exp.organization}
+                    </p>
+                    <p className="text-xs text-gray-600">{exp.duration}</p>
+                  </div>
+                  {exp.verified && (
+                    <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Verified
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+            {userData.experience.filter((exp) => exp.enabled !== false).length >
+              2 && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAllExperience((v) => !v)}
+                  className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+                >
+                  {showAllExperience ? "Show Less" : "View All Experience"}
+                </Button>
+              )}
+          </CardContent>
+        </Card>
+      );
+    })(),
     softSkills: (
       <Card
         key="softSkills"
@@ -1324,7 +1722,7 @@ const StudentDashboard = () => {
                 <MessageCircle className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">
-                My Soft Skills
+                Soft Skills
               </span>
             </CardTitle>
             <button
@@ -1340,8 +1738,8 @@ const StudentDashboard = () => {
           {(showAllSoftSkills
             ? userData.softSkills.filter((skill) => skill.enabled !== false)
             : userData.softSkills
-                .filter((skill) => skill.enabled !== false)
-                .slice(0, 2)
+              .filter((skill) => skill.enabled !== false)
+              .slice(0, 2)
           ).map((skill, idx) => (
             <div
               key={skill.id || `soft-skill-${idx}`}
@@ -1373,104 +1771,105 @@ const StudentDashboard = () => {
           ))}
           {userData.softSkills.filter((skill) => skill.enabled !== false)
             .length > 2 && (
-            <Button
-              variant="outline"
-              onClick={() => setShowAllSoftSkills((v) => !v)}
-              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-            >
-              {showAllSoftSkills ? "Show Less" : "View All Soft Skills"}
-            </Button>
-          )}
+              <Button
+                variant="outline"
+                onClick={() => setShowAllSoftSkills((v) => !v)}
+                className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+              >
+                {showAllSoftSkills ? "Show Less" : "View All Soft Skills"}
+              </Button>
+            )}
         </CardContent>
       </Card>
     ),
     achievements: (
-      <Card
-        key="achievements"
-        className="h-full bg-gradient-to-br from-purple-50 via-pink-50 to-amber-50 rounded-xl border-2 border-purple-200 hover:border-purple-400 transition-all duration-200 shadow-lg hover:shadow-xl"
-      >
-        <CardHeader className="px-6 py-4 border-b border-purple-100">
-          <div className="flex items-center w-full justify-between">
-            <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-md">
-                <Trophy className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <span className="text-lg font-semibold text-gray-900">
-                  Achievements & Badges
-                </span>
-                <p className="text-xs text-gray-600 font-normal mt-0.5">
-                  From separate tables
-                </p>
-              </div>
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6 space-y-4">
-          {achievementsLoading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-            </div>
-          ) : (
-            <>
-              {/* Badges Preview */}
-              {badges.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-amber-500" />
-                      AI-Generated Badges
-                    </h4>
-                    <Badge className="bg-amber-500 text-white text-xs px-2 py-1">
-                      {badges.length}
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {badges.slice(0, 4).map((badge) => (
-                      <div
-                        key={badge.id}
-                        className="p-3 rounded-lg bg-white border-2 border-purple-200 hover:border-purple-400 transition-all text-center"
-                      >
-                        <div className="text-3xl mb-1">{badge.icon}</div>
-                        <p className="text-xs font-semibold text-gray-800 truncate">
-                          {badge.name}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  {badges.length > 4 && (
-                    <p className="text-xs text-center text-gray-600">
-                      +{badges.length - 4} more badges
-                    </p>
-                  )}
-                </div>
-              )}
+      <></>
+      // <Card
+      //   key="achievements"
+      //   className="h-full bg-gradient-to-br from-purple-50 via-pink-50 to-amber-50 rounded-xl border-2 border-purple-200 hover:border-purple-400 transition-all duration-200 shadow-lg hover:shadow-xl"
+      // >
+      //   <CardHeader className="px-6 py-4 border-b border-purple-100">
+      //     <div className="flex items-center w-full justify-between">
+      //       <CardTitle className="flex items-center gap-3 m-0 p-0">
+      //         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-md">
+      //           <Trophy className="w-5 h-5 text-white" />
+      //         </div>
+      //         <div>
+      //           <span className="text-lg font-semibold text-gray-900">
+      //             Achievements & Badges
+      //           </span>
+      //           <p className="text-xs text-gray-600 font-normal mt-0.5">
+      //             From separate tables
+      //           </p>
+      //         </div>
+      //       </CardTitle>
+      //     </div>
+      //   </CardHeader>
+      //   <CardContent className="p-6 space-y-4">
+      //     {achievementsLoading ? (
+      //       <div className="flex justify-center items-center py-8">
+      //         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      //       </div>
+      //     ) : (
+      //       <>
+      //         {/* Badges Preview */}
+      //         {badges.length > 0 && (
+      //           <div className="space-y-3">
+      //             <div className="flex items-center justify-between">
+      //               <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+      //                 <Sparkles className="w-4 h-4 text-amber-500" />
+      //                 AI-Generated Badges
+      //               </h4>
+      //               <Badge className="bg-amber-500 text-white text-xs px-2 py-1">
+      //                 {badges.length}
+      //               </Badge>
+      //             </div>
+      //             <div className="grid grid-cols-2 gap-2">
+      //               {badges.slice(0, 4).map((badge) => (
+      //                 <div
+      //                   key={badge.id}
+      //                   className="p-3 rounded-lg bg-white border-2 border-purple-200 hover:border-purple-400 transition-all text-center"
+      //                 >
+      //                   <div className="text-3xl mb-1">{badge.icon}</div>
+      //                   <p className="text-xs font-semibold text-gray-800 truncate">
+      //                     {badge.name}
+      //                   </p>
+      //                 </div>
+      //               ))}
+      //             </div>
+      //             {badges.length > 4 && (
+      //               <p className="text-xs text-center text-gray-600">
+      //                 +{badges.length - 4} more badges
+      //               </p>
+      //             )}
+      //           </div>
+      //         )}
 
-              {/* Achievements Count */}
-              <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200">
-                <div className="flex items-center gap-2">
-                  <Target className="w-5 h-5 text-purple-600" />
-                  <span className="text-sm font-medium text-gray-700">
-                    Total Achievements
-                  </span>
-                </div>
-                <span className="text-2xl font-bold text-purple-600">
-                  {achievements.length}
-                </span>
-              </div>
+      //         {/* Achievements Count */}
+      //         <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200">
+      //           <div className="flex items-center gap-2">
+      //             <Target className="w-5 h-5 text-purple-600" />
+      //             <span className="text-sm font-medium text-gray-700">
+      //               Total Achievements
+      //             </span>
+      //           </div>
+      //           <span className="text-2xl font-bold text-purple-600">
+      //             {achievements.length}
+      //           </span>
+      //         </div>
 
-              {/* View Full Page Button */}
-              <Button
-                onClick={() => navigate("/student/achievements")}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2"
-              >
-                View All Achievements
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      //         {/* View Full Page Button */}
+      //         <Button
+      //           onClick={() => navigate("/student/achievements")}
+      //           className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2"
+      //         >
+      //           View All Achievements
+      //           <ChevronRight className="w-4 h-4" />
+      //         </Button>
+      //       </>
+      //     )}
+      //   </CardContent>
+      // </Card>
     ),
   };
 
@@ -1478,6 +1877,7 @@ const StudentDashboard = () => {
   const cardOrders = {
     opportunities: isViewingOthersProfile
       ? [
+          "institution",
           "opportunities",
           "education",
           "training",
@@ -1488,6 +1888,7 @@ const StudentDashboard = () => {
           "technicalSkills",
         ]
       : [
+          "institution",
           "opportunities",
           "achievements",
           "education",
@@ -1499,6 +1900,7 @@ const StudentDashboard = () => {
           "technicalSkills",
         ],
     skills: [
+      "institution",
       "opportunities",
       "technicalSkills",
       "softSkills",
@@ -1509,6 +1911,7 @@ const StudentDashboard = () => {
       "experience",
     ],
     training: [
+      "institution",
       "opportunities",
       "training",
       "projects",
@@ -1519,6 +1922,7 @@ const StudentDashboard = () => {
       "experience",
     ],
     experience: [
+      "institution",
       "opportunities",
       "experience",
       "projects",

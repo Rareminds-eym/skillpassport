@@ -1,4 +1,4 @@
-import { Hero, Features, CoreFeatures, BusinessImpact, BuiltForCorporates, SecurityCompliance, CaseHighlights, FinalCTA, HowItWorks } from '../../components/Homepage';
+import { Hero, Features, CoreFeatures, BusinessImpact, BuiltForCorporates, SecurityCompliance, CaseHighlights, FinalCTA, HowItWorks, ProductWalkthrough } from '../../components/Homepage';
 
 const Home = () => {
   return (
@@ -11,6 +11,7 @@ const Home = () => {
       <BusinessImpact />
       <BuiltForCorporates />
       <HowItWorks/>
+      <ProductWalkthrough />
       <CaseHighlights />
       <SecurityCompliance />
       <FinalCTA />

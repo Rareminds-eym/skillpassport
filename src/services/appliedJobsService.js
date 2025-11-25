@@ -337,11 +337,12 @@ export class AppliedJobsService {
       }
 
       // Fetch student details for all applicants
+      // Note: applied_jobs.student_id references students.user_id (not students.id)
       const studentIds = [...new Set(appliedJobs.map(job => job.student_id))];
       const { data: students, error: studentsError } = await supabase
         .from('students')
-        .select('id, profile')
-        .in('id', studentIds);
+        .select('id, user_id, name, email, contact_number, university, branch_field, currentCgpa, expectedGraduationDate, approval_status, profile')
+        .in('user_id', studentIds);
 
       if (studentsError) {
         console.error('Error fetching students:', studentsError);
@@ -358,21 +359,22 @@ export class AppliedJobsService {
         console.error('Error fetching opportunities:', opportunitiesError);
       }
 
-      // Create lookup maps - Extract data from profile JSONB
+      // Create lookup maps - Use direct fields first, fallback to profile JSONB
+      // Key by user_id since applied_jobs.student_id references students.user_id
       const studentMap = (students || []).reduce((acc, student) => {
         const profile = student.profile || {};
-        acc[student.id] = {
-          id: student.id,
-          name: profile.name || 'Unknown',
-          email: profile.email || '',
-          phone: profile.contact_number ? String(profile.contact_number) : '',
+        acc[student.user_id] = {
+          id: student.user_id, // Use user_id as id for consistency with applied_jobs.student_id
+          name: student.name || profile.name || 'Unknown',
+          email: student.email || profile.email || '',
+          phone: student.contact_number ? String(student.contact_number) : (profile.contact_number ? String(profile.contact_number) : ''),
           photo: profile.photo || null,
-          department: profile.branch_field || '',
-          university: profile.university || '',
-          cgpa: profile.cgpa || '',
-          year_of_passing: profile.year_of_passing || '',
-          verified: student.verified || false,
-          employability_score: student.employability_score || 0,
+          department: student.branch_field || profile.branch_field || '',
+          university: student.university || profile.university || '',
+          cgpa: student.currentCgpa || profile.cgpa || '',
+          year_of_passing: student.expectedGraduationDate ? student.expectedGraduationDate.split('-')[0] : (profile.year_of_passing || ''),
+          verified: student.approval_status === 'approved' || false,
+          employability_score: 0, // Not available in schema, set default
           district: profile.district_name || '',
           college: profile.college_school_name || '',
           course: profile.course || '',

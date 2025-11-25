@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 import FeatureCard from "./components/ui/FeatureCard";
-import { getStudentByEmail } from "../../services/studentServiceProfile";
+import { loginStudent } from "../../services/studentAuthService";
 
 export default function LoginStudent() {
   const [email, setEmail] = useState("");
@@ -38,24 +38,38 @@ export default function LoginStudent() {
     setLoading(true);
 
     try {
-      // 🔍 Validate student email from backend
-      const result = await getStudentByEmail(email);
+      // Authenticate student with Supabase
+      const result = await loginStudent(email, password);
 
-      if (!result?.success || !result?.data) {
-        setError(
-          "No student account found with this email. Please check your email or contact support."
-        );
+      if (!result.success) {
+        if (result.isOtpSent) {
+          setError("");
+          setLoading(false);
+          alert("We’ve sent a secure login link to your email. Open it to finish signing in.");
+          return;
+        }
+        setError(result.error || "Login failed. Please check your credentials.");
         setLoading(false);
         return;
       }
 
-      // proceed with login - include student ID
+      // Store student data in context
+      const studentData = result.student;
       login({ 
-        id: result.data.id,  // Add student ID!
-        name: result.data.profile.name, 
-        email, 
-        role: "student" 
+        id: studentData.id,
+        user_id: studentData.user_id,
+        name: studentData.name || studentData.profile?.name || '',
+        email: studentData.email,
+        role: "student",
+        school_id: studentData.school_id,
+        university_college_id: studentData.university_college_id,
+        school: studentData.schools,
+        university_college: studentData.university_colleges,
+        approval_status: studentData.approval_status,
+        legacyAuth: result.isLegacy || false
       });
+
+      // Navigate to dashboard
       navigate("/student/dashboard");
     } catch (err) {
       console.error("❌ Login error:", err);
