@@ -6038,7 +6038,7 @@ export const TrainingEditModal = ({ isOpen, onClose, data, onSave }) => {
     </Dialog>
   );
 };
-export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
+export const ExperienceEditModal = ({ isOpen, onClose, data, onSave}) => {
   const [experiences, setExperiences] = useState(data || []);
   const [newExp, setNewExp] = useState({
     role: "",

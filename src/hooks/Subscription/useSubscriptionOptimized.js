@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSupabaseAuth } from '../../context/SupabaseAuthContext';
-import { getActiveSubscription } from '../../services/subscriptionService';
+import { getActiveSubscription } from '../../services/Subscriptions/subscriptionService';
 
 // In-memory cache for subscription data
 const subscriptionCache = {

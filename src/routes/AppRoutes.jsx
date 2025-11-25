@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import {BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Loader from "../components/Loader";
 
@@ -41,6 +41,12 @@ const SubscriptionPlans = lazy(() =>
 );
 const PaymentCompletion = lazy(() =>
   import("../pages/subscription/PaymentCompletion")
+);
+const PaymentSuccess = lazy(() =>
+  import("../pages/subscription/PaymentSuccess")
+);
+const PaymentFailure = lazy(() =>
+  import("../pages/subscription/PaymentFailure")
 );
 const MySubscription = lazy(() =>
   import("../pages/subscription/MySubscription")
@@ -141,6 +147,12 @@ const EducatorDigitalPortfolio = lazy(() =>
 );
 const EducatorAI = lazy(() => import("../pages/educator/EducatorAI"));
 
+// Teacher pages (for teachers using the system)
+const LessonPlanCreate = lazy(() => import("../pages/teacher/LessonPlanCreate"));
+const LessonPlansList = lazy(() => import("../pages/teacher/LessonPlansList"));
+const MyTimetable = lazy(() => import("../pages/teacher/MyTimetable"));
+const LessonPlanApprovals = lazy(() => import("../pages/admin/schoolAdmin/LessonPlanApprovals"));
+
 // ===== Admins (Role-Based) =====
 const CollegeDashboard = lazy(() =>
   import("../pages/admin/collegeAdmin/Dashboard")
@@ -164,6 +176,15 @@ const SchoolAdminDashboard = lazy(() =>
 );
 const StudentAdmissions = lazy(() =>
   import("../pages/admin/schoolAdmin/StudentAdmissions")
+);
+const TeacherList = lazy(() =>
+  import("../pages/admin/schoolAdmin/components/TeacherList")
+);
+const TeacherOnboarding = lazy(() =>
+  import("../pages/admin/schoolAdmin/components/TeacherOnboarding")
+);
+const TeacherTimetable = lazy(() =>
+  import("../pages/admin/schoolAdmin/components/TimetableBuilderEnhanced")
 );
 const UniversityAdminDashboard = lazy(() =>
   import("../pages/admin/universityAdmin/Dashboard")
@@ -204,6 +225,7 @@ const AppRoutes = () => {
           <Route path="/login/admin" element={<LoginAdmin />} />
           <Route path="/login/educator" element={<EducatorLogin />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/register/:type" element={<Register />} />
           <Route
             path="/signup/recruitment-recruiter"
             element={<SignupRecruiter />}
@@ -216,7 +238,11 @@ const AppRoutes = () => {
             element={<UniversityAdmin />}
           />
           <Route path="/subscription/plans" element={<SubscriptionPlans />} />
+          <Route path="/subscription/plans/:type" element={<SubscriptionPlans />} />
+          <Route path="/subscription/plans/:type/:mode" element={<SubscriptionPlans />} />
           <Route path="/subscription/payment" element={<PaymentCompletion />} />
+          <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
+          <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
           <Route path="/subscription/manage" element={<SubscriptionManage />} />
           {/* Legacy route - redirect to new manage route */}
           <Route
@@ -276,7 +302,7 @@ const AppRoutes = () => {
             path=""
             element={<Navigate to="/college-admin/dashboard" replace />}
           />
-            <Route path="students/attendance" element={<AttendanceTracking />} />
+          <Route path="students/attendance" element={<AttendanceTracking />} />
 
         </Route>
 
@@ -290,6 +316,10 @@ const AppRoutes = () => {
         >
           <Route path="dashboard" element={<SchoolAdminDashboard />} />
           <Route path="students/admissions" element={<StudentAdmissions />} />
+          <Route path="teachers/list" element={<TeacherList />} />
+          <Route path="teachers/onboarding" element={<TeacherOnboarding />} />
+          <Route path="teachers/timetable" element={<TeacherTimetable />} />
+          <Route path="lesson-plans/approvals" element={<LessonPlanApprovals />} />
           <Route
             path=""
             element={<Navigate to="/school-admin/dashboard" replace />}
@@ -374,7 +404,7 @@ const AppRoutes = () => {
           <Route path="assignments" element={<Assignments />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
-          
+
           {/* Digital Portfolio routes with required providers */}
           <Route
             path="digital-portfolio"
@@ -505,7 +535,7 @@ const AppRoutes = () => {
               </ThemeProvider>
             }
           />
-          
+
           <Route
             path=""
             element={<Navigate to="/student/dashboard" replace />}
@@ -530,6 +560,9 @@ const AppRoutes = () => {
           <Route path="activities" element={<EducatorActivities />} />
           <Route path="reports" element={<EducatorReports />} />
           <Route path="media" element={<EducatorMediaManager />} />
+          <Route path="lesson-plans" element={<LessonPlansList />} />
+          <Route path="lesson-plans/create" element={<LessonPlanCreate />} />
+          <Route path="my-timetable" element={<MyTimetable />} />
           <Route
             path=""
             element={<Navigate to="/educator/dashboard" replace />}

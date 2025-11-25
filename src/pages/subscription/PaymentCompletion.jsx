@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
-import { initiateRazorpayPayment } from '../../services/razorpayService';
+import { initiateRazorpayPayment } from '../../services/Subscriptions/razorpayService';
 import SubscriptionRouteGuard from '../../components/Subscription/SubscriptionRouteGuard';
+import { useSubscription } from '../../hooks/Subscription/useSubscription';
+import { isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
 function PaymentCompletion() {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Memoize location state to prevent unnecessary re-renders
   const { plan, studentType } = useMemo(
     () => location.state || {},
@@ -21,6 +23,20 @@ function PaymentCompletion() {
     email: '',
     phone: '',
   });
+
+  const { subscriptionData, loading: subscriptionLoading } = useSubscription();
+
+  // Check for active subscription and redirect if necessary
+  useEffect(() => {
+    if (!subscriptionLoading && subscriptionData) {
+      const isActive = isActiveOrPaused(subscriptionData.status);
+      const hasValidEndDate = subscriptionData.endDate ? new Date(subscriptionData.endDate) > new Date() : true;
+
+      if (isActive && hasValidEndDate) {
+        navigate('/subscription/manage', { replace: true });
+      }
+    }
+  }, [subscriptionData, subscriptionLoading, navigate]);
 
   // If no plan data, redirect back
   useEffect(() => {
@@ -40,10 +56,10 @@ function PaymentCompletion() {
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
-    
+
     // Early return if already loading
     if (loading) return;
-    
+
     setLoading(true);
     setError('');
 
@@ -57,7 +73,10 @@ function PaymentCompletion() {
     try {
       await initiateRazorpayPayment({
         plan,
-        userDetails,
+        userDetails: {
+          ...userDetails,
+          studentType // Pass studentType from location state
+        },
         onSuccess: (verificationResult) => {
           // Navigate based on student type
           const routes = {
@@ -65,9 +84,9 @@ function PaymentCompletion() {
             university: '/signin/university',
             default: '/register',
           };
-          
+
           const targetRoute = routes[studentType] || routes.default;
-          
+
           navigate(targetRoute, {
             state: { paymentDetails: verificationResult },
             replace: true,

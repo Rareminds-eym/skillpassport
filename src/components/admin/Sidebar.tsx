@@ -86,14 +86,14 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           key: "teachers",
           items: [
             {
-              name: "Onboarding & Allocation",
-              path: "/school-admin/teachers/onboarding",
-              icon: AcademicCapIcon,
+              name: "Teachers",
+              path: "/school-admin/teachers/list",
+              icon: UserGroupIcon,
             },
             {
-              name: "Subject Mapping",
-              path: "/school-admin/teachers/subjects",
-              icon: ClipboardDocumentListIcon,
+              name: "Onboarding",
+              path: "/school-admin/teachers/onboarding",
+              icon: AcademicCapIcon,
             },
             {
               name: "Timetable",

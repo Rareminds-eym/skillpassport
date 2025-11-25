@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, MapPin, DollarSign, Bookmark } from 'lucide-react';
+import { Search, MapPin, Bookmark } from 'lucide-react';
 import Button from '../../components/Button';
 
 const BrowseJobs = () => {
@@ -116,7 +116,6 @@ const BrowseJobs = () => {
                 <span>{job.location}</span>
               </div>
               <div className="flex items-center space-x-2 text-gray-600">
-                <DollarSign className="w-5 h-5" />
                 <span>{job.salary}</span>
               </div>
               <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
