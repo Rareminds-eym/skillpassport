@@ -175,9 +175,9 @@ const StudentEnrollments = () => {
 
   const { students, loading, error } = useStudents();
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, filters, sortBy]);
+ useEffect(() => {
+     setCurrentPage(1);
+   }, [searchQuery, sortBy, filters.degree.length, filters.course.length, filters.college.length, filters.status.length, filters.minScore, filters.maxScore]);
 
   const degreeOptions = useMemo(() => {
     const degreeCounts: any = {};
@@ -366,19 +366,86 @@ const StudentEnrollments = () => {
         throw new Error('Invalid student data');
       }
 
+      // Extract and format skills
+      const skills = Array.isArray(student.skills) 
+        ? student.skills.map((s: any) => typeof s === 'string' ? s : s.name || s.title).filter(Boolean)
+        : student.profile?.technicalSkills?.map((s: any) => s.name || s) || [];
+      
+      // Extract and format certificates
+      const certificates = Array.isArray(student.certificates)
+        ? student.certificates.map((c: any) => {
+            if (typeof c === 'string') return c;
+            const title = c.title || c.name || 'Certificate';
+            const issuer = c.issuer ? ` (Issuer: ${c.issuer})` : '';
+            const level = c.level ? ` [Level: ${c.level}]` : '';
+            return `${title}${issuer}${level}`;
+          }).filter(Boolean)
+        : [];
+      
+      // Extract and format experience
+      const experience = Array.isArray(student.experience)
+        ? student.experience.map((e: any) => 
+            typeof e === 'string' ? e : `${e.role || e.title} at ${e.organization || e.company} (${e.duration || 'N/A'})`
+          ).filter(Boolean)
+        : student.profile?.experience?.map((e: any) => `${e.role} at ${e.company}`) || [];
+      
+      // Extract and format trainings
+      const trainings = Array.isArray(student.trainings)
+        ? student.trainings.map((t: any) => 
+            typeof t === 'string' ? t : `${t.title} - ${t.organization || 'Completed'}`
+          ).filter(Boolean)
+        : [];
+      
+      // Extract and format projects
+      const projects = Array.isArray(student.projects)
+        ? student.projects.map((p: any) => {
+            if (typeof p === 'string') return p;
+            const title = p.title || 'Project';
+            const tech = p.tech_stack ? ` (Tech: ${p.tech_stack})` : '';
+            const org = p.organization ? ` - ${p.organization}` : '';
+            return `${title}${tech}${org}`;
+          }).filter(Boolean)
+        : [];
+      
+      // Extract and format education
+      const education = Array.isArray(student.education)
+        ? student.education.map((e: any) => {
+            if (typeof e === 'string') return e;
+            const degree = e.degree || e.level || 'Degree';
+            const dept = e.department ? ` in ${e.department}` : '';
+            const univ = e.university ? ` from ${e.university}` : '';
+            const cgpa = e.cgpa ? ` (CGPA: ${e.cgpa})` : '';
+            return `${degree}${dept}${univ}${cgpa}`;
+          }).filter(Boolean)
+        : student.profile?.education?.map((e: any) => 
+            `${e.degree || 'Degree'} (CGPA: ${e.cgpa || 'N/A'})`
+          ) || [];
+      
+      // Extract interests
+      const interests = student.interests || 
+        student.profile?.interests || 
+        [student.dept, `${student.dept} Development`, 'Career Growth'];
+
+      // Get CGPA from education or profile
+      const cgpa = student.profile?.education?.[0]?.cgpa || 
+        student.cgpa || 
+        (student.ai_score_overall ? (student.ai_score_overall / 10).toFixed(2) : undefined);
+
       const studentProfile: StudentProfile = {
         id: student.id,
         name: student.name,
         email: student.email,
         dept: student.dept,
         college: student.college,
-        currentCgpa: student.cgpa || 0,
+        currentCgpa: cgpa ? parseFloat(cgpa) : undefined,
         ai_score_overall: student.ai_score_overall || 0,
-        skills: student.skills || [],
-        certificates: student.certificates || [],
-        experience: student.experience || [],
-        trainings: student.trainings || [],
-        interests: student.interests || [],
+        skills,
+        certificates,
+        experience,
+        trainings,
+        interests,
+        projects,
+        education,
       };
 
       console.log('Generating career path for:', studentProfile.name);
