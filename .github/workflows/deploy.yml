@@ -3,22 +3,26 @@ name: Deploy React App to Hostinger via FTP
 on:
   push:
     branches:
-      - production
+      - production   # Deploy only when production branch is updated
 
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-    - uses: actions/setup-node@v3
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
       with:
         node-version: 18
 
-    - run: npm install
+    - name: Install dependencies
+      run: npm install
 
-    - run: npm run build
+    - name: Build Vite project
+      run: npm run build
 
     - name: Deploy to Hostinger via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
@@ -26,6 +30,5 @@ jobs:
         server: ${{ secrets.FTP_HOST }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: build/
+        local-dir: dist/
         server-dir: domains/rareminds.in/public_html/skillpassport/
-        dangerous-clean-slate: true
