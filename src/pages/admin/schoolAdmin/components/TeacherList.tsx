@@ -11,6 +11,7 @@ interface Teacher {
   phone: string;
   onboarding_status: string;
   subject_expertise: any[];
+  role: string;
   created_at: string;
 }
 
@@ -186,6 +187,9 @@ const TeacherListPage: React.FC = () => {
                     Email
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Subjects
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -207,6 +211,21 @@ const TeacherListPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {teacher.email}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        teacher.role === 'school_admin' ? 'bg-indigo-100 text-indigo-800' :
+                        teacher.role === 'principal' ? 'bg-purple-100 text-purple-800' :
+                        teacher.role === 'it_admin' ? 'bg-blue-100 text-blue-800' :
+                        teacher.role === 'class_teacher' ? 'bg-green-100 text-green-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {teacher.role === 'school_admin' ? 'School Admin' :
+                         teacher.role === 'principal' ? 'Principal' :
+                         teacher.role === 'it_admin' ? 'IT Admin' :
+                         teacher.role === 'class_teacher' ? 'Class Teacher' :
+                         'Subject Teacher'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       <div className="flex flex-wrap gap-1">

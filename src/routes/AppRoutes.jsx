@@ -141,6 +141,10 @@ const EducatorDigitalPortfolio = lazy(() =>
 );
 const EducatorAI = lazy(() => import("../pages/educator/EducatorAI"));
 
+// Teacher pages (for teachers using the system)
+const LessonPlanCreate = lazy(() => import("../pages/teacher/LessonPlanCreate"));
+const MyTimetable = lazy(() => import("../pages/teacher/MyTimetable"));
+
 // ===== Admins (Role-Based) =====
 const CollegeDashboard = lazy(() =>
   import("../pages/admin/collegeAdmin/Dashboard")
@@ -542,6 +546,8 @@ const AppRoutes = () => {
           <Route path="activities" element={<EducatorActivities />} />
           <Route path="reports" element={<EducatorReports />} />
           <Route path="media" element={<EducatorMediaManager />} />
+          <Route path="lesson-plans/create" element={<LessonPlanCreate />} />
+          <Route path="my-timetable" element={<MyTimetable />} />
           <Route
             path=""
             element={<Navigate to="/educator/dashboard" replace />}
