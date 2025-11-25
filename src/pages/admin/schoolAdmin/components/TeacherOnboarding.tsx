@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Upload, FileText, CheckCircle, AlertCircle, X } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
+import { validateTeacherOnboarding, validateDocument } from "../../../../utils/teacherValidation";
 
 interface SubjectExpertise {
   name: string;
@@ -66,29 +67,48 @@ const TeacherOnboardingPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const handleFileChange = (field: keyof typeof documents, files: FileList | null) => {
     if (!files) return;
 
-    // Validate file size (5 MB max)
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB in bytes
-    const invalidFiles = Array.from(files).filter(file => file.size > MAX_FILE_SIZE);
+    // Validate each file
+    const fileArray = Array.from(files);
+    const errors: string[] = [];
     
-    if (invalidFiles.length > 0) {
+    fileArray.forEach(file => {
+      const validation = validateDocument(file, true);
+      if (!validation.isValid) {
+        errors.push(`${file.name}: ${validation.error}`);
+      }
+    });
+    
+    if (errors.length > 0) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [field]: errors.join(", ")
+      }));
       setMessage({
         type: "error",
-        text: `File(s) exceed 5 MB limit: ${invalidFiles.map(f => f.name).join(", ")}`
+        text: errors.join("; ")
       });
       return;
     }
 
+    // Clear validation error for this field
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+
     if (field === "experience_letters") {
       setDocuments((prev) => ({
         ...prev,
-        experience_letters: [...prev.experience_letters, ...Array.from(files)],
+        experience_letters: [...prev.experience_letters, ...fileArray],
       }));
     } else {
-      setDocuments((prev) => ({ ...prev, [field]: files[0] }));
+      setDocuments((prev) => ({ ...prev, [field]: fileArray[0] }));
     }
   };
 
@@ -148,6 +168,30 @@ const TeacherOnboardingPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
+    setValidationErrors({});
+
+    // Validate all fields
+    const validation = validateTeacherOnboarding({
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      email: formData.email,
+      phone: formData.phone,
+      subjects: subjects,
+      degree_certificate: documents.degree_certificate,
+      id_proof: documents.id_proof,
+      // Optional: Add school domain check
+      // schoolDomain: "yourschool.edu"
+    });
+
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      setMessage({
+        type: "error",
+        text: "Please fix the validation errors before submitting."
+      });
+      setLoading(false);
+      return;
+    }
 
     try {
       // Upload documents

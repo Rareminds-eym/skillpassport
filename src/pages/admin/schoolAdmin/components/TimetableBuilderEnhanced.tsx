@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Sparkles, Save, Send } from "lucide-react";
+import { Sparkles, Save, Send, AlertTriangle } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
+import { validateTimetableSlot, getAllTimetableConflicts, ValidationConflict } from "../../../../utils/timetableValidation";
 
 interface Teacher {
   id: string;
@@ -29,6 +30,8 @@ const TimetableBuilderEnhanced: React.FC = () => {
   const [draggedSlot, setDraggedSlot] = useState<TimetableSlot | null>(null);
   const [loading, setLoading] = useState(false);
   const [publishStatus, setPublishStatus] = useState<"draft" | "published">("draft");
+  const [conflicts, setConflicts] = useState<Map<string, ValidationConflict[]>>(new Map());
+  const [showConflicts, setShowConflicts] = useState(true);
 
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const periods = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -101,6 +104,10 @@ const TimetableBuilderEnhanced: React.FC = () => {
         teacher_name: slot.teachers ? `${slot.teachers.first_name} ${slot.teachers.last_name}` : ""
       }));
       setAllSlots(slotsWithNames);
+      
+      // Validate all slots and detect conflicts
+      const conflictMap = getAllTimetableConflicts(slotsWithNames);
+      setConflicts(conflictMap);
     }
   };
 
@@ -122,6 +129,28 @@ const TimetableBuilderEnhanced: React.FC = () => {
 
   const handleDrop = async (day: number, period: number) => {
     if (!draggedSlot) return;
+
+    // Create updated slot
+    const updatedSlot = {
+      ...draggedSlot,
+      day_of_week: day,
+      period_number: period,
+    };
+
+    // Validate before updating
+    const validationConflicts = validateTimetableSlot(allSlots, updatedSlot);
+    const hasErrors = validationConflicts.some(c => c.severity === 'error');
+
+    if (hasErrors) {
+      const errorMessages = validationConflicts
+        .filter(c => c.severity === 'error')
+        .map(c => c.message)
+        .join('\n');
+      
+      alert(`Cannot move slot:\n${errorMessages}`);
+      setDraggedSlot(null);
+      return;
+    }
 
     setLoading(true);
     try {
@@ -237,6 +266,49 @@ const TimetableBuilderEnhanced: React.FC = () => {
         </div>
       </div>
 
+      {/* Conflicts Alert */}
+      {conflicts.size > 0 && showConflicts && (
+        <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4">
+          <div className="flex justify-between items-start mb-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <h3 className="font-bold text-red-900">
+                {conflicts.size} Slot(s) with Conflicts Detected
+              </h3>
+            </div>
+            <button
+              onClick={() => setShowConflicts(false)}
+              className="text-red-600 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {Array.from(conflicts.entries()).map(([slotId, slotConflicts]) => {
+              const slot = allSlots.find(s => s.id === slotId);
+              if (!slot) return null;
+              
+              return (
+                <div key={slotId} className="bg-white p-3 rounded-lg border border-red-200">
+                  <div className="font-medium text-sm text-gray-900 mb-1">
+                    {slot.teacher_name} - {days[slot.day_of_week - 1]} Period {slot.period_number}
+                  </div>
+                  <ul className="list-disc list-inside space-y-1">
+                    {slotConflicts.map((conflict, idx) => (
+                      <li key={idx} className={`text-xs ${
+                        conflict.severity === 'error' ? 'text-red-700' : 'text-yellow-700'
+                      }`}>
+                        {conflict.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex gap-3">
         <button
@@ -336,21 +408,48 @@ const TimetableBuilderEnhanced: React.FC = () => {
                       onDrop={() => handleDrop(dayIndex + 1, period)}
                     >
                       {slot ? (
-                        <div
-                          draggable
-                          onDragStart={() => handleDragStart(slot)}
-                          className="p-2 bg-indigo-100 border border-indigo-300 rounded cursor-move hover:bg-indigo-200 transition"
-                        >
-                          <div className="font-medium text-indigo-900 text-xs truncate">
-                            {slot.teacher_name}
-                          </div>
-                          <div className="text-xs text-indigo-700 truncate">
-                            {slot.subject_name}
-                          </div>
-                          <div className="text-xs text-indigo-600">
-                            {slot.class_name} • {slot.room_number}
-                          </div>
-                        </div>
+                        (() => {
+                          const slotConflicts = slot.id ? conflicts.get(slot.id) || [] : [];
+                          const hasConflict = slotConflicts.length > 0;
+                          const hasError = slotConflicts.some(c => c.severity === 'error');
+                          
+                          return (
+                            <div
+                              draggable
+                              onDragStart={() => handleDragStart(slot)}
+                              className={`p-2 border rounded cursor-move transition ${
+                                hasError
+                                  ? "bg-red-100 border-red-500 hover:bg-red-200"
+                                  : hasConflict
+                                  ? "bg-yellow-100 border-yellow-500 hover:bg-yellow-200"
+                                  : "bg-indigo-100 border-indigo-300 hover:bg-indigo-200"
+                              }`}
+                              title={hasConflict ? slotConflicts.map(c => c.message).join('\n') : ''}
+                            >
+                              {hasError && (
+                                <div className="flex items-center gap-1 mb-1">
+                                  <AlertTriangle className="h-3 w-3 text-red-600" />
+                                  <span className="text-xs text-red-600 font-bold">Conflict!</span>
+                                </div>
+                              )}
+                              <div className={`font-medium text-xs truncate ${
+                                hasError ? "text-red-900" : hasConflict ? "text-yellow-900" : "text-indigo-900"
+                              }`}>
+                                {slot.teacher_name}
+                              </div>
+                              <div className={`text-xs truncate ${
+                                hasError ? "text-red-700" : hasConflict ? "text-yellow-700" : "text-indigo-700"
+                              }`}>
+                                {slot.subject_name}
+                              </div>
+                              <div className={`text-xs ${
+                                hasError ? "text-red-600" : hasConflict ? "text-yellow-600" : "text-indigo-600"
+                              }`}>
+                                {slot.class_name} • {slot.room_number}
+                              </div>
+                            </div>
+                          );
+                        })()
                       ) : (
                         <div className="p-2 text-center text-xs text-green-600 font-medium">
                           Free Period
