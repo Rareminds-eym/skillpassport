@@ -401,7 +401,7 @@ const ProfileEditSection = ({ profileEmail }) => {
             return (
               <Card 
                 key={section.id} 
-                className={`group relative overflow-hidden bg-white/80 backdrop-blur-sm border-2 ${section.color.split('text-')[0]} shadow-lg hover:shadow-2xl transition-all duration-500 ${isOwnProfile ? 'cursor-pointer hover:scale-[1.03] hover:-translate-y-1' : ''}`}
+                className={`pt-6 group relative overflow-hidden bg-white/80 backdrop-blur-sm border-2 ${section.color.split('text-')[0]} shadow-lg hover:shadow-2xl transition-all duration-500 ${isOwnProfile ? 'cursor-pointer hover:scale-[1.03] hover:-translate-y-1' : ''}`}
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent pointer-events-none"></div>
                 <CardContent className="relative p-7">
@@ -506,6 +506,7 @@ const ProfileEditSection = ({ profileEmail }) => {
               title="Soft Skills"
               type="Skill"
               onSave={(data) => handleSave('softSkills', data)}
+              showAllStatuses={true}
             />
 
             <SkillsEditModal
@@ -515,6 +516,7 @@ const ProfileEditSection = ({ profileEmail }) => {
               title="Technical Skills"
               type="Skill"
               onSave={(data) => handleSave('technicalSkills', data)}
+              showAllStatuses={true}
             />
           </>
         )}
