@@ -346,3 +346,90 @@ export const getAllSchools = async () => {
     };
   }
 };
+
+/**
+ * Update student by student ID
+ * @param {string} studentId - Student ID
+ * @param {Object} updates - Student data updates
+ * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
+ */
+export const updateStudent = async (studentId, updates) => {
+  try {
+    const { data, error } = await supabase
+      .from('students')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', studentId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error updating student:', error);
+      return {
+        success: false,
+        data: null,
+        error: error.message
+      };
+    }
+
+    return {
+      success: true,
+      data: data,
+      error: null
+    };
+  } catch (error) {
+    console.error('❌ Unexpected error updating student:', error);
+    return {
+      success: false,
+      data: null,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Soft delete a student by student ID
+ * @param {string} studentId - Student ID
+ * @param {string} educatorId - Educator ID performing the deletion
+ * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
+ */
+export const softDeleteStudent = async (studentId, educatorId) => {
+  try {
+    const { data, error } = await supabase
+      .from('students')
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+        deleted_by: educatorId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', studentId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error soft deleting student:', error);
+      return {
+        success: false,
+        data: null,
+        error: error.message
+      };
+    }
+
+    console.log('✅ Student soft deleted successfully:', data.id);
+    return {
+      success: true,
+      data: data,
+      error: null
+    };
+  } catch (error) {
+    console.error('❌ Unexpected error soft deleting student:', error);
+    return {
+      success: false,
+      data: null,
+      error: error.message
+    };
+  }
+};
