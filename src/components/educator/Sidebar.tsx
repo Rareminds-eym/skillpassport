@@ -15,6 +15,7 @@ import {
   ChatBubbleLeftRightIcon,
   FolderIcon,
   BookOpenIcon,
+  SparklesIcon
   // Icons from Heroicons
 } from "@heroicons/react/24/outline";
 
