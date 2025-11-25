@@ -10,49 +10,50 @@ import {
   Award,
   ChevronRight,
   Clock,
+  BookOpen,
 } from "lucide-react";
 import KPICard from "../../../components/admin/KPICard";
 
 const Dashboard: React.FC = () => {
-  // ===== KPI Cards =====
+  // ===== KPI Cards (Real Data from RM Programs Excel) =====
   const kpiData = [
     {
-      title: "Total Students",
-      value: "12,456",
-      change: 8.5,
-      changeLabel: "vs last semester",
+      title: "Total Programs",
+      value: "48",
+      change: 89.6,
+      changeLabel: "completion rate",
       icon: <GraduationCap className="h-6 w-6" />,
       color: "blue" as const,
     },
     {
-      title: "Departments",
-      value: "24",
+      title: "Total Learners",
+      value: "48,793",
       change: 0,
-      changeLabel: "active departments",
-      icon: <Building2 className="h-6 w-6" />,
+      changeLabel: "students & faculty",
+      icon: <Users className="h-6 w-6" />,
       color: "purple" as const,
     },
     {
-      title: "Placement Rate",
-      value: "87.5%",
-      change: 12.3,
-      changeLabel: "vs last year",
-      icon: <Briefcase className="h-6 w-6" />,
+      title: "Faculty Trained",
+      value: "878",
+      change: 0,
+      changeLabel: "through FDP programs",
+      icon: <Award className="h-6 w-6" />,
       color: "green" as const,
     },
     {
-      title: "Faculty Members",
-      value: "842",
-      change: 5.2,
-      changeLabel: "vs last semester",
-      icon: <Users className="h-6 w-6" />,
+      title: "Colleges Reached",
+      value: "1,658",
+      change: 0,
+      changeLabel: "institutions covered",
+      icon: <Building2 className="h-6 w-6" />,
       color: "yellow" as const,
     },
   ];
 
-  // ===== Chart Data =====
-  const placementTrend = {
-    series: [{ name: "Placement %", data: [72, 75, 78, 82, 87, 89, 91] }],
+  // ===== Chart Data - Program Growth Trend =====
+  const programGrowthTrend = {
+    series: [{ name: "Completed Programs", data: [8, 12, 18, 25, 34, 40, 43] }],
     options: {
       chart: { type: "area", toolbar: { show: false }, height: 250 },
       stroke: { curve: "smooth", width: 3 },
@@ -60,10 +61,10 @@ const Dashboard: React.FC = () => {
         type: "gradient",
         gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1 },
       },
-      colors: ["#16a34a"],
+      colors: ["#3b82f6"],
       dataLabels: { enabled: false },
       xaxis: {
-        categories: ["2019", "2020", "2021", "2022", "2023", "2024", "2025"],
+        categories: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"],
         labels: { style: { colors: "#6b7280" } },
       },
       yaxis: { labels: { style: { colors: "#6b7280" } } },
@@ -71,60 +72,81 @@ const Dashboard: React.FC = () => {
     },
   };
 
-  const departmentStats = {
+  // ===== Top Courses by Learners (Real Data) =====
+  const topCoursesStats = {
     series: [
-      { name: "Students", data: [2845, 1923, 1654, 1432, 1876] },
-      { name: "Placements %", data: [92, 85, 88, 79, 90] },
+      { name: "Learners", data: [14290, 5560, 5034, 3881, 3829] },
     ],
     options: {
-      chart: { type: "bar", stacked: false, toolbar: { show: false } },
-      plotOptions: { bar: { horizontal: false, columnWidth: "45%", borderRadius: 6 } },
-      colors: ["#3b82f6", "#22c55e"],
+      chart: { type: "bar", toolbar: { show: false } },
+      plotOptions: { bar: { horizontal: true, borderRadius: 8 } },
+      colors: ["#3b82f6"],
       dataLabels: { enabled: false },
       xaxis: {
-        categories: ["CSE", "Mechanical", "Electrical", "Civil", "Electronics"],
+        categories: [
+          "EV Battery Mgmt",
+          "FSQM",
+          "GMP",
+          "Medical Coding",
+          "MC",
+        ],
         labels: { style: { colors: "#6b7280" } },
       },
       yaxis: {
-        title: { text: "Count / %" },
-        labels: { style: { colors: "#6b7280" } },
+        labels: { 
+          style: { colors: "#6b7280" },
+        },
       },
-      legend: { position: "top", horizontalAlign: "right" },
       grid: { borderColor: "#f1f5f9" },
-      tooltip: { theme: "light" },
+      tooltip: { 
+        theme: "light",
+        y: {
+          formatter: (val: number) => `${val.toLocaleString()} learners`
+        }
+      },
     },
   };
 
-  const departmentOverview = [
-    { name: "Computer Science", students: 2845, faculty: 156, placements: 92 },
-    { name: "Mechanical Engg.", students: 1923, faculty: 124, placements: 85 },
-    { name: "Electrical Engg.", students: 1654, faculty: 98, placements: 88 },
+  // ===== Program Overview (Real Data) =====
+  const programOverview = [
+    { name: "Naan Mudhalvan", programs: 29, learners: 45346, status: "Active" },
+    { name: "TNSDC", programs: 2, learners: 2487, status: "Active" },
+    { name: "Acharya Programs", programs: 9, learners: 674, status: "Active" },
   ];
 
+  // ===== Recent Activities (Real Data from Excel) =====
   const recentActivities = [
     {
       id: 1,
-      title: "New Admission Batch",
-      description: "150 students joined Computer Science",
-      time: "2 hours ago",
+      title: "GMP Program Completed",
+      description: "5,034 students trained in Good Manufacturing Practice",
+      time: "Recently completed",
+      type: "success",
+      icon: Award,
+    },
+    {
+      id: 2,
+      title: "FSQM Training Finished",
+      description: "5,560 learners completed Food Safety & Quality Management",
+      time: "Recently completed",
+      type: "success",
+      icon: BookOpen,
+    },
+    {
+      id: 3,
+      title: "Medical Coding Program",
+      description: "3,829 students trained across multiple colleges",
+      time: "Recently completed",
       type: "success",
       icon: GraduationCap,
     },
     {
-      id: 2,
-      title: "Placement Drive",
-      description: "Google recruitment on 20th Nov",
-      time: "5 hours ago",
+      id: 4,
+      title: "EV Battery Management",
+      description: "14,290 learners trained in Electric Vehicle technology",
+      time: "Ongoing",
       type: "info",
       icon: Briefcase,
-    },
-    {
-      id: 3,
-      title: "Department Meeting",
-      description: "HODs meeting scheduled tomorrow",
-      time: "1 day ago",
-      type: "warning",
-      icon: Calendar,
     },
   ];
 
@@ -145,7 +167,7 @@ const Dashboard: React.FC = () => {
           College Dashboard
         </h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Overview of institutional performance and analytics
+          Overview of institutional performance and program analytics
         </p>
       </div>
 
@@ -157,42 +179,42 @@ const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* Bottom Quick Stats */}
+      {/* Bottom Quick Stats (Real Data) */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         <div className="bg-blue-600 rounded-2xl p-5 text-white shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm mb-1">Attendance Today</p>
-              <p className="text-3xl font-bold">94.2%</p>
+              <p className="text-blue-100 text-sm mb-1">Student Programs</p>
+              <p className="text-3xl font-bold">27</p>
             </div>
             <TrendingUp className="h-7 w-7 opacity-90" />
           </div>
           <p className="text-sm mt-3 flex items-center gap-1">
-            <TrendingUp className="h-4 w-4" /> +2.5% from yesterday
+            47,629 students trained
           </p>
         </div>
 
         <div className="bg-purple-600 rounded-2xl p-5 text-white shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm mb-1">Active Courses</p>
-              <p className="text-3xl font-bold">348</p>
+              <p className="text-purple-100 text-sm mb-1">Faculty Programs</p>
+              <p className="text-3xl font-bold">15</p>
             </div>
             <Award className="h-7 w-7 opacity-90" />
           </div>
-          <p className="text-sm mt-3">Across all departments</p>
+          <p className="text-sm mt-3">878 faculty members trained</p>
         </div>
 
         <div className="bg-green-600 rounded-2xl p-5 text-white shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm mb-1">Job Offers</p>
-              <p className="text-3xl font-bold">2,847</p>
+              <p className="text-green-100 text-sm mb-1">District Coverage</p>
+              <p className="text-3xl font-bold">354</p>
             </div>
-            <Briefcase className="h-7 w-7 opacity-90" />
+            <Building2 className="h-7 w-7 opacity-90" />
           </div>
           <p className="text-sm mt-3 flex items-center gap-1">
-            <TrendingUp className="h-4 w-4" /> +18% this year
+            Across Tamil Nadu & Karnataka
           </p>
         </div>
       </div>
@@ -201,11 +223,11 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm xl:col-span-2">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Placement Growth Trend
+            Program Growth Trend
           </h2>
           <ReactApexChart
-            options={placementTrend.options}
-            series={placementTrend.series}
+            options={programGrowthTrend.options}
+            series={programGrowthTrend.series}
             type="area"
             height={300}
           />
@@ -213,18 +235,18 @@ const Dashboard: React.FC = () => {
 
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Department Comparison
+            Top Courses by Learners
           </h2>
           <ReactApexChart
-            options={departmentStats.options}
-            series={departmentStats.series}
+            options={topCoursesStats.options}
+            series={topCoursesStats.series}
             type="bar"
             height={300}
           />
         </div>
       </div>
 
-      {/* Redesigned Activities + Department Overview */}
+      {/* Redesigned Activities + Program Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activities */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm backdrop-blur-sm">
@@ -268,11 +290,11 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Department Overview */}
+        {/* Program Overview */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm backdrop-blur-sm">
           <div className="flex justify-between items-center mb-5">
             <h2 className="text-lg font-bold text-gray-900">
-              Department Overview
+              Program Overview
             </h2>
             <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition">
               View Details <ChevronRight className="h-4 w-4" />
@@ -280,20 +302,20 @@ const Dashboard: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            {departmentOverview.map((dept, i) => (
+            {programOverview.map((prog, i) => (
               <div
                 key={i}
                 className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 rounded-xl p-4 transition"
               >
                 <div>
-                  <p className="font-semibold text-gray-800">{dept.name}</p>
+                  <p className="font-semibold text-gray-800">{prog.name}</p>
                   <p className="text-xs text-gray-500">
-                    {dept.students.toLocaleString()} students • {dept.faculty} faculty
+                    {prog.programs} programs • {prog.learners.toLocaleString()} learners
                   </p>
                 </div>
                 <div className="text-right">
                   <span className="text-sm font-semibold text-green-600 bg-green-100 px-3 py-1 rounded-full">
-                    {dept.placements}% placed
+                    {prog.status}
                   </span>
                 </div>
               </div>

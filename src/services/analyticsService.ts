@@ -41,15 +41,15 @@ export const buildDateRange = (preset: FunnelRangePreset, start?: string, end?: 
 const makeTrendLabels = (preset: FunnelRangePreset): string[] => {
   switch (preset) {
     case '7d':
-      return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     case '30d':
-      return ['Wk1','Wk2','Wk3','Wk4','Wk5'];
+      return ['Wk1', 'Wk2', 'Wk3', 'Wk4', 'Wk5'];
     case '90d':
-      return ['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'];
+      return ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9', 'W10', 'W11', 'W12'];
     case 'ytd':
-      return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     default:
-      return ['Wk1','Wk2','Wk3','Wk4','Wk5'];
+      return ['Wk1', 'Wk2', 'Wk3', 'Wk4', 'Wk5'];
   }
 };
 
@@ -151,7 +151,7 @@ export const getAnalyticsKPIMetrics = async (
 ): Promise<{ data: AnalyticsKPIMetrics | null; error: any }> => {
   try {
     const { startDate, endDate } = buildDateRange(preset, start, end);
-    
+
     // Calculate previous period for trend comparison
     const startMs = new Date(startDate).getTime();
     const endMs = new Date(endDate).getTime();
@@ -195,7 +195,7 @@ export const getAnalyticsKPIMetrics = async (
 
       if (!detailsErr && hiredCandidatesDetails) {
         const hireDurations: number[] = [];
-        
+
         for (const cand of hiredCandidatesDetails) {
           const hireActivity = currentHires?.find((h: any) => h.pipeline_candidate_id === cand.id);
           if (hireActivity && cand.added_at) {
@@ -370,44 +370,104 @@ export const getTopHiringColleges = async (
   try {
     const { startDate, endDate } = buildDateRange(preset, start, end);
 
-    // Use RPC or direct query to get university counts from pipeline_candidates + students
-    // This mirrors: SELECT s.profile ->> 'university' AS university, COUNT(*) AS pipeline_count
-    //               FROM pipeline_candidates p JOIN students s ON s.id = p.student_id
-    //               GROUP BY s.profile ->> 'university' ORDER BY pipeline_count DESC LIMIT 4
-    
-    const { data: results, error: queryErr } = await supabase
+    // Step 1: Get pipeline candidates with student info (both foreign keys AND direct columns)
+    const { data: pipelineCandidates, error: pipelineErr } = await supabase
       .from('pipeline_candidates')
       .select(`
         student_id,
         students!inner(
-          profile
+          university_college_id,
+          school_id,
+          university,
+          college_school_name
         )
       `)
       .gte('added_at', startDate)
       .lte('added_at', endDate);
 
-    if (queryErr) throw queryErr;
+    if (pipelineErr) throw pipelineErr;
 
-    if (!results || results.length === 0) {
+    if (!pipelineCandidates || pipelineCandidates.length === 0) {
       return { data: [], error: null };
     }
 
-    // Count universities from the joined data
-    const universityCounts: Record<string, number> = {};
+    // Step 2: Collect unique university_college_ids and school_ids
+    const universityCollegeIds = new Set<string>();
+    const schoolIds = new Set<string>();
+
+    pipelineCandidates.forEach((row: any) => {
+      const univCollegeId = row.students?.university_college_id;
+      const schoolId = row.students?.school_id;
+
+      if (univCollegeId) universityCollegeIds.add(univCollegeId);
+      if (schoolId) schoolIds.add(schoolId);
+    });
+
+    // Step 3: Fetch university names (via university_colleges -> universities)
+    const universityMap: Record<string, string> = {};
+    if (universityCollegeIds.size > 0) {
+      const { data: colleges, error: collegesErr } = await supabase
+        .from('university_colleges')
+        .select(`
+          id,
+          universities!inner(name)
+        `)
+        .in('id', Array.from(universityCollegeIds));
+
+      if (!collegesErr && colleges) {
+        colleges.forEach((college: any) => {
+          if (college.universities?.name) {
+            universityMap[college.id] = college.universities.name;
+          }
+        });
+      }
+    }
+
+    // Step 4: Fetch school names
+    const schoolMap: Record<string, string> = {};
+    if (schoolIds.size > 0) {
+      const { data: schools, error: schoolsErr } = await supabase
+        .from('schools')
+        .select('id, name')
+        .in('id', Array.from(schoolIds));
+
+      if (!schoolsErr && schools) {
+        schools.forEach((school: any) => {
+          if (school.name) {
+            schoolMap[school.id] = school.name;
+          }
+        });
+      }
+    }
+
+    // Step 5: Count institutions (with fallback to direct columns)
+    const institutionCounts: Record<string, number> = {};
     let totalCount = 0;
 
-    results.forEach((row: any) => {
-      const university = row.students?.profile?.university || 
-                        row.students?.profile?.college || 
-                        'Unknown';
-      if (university && university !== 'Unknown') {
-        universityCounts[university] = (universityCounts[university] || 0) + 1;
+    pipelineCandidates.forEach((row: any) => {
+      const univCollegeId = row.students?.university_college_id;
+      const schoolId = row.students?.school_id;
+
+      // Priority:
+      // 1. university name from foreign key relationship
+      // 2. school name from foreign key relationship
+      // 3. university column (direct)
+      // 4. college_school_name column (direct)
+      const institutionName =
+        (univCollegeId && universityMap[univCollegeId]) ||
+        (schoolId && schoolMap[schoolId]) ||
+        row.students?.university ||
+        row.students?.college_school_name;
+
+      if (institutionName && institutionName.trim() !== '') {
+        const cleanName = institutionName.trim();
+        institutionCounts[cleanName] = (institutionCounts[cleanName] || 0) + 1;
         totalCount += 1;
       }
     });
 
-    // Convert to array and sort by count
-    const collegesArray: TopHiringCollege[] = Object.entries(universityCounts)
+    // Step 6: Convert to array and sort by count
+    const collegesArray: TopHiringCollege[] = Object.entries(institutionCounts)
       .map(([name, count]) => ({
         name,
         count: count as number,
@@ -465,17 +525,17 @@ export const getCoursePerformance = async (
     const courseStats: Record<string, { total: number; hired: number }> = {};
 
     results.forEach((row: any) => {
-      const course = row.students?.profile?.course || 
-                     row.students?.profile?.program || 
-                     'Unknown';
-      
+      const course = row.students?.profile?.course ||
+        row.students?.profile?.program ||
+        'Unknown';
+
       if (course && course !== 'Unknown') {
         if (!courseStats[course]) {
           courseStats[course] = { total: 0, hired: 0 };
         }
-        
+
         courseStats[course].total += 1;
-        
+
         // Check if candidate is hired
         const stage = (row.stage || '').toLowerCase();
         if (stage === 'hired' && row.status !== 'rejected') {
@@ -511,10 +571,10 @@ export interface GeographicLocation {
 // Helper function to format district names (mimics SQL initcap and regexp_replace)
 const formatDistrictName = (district: string | null | undefined): string => {
   if (!district) return 'Unknown';
-  
+
   // Remove special characters and extra spaces (regexp_replace)
   const cleaned = district.replace(/[^a-zA-Z0-9]+/g, ' ').trim();
-  
+
   // Capitalize first letter of each word (initcap)
   return cleaned
     .split(' ')
@@ -532,17 +592,18 @@ export const getGeographicDistribution = async (
   try {
     const { startDate, endDate } = buildDateRange(preset, start, end);
 
-    // This mirrors: SELECT initcap(regexp_replace(trim(s.profile ->> 'district_name'), '[^a-zA-Z0-9]+', ' ', 'g')) AS district,
-    //                      COUNT(*) AS pipeline_count
-    //               FROM pipeline_candidates p JOIN students s ON s.id = p.student_id
-    //               GROUP BY 1 ORDER BY pipeline_count DESC LIMIT 4
-    
+    // Now using the normalized 'state' column instead of profile JSONB
+    // SELECT initcap(regexp_replace(trim(s.state), '[^a-zA-Z0-9]+', ' ', 'g')) AS state,
+    //        COUNT(*) AS pipeline_count
+    // FROM pipeline_candidates p JOIN students s ON s.id = p.student_id
+    // GROUP BY 1 ORDER BY pipeline_count DESC LIMIT 4
+
     const { data: results, error: queryErr } = await supabase
       .from('pipeline_candidates')
       .select(`
         student_id,
         students!inner(
-          profile
+          state
         )
       `)
       .gte('added_at', startDate)
@@ -559,15 +620,12 @@ export const getGeographicDistribution = async (
     let totalCount = 0;
 
     results.forEach((row: any) => {
-      const district = row.students?.profile?.district_name || 
-                       row.students?.profile?.city || 
-                       row.students?.profile?.location || 
-                       null;
-      
-      const formattedDistrict = formatDistrictName(district);
-      
-      if (formattedDistrict && formattedDistrict !== 'Unknown') {
-        locationCounts[formattedDistrict] = (locationCounts[formattedDistrict] || 0) + 1;
+      const state = row.students?.state || null;
+
+      const formattedState = formatDistrictName(state);
+
+      if (formattedState && formattedState !== 'Unknown') {
+        locationCounts[formattedState] = (locationCounts[formattedState] || 0) + 1;
         totalCount += 1;
       }
     });
@@ -589,6 +647,194 @@ export const getGeographicDistribution = async (
   }
 };
 
+export interface QualityMetrics {
+  totalHired: number;
+  avgAiScore: number;
+  avgCgpa: number;
+  genderDiversity: {
+    male: number;
+    female: number;
+    other: number;
+    malePercent: number;
+    femalePercent: number;
+    otherPercent: number;
+  };
+  ageDemographics: {
+    averageAge: number;
+    ageRanges: {
+      range: string;
+      count: number;
+      percentage: number;
+    }[];
+  };
+  topCourses: {
+    name: string;
+    count: number;
+    percentage: number;
+  }[];
+}
+
+// Get quality metrics from database (hired candidates only)
+export const getQualityMetrics = async (
+  preset: FunnelRangePreset,
+  start?: string,
+  end?: string
+): Promise<{ data: QualityMetrics | null; error: any }> => {
+  try {
+    const { startDate, endDate } = buildDateRange(preset, start, end);
+
+    // Query hired candidates with student data
+    // Note: employability_score doesn't exist in students table, so we only fetch available fields
+    const { data: hiredCandidates, error: queryErr } = await supabase
+      .from('pipeline_candidates')
+      .select(`
+        student_id,
+        students!inner(
+          currentCgpa,
+          gender,
+          age,
+          branch_field
+        )
+      `)
+      .eq('stage', 'hired')
+      .gte('added_at', startDate)
+      .lte('added_at', endDate);
+
+    if (queryErr) throw queryErr;
+
+    if (!hiredCandidates || hiredCandidates.length === 0) {
+      return {
+        data: {
+          totalHired: 0,
+          avgAiScore: 0,
+          avgCgpa: 0,
+          genderDiversity: {
+            male: 0,
+            female: 0,
+            other: 0,
+            malePercent: 0,
+            femalePercent: 0,
+            otherPercent: 0,
+          },
+          ageDemographics: {
+            averageAge: 0,
+            ageRanges: []
+          },
+          topCourses: []
+        },
+        error: null,
+      };
+    }
+
+    // Calculate metrics
+    let totalCgpa = 0;
+    let cgpaCount = 0;
+    let maleCount = 0;
+    let femaleCount = 0;
+    let otherCount = 0;
+
+    // Age metrics
+    let totalAge = 0;
+    let ageCount = 0;
+    const ageRanges = {
+      '18-21': 0,
+      '22-25': 0,
+      '26-30': 0,
+      '30+': 0
+    };
+
+    // Course metrics
+    const courseCounts: Record<string, number> = {};
+
+    hiredCandidates.forEach((row: any) => {
+      const student = row.students;
+
+      // CGPA (column is camelCase: currentCgpa)
+      if (student?.currentCgpa && student.currentCgpa > 0) {
+        totalCgpa += student.currentCgpa;
+        cgpaCount++;
+      }
+
+      // Gender
+      const gender = (student?.gender || '').toLowerCase();
+      if (gender === 'male' || gender === 'm') {
+        maleCount++;
+      } else if (gender === 'female' || gender === 'f') {
+        femaleCount++;
+      } else if (gender) {
+        otherCount++;
+      }
+
+      // Age
+      if (student?.age && student.age > 0) {
+        totalAge += student.age;
+        ageCount++;
+
+        if (student.age <= 21) ageRanges['18-21']++;
+        else if (student.age <= 25) ageRanges['22-25']++;
+        else if (student.age <= 30) ageRanges['26-30']++;
+        else ageRanges['30+']++;
+      }
+
+      // Course/Branch
+      const course = student?.branch_field || 'Unknown';
+      courseCounts[course] = (courseCounts[course] || 0) + 1;
+    });
+
+    const totalHired = hiredCandidates.length;
+    const avgCgpa = cgpaCount > 0 ? parseFloat((totalCgpa / cgpaCount).toFixed(2)) : 0;
+
+    const genderTotal = maleCount + femaleCount + otherCount;
+    const malePercent = genderTotal > 0 ? parseFloat(((maleCount / genderTotal) * 100).toFixed(1)) : 0;
+    const femalePercent = genderTotal > 0 ? parseFloat(((femaleCount / genderTotal) * 100).toFixed(1)) : 0;
+    const otherPercent = genderTotal > 0 ? parseFloat(((otherCount / genderTotal) * 100).toFixed(1)) : 0;
+
+    // Process Age Demographics
+    const avgAge = ageCount > 0 ? parseFloat((totalAge / ageCount).toFixed(1)) : 0;
+    const processedAgeRanges = Object.entries(ageRanges).map(([range, count]) => ({
+      range,
+      count,
+      percentage: ageCount > 0 ? parseFloat(((count / ageCount) * 100).toFixed(1)) : 0
+    }));
+
+    // Process Top Courses
+    const processedCourses = Object.entries(courseCounts)
+      .map(([name, count]) => ({
+        name,
+        count,
+        percentage: parseFloat(((count / totalHired) * 100).toFixed(1))
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5); // Top 5 courses
+
+    const data: QualityMetrics = {
+      totalHired,
+      avgAiScore: 0, // Not available in database
+      avgCgpa,
+      genderDiversity: {
+        male: maleCount,
+        female: femaleCount,
+        other: otherCount,
+        malePercent,
+        femalePercent,
+        otherPercent,
+      },
+      ageDemographics: {
+        averageAge: avgAge,
+        ageRanges: processedAgeRanges
+      },
+      topCourses: processedCourses
+    };
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error fetching quality metrics:', error);
+    return { data: null, error };
+  }
+};
+
+
+
 export interface SpeedAnalytics {
   timeToFirstResponse: number;  // Average days from added to first activity
   timeToHire: number;           // Average days from added to hired
@@ -602,7 +848,7 @@ const calculateDays = (startDate: string, endDate: string): number => {
   const end = new Date(endDate).getTime();
   const diffMs = end - start;
   const days = diffMs / (1000 * 60 * 60 * 24);
-  
+
   // If less than 1 day, return as fraction (e.g., 0.5 days = 12 hours)
   // This gives more accurate metrics for same-day activities
   return Math.max(0, Math.round(days * 10) / 10); // Round to 1 decimal
@@ -669,12 +915,12 @@ export const getSpeedAnalytics = async (
 
       // 3. Interview to Offer: days from first interview stage to offer stage
       const firstInterview = candidateActivities.find(
-        (a: any) => a.activity_type === 'stage_change' && 
-        (a.to_stage === 'interview_1' || a.to_stage === 'interview_2' || a.to_stage === 'interviewed')
+        (a: any) => a.activity_type === 'stage_change' &&
+          (a.to_stage === 'interview_1' || a.to_stage === 'interview_2' || a.to_stage === 'interviewed')
       );
       const offerActivity = candidateActivities.find(
-        (a: any) => a.activity_type === 'stage_change' && 
-        (a.to_stage === 'offer' || a.to_stage === 'offered')
+        (a: any) => a.activity_type === 'stage_change' &&
+          (a.to_stage === 'offer' || a.to_stage === 'offered')
       );
       if (firstInterview && offerActivity) {
         const days = calculateDays(firstInterview.created_at, offerActivity.created_at);

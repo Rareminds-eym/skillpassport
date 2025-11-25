@@ -9,22 +9,28 @@ import {
 } from '@heroicons/react/24/outline'
 import NotificationPanel from './NotificationPanel'
 import { supabase } from '../../lib/supabaseClient'
+import { useNotifications } from '../../hooks/useNotifications'
 
 interface HeaderProps {
   onMenuToggle: () => void
   showMobileMenu: boolean
-  notificationCount?: number
 }
 
 const Header: React.FC<HeaderProps> = ({
   onMenuToggle,
   showMobileMenu,
-  notificationCount = 0,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [educatorProfile, setEducatorProfile] = useState<any>(null)
+  const [educatorEmail, setEducatorEmail] = useState<string | null>(null)
   const navigate = useNavigate()
+
+  // Get notifications using the unified notification system
+  const {
+    unreadCount,
+  } = useNotifications(educatorEmail)
+
 
   // Load educator profile for header
   const loadEducatorProfile = async () => {
@@ -32,9 +38,9 @@ const Header: React.FC<HeaderProps> = ({
       // Get email from localStorage (same method as ProfileFixed)
       const storedUser = localStorage.getItem('user')
       const storedEmail = localStorage.getItem('userEmail')
-      
+
       let email = 'karthikeyan@rareminds.in' // Default fallback
-      
+
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser)
@@ -45,6 +51,8 @@ const Header: React.FC<HeaderProps> = ({
       } else if (storedEmail) {
         email = storedEmail
       }
+
+      setEducatorEmail(email)
 
       // Fetch educator data
       const { data: educatorData, error } = await supabase
@@ -60,7 +68,7 @@ const Header: React.FC<HeaderProps> = ({
 
       if (educatorData) {
         setEducatorProfile({
-          name: educatorData.first_name && educatorData.last_name 
+          name: educatorData.first_name && educatorData.last_name
             ? `${educatorData.first_name} ${educatorData.last_name}`
             : educatorData.first_name || 'Educator',
           photo_url: educatorData.photo_url,
@@ -158,11 +166,11 @@ const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={handleNotificationClick}
                 className="relative p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                aria-label={`Notifications (${notificationCount})`}
+                aria-label={`Notifications (${unreadCount})`}
                 type="button"
               >
                 <BellIcon className="h-5 sm:h-6 w-5 sm:w-6" />
-                {notificationCount > 0 && (
+                {unreadCount > 0 && (
                   <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
                 )}
               </button>
@@ -172,8 +180,10 @@ const Header: React.FC<HeaderProps> = ({
                 <NotificationPanel
                   isOpen={showNotifications}
                   onClose={() => setShowNotifications(false)}
+                  educatorEmail={educatorEmail}
                 />
               )}
+
             </div>
 
             {/* Profile Menu */}
@@ -197,8 +207,8 @@ const Header: React.FC<HeaderProps> = ({
                     }}
                   />
                 ) : null}
-                <UserCircleIcon 
-                  className={`h-6 sm:h-8 w-6 sm:w-8 text-gray-400 ${educatorProfile?.photo_url ? 'hidden' : 'block'}`} 
+                <UserCircleIcon
+                  className={`h-6 sm:h-8 w-6 sm:w-8 text-gray-400 ${educatorProfile?.photo_url ? 'hidden' : 'block'}`}
                 />
                 <div className="hidden sm:flex flex-col items-start">
                   <span className="text-sm font-medium text-gray-900">
@@ -212,9 +222,8 @@ const Header: React.FC<HeaderProps> = ({
                   </span>
                 </div>
                 <ChevronDownIcon
-                  className={`hidden sm:block h-4 w-4 text-gray-500 transition-transform duration-200 ${
-                    showProfileMenu ? 'rotate-180' : ''
-                  }`}
+                  className={`hidden sm:block h-4 w-4 text-gray-500 transition-transform duration-200 ${showProfileMenu ? 'rotate-180' : ''
+                    }`}
                 />
               </button>
 

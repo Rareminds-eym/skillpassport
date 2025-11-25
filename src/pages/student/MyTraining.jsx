@@ -102,7 +102,7 @@ const MyTraining = () => {
         {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">My Training</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Training</h1>
             <p className="text-gray-600">
               Track your courses, certifications, and professional development
             </p>
@@ -289,7 +289,7 @@ const MyTraining = () => {
                                 <Badge
                                   key={idx}
                                   variant="secondary"
-                                  className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-md font-medium"
+                                  className="text-xs bg-blue-50 text-white border border-blue-200 px-2.5 py-1 rounded-md font-medium"
                                 >
                                   {skill}
                                 </Badge>

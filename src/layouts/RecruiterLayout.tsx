@@ -6,6 +6,7 @@ import Header from '../components/Recruiter/components/Header';
 import Sidebar from '../components/Recruiter/components/Sidebar';
 import MobileTabBar from '../components/Recruiter/components/MobileTabBar';
 import CandidateProfileDrawer from '../components/Recruiter/components/CandidateProfileDrawer';
+import FloatingRecruiterAIButton from '../components/FloatingRecruiterAIButton';
 import { useResponsive } from '../hooks/useresponsive';
 import { Candidate } from '../types/recruiter';
 import { useUnreadMessagesCount } from '../hooks/useUnreadMessagesCount';
@@ -88,6 +89,9 @@ const RecruiterLayout = () => {
           onClick={() => setShowMobileMenu(false)}
         ></div>
       )}
+      
+      {/* Floating AI Button */}
+      <FloatingRecruiterAIButton />
       </div>
     </GlobalPresenceProvider>
   );

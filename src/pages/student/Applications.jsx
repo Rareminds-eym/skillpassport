@@ -436,7 +436,7 @@ const Applications = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
               <Briefcase className="w-8 h-8 text-slate-700" />
-              My Applications
+              Applications
             </h1>
             <p className="text-gray-600 mt-1">Track and manage your job applications</p>
           </div>
@@ -1016,11 +1016,11 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
               {/* Pipeline Progress Tracker */}
               <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-6 rounded-xl border border-blue-100 mb-4">
                 {/* Debug Info - Remove after testing */}
-                <div className="bg-yellow-50 border border-yellow-200 p-2 rounded mb-4 text-xs">
+                {/* <div className="bg-yellow-50 border border-yellow-200 p-2 rounded mb-4 text-xs">
                   <strong>Debug:</strong> Stage = "{application.pipelineStage}" |
                   Has Pipeline = {application.hasPipelineStatus ? 'Yes' : 'No'} |
                   Stage Order = {getStageOrder(application.pipelineStage)}
-                </div>
+                </div> */}
 
                 <div className="relative">
                   {/* Progress Bar Container */}

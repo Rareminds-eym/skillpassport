@@ -75,9 +75,9 @@ const Header = ({ activeTab, setActiveTab }) => {
   };
 
   const tabs = [
-    { id: "skills", label: "My Skills" },
-    { id: "training", label: "My Training" },
-    { id: "experience", label: "My Experience" },
+    { id: "skills", label: "Skills" },
+    { id: "training", label: "Training" },
+    { id: "experience", label: "Experience" },
     { id: "digital-portfolio", label: "Digital Portfolio" },
     { id: "opportunities", label: "Opportunities" },
     { id: "applications", label: "Applications" },

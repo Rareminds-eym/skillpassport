@@ -1,60 +1,99 @@
 import React from "react";
 import ReactApexChart from "react-apexcharts";
 import {
-  Users,
   GraduationCap,
-  Calendar,
   TrendingUp,
   ChevronRight,
   Clock,
   UserPlus,
-  Bell,
-  AlertCircle,
   BookOpen,
 } from "lucide-react";
 import KPICard from "../../../components/admin/KPICard";
-import { BanknotesIcon } from "@heroicons/react/24/outline";
+import { BanknotesIcon, BuildingOfficeIcon, MapPinIcon } from "@heroicons/react/24/outline";
 
 const SchoolDashboard: React.FC = () => {
-  // ===== KPI Cards =====
+  // ===== KPI Cards Based on School Programs Data =====
   const kpiData = [
     {
       title: "Total Students",
-      value: "1,200",
-      change: 5.2,
-      changeLabel: "vs last month",
+      value: "4,670",
+      change: 15.3,
+      changeLabel: "school programs",
       icon: <GraduationCap className="h-6 w-6" />,
       color: "blue" as const,
     },
     {
-      title: "Teachers",
-      value: "65",
-      change: 3.2,
-      changeLabel: "+2 new this term",
-      icon: <Users className="h-6 w-6" />,
+      title: "Schools Covered",
+      value: "240",
+      change: 8.2,
+      changeLabel: "active schools",
+      icon: <BuildingOfficeIcon className="h-6 w-6" />,
       color: "purple" as const,
     },
     {
-      title: "Average Attendance",
-      value: "93.5%",
-      change: 1.8,
-      changeLabel: "vs yesterday",
-      icon: <Calendar className="h-6 w-6" />,
+      title: "Districts Reached",
+      value: "66",
+      change: 22.1,
+      changeLabel: "coverage growth",
+      icon: <MapPinIcon className="h-6 w-6" />,
       color: "green" as const,
     },
     {
-      title: "Fee Collection",
-      value: "₹12.8L",
-      change: 10.3,
-      changeLabel: "vs last quarter",
-      icon: <BanknotesIcon className="h-6 w-6" />,
+      title: "Training Hours",
+      value: "180",
+      change: 12.5,
+      changeLabel: "total delivered",
+      icon: <Clock className="h-6 w-6" />,
       color: "yellow" as const,
     },
   ];
 
-  // ===== Chart Data =====
-  const attendanceTrend = {
-    series: [{ name: "Attendance %", data: [89, 91, 92, 90, 93, 94, 93.5] }],
+  // ===== Chart Data - School Programs Distribution =====
+  const programDistribution = {
+    series: [
+      {
+        name: "Students",
+        data: [1570, 76, 2840, 184]
+      }
+    ],
+    options: {
+      chart: { type: "bar", toolbar: { show: false }, height: 250 },
+      plotOptions: {
+        bar: { horizontal: true, borderRadius: 6, dataLabels: { position: "center" } },
+      },
+      colors: ["#3b82f6"],
+      dataLabels: {
+        enabled: true,
+        formatter: (val: number) => val.toLocaleString(),
+        style: { fontSize: "11px", colors: ["#fff"] },
+      },
+      xaxis: {
+        categories: [
+          "Agri & Food (Batch 1 - June)",
+          "Cloud Kitchen (Batch 1 - June)",
+          "Agri & Food (Batch 2 - June 21–28)",
+          "Cloud Kitchen SDP (Batch 2 - June 21–28)",
+        ],
+        labels: { style: { colors: "#6b7280" } },
+      },
+      yaxis: {
+        labels: {
+          style: { colors: "#6b7280", fontSize: "11px" },
+        },
+      },
+      tooltip: { theme: "light" },
+      grid: { borderColor: "#f1f5f9" },
+    },
+  };
+
+
+  const districtsProgress = {
+    series: [
+      {
+        name: "Districts Coverage",
+        data: [31, 1, 33, 1],
+      },
+    ],
     options: {
       chart: { type: "area", toolbar: { show: false }, height: 250 },
       stroke: { curve: "smooth", width: 3 },
@@ -62,98 +101,71 @@ const SchoolDashboard: React.FC = () => {
         type: "gradient",
         gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1 },
       },
-      colors: ["#3b82f6"],
+      colors: ["#8b5cf6"],
       dataLabels: { enabled: false },
       xaxis: {
-        categories: ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6", "Week 7"],
+        categories: [
+          "Agri & Food (Batch 1)",
+          "Cloud Kitchen (Batch 1)",
+          "Agri & Food (Batch 2)",
+          "Cloud Kitchen SDP (Batch 2)",
+        ],
         labels: { style: { colors: "#6b7280" } },
       },
       yaxis: {
-        min: 85,
-        max: 100,
+        title: { text: "Districts", style: { color: "#6b7280" } },
         labels: { style: { colors: "#6b7280" } },
       },
-      tooltip: { theme: "light" },
+      tooltip: {
+        theme: "light",
+        y: { formatter: (val: number) => `${val} Districts` },
+      },
       grid: { borderColor: "#f1f5f9" },
     },
   };
 
-  const feeCollection = {
-    series: [
-      { name: "Fee Collected (₹L)", data: [8.5, 9.2, 10.8, 11.5, 12.8] },
-    ],
-    options: {
-      chart: { type: "bar", toolbar: { show: false } },
-      plotOptions: {
-        bar: {
-          horizontal: false,
-          columnWidth: "55%",
-          borderRadius: 8,
-          dataLabels: { position: "top" },
-        },
-      },
-      colors: ["#8b5cf6"],
-      dataLabels: {
-        enabled: true,
-        formatter: (val: number) => `₹${val}L`,
-        offsetY: -20,
-        style: { fontSize: "11px", colors: ["#6b7280"] },
-      },
-      xaxis: {
-        categories: ["Jan", "Feb", "Mar", "Apr", "May"],
-        labels: { style: { colors: "#6b7280" } },
-      },
-      yaxis: {
-        title: { text: "Amount (₹ Lakhs)" },
-        labels: { style: { colors: "#6b7280" } },
-      },
-      legend: { show: false },
-      grid: { borderColor: "#f1f5f9" },
-      tooltip: { theme: "light" },
-    },
-  };
 
-  const classOverview = [
-    { grade: "Grade 10", students: 45, attendance: 96 },
-    { grade: "Grade 9", students: 52, attendance: 92 },
-    { grade: "Grade 8", students: 48, attendance: 89 },
-    { grade: "Grade 7", students: 55, attendance: 94 },
+  const programOverview = [
+    { program: "Agri & Food Processing", schools: 233, students: 4410, duration: "45 hours" },
+    { program: "Cloud Kitchen", schools: 7, students: 260, duration: "45 hours" },
   ];
+
 
   const recentActivities = [
     {
       id: 1,
-      title: "New Admissions Started",
-      description: "25 new students enrolled for next academic year",
-      time: "2 hours ago",
+      title: "Agri & Food Processing – Completed",
+      description: "233 schools completed training across 64 districts",
+      time: "June 2024",
       type: "success",
-      icon: UserPlus,
+      icon: GraduationCap,
     },
     {
       id: 2,
-      title: "Parent-Teacher Meeting",
-      description: "Scheduled for Grade 10 on 15th Nov",
-      time: "5 hours ago",
+      title: "Cloud Kitchen – Completed",
+      description: "7 schools trained across 2 districts",
+      time: "June 2024",
       type: "info",
-      icon: Calendar,
+      icon: UserPlus,
     },
     {
       id: 3,
-      title: "Fee Reminder Sent",
-      description: "Payment reminders sent to 120 parents",
-      time: "1 day ago",
-      type: "warning",
-      icon: Bell,
+      title: "Students Trained",
+      description: "4,670 school-level learners completed courses",
+      time: "June 2024",
+      type: "success",
+      icon: BookOpen,
     },
     {
       id: 4,
-      title: "Low Attendance Alert",
-      description: "Grade 7 attendance dropped below 90%",
-      time: "2 days ago",
-      type: "error",
-      icon: AlertCircle,
+      title: "District Coverage",
+      description: "Training delivered across 66 districts",
+      time: "June 2024",
+      type: "warning",
+      icon: MapPinIcon,
     },
   ];
+
 
   // ===== Activity Type Colors =====
   const typeColors: Record<string, string> = {
@@ -184,78 +196,80 @@ const SchoolDashboard: React.FC = () => {
       </div>
 
       {/* Quick Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-        <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-5 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm mb-1">Today's Attendance</p>
-              <p className="text-3xl font-bold">94.2%</p>
-            </div>
-            <TrendingUp className="h-7 w-7 opacity-90" />
-          </div>
-          <p className="text-sm mt-3 flex items-center gap-1">
-            <TrendingUp className="h-4 w-4" /> +2.1% from yesterday
-          </p>
-        </div>
+     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
 
-        <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl p-5 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm mb-1">Active Classes</p>
-              <p className="text-3xl font-bold">28</p>
-            </div>
-            <BookOpen className="h-7 w-7 opacity-90" />
-          </div>
-          <p className="text-sm mt-3">Across all grades</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl p-5 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100 text-sm mb-1">Fee Collection Rate</p>
-              <p className="text-3xl font-bold">88.5%</p>
-            </div>
-            <BanknotesIcon className="h-7 w-7 opacity-90" />
-          </div>
-          <p className="text-sm mt-3 flex items-center gap-1">
-            <TrendingUp className="h-4 w-4" /> +5.2% this month
-          </p>
-        </div>
+  {/* Agri & Food Processing */}
+  <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-5 text-white shadow-lg">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-blue-100 text-sm mb-1">Agri & Food Processing</p>
+        <p className="text-3xl font-bold">4,410</p>
       </div>
+      <TrendingUp className="h-7 w-7 opacity-90" />
+    </div>
+    <p className="text-sm mt-3">Students trained across 233 schools</p>
+  </div>
+
+  {/* Cloud Kitchen */}
+  <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl p-5 text-white shadow-lg">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-green-100 text-sm mb-1">Cloud Kitchen</p>
+        <p className="text-3xl font-bold">260</p>
+      </div>
+      <BanknotesIcon className="h-7 w-7 opacity-90" />
+    </div>
+    <p className="text-sm mt-3">Students trained across 7 schools</p>
+  </div>
+
+  {/* Overall District Coverage */}
+  <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl p-5 text-white shadow-lg">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-purple-100 text-sm mb-1">District Coverage</p>
+        <p className="text-3xl font-bold">66</p>
+      </div>
+      <MapPinIcon className="h-7 w-7 opacity-90" />
+    </div>
+    <p className="text-sm mt-3">Programs delivered across Tamil Nadu</p>
+  </div>
+
+</div>
+
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Student Attendance Trend
+            School Program Distribution
           </h2>
           <ReactApexChart
-            options={attendanceTrend.options}
-            series={attendanceTrend.series}
-            type="area"
+            options={programDistribution.options}
+            series={programDistribution.series}
+            type="bar"
             height={300}
           />
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Fee Collection Overview
+            District Coverage by Program
           </h2>
           <ReactApexChart
-            options={feeCollection.options}
-            series={feeCollection.series}
-            type="bar"
+            options={districtsProgress.options}
+            series={districtsProgress.series}
+            type="area"
             height={300}
           />
         </div>
       </div>
 
-      {/* Activities + Class Overview */}
+      {/* Activities + Program Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activities */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm backdrop-blur-sm hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-5">
-            <h2 className="text-lg font-bold text-gray-900">Recent Activities</h2>
+            <h2 className="text-lg font-bold text-gray-900">Program Status</h2>
             <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition">
               View All <ChevronRight className="h-4 w-4" />
             </button>
@@ -294,11 +308,11 @@ const SchoolDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Class Overview */}
+        {/* Program Overview */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm backdrop-blur-sm hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-5">
             <h2 className="text-lg font-bold text-gray-900">
-              Class Overview
+              Program Overview
             </h2>
             <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition">
               View Details <ChevronRight className="h-4 w-4" />
@@ -306,7 +320,7 @@ const SchoolDashboard: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            {classOverview.map((cls, i) => (
+            {programOverview.map((prog, i) => (
               <div
                 key={i}
                 className="flex items-center justify-between bg-gradient-to-r from-gray-50 to-gray-100 hover:from-indigo-50 hover:to-purple-50 rounded-xl p-4 transition-all duration-200 border border-gray-100 hover:border-indigo-200"
@@ -316,23 +330,15 @@ const SchoolDashboard: React.FC = () => {
                     <GraduationCap className="h-5 w-5 text-indigo-600" />
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-800">{cls.grade}</p>
+                    <p className="font-semibold text-gray-800">{prog.program}</p>
                     <p className="text-xs text-gray-500">
-                      {cls.students} students
+                      {prog.schools} schools • {prog.students.toLocaleString()} students
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span
-                    className={`text-sm font-semibold px-3 py-1 rounded-full ${
-                      cls.attendance >= 95
-                        ? "text-green-600 bg-green-100"
-                        : cls.attendance >= 90
-                        ? "text-blue-600 bg-blue-100"
-                        : "text-yellow-600 bg-yellow-100"
-                    }`}
-                  >
-                    {cls.attendance}% attendance
+                  <span className="text-sm font-semibold px-3 py-1 rounded-full text-green-600 bg-green-100">
+                    {prog.duration}
                   </span>
                 </div>
               </div>

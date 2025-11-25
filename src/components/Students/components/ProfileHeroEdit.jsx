@@ -118,13 +118,48 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     }
   }, [realStudentData]);
 
-  // Use real data only; if not found, display nothing or a message
-  const displayData = realStudentData?.profile;
+  // Use individual columns instead of profile JSONB
+  const displayData = realStudentData ? {
+    name: realStudentData.name,
+    email: realStudentData.email,
+    department: realStudentData.branch_field,
+    university: realStudentData.university,
+    classYear: realStudentData.class_year || realStudentData.profile?.classYear || "Class of 2025",
+    github_link: realStudentData.github_link,
+    portfolio_link: realStudentData.portfolio_link,
+    linkedin_link: realStudentData.linkedin_link,
+    twitter_link: realStudentData.twitter_link,
+    instagram_link: realStudentData.instagram_link,
+    facebook_link: realStudentData.facebook_link,
+    degree: realStudentData.branch_field,
+    // Fallback to profile JSONB for any missing data
+    ...realStudentData.profile
+  } : null;
 
-  // Debug: Log student_id from database column
+  // Determine institution from relationships (school_id or university_college_id)
+  const institutionName = React.useMemo(() => {
+    if (realStudentData?.school_id && realStudentData?.schools) {
+      return realStudentData.schools.name;
+    } else if (realStudentData?.university_college_id && realStudentData?.university_colleges) {
+      const college = realStudentData.university_colleges;
+      const university = college.universities;
+      // Show both college and university name
+      return university?.name ? `${college.name} - ${university.name}` : college.name;
+    }
+    // Fallback to profile.university if no institutional linkage
+    return displayData?.university || "Institution";
+  }, [realStudentData, displayData]);
+
+  // Debug: Log student_id and school fields from database
   React.useEffect(() => {
     if (realStudentData) {
       console.log('🔍 Student ID from database:', realStudentData.student_id);
+      console.log('🏫 School ID:', realStudentData.school_id);
+      console.log('📚 Grade:', realStudentData.grade);
+      console.log('📝 Section:', realStudentData.section);
+      console.log('🎯 Roll Number:', realStudentData.roll_number);
+      console.log('🎓 Admission Number:', realStudentData.admission_number);
+      console.log('📦 Full realStudentData:', realStudentData);
     }
   }, [realStudentData]);
 
@@ -255,17 +290,49 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   <div className="flex items-center gap-2 text-white">
                     <Briefcase className="w-4 h-4" />
                     <span className="font-medium">
-                      {displayData.university || "University"}
+                      {institutionName}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-white">
+                  {/* <div className="flex items-center gap-2 text-white">
                     <CreditCard className="w-4 h-4" />
                     <span>
                       Student ID:{" "}
                       {realStudentData?.student_id || "Not Assigned"}
                     </span>
-                  </div>
+                  </div> */}
                 </div>
+
+                {/* School-specific fields - Display when school_id is not null */}
+                {realStudentData?.school_id && (
+                  <div className="ml-1 bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+                    <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4" />
+                      School Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* <div className="flex flex-col">
+                        <span className="text-xs text-white/70">Name</span>
+                        <span className="text-sm text-white font-medium">{realStudentData.name || 'N/A'}</span>
+                      </div> */}
+                      <div className="flex flex-col">
+                        <span className="text-xs text-white/70">Grade</span>
+                        <span className="text-sm text-white font-medium">{realStudentData.grade || 'N/A'}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs text-white/70">Section</span>
+                        <span className="text-sm text-white font-medium">{realStudentData.section || 'N/A'}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs text-white/70">Roll Number</span>
+                        <span className="text-sm text-white font-medium">{realStudentData.roll_number || 'N/A'}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs text-white/70">Admission Number</span>
+                        <span className="text-sm text-white font-medium">{realStudentData.admission_number || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-3 ml-1">
@@ -458,10 +525,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       onClick={() => setShowDetailsModal(true)}
                       className="text-xs text-white font-bold mt-2 mb-4 hover:text-yellow-200 transition-colors cursor-pointer"
                     >
-                      PASSPORT-ID: SP-
-                      {userEmail
-                        ? userEmail.split("@")[0].toUpperCase().slice(0, 5)
-                        : displayData.passportId || "SP-2024-8421"}
+                      PASSPORT-ID: {
+                        // Priority: 1. student_id column, 2. registration_number, 3. generated from email
+                        realStudentData?.student_id || 
+                        (realStudentData?.registration_number ? `SP-${realStudentData.registration_number}` : null) ||
+                        displayData?.passportId ||
+                        (userEmail ? `SP-${userEmail.split("@")[0].toUpperCase().slice(0, 5)}` : "SP-2024-8421")
+                      }
                     </button>
 
                     {/* Copy and Share Buttons */}
@@ -738,7 +808,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
             {/* Details Grid */}
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <DetailItem label="Student ID" value={displayData.passportId || displayData.studentId || "N/A"} />
+              <DetailItem label="Student ID" value={
+                realStudentData?.student_id || 
+                (realStudentData?.registration_number ? `SP-${realStudentData.registration_number}` : null) ||
+                displayData?.passportId || 
+                displayData?.studentId || 
+                "N/A"
+              } />
               <DetailItem label="Department" value={displayData.department || displayData.degree || "Computer Science"} />
               <DetailItem label="Class Year" value={displayData.classYear || "Class of 2025"} />
               <DetailItem label="Employability Score" value={`${employabilityData.employabilityScore}%`} highlight />

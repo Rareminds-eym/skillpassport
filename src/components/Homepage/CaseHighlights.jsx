@@ -355,16 +355,48 @@ const CaseHighlights = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* 4Cs Framework */}
               <div className="bg-white rounded-3xl p-8 border-2 border-black hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">
-                <div className="flex items-center mb-6">
+                <div className="flex items-center mb-8">
                   <div className="w-1 h-8 bg-amber-400 mr-3"></div>
                   <h4 className="text-xl font-black text-black">4Cs Framework</h4>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {['Critical Thinking', 'Communication', 'Collaboration', 'Creativity'].map((skill, idx) => (
-                    <div key={idx} className="px-4 py-3 bg-gray-50 rounded-xl border-2 border-black hover:bg-gray-100 transition-colors duration-200">
-                      <span className="text-sm font-bold text-black">{skill}</span>
+
+                {/* Clean Glassmorphism 4Cs Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Critical Thinking */}
+                  <div className="group relative bg-white/20 backdrop-blur-md rounded-2xl border-2 border-black p-6 hover:bg-white/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10 transition-all duration-300 overflow-hidden">
+                    {/* Glass reflection effect */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50"></div>
+                    <div className="relative flex items-center justify-center h-16">
+                      <span className="text-base font-black text-black text-center leading-tight">Critical Thinking</span>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Communication */}
+                  <div className="group relative bg-white/20 backdrop-blur-md rounded-2xl border-2 border-black p-6 hover:bg-white/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10 transition-all duration-300 overflow-hidden">
+                    {/* Glass reflection effect */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50"></div>
+                    <div className="relative flex items-center justify-center h-16">
+                      <span className="text-base font-black text-black text-center leading-tight">Communication</span>
+                    </div>
+                  </div>
+
+                  {/* Collaboration */}
+                  <div className="group relative bg-white/20 backdrop-blur-md rounded-2xl border-2 border-black p-6 hover:bg-white/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10 transition-all duration-300 overflow-hidden">
+                    {/* Glass reflection effect */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50"></div>
+                    <div className="relative flex items-center justify-center h-16">
+                      <span className="text-base font-black text-black text-center leading-tight">Collaboration</span>
+                    </div>
+                  </div>
+
+                  {/* Creativity */}
+                  <div className="group relative bg-white/20 backdrop-blur-md rounded-2xl border-2 border-black p-6 hover:bg-white/30 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10 transition-all duration-300 overflow-hidden">
+                    {/* Glass reflection effect */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50"></div>
+                    <div className="relative flex items-center justify-center h-16">
+                      <span className="text-base font-black text-black text-center leading-tight">Creativity</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 

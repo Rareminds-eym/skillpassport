@@ -104,7 +104,7 @@ const MyExperience = () => {
         {/* Header */}
         <div className="mb-8 flex flex-col items-center justify-center text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            My Experience
+            Experience
           </h1>
           <p className="text-gray-600">
             Showcase your professional journey and achievements

@@ -129,7 +129,7 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
                   key={index}
                   className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
                 >
-                  {skill}
+                  {typeof skill === 'string' ? skill : skill?.name}
                 </span>
               ))}
               {student.skills.length > 4 && (

@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import Header from "../components/educator/Header";
 import Sidebar from "../components/educator/Sidebar";
 import StudentProfileDrawer from "../components/educator/components/StudentProfileDrawer";
+import FloatingEducatorAIButton from "../components/FloatingEducatorAIButton";
 
 const EducatorLayout: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -69,8 +70,8 @@ const EducatorLayout: React.FC = () => {
         )}
 
         {/* Scrollable Content Area */}
-        <main className="flex-1 overflow-y-auto md:ml-64">
-          <div className="mx-auto w-full">
+        <main className="flex-1 md:ml-64 overflow-auto">
+          <div className="h-full w-full">
             <Outlet context={{ onViewProfile: handleViewProfile }} />
           </div>
         </main>
@@ -82,6 +83,9 @@ const EducatorLayout: React.FC = () => {
         isOpen={showStudentDrawer}
         onClose={handleCloseStudentDrawer}
       />
+      
+      {/* Floating AI Button */}
+      <FloatingEducatorAIButton />
     </div>
   );
 };

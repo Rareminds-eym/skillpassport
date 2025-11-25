@@ -57,7 +57,7 @@ const KPICard: React.FC<KPICardProps> = ({
               >
                 {change > 0 ? '+' : ''}{change}%
               </span>
-              <span className="text-sm text-gray-500">{changeLabel}</span>
+              <span className="text-sm text-gray-500 text-nowrap">{changeLabel}</span>
             </div>
           )}
         </div>

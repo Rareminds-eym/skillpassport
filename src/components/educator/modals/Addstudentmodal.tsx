@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { XMarkIcon, UserPlusIcon, DocumentArrowUpIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, UserPlusIcon, DocumentArrowUpIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../../../lib/supabaseClient'
+import Papa from 'papaparse'
 
 interface Props {
   isOpen: boolean
@@ -31,9 +32,10 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [mode, setMode] = useState<'manual' | 'csv'>('manual')
+  const [mode, setMode] = useState<'manual' | 'csv'>('csv')
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [csvPreview, setCsvPreview] = useState<any[]>([])
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   
   const [formData, setFormData] = useState<StudentFormData>({
     name: '',
@@ -82,6 +84,26 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setCsvPreview([])
     }
   }, [isOpen])
+
+  // Download sample CSV template
+  const downloadSampleCSV = () => {
+    const sampleData = [
+      ['name', 'email', 'contactNumber', 'dateOfBirth', 'gender', 'enrollmentNumber', 'bloodGroup', 'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation', 'address', 'city', 'state', 'country', 'pincode'],
+      ['John Doe', 'john@example.com', '+919876543210', '2000-01-15', 'Male', 'ENR2024001', 'O+', 'Jane Doe', '+919876543211', 'jane@example.com', 'Mother', '123 Main St', 'Mumbai', 'Maharashtra', 'India', '400001'],
+      ['Alice Smith', 'alice@example.com', '+919876543212', '1999-05-20', 'Female', 'ENR2024002', 'A+', 'Bob Smith', '+919876543213', 'bob@example.com', 'Father', '456 Park Ave', 'Delhi', 'Delhi', 'India', '110001']
+    ]
+    
+    const csv = sampleData.map(row => row.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'student_import_template.csv'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  }
 
   const handleInputChange = (field: keyof StudentFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -194,35 +216,43 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     setCsvFile(file)
     setError(null)
     setSuccess(null)
+    setCsvPreview([])
 
-    // Parse CSV for preview
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string
-        const lines = text.split('\n').filter(line => line.trim())
-        
-        if (lines.length < 2) {
-          setError('CSV file must contain headers and at least one data row')
+    // Parse CSV using PapaParse
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header) => header.trim().toLowerCase().replace(/[^a-z0-9]/g, ''),
+      complete: (results) => {
+        if (results.errors.length > 0) {
+          const errorMsg = results.errors.map(e => `Row ${e.row + 1}: ${e.message}`).join(', ')
+          setError(`CSV parsing errors: ${errorMsg}`)
           return
         }
 
-        const headers = lines[0].split(',').map(h => h.trim())
-        const preview = lines.slice(1, 6).map(line => {
-          const values = line.split(',').map(v => v.trim())
-          const obj: any = {}
-          headers.forEach((header, index) => {
-            obj[header] = values[index] || ''
-          })
-          return obj
-        })
+        if (!results.data || results.data.length === 0) {
+          setError('CSV file is empty or contains no valid data')
+          return
+        }
 
-        setCsvPreview(preview)
-      } catch (err) {
-        setError('Failed to parse CSV file')
+        // Validate required columns
+        const firstRow: any = results.data[0]
+        const hasName = 'name' in firstRow
+        const hasEmail = 'email' in firstRow
+        const hasContact = 'contactnumber' in firstRow
+
+        if (!hasName || !hasEmail || !hasContact) {
+          setError('CSV must contain required columns: name, email, contactNumber')
+          return
+        }
+
+        // Show preview of first 5 rows
+        setCsvPreview(results.data.slice(0, 5))
+      },
+      error: (error) => {
+        setError(`Failed to parse CSV: ${error.message}`)
       }
-    }
-    reader.readAsText(file)
+    })
   }
 
   const handleCSVSubmit = async () => {
@@ -234,110 +264,158 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     setLoading(true)
     setError(null)
     setSuccess(null)
+    setUploadProgress(null)
 
     try {
-      // Try to refresh session if user is logged in (optional)
+      // Refresh session
       const { data: { session } } = await supabase.auth.getSession()
-      
       if (session) {
         await supabase.auth.refreshSession()
       }
 
-      const reader = new FileReader()
-      reader.onload = async (event) => {
-        try {
-          const text = event.target?.result as string
-          const lines = text.split('\n').filter(line => line.trim())
-          const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
-          
-          let successCount = 0
-          let errorCount = 0
-          const errors: string[] = []
-
-          for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map(v => v.trim())
-            const student: any = {}
+      // Parse CSV using PapaParse
+      Papa.parse(csvFile, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header) => header.trim().toLowerCase().replace(/[^a-z0-9]/g, ''),
+        complete: async (results) => {
+          try {
+            const students: any[] = results.data as any[]
             
-            headers.forEach((header, index) => {
-              student[header] = values[index] || ''
-            })
-
-            // Validate required fields
-            if (!student.name || !student.email) {
-              errorCount++
-              errors.push(`Row ${i + 1}: Missing name or email`)
-              continue
+            if (students.length === 0) {
+              setError('CSV file contains no valid data')
+              setLoading(false)
+              return
             }
 
-            try {
-              const { data, error: functionError } = await supabase.functions.invoke('create-student', {
-                body: {
-                  student: {
-                    name: student.name,
-                    email: student.email.toLowerCase(),
-                    contactNumber: student.contactnumber || student.contact_number || null,
-                    dateOfBirth: student.dateofbirth || student.date_of_birth || null,
-                    gender: student.gender || null,
-                    enrollmentNumber: student.enrollmentnumber || student.enrollment_number || null,
-                    guardianName: student.guardianname || student.guardian_name || null,
-                    guardianPhone: student.guardianphone || student.guardian_phone || null,
-                    guardianEmail: student.guardianemail || student.guardian_email || null,
-                    guardianRelation: student.guardianrelation || student.guardian_relation || null,
-                    address: student.address || null,
-                    city: student.city || null,
-                    state: student.state || null,
-                    country: student.country || 'India',
-                    pincode: student.pincode || null,
-                    bloodGroup: student.bloodgroup || student.blood_group || null,
-                    approval_status: 'approved',
-                    student_type: 'educator_added',
-                    profile: JSON.stringify({
-                      source: 'educator_csv_import',
-                      imported_at: new Date().toISOString()
-                    })
+            // Validate and prepare students data
+            const validStudents: any[] = []
+            const errors: string[] = []
+
+            students.forEach((student, index) => {
+              const rowNum = index + 2 // +2 because index starts at 0 and there's a header row
+              
+              // Validate required fields
+              if (!student.name || !student.name.trim()) {
+                errors.push(`Row ${rowNum}: Name is required`)
+                return
+              }
+              if (!student.email || !student.email.trim()) {
+                errors.push(`Row ${rowNum}: Email is required`)
+                return
+              }
+              if (!student.contactnumber || !student.contactnumber.trim()) {
+                errors.push(`Row ${rowNum}: Contact number is required`)
+                return
+              }
+
+              // Email validation
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+              if (!emailRegex.test(student.email)) {
+                errors.push(`Row ${rowNum}: Invalid email format`)
+                return
+              }
+
+              validStudents.push({
+                row: rowNum,
+                data: {
+                  name: student.name.trim(),
+                  email: student.email.trim().toLowerCase(),
+                  contactNumber: student.contactnumber.trim(),
+                  dateOfBirth: student.dateofbirth || null,
+                  gender: student.gender || null,
+                  enrollmentNumber: student.enrollmentnumber || null,
+                  guardianName: student.guardianname || null,
+                  guardianPhone: student.guardianphone || null,
+                  guardianEmail: student.guardianemail || null,
+                  guardianRelation: student.guardianrelation || null,
+                  address: student.address || null,
+                  city: student.city || null,
+                  state: student.state || null,
+                  country: student.country || 'India',
+                  pincode: student.pincode || null,
+                  bloodGroup: student.bloodgroup || null,
+                  approval_status: 'approved',
+                  student_type: 'educator_added',
+                  profile: JSON.stringify({
+                    source: 'educator_csv_import',
+                    imported_at: new Date().toISOString()
+                  })
+                }
+              })
+            })
+
+            if (validStudents.length === 0) {
+              setError(`❌ No valid students to import. Errors:\n${errors.slice(0, 10).join('\n')}`)
+              setLoading(false)
+              return
+            }
+
+            // Batch process students (10 at a time)
+            const BATCH_SIZE = 10
+            let successCount = 0
+            let failureCount = 0
+            const processingErrors: string[] = [...errors]
+
+            setUploadProgress({ current: 0, total: validStudents.length })
+
+            for (let i = 0; i < validStudents.length; i += BATCH_SIZE) {
+              const batch = validStudents.slice(i, i + BATCH_SIZE)
+              
+              const batchPromises = batch.map(async ({ row, data }) => {
+                try {
+                  const { data: result, error: functionError } = await supabase.functions.invoke('create-student', {
+                    body: { student: data }
+                  })
+
+                  if (functionError || !result?.success) {
+                    const errorMsg = result?.error || functionError?.message || 'Failed to create student'
+                    processingErrors.push(`Row ${row}: ${errorMsg}`)
+                    return false
                   }
+                  return true
+                } catch (err: any) {
+                  processingErrors.push(`Row ${row}: ${err.message}`)
+                  return false
                 }
               })
 
-              if (functionError || !data?.success) {
-                errorCount++
-                // Extract the actual error message
-                const errorMsg = data?.error || functionError?.message || 'Failed'
-                errors.push(`Row ${i + 1}: ${errorMsg}`)
-              } else {
-                successCount++
-              }
-            } catch (err: any) {
-              errorCount++
-              errors.push(`Row ${i + 1}: ${err.message}`)
-            }
-          }
+              const batchResults = await Promise.all(batchPromises)
+              successCount += batchResults.filter(Boolean).length
+              failureCount += batchResults.filter(r => !r).length
 
-          if (successCount > 0 && errorCount === 0) {
-            // All students imported successfully
-            setSuccess(`✅ Successfully imported ${successCount} student${successCount > 1 ? 's' : ''}!`)
-            setError(null)
-            onSuccess?.()
-            setTimeout(() => {
-              onClose()
-            }, 2000)
-          } else if (successCount > 0 && errorCount > 0) {
-            // Partial success
-            setSuccess(`✅ Imported ${successCount} student${successCount > 1 ? 's' : ''} successfully`)
-            setError(`⚠️  ${errorCount} error${errorCount > 1 ? 's' : ''}:\n${errors.slice(0, 3).join('\n')}${errors.length > 3 ? `\n...and ${errors.length - 3} more` : ''}`)
-            onSuccess?.()
-          } else if (errorCount > 0) {
-            // All failed
-            setError(`❌ Failed to import students. ${errorCount} error${errorCount > 1 ? 's' : ''}:\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n...and ${errors.length - 5} more` : ''}`)
-            setSuccess(null)
+              setUploadProgress({ current: Math.min(i + BATCH_SIZE, validStudents.length), total: validStudents.length })
+            }
+
+            // Display results
+            setUploadProgress(null)
+            
+            if (successCount > 0 && failureCount === 0) {
+              setSuccess(`✅ Successfully imported ${successCount} student${successCount > 1 ? 's' : ''}!`)
+              setError(null)
+              onSuccess?.()
+              setTimeout(() => {
+                onClose()
+              }, 2000)
+            } else if (successCount > 0 && failureCount > 0) {
+              setSuccess(`✅ Imported ${successCount} student${successCount > 1 ? 's' : ''} successfully`)
+              setError(`⚠️ ${failureCount} failed:\n${processingErrors.slice(0, 5).join('\n')}${processingErrors.length > 5 ? `\n...and ${processingErrors.length - 5} more` : ''}`)
+              onSuccess?.()
+            } else {
+              setError(`❌ All imports failed. Errors:\n${processingErrors.slice(0, 10).join('\n')}${processingErrors.length > 10 ? `\n...and ${processingErrors.length - 10} more` : ''}`)
+              setSuccess(null)
+            }
+          } catch (err: any) {
+            setError(err.message || 'Failed to process CSV file')
+          } finally {
+            setLoading(false)
           }
-        } catch (err: any) {
-          setError(err.message || 'Failed to process CSV file')
-        } finally {
+        },
+        error: (error) => {
+          setError(`Failed to parse CSV: ${error.message}`)
           setLoading(false)
         }
-      }
-      reader.readAsText(csvFile)
+      })
     } catch (err: any) {
       setError(err.message || 'Failed to upload CSV')
       setLoading(false)
@@ -637,28 +715,80 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             </div>
           ) : (
             <div>
-              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+              {/* CSV Format Requirements */}
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <h4 className="text-sm font-semibold text-blue-900 mb-2">CSV Format Requirements</h4>
-                <p className="text-xs text-blue-800 mb-2">Your CSV file should include these columns:</p>
-                <ul className="text-xs text-blue-800 list-disc list-inside space-y-1">
-                  <li><strong>Required:</strong> name, email, contactNumber</li>
-                  <li><strong>Optional:</strong> dateOfBirth, gender, enrollmentNumber, bloodGroup</li>
-                  <li><strong>Guardian:</strong> guardianName, guardianPhone, guardianEmail, guardianRelation</li>
-                  <li><strong>Address:</strong> address, city, state, country, pincode</li>
+                <p className="text-sm text-blue-800 mb-3">Your CSV file should include these columns:</p>
+                <ul className="text-sm text-blue-800 space-y-2">
+                  <li className="flex items-start">
+                    <span className="font-semibold mr-2">• Required:</span>
+                    <span>name, email, contactNumber</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="font-semibold mr-2">• Optional:</span>
+                    <span>dateOfBirth, gender, enrollmentNumber, bloodGroup</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="font-semibold mr-2">• Guardian:</span>
+                    <span>guardianName, guardianPhone, guardianEmail, guardianRelation</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="font-semibold mr-2">• Address:</span>
+                    <span>address, city, state, country, pincode</span>
+                  </li>
                 </ul>
+                
+                {/* Download Sample CSV Button */}
+                <button
+                  onClick={downloadSampleCSV}
+                  className="mt-4 inline-flex items-center px-3 py-2 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-300 rounded-md hover:bg-blue-200 transition-colors"
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
+                  Download Sample CSV Template
+                </button>
               </div>
 
+              {/* Upload CSV File */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-900 mb-2">
                   Upload CSV File
                 </label>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleCSVUpload}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
-                />
+                <div className="flex items-center space-x-3">
+                  <label className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer">
+                    <DocumentArrowUpIcon className="h-5 w-5 mr-2 text-gray-500" />
+                    Choose File
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleCSVUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  <span className="text-sm text-gray-600">
+                    {csvFile ? csvFile.name : 'No file chosen'}
+                  </span>
+                </div>
               </div>
+
+              {/* Upload Progress */}
+              {uploadProgress && (
+                <div className="mb-4 p-4 bg-primary-50 border border-primary-200 rounded-md">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-primary-900">
+                      Processing students...
+                    </span>
+                    <span className="text-sm font-medium text-primary-900">
+                      {uploadProgress.current} / {uploadProgress.total}
+                    </span>
+                  </div>
+                  <div className="w-full bg-primary-200 rounded-full h-2.5">
+                    <div
+                      className="bg-primary-600 h-2.5 rounded-full transition-all duration-300"
+                      style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
 
               {csvPreview.length > 0 && (
                 <div className="mb-4">

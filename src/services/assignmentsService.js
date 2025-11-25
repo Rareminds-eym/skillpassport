@@ -13,6 +13,21 @@ import { supabase } from '../lib/supabaseClient';
  */
 export const getAssignmentsByStudentId = async (studentId) => {
   try {
+    debugger;
+
+    // STEP 1: Convert students.id → students.user_id
+    const { data: studentRow, error: mapError } = await supabase
+      .from('students')
+      .select('id, user_id')
+      .eq('id', studentId)
+      .single();
+
+    if (mapError) throw mapError;
+
+    const uid = studentRow?.user_id;
+    if (!uid) throw new Error('Student user_id not found');
+
+    // STEP 2: Fetch student assignments using user_id
     const { data, error } = await supabase
       .from('student_assignments')
       .select(`
@@ -37,13 +52,13 @@ export const getAssignmentsByStudentId = async (studentId) => {
           allow_late_submission
         )
       `)
-      .eq('student_id', studentId)
+      .eq('student_id', uid)               // <-- FIXED
       .eq('is_deleted', false)
       .order('assignments(due_date)', { ascending: true });
 
     if (error) throw error;
-    
-    // Flatten the response to combine assignment data with student-specific data
+
+    // STEP 3: Flatten the output
     const flattenedData = data?.map(item => ({
       ...item.assignments,
       student_assignment_id: item.student_assignment_id,
@@ -65,8 +80,9 @@ export const getAssignmentsByStudentId = async (studentId) => {
       started_date: item.started_date,
       completed_date: item.completed_date
     })) || [];
-    
+
     return flattenedData;
+
   } catch (error) {
     console.error('Error fetching assignments:', error);
     throw error;
@@ -195,10 +211,23 @@ export const getAssignmentsByDateRange = async (studentId, startDate, endDate) =
  */
 export const getAssignmentStats = async (studentId) => {
   try {
+    // STEP 1: Convert students.id → students.user_id
+    const { data: studentRow, error: mapError } = await supabase
+      .from('students')
+      .select('user_id')
+      .eq('id', studentId)
+      .single();
+
+    if (mapError) throw mapError;
+
+    const uid = studentRow?.user_id;
+    if (!uid) throw new Error('Student user_id not found');
+
+    // STEP 2: Fetch stats using correct student_id
     const { data, error } = await supabase
       .from('student_assignments')
       .select('status, grade_percentage')
-      .eq('student_id', studentId)
+      .eq('student_id', uid)
       .eq('is_deleted', false);
 
     if (error) throw error;
@@ -216,7 +245,7 @@ export const getAssignmentStats = async (studentId) => {
     const gradesArray = data
       .filter(a => a.grade_percentage !== null)
       .map(a => a.grade_percentage);
-    
+
     if (gradesArray.length > 0) {
       stats.averageGrade = Math.round(
         gradesArray.reduce((sum, grade) => sum + grade, 0) / gradesArray.length
@@ -229,6 +258,7 @@ export const getAssignmentStats = async (studentId) => {
     throw error;
   }
 };
+
 
 /**
  * Update assignment status

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Header from "../components/admin/Header";
 import Sidebar from "../components/admin/Sidebar";
+import AICounsellingFAB from "../components/admin/AICounsellingFAB";
 
 
 const AdminLayout = () => {
@@ -61,6 +62,9 @@ const AdminLayout = () => {
                     </div>
                 </main>
             </div>
+
+            {/* AI Counselling Floating Action Button */}
+            <AICounsellingFAB />
         </div>
     );
 };

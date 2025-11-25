@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import AppliedJobsService from '../../services/appliedJobsService';
 import { getAllPipelineCandidatesByStage, moveCandidateToStage } from '../../services/pipelineService';
 import { supabase } from '../../lib/supabaseClient';
-import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, FunnelIcon, ArrowDownTrayIcon, UsersIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, FunnelIcon, ArrowDownTrayIcon, UsersIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { MessageModal } from '../../components/messaging/MessageModal';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { useAuth } from '../../context/AuthContext';
+import { recruiterInsights } from '../../features/recruiter-copilot/services/recruiterInsights';
 
 interface Student {
   id: string;
@@ -82,6 +83,34 @@ const ApplicantsList: React.FC = () => {
   // Message modal state
   const [messageModalOpen, setMessageModalOpen] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
+  
+  // AI Recommendations state
+  const [aiRecommendations, setAiRecommendations] = useState<{
+    topRecommendations: Array<{
+      applicantId: number;
+      studentName: string;
+      positionTitle: string;
+      matchScore: number;
+      confidence: 'high' | 'medium' | 'low';
+      reasons: string[];
+      nextAction: string;
+      suggestedStage: string;
+      matchedSkills: string[];
+      missingSkills: string[];
+    }>;
+    summary: {
+      totalAnalyzed: number;
+      highPotential: number;
+      mediumPotential: number;
+      lowPotential: number;
+    };
+  } | null>(null);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  // Controls visibility of the AI recommendation panel.
+  // Default: hidden, surfaced via a floating UX entry point.
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  // Controls whether to show all recommendations or just the first 6
+  const [showAllRecommendations, setShowAllRecommendations] = useState(false);
   
   // Get recruiter ID from auth context
   const recruiterId = user?.id;
@@ -160,10 +189,87 @@ const ApplicantsList: React.FC = () => {
       // Update pipeline stage counts
       updatePipelineCounts(applicantsWithPipeline);
       
+      // AI recommendations will be fetched on-demand when user clicks the button
+      
     } catch (error) {
       console.error('Error fetching applicants:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAIRecommendations = async (applicantsList: Applicant[]) => {
+    setLoadingRecommendations(true);
+    try {
+      // Prepare applicants data for analysis
+      const applicantsForAnalysis = applicantsList
+        .filter(app => app.student && app.opportunity) // Filter out applicants with null student or opportunity
+        .map(app => ({
+          id: app.id,
+          student_id: app.student_id,
+          opportunity_id: app.opportunity_id,
+          pipeline_stage: app.pipeline_stage,
+          student: {
+            id: app.student_id,
+            name: app.student?.name || 'Unknown',
+            email: app.student?.email || '',
+            university: app.student?.university,
+            cgpa: app.student?.cgpa,
+            branch_field: app.student?.department
+          },
+          opportunity: {
+            id: app.opportunity_id,
+            job_title: app.opportunity?.job_title || app.opportunity?.title,
+            skills_required: [] // Will be fetched by the service
+          }
+        }));
+      
+      // Fetch opportunities with skills_required
+      const opportunityIds = [...new Set(applicantsForAnalysis.map(a => a.opportunity_id))];
+      
+      const { data: opportunities, error: oppError } = await supabase
+        .from('opportunities')
+        .select('id, skills_required')
+        .in('id', opportunityIds);
+      
+      if (oppError) {
+        console.error('Error fetching opportunities:', oppError);
+      }
+      
+      // Enrich with skills_required
+      const enrichedApplicants = applicantsForAnalysis.map(app => {
+        const opp = opportunities?.find(o => o.id === app.opportunity_id);
+        const skills = opp?.skills_required || [];
+        return {
+          ...app,
+          opportunity: {
+            ...app.opportunity,
+            skills_required: skills
+          }
+        };
+      });
+      
+      const recommendations = await recruiterInsights.analyzeApplicantsForRecommendation(enrichedApplicants);
+      setAiRecommendations(recommendations);
+    } catch (error) {
+      console.error('Error fetching AI recommendations:', error);
+    } finally {
+      setLoadingRecommendations(false);
+    }
+  };
+
+  // Handler to fetch AI recommendations on-demand
+  const handleFetchRecommendations = async () => {
+    if (aiRecommendations) {
+      // Already fetched, just show them
+      setShowRecommendations(true);
+      return;
+    }
+    
+    // Fetch recommendations
+    if (applicants.length > 0) {
+      await fetchAIRecommendations(applicants);
+      setShowRecommendations(true);
     }
   };
 
@@ -620,6 +726,261 @@ const ApplicantsList: React.FC = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
+        
+        {/* AI Recommendations Card - Empty State */}
+        {showRecommendations && aiRecommendations && aiRecommendations.topRecommendations.length === 0 && aiRecommendations.summary.totalAnalyzed > 0 && (
+          <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+              <SparklesIcon className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Strong Matches Found</h3>
+            <p className="text-sm text-gray-600 max-w-md mx-auto mb-4">
+              We analyzed {aiRecommendations.summary.totalAnalyzed} applicant{aiRecommendations.summary.totalAnalyzed !== 1 ? 's' : ''}, but none scored above 20% match for recommendations.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                Review all applicants
+              </button>
+              <span className="text-gray-300">•</span>
+              <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                Adjust job requirements
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* AI Recommendations Card */}
+        {showRecommendations && aiRecommendations && aiRecommendations.topRecommendations.length > 0 && (
+          <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-sm">
+                    <SparklesIcon className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">AI Recommended</h2>
+                    <p className="text-xs text-gray-600 mt-0.5">
+                      {aiRecommendations.summary.highPotential} high potential · {aiRecommendations.summary.mediumPotential} medium potential
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowRecommendations(false);
+                    setShowAllRecommendations(false);
+                  }}
+                  className="p-1.5 hover:bg-white/50 rounded-lg transition-colors"
+                  aria-label="Hide recommendations"
+                >
+                  <XMarkIcon className="h-4 w-4 text-gray-500" />
+                </button>
+              </div>
+            </div>
+
+            {/* Recommendations List */}
+            <div className="p-4">
+              {/* Warning if all recommendations are weak */}
+              {aiRecommendations.topRecommendations.length > 0 && aiRecommendations.topRecommendations[0].matchScore < 50 && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-600 text-lg">⚠️</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-amber-900">Limited Match Quality</p>
+                      <p className="text-xs text-amber-700 mt-1">
+                        All applicants scored below 50%. Consider broadening job requirements, providing training opportunities, or sourcing additional candidates.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                {aiRecommendations.topRecommendations.slice(0, showAllRecommendations ? aiRecommendations.topRecommendations.length : 3).map((rec, index) => {
+                  const applicant = applicants.find(a => a.id === rec.applicantId);
+                  const confidenceConfig = {
+                    high: { 
+                      badge: 'bg-green-500',
+                      bottomColor: 'bg-lime-400',
+                      statusText: 'HIGH',
+                      textColor: 'text-gray-900'
+                    },
+                    medium: { 
+                      badge: 'bg-amber-500',
+                      bottomColor: 'bg-amber-400',
+                      statusText: 'MED',
+                      textColor: 'text-gray-900'
+                    },
+                    low: { 
+                      badge: 'bg-gray-500',
+                      bottomColor: 'bg-gray-400',
+                      statusText: 'LOW',
+                      textColor: 'text-gray-900'
+                    }
+                  };
+                  const config = confidenceConfig[rec.confidence];
+
+                  // Extract certificate names from reasons
+                  const certReason = rec.reasons.find(r => r.toLowerCase().includes('certif'));
+                  const certNames = certReason ? certReason.split(':')[1]?.trim() : null;
+
+                  return (
+                    <div
+                      key={rec.applicantId}
+                      className="relative flex flex-col bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-gray-200"
+                    >
+                      {/* Top Status Bar */}
+                      <div className="px-6 pt-5 pb-4">
+                        <div className="flex items-center justify-between mb-4">
+                          {/* Availability status */}
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-sm text-gray-600 font-medium">Available for work</span>
+                          </div>
+                          {/* Match score */}
+                          <div className="flex items-center gap-1.5 text-gray-500">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-sm font-medium">{rec.matchScore}%</span>
+                          </div>
+                        </div>
+
+                        {/* Profile Section */}
+                        <div className="flex items-center gap-4">
+                          {applicant?.student?.photo ? (
+                            <img
+                              src={applicant.student.photo}
+                              alt={rec.studentName}
+                              className="h-16 w-16 rounded-full object-cover flex-shrink-0 border-2 border-gray-100"
+                            />
+                          ) : (
+                            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl flex-shrink-0">
+                              {rec.studentName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-2xl font-bold text-gray-900 truncate mb-1">{rec.studentName}</h3>
+                            <p className="text-base text-gray-600">{rec.positionTitle}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Certificate Section */}
+                      {certNames && (
+                        <div className="px-6 pb-4">
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-lg flex-shrink-0 mt-0.5">🏆</span>
+                            <p className="text-sm text-gray-700 leading-relaxed">{certNames}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Skills Pills */}
+                      <div className="px-6 pb-4">
+                        <div className="flex flex-wrap gap-2">
+                          {rec.matchedSkills.slice(0, 4).map((skill, idx) => (
+                            <span key={idx} className="inline-flex items-center px-3 py-2 bg-green-50 text-green-700 text-xs font-medium rounded-lg border border-green-200">
+                              {skill}
+                            </span>
+                          ))}
+                          {rec.matchedSkills.length > 4 && (
+                            <span className="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg border border-gray-200">
+                              +{rec.matchedSkills.length - 4}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons Container - Dark Design */}
+                      <div className="px-6 pb-5">
+                        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-3 shadow-inner">
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              onClick={() => {
+                                if (applicant) {
+                                  handleMoveToPipelineStage(applicant, rec.suggestedStage);
+                                }
+                              }}
+                              className="inline-flex items-center justify-center gap-2 h-12 w-full px-4 bg-gray-700 hover:bg-gray-600 text-white font-semibold text-sm rounded-xl transition-all active:scale-95"
+                            >
+                              <span className="text-base">➕</span>
+                              <span>{rec.confidence === 'high' ? 'Hire Me' : rec.confidence === 'medium' ? 'Contact' : 'Review'}</span>
+                            </button>
+                            <button
+                              onClick={() => handleViewApplicant(applicant!)}
+                              className="inline-flex items-center justify-center gap-2 h-12 w-full px-4 bg-gray-700 hover:bg-gray-600 text-white font-semibold text-sm rounded-xl transition-all active:scale-95"
+                            >
+                              <span className="text-base">📋</span>
+                              <span>Copy Email</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bottom Status Banner */}
+                      <div className={`${config.bottomColor} py-4 mt-auto`}>
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="text-base">⚡</span>
+                          <span className="text-base font-semibold text-gray-700">
+                            {rec.confidence === 'high' ? 'Currently High on Potential' : 
+                             rec.confidence === 'medium' ? 'Good Match for Position' : 
+                             'Needs Further Review'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Top Pick Badge - Overlay */}
+                      {index === 0 && rec.matchScore >= 70 && (
+                        <div className="absolute top-3 right-3">
+                          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full shadow-lg">
+                            <span className="text-sm">⭐</span>
+                            <span className="text-xs font-bold text-white">Top Pick</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* View All - Modern Design */}
+              {aiRecommendations.topRecommendations.length > 3 && (
+                <div className="mt-6">
+                  <button
+                    onClick={() => setShowAllRecommendations(!showAllRecommendations)}
+                    className="group w-full px-6 py-3.5 rounded-xl border-2 border-violet-200 bg-white hover:bg-violet-50 hover:border-violet-300 active:scale-98 transition-all duration-300 flex items-center justify-center gap-3"
+                  >
+                    <SparklesIcon className="h-5 w-5 text-violet-600 group-hover:scale-110 transition-transform" />
+                    <span className="text-base font-semibold text-violet-600">
+                      {showAllRecommendations 
+                        ? 'Show Less' 
+                        : `View ${aiRecommendations.topRecommendations.length - 3} More AI Matches`
+                      }
+                    </span>
+                    {showAllRecommendations ? (
+                      <ChevronUpIcon className="h-4 w-4 text-violet-400 group-hover:-translate-y-0.5 transition-transform" />
+                    ) : (
+                      <ChevronDownIcon className="h-4 w-4 text-violet-400 group-hover:translate-y-0.5 transition-transform" />
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loadingRecommendations && !aiRecommendations && (
+          <div className="mb-6 bg-gradient-to-r from-purple-50 via-blue-50 to-indigo-50 rounded-lg shadow-lg border-2 border-purple-200 p-6">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+              <p className="text-gray-700 font-medium">Analyzing applicants with AI...</p>
+            </div>
+          </div>
+        )}
+
         {/* Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
@@ -799,6 +1160,102 @@ const ApplicantsList: React.FC = () => {
       )}
       </div>
     </div>
+
+    {/* Floating Smart Picks button – Ultra Modern Design */}
+    {applicants.length > 0 && !showRecommendations && (
+      <button
+        type="button"
+        onClick={handleFetchRecommendations}
+        disabled={loadingRecommendations}
+        className="group fixed bottom-24 right-6 md:bottom-10 md:right-10 z-50 disabled:opacity-70 disabled:cursor-not-allowed"
+        aria-label="Get Smart Picks"
+      >
+        {/* Main button container with layered shadows */}
+        <div className="relative w-16 h-16 md:w-20 md:h-20">
+          {/* Shadow layers for depth */}
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-500 opacity-40 blur-xl group-hover:opacity-60 transition-opacity duration-500"></div>
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-500 opacity-25 blur-2xl scale-110 group-hover:scale-125 transition-transform duration-500"></div>
+          
+          {/* Main button surface */}
+          <div className="relative w-full h-full rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-600 border border-white/30 shadow-2xl overflow-hidden group-hover:scale-105 group-hover:-rotate-3 active:scale-95 active:rotate-0 transition-all duration-500 ease-out">
+            {/* Animated gradient mesh overlay */}
+            <div className="absolute inset-0 opacity-50">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-radial from-violet-300/40 to-transparent rounded-full blur-2xl animate-pulse"></div>
+              <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-radial from-purple-400/50 to-transparent rounded-full blur-xl"></div>
+            </div>
+            
+            {/* Shine effect on hover */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/20 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-out"></div>
+            
+            {/* Border glow */}
+            <div className="absolute inset-0 rounded-2xl border-2 border-white/10 group-hover:border-white/30 transition-colors duration-300"></div>
+            
+            {/* Icon container */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {loadingRecommendations ? (
+                <div className="relative">
+                  <div className="animate-spin rounded-full h-8 w-8 border-3 border-white/30 border-t-white"></div>
+                  <div className="absolute inset-0 animate-ping rounded-full border-2 border-white/20"></div>
+                </div>
+              ) : (
+                <div className="relative group-hover:scale-110 transition-transform duration-300">
+                  <SparklesIcon className="h-9 w-9 md:h-11 md:w-11 text-white drop-shadow-lg" strokeWidth={2} />
+                  {/* Pulsing glow behind icon */}
+                  <div className="absolute inset-0 bg-white/30 rounded-full blur-md scale-150 animate-pulse"></div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Notification badge */}
+          {!loadingRecommendations && aiRecommendations && aiRecommendations.topRecommendations.length > 0 && (
+            <div className="absolute -top-1 -right-1 md:-top-2 md:-right-2">
+              <div className="relative">
+                {/* Badge glow */}
+                <div className="absolute inset-0 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full blur-md opacity-75 animate-pulse"></div>
+                {/* Badge surface */}
+                <div className="relative flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 border-2 border-white shadow-lg">
+                  <span className="text-xs font-bold text-white drop-shadow">
+                    {aiRecommendations.summary.highPotential > 0 
+                      ? aiRecommendations.summary.highPotential 
+                      : aiRecommendations.topRecommendations.length}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* New indicator dot for first-time users */}
+          {!aiRecommendations && !loadingRecommendations && (
+            <div className="absolute -top-1 -right-1">
+              <div className="relative w-3 h-3">
+                <div className="absolute inset-0 bg-green-400 rounded-full animate-ping"></div>
+                <div className="relative w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-lg"></div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Tooltip on hover */}
+        <div className="absolute bottom-full right-0 mb-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-300">
+          <div className="relative">
+            <div className="px-4 py-2 bg-gray-900/95 backdrop-blur-sm rounded-xl border border-white/10 shadow-2xl whitespace-nowrap">
+              <p className="text-sm font-semibold text-white">
+                {loadingRecommendations ? 'Analyzing candidates...' :
+                 aiRecommendations ? 'View AI Recommendations' : 'Get AI-Powered Insights'}
+              </p>
+              {aiRecommendations && aiRecommendations.summary.highPotential > 0 && (
+                <p className="text-xs text-gray-300 mt-0.5">
+                  {aiRecommendations.summary.highPotential} high potential matches
+                </p>
+              )}
+            </div>
+            {/* Tooltip arrow */}
+            <div className="absolute top-full right-6 -mt-1 w-2 h-2 bg-gray-900/95 border-r border-b border-white/10 transform rotate-45"></div>
+          </div>
+        </div>
+      </button>
+    )}
     
     {/* Message Modal */}
     {selectedApplicant && recruiterId && (
