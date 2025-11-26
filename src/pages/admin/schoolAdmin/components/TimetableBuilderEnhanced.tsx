@@ -10,21 +10,31 @@ interface Teacher {
   last_name: string;
 }
 
+interface SchoolClass {
+  id: string;
+  name: string;
+  grade: string;
+  section: string;
+}
+
 interface TimetableSlot {
   id?: string;
-  teacher_id: string;
+  educator_id: string;
+  teacher_id?: string;
   teacher_name?: string;
+  class_id?: string;
+  class_name?: string;
   day_of_week: number;
   period_number: number;
   start_time: string;
   end_time: string;
-  class_name: string;
   subject_name: string;
   room_number: string;
 }
 
 const TimetableBuilderEnhanced: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [timetableId, setTimetableId] = useState<string>("");
   const [allSlots, setAllSlots] = useState<TimetableSlot[]>([]);
   const [draggedSlot, setDraggedSlot] = useState<TimetableSlot | null>(null);
@@ -32,6 +42,14 @@ const TimetableBuilderEnhanced: React.FC = () => {
   const [publishStatus, setPublishStatus] = useState<"draft" | "published">("draft");
   const [conflicts, setConflicts] = useState<Map<string, ValidationConflict[]>>(new Map());
   const [showConflicts, setShowConflicts] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedCell, setSelectedCell] = useState<{ day: number; period: number } | null>(null);
+  const [newSlot, setNewSlot] = useState({
+    teacher_id: "",
+    class_id: "",
+    subject_name: "",
+    room_number: "",
+  });
 
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const periods = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -43,6 +61,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
 
   useEffect(() => {
     loadTeachers();
+    loadClasses();
     loadOrCreateTimetable();
   }, []);
 
@@ -53,13 +72,83 @@ const TimetableBuilderEnhanced: React.FC = () => {
   }, [timetableId]);
 
   const loadTeachers = async () => {
+    // Get current user's school_id
+    const userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) {
+      console.error('No user email found');
+      return;
+    }
+
+    // Get school_id
+    const { data: educatorData } = await supabase
+      .from('school_educators')
+      .select('school_id')
+      .eq('email', userEmail)
+      .maybeSingle();
+
+    let schoolId = educatorData?.school_id;
+
+    if (!schoolId) {
+      const { data: schoolData } = await supabase
+        .from('schools')
+        .select('id')
+        .eq('email', userEmail)
+        .maybeSingle();
+      
+      schoolId = schoolData?.id;
+    }
+
+    if (!schoolId) {
+      console.error('No school_id found');
+      return;
+    }
+
+    // Load teachers from school_educators
     const { data } = await supabase
-      .from("teachers")
+      .from("school_educators")
       .select("id, teacher_id, first_name, last_name")
+      .eq("school_id", schoolId)
       .eq("onboarding_status", "active")
       .order("first_name");
     
     if (data) setTeachers(data);
+  };
+
+  const loadClasses = async () => {
+    // Get current user's school_id
+    const userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) return;
+
+    const { data: educatorData } = await supabase
+      .from('school_educators')
+      .select('school_id')
+      .eq('email', userEmail)
+      .maybeSingle();
+
+    let schoolId = educatorData?.school_id;
+
+    if (!schoolId) {
+      const { data: schoolData } = await supabase
+        .from('schools')
+        .select('id')
+        .eq('email', userEmail)
+        .maybeSingle();
+      
+      schoolId = schoolData?.id;
+    }
+
+    if (!schoolId) return;
+
+    // Load classes
+    const { data } = await supabase
+      .from("school_classes")
+      .select("id, name, grade, section")
+      .eq("school_id", schoolId)
+      .eq("account_status", "active")
+      .order("grade")
+      .order("section");
+    
+    if (data) setClasses(data);
   };
 
   const loadOrCreateTimetable = async () => {
@@ -93,7 +182,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
   const loadAllSlots = async () => {
     const { data } = await supabase
       .from("timetable_slots")
-      .select("*, teachers(first_name, last_name)")
+      .select("*, school_educators(first_name, last_name), school_classes(name)")
       .eq("timetable_id", timetableId)
       .order("day_of_week")
       .order("period_number");
@@ -101,7 +190,8 @@ const TimetableBuilderEnhanced: React.FC = () => {
     if (data) {
       const slotsWithNames = data.map(slot => ({
         ...slot,
-        teacher_name: slot.teachers ? `${slot.teachers.first_name} ${slot.teachers.last_name}` : ""
+        teacher_name: slot.school_educators ? `${slot.school_educators.first_name} ${slot.school_educators.last_name}` : "",
+        class_name: slot.school_classes ? slot.school_classes.name : ""
       }));
       setAllSlots(slotsWithNames);
       
@@ -116,7 +206,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
   };
 
   const getTeacherLoad = (teacherId: string) => {
-    return allSlots.filter(s => s.teacher_id === teacherId).length;
+    return allSlots.filter(s => s.educator_id === teacherId).length;
   };
 
   const handleDragStart = (slot: TimetableSlot) => {
@@ -177,6 +267,11 @@ const TimetableBuilderEnhanced: React.FC = () => {
   const autoGenerateTimetable = async () => {
     if (!confirm("This will generate a timetable automatically. Continue?")) return;
     
+    if (classes.length === 0) {
+      alert("No classes found. Please create classes first.");
+      return;
+    }
+    
     setLoading(true);
     try {
       // Simple auto-generation logic
@@ -188,15 +283,16 @@ const TimetableBuilderEnhanced: React.FC = () => {
         for (let i = 0; i < 5; i++) {
           const day = (teacherIndex % 6) + 1; // Distribute across days
           const period = (slotIndex % 10) + 1;
+          const classIndex = i % classes.length;
           
           newSlots.push({
             timetable_id: timetableId,
-            teacher_id: teacher.id,
+            educator_id: teacher.id,
+            class_id: classes[classIndex].id,
             day_of_week: day,
             period_number: period,
             start_time: timeSlots[period - 1].split("-")[0],
             end_time: timeSlots[period - 1].split("-")[1],
-            class_name: `Class-${i + 1}`,
             subject_name: "General",
             room_number: `R${period}`,
           });
@@ -234,6 +330,76 @@ const TimetableBuilderEnhanced: React.FC = () => {
       
       setPublishStatus("published");
       alert("Timetable published successfully!");
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCellClick = (day: number, period: number) => {
+    const existingSlot = getSlotForCell(day, period);
+    if (existingSlot) return; // Don't open modal if slot exists
+    
+    setSelectedCell({ day, period });
+    setNewSlot({
+      teacher_id: "",
+      class_id: "",
+      subject_name: "",
+      room_number: "",
+    });
+    setShowAddModal(true);
+  };
+
+  const handleAddSlot = async () => {
+    if (!selectedCell || !newSlot.teacher_id || !newSlot.class_id || !newSlot.subject_name) {
+      alert("Please fill all required fields");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const [startTime, endTime] = timeSlots[selectedCell.period - 1].split("-");
+      
+      const { error } = await supabase
+        .from("timetable_slots")
+        .insert({
+          timetable_id: timetableId,
+          educator_id: newSlot.teacher_id,
+          class_id: newSlot.class_id,
+          day_of_week: selectedCell.day,
+          period_number: selectedCell.period,
+          start_time: startTime,
+          end_time: endTime,
+          subject_name: newSlot.subject_name,
+          room_number: newSlot.room_number || `R${selectedCell.period}`,
+        });
+
+      if (error) throw error;
+      
+      await loadAllSlots();
+      setShowAddModal(false);
+      setSelectedCell(null);
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteSlot = async (slotId: string) => {
+    if (!confirm("Delete this slot?")) return;
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("timetable_slots")
+        .delete()
+        .eq("id", slotId);
+
+      if (error) throw error;
+      
+      await loadAllSlots();
     } catch (error: any) {
       alert(error.message);
     } finally {
@@ -402,10 +568,11 @@ const TimetableBuilderEnhanced: React.FC = () => {
                     <td
                       key={`${day}-${period}`}
                       className={`border border-gray-200 px-2 py-2 text-sm ${
-                        isFree ? "bg-green-50" : "bg-white"
+                        isFree ? "bg-green-50 cursor-pointer hover:bg-green-100" : "bg-white"
                       }`}
                       onDragOver={handleDragOver}
                       onDrop={() => handleDrop(dayIndex + 1, period)}
+                      onClick={() => isFree && handleCellClick(dayIndex + 1, period)}
                     >
                       {slot ? (
                         (() => {
@@ -417,7 +584,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
                             <div
                               draggable
                               onDragStart={() => handleDragStart(slot)}
-                              className={`p-2 border rounded cursor-move transition ${
+                              className={`p-2 border rounded cursor-move transition relative group ${
                                 hasError
                                   ? "bg-red-100 border-red-500 hover:bg-red-200"
                                   : hasConflict
@@ -426,6 +593,18 @@ const TimetableBuilderEnhanced: React.FC = () => {
                               }`}
                               title={hasConflict ? slotConflicts.map(c => c.message).join('\n') : ''}
                             >
+                              {slot.id && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteSlot(slot.id!);
+                                  }}
+                                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs hover:bg-red-600 transition"
+                                  title="Delete slot"
+                                >
+                                  ×
+                                </button>
+                              )}
                               {hasError && (
                                 <div className="flex items-center gap-1 mb-1">
                                   <AlertTriangle className="h-3 w-3 text-red-600" />
@@ -451,8 +630,8 @@ const TimetableBuilderEnhanced: React.FC = () => {
                           );
                         })()
                       ) : (
-                        <div className="p-2 text-center text-xs text-green-600 font-medium">
-                          Free Period
+                        <div className="p-2 text-center text-xs text-green-600 font-medium hover:text-green-700">
+                          + Add Slot
                         </div>
                       )}
                     </td>
@@ -470,11 +649,11 @@ const TimetableBuilderEnhanced: React.FC = () => {
         <div className="flex flex-wrap gap-4">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-green-50 border border-green-200 rounded"></div>
-            <span className="text-sm text-gray-600">Free Period</span>
+            <span className="text-sm text-gray-600">Free Period (Click to add)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-indigo-100 border border-indigo-300 rounded"></div>
-            <span className="text-sm text-gray-600">Assigned Period</span>
+            <span className="text-sm text-gray-600">Assigned Period (Drag to move)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-green-500 rounded"></div>
@@ -490,6 +669,106 @@ const TimetableBuilderEnhanced: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Add Slot Modal */}
+      {showAddModal && selectedCell && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Add Slot - {days[selectedCell.day - 1]} Period {selectedCell.period}
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Time: {timeSlots[selectedCell.period - 1]}
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Teacher *
+                </label>
+                <select
+                  value={newSlot.teacher_id}
+                  onChange={(e) => setNewSlot({ ...newSlot, teacher_id: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">Select Teacher</option>
+                  {teachers.map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.first_name} {teacher.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Class *
+                </label>
+                <select
+                  value={newSlot.class_id}
+                  onChange={(e) => setNewSlot({ ...newSlot, class_id: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">Select Class</option>
+                  {classes.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name} ({cls.grade}{cls.section ? `-${cls.section}` : ''})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Subject *
+                </label>
+                <input
+                  type="text"
+                  value={newSlot.subject_name}
+                  onChange={(e) => setNewSlot({ ...newSlot, subject_name: e.target.value })}
+                  placeholder="e.g., Mathematics"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Room Number
+                </label>
+                <input
+                  type="text"
+                  value={newSlot.room_number}
+                  onChange={(e) => setNewSlot({ ...newSlot, room_number: e.target.value })}
+                  placeholder="e.g., R101"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setSelectedCell(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddSlot}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 transition"
+              >
+                {loading ? "Adding..." : "Add Slot"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
