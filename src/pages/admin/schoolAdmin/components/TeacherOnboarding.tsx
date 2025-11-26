@@ -28,6 +28,7 @@ const TeacherOnboardingPage: React.FC = () => {
   const { role, canAddTeacher, canApproveTeacher, isPrincipal, isITAdmin, isSchoolAdmin, loading: roleLoading } = useUserRole();
   const [currentSection, setCurrentSection] = useState<"personal" | "subjects" | "experience" | "documents">("personal");
   const [generatedTeacherId, setGeneratedTeacherId] = useState<string>("");
+  const [debugInfo, setDebugInfo] = useState<string>("");
   
   const [formData, setFormData] = useState({
     first_name: "",
@@ -198,7 +199,7 @@ const TeacherOnboardingPage: React.FC = () => {
     }
 
     try {
-      // Upload documents
+      // Upload documents (only if provided)
       const degreeUrl = documents.degree_certificate
         ? await uploadFile(documents.degree_certificate, "degrees")
         : null;
@@ -207,12 +208,91 @@ const TeacherOnboardingPage: React.FC = () => {
         ? await uploadFile(documents.id_proof, "id-proofs")
         : null;
 
-      const experienceUrls = await Promise.all(
-        documents.experience_letters.map((file) => uploadFile(file, "experience-letters"))
-      );
+      const experienceUrls = documents.experience_letters.length > 0
+        ? await Promise.all(
+            documents.experience_letters.map((file) => uploadFile(file, "experience-letters"))
+          )
+        : [];
 
-      // Get current user's school_id (you'll need to implement this based on your auth)
-      const { data: userData } = await supabase.auth.getUser();
+      // Get current user's school_id
+      const { data: currentUser } = await supabase.auth.getUser();
+      
+      console.log("Current user:", currentUser?.user);
+      
+      if (!currentUser?.user) {
+        throw new Error("User not authenticated. Please log in again.");
+      }
+
+      // Get school_id from school_educators table using current user's ID
+      const { data: educatorData, error: educatorError } = await supabase
+        .from("school_educators")
+        .select("school_id")
+        .eq("user_id", currentUser.user.id)
+        .single();
+
+      console.log("Educator data:", educatorData);
+      console.log("Educator error:", educatorError);
+
+      let schoolId = educatorData?.school_id;
+
+      if (!schoolId) {
+        // Fallback: try to get from user_metadata
+        schoolId = currentUser.user.user_metadata?.school_id;
+        console.log("Fallback school_id from metadata:", schoolId);
+      }
+
+      if (!schoolId) {
+        const debugMsg = `Debug Info - User ID: ${currentUser.user.id}, Email: ${currentUser.user.email}, Metadata: ${JSON.stringify(currentUser.user.user_metadata)}`;
+        console.error(debugMsg);
+        setDebugInfo(debugMsg);
+        throw new Error("School ID not found. Please ensure you're logged in as a school admin and have a school_educators record.");
+      }
+
+      console.log("Using school_id:", schoolId);
+
+      // Step 1: Create auth user for the teacher
+      // Note: This requires calling a backend function or edge function with admin privileges
+      // For now, we'll use signUp which sends a confirmation email
+      const tempPassword = Math.random().toString(36).slice(-8) + "Temp@123";
+      
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: tempPassword,
+        options: {
+          data: {
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            role: 'educator',
+            school_id: schoolId,
+          },
+          emailRedirectTo: `${window.location.origin}/educator/dashboard`
+        }
+      });
+
+      if (authError) throw authError;
+      
+      if (!authData.user) {
+        throw new Error("Failed to create user account");
+      }
+
+      // Step 2: Create user record in users table
+      const { data: userRecord, error: userError } = await supabase
+        .from("users")
+        .insert({
+          id: authData.user.id,
+          email: formData.email,
+          full_name: `${formData.first_name} ${formData.last_name}`,
+          role: 'educator',
+        })
+        .select()
+        .single();
+
+      if (userError) {
+        // Note: Cannot rollback auth user without admin API
+        // Consider implementing a cleanup edge function
+        console.error("Failed to create user record:", userError);
+        throw new Error(`Failed to create user record: ${userError.message}`);
+      }
       
       // Determine status based on action
       let status = "pending";
@@ -221,29 +301,40 @@ const TeacherOnboardingPage: React.FC = () => {
       else if (action === "approve") status = "active";
       else if (action === "reject") status = "inactive";
 
-      // Insert teacher record
-      const { data: teacher, error } = await supabase
-        .from("teachers")
+      // Step 3: Create educator record in school_educators table
+      const { data: teacher, error: teacherError } = await supabase
+        .from("school_educators")
         .insert({
-          ...formData,
+          user_id: authData.user.id,
+          school_id: schoolId,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          email: formData.email,
+          phone_number: formData.phone || null,
+          dob: formData.date_of_birth || null,
+          address: formData.address || null,
+          qualification: formData.qualification || null,
+          role: formData.role,
           degree_certificate_url: degreeUrl,
           id_proof_url: idProofUrl,
-          experience_letters_url: experienceUrls,
+          experience_letters_url: experienceUrls.length > 0 ? experienceUrls : null,
           subject_expertise: subjects,
-          class_assignments: classes,
-          work_experience: experiences,
           onboarding_status: status,
-          school_id: userData?.user?.user_metadata?.school_id,
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (teacherError) {
+        // Rollback: delete user record (auth user will remain but inactive)
+        await supabase.from("users").delete().eq("id", authData.user.id);
+        console.error("Failed to create educator record:", teacherError);
+        throw new Error(`Failed to create educator record: ${teacherError.message}`);
+      }
 
-      setGeneratedTeacherId(teacher.teacher_id);
+      setGeneratedTeacherId(teacher.teacher_id || "N/A");
       setMessage({
         type: "success",
-        text: `Teacher ${action === "draft" ? "saved as draft" : action === "approve" ? "approved" : action === "reject" ? "rejected" : "onboarded"} successfully! Teacher ID: ${teacher.teacher_id}`,
+        text: `Teacher ${action === "draft" ? "saved as draft" : action === "approve" ? "approved" : action === "reject" ? "rejected" : "onboarded"} successfully! Teacher ID: ${teacher.teacher_id || "N/A"}. A confirmation email has been sent to ${formData.email}. Temporary password: ${tempPassword}`,
       });
 
       // Reset form
@@ -305,6 +396,12 @@ const TeacherOnboardingPage: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+
+      {debugInfo && (
+        <div className="mb-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+          <p className="text-xs text-yellow-800 font-mono">{debugInfo}</p>
+        </div>
+      )}
 
       {message && (
         <div
@@ -400,12 +497,12 @@ const TeacherOnboardingPage: React.FC = () => {
 
         {/* Document Upload */}
         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Required Documents</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Documents (Optional)</h3>
           <div className="space-y-4">
             {/* Degree Certificate */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Degree Certificate *
+                Degree Certificate
               </label>
               <div className="flex items-center gap-3">
                 <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 cursor-pointer transition">
@@ -425,7 +522,7 @@ const TeacherOnboardingPage: React.FC = () => {
 
             {/* ID Proof */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ID Proof *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">ID Proof</label>
               <div className="flex items-center gap-3">
                 <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 cursor-pointer transition">
                   <Upload className="h-5 w-5 text-gray-400" />
