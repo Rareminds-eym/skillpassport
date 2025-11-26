@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Search, Eye, CheckCircle, Clock, XCircle } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
+import { useAuth } from "../../../../context/AuthContext";
 
 interface Teacher {
   id: string;
@@ -8,40 +9,133 @@ interface Teacher {
   first_name: string;
   last_name: string;
   email: string;
-  phone: string;
+  phone_number: string;
   onboarding_status: string;
   subject_expertise: any[];
   role: string;
+  school_id: string;
   created_at: string;
+  metadata?: {
+    temporary_password?: string;
+    password_created_at?: string;
+    created_by?: string;
+  };
 }
 
 const TeacherListPage: React.FC = () => {
+  const { user } = useAuth();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [filteredTeachers, setFilteredTeachers] = useState<Teacher[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadTeachers();
+    if (user?.email) {
+      fetchSchoolId();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (schoolId) {
+      loadTeachers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schoolId]);
 
   useEffect(() => {
     filterTeachers();
   }, [searchTerm, statusFilter, teachers]);
 
-  const loadTeachers = async () => {
-    setLoading(true);
-    const { data } = await supabase
-      .from("teachers")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (data) {
-      setTeachers(data);
+  const fetchSchoolId = async () => {
+    if (!user?.email) {
+      console.error('No user email found');
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    try {
+      // First, try to get school_id from school_educators table
+      const { data: educatorData, error: educatorError } = await supabase
+        .from('school_educators')
+        .select('school_id')
+        .eq('email', user.email)
+        .maybeSingle();
+
+      if (educatorData?.school_id) {
+        console.log('Found school_id from school_educators:', educatorData.school_id);
+        setSchoolId(educatorData.school_id);
+        return;
+      }
+
+      // If not found in school_educators, check if user is a school admin in schools table
+      console.log('Not found in school_educators, checking schools table...');
+      const { data: schoolData, error: schoolError } = await supabase
+        .from('schools')
+        .select('id')
+        .eq('email', user.email)
+        .maybeSingle();
+
+      if (schoolError) {
+        console.error('Error fetching from schools:', schoolError);
+      }
+
+      if (schoolData?.id) {
+        console.log('Found school_id from schools table:', schoolData.id);
+        setSchoolId(schoolData.id);
+        return;
+      }
+
+      // Also try principal_email field
+      const { data: schoolByPrincipal, error: principalError } = await supabase
+        .from('schools')
+        .select('id')
+        .eq('principal_email', user.email)
+        .maybeSingle();
+
+      if (schoolByPrincipal?.id) {
+        console.log('Found school_id from principal_email:', schoolByPrincipal.id);
+        setSchoolId(schoolByPrincipal.id);
+        return;
+      }
+
+      console.error('No school_id found for user in any table');
+      setLoading(false);
+    } catch (error) {
+      console.error('Error in fetchSchoolId:', error);
+      setLoading(false);
+    }
+  };
+
+  const loadTeachers = async () => {
+    if (!schoolId) {
+      console.error('No school_id available');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("school_educators")
+        .select("*")
+        .eq("school_id", schoolId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error('Error loading teachers:', error);
+      } else if (data) {
+        console.log('Loaded teachers:', data.length);
+        setTeachers(data);
+      }
+    } catch (error) {
+      console.error('Error in loadTeachers:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filterTeachers = () => {
@@ -50,10 +144,10 @@ const TeacherListPage: React.FC = () => {
     if (searchTerm) {
       filtered = filtered.filter(
         (t) =>
-          t.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          t.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          t.teacher_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          t.email.toLowerCase().includes(searchTerm.toLowerCase())
+          t.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          t.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          t.teacher_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          t.email?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -92,13 +186,15 @@ const TeacherListPage: React.FC = () => {
 
   const updateTeacherStatus = async (teacherId: string, newStatus: string) => {
     const { error } = await supabase
-      .from("teachers")
+      .from("school_educators")
       .update({ onboarding_status: newStatus })
       .eq("id", teacherId);
 
     if (!error) {
       loadTeachers();
       setSelectedTeacher(null);
+    } else {
+      console.error('Error updating teacher status:', error);
     }
   };
 
@@ -171,6 +267,21 @@ const TeacherListPage: React.FC = () => {
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
           <p className="mt-2 text-gray-600">Loading teachers...</p>
         </div>
+      ) : !schoolId ? (
+        <div className="text-center py-12">
+          <div className="text-yellow-600 mb-4">
+            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <p className="text-gray-900 font-semibold">No School Found</p>
+          <p className="text-gray-600 mt-2">
+            Your account is not linked to any school. Please contact your administrator.
+          </p>
+          <p className="text-sm text-gray-500 mt-4">
+            User email: {user?.email || 'Not logged in'}
+          </p>
+        </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
@@ -204,7 +315,7 @@ const TeacherListPage: React.FC = () => {
                 {filteredTeachers.map((teacher) => (
                   <tr key={teacher.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {teacher.teacher_id}
+                      {teacher.teacher_id || <span className="text-gray-400 italic">Not assigned</span>}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {teacher.first_name} {teacher.last_name}
@@ -262,9 +373,10 @@ const TeacherListPage: React.FC = () => {
             </table>
           </div>
 
-          {filteredTeachers.length === 0 && (
+          {filteredTeachers.length === 0 && !loading && schoolId && (
             <div className="text-center py-12">
-              <p className="text-gray-500">No teachers found</p>
+              <p className="text-gray-500">No teachers found for this school</p>
+              <p className="text-sm text-gray-400 mt-2">School ID: {schoolId}</p>
             </div>
           )}
         </div>
@@ -280,7 +392,9 @@ const TeacherListPage: React.FC = () => {
                   <h3 className="text-xl font-bold text-gray-900">
                     {selectedTeacher.first_name} {selectedTeacher.last_name}
                   </h3>
-                  <p className="text-sm text-gray-600">{selectedTeacher.teacher_id}</p>
+                  <p className="text-sm text-gray-600">
+                    {selectedTeacher.teacher_id || <span className="text-gray-400 italic">ID not assigned</span>}
+                  </p>
                 </div>
                 <button
                   onClick={() => setSelectedTeacher(null)}
@@ -302,10 +416,36 @@ const TeacherListPage: React.FC = () => {
                   </p>
                   <p>
                     <span className="text-gray-600">Phone:</span>{" "}
-                    <span className="text-gray-900">{selectedTeacher.phone || "N/A"}</span>
+                    <span className="text-gray-900">{selectedTeacher.phone_number || "N/A"}</span>
                   </p>
                 </div>
               </div>
+
+              {/* Login Credentials */}
+              {selectedTeacher.metadata && (selectedTeacher.metadata as any).temporary_password && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-yellow-900 mb-3 flex items-center gap-2">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Login Credentials
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <p>
+                      <span className="text-yellow-700 font-medium">Temporary Password:</span>{" "}
+                      <code className="bg-yellow-100 px-2 py-1 rounded text-yellow-900 font-mono">
+                        {(selectedTeacher.metadata as any).temporary_password}
+                      </code>
+                    </p>
+                    <p className="text-yellow-600 text-xs">
+                      Created: {new Date((selectedTeacher.metadata as any).password_created_at).toLocaleString()}
+                    </p>
+                    <p className="text-yellow-600 text-xs mt-2">
+                      ⚠️ Please share this password securely with the teacher. They should change it after first login.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Subject Expertise */}
               <div>

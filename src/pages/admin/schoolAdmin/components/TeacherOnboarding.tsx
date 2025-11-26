@@ -198,7 +198,7 @@ const TeacherOnboardingPage: React.FC = () => {
     }
 
     try {
-      // Upload documents
+      // Upload documents (only if provided)
       const degreeUrl = documents.degree_certificate
         ? await uploadFile(documents.degree_certificate, "degrees")
         : null;
@@ -207,13 +207,69 @@ const TeacherOnboardingPage: React.FC = () => {
         ? await uploadFile(documents.id_proof, "id-proofs")
         : null;
 
-      const experienceUrls = await Promise.all(
-        documents.experience_letters.map((file) => uploadFile(file, "experience-letters"))
-      );
+      const experienceUrls = documents.experience_letters.length > 0
+        ? await Promise.all(
+            documents.experience_letters.map((file) => uploadFile(file, "experience-letters"))
+          )
+        : [];
 
-      // Get current user's school_id (you'll need to implement this based on your auth)
-      const { data: userData } = await supabase.auth.getUser();
+      // Get current user from localStorage (custom auth)
+      const userStr = localStorage.getItem('user');
+      const userEmail = localStorage.getItem('userEmail');
       
+      console.log("User from localStorage:", userStr);
+      console.log("User email:", userEmail);
+      
+      if (!userEmail) {
+        throw new Error("User not authenticated. Please log in again.");
+      }
+
+      // Get school_id from school_educators table using email
+      const { data: educatorData, error: educatorError } = await supabase
+        .from("school_educators")
+        .select("school_id, user_id")
+        .eq("email", userEmail)
+        .maybeSingle();
+
+      console.log("Educator data:", educatorData);
+      console.log("Educator error:", educatorError);
+
+      let schoolId = educatorData?.school_id;
+
+      // If not found in school_educators, check schools table
+      if (!schoolId) {
+        console.log("Not found in school_educators, checking schools table...");
+        const { data: schoolData, error: schoolError } = await supabase
+          .from("schools")
+          .select("id")
+          .eq("email", userEmail)
+          .maybeSingle();
+
+        if (schoolData?.id) {
+          schoolId = schoolData.id;
+          console.log("Found school_id from schools table:", schoolId);
+        } else {
+          // Also try principal_email
+          const { data: schoolByPrincipal } = await supabase
+            .from("schools")
+            .select("id")
+            .eq("principal_email", userEmail)
+            .maybeSingle();
+
+          if (schoolByPrincipal?.id) {
+            schoolId = schoolByPrincipal.id;
+            console.log("Found school_id from principal_email:", schoolId);
+          }
+        }
+      }
+
+      if (!schoolId) {
+        console.error(`No school found for email: ${userEmail}`);
+        throw new Error("School ID not found. Please ensure you're logged in as a school admin.");
+      }
+
+      console.log("Using school_id:", schoolId);
+
       // Determine status based on action
       let status = "pending";
       if (action === "draft") status = "pending";
@@ -221,29 +277,119 @@ const TeacherOnboardingPage: React.FC = () => {
       else if (action === "approve") status = "active";
       else if (action === "reject") status = "inactive";
 
-      // Insert teacher record
-      const { data: teacher, error } = await supabase
-        .from("teachers")
+      // Step 1: Create Supabase Auth user
+      // Generate a temporary password
+      const tempPassword = Math.random().toString(36).slice(-8) + "Temp@123";
+      
+      console.log("Creating auth user for:", formData.email);
+      
+      // Note: This will send a confirmation email to the teacher
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: formData.email,
+        password: tempPassword,
+        email_confirm: true, // Auto-confirm email
+        user_metadata: {
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          role: 'educator',
+          school_id: schoolId,
+        }
+      });
+
+      if (authError) {
+        // If admin API is not available, try regular signup
+        console.warn("Admin API not available, trying regular signup:", authError);
+        
+        const { data: signupData, error: signupError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: tempPassword,
+          options: {
+            data: {
+              first_name: formData.first_name,
+              last_name: formData.last_name,
+              role: 'educator',
+              school_id: schoolId,
+            }
+          }
+        });
+
+        if (signupError) {
+          throw new Error(`Failed to create auth user: ${signupError.message}`);
+        }
+
+        if (!signupData.user) {
+          throw new Error("Failed to create auth user");
+        }
+
+        // Use the signup user
+        var userId = signupData.user.id;
+      } else {
+        if (!authData.user) {
+          throw new Error("Failed to create auth user");
+        }
+        var userId = authData.user.id;
+      }
+
+      console.log("Created auth user:", userId);
+
+      // Step 2: Create user record in users table
+      const { data: userRecord, error: userError } = await supabase
+        .from("users")
         .insert({
-          ...formData,
-          degree_certificate_url: degreeUrl,
-          id_proof_url: idProofUrl,
-          experience_letters_url: experienceUrls,
-          subject_expertise: subjects,
-          class_assignments: classes,
-          work_experience: experiences,
-          onboarding_status: status,
-          school_id: userData?.user?.user_metadata?.school_id,
+          id: userId,
+          email: formData.email,
+          role: 'educator',
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (userError) {
+        console.error("Failed to create user record:", userError);
+        // Note: Auth user already created, cannot easily rollback
+        throw new Error(`Failed to create user record: ${userError.message}`);
+      }
 
-      setGeneratedTeacherId(teacher.teacher_id);
+      console.log("Created user record:", userRecord);
+
+      // Step 3: Create educator record in school_educators table
+      const { data: teacher, error: teacherError } = await supabase
+        .from("school_educators")
+        .insert({
+          user_id: userId,
+          school_id: schoolId,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          email: formData.email,
+          phone_number: formData.phone || null,
+          dob: formData.date_of_birth || null,
+          address: formData.address || null,
+          qualification: formData.qualification || null,
+          role: formData.role,
+          degree_certificate_url: degreeUrl,
+          id_proof_url: idProofUrl,
+          experience_letters_url: experienceUrls.length > 0 ? experienceUrls : null,
+          subject_expertise: subjects,
+          onboarding_status: status,
+          metadata: {
+            temporary_password: tempPassword,
+            password_created_at: new Date().toISOString(),
+            created_by: userEmail,
+          }
+        })
+        .select()
+        .single();
+
+      if (teacherError) {
+        // Rollback: delete user record
+        await supabase.from("users").delete().eq("id", userId);
+        console.error("Failed to create educator record:", teacherError);
+        throw new Error(`Failed to create educator record: ${teacherError.message}`);
+      }
+
+      setGeneratedTeacherId(teacher.teacher_id || "N/A");
       setMessage({
         type: "success",
-        text: `Teacher ${action === "draft" ? "saved as draft" : action === "approve" ? "approved" : action === "reject" ? "rejected" : "onboarded"} successfully! Teacher ID: ${teacher.teacher_id}`,
+        text: `Teacher ${action === "draft" ? "saved as draft" : action === "approve" ? "approved" : action === "reject" ? "rejected" : "onboarded"} successfully! Teacher ID: ${teacher.teacher_id || "N/A"}. Login credentials sent to ${formData.email}. Temporary password: ${tempPassword}`,
       });
 
       // Reset form
@@ -308,18 +454,32 @@ const TeacherOnboardingPage: React.FC = () => {
 
       {message && (
         <div
-          className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
+          className={`mb-6 p-4 rounded-lg ${
             message.type === "success"
               ? "bg-green-50 text-green-800 border border-green-200"
               : "bg-red-50 text-red-800 border border-red-200"
           }`}
         >
-          {message.type === "success" ? (
-            <CheckCircle className="h-5 w-5" />
-          ) : (
-            <AlertCircle className="h-5 w-5" />
-          )}
-          <span>{message.text}</span>
+          <div className="flex items-start gap-3">
+            {message.type === "success" ? (
+              <CheckCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1">
+              <p className="font-medium">{message.text}</p>
+              {Object.keys(validationErrors).length > 0 && (
+                <ul className="mt-2 space-y-1 text-sm">
+                  {Object.entries(validationErrors).map(([field, error]) => (
+                    <li key={field} className="flex items-start gap-2">
+                      <span className="font-semibold capitalize">{field.replace(/_/g, ' ')}:</span>
+                      <span>{error}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -400,12 +560,12 @@ const TeacherOnboardingPage: React.FC = () => {
 
         {/* Document Upload */}
         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Required Documents</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Documents (Optional)</h3>
           <div className="space-y-4">
             {/* Degree Certificate */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Degree Certificate *
+                Degree Certificate
               </label>
               <div className="flex items-center gap-3">
                 <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 cursor-pointer transition">
@@ -425,7 +585,7 @@ const TeacherOnboardingPage: React.FC = () => {
 
             {/* ID Proof */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">ID Proof *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">ID Proof</label>
               <div className="flex items-center gap-3">
                 <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 cursor-pointer transition">
                   <Upload className="h-5 w-5 text-gray-400" />
@@ -483,8 +643,13 @@ const TeacherOnboardingPage: React.FC = () => {
         </div>
 
         {/* Subject Expertise */}
-        <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Subject Expertise</h3>
+        <div className={`bg-gray-50 rounded-xl p-6 border ${validationErrors.subjects ? 'border-red-300' : 'border-gray-200'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Subject Expertise *</h3>
+            {validationErrors.subjects && (
+              <span className="text-sm text-red-600 font-medium">{validationErrors.subjects}</span>
+            )}
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
             <input

@@ -63,6 +63,7 @@ const Header = ({ activeTab, setActiveTab }) => {
       skills: "🎯",
       training: "📚",
       experience: "💼",
+      courses: "📚",
       "digital-portfolio": "🎨",
       opportunities: "🚀",
       applications: "📝",
@@ -78,6 +79,7 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: "skills", label: "Skills" },
     { id: "training", label: "Training" },
     { id: "experience", label: "Experience" },
+    { id: "courses", label: "Courses", },
     { id: "digital-portfolio", label: "Digital Portfolio" },
     { id: "opportunities", label: "Opportunities" },
     { id: "applications", label: "Applications" },
@@ -130,6 +132,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/my-training");
                   } else if (tab.id === "experience") {
                     navigate("/student/my-experience");
+                  } else if (tab.id === "courses") {
+                    navigate("/student/courses");
                   } else if (tab.id === "digital-portfolio") {
                     navigate("/student/digital-portfolio");
                   } else if (tab.id === "opportunities") {
@@ -191,6 +195,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/my-training");
                   } else if (tab.id === "experience") {
                     navigate("/student/my-experience");
+                  } else if (tab.id === "courses") {
+                    navigate("/student/courses");
                   } else if (tab.id === "digital-portfolio") {
                     navigate("/student/digital-portfolio");
                   } else if (tab.id === "opportunities") {
@@ -334,6 +340,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/my-training");
                   } else if (tab.id === "experience") {
                     navigate("/student/my-experience");
+                  } else if (tab.id === "courses") {
+                    navigate("/student/courses");
                   } else if (tab.id === "digital-portfolio") {
                     navigate("/student/digital-portfolio");
                   } else if (tab.id === "opportunities") {
