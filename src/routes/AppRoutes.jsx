@@ -114,6 +114,7 @@ const BrowseJobs = lazy(() => import("../pages/student/BrowseJobs"));
 const Messages = lazy(() => import("../pages/student/Messages"));
 const StudentAnalytics = lazy(() => import("../pages/student/Analytics"));
 const Assignments = lazy(() => import("../pages/student/Assignments"));
+const Clubs = lazy(() => import ("../pages/student/Clubs"))
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
 const CareerAI = lazy(() => import("../features/career-assistant/components/CareerAssistant"));
@@ -138,6 +139,7 @@ const EducatorManagement = lazy(() => import("../pages/educator/EducatorManageme
 const EducatorCommunication = lazy(() =>
   import("../pages/educator/Communication")
 );
+const SkillCurriculars = lazy (() => import("../pages/educator/SkillCurricular"))
 const EducatorAnalytics = lazy(() => import("../pages/educator/Analytics"));
 const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
 const EducatorReports = lazy(() => import("../pages/educator/Reports"));
@@ -233,6 +235,16 @@ const MessageCenter = lazy(() =>
 );
 const CircularsFeedback = lazy(() =>
   import("../pages/admin/schoolAdmin/CircularsFeedback")
+);
+// skill && Curriculum Management
+const SkillCurricular = lazy(() =>
+  import("../pages/admin/schoolAdmin/SkillCurricular")
+);
+const SkillBadges = lazy(() =>  
+import("../pages/admin/schoolAdmin/SkillBadges")
+);
+const Reports = lazy(() =>  
+import("../pages/admin/schoolAdmin/Reports")
 );
 
 const AttendanceReports = lazy(() =>
@@ -365,6 +377,10 @@ const AppRoutes = () => {
             path="communication/circulars"
             element={<CircularsFeedback />}
           />
+          {/* Skill & Curriculum Manament*/}
+          <Route path="skills/clubs" element={<SkillCurricular />} />
+          <Route path="skills/badges" element={<SkillBadges />} />
+          <Route path="skills/reports" element={<Reports />} />
 
           {/* Settings */}
           <Route path="settings" element={<SchoolAdminSettings />} />
@@ -452,6 +468,7 @@ const AppRoutes = () => {
           <Route path="settings" element={<Settings />} />
           <Route path="analytics" element={<StudentAnalytics />} />
           <Route path="assignments" element={<Assignments />} />
+          <Route path="clubs" element={<Clubs />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
 
@@ -614,6 +631,7 @@ const AppRoutes = () => {
           <Route path="lesson-plans" element={<LessonPlansList />} />
           <Route path="lesson-plans/create" element={<LessonPlanCreate />} />
           <Route path="my-timetable" element={<MyTimetable />} />
+          <Route path="clubs" element={<SkillCurriculars />} />
           <Route
             path=""
             element={<Navigate to="/educator/dashboard" replace />}
