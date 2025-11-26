@@ -28,7 +28,9 @@ const ALLOWED_FILE_TYPES = {
   image: ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp']
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// For Netlify Functions, use relative path. For local dev, use localhost
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.MODE === 'production' ? '' : 'http://localhost:3001');
 
 const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
   onResourcesAdded,
