@@ -76,7 +76,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             },
             {
               name: "Attendance & Reports",
-              path: "/school-admin/students/attendance",
+              path: "/school-admin/students/attendance-reports",
               icon: ChartBarIcon,
             },
           ],
