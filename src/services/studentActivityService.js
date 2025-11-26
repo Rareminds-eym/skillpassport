@@ -6,6 +6,195 @@
 import { supabase } from '../lib/supabaseClient';
 
 /**
+ * Add a course enrollment activity to recent updates
+ * @param {string} studentEmail - Student's email address
+ * @param {Object} courseDetails - Course details (title, code, educator_name)
+ */
+export const addCourseEnrollmentActivity = async (studentEmail, courseDetails) => {
+  if (!studentEmail || !courseDetails) {
+    return { success: false, error: 'Student email and course details required' };
+  }
+
+  try {
+    // Get student ID from email
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('id')
+      .eq('email', studentEmail)
+      .single();
+
+    if (studentError || !student) {
+      return { success: false, error: 'Student not found' };
+    }
+
+    const activity = {
+      id: `course-enrolled-${Date.now()}`,
+      user: courseDetails.educator_name || 'Instructor',
+      action: 'published a new course:',
+      candidate: courseDetails.title,
+      details: `Course Code: ${courseDetails.code}`,
+      timestamp: new Date().toISOString(),
+      type: 'course_enrolled',
+      icon: 'book-open',
+      metadata: {
+        courseId: courseDetails.course_id,
+        courseCode: courseDetails.code,
+        courseTitle: courseDetails.title,
+        educatorName: courseDetails.educator_name
+      }
+    };
+
+    // Store in recent_updates table
+    const { data: existingData } = await supabase
+      .from('recent_updates')
+      .select('updates')
+      .eq('student_id', student.id)
+      .single();
+
+    let currentUpdates = [];
+    if (existingData && existingData.updates && existingData.updates.updates) {
+      currentUpdates = existingData.updates.updates;
+    }
+
+    // Add new activity to the beginning
+    const updatedUpdates = [activity, ...currentUpdates];
+
+    // Keep only latest 20 updates
+    const trimmedUpdates = updatedUpdates.slice(0, 20);
+
+    // Upsert the updates
+    const { error: upsertError } = await supabase
+      .from('recent_updates')
+      .upsert({
+        student_id: student.id,
+        updates: { updates: trimmedUpdates }
+      }, {
+        onConflict: 'student_id'
+      });
+
+    if (upsertError) {
+      return { success: false, error: upsertError.message };
+    }
+
+    return { success: true, data: activity };
+  } catch (error) {
+    console.error('Error adding course enrollment activity:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Add a new course notification to all students
+ * @param {Object} courseDetails - Course details (title, code, educator_name, course_id)
+ */
+export const notifyAllStudentsNewCourse = async (courseDetails) => {
+  console.log('🔔 ========== NEW COURSE NOTIFICATION STARTED ==========');
+  console.log('📚 Course Details:', courseDetails);
+
+  if (!courseDetails) {
+    console.error('❌ No course details provided');
+    return { success: false, error: 'Course details required' };
+  }
+
+  try {
+    // Get all active students
+    console.log('👥 Fetching all students from database...');
+    const { data: students, error: studentsError } = await supabase
+      .from('students')
+      .select('id, email');
+
+    if (studentsError) {
+      console.error('❌ Error fetching students:', studentsError);
+      return { success: false, error: studentsError.message };
+    }
+
+    console.log(`✅ Found ${students?.length || 0} students in database`);
+
+    if (!students || students.length === 0) {
+      console.warn('⚠️ No students found to notify');
+      return { success: true, data: { notified: 0 } };
+    }
+
+    const activity = {
+      id: `course-new-${courseDetails.course_id}-${Date.now()}`,
+      message: `New course available: ${courseDetails.title}`,
+      details: `Course Code: ${courseDetails.code} • Instructor: ${courseDetails.educator_name}`,
+      timestamp: new Date().toISOString(),
+      type: 'course_new',
+      icon: 'book-open',
+      metadata: {
+        courseId: courseDetails.course_id,
+        courseCode: courseDetails.code,
+        courseTitle: courseDetails.title,
+        educatorName: courseDetails.educator_name
+      }
+    };
+
+    console.log('📝 Activity object created:', activity);
+
+    // Add notification to each student's recent updates
+    console.log(`🔄 Starting to update ${students.length} student records...`);
+
+    const updatePromises = students.map(async (student, index) => {
+      console.log(`  📤 [${index + 1}/${students.length}] Processing student: ${student.email}`);
+
+      // Get existing updates
+      const { data: existingData } = await supabase
+        .from('recent_updates')
+        .select('updates')
+        .eq('student_id', student.id)
+        .single();
+
+      let currentUpdates = [];
+      if (existingData && existingData.updates && existingData.updates.updates) {
+        currentUpdates = existingData.updates.updates;
+        console.log(`    ℹ️  Student has ${currentUpdates.length} existing updates`);
+      } else {
+        console.log(`    ℹ️  Student has no existing updates`);
+      }
+
+      // Add new activity
+      const updatedUpdates = [activity, ...currentUpdates];
+      const trimmedUpdates = updatedUpdates.slice(0, 20);
+
+      console.log(`    ✏️  Adding new update (total will be ${trimmedUpdates.length})`);
+
+      // Upsert
+      const result = await supabase
+        .from('recent_updates')
+        .upsert({
+          student_id: student.id,
+          updates: { updates: trimmedUpdates }
+        }, {
+          onConflict: 'student_id'
+        });
+
+      if (result.error) {
+        console.error(`    ❌ Error updating student ${student.email}:`, result.error);
+      } else {
+        console.log(`    ✅ Successfully updated student ${student.email}`);
+      }
+
+      return result;
+    });
+
+    console.log('⏳ Waiting for all updates to complete...');
+    const results = await Promise.all(updatePromises);
+
+    const successCount = results.filter(r => !r.error).length;
+    const errorCount = results.filter(r => r.error).length;
+
+    console.log(`✅ Notification complete: ${successCount} succeeded, ${errorCount} failed`);
+    console.log('🔔 ========== NEW COURSE NOTIFICATION ENDED ==========');
+
+    return { success: true, data: { notified: students.length, successCount, errorCount } };
+  } catch (error) {
+    console.error('❌ CRITICAL ERROR in notifyAllStudentsNewCourse:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
  * Get recent activities for a specific student by their email
  * @param {string} studentEmail - Student's email address
  * @param {number} limit - Number of activities to fetch (default: 10)

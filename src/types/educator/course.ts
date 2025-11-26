@@ -75,4 +75,11 @@ export interface FileUpload {
   progress: number;
   status: 'pending' | 'uploading' | 'completed' | 'error';
   error?: string;
+  uploadedData?: {
+    key: string;
+    url: string;
+    name: string;
+    size: number;
+    type: string;
+  };
 }

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   XMarkIcon,
   DocumentIcon,
@@ -16,6 +16,8 @@ interface ResourceUploadComponentProps {
   onResourcesAdded: (resources: Resource[]) => void;
   onClose: () => void;
   existingResources?: Resource[];
+  courseId: string;
+  lessonId: string;
 }
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -26,10 +28,14 @@ const ALLOWED_FILE_TYPES = {
   image: ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp']
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
   onResourcesAdded,
   onClose,
-  existingResources = []
+  existingResources = [],
+  courseId,
+  lessonId
 }) => {
   const [uploadMode, setUploadMode] = useState<'file' | 'link'>('file');
   const [fileUploads, setFileUploads] = useState<FileUpload[]>([]);
@@ -38,7 +44,33 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
   const [linkType, setLinkType] = useState<'link' | 'youtube' | 'drive'>('link');
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Log component initialization
+  useEffect(() => {
+    console.log('=== ResourceUploadComponent Initialized ===');
+    console.log('API_BASE_URL:', API_BASE_URL);
+    console.log('CourseId:', courseId);
+    console.log('LessonId:', lessonId);
+    console.log('Existing Resources:', existingResources);
+    console.log('Number of existing resources:', existingResources.length);
+    console.log('Environment variables:', {
+      VITE_API_URL: import.meta.env.VITE_API_URL,
+      MODE: import.meta.env.MODE,
+      DEV: import.meta.env.DEV
+    });
+
+    // CRITICAL: Check for missing IDs
+    if (!courseId || courseId === 'undefined') {
+      console.error('❌ CRITICAL: courseId is missing or undefined!');
+      setError('Configuration error: Missing course ID. Please refresh the page and try again.');
+    }
+    if (!lessonId || lessonId === 'undefined') {
+      console.error('❌ CRITICAL: lessonId is missing or undefined!');
+      setError('Configuration error: Missing lesson ID. Please refresh the page and try again.');
+    }
+  }, [courseId, lessonId, existingResources]);
 
   const getFileType = (fileName: string): Resource['type'] => {
     const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
@@ -83,31 +115,149 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
     return null;
   };
 
-  const simulateUpload = (fileUpload: FileUpload, index: number) => {
-    // Simulate upload progress
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 30;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
+  const uploadToR2 = async (file: File, index: number) => {
+    try {
+      console.log('=== Upload Starting ===');
+      console.log('API_BASE_URL:', API_BASE_URL);
+      console.log('File:', file.name, 'Size:', file.size, 'Type:', file.type);
+      console.log('CourseId:', courseId, 'LessonId:', lessonId);
+
+      // CRITICAL: Validate courseId and lessonId are defined
+      if (!courseId || courseId === 'undefined') {
+        const errorMsg = 'Cannot upload: courseId is missing or undefined';
+        console.error('❌', errorMsg);
         setFileUploads(prev =>
           prev.map((fu, i) =>
-            i === index
-              ? { ...fu, progress: 100, status: 'completed' }
-              : fu
+            i === index ? { ...fu, status: 'error', error: errorMsg } : fu
           )
         );
-      } else {
-        setFileUploads(prev =>
-          prev.map((fu, i) =>
-            i === index
-              ? { ...fu, progress, status: 'uploading' }
-              : fu
-          )
-        );
+        return;
       }
-    }, 500);
+
+      if (!lessonId || lessonId === 'undefined') {
+        const errorMsg = 'Cannot upload: lessonId is missing or undefined';
+        console.error('❌', errorMsg);
+        setFileUploads(prev =>
+          prev.map((fu, i) =>
+            i === index ? { ...fu, status: 'error', error: errorMsg } : fu
+          )
+        );
+        return;
+      }
+
+      setFileUploads(prev =>
+        prev.map((fu, i) =>
+          i === index ? { ...fu, status: 'uploading', progress: 0 } : fu
+        )
+      );
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('courseId', courseId);
+      formData.append('lessonId', lessonId);
+
+      console.log('FormData created, sending request to:', `${API_BASE_URL}/api/upload`);
+
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const progress = (e.loaded / e.total) * 100;
+          console.log(`Upload progress: ${progress.toFixed(2)}%`);
+          setFileUploads(prev =>
+            prev.map((fu, i) =>
+              i === index ? { ...fu, progress } : fu
+            )
+          );
+        }
+      });
+
+      // Handle completion
+      xhr.addEventListener('load', () => {
+        console.log('=== XHR Load Event ===');
+        console.log('Status:', xhr.status);
+        console.log('Response:', xhr.responseText);
+
+        if (xhr.status === 200) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            console.log('Parsed response:', response);
+            setFileUploads(prev =>
+              prev.map((fu, i) =>
+                i === index
+                  ? {
+                      ...fu,
+                      status: 'completed',
+                      progress: 100,
+                      uploadedData: response.data
+                    }
+                  : fu
+              )
+            );
+          } catch (parseError) {
+            console.error('Error parsing response:', parseError);
+            setFileUploads(prev =>
+              prev.map((fu, i) =>
+                i === index
+                  ? { ...fu, status: 'error', error: 'Invalid server response' }
+                  : fu
+              )
+            );
+          }
+        } else {
+          console.error('Upload failed with status:', xhr.status);
+          setFileUploads(prev =>
+            prev.map((fu, i) =>
+              i === index
+                ? { ...fu, status: 'error', error: `Upload failed (Status: ${xhr.status})` }
+                : fu
+            )
+          );
+        }
+      });
+
+      // Handle errors
+      xhr.addEventListener('error', (e) => {
+        console.error('=== XHR Error Event ===');
+        console.error('Error:', e);
+        console.error('Status:', xhr.status);
+        console.error('Ready state:', xhr.readyState);
+        setFileUploads(prev =>
+          prev.map((fu, i) =>
+            i === index
+              ? { ...fu, status: 'error', error: 'Network error - Check if backend is running' }
+              : fu
+          )
+        );
+      });
+
+      // Handle timeout
+      xhr.addEventListener('timeout', () => {
+        console.error('=== XHR Timeout ===');
+        setFileUploads(prev =>
+          prev.map((fu, i) =>
+            i === index
+              ? { ...fu, status: 'error', error: 'Upload timeout' }
+              : fu
+          )
+        );
+      });
+
+      xhr.open('POST', `${API_BASE_URL}/api/upload`);
+      console.log('XHR opened, sending data...');
+      xhr.send(formData);
+    } catch (error) {
+      console.error('=== Upload Exception ===');
+      console.error('Error:', error);
+      setFileUploads(prev =>
+        prev.map((fu, i) =>
+          i === index
+            ? { ...fu, status: 'error', error: 'Upload failed: ' + (error as Error).message }
+            : fu
+        )
+      );
+    }
   };
 
   const handleFileSelect = (files: FileList | null) => {
@@ -134,9 +284,9 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       const startIndex = fileUploads.length;
       setFileUploads([...fileUploads, ...newUploads]);
 
-      // Start simulated uploads
+      // Start uploads
       newUploads.forEach((upload, index) => {
-        simulateUpload(upload, startIndex + index);
+        uploadToR2(upload.file, startIndex + index);
       });
     }
   };
@@ -161,7 +311,20 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
     }
   };
 
-  const removeFileUpload = (index: number) => {
+  const removeFileUpload = async (index: number) => {
+    const upload = fileUploads[index];
+    
+    // If file was uploaded to R2, delete it
+    if (upload.status === 'completed' && upload.uploadedData?.key) {
+      try {
+        await fetch(`${API_BASE_URL}/api/file/${upload.uploadedData.key}`, {
+          method: 'DELETE',
+        });
+      } catch (error) {
+        console.error('Delete error:', error);
+      }
+    }
+    
     setFileUploads(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -206,22 +369,29 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
   };
 
   const handleSaveFiles = () => {
+    console.log('=== handleSaveFiles called ===');
+    console.log('File uploads:', fileUploads);
+
     const completedUploads = fileUploads.filter(fu => fu.status === 'completed');
+    console.log('Completed uploads:', completedUploads);
 
     if (completedUploads.length === 0) {
       setError('Please wait for uploads to complete');
+      console.error('No completed uploads');
       return;
     }
 
     const newResources: Resource[] = completedUploads.map(fu => ({
-      id: `resource-${Date.now()}-${Math.random()}`,
+      id: fu.uploadedData?.key || `resource-${Date.now()}-${Math.random()}`,
       name: fu.file.name,
       type: getFileType(fu.file.name),
-      url: URL.createObjectURL(fu.file), // In production, this would be the uploaded file URL
+      url: fu.uploadedData?.url || '',
       size: formatFileSize(fu.file.size)
     }));
 
+    console.log('New resources to be added:', newResources);
     onResourcesAdded(newResources);
+    console.log('✓ Resources sent to parent, closing modal');
     onClose();
   };
 
@@ -336,6 +506,9 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                               </p>
                               <p className="text-xs text-gray-500">
                                 {formatFileSize(upload.file.size)}
+                                {upload.status === 'error' && upload.error && (
+                                  <span className="text-red-600 ml-2">• {upload.error}</span>
+                                )}
                               </p>
                             </div>
                           </div>
@@ -354,7 +527,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                             </button>
                           </div>
                         </div>
-                        {upload.status !== 'completed' && (
+                        {upload.status === 'uploading' && (
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
                               className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
