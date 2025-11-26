@@ -179,6 +179,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               path: "/school-admin/skills/badges",
               icon: ChartPieIcon,
             },
+            {
+              name: "Reports",
+              path: "/school-admin/skills/reports",
+              icon: ChartPieIcon,
+            },
           ],
         },
       ];

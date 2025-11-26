@@ -150,8 +150,10 @@ export const useStudentTraining = (studentId, enabled = true) => {
           progress: progressValue,
         
           status: item.status,
+          approval_status: item.approval_status, // Add this field for filtering
           verified: item.approval_status === 'approved',
           processing: item.approval_status === 'pending',
+          enabled: item.enabled !== false, // Add enabled field
           createdAt: item.created_at,
           updatedAt: item.updated_at
         });
