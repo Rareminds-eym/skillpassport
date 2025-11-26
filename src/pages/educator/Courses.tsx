@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   PlusIcon,
   BookOpenIcon,
@@ -22,8 +23,10 @@ import {
   createCourse,
   updateCourse
 } from '../../services/educator/coursesService';
+import toast from 'react-hot-toast';
 
 const Courses: React.FC = () => {
+  const navigate = useNavigate();
 
   /** ─────────────────────────────────────────────
    *  STATE
@@ -259,6 +262,7 @@ const Courses: React.FC = () => {
       setCourses([...courses, newCourse]);
       setShowCreateModal(false);
       console.log('✅ Modal closed, courses updated');
+      toast.success('Course created successfully!');
 
     } catch (err: any) {
       console.error('❌ Error creating course:', err);
@@ -361,9 +365,7 @@ const Courses: React.FC = () => {
   };
 
   const handleViewAnalytics = (course: Course) => {
-    console.log('Viewing analytics for course:', course);
-    setSelectedCourse(course);
-    setShowDetailDrawer(true);
+    navigate(`/educator/courses/${course.id}/analytics`);
   };
 
   const handleClearFilters = () => {

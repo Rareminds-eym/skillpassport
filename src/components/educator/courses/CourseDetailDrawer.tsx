@@ -22,6 +22,8 @@ import {
 import { Course, CourseModule, Lesson, Resource } from '../../../types/educator/course';
 import AddLessonModal from './AddLessonModal';
 import ResourceUploadComponent from './ResourceUploadComponent';
+import { addResource, deleteResource, addLesson, updateLesson, deleteLesson as deleteLessonFromDB } from '../../../services/educator/coursesService';
+import toast from 'react-hot-toast';
 
 interface CourseDetailDrawerProps {
   course: Course | null;
@@ -82,7 +84,7 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
     setShowAddLesson(true);
   };
 
-  const handleLessonSubmit = (lessonData: Omit<Lesson, 'id' | 'order'>) => {
+  const handleLessonSubmit = async (lessonData: Omit<Lesson, 'id' | 'order'>) => {
     if (!selectedModuleId) return;
 
     const updatedCourse = { ...course };
@@ -90,31 +92,53 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
 
     if (moduleIndex === -1) return;
 
-    if (editingLesson) {
-      // Update existing lesson
-      const lessonIndex = updatedCourse.modules[moduleIndex].lessons.findIndex(
-        l => l.id === editingLesson.id
-      );
-      if (lessonIndex !== -1) {
-        updatedCourse.modules[moduleIndex].lessons[lessonIndex] = {
-          ...updatedCourse.modules[moduleIndex].lessons[lessonIndex],
-          ...lessonData
-        };
-      }
-    } else {
-      // Add new lesson
-      const newLesson: Lesson = {
-        ...lessonData,
-        id: `lesson-${Date.now()}`,
-        order: updatedCourse.modules[moduleIndex].lessons.length + 1
-      };
-      updatedCourse.modules[moduleIndex].lessons.push(newLesson);
-    }
+    const loadingToast = toast.loading(editingLesson ? 'Updating lesson...' : 'Creating lesson...');
 
-    setCourse(updatedCourse);
-    onUpdateCourse?.(updatedCourse);
-    setShowAddLesson(false);
-    setEditingLesson(null);
+    try {
+      if (editingLesson) {
+        // Update existing lesson in database
+        console.log('Updating lesson in database:', editingLesson.id);
+        await updateLesson(editingLesson.id, lessonData);
+
+        // Update local state
+        const lessonIndex = updatedCourse.modules[moduleIndex].lessons.findIndex(
+          l => l.id === editingLesson.id
+        );
+        if (lessonIndex !== -1) {
+          updatedCourse.modules[moduleIndex].lessons[lessonIndex] = {
+            ...updatedCourse.modules[moduleIndex].lessons[lessonIndex],
+            ...lessonData
+          };
+        }
+
+        toast.success('Lesson updated successfully', { id: loadingToast });
+      } else {
+        // Add new lesson to database
+        console.log('Adding new lesson to database, module:', selectedModuleId);
+        const savedLesson = await addLesson(selectedModuleId, {
+          ...lessonData,
+          order: updatedCourse.modules[moduleIndex].lessons.length + 1,
+          resources: []
+        });
+
+        console.log('Lesson saved to database:', savedLesson);
+
+        // Update local state with saved lesson
+        updatedCourse.modules[moduleIndex].lessons.push(savedLesson);
+
+        toast.success('Lesson created successfully', { id: loadingToast });
+      }
+
+      setCourse(updatedCourse);
+      onUpdateCourse?.(updatedCourse);
+      setShowAddLesson(false);
+      setEditingLesson(null);
+    } catch (error) {
+      console.error('Error saving lesson:', error);
+      toast.error(editingLesson ? 'Failed to update lesson' : 'Failed to create lesson', {
+        id: loadingToast
+      });
+    }
   };
 
   const handleEditLesson = (moduleId: string, lesson: Lesson) => {
@@ -123,7 +147,7 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
     setShowAddLesson(true);
   };
 
-  const handleDeleteLesson = (moduleId: string, lessonId: string) => {
+  const handleDeleteLesson = async (moduleId: string, lessonId: string) => {
     if (!confirm('Are you sure you want to delete this lesson?')) return;
 
     const updatedCourse = { ...course };
@@ -131,12 +155,26 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
 
     if (moduleIndex === -1) return;
 
-    updatedCourse.modules[moduleIndex].lessons = updatedCourse.modules[moduleIndex].lessons.filter(
-      l => l.id !== lessonId
-    );
+    const loadingToast = toast.loading('Deleting lesson...');
 
-    setCourse(updatedCourse);
-    onUpdateCourse?.(updatedCourse);
+    try {
+      // Delete from database
+      console.log('Deleting lesson from database:', lessonId);
+      await deleteLessonFromDB(lessonId);
+
+      // Update local state
+      updatedCourse.modules[moduleIndex].lessons = updatedCourse.modules[moduleIndex].lessons.filter(
+        l => l.id !== lessonId
+      );
+
+      setCourse(updatedCourse);
+      onUpdateCourse?.(updatedCourse);
+
+      toast.success('Lesson deleted successfully', { id: loadingToast });
+    } catch (error) {
+      console.error('Error deleting lesson:', error);
+      toast.error('Failed to delete lesson', { id: loadingToast });
+    }
   };
 
   const handleAddResourceToLesson = (moduleId: string, lessonId: string) => {
@@ -145,48 +183,130 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
     setShowResourceUpload(true);
   };
 
-  const handleResourcesAdded = (newResources: Resource[]) => {
-    if (!selectedModuleId || !selectedLessonId) return;
+  const handleResourcesAdded = async (newResources: Resource[]) => {
+    console.log('=== handleResourcesAdded called ===');
+    console.log('New resources:', newResources);
+    console.log('Selected Module ID:', selectedModuleId);
+    console.log('Selected Lesson ID:', selectedLessonId);
+
+    if (!selectedModuleId || !selectedLessonId) {
+      console.error('Missing selectedModuleId or selectedLessonId');
+      toast.error('Failed to add resources: Missing lesson information');
+      return;
+    }
 
     const updatedCourse = { ...course };
     const moduleIndex = updatedCourse.modules.findIndex(m => m.id === selectedModuleId);
 
-    if (moduleIndex === -1) return;
+    if (moduleIndex === -1) {
+      console.error('Module not found:', selectedModuleId);
+      toast.error('Failed to add resources: Module not found');
+      return;
+    }
 
     const lessonIndex = updatedCourse.modules[moduleIndex].lessons.findIndex(
       l => l.id === selectedLessonId
     );
 
-    if (lessonIndex === -1) return;
+    if (lessonIndex === -1) {
+      console.error('Lesson not found:', selectedLessonId);
+      toast.error('Failed to add resources: Lesson not found');
+      return;
+    }
 
-    updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources.push(...newResources);
+    console.log('Before adding resources:', updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources);
 
-    setCourse(updatedCourse);
-    onUpdateCourse?.(updatedCourse);
-    setShowResourceUpload(false);
+    // Save each resource to Supabase
+    const savedResources: Resource[] = [];
+    const loadingToast = toast.loading('Saving resources...');
+
+    try {
+      for (const resource of newResources) {
+        console.log('Saving resource to Supabase:', resource);
+        const savedResource = await addResource(selectedLessonId, {
+          name: resource.name,
+          type: resource.type,
+          url: resource.url,
+          size: resource.size,
+          thumbnailUrl: resource.thumbnailUrl,
+          embedUrl: resource.embedUrl
+        });
+        console.log('Resource saved:', savedResource);
+        savedResources.push(savedResource);
+      }
+
+      // Update local state with saved resources
+      updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources.push(...savedResources);
+      console.log('After adding resources:', updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources);
+
+      setCourse(updatedCourse);
+      // Don't call onUpdateCourse since we already saved to database
+      // onUpdateCourse?.(updatedCourse);
+      setShowResourceUpload(false);
+
+      toast.success(`${savedResources.length} resource(s) added successfully`, {
+        id: loadingToast
+      });
+      console.log('✓ Resources saved to database successfully');
+    } catch (error) {
+      console.error('Error saving resources:', error);
+      toast.error('Failed to save resources to database', {
+        id: loadingToast
+      });
+    }
   };
 
-  const handleDeleteResource = (moduleId: string, lessonId: string, resourceId: string) => {
+  const handleDeleteResource = async (moduleId: string, lessonId: string, resourceId: string) => {
     if (!confirm('Are you sure you want to delete this resource?')) return;
 
-    const updatedCourse = { ...course };
-    const moduleIndex = updatedCourse.modules.findIndex(m => m.id === selectedModuleId);
+    console.log('=== handleDeleteResource called ===');
+    console.log('Resource ID:', resourceId);
 
-    if (moduleIndex === -1) return;
+    const updatedCourse = { ...course };
+    const moduleIndex = updatedCourse.modules.findIndex(m => m.id === moduleId);
+
+    if (moduleIndex === -1) {
+      console.error('Module not found:', moduleId);
+      toast.error('Failed to delete resource: Module not found');
+      return;
+    }
 
     const lessonIndex = updatedCourse.modules[moduleIndex].lessons.findIndex(
       l => l.id === lessonId
     );
 
-    if (lessonIndex === -1) return;
+    if (lessonIndex === -1) {
+      console.error('Lesson not found:', lessonId);
+      toast.error('Failed to delete resource: Lesson not found');
+      return;
+    }
 
-    updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources =
-      updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources.filter(
-        r => r.id !== resourceId
-      );
+    const loadingToast = toast.loading('Deleting resource...');
 
-    setCourse(updatedCourse);
-    onUpdateCourse?.(updatedCourse);
+    try {
+      // Delete from Supabase
+      console.log('Deleting resource from database:', resourceId);
+      await deleteResource(resourceId);
+      console.log('✓ Resource deleted from database');
+
+      // Update local state
+      updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources =
+        updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources.filter(
+          r => r.id !== resourceId
+        );
+
+      setCourse(updatedCourse);
+      onUpdateCourse?.(updatedCourse);
+
+      toast.success('Resource deleted successfully', {
+        id: loadingToast
+      });
+    } catch (error) {
+      console.error('Error deleting resource:', error);
+      toast.error('Failed to delete resource from database', {
+        id: loadingToast
+      });
+    }
   };
 
   const getResourceIcon = (type: Resource['type']) => {
@@ -769,15 +889,31 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
       )}
 
       {/* Resource Upload Component */}
-      {showResourceUpload && (
-        <ResourceUploadComponent
-          onResourcesAdded={handleResourcesAdded}
-          onClose={() => {
-            setShowResourceUpload(false);
-            setSelectedLessonId(null);
-          }}
-        />
-      )}
+      {showResourceUpload && selectedModuleId && selectedLessonId && course && (() => {
+        console.log('=== Rendering ResourceUploadComponent ===');
+        console.log('course:', course);
+        console.log('course.id:', course.id);
+        console.log('selectedLessonId:', selectedLessonId);
+        console.log('selectedModuleId:', selectedModuleId);
+
+        const module = course.modules.find(m => m.id === selectedModuleId);
+        const lesson = module?.lessons.find(l => l.id === selectedLessonId);
+        console.log('Found module:', module);
+        console.log('Found lesson:', lesson);
+
+        return (
+          <ResourceUploadComponent
+            onResourcesAdded={handleResourcesAdded}
+            onClose={() => {
+              setShowResourceUpload(false);
+              setSelectedLessonId(null);
+            }}
+            existingResources={lesson?.resources || []}
+            courseId={course.id}
+            lessonId={selectedLessonId}
+          />
+        );
+      })()}
     </>
   );
 };

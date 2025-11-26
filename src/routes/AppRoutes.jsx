@@ -98,6 +98,8 @@ const Profile = lazy(() => import("../pages/student/Profile"));
 const MySkills = lazy(() => import("../pages/student/MySkills"));
 const MyTraining = lazy(() => import("../pages/student/MyTraining"));
 const MyExperience = lazy(() => import("../pages/student/MyExperience"));
+const Courses = lazy(() => import("../pages/student/Courses"));
+const CoursePlayer = lazy(() => import("../pages/student/CoursePlayer"));
 const Opportunities = lazy(() => import("../pages/student/Opportunities"));
 const SavedJobs = lazy(() => import("../pages/student/SavedJobs"));
 const Applications = lazy(() => import("../pages/student/Applications"));
@@ -140,6 +142,7 @@ const EducatorDigitalPortfolio = lazy(() =>
   import("../pages/educator/DigitalPortfolioPage")
 );
 const EducatorAI = lazy(() => import("../pages/educator/EducatorAI"));
+const CourseAnalytics = lazy(() => import("../pages/educator/CourseAnalytics"));
 
 // ===== Admins (Role-Based) =====
 const CollegeDashboard = lazy(() =>
@@ -362,6 +365,8 @@ const AppRoutes = () => {
           <Route path="my-skills" element={<MySkills />} />
           <Route path="my-training" element={<MyTraining />} />
           <Route path="my-experience" element={<MyExperience />} />
+          <Route path="courses" element={<Courses />} />
+          <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
           <Route path="opportunities" element={<Opportunities />} />
           <Route path="saved-jobs" element={<SavedJobs />} />
           <Route path="applications" element={<Applications />} />
@@ -518,6 +523,7 @@ const AppRoutes = () => {
           <Route path="students" element={<EducatorStudents />} />
           <Route path="classes" element={<EducatorClasses />} />
           <Route path="courses" element={<EducatorCourses />} />
+          <Route path="courses/:courseId/analytics" element={<CourseAnalytics />} />
           <Route path="assignments" element={<EducatorAssessments />} />
           <Route path="mentornotes" element={<EducatorMentorNotes />} />
           <Route path="digital-portfolio" element={<EducatorDigitalPortfolio />} />
