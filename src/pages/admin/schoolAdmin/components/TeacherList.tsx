@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Search, Eye, CheckCircle, Clock, XCircle } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
+import { useAuth } from "../../../../context/AuthContext";
 
 interface Teacher {
   id: string;
@@ -8,40 +9,98 @@ interface Teacher {
   first_name: string;
   last_name: string;
   email: string;
-  phone: string;
+  phone_number: string;
   onboarding_status: string;
   subject_expertise: any[];
   role: string;
+  school_id: string;
   created_at: string;
 }
 
 const TeacherListPage: React.FC = () => {
+  const { user } = useAuth();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [filteredTeachers, setFilteredTeachers] = useState<Teacher[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadTeachers();
-  }, []);
+    fetchSchoolId();
+  }, [user]);
+
+  useEffect(() => {
+    if (schoolId) {
+      loadTeachers();
+    }
+  }, [schoolId]);
 
   useEffect(() => {
     filterTeachers();
   }, [searchTerm, statusFilter, teachers]);
 
-  const loadTeachers = async () => {
-    setLoading(true);
-    const { data } = await supabase
-      .from("teachers")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (data) {
-      setTeachers(data);
+  const fetchSchoolId = async () => {
+    if (!user?.email) {
+      console.error('No user email found');
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    try {
+      // Get school_id from school_educators table using user's email
+      const { data, error } = await supabase
+        .from('school_educators')
+        .select('school_id')
+        .eq('email', user.email)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching school_id:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (data?.school_id) {
+        console.log('Found school_id:', data.school_id);
+        setSchoolId(data.school_id);
+      } else {
+        console.error('No school_id found for user');
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error in fetchSchoolId:', error);
+      setLoading(false);
+    }
+  };
+
+  const loadTeachers = async () => {
+    if (!schoolId) {
+      console.error('No school_id available');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("school_educators")
+        .select("*")
+        .eq("school_id", schoolId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error('Error loading teachers:', error);
+      } else if (data) {
+        console.log('Loaded teachers:', data.length);
+        setTeachers(data);
+      }
+    } catch (error) {
+      console.error('Error in loadTeachers:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filterTeachers = () => {
@@ -92,13 +151,15 @@ const TeacherListPage: React.FC = () => {
 
   const updateTeacherStatus = async (teacherId: string, newStatus: string) => {
     const { error } = await supabase
-      .from("teachers")
+      .from("school_educators")
       .update({ onboarding_status: newStatus })
       .eq("id", teacherId);
 
     if (!error) {
       loadTeachers();
       setSelectedTeacher(null);
+    } else {
+      console.error('Error updating teacher status:', error);
     }
   };
 
@@ -302,7 +363,7 @@ const TeacherListPage: React.FC = () => {
                   </p>
                   <p>
                     <span className="text-gray-600">Phone:</span>{" "}
-                    <span className="text-gray-900">{selectedTeacher.phone || "N/A"}</span>
+                    <span className="text-gray-900">{selectedTeacher.phone_number || "N/A"}</span>
                   </p>
                 </div>
               </div>

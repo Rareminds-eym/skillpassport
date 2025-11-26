@@ -10,21 +10,69 @@ import TeacherPerformanceAnalytics from './TeacherPerformanceAnalytics';
 import TeacherBulkImport from './TeacherBulkImport';
 import { getTeacherStatistics } from '../../../../services/teacherService';
 import { useUserRole } from '../../../../hooks/useUserRole';
+import { useAuth } from '../../../../context/AuthContext';
+import { supabase } from '../../../../lib/supabaseClient';
 
 const TeacherManagementDashboard: React.FC = () => {
   const { role, canAddTeacher } = useUserRole();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'list' | 'onboarding' | 'timetable' | 'analytics' | 'import'>('list');
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadStatistics();
-  }, []);
+    fetchSchoolId();
+  }, [user]);
+
+  useEffect(() => {
+    if (schoolId) {
+      loadStatistics();
+    }
+  }, [schoolId]);
+
+  const fetchSchoolId = async () => {
+    if (!user?.email) {
+      console.error('No user email found');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Get school_id from school_educators table using user's email
+      const { data, error } = await supabase
+        .from('school_educators')
+        .select('school_id')
+        .eq('email', user.email)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching school_id:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (data?.school_id) {
+        console.log('Found school_id:', data.school_id);
+        setSchoolId(data.school_id);
+      } else {
+        console.error('No school_id found for user');
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error in fetchSchoolId:', error);
+      setLoading(false);
+    }
+  };
 
   const loadStatistics = async () => {
+    if (!schoolId) {
+      console.error('No school_id available for statistics');
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Get school_id from current user
-      const schoolId = 'your-school-id'; // Replace with actual school ID from auth
       const statistics = await getTeacherStatistics(schoolId);
       setStats(statistics);
     } catch (error) {
