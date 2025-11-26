@@ -2,7 +2,7 @@ import { getPlanPrice } from '../config/payment';
 
 /**
  * Parse student type to extract entity and role
- * @param {string} studentType - e.g., "college-student", "admin", "university-educator"
+ * @param {string} studentType - e.g., "college-student", "admin", "university-educator", "recruitment-admin"
  * @returns {object} { entity, role }
  */
 export function parseStudentType(studentType) {
@@ -40,30 +40,47 @@ export function getEntityContent(studentType) {
     const entityNames = {
         school: 'School',
         college: 'College',
-        university: 'University'
+        university: 'University',
+        recruitment: 'Recruitment'
     };
 
     // Role display names
     const roleNames = {
         student: 'Student',
         educator: 'Educator',
-        admin: 'Admin'
+        admin: 'Admin',
+        recruiter: 'Recruiter'
     };
 
     const entityName = entityNames[entity] || 'School';
     const roleName = roleNames[role] || 'Student';
 
-    // Generate title
-    const title = `${entityName} ${roleName} Subscription Plans`;
+    // Generate title - special handling for recruitment
+    let title;
+    if (entity === 'recruitment') {
+        title = role === 'admin' ? 'Recruitment Admin Subscription Plans' : 'Recruiter Subscription Plans';
+    } else {
+        title = `${entityName} ${roleName} Subscription Plans`;
+    }
 
-    // Generate subtitle based on role
-    const subtitles = {
-        student: `Unlock your potential with skill assessments and career opportunities tailored for ${entityName.toLowerCase()} students`,
-        educator: `Empower your students with powerful teaching tools and analytics designed for ${entityName.toLowerCase()} educators`,
-        admin: `Manage your institution effectively with comprehensive tools built for ${entityName.toLowerCase()} administrators`
-    };
-
-    const subtitle = subtitles[role] || 'Select the plan that best suits your needs';
+    // Generate subtitle based on role and entity
+    let subtitle;
+    if (entity === 'recruitment') {
+        if (role === 'admin') {
+            subtitle = 'Manage your recruitment team effectively with comprehensive tools built for recruitment administrators';
+        } else if (role === 'recruiter') {
+            subtitle = 'Access verified candidates and streamline your hiring process with powerful recruitment tools';
+        } else {
+            subtitle = 'Select the plan that best suits your needs';
+        }
+    } else {
+        const subtitles = {
+            student: `Unlock your potential with skill assessments and career opportunities tailored for ${entityName.toLowerCase()} students`,
+            educator: `Empower your students with powerful teaching tools and analytics designed for ${entityName.toLowerCase()} educators`,
+            admin: `Manage your institution effectively with comprehensive tools built for ${entityName.toLowerCase()} administrators`
+        };
+        subtitle = subtitles[role] || 'Select the plan that best suits your needs';
+    }
 
     // Generate hero message - removed per user request
     const heroMessage = null;
@@ -103,33 +120,55 @@ export function getModalContent(studentType) {
     const entityNames = {
         school: 'School',
         college: 'College',
-        university: 'University'
+        university: 'University',
+        recruitment: 'Recruitment'
     };
 
     // Role display names
     const roleNames = {
         student: 'Student',
         educator: 'Educator',
-        admin: 'Admin'
+        admin: 'Admin',
+        recruiter: 'Recruiter'
     };
 
     const entityName = entityNames[entity] || 'School';
     const roleName = roleNames[role] || 'Student';
 
-    // Generate signup title
-    const signupTitle = `Sign Up as ${entityName} ${roleName}`;
+    // Generate signup title - special handling for recruitment
+    let signupTitle;
+    if (entity === 'recruitment') {
+        signupTitle = role === 'admin' ? 'Sign Up as Recruitment Admin' : 'Sign Up as Recruiter';
+    } else {
+        signupTitle = `Sign Up as ${entityName} ${roleName}`;
+    }
     
-    // Generate login title
-    const loginTitle = `Login as ${entityName} ${roleName}`;
+    // Generate login title - special handling for recruitment
+    let loginTitle;
+    if (entity === 'recruitment') {
+        loginTitle = role === 'admin' ? 'Login as Recruitment Admin' : 'Login as Recruiter';
+    } else {
+        loginTitle = `Login as ${entityName} ${roleName}`;
+    }
 
     // Generate descriptions
-    const descriptions = {
-        student: `Create your account to access skill assessments, build your portfolio, and connect with recruiters.`,
-        educator: `Create your account to manage students, track progress, and enhance learning outcomes.`,
-        admin: `Create your account to manage your institution, access analytics, and streamline operations.`
-    };
-
-    const description = descriptions[role] || 'Create your account to get started.';
+    let description;
+    if (entity === 'recruitment') {
+        if (role === 'admin') {
+            description = 'Create your company workspace, manage your recruitment team, and access verified candidates.';
+        } else if (role === 'recruiter') {
+            description = 'Join your company workspace and start hiring with AI-powered candidate matching.';
+        } else {
+            description = 'Create your account to get started.';
+        }
+    } else {
+        const descriptions = {
+            student: `Create your account to access skill assessments, build your portfolio, and connect with recruiters.`,
+            educator: `Create your account to manage students, track progress, and enhance learning outcomes.`,
+            admin: `Create your account to manage your institution, access analytics, and streamline operations.`
+        };
+        description = descriptions[role] || 'Create your account to get started.';
+    }
 
     return {
         signupTitle,
@@ -247,13 +286,90 @@ function getPlansForRole(role, entity) {
         ]
     };
 
-    const featureMap = {
-        student: studentFeatures,
-        educator: educatorFeatures,
-        admin: adminFeatures
+    // Recruitment Admin-specific features
+    const recruitmentAdminFeatures = {
+        basic: [
+            'Create company workspace',
+            'Manage up to 5 recruiters',
+            'Basic candidate database access',
+            'Standard job posting',
+            'Basic analytics dashboard',
+            'Email support'
+        ],
+        pro: [
+            'All Basic features',
+            'Manage up to 20 recruiters',
+            'Advanced candidate search & filters',
+            'AI-powered candidate matching',
+            'Custom hiring workflows',
+            'Team collaboration tools',
+            'Advanced analytics & reports',
+            'Priority support'
+        ],
+        enterprise: [
+            'All Professional features',
+            'Unlimited team members',
+            'Premium candidate database access',
+            'Custom integrations & API access',
+            'White-label branding',
+            'Dedicated account manager',
+            'Custom SLA agreements',
+            '24/7 Premium support',
+            'Advanced security & compliance'
+        ]
     };
 
-    const features = featureMap[role] || studentFeatures;
+    // Recruiter-specific features
+    const recruiterFeatures = {
+        basic: [
+            'Join company workspace',
+            'Basic candidate search',
+            'Up to 10 active job postings',
+            'Limited AI recommendations',
+            'Standard application tracking',
+            'Email support'
+        ],
+        pro: [
+            'All Basic features',
+            'Advanced search filters',
+            'Unlimited job postings',
+            'Unlimited AI-powered matching',
+            'Priority candidate visibility',
+            'Resume parsing & analysis',
+            'Interview scheduling tools',
+            'Priority support'
+        ],
+        enterprise: [
+            'All Professional features',
+            'Custom hiring workflows',
+            'Bulk candidate operations',
+            'Advanced analytics dashboard',
+            'Integration with ATS systems',
+            'Dedicated account manager',
+            'API access',
+            '24/7 Premium support',
+            'Custom reporting'
+        ]
+    };
+
+    // Determine which feature set to use based on entity and role
+    let features;
+    if (entity === 'recruitment') {
+        if (role === 'admin') {
+            features = recruitmentAdminFeatures;
+        } else if (role === 'recruiter') {
+            features = recruiterFeatures;
+        } else {
+            features = studentFeatures; // fallback
+        }
+    } else {
+        const featureMap = {
+            student: studentFeatures,
+            educator: educatorFeatures,
+            admin: adminFeatures
+        };
+        features = featureMap[role] || studentFeatures;
+    }
 
     return [
         {

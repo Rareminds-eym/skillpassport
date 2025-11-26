@@ -160,10 +160,16 @@ export default function UnifiedSignup() {
         navigate(`/subscription/plans/${entityType}/view`);
       }
     } else if (activeTab === "recruitment") {
-      if (recruitmentType === "admin") {
-        navigate("/signup/recruitment-admin");
-      } else {
-        navigate("/signup/recruitment-recruiter");
+      if (!subscriptionType) return;
+
+      if (subscriptionType === "have") {
+        navigate("/login/recruiter");
+      } else if (subscriptionType === "purchase") {
+        const entityType = recruitmentType === "admin" ? "recruitment-admin" : "recruitment-recruiter";
+        navigate(`/subscription/plans/${entityType}/purchase`);
+      } else if (subscriptionType === "view") {
+        const entityType = recruitmentType === "admin" ? "recruitment-admin" : "recruitment-recruiter";
+        navigate(`/subscription/plans/${entityType}/view`);
       }
     } else {
       navigate(`/signin/${activeTab}`);
@@ -186,6 +192,14 @@ export default function UnifiedSignup() {
     setStudentType(type);
     setSubscriptionType(null);
     // Auto-advance to step 2 for all user types in school/college/university
+    setCurrentStep(2);
+  };
+
+  // Handle recruitment type change
+  const handleRecruitmentTypeChange = (type) => {
+    setRecruitmentType(type);
+    setSubscriptionType(null);
+    // Auto-advance to step 2 for recruitment
     setCurrentStep(2);
   };
 
@@ -343,8 +357,8 @@ export default function UnifiedSignup() {
               </div>
             )}
 
-            {/* Step indicator for School/College/University on mobile */}
-            {(activeTab === "school" || activeTab === "college" || activeTab === "university") && (
+            {/* Step indicator for all tabs on mobile */}
+            {(activeTab === "school" || activeTab === "college" || activeTab === "university" || activeTab === "recruitment") && (
               <div className="flex items-center justify-center mb-6">
                 <div className="flex items-center space-x-4">
                   <div className={`flex items-center justify-center w-8 h-8 rounded-full ${currentStep >= 1 ? 'bg-white text-blue-600' : 'bg-white/20 text-white/60'
@@ -550,7 +564,7 @@ export default function UnifiedSignup() {
               )}
 
               {/* Recruitment Section for Mobile */}
-              {activeTab === "recruitment" && (
+              {activeTab === "recruitment" && currentStep === 1 && (
                 <div className="mb-6">
                   <p className="text-white mb-3 font-medium">
                     I am {recruitmentType === "admin" ? "an" : "a"}:
@@ -562,7 +576,7 @@ export default function UnifiedSignup() {
                         name="recruitmentTypeMobile"
                         value="admin"
                         checked={recruitmentType === "admin"}
-                        onChange={(e) => setRecruitmentType(e.target.value)}
+                        onChange={(e) => handleRecruitmentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-white">Admin</span>
@@ -581,7 +595,7 @@ export default function UnifiedSignup() {
                         name="recruitmentTypeMobile"
                         value="recruiter"
                         checked={recruitmentType === "recruiter"}
-                        onChange={(e) => setRecruitmentType(e.target.value)}
+                        onChange={(e) => handleRecruitmentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-white">Recruiter</span>
@@ -648,15 +662,79 @@ export default function UnifiedSignup() {
                 </div>
               )}
 
-              <button
-                onClick={handleGetStarted}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-              >
-                {activeTab === "recruitment" ?
-                  (recruitmentType === "admin" ? "Create Workspace" : "Join Workspace") :
-                  "Get Started"
-                }
-              </button>
+              {/* Recruitment Subscription Step for Mobile */}
+              {activeTab === "recruitment" && currentStep === 2 && (
+                <div className="mb-6">
+                  <p className="text-white mb-3 font-medium">Subscription:</p>
+                  <div className="space-y-3">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="subscriptionTypeMobile"
+                        value="have"
+                        checked={subscriptionType === "have"}
+                        onChange={(e) => setSubscriptionType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-white">I already have a subscription</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="subscriptionTypeMobile"
+                        value="purchase"
+                        checked={subscriptionType === "purchase"}
+                        onChange={(e) => setSubscriptionType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-white">Purchase subscription</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="subscriptionTypeMobile"
+                        value="view"
+                        checked={subscriptionType === "view"}
+                        onChange={(e) => setSubscriptionType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-white">View My Plan</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Mobile buttons */}
+              {activeTab === "recruitment" && currentStep === 2 ? (
+                <div className="flex space-x-4">
+                  <button
+                    onClick={handleBack}
+                    className="flex-1 bg-white/20 backdrop-blur-sm text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleGetStarted}
+                    disabled={!subscriptionType}
+                    className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {subscriptionType === "have" ? "Sign In" :
+                      subscriptionType === "purchase" ? (recruitmentType === "admin" ? "Create Workspace" : "Join Workspace") :
+                        subscriptionType === "view" ? "See Plan" : "Get Started"
+                    }
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={activeTab === "recruitment" && currentStep === 1 ? handleNext : handleGetStarted}
+                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  {activeTab === "recruitment" && currentStep === 1 ?
+                    "Next" :
+                    "Get Started"
+                  }
+                </button>
+              )}
             </div>
           </div>
 
@@ -688,8 +766,8 @@ export default function UnifiedSignup() {
               </div>
             )}
 
-            {/* Step indicator for School/College/University */}
-            {(activeTab === "school" || activeTab === "college" || activeTab === "university") && (
+            {/* Step indicator for all tabs */}
+            {(activeTab === "school" || activeTab === "college" || activeTab === "university" || activeTab === "recruitment") && (
               <div className="flex items-center justify-center mb-8">
                 <div className="flex items-center space-x-4">
                   <div className={`flex items-center justify-center w-8 h-8 rounded-full ${currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
@@ -895,7 +973,7 @@ export default function UnifiedSignup() {
               )}
 
               {/* Recruitment Section for Desktop */}
-              {activeTab === "recruitment" && (
+              {activeTab === "recruitment" && currentStep === 1 && (
                 <div className="mb-6">
                   <p className="text-gray-700 mb-3 font-medium">
                     I am {recruitmentType === "admin" ? "an" : "a"}:
@@ -907,7 +985,7 @@ export default function UnifiedSignup() {
                         name="recruitmentType"
                         value="admin"
                         checked={recruitmentType === "admin"}
-                        onChange={(e) => setRecruitmentType(e.target.value)}
+                        onChange={(e) => handleRecruitmentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-gray-700">Admin</span>
@@ -927,7 +1005,7 @@ export default function UnifiedSignup() {
                         name="recruitmentType"
                         value="recruiter"
                         checked={recruitmentType === "recruiter"}
-                        onChange={(e) => setRecruitmentType(e.target.value)}
+                        onChange={(e) => handleRecruitmentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-gray-700">Recruiter</span>
@@ -995,6 +1073,48 @@ export default function UnifiedSignup() {
                 </div>
               )}
 
+              {/* Recruitment Subscription Step for Desktop */}
+              {activeTab === "recruitment" && currentStep === 2 && (
+                <div className="mb-6">
+                  <p className="text-gray-700 mb-4 font-medium">Subscription:</p>
+                  <div className="space-y-3">
+                    <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="subscriptionTypeDesktop"
+                        value="have"
+                        checked={subscriptionType === "have"}
+                        onChange={(e) => setSubscriptionType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-gray-700">I already have a subscription</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="subscriptionTypeDesktop"
+                        value="purchase"
+                        checked={subscriptionType === "purchase"}
+                        onChange={(e) => setSubscriptionType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-gray-700">Purchase subscription</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="subscriptionTypeDesktop"
+                        value="view"
+                        checked={subscriptionType === "view"}
+                        onChange={(e) => setSubscriptionType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-gray-700">View My Plan</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
               {/* Action buttons for all sections */}
               {(activeTab === "school" || activeTab === "college" || activeTab === "university") ? (
                 <div className="flex space-x-4">
@@ -1018,15 +1138,35 @@ export default function UnifiedSignup() {
                     }
                   </button>
                 </div>
+              ) : activeTab === "recruitment" ? (
+                <div className="flex space-x-4">
+                  {currentStep > 1 && (
+                    <button
+                      onClick={handleBack}
+                      className="flex-1 bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                    >
+                      Back
+                    </button>
+                  )}
+                  <button
+                    onClick={currentStep === 1 ? handleNext : handleGetStarted}
+                    disabled={currentStep === 2 && !subscriptionType}
+                    className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {currentStep === 1 ?
+                      "Next" :
+                      subscriptionType === "have" ? "Sign In" :
+                        subscriptionType === "purchase" ? (recruitmentType === "admin" ? "Create Workspace" : "Join Workspace") :
+                          subscriptionType === "view" ? "See Plan" : "Get Started"
+                    }
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={handleGetStarted}
                   className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                 >
-                  {activeTab === "recruitment" ?
-                    (recruitmentType === "admin" ? "Create Workspace" : "Join Workspace") :
-                    "Get Started"
-                  }
+                  Get Started
                 </button>
               )}
             </div>

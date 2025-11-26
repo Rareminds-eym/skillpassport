@@ -10,6 +10,8 @@ import CollegeSignupModal from '../../components/Subscription/CollegeSignupModal
 import CollegeLoginModal from '../../components/Subscription/CollegeLoginModal';
 import EducatorSignupModal from '../../components/Subscription/EducatorSignupModal';
 import EducatorLoginModal from '../../components/Subscription/EducatorLoginModal';
+import RecruiterSignupModal from '../../components/Subscription/RecruiterSignupModal';
+import RecruiterLoginModal from '../../components/Subscription/RecruiterLoginModal';
 import { isActiveOrPaused, getStatusColor, calculateDaysRemaining } from '../../utils/subscriptionHelpers';
 import { PAYMENT_CONFIG, isTestPricing } from '../../config/payment';
 import { getEntityContent, parseStudentType } from '../../utils/getEntityContent';
@@ -141,6 +143,9 @@ function SubscriptionPlans() {
     if (pageRole === 'educator') {
       return { SignupComponent: EducatorSignupModal, LoginComponent: EducatorLoginModal };
     }
+    if (pageRole === 'recruiter' && entity === 'recruitment') {
+      return { SignupComponent: RecruiterSignupModal, LoginComponent: RecruiterLoginModal };
+    }
     // Default (Students and University Admin fallback)
     return { SignupComponent: SignupModal, LoginComponent: LoginModal };
   }, [entity, pageRole]);
@@ -210,6 +215,30 @@ function SubscriptionPlans() {
     if (subscriptionData && subscriptionData.plan === plan.id) {
       // Navigate to manage subscription page
       navigate('/subscription/manage');
+      return;
+    }
+
+    // For recruitment-admin, redirect to comprehensive signup form with plan data
+    if (studentType === 'recruitment-admin' && !isAuthenticated) {
+      navigate('/signup/recruitment-admin', { 
+        state: { 
+          plan, 
+          studentType,
+          returnToPayment: true 
+        } 
+      });
+      return;
+    }
+
+    // For recruitment-recruiter, redirect to recruiter signup form with plan data
+    if (studentType === 'recruitment-recruiter' && !isAuthenticated) {
+      navigate('/signup/recruitment-recruiter', { 
+        state: { 
+          plan, 
+          studentType,
+          returnToPayment: true 
+        } 
+      });
       return;
     }
 
