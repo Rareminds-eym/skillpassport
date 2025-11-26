@@ -22,13 +22,17 @@ const TeacherManagementDashboard: React.FC = () => {
   const [schoolId, setSchoolId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSchoolId();
-  }, [user]);
+    if (user?.email) {
+      fetchSchoolId();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (schoolId) {
       loadStatistics();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schoolId]);
 
   const fetchSchoolId = async () => {
@@ -39,26 +43,52 @@ const TeacherManagementDashboard: React.FC = () => {
     }
 
     try {
-      // Get school_id from school_educators table using user's email
-      const { data, error } = await supabase
+      // First, try to get school_id from school_educators table
+      const { data: educatorData, error: educatorError } = await supabase
         .from('school_educators')
         .select('school_id')
         .eq('email', user.email)
         .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching school_id:', error);
-        setLoading(false);
+      if (educatorData?.school_id) {
+        console.log('Found school_id from school_educators:', educatorData.school_id);
+        setSchoolId(educatorData.school_id);
         return;
       }
 
-      if (data?.school_id) {
-        console.log('Found school_id:', data.school_id);
-        setSchoolId(data.school_id);
-      } else {
-        console.error('No school_id found for user');
-        setLoading(false);
+      // If not found in school_educators, check if user is a school admin in schools table
+      console.log('Not found in school_educators, checking schools table...');
+      const { data: schoolData, error: schoolError } = await supabase
+        .from('schools')
+        .select('id')
+        .eq('email', user.email)
+        .maybeSingle();
+
+      if (schoolError) {
+        console.error('Error fetching from schools:', schoolError);
       }
+
+      if (schoolData?.id) {
+        console.log('Found school_id from schools table:', schoolData.id);
+        setSchoolId(schoolData.id);
+        return;
+      }
+
+      // Also try principal_email field
+      const { data: schoolByPrincipal, error: principalError } = await supabase
+        .from('schools')
+        .select('id')
+        .eq('principal_email', user.email)
+        .maybeSingle();
+
+      if (schoolByPrincipal?.id) {
+        console.log('Found school_id from principal_email:', schoolByPrincipal.id);
+        setSchoolId(schoolByPrincipal.id);
+        return;
+      }
+
+      console.error('No school_id found for user in any table');
+      setLoading(false);
     } catch (error) {
       console.error('Error in fetchSchoolId:', error);
       setLoading(false);
