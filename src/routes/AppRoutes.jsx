@@ -235,6 +235,10 @@ const CircularsFeedback = lazy(() =>
   import("../pages/admin/schoolAdmin/CircularsFeedback")
 );
 
+const AttendanceReports = lazy(() =>
+  import("../pages/admin/schoolAdmin/AttendanceReports")
+);
+
 // Settings
 const SchoolAdminSettings = lazy(() =>
   import("../pages/admin/schoolAdmin/Settings")
@@ -344,6 +348,7 @@ const AppRoutes = () => {
         >
           <Route path="dashboard" element={<SchoolAdminDashboard />} />
           <Route path="students/admissions" element={<StudentAdmissions />} />
+          <Route path="students/attendance-reports" element={<AttendanceReports />} />
           <Route path="teachers/list" element={<TeacherList />} />
           <Route path="teachers/onboarding" element={<TeacherOnboarding />} />
           <Route path="teachers/timetable" element={<TeacherTimetable />} />
