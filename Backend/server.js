@@ -1,12 +1,15 @@
+#!/usr/bin/env node --expose-gc
+
+// Import required modules
 import express from 'express';
-import multer from 'multer';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import cors from 'cors';
-import crypto from 'crypto';
+import multer from 'multer';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import crypto from 'crypto';
+import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 // Load environment variables from parent directory
 const __filename = fileURLToPath(import.meta.url);
@@ -20,6 +23,52 @@ console.log('  R2_ACCOUNT_ID:', process.env.R2_ACCOUNT_ID ? `${process.env.R2_AC
 console.log('  R2_ACCESS_KEY_ID:', process.env.R2_ACCESS_KEY_ID ? `${process.env.R2_ACCESS_KEY_ID.substring(0, 8)}...` : 'NOT_SET');
 console.log('  R2_SECRET_ACCESS_KEY:', process.env.R2_SECRET_ACCESS_KEY ? 'SET' : 'NOT_SET');
 console.log('  R2_BUCKET_NAME:', process.env.R2_BUCKET_NAME || 'NOT_SET');
+
+// Log initial memory usage
+const initialMemory = process.memoryUsage();
+console.log('Initial memory usage:', {
+  rss: `${(initialMemory.rss / 1024 / 1024).toFixed(2)} MB`,
+  heapTotal: `${(initialMemory.heapTotal / 1024 / 1024).toFixed(2)} MB`,
+  heapUsed: `${(initialMemory.heapUsed / 1024 / 1024).toFixed(2)} MB`,
+  external: `${(initialMemory.external / 1024 / 1024).toFixed(2)} MB`
+});
+
+// Add periodic memory logging
+setInterval(() => {
+  const memory = process.memoryUsage();
+  const memoryMB = {
+    rss: (memory.rss / 1024 / 1024).toFixed(2),
+    heapTotal: (memory.heapTotal / 1024 / 1024).toFixed(2),
+    heapUsed: (memory.heapUsed / 1024 / 1024).toFixed(2),
+    external: (memory.external / 1024 / 1024).toFixed(2)
+  };
+  
+  console.log('Memory usage:', memoryMB);
+  
+  // Warn if memory usage is getting high (approaching 512MB limit)
+  if (memory.rss > 450 * 1024 * 1024) { // 450MB (increased threshold for 500MB files)
+    console.warn('⚠️  High memory usage detected! RSS:', memoryMB.rss, 'MB');
+  }
+  
+  if (memory.heapUsed > 350 * 1024 * 1024) { // 350MB (increased threshold for 500MB files)
+    console.warn('⚠️  High heap usage detected! Heap used:', memoryMB.heapUsed, 'MB');
+  }
+}, 30000); // Log every 30 seconds
+
+// Add periodic garbage collection if available
+if (global.gc) {
+  console.log('Garbage collection available, scheduling periodic cleanup');
+  setInterval(() => {
+    try {
+      global.gc();
+      console.log('Manual garbage collection triggered');
+    } catch (err) {
+      console.error('Error during manual garbage collection:', err);
+    }
+  }, 60000); // Run GC every minute
+} else {
+  console.log('Garbage collection not exposed, start with --expose-gc flag for manual GC');
+}
 
 const app = express();
 
@@ -109,6 +158,12 @@ try {
       accessKeyId: process.env.R2_ACCESS_KEY_ID,
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     },
+    // Add memory optimization settings
+    maxAttempts: 3,
+    requestHandler: {
+      connectionTimeout: 5000,
+      socketTimeout: 10000,
+    }
   });
   
   console.log('✓ R2 client initialized successfully');
@@ -123,6 +178,12 @@ try {
       accessKeyId: process.env.R2_ACCESS_KEY_ID,
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     },
+    // Add memory optimization settings
+    maxAttempts: 3,
+    requestHandler: {
+      connectionTimeout: 5000,
+      socketTimeout: 10000,
+    }
   });
 }
 
@@ -161,11 +222,13 @@ setTimeout(async () => {
   }
 }, 5000); // Test after 5 seconds to allow server to start
 
-// Configure multer for memory storage
+// Configure multer with memory limits for single 500MB file
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 500 * 1024 * 1024, // 500MB
+    files: 1, // Limit to 1 file at a time
+    fieldSize: 1024 * 1024, // 1MB for non-file fields
   },
   // Add file filter for debugging
   fileFilter: (req, file, cb) => {
@@ -175,19 +238,20 @@ const upload = multer({
   }
 }).single('file');
 
-// Also create a multiple file upload handler
+// Keep multiple file upload handler with reduced limits
 const uploadMultiple = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 500 * 1024 * 1024, // 500MB
-    files: 10 // Max 10 files
+    fileSize: 100 * 1024 * 1024, // 100MB per file
+    files: 3, // Max 3 files
+    fieldSize: 1024 * 1024, // 1MB for non-file fields
   },
   fileFilter: (req, file, cb) => {
     console.log('=== Multer File Filter (Multiple) ===');
     console.log('File:', file);
     cb(null, true); // Accept all files
   }
-}).array('files', 10);
+}).array('files', 3); // Max 3 files
 
 // Generate unique file key
 const generateFileKey = (originalName, courseId, lessonId) => {
@@ -221,6 +285,26 @@ app.post('/api/upload', (req, res, next) => {
       return res.status(400).json({ error: 'Upload error', message: err.message });
     }
     console.log('Multer upload completed successfully');
+    
+    // Check memory usage before processing
+    const memory = process.memoryUsage();
+    const memoryMB = {
+      rss: (memory.rss / 1024 / 1024).toFixed(2),
+      heapUsed: (memory.heapUsed / 1024 / 1024).toFixed(2)
+    };
+    
+    console.log('Memory usage before processing:', memoryMB);
+    
+    // Warn if we're close to memory limits
+    if (req.file && req.file.size > 400 * 1024 * 1024) { // 400MB
+      console.warn('⚠️  Large file detected:', (req.file.size / 1024 / 1024).toFixed(2), 'MB');
+      console.warn('⚠️  Current memory usage: RSS', memoryMB.rss, 'MB, Heap', memoryMB.heapUsed, 'MB');
+      
+      if (memory.rss > 300 * 1024 * 1024) { // 300MB
+        console.warn('⚠️  Memory usage is high before processing large file!');
+      }
+    }
+    
     next();
   });
 }, async (req, res) => {
@@ -308,6 +392,20 @@ app.post('/api/upload', (req, res, next) => {
     await r2Client.send(command);
     console.log('✓ File uploaded to R2 successfully');
 
+    // Clear the file buffer from memory immediately after upload
+    req.file.buffer = null;
+    delete req.file.buffer;
+
+    // Force garbage collection after large file upload
+    if (global.gc && file.size > 200 * 1024 * 1024) { // 200MB
+      console.log('Triggering garbage collection after large file upload');
+      try {
+        global.gc();
+      } catch (err) {
+        console.error('Error during manual garbage collection:', err);
+      }
+    }
+
     // Generate a presigned URL for accessing the file (valid for 7 days)
     console.log('Generating presigned URL...');
     const getCommand = new GetObjectCommand({
@@ -347,9 +445,29 @@ app.post('/api/upload-multiple', (req, res, next) => {
   uploadMultiple(req, res, (err) => {
     if (err) {
       console.error('Multer error (multiple):', err);
+      // Make sure CORS headers are set even in error cases
+      res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
       return res.status(400).json({ error: 'Upload error', message: err.message });
     }
     console.log('Multer upload (multiple) completed successfully');
+    
+    // Check total size of files
+    if (req.files) {
+      const totalSize = req.files.reduce((sum, file) => sum + file.size, 0);
+      console.log('Total files size:', (totalSize / 1024 / 1024).toFixed(2), 'MB');
+      
+      if (totalSize > 200 * 1024 * 1024) { // 200MB
+        const memory = process.memoryUsage();
+        const memoryMB = {
+          rss: (memory.rss / 1024 / 1024).toFixed(2),
+          heapUsed: (memory.heapUsed / 1024 / 1024).toFixed(2)
+        };
+        
+        console.warn('⚠️  Large batch of files detected:', (totalSize / 1024 / 1024).toFixed(2), 'MB');
+        console.warn('⚠️  Current memory usage: RSS', memoryMB.rss, 'MB, Heap', memoryMB.heapUsed, 'MB');
+      }
+    }
+    
     next();
   });
 }, async (req, res) => {
@@ -361,39 +479,58 @@ app.post('/api/upload-multiple', (req, res, next) => {
       return res.status(400).json({ error: 'No files provided' });
     }
 
-    const uploadPromises = files.map(async (file) => {
-      const fileKey = generateFileKey(file.originalname, courseId, lessonId);
+    // Process files one by one to reduce memory usage
+    const results = [];
+    for (const file of files) {
+      try {
+        const fileKey = generateFileKey(file.originalname, courseId, lessonId);
 
-      const command = new PutObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: fileKey,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-        Metadata: {
-          originalName: file.originalname,
-          courseId: courseId,
-          lessonId: lessonId,
-        },
-      });
+        const command = new PutObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: fileKey,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+          Metadata: {
+            originalName: file.originalname,
+            courseId: courseId,
+            lessonId: lessonId,
+          },
+        });
 
-      await r2Client.send(command);
+        await r2Client.send(command);
+        
+        // Clear the file buffer from memory immediately after upload
+        file.buffer = null;
+        delete file.buffer;
 
-      const getCommand = new GetObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: fileKey,
-      });
-      const url = await getSignedUrl(r2Client, getCommand, { expiresIn: 604800 });
+        const getCommand = new GetObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: fileKey,
+        });
+        const url = await getSignedUrl(r2Client, getCommand, { expiresIn: 604800 });
 
-      return {
-        key: fileKey,
-        url: url,
-        name: file.originalname,
-        size: file.size,
-        type: file.mimetype,
-      };
-    });
-
-    const results = await Promise.all(uploadPromises);
+        results.push({
+          key: fileKey,
+          url: url,
+          name: file.originalname,
+          size: file.size,
+          type: file.mimetype,
+        });
+      } catch (fileError) {
+        console.error('Error uploading file:', file.originalname, fileError);
+        // Continue with other files even if one fails
+      }
+    }
+    
+    // Force garbage collection after batch upload
+    if (global.gc && files.length > 1) {
+      console.log('Triggering garbage collection after batch upload');
+      try {
+        global.gc();
+      } catch (err) {
+        console.error('Error during manual garbage collection:', err);
+      }
+    }
 
     res.json({
       success: true,
@@ -401,6 +538,8 @@ app.post('/api/upload-multiple', (req, res, next) => {
     });
   } catch (error) {
     console.error('Upload error:', error);
+    // Make sure CORS headers are set even in error cases
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
     res.status(500).json({ error: 'Upload failed', message: error.message });
   }
 });
