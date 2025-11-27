@@ -12,6 +12,11 @@ import EducatorSignupModal from '../../components/Subscription/EducatorSignupMod
 import EducatorLoginModal from '../../components/Subscription/EducatorLoginModal';
 import RecruiterSignupModal from '../../components/Subscription/RecruiterSignupModal';
 import RecruiterLoginModal from '../../components/Subscription/RecruiterLoginModal';
+import RecruitmentAdminSignupModal from '../../components/Subscription/RecruitmentAdminSignupModal';
+import UniversityAdminSignupModal from '../../components/Subscription/UniversityAdminSignupModal';
+import UniversityAdminLoginModal from '../../components/Subscription/UniversityAdminLoginModal';
+import UniversityStudentSignupModal from '../../components/Subscription/UniversityStudentSignupModal';
+import UniversityStudentLoginModal from '../../components/Subscription/UniversityStudentLoginModal';
 import { isActiveOrPaused, getStatusColor, calculateDaysRemaining } from '../../utils/subscriptionHelpers';
 import { PAYMENT_CONFIG, isTestPricing } from '../../config/payment';
 import { getEntityContent, parseStudentType } from '../../utils/getEntityContent';
@@ -139,6 +144,8 @@ function SubscriptionPlans() {
     if (pageRole === 'admin') {
       if (entity === 'school') return { SignupComponent: SchoolSignupModal, LoginComponent: SchoolLoginModal };
       if (entity === 'college') return { SignupComponent: CollegeSignupModal, LoginComponent: CollegeLoginModal };
+      if (entity === 'recruitment') return { SignupComponent: RecruitmentAdminSignupModal, LoginComponent: RecruiterLoginModal };
+      if (entity === 'university') return { SignupComponent: UniversityAdminSignupModal, LoginComponent: UniversityAdminLoginModal };
     }
     if (pageRole === 'educator') {
       return { SignupComponent: EducatorSignupModal, LoginComponent: EducatorLoginModal };
@@ -146,7 +153,10 @@ function SubscriptionPlans() {
     if (pageRole === 'recruiter' && entity === 'recruitment') {
       return { SignupComponent: RecruiterSignupModal, LoginComponent: RecruiterLoginModal };
     }
-    // Default (Students and University Admin fallback)
+    if (pageRole === 'student' && entity === 'university') {
+      return { SignupComponent: UniversityStudentSignupModal, LoginComponent: UniversityStudentLoginModal };
+    }
+    // Default (Students - school/college)
     return { SignupComponent: SignupModal, LoginComponent: LoginModal };
   }, [entity, pageRole]);
   
@@ -218,27 +228,31 @@ function SubscriptionPlans() {
       return;
     }
 
-    // For recruitment-admin, redirect to comprehensive signup form with plan data
+    // For recruitment-admin, show signup modal instead of navigating
     if (studentType === 'recruitment-admin' && !isAuthenticated) {
-      navigate('/signup/recruitment-admin', { 
-        state: { 
-          plan, 
-          studentType,
-          returnToPayment: true 
-        } 
-      });
+      setPlanToSelect(plan);
+      setShowSignupModal(true);
       return;
     }
 
-    // For recruitment-recruiter, redirect to recruiter signup form with plan data
+    // For recruitment-recruiter, show signup modal instead of navigating
     if (studentType === 'recruitment-recruiter' && !isAuthenticated) {
-      navigate('/signup/recruitment-recruiter', { 
-        state: { 
-          plan, 
-          studentType,
-          returnToPayment: true 
-        } 
-      });
+      setPlanToSelect(plan);
+      setShowSignupModal(true);
+      return;
+    }
+
+    // For university-admin, show signup modal instead of navigating
+    if (studentType === 'university-admin' && !isAuthenticated) {
+      setPlanToSelect(plan);
+      setShowSignupModal(true);
+      return;
+    }
+
+    // For university-student, show signup modal instead of navigating
+    if (studentType === 'university-student' && !isAuthenticated) {
+      setPlanToSelect(plan);
+      setShowSignupModal(true);
       return;
     }
 
