@@ -4,6 +4,7 @@
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
+import multerS3 from 'multer-s3';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -222,9 +223,29 @@ setTimeout(async () => {
   }
 }, 5000); // Test after 5 seconds to allow server to start
 
-// Configure multer with memory limits for single 500MB file
+// Configure multer with streaming to R2 (no memory storage)
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multerS3({
+    s3: r2Client,
+    bucket: BUCKET_NAME,
+    metadata: function (req, file, cb) {
+      cb(null, {fieldName: file.fieldname});
+    },
+    key: function (req, file, cb) {
+      // Generate unique file key
+      const courseId = req.body.courseId;
+      const lessonId = req.body.lessonId;
+      
+      if (!courseId || !lessonId) {
+        cb(new Error('Missing courseId or lessonId'));
+        return;
+      }
+      
+      const fileKey = generateFileKey(file.originalname, courseId, lessonId);
+      console.log('Generated file key for streaming upload:', fileKey);
+      cb(null, fileKey);
+    }
+  }),
   limits: {
     fileSize: 500 * 1024 * 1024, // 500MB
     files: 1, // Limit to 1 file at a time
@@ -238,9 +259,29 @@ const upload = multer({
   }
 }).single('file');
 
-// Keep multiple file upload handler with reduced limits
+// Keep multiple file upload handler with streaming to R2
 const uploadMultiple = multer({
-  storage: multer.memoryStorage(),
+  storage: multerS3({
+    s3: r2Client,
+    bucket: BUCKET_NAME,
+    metadata: function (req, file, cb) {
+      cb(null, {fieldName: file.fieldname});
+    },
+    key: function (req, file, cb) {
+      // Generate unique file key
+      const courseId = req.body.courseId;
+      const lessonId = req.body.lessonId;
+      
+      if (!courseId || !lessonId) {
+        cb(new Error('Missing courseId or lessonId'));
+        return;
+      }
+      
+      const fileKey = generateFileKey(file.originalname, courseId, lessonId);
+      console.log('Generated file key for streaming upload:', fileKey);
+      cb(null, fileKey);
+    }
+  }),
   limits: {
     fileSize: 100 * 1024 * 1024, // 100MB per file
     files: 3, // Max 3 files
@@ -276,7 +317,7 @@ app.post('/api/upload', (req, res, next) => {
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.header('Access-Control-Allow-Credentials', 'true');
   
-  console.log('=== Starting Multer Upload ===');
+  console.log('=== Starting Multer Upload (Streaming) ===');
   upload(req, res, (err) => {
     if (err) {
       console.error('Multer error:', err);
@@ -286,55 +327,28 @@ app.post('/api/upload', (req, res, next) => {
     }
     console.log('Multer upload completed successfully');
     
-    // Check memory usage before processing
-    const memory = process.memoryUsage();
-    const memoryMB = {
-      rss: (memory.rss / 1024 / 1024).toFixed(2),
-      heapUsed: (memory.heapUsed / 1024 / 1024).toFixed(2)
-    };
-    
-    console.log('Memory usage before processing:', memoryMB);
-    
-    // Warn if we're close to memory limits
-    if (req.file && req.file.size > 400 * 1024 * 1024) { // 400MB
-      console.warn('⚠️  Large file detected:', (req.file.size / 1024 / 1024).toFixed(2), 'MB');
-      console.warn('⚠️  Current memory usage: RSS', memoryMB.rss, 'MB, Heap', memoryMB.heapUsed, 'MB');
-      
-      if (memory.rss > 300 * 1024 * 1024) { // 300MB
-        console.warn('⚠️  Memory usage is high before processing large file!');
-      }
-    }
+    // For streaming uploads, the file is already uploaded to R2
+    // req.file will contain the R2 information
+    console.log('Uploaded file info:', req.file);
     
     next();
   });
 }, async (req, res) => {
   try {
-    console.log('=== Processing Upload Request ===');
+    console.log('=== Processing Upload Response ===');
     console.log('Request headers:', req.headers);
     console.log('Request body:', req.body);
-    console.log('Request file:', req.file);
+    console.log('Uploaded file:', req.file);
     
-    // Log if there are any errors with multer
-    if (req.fileValidationError) {
-      console.error('File validation error:', req.fileValidationError);
+    // Check if file was uploaded
+    if (!req.file) {
+      console.error('ERROR: No file uploaded');
       // Make sure CORS headers are set even in error cases
       res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-      return res.status(400).json({ error: 'File validation error', message: req.fileValidationError });
-    }
-    
-    if (!req.file && !req.body) {
-      console.error('No data received in request');
-      // Make sure CORS headers are set even in error cases
-      res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-      return res.status(400).json({ error: 'No data received' });
+      return res.status(400).json({ error: 'No file uploaded' });
     }
 
     console.log('Body:', req.body);
-    console.log('File:', req.file ? {
-      name: req.file.originalname,
-      size: req.file.size,
-      mimetype: req.file.mimetype
-    } : 'No file');
     console.log('Environment variables check:', {
       R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID ? 'SET' : 'NOT_SET',
       R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID ? 'SET' : 'NOT_SET',
@@ -344,13 +358,6 @@ app.post('/api/upload', (req, res, next) => {
 
     const { courseId, lessonId } = req.body;
     const file = req.file;
-
-    if (!file) {
-      console.error('ERROR: No file provided');
-      // Make sure CORS headers are set even in error cases
-      res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-      return res.status(400).json({ error: 'No file provided' });
-    }
 
     // Validate required parameters
     if (!courseId) {
@@ -367,50 +374,13 @@ app.post('/api/upload', (req, res, next) => {
       return res.status(400).json({ error: 'lessonId is required' });
     }
 
-    console.log('Generating file key...');
-    const fileKey = generateFileKey(file.originalname, courseId, lessonId);
-    console.log('File key:', fileKey);
-
-    // Upload to R2
-    console.log('Uploading to R2...');
-    console.log('Bucket:', BUCKET_NAME);
-    console.log('R2 endpoint:', `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`);
+    console.log('File uploaded to R2:', file);
     
-    const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: fileKey,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-      Metadata: {
-        originalName: file.originalname,
-        courseId: courseId,
-        lessonId: lessonId,
-      },
-    });
-
-    console.log('Sending command to R2...');
-    await r2Client.send(command);
-    console.log('✓ File uploaded to R2 successfully');
-
-    // Clear the file buffer from memory immediately after upload
-    req.file.buffer = null;
-    delete req.file.buffer;
-
-    // Force garbage collection after large file upload
-    if (global.gc && file.size > 200 * 1024 * 1024) { // 200MB
-      console.log('Triggering garbage collection after large file upload');
-      try {
-        global.gc();
-      } catch (err) {
-        console.error('Error during manual garbage collection:', err);
-      }
-    }
-
     // Generate a presigned URL for accessing the file (valid for 7 days)
     console.log('Generating presigned URL...');
     const getCommand = new GetObjectCommand({
       Bucket: BUCKET_NAME,
-      Key: fileKey,
+      Key: file.key, // Key is provided by multer-s3
     });
     const url = await getSignedUrl(r2Client, getCommand, { expiresIn: 604800 });
     console.log('✓ Presigned URL generated');
@@ -418,7 +388,7 @@ app.post('/api/upload', (req, res, next) => {
     const response = {
       success: true,
       data: {
-        key: fileKey,
+        key: file.key, // Key is provided by multer-s3
         url: url,
         name: file.originalname,
         size: file.size,
@@ -441,7 +411,7 @@ app.post('/api/upload', (req, res, next) => {
 
 // Upload multiple files
 app.post('/api/upload-multiple', (req, res, next) => {
-  console.log('=== Starting Multer Upload (Multiple) ===');
+  console.log('=== Starting Multer Upload (Multiple Streaming) ===');
   uploadMultiple(req, res, (err) => {
     if (err) {
       console.error('Multer error (multiple):', err);
@@ -450,23 +420,7 @@ app.post('/api/upload-multiple', (req, res, next) => {
       return res.status(400).json({ error: 'Upload error', message: err.message });
     }
     console.log('Multer upload (multiple) completed successfully');
-    
-    // Check total size of files
-    if (req.files) {
-      const totalSize = req.files.reduce((sum, file) => sum + file.size, 0);
-      console.log('Total files size:', (totalSize / 1024 / 1024).toFixed(2), 'MB');
-      
-      if (totalSize > 200 * 1024 * 1024) { // 200MB
-        const memory = process.memoryUsage();
-        const memoryMB = {
-          rss: (memory.rss / 1024 / 1024).toFixed(2),
-          heapUsed: (memory.heapUsed / 1024 / 1024).toFixed(2)
-        };
-        
-        console.warn('⚠️  Large batch of files detected:', (totalSize / 1024 / 1024).toFixed(2), 'MB');
-        console.warn('⚠️  Current memory usage: RSS', memoryMB.rss, 'MB, Heap', memoryMB.heapUsed, 'MB');
-      }
-    }
+    console.log('Uploaded files info:', req.files);
     
     next();
   });
@@ -476,59 +430,29 @@ app.post('/api/upload-multiple', (req, res, next) => {
     const files = req.files;
 
     if (!files || files.length === 0) {
-      return res.status(400).json({ error: 'No files provided' });
+      return res.status(400).json({ error: 'No files uploaded' });
     }
 
-    // Process files one by one to reduce memory usage
+    // Process uploaded files and generate presigned URLs
     const results = [];
     for (const file of files) {
       try {
-        const fileKey = generateFileKey(file.originalname, courseId, lessonId);
-
-        const command = new PutObjectCommand({
-          Bucket: BUCKET_NAME,
-          Key: fileKey,
-          Body: file.buffer,
-          ContentType: file.mimetype,
-          Metadata: {
-            originalName: file.originalname,
-            courseId: courseId,
-            lessonId: lessonId,
-          },
-        });
-
-        await r2Client.send(command);
-        
-        // Clear the file buffer from memory immediately after upload
-        file.buffer = null;
-        delete file.buffer;
-
         const getCommand = new GetObjectCommand({
           Bucket: BUCKET_NAME,
-          Key: fileKey,
+          Key: file.key, // Key is provided by multer-s3
         });
         const url = await getSignedUrl(r2Client, getCommand, { expiresIn: 604800 });
 
         results.push({
-          key: fileKey,
+          key: file.key,
           url: url,
           name: file.originalname,
           size: file.size,
           type: file.mimetype,
         });
       } catch (fileError) {
-        console.error('Error uploading file:', file.originalname, fileError);
+        console.error('Error generating URL for file:', file.originalname, fileError);
         // Continue with other files even if one fails
-      }
-    }
-    
-    // Force garbage collection after batch upload
-    if (global.gc && files.length > 1) {
-      console.log('Triggering garbage collection after batch upload');
-      try {
-        global.gc();
-      } catch (err) {
-        console.error('Error during manual garbage collection:', err);
       }
     }
 
