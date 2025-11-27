@@ -38,7 +38,7 @@ app.use(cors(corsOptions));
 
 // Handle preflight requests for all routes
 app.options('*', (req, res) => {
-  console.log('=== Preflight Request ===');
+  console.log('=== Global Preflight Request ===');
   console.log('Origin:', req.headers.origin);
   console.log('Method:', req.headers['access-control-request-method']);
   console.log('Headers:', req.headers['access-control-request-headers']);
@@ -47,6 +47,22 @@ app.options('*', (req, res) => {
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400'); // Cache for 24 hours
+  res.sendStatus(204);
+});
+
+// Handle preflight for upload endpoint specifically
+app.options('/api/upload', (req, res) => {
+  console.log('=== Upload Preflight Request ===');
+  console.log('Origin:', req.headers.origin);
+  console.log('Method:', req.headers['access-control-request-method']);
+  console.log('Headers:', req.headers['access-control-request-headers']);
+  
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400'); // Cache for 24 hours
   res.sendStatus(204);
 });
 
@@ -181,12 +197,27 @@ const generateFileKey = (originalName, courseId, lessonId) => {
   return `courses/${courseId}/lessons/${lessonId}/${timestamp}-${randomString}${extension}`;
 };
 
-// Upload file to R2
+// Add a specific route for the upload endpoint with more debugging
 app.post('/api/upload', (req, res, next) => {
+  console.log('=== Upload Endpoint Hit ===');
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
+  console.log('Request headers:', req.headers);
+  console.log('Origin header:', req.headers.origin);
+  console.log('Content-Type header:', req.headers['content-type']);
+  
+  // Set CORS headers early
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
   console.log('=== Starting Multer Upload ===');
   upload(req, res, (err) => {
     if (err) {
       console.error('Multer error:', err);
+      // Make sure CORS headers are set even in error cases
+      res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
       return res.status(400).json({ error: 'Upload error', message: err.message });
     }
     console.log('Multer upload completed successfully');
@@ -194,7 +225,7 @@ app.post('/api/upload', (req, res, next) => {
   });
 }, async (req, res) => {
   try {
-    console.log('=== Upload Request Received ===');
+    console.log('=== Processing Upload Request ===');
     console.log('Request headers:', req.headers);
     console.log('Request body:', req.body);
     console.log('Request file:', req.file);
@@ -202,11 +233,15 @@ app.post('/api/upload', (req, res, next) => {
     // Log if there are any errors with multer
     if (req.fileValidationError) {
       console.error('File validation error:', req.fileValidationError);
+      // Make sure CORS headers are set even in error cases
+      res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
       return res.status(400).json({ error: 'File validation error', message: req.fileValidationError });
     }
     
     if (!req.file && !req.body) {
       console.error('No data received in request');
+      // Make sure CORS headers are set even in error cases
+      res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
       return res.status(400).json({ error: 'No data received' });
     }
 
@@ -228,17 +263,23 @@ app.post('/api/upload', (req, res, next) => {
 
     if (!file) {
       console.error('ERROR: No file provided');
+      // Make sure CORS headers are set even in error cases
+      res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
       return res.status(400).json({ error: 'No file provided' });
     }
 
     // Validate required parameters
     if (!courseId) {
       console.error('ERROR: courseId is required');
+      // Make sure CORS headers are set even in error cases
+      res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
       return res.status(400).json({ error: 'courseId is required' });
     }
 
     if (!lessonId) {
       console.error('ERROR: lessonId is required');
+      // Make sure CORS headers are set even in error cases
+      res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
       return res.status(400).json({ error: 'lessonId is required' });
     }
 
@@ -294,6 +335,8 @@ app.post('/api/upload', (req, res, next) => {
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
     
+    // Make sure CORS headers are set even in error cases
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
     res.status(500).json({ error: 'Upload failed', message: error.message });
   }
 });
@@ -446,13 +489,57 @@ app.get('/api/files/:courseId/:lessonId', async (req, res) => {
   }
 });
 
+// Simple echo endpoint for testing connectivity
+app.get('/echo', (req, res) => {
+  console.log('=== Echo Endpoint Hit ===');
+  console.log('Origin:', req.headers.origin);
+  
+  // Set CORS headers
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  res.json({
+    message: 'Echo endpoint working',
+    timestamp: new Date().toISOString(),
+    headers: req.headers
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
+  console.log('=== Health Check Endpoint Hit ===');
+  console.log('Origin:', req.headers.origin);
+  
+  // Set CORS headers
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
     bucketName: BUCKET_NAME || 'NOT_SET',
     r2Configured: !!process.env.R2_ACCOUNT_ID && !!process.env.R2_ACCESS_KEY_ID && !!process.env.R2_SECRET_ACCESS_KEY
+  });
+});
+
+// CORS test endpoint
+app.get('/cors-test', (req, res) => {
+  console.log('=== CORS Test Endpoint ===');
+  console.log('Origin:', req.headers.origin);
+  
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  res.json({
+    message: 'CORS test successful',
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -487,29 +574,21 @@ app.get('/test-r2', async (req, res) => {
   }
 });
 
-// Simple echo endpoint for testing connectivity
-app.get('/echo', (req, res) => {
-  res.json({
-    message: 'Echo endpoint working',
-    timestamp: new Date().toISOString(),
-    headers: req.headers
-  });
-});
-
-// CORS test endpoint
-app.get('/cors-test', (req, res) => {
-  console.log('=== CORS Test Endpoint ===');
-  console.log('Origin:', req.headers.origin);
+// Add a global error handler to ensure CORS headers are always set
+app.use((err, req, res, next) => {
+  console.error('=== Global Error Handler ===');
+  console.error('Error:', err);
   
+  // Always set CORS headers
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.header('Access-Control-Allow-Credentials', 'true');
   
-  res.json({
-    message: 'CORS test successful',
-    origin: req.headers.origin,
-    timestamp: new Date().toISOString()
+  // Send error response
+  res.status(500).json({
+    error: 'Internal server error',
+    message: err.message || 'An unexpected error occurred'
   });
 });
 
