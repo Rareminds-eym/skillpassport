@@ -18,6 +18,7 @@ import StudentProfileDrawer from '@/components/admin/components/StudentProfileDr
 import CareerPathDrawer from '@/components/admin/components/CareerPathDrawer';
 import { useStudents } from '../../../hooks/useAdminStudents';
 import { generateCareerPath, type CareerPathResponse, type StudentProfile } from '@/services/aiCareerPathService';
+import { DebugSchoolInfo } from '@/components/DebugSchoolInfo';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -747,6 +748,9 @@ const StudentAdmissions = () => {
         error={careerPathError}
         onRetry={handleRetryCareerPath}
       />
+
+      {/* Debug Info - Remove this after testing */}
+      <DebugSchoolInfo />
     </div>
   );
 };

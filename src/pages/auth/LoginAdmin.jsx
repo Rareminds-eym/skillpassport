@@ -28,6 +28,52 @@ const LoginAdmin = () => {
         throw new Error('Please enter both email and password');
       }
 
+      // DEMO CREDENTIALS - Hardcoded for testing
+      const DEMO_CREDENTIALS = {
+        'university@admin.com': {
+          id: 'demo-university-001',
+          name: 'Demo University',
+          email: 'university@admin.com',
+          role: 'school_admin',
+          schoolId: 'demo-university-001',
+          schoolName: 'Demo University',
+          schoolCode: 'DEMO-UNI',
+        },
+        'college@admin.com': {
+          id: 'demo-college-001',
+          name: 'Demo College',
+          email: 'college@admin.com',
+          role: 'school_admin',
+          schoolId: 'demo-college-001',
+          schoolName: 'Demo College',
+          schoolCode: 'DEMO-COL',
+        },
+        'school@admin.com': {
+          id: 'demo-school-001',
+          name: 'Demo School',
+          email: 'school@admin.com',
+          role: 'school_admin',
+          schoolId: 'demo-school-001',
+          schoolName: 'Demo School',
+          schoolCode: 'DEMO-SCH',
+        },
+      };
+
+      // Check if it's a demo credential
+      if (DEMO_CREDENTIALS[email.trim().toLowerCase()]) {
+        const demoUser = DEMO_CREDENTIALS[email.trim().toLowerCase()];
+        
+        login(demoUser);
+
+        toast({
+          title: 'Login Successful (Demo)',
+          description: `Welcome back, ${demoUser.name}!`,
+        });
+
+        navigate('/school-admin/dashboard');
+        return;
+      }
+
       // Query the schools table for the entered email
       const { data: school, error: schoolError } = await supabase
         .from('schools')
