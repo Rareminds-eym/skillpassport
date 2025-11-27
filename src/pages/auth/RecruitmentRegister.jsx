@@ -14,6 +14,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import FeatureCard from "./components/ui/FeatureCard";
+import RecruitmentAdminPlansModal from "../../components/Subscription/RecruitmentAdminPlansModal";
 
 export default function RecruitmentRegister() {
   const [activeTab, setActiveTab] = useState("recruitment");
@@ -22,6 +23,7 @@ export default function RecruitmentRegister() {
   const [subscriptionType, setSubscriptionType] = useState(null);
   const [showAdminInfo, setShowAdminInfo] = useState(false);
   const [showRecruiterInfo, setShowRecruiterInfo] = useState(false);
+  const [showPlansModal, setShowPlansModal] = useState(false);
   const navigate = useNavigate();
 
   const primary = "#0a6aba";
@@ -46,9 +48,9 @@ export default function RecruitmentRegister() {
   };
 
   const handleNext = () => {
-    // If admin is selected, go directly to signup
+    // If admin is selected, show plans modal instead of navigating
     if (recruitmentType === "admin") {
-      navigate("/signup/recruitment-admin");
+      setShowPlansModal(true);
     } 
     // If recruiter is selected, go directly to signup
     else if (recruitmentType === "recruiter") {
@@ -74,9 +76,9 @@ export default function RecruitmentRegister() {
       // Navigate to login
       navigate("/login/recruiter");
     } else if (subscriptionType === "purchase") {
-      // Navigate directly to signup form
+      // Show plans modal for admin, navigate for recruiter
       if (recruitmentType === "admin") {
-        navigate("/signup/recruitment-admin");
+        setShowPlansModal(true);
       } else {
         navigate("/signup/recruitment-recruiter");
       }
@@ -609,6 +611,12 @@ export default function RecruitmentRegister() {
           </div>
         </div>
       </div>
+
+      {/* Recruitment Admin Plans Modal */}
+      <RecruitmentAdminPlansModal
+        isOpen={showPlansModal}
+        onClose={() => setShowPlansModal(false)}
+      />
     </div>
   );
 }
