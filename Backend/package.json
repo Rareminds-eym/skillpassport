@@ -5,8 +5,8 @@
   "description": "Backend server for handling file uploads to Cloudflare R2",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "start": "node --expose-gc --max-old-space-size=450 server.js",
+    "dev": "node --watch --expose-gc server.js"
   },
   "keywords": [
     "cloudflare",

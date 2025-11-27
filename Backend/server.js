@@ -38,8 +38,10 @@ const CONFIG = {
   presignedUrlExpiryShort: 3600, // 1 hour
   uploadTimeout: 10 * 60 * 1000, // 10 minutes
   rateLimitWindow: 15 * 60 * 1000, // 15 minutes
-  rateLimitMaxUploads: 50, // uploads per window
+  rateLimitMaxUploads: 3, // REDUCED: Only 3 concurrent uploads (prevent memory overload)
   rateLimitMaxRequests: 100, // general requests per window
+  maxMemoryUsage: 400 * 1024 * 1024, // 400MB - Reject uploads if memory exceeds this
+  gcThreshold: 100 * 1024 * 1024, // 100MB - Trigger GC after uploads larger than this
 };
 
 // ============================================
@@ -150,12 +152,12 @@ const validators = {
   // Validate content type
   contentType(value) {
     if (!value) return { valid: true }; // Optional
-    
+
     const allowedTypes = [
       'video/', 'audio/', 'image/', 'application/pdf',
       'application/msword', 'application/vnd.', 'text/'
     ];
-    
+
     const isAllowed = allowedTypes.some(type => value.startsWith(type));
     if (!isAllowed) {
       return { valid: false, error: 'File type not allowed' };
@@ -364,7 +366,7 @@ app.use(express.json({ limit: '1mb' }));
 // ============================================
 app.use((req, res, next) => {
   const startTime = Date.now();
-  
+
   // Log request
   logger.info('Request received', {
     requestId: req.id,
@@ -378,7 +380,7 @@ app.use((req, res, next) => {
   res.on('finish', () => {
     const duration = Date.now() - startTime;
     const level = res.statusCode >= 400 ? 'warn' : 'info';
-    
+
     logger[level]('Request completed', {
       requestId: req.id,
       method: req.method,
@@ -476,7 +478,7 @@ setInterval(() => {
 // ============================================
 app.get('/api/upload/progress/:uploadId', (req, res) => {
   const { uploadId } = req.params;
-  
+
   logger.info('SSE connection opened', { requestId: req.id, uploadId });
 
   res.writeHead(200, {
@@ -519,17 +521,17 @@ const broadcastProgress = (uploadId, progress, status = 'uploading', extra = {})
     const data = uploadProgressMap.get(uploadId);
     data.progress = progress;
     data.timestamp = Date.now();
-    
+
     if (extra.bytesReceived !== undefined) data.bytesReceived = extra.bytesReceived;
     if (extra.totalBytes !== undefined) data.totalBytes = extra.totalBytes;
 
-    const message = JSON.stringify({ 
-      status, 
+    const message = JSON.stringify({
+      status,
       progress,
       bytesReceived: data.bytesReceived,
       totalBytes: data.totalBytes
     });
-    
+
     data.clients.forEach(client => {
       try {
         client.write(`data: ${message}\n\n`);
@@ -541,14 +543,58 @@ const broadcastProgress = (uploadId, progress, status = 'uploading', extra = {})
 };
 
 // ============================================
+// MEMORY PRESSURE DETECTION MIDDLEWARE
+// ============================================
+const checkMemoryPressure = (req, res, next) => {
+  const memory = process.memoryUsage();
+  const memoryMB = (memory.rss / 1024 / 1024).toFixed(2);
+
+  if (memory.rss > CONFIG.maxMemoryUsage) {
+    logger.warn('Upload rejected due to high memory usage', {
+      requestId: req.id,
+      memoryUsage: `${memoryMB}MB`,
+      threshold: `${(CONFIG.maxMemoryUsage / 1024 / 1024).toFixed(2)}MB`
+    });
+
+    // Try to trigger GC before rejecting
+    if (global.gc) {
+      try {
+        global.gc();
+        const memAfterGC = process.memoryUsage();
+        logger.info('Emergency GC triggered', {
+          before: `${memoryMB}MB`,
+          after: `${(memAfterGC.rss / 1024 / 1024).toFixed(2)}MB`
+        });
+
+        // If GC freed enough memory, allow the upload
+        if (memAfterGC.rss <= CONFIG.maxMemoryUsage) {
+          return next();
+        }
+      } catch (err) {
+        logger.error('Emergency GC failed', { error: err.message });
+      }
+    }
+
+    return res.status(503).json({
+      error: 'Server busy',
+      message: 'Server is currently under heavy load. Please try again in a few moments.',
+      retryAfter: 60
+    });
+  }
+
+  next();
+};
+
+// ============================================
 // UPLOAD ENDPOINT - Single File
 // ============================================
 app.post('/api/upload',
   uploadLimiter,
+  checkMemoryPressure, // Check memory before starting upload
   timeoutMiddleware(CONFIG.uploadTimeout),
   (req, res) => {
     const requestId = req.id;
-    
+
     logger.info('Upload started', {
       requestId,
       contentLength: req.headers['content-length'],
@@ -576,7 +622,7 @@ app.post('/api/upload',
     }
 
     const uploadId = req.headers['x-upload-id'] || req.query.uploadId;
-    
+
     // Initialize progress tracking with total bytes from Content-Length
     if (uploadId && contentLength > 0) {
       if (!uploadProgressMap.has(uploadId)) {
@@ -620,7 +666,7 @@ app.post('/api/upload',
     // Handle file stream
     busboy.on('file', (fieldname, fileStream, info) => {
       const { filename, mimeType } = info;
-      
+
       // Validate filename
       const filenameValidation = validators.filename(filename);
       if (!filenameValidation.valid) {
@@ -638,7 +684,7 @@ app.post('/api/upload',
       }
 
       const sanitizedFilename = sanitizeFilename(filename);
-      
+
       logger.info('File received', {
         requestId,
         filename: sanitizedFilename,
@@ -654,7 +700,11 @@ app.post('/api/upload',
       fileStreamInfo = { filename: sanitizedFilename, mimeType };
       uploadStarted = true;
 
-      passThroughStream = new PassThrough();
+      // Create PassThrough with low memory footprint
+      passThroughStream = new PassThrough({
+        highWaterMark: 64 * 1024, // 64KB buffer (reduced from default 16KB for better performance)
+        // This prevents excessive buffering when R2 upload is slower than client upload
+      });
 
       fileStream.on('data', (chunk) => {
         fileInfo.size += chunk.length;
@@ -733,14 +783,14 @@ app.post('/api/upload',
 
       try {
         fileKey = generateFileKey(fileStreamInfo.filename, courseId, lessonId);
-        
+
         logger.info('Starting R2 upload', {
           requestId,
           bucket: BUCKET_NAME,
           fileKey,
           size: fileInfo.size
         });
-        
+
         // Update progress to show we're now uploading to R2
         if (uploadId) {
           broadcastProgress(uploadId, 0, 'uploading', {
@@ -764,8 +814,8 @@ app.post('/api/upload',
               requestId
             },
           },
-          partSize: 5 * 1024 * 1024,
-          queueSize: 4,
+          partSize: 5 * 1024 * 1024, // Minimum R2 part size
+          queueSize: 1, // CRITICAL: Reduced from 4 to 1 (only 5MB in memory vs 20MB)
           leavePartsOnError: false,
         });
 
@@ -775,14 +825,14 @@ app.post('/api/upload',
           const loaded = progress.loaded || 0;
           const total = fileInfo.size; // Use actual file size since progress.total may be undefined
           const percentage = Math.round((loaded / total) * 100);
-          
-          logger.debug('R2 upload progress', { 
-            requestId, 
+
+          logger.debug('R2 upload progress', {
+            requestId,
             loaded,
             total,
             percentage
           });
-          
+
           // Broadcast progress to SSE clients
           if (uploadId && percentage > lastR2Progress) {
             lastR2Progress = percentage;
@@ -794,7 +844,7 @@ app.post('/api/upload',
         });
 
         await uploadInstance.done();
-        
+
         logger.info('R2 upload completed', { requestId, fileKey, size: fileInfo.size });
 
         // Final progress update
@@ -808,23 +858,25 @@ app.post('/api/upload',
         // ============================================
         // MEMORY CLEANUP - Critical for 512MB servers
         // ============================================
-        
+
         // Destroy the PassThrough stream to release buffer memory
         if (passThroughStream) {
           passThroughStream.destroy();
           passThroughStream = null;
         }
-        
+
         // Clear references
         fileStreamInfo = null;
-        
-        // Force garbage collection if available
-        if (global.gc && fileInfo.size > 50 * 1024 * 1024) {
+
+        // Force garbage collection if available (more aggressive for memory management)
+        if (global.gc && fileInfo.size > CONFIG.gcThreshold) {
           try {
             global.gc();
-            logger.info('Garbage collection triggered after upload', { 
-              requestId, 
-              fileSize: `${(fileInfo.size / 1024 / 1024).toFixed(2)}MB` 
+            const memAfterGC = process.memoryUsage();
+            logger.info('Garbage collection triggered after upload', {
+              requestId,
+              fileSize: `${(fileInfo.size / 1024 / 1024).toFixed(2)}MB`,
+              memoryAfterGC: `${(memAfterGC.rss / 1024 / 1024).toFixed(2)}MB`
             });
           } catch (err) {
             logger.warn('Garbage collection failed', { error: err.message });
@@ -856,7 +908,7 @@ app.post('/api/upload',
           error: error.message,
           stack: error.stack
         });
-        
+
         // Cleanup on error too
         if (passThroughStream) {
           passThroughStream.destroy();
@@ -884,7 +936,7 @@ app.post('/api/upload-multiple',
   timeoutMiddleware(CONFIG.uploadTimeout),
   (req, res) => {
     const requestId = req.id;
-    
+
     logger.info('Multiple upload started', { requestId });
 
     const contentType = req.headers['content-type'];
@@ -912,7 +964,7 @@ app.post('/api/upload-multiple',
 
     busboy.on('file', (fieldname, fileStream, info) => {
       const { filename, mimeType } = info;
-      
+
       const filenameValidation = validators.filename(filename);
       if (!filenameValidation.valid) {
         fileStream.resume();
@@ -995,8 +1047,8 @@ app.post('/api/upload-multiple',
                 requestId
               },
             },
-            partSize: 5 * 1024 * 1024,
-            queueSize: 4,
+            partSize: 5 * 1024 * 1024, // Minimum R2 part size
+            queueSize: 1, // CRITICAL: Reduced from 4 to 1 (only 5MB in memory vs 20MB)
             leavePartsOnError: false,
           });
 
@@ -1060,7 +1112,7 @@ app.post('/api/upload-multiple',
 app.get('/api/file/:key(*)', async (req, res) => {
   try {
     const fileKey = req.params.key;
-    
+
     const validation = validators.fileKey(fileKey);
     if (!validation.valid) {
       return res.status(400).json({ error: validation.error });
@@ -1082,7 +1134,7 @@ app.get('/api/file/:key(*)', async (req, res) => {
 app.delete('/api/file/:key(*)', async (req, res) => {
   try {
     const fileKey = req.params.key;
-    
+
     const validation = validators.fileKey(fileKey);
     if (!validation.valid) {
       return res.status(400).json({ error: validation.error });
@@ -1143,6 +1195,16 @@ app.get('/api/files/:courseId/:lessonId', async (req, res) => {
 // ============================================
 // HEALTH CHECK ENDPOINTS
 // ============================================
+// Root endpoint for Render health checks
+app.get('/', (req, res) => {
+  res.json({
+    status: 'OK',
+    service: 'Skill Passport File Upload Server',
+    version: '2.0.0',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -1239,8 +1301,8 @@ app.use((err, req, res, next) => {
 
   res.status(500).json({
     error: 'Internal server error',
-    message: process.env.NODE_ENV === 'production' 
-      ? 'An unexpected error occurred' 
+    message: process.env.NODE_ENV === 'production'
+      ? 'An unexpected error occurred'
       : err.message,
     requestId: req.id
   });
@@ -1261,14 +1323,14 @@ const server = app.listen(CONFIG.port, () => {
 // ============================================
 const gracefulShutdown = (signal) => {
   logger.info('Shutdown signal received', { signal });
-  
+
   server.close(() => {
     logger.info('HTTP server closed');
-    
+
     // Close R2 client
     r2Client.destroy();
     logger.info('R2 client closed');
-    
+
     process.exit(0);
   });
 
