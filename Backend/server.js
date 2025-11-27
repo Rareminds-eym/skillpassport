@@ -14,7 +14,10 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, '..', '.env') });
 
 const app = express();
+
+// Configure CORS to allow all origins
 app.use(cors());
+
 app.use(express.json());
 
 // Request logging middleware
@@ -42,7 +45,7 @@ const BUCKET_NAME = process.env.R2_BUCKET_NAME;
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 500 * 1024 * 1024, // Increased from 50MB to 100MB
+    fileSize: 500 * 1024 * 1024, // 500MB
   },
 });
 
