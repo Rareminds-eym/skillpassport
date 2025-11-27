@@ -15,8 +15,20 @@ dotenv.config({ path: join(__dirname, '..', '.env') });
 
 const app = express();
 
-// Configure CORS to allow all origins
-app.use(cors());
+// Configure CORS with specific options for file uploads
+const corsOptions = {
+  origin: ['http://localhost:3000', 'http://localhost:5173', 'https://skillpassport.vercel.app'],
+  credentials: true,
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Access-Control-Allow-Origin']
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 
@@ -108,6 +120,11 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       R2_BUCKET_NAME: process.env.R2_BUCKET_NAME ? 'SET' : 'NOT_SET'
     });
 
+    // Add CORS headers explicitly for this endpoint
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+
     const { courseId, lessonId } = req.body;
     const file = req.file;
 
@@ -178,6 +195,12 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     console.error('Error:', error);
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
+    
+    // Add CORS headers for error responses too
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    
     res.status(500).json({ error: 'Upload failed', message: error.message });
   }
 });
@@ -185,6 +208,11 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 // Upload multiple files
 app.post('/api/upload-multiple', upload.array('files', 10), async (req, res) => {
   try {
+    // Add CORS headers explicitly for this endpoint
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+
     const { courseId, lessonId } = req.body;
     const files = req.files;
 
@@ -232,6 +260,12 @@ app.post('/api/upload-multiple', upload.array('files', 10), async (req, res) => 
     });
   } catch (error) {
     console.error('Upload error:', error);
+    
+    // Add CORS headers for error responses too
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    
     res.status(500).json({ error: 'Upload failed', message: error.message });
   }
 });
