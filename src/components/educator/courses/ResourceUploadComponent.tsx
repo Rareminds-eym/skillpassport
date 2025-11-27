@@ -220,13 +220,16 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       // Handle errors
       xhr.addEventListener('error', (e) => {
         console.error('=== XHR Error Event ===');
-        console.error('Error:', e);
+        console.error('Event:', e);
         console.error('Status:', xhr.status);
+        console.error('Status Text:', xhr.statusText);
         console.error('Ready state:', xhr.readyState);
+        console.error('Response Text:', xhr.responseText);
+        console.error('Response URL:', xhr.responseURL);
         setFileUploads(prev =>
           prev.map((fu, i) =>
             i === index
-              ? { ...fu, status: 'error', error: 'Network error - Check if backend is running' }
+              ? { ...fu, status: 'error', error: `Network error (Status: ${xhr.status}, ReadyState: ${xhr.readyState})` }
               : fu
           )
         );
@@ -244,7 +247,11 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         );
       });
 
-      xhr.open('POST', `${API_BASE_URL}/api/upload`);
+      const uploadUrl = `${API_BASE_URL}/api/upload`;
+      console.log('=== Preparing Upload ===');
+      console.log('Upload URL:', uploadUrl);
+      console.log('API_BASE_URL:', API_BASE_URL);
+      xhr.open('POST', uploadUrl);
       xhr.timeout = 300000; // 5 minutes timeout for large files
       console.log('XHR opened, sending data...');
       xhr.send(formData);
