@@ -106,7 +106,7 @@ const MySkills = () => {
       description: 'Programming languages, frameworks, and technical tools',
       color: 'bg-blue-50 text-blue-700 border-blue-200',
       buttonColor: 'bg-blue-600 hover:bg-blue-700',
-      count: technicalSkills.filter(s => s.enabled !== false).length
+      count: technicalSkills.filter(s => s.enabled !== false && s.approval_status === 'approved' || s.approval_status === 'verified').length
     },
     {
       id: 'softSkills',
@@ -115,7 +115,7 @@ const MySkills = () => {
       description: 'Communication, leadership, and interpersonal skills',
       color: 'bg-green-50 text-green-700 border-green-200',
       buttonColor: 'bg-green-600 hover:bg-green-700',
-      count: softSkills.filter(s => s.enabled !== false).length
+      count: softSkills.filter(s => s.enabled !== false && s.approval_status === 'approved'  || s.approval_status === 'verified').length
     }
   ];
 
@@ -203,7 +203,7 @@ const MySkills = () => {
                       </div>
                       <span className="text-lg font-semibold text-gray-900">Technical Skills</span>
                       <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium">
-                        {technicalSkills.filter(s => s.enabled !== false).length}
+                        {technicalSkills.filter(s => s.enabled !== false && s.approval_status === 'approved'  || s.approval_status === 'verified').length}
                       </Badge>
                     </div>
                     <Button
@@ -217,8 +217,8 @@ const MySkills = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 space-y-3">
-                  {technicalSkills.filter(skill => skill.enabled !== false).length > 0 ? (
-                    technicalSkills.filter(skill => skill.enabled !== false).map((skill, index) => (
+                  {technicalSkills.filter(skill => skill.enabled !== false && skill.approval_status === 'approved'  || skill.approval_status === 'verified').length > 0 ? (
+                    technicalSkills.filter(skill => skill.enabled !== false && skill.approval_status === 'approved'  || skill.approval_status === 'verified').map((skill, index) => (
                       <div key={index} className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{skill.icon}</span>
@@ -260,7 +260,7 @@ const MySkills = () => {
                       </div>
                       <span className="text-lg font-semibold text-gray-900">Soft Skills</span>
                       <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium">
-                        {softSkills.filter(s => s.enabled !== false).length}
+                        {softSkills.filter(s => s.enabled !== false && s.approval_status === 'approved' || s.approval_status === 'verified').length}
                       </Badge>
                     </div>
                     <Button
@@ -274,8 +274,8 @@ const MySkills = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 space-y-3">
-                  {softSkills.filter(skill => skill.enabled !== false).length > 0 ? (
-                    softSkills.filter(skill => skill.enabled !== false).map((skill, index) => (
+                  {softSkills.filter(skill => skill.enabled !== false && skill.approval_status === 'approved').length > 0 ? (
+                    softSkills.filter(skill => skill.enabled !== false && skill.approval_status === 'approved').map((skill, index) => (
                       <div key={index} className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all flex items-center justify-between">
                         <span className="text-sm font-semibold text-gray-900">{skill.name}</span>
                         <div className="flex">

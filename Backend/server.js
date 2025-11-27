@@ -15,28 +15,8 @@ dotenv.config({ path: join(__dirname, '..', '.env') });
 
 const app = express();
 
-// Configure CORS for production
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'http://192.168.1.29:3000',
-  'https://rareminds-skillpassport.netlify.app'
-];
-
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
+// Configure CORS to allow all origins
+app.use(cors());
 
 app.use(express.json());
 
@@ -65,7 +45,7 @@ const BUCKET_NAME = process.env.R2_BUCKET_NAME;
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limit
+    fileSize: 500 * 1024 * 1024, // 500MB
   },
 });
 
@@ -286,33 +266,7 @@ app.get('/api/files/:courseId/:lessonId', async (req, res) => {
   }
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    r2Connected: !!(process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_BUCKET_NAME)
-  });
-});
-
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    message: 'Skill Passport Backend API',
-    version: '1.0.0',
-    endpoints: {
-      health: 'GET /health',
-      upload: 'POST /api/upload',
-      uploadMultiple: 'POST /api/upload-multiple',
-      deleteFile: 'DELETE /api/delete/:key',
-      listFiles: 'GET /api/files/:courseId/:lessonId'
-    }
-  });
-});
-
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
 });

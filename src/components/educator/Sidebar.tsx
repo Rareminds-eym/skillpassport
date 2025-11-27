@@ -87,6 +87,22 @@ const Sidebar: React.FC<SidebarProps> = ({
         },
       ],
     },
+    {
+      title: "Skill & Co-Curriculm",
+      key: "learning",
+      items: [
+        {
+          name: "Clubs & Compitetion",
+          path: "/educator/clubs",
+          icon: ClipboardDocumentListIcon,
+        },
+        {
+          name: "badges",
+          path: "/educator/badges",
+          icon: PencilSquareIcon,
+        },
+      ],
+    },
   ];
 
   // single items before & after dropdowns

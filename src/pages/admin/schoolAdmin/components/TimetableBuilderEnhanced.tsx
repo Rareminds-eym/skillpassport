@@ -1,0 +1,776 @@
+import React, { useState, useEffect } from "react";
+import { Sparkles, Save, Send, AlertTriangle } from "lucide-react";
+import { supabase } from "../../../../lib/supabaseClient";
+import { validateTimetableSlot, getAllTimetableConflicts, ValidationConflict } from "../../../../utils/timetableValidation";
+
+interface Teacher {
+  id: string;
+  teacher_id: string;
+  first_name: string;
+  last_name: string;
+}
+
+interface SchoolClass {
+  id: string;
+  name: string;
+  grade: string;
+  section: string;
+}
+
+interface TimetableSlot {
+  id?: string;
+  educator_id: string;
+  teacher_id?: string;
+  teacher_name?: string;
+  class_id?: string;
+  class_name?: string;
+  day_of_week: number;
+  period_number: number;
+  start_time: string;
+  end_time: string;
+  subject_name: string;
+  room_number: string;
+}
+
+const TimetableBuilderEnhanced: React.FC = () => {
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [timetableId, setTimetableId] = useState<string>("");
+  const [allSlots, setAllSlots] = useState<TimetableSlot[]>([]);
+  const [draggedSlot, setDraggedSlot] = useState<TimetableSlot | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [publishStatus, setPublishStatus] = useState<"draft" | "published">("draft");
+  const [conflicts, setConflicts] = useState<Map<string, ValidationConflict[]>>(new Map());
+  const [showConflicts, setShowConflicts] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedCell, setSelectedCell] = useState<{ day: number; period: number } | null>(null);
+  const [newSlot, setNewSlot] = useState({
+    teacher_id: "",
+    class_id: "",
+    subject_name: "",
+    room_number: "",
+  });
+
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const periods = Array.from({ length: 10 }, (_, i) => i + 1);
+  const timeSlots = [
+    "09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00",
+    "13:00-14:00", "14:00-15:00", "15:00-16:00", "16:00-17:00",
+    "17:00-18:00", "18:00-19:00"
+  ];
+
+  useEffect(() => {
+    loadTeachers();
+    loadClasses();
+    loadOrCreateTimetable();
+  }, []);
+
+  useEffect(() => {
+    if (timetableId) {
+      loadAllSlots();
+    }
+  }, [timetableId]);
+
+  const loadTeachers = async () => {
+    // Get current user's school_id
+    const userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) {
+      console.error('No user email found');
+      return;
+    }
+
+    // Get school_id
+    const { data: educatorData } = await supabase
+      .from('school_educators')
+      .select('school_id')
+      .eq('email', userEmail)
+      .maybeSingle();
+
+    let schoolId = educatorData?.school_id;
+
+    if (!schoolId) {
+      const { data: schoolData } = await supabase
+        .from('schools')
+        .select('id')
+        .eq('email', userEmail)
+        .maybeSingle();
+      
+      schoolId = schoolData?.id;
+    }
+
+    if (!schoolId) {
+      console.error('No school_id found');
+      return;
+    }
+
+    // Load teachers from school_educators
+    const { data } = await supabase
+      .from("school_educators")
+      .select("id, teacher_id, first_name, last_name")
+      .eq("school_id", schoolId)
+      .eq("onboarding_status", "active")
+      .order("first_name");
+    
+    if (data) setTeachers(data);
+  };
+
+  const loadClasses = async () => {
+    // Get current user's school_id
+    const userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) return;
+
+    const { data: educatorData } = await supabase
+      .from('school_educators')
+      .select('school_id')
+      .eq('email', userEmail)
+      .maybeSingle();
+
+    let schoolId = educatorData?.school_id;
+
+    if (!schoolId) {
+      const { data: schoolData } = await supabase
+        .from('schools')
+        .select('id')
+        .eq('email', userEmail)
+        .maybeSingle();
+      
+      schoolId = schoolData?.id;
+    }
+
+    if (!schoolId) return;
+
+    // Load classes
+    const { data } = await supabase
+      .from("school_classes")
+      .select("id, name, grade, section")
+      .eq("school_id", schoolId)
+      .eq("account_status", "active")
+      .order("grade")
+      .order("section");
+    
+    if (data) setClasses(data);
+  };
+
+  const loadOrCreateTimetable = async () => {
+    const currentYear = new Date().getFullYear();
+    const { data: existing } = await supabase
+      .from("timetables")
+      .select("id, status")
+      .eq("academic_year", `${currentYear}-${currentYear + 1}`)
+      .single();
+
+    if (existing) {
+      setTimetableId(existing.id);
+      setPublishStatus(existing.status);
+    } else {
+      const { data: newTimetable } = await supabase
+        .from("timetables")
+        .insert({
+          academic_year: `${currentYear}-${currentYear + 1}`,
+          term: "Term 1",
+          start_date: `${currentYear}-06-01`,
+          end_date: `${currentYear}-12-31`,
+          status: "draft",
+        })
+        .select("id")
+        .single();
+      
+      if (newTimetable) setTimetableId(newTimetable.id);
+    }
+  };
+
+  const loadAllSlots = async () => {
+    const { data } = await supabase
+      .from("timetable_slots")
+      .select("*, school_educators(first_name, last_name), school_classes(name)")
+      .eq("timetable_id", timetableId)
+      .order("day_of_week")
+      .order("period_number");
+    
+    if (data) {
+      const slotsWithNames = data.map(slot => ({
+        ...slot,
+        teacher_name: slot.school_educators ? `${slot.school_educators.first_name} ${slot.school_educators.last_name}` : "",
+        class_name: slot.school_classes ? slot.school_classes.name : ""
+      }));
+      setAllSlots(slotsWithNames);
+      
+      // Validate all slots and detect conflicts
+      const conflictMap = getAllTimetableConflicts(slotsWithNames);
+      setConflicts(conflictMap);
+    }
+  };
+
+  const getSlotForCell = (day: number, period: number) => {
+    return allSlots.find(s => s.day_of_week === day && s.period_number === period);
+  };
+
+  const getTeacherLoad = (teacherId: string) => {
+    return allSlots.filter(s => s.educator_id === teacherId).length;
+  };
+
+  const handleDragStart = (slot: TimetableSlot) => {
+    setDraggedSlot(slot);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (day: number, period: number) => {
+    if (!draggedSlot) return;
+
+    // Create updated slot
+    const updatedSlot = {
+      ...draggedSlot,
+      day_of_week: day,
+      period_number: period,
+    };
+
+    // Validate before updating
+    const validationConflicts = validateTimetableSlot(allSlots, updatedSlot);
+    const hasErrors = validationConflicts.some(c => c.severity === 'error');
+
+    if (hasErrors) {
+      const errorMessages = validationConflicts
+        .filter(c => c.severity === 'error')
+        .map(c => c.message)
+        .join('\n');
+      
+      alert(`Cannot move slot:\n${errorMessages}`);
+      setDraggedSlot(null);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Update slot position
+      const { error } = await supabase
+        .from("timetable_slots")
+        .update({
+          day_of_week: day,
+          period_number: period,
+        })
+        .eq("id", draggedSlot.id);
+
+      if (error) throw error;
+      
+      await loadAllSlots();
+      setDraggedSlot(null);
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const autoGenerateTimetable = async () => {
+    if (!confirm("This will generate a timetable automatically. Continue?")) return;
+    
+    if (classes.length === 0) {
+      alert("No classes found. Please create classes first.");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      // Simple auto-generation logic
+      const newSlots: any[] = [];
+      let slotIndex = 0;
+
+      teachers.forEach((teacher, teacherIndex) => {
+        // Assign 5 periods per teacher across the week
+        for (let i = 0; i < 5; i++) {
+          const day = (teacherIndex % 6) + 1; // Distribute across days
+          const period = (slotIndex % 10) + 1;
+          const classIndex = i % classes.length;
+          
+          newSlots.push({
+            timetable_id: timetableId,
+            educator_id: teacher.id,
+            class_id: classes[classIndex].id,
+            day_of_week: day,
+            period_number: period,
+            start_time: timeSlots[period - 1].split("-")[0],
+            end_time: timeSlots[period - 1].split("-")[1],
+            subject_name: "General",
+            room_number: `R${period}`,
+          });
+          
+          slotIndex++;
+        }
+      });
+
+      const { error } = await supabase
+        .from("timetable_slots")
+        .insert(newSlots);
+
+      if (error) throw error;
+      
+      await loadAllSlots();
+      alert("Timetable generated successfully!");
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const publishTimetable = async () => {
+    if (!confirm("Publish this timetable? It will be visible to all teachers.")) return;
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("timetables")
+        .update({ status: "published" })
+        .eq("id", timetableId);
+
+      if (error) throw error;
+      
+      setPublishStatus("published");
+      alert("Timetable published successfully!");
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCellClick = (day: number, period: number) => {
+    const existingSlot = getSlotForCell(day, period);
+    if (existingSlot) return; // Don't open modal if slot exists
+    
+    setSelectedCell({ day, period });
+    setNewSlot({
+      teacher_id: "",
+      class_id: "",
+      subject_name: "",
+      room_number: "",
+    });
+    setShowAddModal(true);
+  };
+
+  const handleAddSlot = async () => {
+    if (!selectedCell || !newSlot.teacher_id || !newSlot.class_id || !newSlot.subject_name) {
+      alert("Please fill all required fields");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const [startTime, endTime] = timeSlots[selectedCell.period - 1].split("-");
+      
+      const { error } = await supabase
+        .from("timetable_slots")
+        .insert({
+          timetable_id: timetableId,
+          educator_id: newSlot.teacher_id,
+          class_id: newSlot.class_id,
+          day_of_week: selectedCell.day,
+          period_number: selectedCell.period,
+          start_time: startTime,
+          end_time: endTime,
+          subject_name: newSlot.subject_name,
+          room_number: newSlot.room_number || `R${selectedCell.period}`,
+        });
+
+      if (error) throw error;
+      
+      await loadAllSlots();
+      setShowAddModal(false);
+      setSelectedCell(null);
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteSlot = async (slotId: string) => {
+    if (!confirm("Delete this slot?")) return;
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("timetable_slots")
+        .delete()
+        .eq("id", slotId);
+
+      if (error) throw error;
+      
+      await loadAllSlots();
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-2xl p-6 border border-indigo-100">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+              Timetable Builder
+            </h1>
+            <p className="text-gray-600 text-sm sm:text-base">
+              Drag & drop to build timetable with automatic conflict detection
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <span className={`px-4 py-2 rounded-lg font-medium ${
+              publishStatus === "published" 
+                ? "bg-green-100 text-green-800" 
+                : "bg-yellow-100 text-yellow-800"
+            }`}>
+              {publishStatus === "published" ? "Published" : "Draft"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Conflicts Alert */}
+      {conflicts.size > 0 && showConflicts && (
+        <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4">
+          <div className="flex justify-between items-start mb-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <h3 className="font-bold text-red-900">
+                {conflicts.size} Slot(s) with Conflicts Detected
+              </h3>
+            </div>
+            <button
+              onClick={() => setShowConflicts(false)}
+              className="text-red-600 hover:text-red-800"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {Array.from(conflicts.entries()).map(([slotId, slotConflicts]) => {
+              const slot = allSlots.find(s => s.id === slotId);
+              if (!slot) return null;
+              
+              return (
+                <div key={slotId} className="bg-white p-3 rounded-lg border border-red-200">
+                  <div className="font-medium text-sm text-gray-900 mb-1">
+                    {slot.teacher_name} - {days[slot.day_of_week - 1]} Period {slot.period_number}
+                  </div>
+                  <ul className="list-disc list-inside space-y-1">
+                    {slotConflicts.map((conflict, idx) => (
+                      <li key={idx} className={`text-xs ${
+                        conflict.severity === 'error' ? 'text-red-700' : 'text-yellow-700'
+                      }`}>
+                        {conflict.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 flex gap-3">
+        <button
+          onClick={autoGenerateTimetable}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 transition"
+        >
+          <Sparkles className="h-4 w-4" />
+          Auto-Generate
+        </button>
+        <button
+          onClick={() => loadAllSlots()}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition"
+        >
+          <Save className="h-4 w-4" />
+          Save
+        </button>
+        <button
+          onClick={publishTimetable}
+          disabled={loading || publishStatus === "published"}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition"
+        >
+          <Send className="h-4 w-4" />
+          Publish
+        </button>
+      </div>
+
+      {/* Teacher Load Indicators */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <h3 className="font-semibold text-gray-900 mb-3">Teacher Load</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {teachers.map(teacher => {
+            const load = getTeacherLoad(teacher.id);
+            const percentage = (load / 30) * 100;
+            return (
+              <div key={teacher.id} className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {teacher.first_name} {teacher.last_name}
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all ${
+                        percentage > 100 ? "bg-red-500" :
+                        percentage > 80 ? "bg-yellow-500" :
+                        "bg-green-500"
+                      }`}
+                      style={{ width: `${Math.min(percentage, 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-medium text-gray-600">
+                    {load}/30
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Timetable Grid */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900 sticky left-0 bg-gray-50 z-10">
+                Period / Day
+              </th>
+              {days.map((day) => (
+                <th key={day} className="border border-gray-200 px-4 py-3 text-center text-sm font-semibold text-gray-900 min-w-[150px]">
+                  {day}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {periods.map((period) => (
+              <tr key={period}>
+                <td className="border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
+                  <div>
+                    <div>Period {period}</div>
+                    <div className="text-xs text-gray-500">{timeSlots[period - 1]}</div>
+                  </div>
+                </td>
+                {days.map((day, dayIndex) => {
+                  const slot = getSlotForCell(dayIndex + 1, period);
+                  const isFree = !slot;
+                  
+                  return (
+                    <td
+                      key={`${day}-${period}`}
+                      className={`border border-gray-200 px-2 py-2 text-sm ${
+                        isFree ? "bg-green-50 cursor-pointer hover:bg-green-100" : "bg-white"
+                      }`}
+                      onDragOver={handleDragOver}
+                      onDrop={() => handleDrop(dayIndex + 1, period)}
+                      onClick={() => isFree && handleCellClick(dayIndex + 1, period)}
+                    >
+                      {slot ? (
+                        (() => {
+                          const slotConflicts = slot.id ? conflicts.get(slot.id) || [] : [];
+                          const hasConflict = slotConflicts.length > 0;
+                          const hasError = slotConflicts.some(c => c.severity === 'error');
+                          
+                          return (
+                            <div
+                              draggable
+                              onDragStart={() => handleDragStart(slot)}
+                              className={`p-2 border rounded cursor-move transition relative group ${
+                                hasError
+                                  ? "bg-red-100 border-red-500 hover:bg-red-200"
+                                  : hasConflict
+                                  ? "bg-yellow-100 border-yellow-500 hover:bg-yellow-200"
+                                  : "bg-indigo-100 border-indigo-300 hover:bg-indigo-200"
+                              }`}
+                              title={hasConflict ? slotConflicts.map(c => c.message).join('\n') : ''}
+                            >
+                              {slot.id && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteSlot(slot.id!);
+                                  }}
+                                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs hover:bg-red-600 transition"
+                                  title="Delete slot"
+                                >
+                                  ×
+                                </button>
+                              )}
+                              {hasError && (
+                                <div className="flex items-center gap-1 mb-1">
+                                  <AlertTriangle className="h-3 w-3 text-red-600" />
+                                  <span className="text-xs text-red-600 font-bold">Conflict!</span>
+                                </div>
+                              )}
+                              <div className={`font-medium text-xs truncate ${
+                                hasError ? "text-red-900" : hasConflict ? "text-yellow-900" : "text-indigo-900"
+                              }`}>
+                                {slot.teacher_name}
+                              </div>
+                              <div className={`text-xs truncate ${
+                                hasError ? "text-red-700" : hasConflict ? "text-yellow-700" : "text-indigo-700"
+                              }`}>
+                                {slot.subject_name}
+                              </div>
+                              <div className={`text-xs ${
+                                hasError ? "text-red-600" : hasConflict ? "text-yellow-600" : "text-indigo-600"
+                              }`}>
+                                {slot.class_name} • {slot.room_number}
+                              </div>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <div className="p-2 text-center text-xs text-green-600 font-medium hover:text-green-700">
+                          + Add Slot
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Legend */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <h3 className="font-semibold text-gray-900 mb-3">Legend</h3>
+        <div className="flex flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-50 border border-green-200 rounded"></div>
+            <span className="text-sm text-gray-600">Free Period (Click to add)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-indigo-100 border border-indigo-300 rounded"></div>
+            <span className="text-sm text-gray-600">Assigned Period (Drag to move)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-500 rounded"></div>
+            <span className="text-sm text-gray-600">Load: 0-80%</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+            <span className="text-sm text-gray-600">Load: 80-100%</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-500 rounded"></div>
+            <span className="text-sm text-gray-600">Load: &gt;100%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Slot Modal */}
+      {showAddModal && selectedCell && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Add Slot - {days[selectedCell.day - 1]} Period {selectedCell.period}
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Time: {timeSlots[selectedCell.period - 1]}
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Teacher *
+                </label>
+                <select
+                  value={newSlot.teacher_id}
+                  onChange={(e) => setNewSlot({ ...newSlot, teacher_id: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">Select Teacher</option>
+                  {teachers.map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.first_name} {teacher.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Class *
+                </label>
+                <select
+                  value={newSlot.class_id}
+                  onChange={(e) => setNewSlot({ ...newSlot, class_id: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">Select Class</option>
+                  {classes.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name} ({cls.grade}{cls.section ? `-${cls.section}` : ''})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Subject *
+                </label>
+                <input
+                  type="text"
+                  value={newSlot.subject_name}
+                  onChange={(e) => setNewSlot({ ...newSlot, subject_name: e.target.value })}
+                  placeholder="e.g., Mathematics"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Room Number
+                </label>
+                <input
+                  type="text"
+                  value={newSlot.room_number}
+                  onChange={(e) => setNewSlot({ ...newSlot, room_number: e.target.value })}
+                  placeholder="e.g., R101"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setSelectedCell(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddSlot}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 transition"
+              >
+                {loading ? "Adding..." : "Add Slot"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default TimetableBuilderEnhanced;

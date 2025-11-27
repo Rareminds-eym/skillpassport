@@ -8,7 +8,10 @@ interface PortfolioContextType {
   settings: PortfolioSettings;
   updateSettings: (newSettings: Partial<PortfolioSettings>) => void;
   setStudent: (student: Student) => void;
+  resetToAuthUser: () => void;
   isLoading: boolean;
+  isManuallySet: boolean; // Indicates if viewing another student's portfolio
+  viewerRole: string | null; // Role of the person viewing (educator, admin, etc.)
 }
 
 const defaultDisplayPreferences: DisplayPreferences = {
@@ -21,7 +24,7 @@ const defaultDisplayPreferences: DisplayPreferences = {
 };
 
 const defaultSettings: PortfolioSettings = {
-  layout: 'modern',
+  layout: 'infographic',
   primaryColor: '#3b82f6',
   secondaryColor: '#1e40af',
   accentColor: '#60a5fa',
@@ -49,14 +52,16 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
   const [student, _setStudent] = useState<Student | null>(null);
   const [settings, setSettings] = useState<PortfolioSettings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
+  const [isManuallySet, setIsManuallySet] = useState(false); // Track if student was manually set
 
   const setStudent = async (studentData: Student) => {
     setIsLoading(true);
+    setIsManuallySet(true); // Mark as manually set
     try {
       if (studentData.email) {
         // Use the new portfolio service to get full student data from relational tables
         const result = await getStudentPortfolioByEmail(studentData.email);
-        
+
         if (result.success && result.data) {
           console.log('✅ Student portfolio data loaded via setStudent');
           _setStudent(result.data as Student);
@@ -77,9 +82,10 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
     }
   };
 
-  console.log('PortfolioProvider render:', { 
-    student: student ? { email: student.email, name: student.name || student.profile?.name } : null, 
-    isLoading 
+  console.log('PortfolioProvider render:', {
+    student: student ? { email: student.email, name: student.name || student.profile?.name } : null,
+    isLoading,
+    isManuallySet
   });
 
   useEffect(() => {
@@ -98,6 +104,11 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
   // Load student data when auth is ready
   useEffect(() => {
     const loadStudentData = async () => {
+      // If student was manually set (e.g., educator viewing a specific student), don't override it
+      if (isManuallySet) {
+        return;
+      }
+
       // Wait for auth to finish loading
       if (authLoading) {
         console.log('⏳ Waiting for auth to load...');
@@ -124,7 +135,7 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
       try {
         // Use the new portfolio service to fetch from relational tables
         const result = await getStudentPortfolioByEmail(user.email);
-        
+
         if (result.success && result.data) {
           console.log('✅ Student portfolio data loaded successfully');
           console.log('📊 Data includes:', {
@@ -147,7 +158,7 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
     };
 
     loadStudentData();
-  }, [user, authLoading, student]);
+  }, [user, authLoading, student, isManuallySet]);
 
   const updateSettings = (newSettings: Partial<PortfolioSettings>) => {
     const updatedSettings = { ...settings, ...newSettings };
@@ -155,12 +166,20 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
     localStorage.setItem('portfolioSettings', JSON.stringify(updatedSettings));
   };
 
+  const resetToAuthUser = () => {
+    setIsManuallySet(false);
+    _setStudent(null); // Clear current student to trigger reload
+  };
+
   const value: PortfolioContextType = {
     student,
     settings,
     updateSettings,
     setStudent,
+    resetToAuthUser,
     isLoading,
+    isManuallySet,
+    viewerRole: user?.role || null,
   };
 
   return (

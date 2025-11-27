@@ -3,9 +3,10 @@
  * Handles Razorpay payment integration for subscription plans
  */
 
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../../lib/supabaseClient';
 
-const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID;
+// Use TEST_ prefixed key for easy identification, fallback to regular key for backward compatibility
+const RAZORPAY_KEY_ID = import.meta.env.TEST_VITE_RAZORPAY_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY_ID;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const DEMO_MODE = false; // Production mode with Supabase Edge Functions
 
@@ -36,9 +37,15 @@ export const loadRazorpayScript = () => {
  */
 export const createRazorpayOrder = async (orderData) => {
   try {
+    console.log('create-razorpay-order', orderData);
+
     // Get auth token for authenticated requests
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
+
+    if (!token) {
+      throw new Error('No authentication token available');
+    }
 
     // Call Supabase Edge Function to create Razorpay order
     const response = await fetch(`${SUPABASE_URL}/functions/v1/create-razorpay-order`, {
@@ -51,13 +58,28 @@ export const createRazorpayOrder = async (orderData) => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to create order');
+      const errorText = await response.text();
+      console.error('❌ Order creation failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      });
+
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { error: errorText || 'Failed to create order' };
+      }
+
+      throw new Error(errorData.error || `Failed to create order (${response.status})`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log('✅ Order created successfully:', result);
+    return result;
   } catch (error) {
-    console.error('Error creating Razorpay order:', error);
+    console.error('❌ Error creating Razorpay order:', error);
     throw error;
   }
 };
@@ -103,9 +125,20 @@ export const verifyPayment = async (paymentData) => {
 export const saveSubscriptionToDatabase = async (subscriptionData) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) {
       throw new Error('User not authenticated');
+    }
+
+    // Map studentType to valid user_role
+    let userRole = 'School Student'; // Default
+    if (subscriptionData.studentType === 'educator') {
+      userRole = 'Educator';
+    } else if (subscriptionData.studentType === 'admin') {
+      userRole = 'Admin';
+    } else {
+      // For 'school' and 'university' types, map to 'School Student'
+      userRole = 'School Student';
     }
 
     // Prepare subscription data matching schema
@@ -122,7 +155,8 @@ export const saveSubscriptionToDatabase = async (subscriptionData) => {
       status: 'active',
       subscription_start_date: new Date().toISOString(),
       subscription_end_date: calculateEndDate(subscriptionData.plan.duration),
-      auto_renew: false
+      auto_renew: false,
+      user_role: userRole // Add user_role
     };
 
     const { data, error } = await supabase
@@ -151,7 +185,7 @@ export const saveSubscriptionToDatabase = async (subscriptionData) => {
 export const savePaymentTransaction = async (transactionData) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) {
       throw new Error('User not authenticated');
     }
@@ -192,7 +226,7 @@ export const savePaymentTransaction = async (transactionData) => {
  */
 function calculateEndDate(duration) {
   const now = new Date();
-  
+
   if (duration.toLowerCase().includes('month')) {
     now.setMonth(now.getMonth() + 1);
   } else if (duration.toLowerCase().includes('year')) {
@@ -201,7 +235,7 @@ function calculateEndDate(duration) {
     // Default to 1 month
     now.setMonth(now.getMonth() + 1);
   }
-  
+
   return now.toISOString();
 }
 
@@ -262,7 +296,7 @@ export const pauseRazorpaySubscription = async (razorpaySubscriptionId, pauseMon
     // Note: Razorpay pause API may need to be implemented as a separate edge function
     // For now, using the cancel-subscription endpoint with pause logic
     console.log('⏸️ Pausing subscription for', pauseMonths, 'month(s)');
-    
+
     // You may need to implement a separate pause-subscription edge function
     // This is a placeholder that needs the actual Razorpay pause API integration
     return {
@@ -282,12 +316,12 @@ export const pauseRazorpaySubscription = async (razorpaySubscriptionId, pauseMon
 };
 
 /**
- * Initialize Razorpay payment
+ * Initialize Razorpay payment with redirect flow
  * @param {Object} params - Payment parameters
  * @param {Object} params.plan - Selected subscription plan
  * @param {Object} params.userDetails - User information
- * @param {Function} params.onSuccess - Success callback
- * @param {Function} params.onFailure - Failure callback
+ * @param {Function} params.onSuccess - Success callback (optional, for backward compatibility)
+ * @param {Function} params.onFailure - Failure callback (optional, for backward compatibility)
  */
 export const initiateRazorpayPayment = async ({
   plan,
@@ -296,6 +330,12 @@ export const initiateRazorpayPayment = async ({
   onFailure,
 }) => {
   try {
+    // Store plan details in localStorage for success page
+    localStorage.setItem('payment_plan_details', JSON.stringify({
+      ...plan,
+      studentType: userDetails.studentType
+    }));
+
     // Load Razorpay script
     const scriptLoaded = await loadRazorpayScript();
     if (!scriptLoaded) {
@@ -312,7 +352,10 @@ export const initiateRazorpayPayment = async ({
       userName: userDetails.name,
     });
 
-    // Razorpay checkout options
+    // Get current origin for redirect URLs
+    const origin = window.location.origin;
+
+    // Razorpay checkout options with redirect
     const options = {
       key: RAZORPAY_KEY_ID,
       amount: orderData.amount,
@@ -333,61 +376,52 @@ export const initiateRazorpayPayment = async ({
         color: '#2563eb', // Blue color from your design
       },
       handler: async function (response) {
-        try {
-          // Verify payment on backend
-          const verificationResult = await verifyPayment({
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-            plan_id: plan.id,
-          });
-
-          if (verificationResult.success) {
-            // Save subscription to database
-            const subscriptionResult = await saveSubscriptionToDatabase({
-              plan,
-              userDetails,
-              paymentData: response
-            });
-
-            if (subscriptionResult.success) {
-              // Save payment transaction with actual payment method
-              await savePaymentTransaction({
-                subscription_id: subscriptionResult.data.id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id,
-                amount: parseFloat(plan.price),
-                currency: 'INR',
-                payment_method: verificationResult.payment_method || 'card'
-              });
-
-              onSuccess({
-                ...verificationResult,
-                subscription: subscriptionResult.data
-              });
-            } else {
-              console.error('Failed to save subscription:', subscriptionResult.error);
-              onSuccess(verificationResult); // Continue anyway, payment is successful
-            }
-          } else {
-            onFailure(new Error('Payment verification failed'));
-          }
-        } catch (error) {
-          onFailure(error);
-        }
+        // Redirect to success page with payment parameters
+        const successUrl = new URL('/subscription/payment/success', origin);
+        successUrl.searchParams.set('razorpay_payment_id', response.razorpay_payment_id);
+        successUrl.searchParams.set('razorpay_order_id', response.razorpay_order_id);
+        successUrl.searchParams.set('razorpay_signature', response.razorpay_signature);
+        
+        window.location.href = successUrl.toString();
       },
       modal: {
         ondismiss: function () {
-          onFailure(new Error('Payment cancelled by user'));
+          // Redirect to failure page
+          const failureUrl = new URL('/subscription/payment/failure', origin);
+          failureUrl.searchParams.set('razorpay_order_id', orderData.id);
+          failureUrl.searchParams.set('error_code', 'PAYMENT_CANCELLED');
+          failureUrl.searchParams.set('error_description', 'Payment was cancelled by user');
+          
+          window.location.href = failureUrl.toString();
         },
       },
     };
 
     // Open Razorpay checkout
     const razorpay = new window.Razorpay(options);
+    
+    // Handle payment failure
+    razorpay.on('payment.failed', function (response) {
+      const failureUrl = new URL('/subscription/payment/failure', origin);
+      failureUrl.searchParams.set('razorpay_order_id', orderData.id);
+      failureUrl.searchParams.set('razorpay_payment_id', response.error.metadata?.payment_id || '');
+      failureUrl.searchParams.set('error_code', response.error.code || 'PAYMENT_FAILED');
+      failureUrl.searchParams.set('error_description', response.error.description || 'Payment failed');
+      failureUrl.searchParams.set('error_reason', response.error.reason || '');
+      
+      window.location.href = failureUrl.toString();
+    });
+    
     razorpay.open();
   } catch (error) {
     console.error('Error initiating payment:', error);
-    onFailure(error);
+    
+    // Redirect to failure page on error
+    const origin = window.location.origin;
+    const failureUrl = new URL('/subscription/payment/failure', origin);
+    failureUrl.searchParams.set('error_code', 'INITIALIZATION_ERROR');
+    failureUrl.searchParams.set('error_description', error.message || 'Failed to initialize payment');
+    
+    window.location.href = failureUrl.toString();
   }
 };

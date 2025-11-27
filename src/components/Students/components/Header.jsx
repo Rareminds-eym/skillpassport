@@ -85,6 +85,7 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: "applications", label: "Applications" },
     { id: "career-ai", label: "Career AI", icon: "✨" },
     { id: "assignments", label: "Assignments" },
+    {id: "clubs", label: "Skills & Co-Curriculars"},
     { id: "messages", label: "Messages" },
     { id: "analytics", label: "Analytics" },
   ];
@@ -142,6 +143,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
+                  } else if (tab.id === "clubs") {
+                    navigate("/student/clubs");
                   } else if (tab.id === "career-ai") {
                     navigate("/student/career-ai");
                   } else if (tab.id === "messages") {
@@ -205,6 +208,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
+                  } else if (tab.id === "clubs") {
+                    navigate("/student/clubs");
                   } else if (tab.id === "career-ai") {
                     navigate("/student/career-ai");
                   } else if (tab.id === "messages") {
@@ -350,6 +355,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
+                   } else if (tab.id === "clubs") {
+                    navigate("/student/clubs");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
                   } else if (tab.id === "analytics") {

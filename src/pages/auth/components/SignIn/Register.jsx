@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import loginIllustration from "../../../../assets/images/auth/Recruiter-illustration.png";
-import studentIllustration from "../../../../assets/images/auth/Student-illustration.jpg"; 
+import studentIllustration from "../../../../assets/images/auth/Student-illustration.jpg";
 import educatorIllustration from "../../../../assets/images/auth/Educator-illustration.jpg";
 import LoginModal from '../../../../components/Subscription/LoginModal';
 
@@ -27,7 +27,8 @@ import {
 import FeatureCard from "../ui/FeatureCard";
 
 export default function UnifiedSignup() {
-  const [activeTab, setActiveTab] = useState("school");
+  const { type } = useParams();
+  const [activeTab, setActiveTab] = useState(type || "school");
   const [studentType, setStudentType] = useState("school");
   const [recruitmentType, setRecruitmentType] = useState("admin");
   const [currentStep, setCurrentStep] = useState(1);
@@ -36,6 +37,21 @@ export default function UnifiedSignup() {
   const [showRecruiterInfo, setShowRecruiterInfo] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const navigate = useNavigate();
+
+  // Sync URL with active tab
+  useEffect(() => {
+    if (type && ["school", "college", "university", "recruitment"].includes(type)) {
+      setActiveTab(type);
+    }
+  }, [type]);
+
+  // Update URL when tab changes
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    navigate(`/register/${tabId}`);
+    setCurrentStep(1);
+    setSubscriptionType(null);
+  };
 
   const totalSteps = 2;
 
@@ -111,34 +127,49 @@ export default function UnifiedSignup() {
     },
   };
 
+  // Helper function to map student type to entity-specific type
+  const getEntitySpecificType = (type, tab) => {
+    // For admin, student, and educator, map to entity-specific types
+    if (type === "admin") {
+      if (tab === "college") return "college-admin";
+      if (tab === "university") return "university-admin";
+      return "admin"; // school
+    } else if (type === "student") {
+      if (tab === "college") return "college-student";
+      if (tab === "university") return "university-student";
+      return "school-student"; // school
+    } else if (type === "educator") {
+      if (tab === "college") return "college-educator";
+      if (tab === "university") return "university-educator";
+      return "school-educator"; // school
+    }
+    return type; // fallback for other types
+  };
+
   const handleGetStarted = () => {
-    if (activeTab === "school" || activeTab === "college") {
+    if (activeTab === "school" || activeTab === "college" || activeTab === "university") {
       if (!subscriptionType) return;
-      
+
       if (subscriptionType === "have") {
         navigate(`/signin/${activeTab}-${studentType}`);
       } else if (subscriptionType === "purchase") {
-        navigate(`/subscription/plans?type=${studentType}&mode=purchase`);
+        const entityType = getEntitySpecificType(studentType, activeTab);
+        navigate(`/subscription/plans/${entityType}/purchase`);
       } else if (subscriptionType === "view") {
-        navigate(`/subscription/plans?type=${studentType}&mode=view`);
+        const entityType = getEntitySpecificType(studentType, activeTab);
+        navigate(`/subscription/plans/${entityType}/view`);
       }
     } else if (activeTab === "recruitment") {
-      if (recruitmentType === "admin") {
-        navigate("/signup/recruitment-admin");
-      } else {
-        navigate("/signup/recruitment-recruiter");
-      }
-    } else if (activeTab === "university") {
       if (!subscriptionType) return;
-      
+
       if (subscriptionType === "have") {
-        // Show login modal for all user types
-        setShowLoginModal(true);
-        return;
+        navigate("/login/recruiter");
       } else if (subscriptionType === "purchase") {
-        navigate(`/subscription/plans?type=${studentType}&mode=purchase`);
+        const entityType = recruitmentType === "admin" ? "recruitment-admin" : "recruitment-recruiter";
+        navigate(`/subscription/plans/${entityType}/purchase`);
       } else if (subscriptionType === "view") {
-        navigate(`/subscription/plans?type=${studentType}&mode=view`);
+        const entityType = recruitmentType === "admin" ? "recruitment-admin" : "recruitment-recruiter";
+        navigate(`/subscription/plans/${entityType}/view`);
       }
     } else {
       navigate(`/signin/${activeTab}`);
@@ -161,6 +192,14 @@ export default function UnifiedSignup() {
     setStudentType(type);
     setSubscriptionType(null);
     // Auto-advance to step 2 for all user types in school/college/university
+    setCurrentStep(2);
+  };
+
+  // Handle recruitment type change
+  const handleRecruitmentTypeChange = (type) => {
+    setRecruitmentType(type);
+    setSubscriptionType(null);
+    // Auto-advance to step 2 for recruitment
     setCurrentStep(2);
   };
 
@@ -305,12 +344,11 @@ export default function UnifiedSignup() {
                 ].map(({ id, label, Icon }) => (
                   <button
                     key={id}
-                    onClick={() => setActiveTab(id)}
-                    className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg transition-all ${
-                      activeTab === id
-                        ? "bg-white/20 backdrop-blur-sm text-white"
-                        : "text-white/70 hover:text-white"
-                    }`}
+                    onClick={() => handleTabChange(id)}
+                    className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg transition-all ${activeTab === id
+                      ? "bg-white/20 backdrop-blur-sm text-white"
+                      : "text-white/70 hover:text-white"
+                      }`}
                   >
                     <Icon className="w-4 h-4" />
                     <span className="font-medium text-sm">{label}</span>
@@ -319,19 +357,17 @@ export default function UnifiedSignup() {
               </div>
             )}
 
-            {/* Step indicator for School/College/University on mobile */}
-            {(activeTab === "school" || activeTab === "college" || activeTab === "university") && (
+            {/* Step indicator for all tabs on mobile */}
+            {(activeTab === "school" || activeTab === "college" || activeTab === "university" || activeTab === "recruitment") && (
               <div className="flex items-center justify-center mb-6">
                 <div className="flex items-center space-x-4">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                    currentStep >= 1 ? 'bg-white text-blue-600' : 'bg-white/20 text-white/60'
-                  }`}>
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${currentStep >= 1 ? 'bg-white text-blue-600' : 'bg-white/20 text-white/60'
+                    }`}>
                     1
                   </div>
                   <div className={`w-16 h-1 ${currentStep >= 2 ? 'bg-white' : 'bg-white/20'}`}></div>
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                    currentStep >= 2 ? 'bg-white text-blue-600' : 'bg-white/20 text-white/60'
-                  }`}>
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${currentStep >= 2 ? 'bg-white text-blue-600' : 'bg-white/20 text-white/60'
+                    }`}>
                     2
                   </div>
                 </div>
@@ -340,7 +376,7 @@ export default function UnifiedSignup() {
 
             <div className="text-center mb-6">
               <h3 className="text-3xl font-bold text-white">
-                {(activeTab === "school" || activeTab === "college" || activeTab === "university") 
+                {(activeTab === "school" || activeTab === "college" || activeTab === "university")
                   ? (currentStep === 1 ? titles[activeTab].login : "Subscription")
                   : titles[activeTab].login}
               </h3>
@@ -396,7 +432,7 @@ export default function UnifiedSignup() {
                       </div>
                     </div>
                   )}
-                  
+
                   {currentStep === 2 && (
                     <div className="mb-6">
                       <p className="text-white mb-3 font-medium">Subscription:</p>
@@ -439,7 +475,7 @@ export default function UnifiedSignup() {
                   )}
                 </>
               )}
-              
+
               {/* University Section for Mobile */}
               {activeTab === "university" && (
                 <>
@@ -483,7 +519,7 @@ export default function UnifiedSignup() {
                       </div>
                     </div>
                   )}
-                  
+
                   {currentStep === 2 && (
                     <div className="mb-6">
                       <p className="text-white mb-3 font-medium">Subscription:</p>
@@ -526,9 +562,9 @@ export default function UnifiedSignup() {
                   )}
                 </>
               )}
-              
+
               {/* Recruitment Section for Mobile */}
-              {activeTab === "recruitment" && (
+              {activeTab === "recruitment" && currentStep === 1 && (
                 <div className="mb-6">
                   <p className="text-white mb-3 font-medium">
                     I am {recruitmentType === "admin" ? "an" : "a"}:
@@ -540,11 +576,11 @@ export default function UnifiedSignup() {
                         name="recruitmentTypeMobile"
                         value="admin"
                         checked={recruitmentType === "admin"}
-                        onChange={(e) => setRecruitmentType(e.target.value)}
+                        onChange={(e) => handleRecruitmentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-white">Admin</span>
-                      <button 
+                      <button
                         type="button"
                         onClick={() => handleInfoClick("admin")}
                         className="text-blue-300 hover:text-blue-100 ml-auto transition-all duration-200 hover:scale-110 hover:drop-shadow-lg"
@@ -552,18 +588,18 @@ export default function UnifiedSignup() {
                         <Info className="w-4 h-4" />
                       </button>
                     </label>
-                    
+
                     <label className="flex items-center space-x-3 cursor-pointer">
                       <input
                         type="radio"
                         name="recruitmentTypeMobile"
                         value="recruiter"
                         checked={recruitmentType === "recruiter"}
-                        onChange={(e) => setRecruitmentType(e.target.value)}
+                        onChange={(e) => handleRecruitmentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-white">Recruiter</span>
-                      <button 
+                      <button
                         type="button"
                         onClick={() => handleInfoClick("recruiter")}
                         className="text-blue-300 hover:text-blue-100 ml-auto transition-all duration-200 hover:scale-110 hover:drop-shadow-lg"
@@ -572,7 +608,7 @@ export default function UnifiedSignup() {
                       </button>
                     </label>
                   </div>
-                  
+
                   {/* Info modals for mobile */}
                   <AnimatePresence>
                     {showAdminInfo && (
@@ -598,7 +634,7 @@ export default function UnifiedSignup() {
                         </div>
                       </motion.div>
                     )}
-                    
+
                     {showRecruiterInfo && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
@@ -625,16 +661,80 @@ export default function UnifiedSignup() {
                   </AnimatePresence>
                 </div>
               )}
-              
-              <button
-                onClick={handleGetStarted}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-              >
-                {activeTab === "recruitment" ? 
-                  (recruitmentType === "admin" ? "Create Workspace" : "Join Workspace") : 
-                  "Get Started"
-                }
-              </button>
+
+              {/* Recruitment Subscription Step for Mobile */}
+              {activeTab === "recruitment" && currentStep === 2 && (
+                <div className="mb-6">
+                  <p className="text-white mb-3 font-medium">Subscription:</p>
+                  <div className="space-y-3">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="subscriptionTypeMobile"
+                        value="have"
+                        checked={subscriptionType === "have"}
+                        onChange={(e) => setSubscriptionType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-white">I already have a subscription</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="subscriptionTypeMobile"
+                        value="purchase"
+                        checked={subscriptionType === "purchase"}
+                        onChange={(e) => setSubscriptionType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-white">Purchase subscription</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="subscriptionTypeMobile"
+                        value="view"
+                        checked={subscriptionType === "view"}
+                        onChange={(e) => setSubscriptionType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-white">View My Plan</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Mobile buttons */}
+              {activeTab === "recruitment" && currentStep === 2 ? (
+                <div className="flex space-x-4">
+                  <button
+                    onClick={handleBack}
+                    className="flex-1 bg-white/20 backdrop-blur-sm text-white py-3 px-6 rounded-lg font-medium hover:bg-white/30 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleGetStarted}
+                    disabled={!subscriptionType}
+                    className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {subscriptionType === "have" ? "Sign In" :
+                      subscriptionType === "purchase" ? (recruitmentType === "admin" ? "Create Workspace" : "Join Workspace") :
+                        subscriptionType === "view" ? "See Plan" : "Get Started"
+                    }
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={activeTab === "recruitment" && currentStep === 1 ? handleNext : handleGetStarted}
+                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  {activeTab === "recruitment" && currentStep === 1 ?
+                    "Next" :
+                    "Get Started"
+                  }
+                </button>
+              )}
             </div>
           </div>
 
@@ -651,12 +751,11 @@ export default function UnifiedSignup() {
                 ].map(({ id, label, Icon }) => (
                   <button
                     key={id}
-                    onClick={() => setActiveTab(id)}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
-                      activeTab === id
-                        ? "bg-blue-50 text-[#0a6aba] font-semibold shadow-sm"
-                        : "text-gray-600 hover:text-[#0a6aba]"
-                    }`}
+                    onClick={() => handleTabChange(id)}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${activeTab === id
+                      ? "bg-blue-50 text-[#0a6aba] font-semibold shadow-sm"
+                      : "text-gray-600 hover:text-[#0a6aba]"
+                      }`}
                   >
                     <Icon className="w-5 h-5" />
                     <span className={`tab-link ${activeTab === id ? "text-[#0a6aba]" : ""}`}>
@@ -667,28 +766,26 @@ export default function UnifiedSignup() {
               </div>
             )}
 
-            {/* Step indicator for School/College/University */}
-            {(activeTab === "school" || activeTab === "college" || activeTab === "university") && (
+            {/* Step indicator for all tabs */}
+            {(activeTab === "school" || activeTab === "college" || activeTab === "university" || activeTab === "recruitment") && (
               <div className="flex items-center justify-center mb-8">
                 <div className="flex items-center space-x-4">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                    currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-                  }`}>
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                    }`}>
                     1
                   </div>
                   <div className={`w-16 h-1 ${currentStep >= 2 ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                    currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-                  }`}>
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                    }`}>
                     2
                   </div>
                 </div>
               </div>
             )}
-            
+
             <div className="text-center mb-8">
               <h3 className="text-3xl font-bold text-gray-900">
-                {(activeTab === "school" || activeTab === "college" || activeTab === "university") 
+                {(activeTab === "school" || activeTab === "college" || activeTab === "university")
                   ? (currentStep === 1 ? titles[activeTab].login : "Subscription")
                   : titles[activeTab].login}
               </h3>
@@ -744,7 +841,7 @@ export default function UnifiedSignup() {
                       </div>
                     </div>
                   )}
-                  
+
                   {currentStep === 2 && (
                     <div className="mb-6">
                       <p className="text-gray-700 mb-3 font-medium">Subscription:</p>
@@ -787,7 +884,7 @@ export default function UnifiedSignup() {
                   )}
                 </>
               )}
-              
+
               {/* University Section for Desktop */}
               {activeTab === "university" && (
                 <>
@@ -831,7 +928,7 @@ export default function UnifiedSignup() {
                       </div>
                     </div>
                   )}
-                  
+
                   {currentStep === 2 && (
                     <div className="mb-6">
                       <p className="text-gray-700 mb-3 font-medium">Subscription:</p>
@@ -874,9 +971,9 @@ export default function UnifiedSignup() {
                   )}
                 </>
               )}
-              
+
               {/* Recruitment Section for Desktop */}
-              {activeTab === "recruitment" && (
+              {activeTab === "recruitment" && currentStep === 1 && (
                 <div className="mb-6">
                   <p className="text-gray-700 mb-3 font-medium">
                     I am {recruitmentType === "admin" ? "an" : "a"}:
@@ -888,11 +985,11 @@ export default function UnifiedSignup() {
                         name="recruitmentType"
                         value="admin"
                         checked={recruitmentType === "admin"}
-                        onChange={(e) => setRecruitmentType(e.target.value)}
+                        onChange={(e) => handleRecruitmentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-gray-700">Admin</span>
-                      <button 
+                      <button
                         type="button"
                         onClick={() => handleInfoClick("admin")}
                         className="text-blue-500 hover:text-blue-600 ml-auto transition-all duration-200 hover:scale-110 hover:drop-shadow-lg pl-4"
@@ -901,18 +998,18 @@ export default function UnifiedSignup() {
                         <Info className="w-4 h-4" />
                       </button>
                     </label>
-                    
+
                     <label className="flex items-center space-x-3 cursor-pointer group">
                       <input
                         type="radio"
                         name="recruitmentType"
                         value="recruiter"
                         checked={recruitmentType === "recruiter"}
-                        onChange={(e) => setRecruitmentType(e.target.value)}
+                        onChange={(e) => handleRecruitmentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-gray-700">Recruiter</span>
-                      <button 
+                      <button
                         type="button"
                         onClick={() => handleInfoClick("recruiter")}
                         className="text-blue-500 hover:text-blue-600 ml-auto transition-all duration-200 hover:scale-110 hover:drop-shadow-lg"
@@ -922,7 +1019,7 @@ export default function UnifiedSignup() {
                       </button>
                     </label>
                   </div>
-                  
+
                   {/* Info modals for desktop */}
                   <AnimatePresence>
                     {showAdminInfo && (
@@ -948,7 +1045,7 @@ export default function UnifiedSignup() {
                         </div>
                       </motion.div>
                     )}
-                    
+
                     {showRecruiterInfo && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
@@ -975,7 +1072,49 @@ export default function UnifiedSignup() {
                   </AnimatePresence>
                 </div>
               )}
-              
+
+              {/* Recruitment Subscription Step for Desktop */}
+              {activeTab === "recruitment" && currentStep === 2 && (
+                <div className="mb-6">
+                  <p className="text-gray-700 mb-4 font-medium">Subscription:</p>
+                  <div className="space-y-3">
+                    <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="subscriptionTypeDesktop"
+                        value="have"
+                        checked={subscriptionType === "have"}
+                        onChange={(e) => setSubscriptionType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-gray-700">I already have a subscription</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="subscriptionTypeDesktop"
+                        value="purchase"
+                        checked={subscriptionType === "purchase"}
+                        onChange={(e) => setSubscriptionType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-gray-700">Purchase subscription</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="subscriptionTypeDesktop"
+                        value="view"
+                        checked={subscriptionType === "view"}
+                        onChange={(e) => setSubscriptionType(e.target.value)}
+                        className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      />
+                      <span className="text-gray-700">View My Plan</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
               {/* Action buttons for all sections */}
               {(activeTab === "school" || activeTab === "college" || activeTab === "university") ? (
                 <div className="flex space-x-4">
@@ -992,10 +1131,33 @@ export default function UnifiedSignup() {
                     disabled={currentStep === 2 && !subscriptionType}
                     className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {currentStep < totalSteps ? "Next" : 
+                    {currentStep < totalSteps ? "Next" :
                       subscriptionType === "have" ? "Sign In" :
-                      subscriptionType === "purchase" ? "Buy Now" :
-                      subscriptionType === "view" ? "See Plan" : "Get Started"
+                        subscriptionType === "purchase" ? "Buy Now" :
+                          subscriptionType === "view" ? "See Plan" : "Get Started"
+                    }
+                  </button>
+                </div>
+              ) : activeTab === "recruitment" ? (
+                <div className="flex space-x-4">
+                  {currentStep > 1 && (
+                    <button
+                      onClick={handleBack}
+                      className="flex-1 bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                    >
+                      Back
+                    </button>
+                  )}
+                  <button
+                    onClick={currentStep === 1 ? handleNext : handleGetStarted}
+                    disabled={currentStep === 2 && !subscriptionType}
+                    className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {currentStep === 1 ?
+                      "Next" :
+                      subscriptionType === "have" ? "Sign In" :
+                        subscriptionType === "purchase" ? (recruitmentType === "admin" ? "Create Workspace" : "Join Workspace") :
+                          subscriptionType === "view" ? "See Plan" : "Get Started"
                     }
                   </button>
                 </div>
@@ -1004,17 +1166,14 @@ export default function UnifiedSignup() {
                   onClick={handleGetStarted}
                   className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                 >
-                  {activeTab === "recruitment" ? 
-                    (recruitmentType === "admin" ? "Create Workspace" : "Join Workspace") : 
-                    "Get Started"
-                  }
+                  Get Started
                 </button>
               )}
             </div>
           </div>
         </div>
       </div>
-      
+
       {/* Login Modal for existing subscription users */}
       <LoginModal
         isOpen={showLoginModal}
@@ -1034,6 +1193,6 @@ export default function UnifiedSignup() {
           }
         }}
       />
-    </div> 
+    </div>
   );
 }

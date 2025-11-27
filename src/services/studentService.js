@@ -1,713 +1,435 @@
-import { supabase } from '../utils/api';
-
 /**
- * Student Service - Handles all Supabase operations for student data
+ * Student Service
+ * Handles student registration and profile management
  */
 
-// ==================== STUDENT PROFILE ====================
+import { supabase } from '../lib/supabaseClient';
 
 /**
- * Get student profile by ID
+ * Create a user record in the users table
+ * This is required before creating student record due to FK constraint
+ * @param {string} userId - Auth user ID
+ * @param {Object} userData - User data
+ * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
  */
-export const getStudentProfile = async (studentId) => {
+export const createUserRecord = async (userId, userData) => {
+  try {
+    const { email, firstName, lastName, role, entity_type } = userData;
+
+    const userRecord = {
+      id: userId,
+      email: email,
+      firstName: firstName || null,
+      lastName: lastName || null,
+      role: role || 'student',
+      entity_type: entity_type || 'student',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('users')
+      .insert([userRecord])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error creating user record:', error);
+      return {
+        success: false,
+        data: null,
+        error: error.message
+      };
+    }
+
+    console.log('✅ User record created successfully:', data.id);
+    return {
+      success: true,
+      data: data,
+      error: null
+    };
+  } catch (error) {
+    console.error('❌ Unexpected error creating user record:', error);
+    return {
+      success: false,
+      data: null,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Create a student record in the students table
+ * @param {Object} studentData - Student data
+ * @param {string} userId - Auth user ID
+ * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
+ */
+export const createStudent = async (studentData, userId) => {
+  try {
+    const {
+      name,
+      email,
+      phone,
+      studentType, // 'school', 'college', or 'university'
+      schoolId,
+      collegeId
+    } = studentData;
+
+    // Prepare student record
+    const student = {
+      user_id: userId,
+      name: name,
+      email: email,
+      contact_number: phone || null, // Use contact_number instead of phone
+      student_type: studentType || 'school',
+      school_id: schoolId || null,
+      college_id: collegeId || null,
+      profile: {
+        name: name,
+        email: email,
+        phone: phone || null
+      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('students')
+      .insert([student])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error creating student record:', error);
+      return {
+        success: false,
+        data: null,
+        error: error.message
+      };
+    }
+
+    console.log('✅ Student record created successfully:', data.id);
+    return {
+      success: true,
+      data: data,
+      error: null
+    };
+  } catch (error) {
+    console.error('❌ Unexpected error creating student:', error);
+    return {
+      success: false,
+      data: null,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Complete student registration (creates both user and student records)
+ * @param {string} userId - Auth user ID
+ * @param {Object} registrationData - Complete registration data
+ * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
+ */
+export const completeStudentRegistration = async (userId, registrationData) => {
+  try {
+    const {
+      fullName,
+      email,
+      phone,
+      studentType,
+      schoolId,
+      collegeId
+    } = registrationData;
+
+    // Split name into first and last
+    const nameParts = fullName.trim().split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    // Step 1: Create user record
+    const userResult = await createUserRecord(userId, {
+      email: email,
+      firstName: firstName,
+      lastName: lastName,
+      role: 'student',
+      entity_type: studentType || 'student'
+    });
+
+    if (!userResult.success) {
+      throw new Error(userResult.error || 'Failed to create user record');
+    }
+
+    // Step 2: Create student record
+    const studentResult = await createStudent({
+      name: fullName,
+      email: email,
+      phone: phone,
+      studentType: studentType,
+      schoolId: schoolId,
+      collegeId: collegeId
+    }, userId);
+
+    if (!studentResult.success) {
+      // Try to rollback user record if student creation fails
+      await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId);
+
+      throw new Error(studentResult.error || 'Failed to create student record');
+    }
+
+    return {
+      success: true,
+      data: {
+        user: userResult.data,
+        student: studentResult.data
+      },
+      error: null
+    };
+  } catch (error) {
+    console.error('❌ Error completing student registration:', error);
+    return {
+      success: false,
+      data: null,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Get student by user ID
+ * @param {string} userId - Auth user ID
+ * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
+ */
+export const getStudentByUserId = async (userId) => {
   try {
     const { data, error } = await supabase
       .from('students')
       .select('*')
-      .eq('id', studentId)
+      .eq('user_id', userId)
       .single();
 
-    if (error) throw error;
-    return { data, error: null };
+    if (error) {
+      console.error('❌ Error fetching student:', error);
+      return {
+        success: false,
+        data: null,
+        error: error.message
+      };
+    }
+
+    return {
+      success: true,
+      data: data,
+      error: null
+    };
   } catch (error) {
-    console.error('Error fetching student profile:', error);
-    return { data: null, error };
+    console.error('❌ Unexpected error fetching student:', error);
+    return {
+      success: false,
+      data: null,
+      error: error.message
+    };
   }
 };
 
 /**
  * Update student profile
+ * @param {string} userId - Auth user ID
+ * @param {Object} updates - Profile updates
+ * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
  */
-export const updateStudentProfile = async (studentId, updates) => {
+export const updateStudentProfile = async (userId, updates) => {
   try {
     const { data, error } = await supabase
-      .from('students')
-      .update(updates)
-      .eq('id', studentId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error updating student profile:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Create a new student profile
- */
-export const createStudentProfile = async (studentData) => {
-  try {
-    const { data, error } = await supabase
-      .from('students')
-      .insert([studentData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error creating student profile:', error);
-    return { data: null, error };
-  }
-};
-
-// ==================== EDUCATION ====================
-
-/**
- * Get all education records for a student
- */
-export const getEducation = async (studentId) => {
-  try {
-    const { data, error } = await supabase
-      .from('education')
-      .select('*')
-      .eq('student_id', studentId)
-      .order('year_of_passing', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching education:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Add education record
- */
-export const addEducation = async (educationData) => {
-  try {
-    const { data, error } = await supabase
-      .from('education')
-      .insert([educationData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error adding education:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Update education record
- */
-export const updateEducation = async (educationId, updates) => {
-  try {
-    const { data, error } = await supabase
-      .from('education')
-      .update(updates)
-      .eq('id', educationId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error updating education:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Delete education record
- */
-export const deleteEducation = async (educationId) => {
-  try {
-    const { error } = await supabase
-      .from('education')
-      .delete()
-      .eq('id', educationId);
-
-    if (error) throw error;
-    return { error: null };
-  } catch (error) {
-    console.error('Error deleting education:', error);
-    return { error };
-  }
-};
-
-// ==================== TRAINING ====================
-
-/**
- * Get all training records for a student
- */
-export const getTraining = async (studentId) => {
-  try {
-    const { data, error } = await supabase
-      .from('training')
-      .select('*')
-      .eq('student_id', studentId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching training:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Add training record
- */
-export const addTraining = async (trainingData) => {
-  try {
-    const { data, error } = await supabase
-      .from('training')
-      .insert([trainingData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error adding training:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Update training record
- */
-export const updateTraining = async (trainingId, updates) => {
-  try {
-    const { data, error } = await supabase
-      .from('training')
-      .update(updates)
-      .eq('id', trainingId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error updating training:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Delete training record
- */
-export const deleteTraining = async (trainingId) => {
-  try {
-    const { error } = await supabase
-      .from('training')
-      .delete()
-      .eq('id', trainingId);
-
-    if (error) throw error;
-    return { error: null };
-  } catch (error) {
-    console.error('Error deleting training:', error);
-    return { error };
-  }
-};
-
-// ==================== EXPERIENCE ====================
-
-/**
- * Get all experience records for a student
- */
-export const getExperience = async (studentId) => {
-  try {
-    const { data, error } = await supabase
-      .from('experience')
-      .select('*')
-      .eq('student_id', studentId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching experience:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Add experience record
- */
-export const addExperience = async (experienceData) => {
-  try {
-    const { data, error } = await supabase
-      .from('experience')
-      .insert([experienceData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error adding experience:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Update experience record
- */
-export const updateExperience = async (experienceId, updates) => {
-  try {
-    const { data, error } = await supabase
-      .from('experience')
-      .update(updates)
-      .eq('id', experienceId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error updating experience:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Delete experience record
- */
-export const deleteExperience = async (experienceId) => {
-  try {
-    const { error } = await supabase
-      .from('experience')
-      .delete()
-      .eq('id', experienceId);
-
-    if (error) throw error;
-    return { error: null };
-  } catch (error) {
-    console.error('Error deleting experience:', error);
-    return { error };
-  }
-};
-
-// ==================== TECHNICAL SKILLS ====================
-
-/**
- * Get all technical skills for a student
- */
-export const getTechnicalSkills = async (studentId) => {
-  try {
-    const { data, error } = await supabase
-      .from('technical_skills')
-      .select('*')
-      .eq('student_id', studentId)
-      .order('level', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching technical skills:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Add technical skill
- */
-export const addTechnicalSkill = async (skillData) => {
-  try {
-    const { data, error } = await supabase
-      .from('technical_skills')
-      .insert([skillData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error adding technical skill:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Update technical skill
- */
-export const updateTechnicalSkill = async (skillId, updates) => {
-  try {
-    const { data, error } = await supabase
-      .from('technical_skills')
-      .update(updates)
-      .eq('id', skillId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error updating technical skill:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Delete technical skill
- */
-export const deleteTechnicalSkill = async (skillId) => {
-  try {
-    const { error } = await supabase
-      .from('technical_skills')
-      .delete()
-      .eq('id', skillId);
-
-    if (error) throw error;
-    return { error: null };
-  } catch (error) {
-    console.error('Error deleting technical skill:', error);
-    return { error };
-  }
-};
-
-// ==================== SOFT SKILLS ====================
-
-/**
- * Get all soft skills for a student
- */
-export const getSoftSkills = async (studentId) => {
-  try {
-    const { data, error } = await supabase
-      .from('soft_skills')
-      .select('*')
-      .eq('student_id', studentId)
-      .order('level', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching soft skills:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Add soft skill
- */
-export const addSoftSkill = async (skillData) => {
-  try {
-    const { data, error } = await supabase
-      .from('soft_skills')
-      .insert([skillData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error adding soft skill:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Update soft skill
- */
-export const updateSoftSkill = async (skillId, updates) => {
-  try {
-    const { data, error } = await supabase
-      .from('soft_skills')
-      .update(updates)
-      .eq('id', skillId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error updating soft skill:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Delete soft skill
- */
-export const deleteSoftSkill = async (skillId) => {
-  try {
-    const { error } = await supabase
-      .from('soft_skills')
-      .delete()
-      .eq('id', skillId);
-
-    if (error) throw error;
-    return { error: null };
-  } catch (error) {
-    console.error('Error deleting soft skill:', error);
-    return { error };
-  }
-};
-
-// ==================== OPPORTUNITIES ====================
-
-/**
- * Get all opportunities
- */
-export const getOpportunities = async (filters = {}) => {
-  try {
-    let query = supabase
-      .from('opportunities')
-      .select('*')
-      .order('deadline', { ascending: true });
-
-    // Apply filters if provided
-    if (filters.type) {
-      query = query.eq('type', filters.type);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching opportunities:', error);
-    return { data: null, error };
-  }
-};
-
-// ==================== RECENT UPDATES ====================
-
-/**
- * Get recent updates for a student
- */
-export const getRecentUpdates = async (studentId, limit = 10) => {
-  try {
-    const { data, error } = await supabase
-      .from('recent_updates')
-      .select('*')
-      .eq('student_id', studentId)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching recent updates:', error);
-    return { data: null, error };
-  }
-};
-
-/**
- * Add a recent update
- */
-export const addRecentUpdate = async (updateData) => {
-  try {
-    const { data, error } = await supabase
-      .from('recent_updates')
-      .insert([updateData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error adding recent update:', error);
-    return { data: null, error };
-  }
-};
-
-// ==================== SUGGESTIONS ====================
-
-/**
- * Get suggestions for a student
- */
-export const getSuggestions = async (studentId) => {
-  try {
-    const { data, error } = await supabase
-      .from('suggestions')
-      .select('*')
-      .eq('student_id', studentId)
-      .eq('is_active', true)
-      .order('priority', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('Error fetching suggestions:', error);
-    return { data: null, error };
-  }
-};
-
-// ==================== EDUCATOR STUDENT MANAGEMENT ====================
-
-/**
- * Update student information (for educators)
- */
-export const updateStudent = async (studentId, updates) => {
-  try {
-    const { error } = await supabase
       .from('students')
       .update({
         ...updates,
         updated_at: new Date().toISOString()
       })
-      .eq('id', studentId);
+      .eq('user_id', userId)
+      .select()
+      .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error updating student profile:', error);
+      return {
+        success: false,
+        data: null,
+        error: error.message
+      };
+    }
 
-    return { success: true };
+    return {
+      success: true,
+      data: data,
+      error: null
+    };
   } catch (error) {
-    console.error('Error updating student:', error);
+    console.error('❌ Unexpected error updating student profile:', error);
     return {
       success: false,
-      error: error?.message || 'Failed to update student'
+      data: null,
+      error: error.message
     };
   }
 };
 
 /**
- * Soft delete a student (marks as deleted without removing from database)
+ * Get all colleges for selection dropdown
+ * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
  */
-export const softDeleteStudent = async (studentId, deletedBy) => {
+export const getAllColleges = async () => {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
+      .from('colleges')
+      .select('id, name, city, state')
+      .order('name');
+
+    if (error) {
+      console.error('❌ Error fetching colleges:', error);
+      return {
+        success: false,
+        data: null,
+        error: error.message
+      };
+    }
+
+    return {
+      success: true,
+      data: data || [],
+      error: null
+    };
+  } catch (error) {
+    console.error('❌ Unexpected error fetching colleges:', error);
+    return {
+      success: false,
+      data: null,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Get all schools for selection dropdown
+ * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
+ */
+export const getAllSchools = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('schools')
+      .select('id, name, city, state')
+      .order('name');
+
+    if (error) {
+      console.error('❌ Error fetching schools:', error);
+      return {
+        success: false,
+        data: null,
+        error: error.message
+      };
+    }
+
+    return {
+      success: true,
+      data: data || [],
+      error: null
+    };
+  } catch (error) {
+    console.error('❌ Unexpected error fetching schools:', error);
+    return {
+      success: false,
+      data: null,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Update student by student ID
+ * @param {string} studentId - Student ID
+ * @param {Object} updates - Student data updates
+ * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
+ */
+export const updateStudent = async (studentId, updates) => {
+  try {
+    const { data, error } = await supabase
+      .from('students')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', studentId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error updating student:', error);
+      return {
+        success: false,
+        data: null,
+        error: error.message
+      };
+    }
+
+    return {
+      success: true,
+      data: data,
+      error: null
+    };
+  } catch (error) {
+    console.error('❌ Unexpected error updating student:', error);
+    return {
+      success: false,
+      data: null,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Soft delete a student by student ID
+ * @param {string} studentId - Student ID
+ * @param {string} educatorId - Educator ID performing the deletion
+ * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
+ */
+export const softDeleteStudent = async (studentId, educatorId) => {
+  try {
+    const { data, error } = await supabase
       .from('students')
       .update({
         is_deleted: true,
         deleted_at: new Date().toISOString(),
-        deleted_by: deletedBy || null,
+        deleted_by: educatorId,
         updated_at: new Date().toISOString()
       })
-      .eq('id', studentId);
-
-    if (error) throw error;
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error deleting student:', error);
-    return {
-      success: false,
-      error: error?.message || 'Failed to delete student'
-    };
-  }
-};
-
-/**
- * Restore a soft-deleted student
- */
-export const restoreStudent = async (studentId) => {
-  try {
-    const { error } = await supabase
-      .from('students')
-      .update({
-        is_deleted: false,
-        deleted_at: null,
-        deleted_by: null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', studentId);
-
-    if (error) throw error;
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error restoring student:', error);
-    return {
-      success: false,
-      error: error?.message || 'Failed to restore student'
-    };
-  }
-};
-
-/**
- * Get a single student by ID
- */
-export const getStudentById = async (studentId) => {
-  try {
-    const { data, error } = await supabase
-      .from('students')
-      .select('*')
       .eq('id', studentId)
+      .select()
       .single();
 
-    if (error) throw error;
-
-    return { data };
-  } catch (error) {
-    console.error('Error fetching student:', error);
-    return {
-      data: null,
-      error: error?.message || 'Failed to fetch student'
-    };
-  }
-};
-
-// ==================== COMPLETE STUDENT DATA ====================
-
-/**
- * Get complete student data (profile + all related data)
- */
-export const getCompleteStudentData = async (studentId) => {
-  try {
-    const [
-      profileResult,
-      educationResult,
-      trainingResult,
-      experienceResult,
-      technicalSkillsResult,
-      softSkillsResult,
-      opportunitiesResult,
-      recentUpdatesResult,
-      suggestionsResult
-    ] = await Promise.all([
-      getStudentProfile(studentId),
-      getEducation(studentId),
-      getTraining(studentId),
-      getExperience(studentId),
-      getTechnicalSkills(studentId),
-      getSoftSkills(studentId),
-      getOpportunities(),
-      getRecentUpdates(studentId),
-      getSuggestions(studentId)
-    ]);
-
-    // Check for any errors
-    const errors = [
-      profileResult.error,
-      educationResult.error,
-      trainingResult.error,
-      experienceResult.error,
-      technicalSkillsResult.error,
-      softSkillsResult.error,
-      opportunitiesResult.error,
-      recentUpdatesResult.error,
-      suggestionsResult.error
-    ].filter(Boolean);
-
-    if (errors.length > 0) {
-      console.error('Errors fetching complete student data:', errors);
+    if (error) {
+      console.error('❌ Error soft deleting student:', error);
+      return {
+        success: false,
+        data: null,
+        error: error.message
+      };
     }
 
+    console.log('✅ Student soft deleted successfully:', data.id);
     return {
-      profile: profileResult.data,
-      education: educationResult.data || [],
-      training: trainingResult.data || [],
-      experience: experienceResult.data || [],
-      technicalSkills: technicalSkillsResult.data || [],
-      softSkills: softSkillsResult.data || [],
-      opportunities: opportunitiesResult.data || [],
-      recentUpdates: recentUpdatesResult.data || [],
-      suggestions: suggestionsResult.data || [],
-      errors: errors.length > 0 ? errors : null
+      success: true,
+      data: data,
+      error: null
     };
   } catch (error) {
-    console.error('Error fetching complete student data:', error);
-    throw error;
+    console.error('❌ Unexpected error soft deleting student:', error);
+    return {
+      success: false,
+      data: null,
+      error: error.message
+    };
   }
 };

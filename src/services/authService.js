@@ -12,7 +12,7 @@ import { supabase } from '../lib/supabaseClient';
 export const checkAuthentication = async () => {
   try {
     const { data: { session }, error } = await supabase.auth.getSession();
-    
+
     if (error) {
       console.error('Error checking authentication:', error);
       return {
@@ -32,9 +32,9 @@ export const checkAuthentication = async () => {
     }
 
     // Extract role from raw_user_meta_data
-    const role = session.user.raw_user_meta_data?.role || 
-                 session.user.user_metadata?.role || 
-                 null;
+    const role = session.user.raw_user_meta_data?.role ||
+      session.user.user_metadata?.role ||
+      null;
 
     return {
       isAuthenticated: true,
@@ -80,7 +80,7 @@ export const signUpWithRole = async (email, password, userData = {}) => {
 
     if (error) {
       console.error('❌ Sign up error:', error);
-      
+
       // Handle specific error cases
       if (error.message.includes('Database error')) {
         return {
@@ -89,7 +89,7 @@ export const signUpWithRole = async (email, password, userData = {}) => {
           error: 'Unable to create account. The email might already be registered or there is a database configuration issue. Please try a different email or contact support.'
         };
       }
-      
+
       if (error.message.includes('already registered')) {
         return {
           success: false,
@@ -97,7 +97,7 @@ export const signUpWithRole = async (email, password, userData = {}) => {
           error: 'This email is already registered. Please sign in instead.'
         };
       }
-      
+
       return {
         success: false,
         user: null,
@@ -154,9 +154,9 @@ export const signIn = async (email, password) => {
       };
     }
 
-    const role = data.user?.raw_user_meta_data?.role || 
-                 data.user?.user_metadata?.role || 
-                 null;
+    const role = data.user?.raw_user_meta_data?.role ||
+      data.user?.user_metadata?.role ||
+      null;
 
     return {
       success: true,
@@ -283,9 +283,9 @@ export const getCurrentUser = async () => {
       };
     }
 
-    const role = user?.raw_user_meta_data?.role || 
-                 user?.user_metadata?.role || 
-                 null;
+    const role = user?.raw_user_meta_data?.role ||
+      user?.user_metadata?.role ||
+      null;
 
     return {
       user: user,
@@ -296,6 +296,105 @@ export const getCurrentUser = async () => {
     return {
       user: null,
       role: null
+    };
+  }
+};
+
+/**
+ * Send password reset OTP via Edge Function
+ * @param {string} email
+ * @returns {Promise<{ success: boolean, error: string | null }>}
+ */
+export const sendPasswordResetOtp = async (email) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('reset-password', {
+      body: { action: 'send', email }
+    });
+
+    if (error) {
+      console.error('Error invoking reset-password function:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+
+    if (!data.success) {
+      return {
+        success: false,
+        error: data.error || 'Failed to send OTP'
+      };
+    }
+
+    return {
+      success: true,
+      error: null
+    };
+  } catch (error) {
+    console.error('Unexpected error sending reset password OTP:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Verify OTP and reset password via Edge Function
+ * @param {string} email
+ * @param {string} otp
+ * @param {string} newPassword
+ * @returns {Promise<{ success: boolean, error: string | null }>}
+ */
+export const verifyOtpAndResetPassword = async (email, otp, newPassword) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('reset-password', {
+      body: { action: 'verify', email, otp, newPassword }
+    });
+
+    if (error) {
+      console.error('Error invoking reset-password function:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+
+    if (!data.success) {
+      return {
+        success: false,
+        error: data.error || 'Failed to verify OTP or reset password'
+      };
+    }
+
+    // After successful reset, we might want to sign the user in automatically.
+    // However, the Edge Function only updates the password.
+    // The user will need to sign in with the new password.
+    // Or we could try to sign in here if we had the password, which we do.
+
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password: newPassword
+    });
+
+    if (signInError) {
+      // Password was reset but auto-login failed
+      return {
+        success: true, // Still success for the reset part
+        error: null,
+        message: 'Password reset successful. Please log in with your new password.'
+      };
+    }
+
+    return {
+      success: true,
+      error: null
+    };
+  } catch (error) {
+    console.error('Unexpected error resetting password:', error);
+    return {
+      success: false,
+      error: error.message
     };
   }
 };

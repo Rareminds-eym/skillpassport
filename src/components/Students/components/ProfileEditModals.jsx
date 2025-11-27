@@ -6038,7 +6038,7 @@ export const TrainingEditModal = ({ isOpen, onClose, data, onSave }) => {
     </Dialog>
   );
 };
-export const ExperienceEditModal = ({ isOpen, onClose, data, onSave }) => {
+export const ExperienceEditModal = ({ isOpen, onClose, data, onSave}) => {
   const [experiences, setExperiences] = useState(data || []);
   const [newExp, setNewExp] = useState({
     role: "",
@@ -7912,6 +7912,7 @@ export const SkillsEditModal = ({
   onSave,
   title,
   type,
+  showAllStatuses = false,
 }) => {
   const [skills, setSkills] = useState(data || []);
   const [newSkill, setNewSkill] = useState({ name: "", level: 1 });
@@ -7919,9 +7920,14 @@ export const SkillsEditModal = ({
   const { toast } = useToast();
 
   // Update internal state when data prop changes (Supabase data updates)
+  // Filter by approval_status if showAllStatuses is false (for Dashboard/MySkills)
+  // Show all statuses if showAllStatuses is true (for ProfileEditSection manage)
   useEffect(() => {
-    setSkills(data || []);
-  }, [data]);
+    const filteredData = showAllStatuses 
+      ? (data || [])
+      : (data || []).filter(skill => skill.approval_status === 'approved' || !skill.approval_status);
+    setSkills(filteredData);
+  }, [data, showAllStatuses]);
 
   const addSkill = () => {
     if (newSkill.name.trim()) {
@@ -8018,19 +8024,22 @@ export const SkillsEditModal = ({
                     <span className="font-medium">
                       {skill.name}
                     </span>
-                    {skill.processing ? (
-                      <Badge className="bg-orange-100 text-orange-800">
-                        <Clock className="w-3 h-3 mr-1" />
-                        Processing
+                    {skill.approval_status === 'approved' || skill.verified ? (
+                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Verified
                       </Badge>
-                    ) : (
-                      skill.verified && (
-                        <Badge className="bg-[#28A745] hover:bg-[#28A745]">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Verified
-                        </Badge>
-                      )
-                    )}
+                    ) : skill.approval_status === 'pending' || skill.processing ? (
+                      <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">
+                        <Clock className="w-3 h-3 mr-1" />
+                        Pending
+                      </Badge>
+                    ) : skill.approval_status === 'rejected' ? (
+                      <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+                        <X className="w-3 h-3 mr-1" />
+                        Rejected
+                      </Badge>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-1">
                     {renderStars(skill.level, skill.id || index, true)}

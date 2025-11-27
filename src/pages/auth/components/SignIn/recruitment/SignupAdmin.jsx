@@ -1,1360 +1,856 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '../../../../../lib/supabaseClient';
+import { AlertCircle, CheckCircle2, Building2, MapPin, Phone, User, Shield, Eye, EyeOff, Loader2 } from 'lucide-react';
+
+// Input Field Component - Defined OUTSIDE to prevent re-creation
+const InputField = ({ label, name, type = 'text', required = false, placeholder, icon: Icon, value, onChange, error, ...props }) => (
+  <div className="space-y-2">
+    <label className="block text-sm font-medium text-gray-700">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    <div className="relative">
+      {Icon && <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />}
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={`w-full ${Icon ? 'pl-10' : 'pl-4'} pr-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+          error ? 'border-red-500' : 'border-gray-200'
+        }`}
+        {...props}
+      />
+    </div>
+    {error && (
+      <p className="text-red-500 text-sm flex items-center gap-1">
+        <AlertCircle className="w-4 h-4" />
+        {error}
+      </p>
+    )}
+  </div>
+);
+
+// Select Field Component - Defined OUTSIDE to prevent re-creation
+const SelectField = ({ label, name, options, required = false, icon: Icon, value, onChange, error }) => (
+  <div className="space-y-2">
+    <label className="block text-sm font-medium text-gray-700">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    <div className="relative">
+      {Icon && <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />}
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        className={`w-full ${Icon ? 'pl-10' : 'pl-4'} pr-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none ${
+          error ? 'border-red-500' : 'border-gray-200'
+        }`}
+      >
+        <option value="">Select {label}</option>
+        {options.map(opt => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+      </select>
+    </div>
+    {error && (
+      <p className="text-red-500 text-sm flex items-center gap-1">
+        <AlertCircle className="w-4 h-4" />
+        {error}
+      </p>
+    )}
+  </div>
+);
 
 const SignupAdmin = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 5;
+  
+  // Get plan data from navigation state (if coming from subscription page)
+  const { plan, studentType, returnToPayment } = location.state || {};
+  
   const [formData, setFormData] = useState({
-    // Company Details
-    companyName: '',
-    companyDomain: '',
+    // Company Details (Step 1)
+    name: '',
+    code: '',
+    industry: '',
     companySize: '',
-    industryType: '',
-    companyLogo: null,
-    companyRegistrationNo: '',
-    companyAddress: '',
-    officialEmailDomain: '',
-    recruitmentFocus: [],
     
-    // Admin Account Details
-    fullName: '',
-    workEmail: '',
-    phoneNumber: '',
+    // HQ Address (Step 2)
+    hqAddress: '',
+    hqCity: '',
+    hqState: '',
+    hqCountry: 'India',
+    hqPincode: '',
+    
+    // Contact Info (Step 3)
+    phone: '',
+    email: '',
+    website: '',
+    establishedYear: '',
+    
+    // Contact Person (Step 4)
+    contactPersonName: '',
+    contactPersonDesignation: '',
+    contactPersonEmail: '',
+    contactPersonPhone: '',
+    
+    // Admin Account (Step 5)
+    adminFullName: '',
+    adminEmail: '',
+    adminPhone: '',
     password: '',
     confirmPassword: '',
-    designation: '',
-    customDesignation: '',
-    
-    // Security
     agreeToTerms: false
   });
   
   const [errors, setErrors] = useState({});
-  const [success, setSuccess] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [recaptchaVerified, setRecaptchaVerified] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [termsViewed, setTermsViewed] = useState(false);
-  const [showCaptcha, setShowCaptcha] = useState(false);
+  const [error, setError] = useState('');
 
-  const blobRefs = {
-    // Company Details
-    companyName: useRef(null),
-    companyDomain: useRef(null),
-    companySize: useRef(null),
-    industryType: useRef(null),
-    companyRegistrationNo: useRef(null),
-    companyAddress: useRef(null),
-    officialEmailDomain: useRef(null),
-    
-    // Admin Details
-    fullName: useRef(null),
-    workEmail: useRef(null),
-    phoneNumber: useRef(null),
-    password: useRef(null),
-    confirmPassword: useRef(null),
-    designation: useRef(null),
-    customDesignation: useRef(null)
-  };
-
-  const companySizes = [
-    '1-10',
-    '11-50', 
-    '51-200',
-    '201-500',
-    '500+'
+  const companySizes = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'];
+  
+  const industries = [
+    'IT & Software', 'Education', 'Manufacturing', 'Healthcare', 'Finance & Banking',
+    'Retail & E-commerce', 'Construction', 'Hospitality', 'Transportation & Logistics',
+    'Consulting', 'Media & Entertainment', 'Telecommunications', 'Real Estate',
+    'Agriculture', 'Energy & Utilities', 'Other'
   ];
 
-  const industryTypes = [
-    'IT & Software',
-    'Education',
-    'Manufacturing',
-    'Healthcare',
-    'Finance',
-    'Retail',
-    'Construction',
-    'Hospitality',
-    'Transportation',
-    'Other'
+  const indianStates = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+    'Delhi', 'Puducherry', 'Chandigarh', 'Jammu and Kashmir', 'Ladakh'
   ];
 
-  const designationOptions = [
-    'HR Manager',
-    'Recruitment Manager',
-    'Talent Acquisition Specialist',
-    'HR Director',
-    'Recruitment Coordinator',
-    'Team Lead',
-    'Department Head',
-    'Other'
+  const designations = [
+    'HR Manager', 'Recruitment Manager', 'Talent Acquisition Head',
+    'HR Director', 'Chief People Officer', 'Recruitment Lead',
+    'HR Business Partner', 'Other'
   ];
-
-  const recruitmentFocusOptions = [
-    'Internship',
-    'Apprenticeship',
-    'Full-time',
-    'Part-time',
-    'Contract',
-    'Freelance'
-  ];
-
-  // Debug logging function
-  const debugLog = (message, data = null) => {
-  };
 
   const validateField = (name, value) => {
-    const newErrors = { ...errors };
-    const newSuccess = { ...success };
-
-    debugLog(`Validating field: ${name}`, { value });
-
+    let error = '';
+    
     switch (name) {
-      // Company Details Validations
-      case 'companyName':
-        if (!value) {
-          newErrors.companyName = 'Company name is required';
-          newSuccess.companyName = false;
-        } else if (value.length < 2) {
-          newErrors.companyName = 'Company name must be at least 2 characters';
-          newSuccess.companyName = false;
-        } else {
-          newErrors.companyName = '';
-          newSuccess.companyName = true;
-        }
+      case 'name':
+        if (!value) error = 'Company name is required';
+        else if (value.length < 2) error = 'Company name must be at least 2 characters';
         break;
-
-      case 'companyDomain':
-        if (!value) {
-          newErrors.companyDomain = 'Company domain is required';
-          newSuccess.companyDomain = false;
-        } else if (!/^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/.test(value)) {
-          newErrors.companyDomain = 'Please enter a valid domain (e.g., rareminds.in)';
-          newSuccess.companyDomain = false;
-        } else {
-          newErrors.companyDomain = '';
-          newSuccess.companyDomain = true;
-        }
+      case 'code':
+        if (!value) error = 'Company code is required';
+        else if (value.length < 2) error = 'Company code must be at least 2 characters';
         break;
-
-      case 'companySize':
-        if (!value) {
-          newErrors.companySize = 'Company size is required';
-          newSuccess.companySize = false;
-        } else {
-          newErrors.companySize = '';
-          newSuccess.companySize = true;
-        }
+      case 'email':
+      case 'adminEmail':
+      case 'contactPersonEmail':
+        if (!value) error = 'Email is required';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Invalid email format';
         break;
-
-      case 'industryType':
-        if (!value) {
-          newErrors.industryType = 'Industry type is required';
-          newSuccess.industryType = false;
-        } else {
-          newErrors.industryType = '';
-          newSuccess.industryType = true;
-        }
+      case 'phone':
+      case 'adminPhone':
+      case 'contactPersonPhone':
+        if (!value) error = 'Phone number is required';
+        else if (!/^\d{10}$/.test(value.replace(/\D/g, ''))) error = 'Phone must be 10 digits';
         break;
-
-      case 'companyLogo':
-        if (!value) {
-          newErrors.companyLogo = 'Company logo is required';
-          newSuccess.companyLogo = false;
-        } else {
-          newErrors.companyLogo = '';
-          newSuccess.companyLogo = true;
-        }
+      case 'website':
+        if (value && !/^https?:\/\/.+\..+/.test(value)) error = 'Invalid website URL';
         break;
-
-      case 'companyRegistrationNo':
-        if (!value) {
-          newErrors.companyRegistrationNo = 'Company registration number/GSTIN is required';
-          newSuccess.companyRegistrationNo = false;
-        } else if (value.length < 3) {
-          newErrors.companyRegistrationNo = 'Please enter a valid registration number';
-          newSuccess.companyRegistrationNo = false;
-        } else {
-          newErrors.companyRegistrationNo = '';
-          newSuccess.companyRegistrationNo = true;
-        }
+      case 'hqPincode':
+        if (value && !/^\d{6}$/.test(value)) error = 'Pincode must be 6 digits';
         break;
-
-      case 'companyAddress':
-        if (!value) {
-          newErrors.companyAddress = 'Company address is required';
-          newSuccess.companyAddress = false;
-        } else if (value.length < 10) {
-          newErrors.companyAddress = 'Please enter a complete address';
-          newSuccess.companyAddress = false;
-        } else {
-          newErrors.companyAddress = '';
-          newSuccess.companyAddress = true;
-        }
+      case 'establishedYear':
+        const year = parseInt(value);
+        const currentYear = new Date().getFullYear();
+        if (value && (year < 1800 || year > currentYear)) error = `Year must be between 1800 and ${currentYear}`;
         break;
-
-      case 'officialEmailDomain':
-        if (value && !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) {
-          newErrors.officialEmailDomain = 'Please enter a valid email domain';
-          newSuccess.officialEmailDomain = false;
-        } else {
-          newErrors.officialEmailDomain = '';
-          newSuccess.officialEmailDomain = true;
-        }
-        break;
-
-      // Admin Details Validations
-      case 'fullName':
-        if (!value) {
-          newErrors.fullName = 'Full name is required';
-          newSuccess.fullName = false;
-        } else if (value.length < 2) {
-          newErrors.fullName = 'Full name must be at least 2 characters';
-          newSuccess.fullName = false;
-        } else {
-          newErrors.fullName = '';
-          newSuccess.fullName = true;
-        }
-        break;
-
-      case 'workEmail':
-        if (!value) {
-          newErrors.workEmail = 'Work email is required';
-          newSuccess.workEmail = false;
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          newErrors.workEmail = 'Please enter a valid email address';
-          newSuccess.workEmail = false;
-        } else {
-          newErrors.workEmail = '';
-          newSuccess.workEmail = true;
-        }
-        break;
-
-      case 'phoneNumber':
-        if (!value) {
-          newErrors.phoneNumber = 'Phone number is required';
-          newSuccess.phoneNumber = false;
-        } else if (!/^\d{10}$/.test(value.replace(/\D/g, ''))) {
-          newErrors.phoneNumber = 'Please enter a valid 10-digit phone number';
-          newSuccess.phoneNumber = false;
-        } else {
-          newErrors.phoneNumber = '';
-          newSuccess.phoneNumber = true;
-        }
-        break;
-
       case 'password':
-        if (!value) {
-          newErrors.password = 'Password is required';
-          newSuccess.password = false;
-        } else if (value.length < 8) {
-          newErrors.password = 'Password must be at least 8 characters long';
-          newSuccess.password = false;
-        } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(value)) {
-          newErrors.password = 'Password must contain uppercase, lowercase, number and special character';
-          newSuccess.password = false;
-        } else {
-          newErrors.password = '';
-          newSuccess.password = true;
-        }
+        if (!value) error = 'Password is required';
+        else if (value.length < 8) error = 'Password must be at least 8 characters';
+        else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)) 
+          error = 'Password must contain uppercase, lowercase, and number';
         break;
-
       case 'confirmPassword':
-        if (!value) {
-          newErrors.confirmPassword = 'Please confirm your password';
-          newSuccess.confirmPassword = false;
-        } else if (value !== formData.password) {
-          newErrors.confirmPassword = 'Passwords do not match';
-          newSuccess.confirmPassword = false;
-        } else {
-          newErrors.confirmPassword = '';
-          newSuccess.confirmPassword = true;
-        }
+        if (!value) error = 'Please confirm password';
+        else if (value !== formData.password) error = 'Passwords do not match';
         break;
-
-      case 'designation':
-        if (!value) {
-          newErrors.designation = 'Designation is required';
-          newSuccess.designation = false;
-        } else if (value === 'Other' && !formData.customDesignation) {
-          newErrors.designation = 'Please specify your designation';
-          newSuccess.designation = false;
-        } else if (value !== 'Other' && value.length < 2) {
-          newErrors.designation = 'Designation must be at least 2 characters';
-          newSuccess.designation = false;
-        } else {
-          newErrors.designation = '';
-          newSuccess.designation = true;
-        }
-        break;
-
-      case 'customDesignation':
-        if (formData.designation === 'Other' && !value) {
-          newErrors.designation = 'Please specify your designation';
-          newSuccess.designation = false;
-        } else if (formData.designation === 'Other' && value.length < 2) {
-          newErrors.designation = 'Designation must be at least 2 characters';
-          newSuccess.designation = false;
-        } else {
-          newErrors.designation = '';
-          newSuccess.designation = true;
-        }
-        break;
-
       default:
         break;
     }
-
-    setErrors(newErrors);
-    setSuccess(newSuccess);
-    debugLog(`Validation result for ${name}`, { error: newErrors[name], success: newSuccess[name] });
+    
+    return error;
   };
+
   const handleChange = (e) => {
-  const { name, value, type, files, checked } = e.target;
-  
-  debugLog(`Field changed: ${name}`, { value, type, checked });
-
-  if (type === 'checkbox') {
-    // Handle recruitment focus checkboxes
-    if (name === 'recruitmentFocus') {
-      setFormData(prev => ({
-        ...prev,
-        recruitmentFocus: checked 
-          ? [...prev.recruitmentFocus, value]
-          : prev.recruitmentFocus.filter(item => item !== value)
-      }));
-    }
-    // Handle terms and conditions checkbox
-    else if (name === 'agreeToTerms') {
-      const newValue = checked;
-      setFormData(prev => ({
-        ...prev,
-        [name]: newValue
-      }));
-      
-      // Show captcha when terms are checked
-      if (newValue) {
-        debugLog('Terms and conditions checked, showing captcha');
-        setShowCaptcha(true);
-      } else {
-        setShowCaptcha(false);
-        setRecaptchaVerified(false);
-      }
-    }
-  } else if (type === 'file') {
-    setFormData(prev => ({
-      ...prev,
-      [name]: files[0]
-    }));
-    validateField(name, files[0]);
-  } else {
-    // Handle phone number formatting specifically
-    let processedValue = value;
-    if (name === 'phoneNumber') {
-      processedValue = formatPhoneNumber(value);
+    const { name, value, type, checked } = e.target;
+    const newValue = type === 'checkbox' ? checked : value;
+    
+    // Format phone numbers
+    let processedValue = newValue;
+    if (['phone', 'adminPhone', 'contactPersonPhone'].includes(name) && type !== 'checkbox') {
+      processedValue = value.replace(/\D/g, '').slice(0, 10);
     }
     
-    setFormData(prev => ({
-      ...prev,
-      [name]: processedValue
-    }));
+    setFormData(prev => ({ ...prev, [name]: processedValue }));
     
-    validateField(name, processedValue);
-    animateBlob(name);
-  }
-};
-  
-  const animateBlob = (fieldName) => {
-    const blob = blobRefs[fieldName]?.current;
-    if (blob) {
-      blob.style.transform = 'scale(1.1)';
-      blob.style.transition = 'transform 0.3s ease';
-      
-      setTimeout(() => {
-        if (blob) {
-          blob.style.transform = 'scale(1)';
-        }
-      }, 300);
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
     }
-  };
-
-  const handleCheckboxChange = (e) => {
-    const { name, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: checked
-    }));
-  };
-
-  const togglePasswordVisibility = () => {
-    debugLog('Toggling password visibility', { currentState: showPassword });
-    setShowPassword(!showPassword);
-  };
-
-  const toggleConfirmPasswordVisibility = () => {
-    debugLog('Toggling confirm password visibility', { currentState: showConfirmPassword });
-    setShowConfirmPassword(!showConfirmPassword);
   };
 
   const validateStep = (step) => {
-    debugLog(`Validating step ${step}`);
-
-    const stepFields = {
-      1: ['companyName', 'companyDomain', 'companySize', 'industryType', 'companyLogo', 'companyRegistrationNo', 'companyAddress'],
-      2: ['fullName', 'workEmail', 'phoneNumber', 'password', 'confirmPassword', 'designation']
-    };
-
-    const fieldsToValidate = stepFields[step] || [];
-    let isValid = true;
-
-    fieldsToValidate.forEach(field => {
-      validateField(field, formData[field]);
-      if (errors[field] || !formData[field]) {
-        isValid = false;
-      }
-    });
-
-    // Additional validation for recruitment focus
-    if (step === 1 && formData.recruitmentFocus.length === 0) {
-      isValid = false;
+    const newErrors = {};
+    
+    switch (step) {
+      case 1:
+        ['name', 'code', 'industry', 'companySize'].forEach(field => {
+          const error = validateField(field, formData[field]);
+          if (error) newErrors[field] = error;
+        });
+        break;
+      case 2:
+        ['hqAddress', 'hqCity', 'hqState', 'hqCountry'].forEach(field => {
+          if (!formData[field]) newErrors[field] = 'This field is required';
+        });
+        if (formData.hqPincode) {
+          const error = validateField('hqPincode', formData.hqPincode);
+          if (error) newErrors.hqPincode = error;
+        }
+        break;
+      case 3:
+        ['phone', 'email'].forEach(field => {
+          const error = validateField(field, formData[field]);
+          if (error) newErrors[field] = error;
+        });
+        if (formData.website) {
+          const error = validateField('website', formData.website);
+          if (error) newErrors.website = error;
+        }
+        if (formData.establishedYear) {
+          const error = validateField('establishedYear', formData.establishedYear);
+          if (error) newErrors.establishedYear = error;
+        }
+        break;
+      case 4:
+        ['contactPersonName', 'contactPersonDesignation', 'contactPersonEmail', 'contactPersonPhone'].forEach(field => {
+          const error = validateField(field, formData[field]);
+          if (error || !formData[field]) newErrors[field] = error || 'This field is required';
+        });
+        break;
+      case 5:
+        ['adminFullName', 'adminEmail', 'adminPhone', 'password', 'confirmPassword'].forEach(field => {
+          const error = validateField(field, formData[field]);
+          if (error) newErrors[field] = error;
+        });
+        if (!formData.agreeToTerms) newErrors.agreeToTerms = 'You must agree to terms';
+        break;
+      default:
+        break;
     }
-
-    // Additional validation for custom designation
-    if (step === 2 && formData.designation === 'Other' && !formData.customDesignation) {
-      isValid = false;
-    }
-
-    debugLog(`Step ${step} validation result`, { isValid, errors });
-    return isValid;
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const nextStep = () => {
-    debugLog('Moving to next step', { currentStep, nextStep: currentStep + 1 });
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => prev + 1);
-    } else {
-      debugLog('Step validation failed', { currentStep });
+      setCurrentStep(prev => Math.min(prev + 1, totalSteps));
     }
   };
 
   const prevStep = () => {
-    debugLog('Moving to previous step', { currentStep, prevStep: currentStep - 1 });
-    setCurrentStep(prev => prev - 1);
-  };
-
-  const openTermsModal = () => {
-    debugLog('Opening terms modal');
-    setShowTermsModal(true);
-    setTermsViewed(true);
-  };
-
-  const closeTermsModal = () => {
-    debugLog('Closing terms modal');
-    setShowTermsModal(false);
+    setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     
-    debugLog('Form submission started', {
-      stepValid: validateStep(2),
-      agreeToTerms: formData.agreeToTerms,
-      recaptchaVerified,
-      showCaptcha
-    });
-
-    if (!validateStep(2) || !formData.agreeToTerms || !recaptchaVerified) {
-      if (!formData.agreeToTerms) {
-        debugLog('Submission failed: Terms not agreed');
-        alert('Please agree to the Terms and Conditions');
-      }
-      if (!recaptchaVerified) {
-        debugLog('Submission failed: Captcha not verified');
-        alert('Please complete the reCAPTCHA verification');
-      }
-      return;
-    }
-
+    if (!validateStep(5)) return;
+    
     setIsSubmitting(true);
-    debugLog('Form submission in progress');
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      debugLog('Workspace created successfully', formData);
-      alert('Workspace created successfully!');
-      // Reset form
-      setFormData({
-        companyName: '',
-        companyDomain: '',
-        companySize: '',
-        industryType: '',
-        companyLogo: null,
-        companyRegistrationNo: '',
-        companyAddress: '',
-        officialEmailDomain: '',
-        recruitmentFocus: [],
-        fullName: '',
-        workEmail: '',
-        phoneNumber: '',
-        password: '',
-        confirmPassword: '',
-        designation: '',
-        customDesignation: '',
-        agreeToTerms: false
+      // 1. Create user account
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.adminEmail,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.adminFullName,
+            role: 'recruitment_admin'
+          }
+        }
       });
-      setCurrentStep(1);
-      setRecaptchaVerified(false);
-      setTermsViewed(false);
-      setShowCaptcha(false);
-    } catch (error) {
-      debugLog('Workspace creation failed', { error });
-      alert('Workspace creation failed. Please try again.');
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Failed to create user account');
+
+      // 2. Create user record in public.users table
+      // Split full name into firstName and lastName
+      const nameParts = formData.adminFullName.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      const { error: userError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email: formData.adminEmail,
+          firstName: firstName,
+          lastName: lastName,
+          role: 'recruiter', // Use 'recruiter' role as per schema
+          entity_type: 'recruitment',
+          metadata: {
+            phone: formData.adminPhone,
+            isAdmin: true,
+            fullName: formData.adminFullName
+          }
+        });
+
+      if (userError) throw userError;
+
+      // 3. Create company record
+      const { data: companyData, error: companyError } = await supabase
+        .from('companies')
+        .insert({
+          name: formData.name,
+          code: formData.code,
+          industry: formData.industry,
+          companySize: formData.companySize,
+          hqAddress: formData.hqAddress,
+          hqCity: formData.hqCity,
+          hqState: formData.hqState,
+          hqCountry: formData.hqCountry,
+          hqPincode: formData.hqPincode || null,
+          phone: formData.phone,
+          email: formData.email,
+          website: formData.website || null,
+          establishedYear: formData.establishedYear ? parseInt(formData.establishedYear) : null,
+          contactPersonName: formData.contactPersonName,
+          contactPersonDesignation: formData.contactPersonDesignation,
+          contactPersonEmail: formData.contactPersonEmail,
+          contactPersonPhone: formData.contactPersonPhone,
+          accountStatus: 'pending',
+          approvalStatus: 'pending',
+          created_by: authData.user.id,
+          metadata: {
+            adminName: formData.adminFullName,
+            adminEmail: formData.adminEmail,
+            adminPhone: formData.adminPhone,
+            registrationDate: new Date().toISOString()
+          }
+        })
+        .select()
+        .single();
+
+      if (companyError) throw companyError;
+
+      // Success!
+      if (returnToPayment && plan) {
+        // If coming from subscription page, redirect to payment
+        alert(`Workspace created successfully! Your Workspace ID is: ${companyData.code}\n\nProceeding to payment...`);
+        navigate('/subscription/payment', { 
+          state: { 
+            plan, 
+            studentType: studentType || 'recruitment-admin',
+            isUpgrade: false 
+          } 
+        });
+      } else {
+        // Otherwise, show success message and go to login
+        alert(`Workspace created successfully! Your Workspace ID is: ${companyData.code}\n\nYour account is pending approval. We'll notify you once it's activated.`);
+        navigate('/login/recruiter');
+      }
+      
+    } catch (err) {
+      console.error('Signup error:', err);
+      setError(err.message || 'Failed to create workspace. Please try again.');
     } finally {
       setIsSubmitting(false);
-      debugLog('Form submission completed');
     }
   };
-
-  const handleRecaptchaChange = (value) => {
-    debugLog('reCAPTCHA verification', { verified: !!value });
-    setRecaptchaVerified(!!value);
-  };
-
-  // Format phone number to only allow digits
-  const formatPhoneNumber = (value) => {
-    return value.replace(/\D/g, '').slice(0, 10);
-  };
-
-  // Load reCAPTCHA script when captcha should be shown
-  useEffect(() => {
-    if (showCaptcha) {
-      debugLog('Loading reCAPTCHA script');
-      const script = document.createElement('script');
-      script.src = 'https://www.google.com/recaptcha/api.js';
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-
-      return () => {
-        document.head.removeChild(script);
-      };
-    }
-  }, [showCaptcha]);
-
-    // Set up reCAPTCHA callbacks
-    useEffect(() => {
-      window.handleRecaptchaChange = (value) => {
-        setRecaptchaVerified(!!value);
-      };
-  
-      window.handleRecaptchaExpired = () => {
-        setRecaptchaVerified(false);
-      };
-    }, []);
-  
 
   // Step Indicator Component
   const StepIndicator = () => (
     <div className="flex justify-center mb-8">
-      <div className="flex items-center space-x-4">
-        {/* Step 1 */}
-        <div className={`flex flex-col items-center ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-            currentStep >= 1 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'
-          }`}>
-            1
-          </div>
-          <span className="text-sm mt-1">Company</span>
-        </div>
-        
-        <div className={`w-16 h-1 ${currentStep >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
-        
-        {/* Step 2 */}
-        <div className={`flex flex-col items-center ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-            currentStep >= 2 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'
-          }`}>
-            2
-          </div>
-          <span className="text-sm mt-1">Admin</span>
-        </div>
-        
-        <div className={`w-16 h-1 ${currentStep >= 3 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
-        
-        {/* Step 3 */}
-        <div className={`flex flex-col items-center ${currentStep >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-            currentStep >= 3 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'
-          }`}>
-            3
-          </div>
-          <span className="text-sm mt-1">Security</span>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Terms and Conditions Modal
-  const TermsModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-blue-600">Terms and Conditions</h2>
-            <button
-              onClick={closeTermsModal}
-              className="text-gray-500 hover:text-gray-700 text-2xl"
-            >
-              ×
-            </button>
-          </div>
-          
-          <div className="space-y-4 text-gray-700">
-            <p><strong>Last Updated: {new Date().toLocaleDateString()}</strong></p>
-            
-            <section>
-              <h3 className="font-semibold text-lg mb-2">1. Acceptance of Terms</h3>
-              <p>By accessing and using this recruitment platform, you accept and agree to be bound by the terms and provision of this agreement.</p>
-            </section>
-
-            <section>
-              <h3 className="font-semibold text-lg mb-2">2. Use License</h3>
-              <p>Permission is granted to temporarily use this platform for recruitment purposes. This is the grant of a license, not a transfer of title.</p>
-            </section>
-
-            <section>
-              <h3 className="font-semibold text-lg mb-2">3. Account Responsibilities</h3>
-              <p>You are responsible for maintaining the confidentiality of your account and password and for restricting access to your computer.</p>
-            </section>
-
-            <section>
-              <h3 className="font-semibold text-lg mb-2">4. Data Privacy</h3>
-              <p>We collect and process personal data in accordance with our Privacy Policy. By using our services, you consent to such processing.</p>
-            </section>
-
-            <section>
-              <h3 className="font-semibold text-lg mb-2">5. Candidate Data</h3>
-              <p>You agree to handle candidate data responsibly and in compliance with applicable data protection laws.</p>
-            </section>
-
-            <section>
-              <h3 className="font-semibold text-lg mb-2">6. Prohibited Uses</h3>
-              <p>You may not use our platform for any illegal or unauthorized purpose nor may you violate any laws in your jurisdiction.</p>
-            </section>
-
-            <section>
-              <h3 className="font-semibold text-lg mb-2">7. Termination</h3>
-              <p>We may terminate or suspend access to our service immediately, without prior notice, for any breach of these Terms.</p>
-            </section>
-
-            <section>
-              <h3 className="font-semibold text-lg mb-2">8. Changes to Terms</h3>
-              <p>We reserve the right to modify these terms at any time. We will provide notice of significant changes.</p>
-            </section>
-
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-6">
-              <p className="text-sm text-yellow-700">
-                <strong>Note:</strong> These are sample terms and conditions. Please consult with legal counsel to create appropriate terms for your specific use case.
-              </p>
+      <div className="flex items-center space-x-2">
+        {[1, 2, 3, 4, 5].map((step, idx) => (
+          <div key={step} className="flex items-center">
+            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${
+              currentStep >= step 
+                ? 'bg-blue-600 border-blue-600 text-white' 
+                : 'border-gray-300 text-gray-400'
+            }`}>
+              {step}
             </div>
+            {idx < 4 && (
+              <div className={`w-8 h-1 mx-1 ${currentStep > step ? 'bg-blue-600' : 'bg-gray-300'}`} />
+            )}
           </div>
-
-          <div className="flex justify-end mt-6">
-            <button
-              onClick={closeTermsModal}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              I Understand
-            </button>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
+
+
 
   return (
-    <div className="max-w-2xl mx-auto p-8">
-      {/* Bulb Logo */}
-      <div className="flex justify-center mb-4">
-        <div className="relative group">
-          <img 
-            src="/RMLogo.webp" 
-            alt="Bulb Logo" 
-            className="w-20 h-20 transition-all duration-1000 group-hover:scale-110 group-hover:brightness-125 filter drop-shadow-lg group-hover:drop-shadow-[0_0_30px_rgba(255,255,0,0.7)]"
-          />
-          <div className="absolute inset-0 bg-blue-400 rounded-full opacity-0 group-hover:opacity-40 blur-2xl transition-all duration-1000 group-hover:animate-pulse"></div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+      <div className="max-w-3xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <img src="/RMLogo.webp" alt="Logo" className="w-20 h-20" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Recruitment Workspace</h1>
+          <p className="text-gray-600">Setup your company workspace in a few simple steps</p>
         </div>
-      </div>
-      
-      <h1 className="text-2xl font-semibold text-center mb-2 text-blue-600 uppercase">
-        Create Workspace
-      </h1>
-      <p className="text-center text-gray-600 mb-8">Setup your recruitment workspace in minutes</p>
 
-      {/* Step Indicator */}
-      <StepIndicator />
+        {/* Step Indicator */}
+        <StepIndicator />
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Step 1: Company Details */}
-        {currentStep === 1 && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-blue-600 border-b-2 border-blue-200 pb-2">
-              🔹 Company Details
-            </h2>
-
-            {/* Company Name */}
-            <div className="relative">
-              <div className="relative">
-                <input
-                  type="text"
-                  name="companyName"
-                  value={formData.companyName}
-                  onChange={handleChange}
-                  onFocus={() => animateBlob('companyName')}
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.companyName 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.companyName 
-                        ? 'border-green-500 focus:border-green-500'
-                        : 'border-blue-200 focus:border-blue-100'
-                  }`}
-                  placeholder="Company Name *"
-                />
-                <div
-                  ref={blobRefs.companyName}
-                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                ></div>
-              </div>
-              {errors.companyName && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.companyName}
-                </p>
-              )}
+        {/* Form Card */}
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{error}</p>
             </div>
+          )}
 
-            {/* Company Domain */}
-            <div className="relative">
-              <div className="relative">
-                <input
-                  type="text"
-                  name="companyDomain"
-                  value={formData.companyDomain}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Step 1: Company Details */}
+            {currentStep === 1 && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Building2 className="w-6 h-6 text-blue-600" />
+                  <h2 className="text-xl font-semibold text-gray-900">Company Details</h2>
+                </div>
+                
+                <InputField
+                  label="Company Name"
+                  name="name"
+                  required
+                  placeholder="Enter your company name"
+                  icon={Building2}
+                  value={formData.name}
                   onChange={handleChange}
-                  onFocus={() => animateBlob('companyDomain')}
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.companyDomain 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.companyDomain 
-                        ? 'border-green-500 focus:border-green-500'
-                        : 'border-blue-200 focus:border-blue-100'
-                  }`}
-                  placeholder="Company Domain (e.g., rareminds.in) *"
+                  error={errors.name}
                 />
-                <div
-                  ref={blobRefs.companyDomain}
-                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                ></div>
-              </div>
-              {errors.companyDomain && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.companyDomain}
-                </p>
-              )}
-            </div>
-
-            {/* Company Size & Industry Type */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="relative">
-                <div className="relative">
-                  <select
+                
+                <InputField
+                  label="Company Code"
+                  name="code"
+                  required
+                  placeholder="Unique code (e.g., ACME2024)"
+                  maxLength={50}
+                  value={formData.code}
+                  onChange={handleChange}
+                  error={errors.code}
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <SelectField
+                    label="Industry"
+                    name="industry"
+                    options={industries}
+                    required
+                    value={formData.industry}
+                    onChange={handleChange}
+                    error={errors.industry}
+                  />
+                  
+                  <SelectField
+                    label="Company Size"
                     name="companySize"
+                    options={companySizes}
+                    required
                     value={formData.companySize}
                     onChange={handleChange}
-                    onFocus={() => animateBlob('companySize')}
-                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.companySize 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.companySize 
-                          ? 'border-green-500 focus:border-green-500'
-                          : 'border-blue-200 focus:border-blue-100'
-                    }`}
-                  >
-                    <option value="">Company Size *</option>
-                    {companySizes.map(size => (
-                      <option key={size} value={size}>{size} employees</option>
-                    ))}
-                  </select>
-                  <div
-                    ref={blobRefs.companySize}
-                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                  ></div>
-                </div>
-                {errors.companySize && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <span className="mr-1">⚠</span>
-                    {errors.companySize}
-                  </p>
-                )}
-              </div>
-
-              <div className="relative">
-                <div className="relative">
-                  <select
-                    name="industryType"
-                    value={formData.industryType}
-                    onChange={handleChange}
-                    onFocus={() => animateBlob('industryType')}
-                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.industryType 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.industryType 
-                          ? 'border-green-500 focus:border-green-500'
-                          : 'border-blue-200 focus:border-blue-100'
-                    }`}
-                  >
-                    <option value="">Industry Type *</option>
-                    {industryTypes.map(industry => (
-                      <option key={industry} value={industry}>{industry}</option>
-                    ))}
-                  </select>
-                  <div
-                    ref={blobRefs.industryType}
-                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                  ></div>
-                </div>
-                {errors.industryType && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <span className="mr-1">⚠</span>
-                    {errors.industryType}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Company Logo - Now Mandatory */}
-            <div className="relative">
-              <div className="relative">
-                <input
-                  type="file"
-                  name="companyLogo"
-                  onChange={handleChange}
-                  accept="image/*"
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.companyLogo 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : 'border-blue-200 focus:border-blue-100'
-                  }`}
-                />
-                <div className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"></div>
-              </div>
-              {errors.companyLogo && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.companyLogo}
-                </p>
-              )}
-              <p className="text-gray-500 text-sm mt-1">* Upload your company logo (Required)</p>
-            </div>
-
-            {/* Company Registration No / GSTIN */}
-            <div className="relative">
-              <div className="relative">
-                <input
-                  type="text"
-                  name="companyRegistrationNo"
-                  value={formData.companyRegistrationNo}
-                  onChange={handleChange}
-                  onFocus={() => animateBlob('companyRegistrationNo')}
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.companyRegistrationNo 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.companyRegistrationNo 
-                        ? 'border-green-500 focus:border-green-500'
-                        : 'border-blue-200 focus:border-blue-100'
-                  }`}
-                  placeholder="Company Registration No / GSTIN *"
-                />
-                <div
-                  ref={blobRefs.companyRegistrationNo}
-                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                ></div>
-              </div>
-              {errors.companyRegistrationNo && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.companyRegistrationNo}
-                </p>
-              )}
-            </div>
-
-            {/* Company Address - Now Mandatory */}
-            <div className="relative">
-              <div className="relative">
-                <textarea
-                  name="companyAddress"
-                  value={formData.companyAddress}
-                  onChange={handleChange}
-                  onFocus={() => animateBlob('companyAddress')}
-                  rows="3"
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.companyAddress 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.companyAddress 
-                        ? 'border-green-500 focus:border-green-500'
-                        : 'border-blue-200 focus:border-blue-100'
-                  }`}
-                  placeholder="Company Address *"
-                />
-                <div
-                  ref={blobRefs.companyAddress}
-                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                ></div>
-              </div>
-              {errors.companyAddress && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.companyAddress}
-                </p>
-              )}
-            </div>
-
-            {/* Recruitment Focus Area */}
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Recruitment Focus Areas *
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {recruitmentFocusOptions.map(option => (
-                  <label key={option} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      name="recruitmentFocus"
-                      value={option}
-                      checked={formData.recruitmentFocus.includes(option)}
-                      onChange={handleChange}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">{option}</span>
-                  </label>
-                ))}
-              </div>
-              {formData.recruitmentFocus.length === 0 && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  Please select at least one recruitment focus area
-                </p>
-              )}
-            </div>
-
-            {/* Official Email Domain */}
-            <div className="relative">
-              <div className="relative">
-                <input
-                  type="text"
-                  name="officialEmailDomain"
-                  value={formData.officialEmailDomain}
-                  onChange={handleChange}
-                  onFocus={() => animateBlob('officialEmailDomain')}
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.officialEmailDomain 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.officialEmailDomain 
-                        ? 'border-green-500 focus:border-green-500'
-                        : 'border-blue-200 focus:border-blue-100'
-                  }`}
-                  placeholder="Official Email Domain (Optional - e.g., company.com)"
-                />
-                <div
-                  ref={blobRefs.officialEmailDomain}
-                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                ></div>
-              </div>
-              {errors.officialEmailDomain && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.officialEmailDomain}
-                </p>
-              )}
-              <p className="text-gray-500 text-sm mt-1">Optional: Restrict recruiter signups to this domain</p>
-            </div>
-
-            {/* Next Button */}
-            <button
-              type="button"
-              onClick={nextStep}
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-300 transform hover:scale-105"
-            >
-              Continue to Admin Details
-            </button>
-          </div>
-        )}
-
-        {/* Step 2: Admin Account Details */}
-        {currentStep === 2 && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-blue-600 border-b-2 border-blue-200 pb-2">
-              🔹 Admin Account Details
-            </h2>
-
-            {/* Full Name */}
-            <div className="relative">
-              <div className="relative">
-                <input
-                  type="text"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  onFocus={() => animateBlob('fullName')}
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.fullName 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.fullName 
-                        ? 'border-green-500 focus:border-green-500'
-                        : 'border-blue-200 focus:border-blue-100'
-                  }`}
-                  placeholder="Full Name *"
-                />
-                <div
-                  ref={blobRefs.fullName}
-                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                ></div>
-              </div>
-              {errors.fullName && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.fullName}
-                </p>
-              )}
-            </div>
-
-            {/* Designation Dropdown with Other Option */}
-            <div className="relative">
-              <div className="relative">
-                <select
-                  name="designation"
-                  value={formData.designation}
-                  onChange={handleChange}
-                  onFocus={() => animateBlob('designation')}
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.designation 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.designation 
-                        ? 'border-green-500 focus:border-green-500'
-                        : 'border-blue-200 focus:border-blue-100'
-                  }`}
-                >
-                  <option value="">Select Designation *</option>
-                  {designationOptions.map(designation => (
-                    <option key={designation} value={designation}>{designation}</option>
-                  ))}
-                </select>
-                <div
-                  ref={blobRefs.designation}
-                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                ></div>
-              </div>
-              {errors.designation && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.designation}
-                </p>
-              )}
-            </div>
-
-            {/* Custom Designation Input (shown only when "Other" is selected) */}
-            {formData.designation === 'Other' && (
-              <div className="relative">
-                <div className="relative">
-                  <input
-                    type="text"
-                    name="customDesignation"
-                    value={formData.customDesignation}
-                    onChange={handleChange}
-                    onFocus={() => animateBlob('customDesignation')}
-                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.designation 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.designation 
-                          ? 'border-green-500 focus:border-green-500'
-                          : 'border-blue-200 focus:border-blue-100'
-                    }`}
-                    placeholder="Please specify your designation *"
+                    error={errors.companySize}
                   />
-                  <div
-                    ref={blobRefs.customDesignation}
-                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                  ></div>
                 </div>
-                {errors.designation && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <span className="mr-1">⚠</span>
-                    {errors.designation}
+              </div>
+            )}
+
+            {/* Step 2: HQ Address */}
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <MapPin className="w-6 h-6 text-blue-600" />
+                  <h2 className="text-xl font-semibold text-gray-900">Headquarters Address</h2>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Address <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    name="hqAddress"
+                    value={formData.hqAddress}
+                    onChange={handleChange}
+                    placeholder="Enter complete address"
+                    rows={3}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+                      errors.hqAddress ? 'border-red-500' : 'border-gray-200'
+                    }`}
+                  />
+                  {errors.hqAddress && (
+                    <p className="text-red-500 text-sm flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.hqAddress}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField
+                    label="City"
+                    name="hqCity"
+                    required
+                    placeholder="City"
+                    value={formData.hqCity}
+                    onChange={handleChange}
+                    error={errors.hqCity}
+                  />
+                  
+                  <SelectField
+                    label="State"
+                    name="hqState"
+                    options={indianStates}
+                    required
+                    value={formData.hqState}
+                    onChange={handleChange}
+                    error={errors.hqState}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField
+                    label="Country"
+                    name="hqCountry"
+                    required
+                    disabled
+                    value={formData.hqCountry}
+                    onChange={handleChange}
+                    error={errors.hqCountry}
+                  />
+                  
+                  <InputField
+                    label="Pincode"
+                    name="hqPincode"
+                    placeholder="6-digit pincode"
+                    maxLength={6}
+                    value={formData.hqPincode}
+                    onChange={handleChange}
+                    error={errors.hqPincode}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Contact Information */}
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Phone className="w-6 h-6 text-blue-600" />
+                  <h2 className="text-xl font-semibold text-gray-900">Contact Information</h2>
+                </div>
+                
+                <InputField
+                  label="Company Phone"
+                  name="phone"
+                  type="tel"
+                  required
+                  placeholder="10-digit phone number"
+                  icon={Phone}
+                  maxLength={10}
+                  value={formData.phone}
+                  onChange={handleChange}
+                  error={errors.phone}
+                />
+                
+                <InputField
+                  label="Company Email"
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="contact@company.com"
+                  value={formData.email}
+                  onChange={handleChange}
+                  error={errors.email}
+                />
+                
+                <InputField
+                  label="Website"
+                  name="website"
+                  type="url"
+                  placeholder="https://www.company.com"
+                  value={formData.website}
+                  onChange={handleChange}
+                  error={errors.website}
+                />
+                
+                <InputField
+                  label="Established Year"
+                  name="establishedYear"
+                  type="number"
+                  placeholder="e.g., 2010"
+                  min="1800"
+                  max={new Date().getFullYear()}
+                  value={formData.establishedYear}
+                  onChange={handleChange}
+                  error={errors.establishedYear}
+                />
+              </div>
+            )}
+
+            {/* Step 4: Contact Person */}
+            {currentStep === 4 && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <User className="w-6 h-6 text-blue-600" />
+                  <h2 className="text-xl font-semibold text-gray-900">Primary Contact Person</h2>
+                </div>
+                
+                <InputField
+                  label="Full Name"
+                  name="contactPersonName"
+                  required
+                  placeholder="Contact person name"
+                  icon={User}
+                  value={formData.contactPersonName}
+                  onChange={handleChange}
+                  error={errors.contactPersonName}
+                />
+                
+                <SelectField
+                  label="Designation"
+                  name="contactPersonDesignation"
+                  options={designations}
+                  required
+                  value={formData.contactPersonDesignation}
+                  onChange={handleChange}
+                  error={errors.contactPersonDesignation}
+                />
+                
+                <InputField
+                  label="Email"
+                  name="contactPersonEmail"
+                  type="email"
+                  required
+                  placeholder="contact@company.com"
+                  value={formData.contactPersonEmail}
+                  onChange={handleChange}
+                  error={errors.contactPersonEmail}
+                />
+                
+                <InputField
+                  label="Phone"
+                  name="contactPersonPhone"
+                  type="tel"
+                  required
+                  placeholder="10-digit phone number"
+                  icon={Phone}
+                  maxLength={10}
+                  value={formData.contactPersonPhone}
+                  onChange={handleChange}
+                  error={errors.contactPersonPhone}
+                />
+              </div>
+            )}
+
+            {/* Step 5: Admin Account & Security */}
+            {currentStep === 5 && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Shield className="w-6 h-6 text-blue-600" />
+                  <h2 className="text-xl font-semibold text-gray-900">Admin Account</h2>
+                </div>
+                
+                <InputField
+                  label="Your Full Name"
+                  name="adminFullName"
+                  required
+                  placeholder="Your name"
+                  icon={User}
+                  value={formData.adminFullName}
+                  onChange={handleChange}
+                  error={errors.adminFullName}
+                />
+                
+                <InputField
+                  label="Your Email"
+                  name="adminEmail"
+                  type="email"
+                  required
+                  placeholder="your.email@company.com"
+                  value={formData.adminEmail}
+                  onChange={handleChange}
+                  error={errors.adminEmail}
+                />
+                
+                <InputField
+                  label="Your Phone"
+                  name="adminPhone"
+                  type="tel"
+                  required
+                  placeholder="10-digit phone number"
+                  icon={Phone}
+                  maxLength={10}
+                  value={formData.adminPhone}
+                  onChange={handleChange}
+                  error={errors.adminPhone}
+                />
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Password <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Min 8 characters"
+                      className={`w-full px-4 pr-12 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+                        errors.password ? 'border-red-500' : 'border-gray-200'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-red-500 text-sm flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.password}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Confirm Password <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      placeholder="Re-enter password"
+                      className={`w-full px-4 pr-12 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+                        errors.confirmPassword ? 'border-red-500' : 'border-gray-200'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {errors.confirmPassword && (
+                    <p className="text-red-500 text-sm flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.confirmPassword}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
+                  <input
+                    type="checkbox"
+                    name="agreeToTerms"
+                    checked={formData.agreeToTerms}
+                    onChange={handleChange}
+                    className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <label className="text-sm text-gray-700">
+                    I agree to the Terms and Conditions and Privacy Policy
+                  </label>
+                </div>
+                {errors.agreeToTerms && (
+                  <p className="text-red-500 text-sm flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.agreeToTerms}
                   </p>
                 )}
               </div>
             )}
-
-            {/* Work Email */}
-            <div className="relative">
-              <div className="relative">
-                <input
-                  type="email"
-                  name="workEmail"
-                  value={formData.workEmail}
-                  onChange={handleChange}
-                  onFocus={() => animateBlob('workEmail')}
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.workEmail 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.workEmail 
-                        ? 'border-green-500 focus:border-green-500'
-                        : 'border-blue-200 focus:border-blue-100'
-                  }`}
-                  placeholder="Work Email *"
-                />
-                <div
-                  ref={blobRefs.workEmail}
-                  className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                ></div>
-              </div>
-              {errors.workEmail && (
-                <p className="text-red-500 text-sm mt-1 flex items-center">
-                  <span className="mr-1">⚠</span>
-                  {errors.workEmail}
-                </p>
-              )}
-            </div>
-
-            {/* Phone Number with 10-digit validation */}
-           
-              <div className="relative">
-                <div className="relative">
-                  <input
-                    type="tel"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleChange} // Use the main handleChange function
-                    onFocus={() => animateBlob('phoneNumber')}
-                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.phoneNumber 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.phoneNumber 
-                          ? 'border-green-500 focus:border-green-500'
-                          : 'border-blue-200 focus:border-blue-100'
-                    }`}
-                    placeholder="Phone Number (10 digits) *"
-                    maxLength="10"
-                  />
-                  <div
-                    ref={blobRefs.phoneNumber}
-                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                  ></div>
-                </div>
-                {errors.phoneNumber && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <span className="mr-1">⚠</span>
-                    {errors.phoneNumber}
-                  </p>
-                )}
-              </div>
-
-            {/* Password & Confirm Password */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="relative">
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    onFocus={() => animateBlob('password')}
-                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.password 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.password 
-                          ? 'border-green-500 focus:border-green-500'
-                          : 'border-blue-200 focus:border-blue-100'
-                    }`}
-                    placeholder="Password *"
-                  />
-                  <button
-                    type="button"
-                    onClick={togglePasswordVisibility}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  >
-                    {showPassword ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                  <div
-                    ref={blobRefs.password}
-                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                  ></div>
-                </div>
-                {errors.password && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <span className="mr-1">⚠</span>
-                    {errors.password}
-                  </p>
-                )}
-              </div>
-
-              <div className="relative">
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    onFocus={() => animateBlob('confirmPassword')}
-                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.confirmPassword 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.confirmPassword 
-                          ? 'border-green-500 focus:border-green-500'
-                          : 'border-blue-200 focus:border-blue-100'
-                    }`}
-                    placeholder="Confirm Password *"
-                  />
-                  <button
-                    type="button"
-                    onClick={toggleConfirmPasswordVisibility}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  >
-                    {showConfirmPassword ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                  <div
-                    ref={blobRefs.confirmPassword}
-                    className="absolute -inset-2 bg-blue-100 rounded-2xl opacity-50 -z-10 blur-sm"
-                  ></div>
-                </div>
-                {errors.confirmPassword && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <span className="mr-1">⚠</span>
-                    {errors.confirmPassword}
-                  </p>
-                )}
-              </div>
-            </div>
 
             {/* Navigation Buttons */}
-            <div className="flex space-x-4">
-              <button
-                type="button"
-                onClick={prevStep}
-                className="flex-1 bg-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-4 focus:ring-gray-200 transition-all duration-300"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={nextStep}
-                className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-300 transform hover:scale-105"
-              >
-                Continue to Security
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Security & Verification */}
-        {currentStep === 3 && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-blue-600 border-b-2 border-blue-200 pb-2">
-              🔹 Security & Verification
-            </h2>
-
-            {/* reCAPTCHA - Only shown when terms are checked */}
-            {showCaptcha && (
-              <div className="flex justify-center">
-                <div
-                  className="g-recaptcha"
-                  data-sitekey="6Ldg8vwrAAAAALHVgjWqLKWEYMgPepeVvuOzesji"
-                  data-callback="handleRecaptchaChange"
-                  data-expired-callback="handleRecaptchaExpired"
-                ></div>
-              </div>
-            )}
-
-            {/* Terms & Conditions */}
-            <div className="flex items-start space-x-3">
-              <input
-                type="checkbox"
-                name="agreeToTerms"
-                checked={formData.agreeToTerms}
-                onChange={handleChange}
-                disabled={!termsViewed}
-                className={`mt-1 w-4 h-4 rounded focus:ring-blue-500 ${
-                  !termsViewed 
-                    ? 'bg-gray-100 border-gray-300 cursor-not-allowed' 
-                    : 'text-blue-600 bg-gray-100 border-gray-300'
-                }`}
-              />
-              <label htmlFor="agreeToTerms" className="text-sm text-gray-700">
-                I agree to the{' '}
+            <div className="flex gap-4 pt-6">
+              {currentStep > 1 && (
                 <button
                   type="button"
-                  onClick={openTermsModal}
-                  className="text-blue-600 hover:underline font-medium"
+                  onClick={prevStep}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                 >
-                  Terms and Conditions
+                  Back
                 </button>
-                {!termsViewed && (
-                  <span className="text-red-500 text-sm block mt-1">
-                    * Please read the Terms and Conditions first
-                  </span>
-                )}
-              </label>
+              )}
+              
+              {currentStep < totalSteps ? (
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Continue
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Creating Workspace...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      Create Workspace
+                    </>
+                  )}
+                </button>
+              )}
             </div>
+          </form>
+        </div>
 
-            {/* Navigation Buttons */}
-            <div className="flex space-x-4">
-              <button
-                type="button"
-                onClick={prevStep}
-                className="flex-1 bg-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-4 focus:ring-gray-200 transition-all duration-300"
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || !recaptchaVerified || !formData.agreeToTerms}
-                className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center justify-center">
-                    <div className="w-5 h-5 border-t-2 border-white rounded-full animate-spin mr-2"></div>
-                    Creating Workspace...
-                  </div>
-                ) : (
-                  'Create Workspace'
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-      </form>
-
-      {/* Terms and Conditions Modal */}
-      {showTermsModal && <TermsModal />}
+        {/* Footer */}
+        <div className="text-center mt-6 text-sm text-gray-600">
+          Already have an account?{' '}
+          <a href="/login/recruiter" className="text-blue-600 hover:text-blue-700 font-medium">
+            Login here
+          </a>
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import {BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Loader from "../components/Loader";
 
@@ -41,6 +41,12 @@ const SubscriptionPlans = lazy(() =>
 );
 const PaymentCompletion = lazy(() =>
   import("../pages/subscription/PaymentCompletion")
+);
+const PaymentSuccess = lazy(() =>
+  import("../pages/subscription/PaymentSuccess")
+);
+const PaymentFailure = lazy(() =>
+  import("../pages/subscription/PaymentFailure")
 );
 const MySubscription = lazy(() =>
   import("../pages/subscription/MySubscription")
@@ -108,6 +114,7 @@ const BrowseJobs = lazy(() => import("../pages/student/BrowseJobs"));
 const Messages = lazy(() => import("../pages/student/Messages"));
 const StudentAnalytics = lazy(() => import("../pages/student/Analytics"));
 const Assignments = lazy(() => import("../pages/student/Assignments"));
+const Clubs = lazy(() => import ("../pages/student/Clubs"))
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
 const CareerAI = lazy(() => import("../features/career-assistant/components/CareerAssistant"));
@@ -132,6 +139,7 @@ const EducatorManagement = lazy(() => import("../pages/educator/EducatorManageme
 const EducatorCommunication = lazy(() =>
   import("../pages/educator/Communication")
 );
+const SkillCurriculars = lazy (() => import("../pages/educator/SkillCurricular"))
 const EducatorAnalytics = lazy(() => import("../pages/educator/Analytics"));
 const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
 const EducatorReports = lazy(() => import("../pages/educator/Reports"));
@@ -143,6 +151,12 @@ const EducatorDigitalPortfolio = lazy(() =>
 );
 const EducatorAI = lazy(() => import("../pages/educator/EducatorAI"));
 const CourseAnalytics = lazy(() => import("../pages/educator/CourseAnalytics"));
+
+// Teacher pages (for teachers using the system)
+const LessonPlanCreate = lazy(() => import("../pages/teacher/LessonPlanCreate"));
+const LessonPlansList = lazy(() => import("../pages/teacher/LessonPlansList"));
+const MyTimetable = lazy(() => import("../pages/teacher/MyTimetable"));
+const LessonPlanApprovals = lazy(() => import("../pages/admin/schoolAdmin/LessonPlanApprovals"));
 
 // ===== Admins (Role-Based) =====
 const CollegeDashboard = lazy(() =>
@@ -167,6 +181,15 @@ const SchoolAdminDashboard = lazy(() =>
 );
 const StudentAdmissions = lazy(() =>
   import("../pages/admin/schoolAdmin/StudentAdmissions")
+);
+const TeacherList = lazy(() =>
+  import("../pages/admin/schoolAdmin/components/TeacherList")
+);
+const TeacherOnboarding = lazy(() =>
+  import("../pages/admin/schoolAdmin/components/TeacherOnboarding")
+);
+const TeacherTimetable = lazy(() =>
+  import("../pages/admin/schoolAdmin/components/TimetableBuilderEnhanced")
 );
 const UniversityAdminDashboard = lazy(() =>
   import("../pages/admin/universityAdmin/Dashboard")
@@ -194,6 +217,45 @@ const AttendanceTracking = lazy(() =>
   import("../pages/admin/collegeAdmin/Attendancetracking")
 );
 
+
+const CurriculumBuilder = lazy(() =>
+  import("../pages/admin/schoolAdmin/CurriculumBuilder")
+);
+const LessonPlan = lazy(() => import("../pages/admin/schoolAdmin/LessonPlan"));
+const ExamsAssessments = lazy(() =>
+  import("../pages/admin/schoolAdmin/ExamsAssessments")
+);
+
+// Parent & Communication routes
+const ParentPortal = lazy(() =>
+  import("../pages/admin/schoolAdmin/ParentPortal")
+);
+const MessageCenter = lazy(() =>
+  import("../pages/admin/schoolAdmin/MessageCenter")
+);
+const CircularsFeedback = lazy(() =>
+  import("../pages/admin/schoolAdmin/CircularsFeedback")
+);
+// skill && Curriculum Management
+const SkillCurricular = lazy(() =>
+  import("../pages/admin/schoolAdmin/SkillCurricular")
+);
+const SkillBadges = lazy(() =>  
+import("../pages/admin/schoolAdmin/SkillBadges")
+);
+const Reports = lazy(() =>  
+import("../pages/admin/schoolAdmin/Reports")
+);
+
+const AttendanceReports = lazy(() =>
+  import("../pages/admin/schoolAdmin/AttendanceReports")
+);
+
+// Settings
+const SchoolAdminSettings = lazy(() =>
+  import("../pages/admin/schoolAdmin/Settings")
+);
+
 const AppRoutes = () => {
   return (
     <Suspense fallback={<Loader />}>
@@ -204,9 +266,11 @@ const AppRoutes = () => {
           <Route path="/contact" element={<Contact />} />
           <Route path="/login/student" element={<LoginStudent />} />
           <Route path="/login/recruiter" element={<LoginRecruiter />} />
+          <Route path="/register/recruitment" element={<Register />} />
           <Route path="/login/admin" element={<LoginAdmin />} />
           <Route path="/login/educator" element={<EducatorLogin />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/register/:type" element={<Register />} />
           <Route
             path="/signup/recruitment-recruiter"
             element={<SignupRecruiter />}
@@ -219,7 +283,11 @@ const AppRoutes = () => {
             element={<UniversityAdmin />}
           />
           <Route path="/subscription/plans" element={<SubscriptionPlans />} />
+          <Route path="/subscription/plans/:type" element={<SubscriptionPlans />} />
+          <Route path="/subscription/plans/:type/:mode" element={<SubscriptionPlans />} />
           <Route path="/subscription/payment" element={<PaymentCompletion />} />
+          <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
+          <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
           <Route path="/subscription/manage" element={<SubscriptionManage />} />
           {/* Legacy route - redirect to new manage route */}
           <Route
@@ -279,7 +347,7 @@ const AppRoutes = () => {
             path=""
             element={<Navigate to="/college-admin/dashboard" replace />}
           />
-            <Route path="students/attendance" element={<AttendanceTracking />} />
+          <Route path="students/attendance" element={<AttendanceTracking />} />
 
         </Route>
 
@@ -293,6 +361,29 @@ const AppRoutes = () => {
         >
           <Route path="dashboard" element={<SchoolAdminDashboard />} />
           <Route path="students/admissions" element={<StudentAdmissions />} />
+          <Route path="students/attendance-reports" element={<AttendanceReports />} />
+          <Route path="teachers/list" element={<TeacherList />} />
+          <Route path="teachers/onboarding" element={<TeacherOnboarding />} />
+          <Route path="teachers/timetable" element={<TeacherTimetable />} />
+          <Route path="lesson-plans/approvals" element={<LessonPlanApprovals />} />
+          {/* Academic Management System Routes */}
+          <Route path="academics/curriculum" element={<CurriculumBuilder />} />
+          <Route path="academics/lesson-plans" element={<LessonPlan />} />
+          <Route path="academics/exams" element={<ExamsAssessments />} />
+          {/* Parent & Communication Routes */}
+          <Route path="communication/parents" element={<ParentPortal />} />
+          <Route path="communication/messages" element={<MessageCenter />} />
+          <Route
+            path="communication/circulars"
+            element={<CircularsFeedback />}
+          />
+          {/* Skill & Curriculum Manament*/}
+          <Route path="skills/clubs" element={<SkillCurricular />} />
+          <Route path="skills/badges" element={<SkillBadges />} />
+          <Route path="skills/reports" element={<Reports />} />
+
+          {/* Settings */}
+          <Route path="settings" element={<SchoolAdminSettings />} />
           <Route
             path=""
             element={<Navigate to="/school-admin/dashboard" replace />}
@@ -377,9 +468,10 @@ const AppRoutes = () => {
           <Route path="settings" element={<Settings />} />
           <Route path="analytics" element={<StudentAnalytics />} />
           <Route path="assignments" element={<Assignments />} />
+          <Route path="clubs" element={<Clubs />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
-          
+
           {/* Digital Portfolio routes with required providers */}
           <Route
             path="digital-portfolio"
@@ -510,7 +602,7 @@ const AppRoutes = () => {
               </ThemeProvider>
             }
           />
-          
+
           <Route
             path=""
             element={<Navigate to="/student/dashboard" replace />}
@@ -536,6 +628,10 @@ const AppRoutes = () => {
           <Route path="activities" element={<EducatorActivities />} />
           <Route path="reports" element={<EducatorReports />} />
           <Route path="media" element={<EducatorMediaManager />} />
+          <Route path="lesson-plans" element={<LessonPlansList />} />
+          <Route path="lesson-plans/create" element={<LessonPlanCreate />} />
+          <Route path="my-timetable" element={<MyTimetable />} />
+          <Route path="clubs" element={<SkillCurriculars />} />
           <Route
             path=""
             element={<Navigate to="/educator/dashboard" replace />}
