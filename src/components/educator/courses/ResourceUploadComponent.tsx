@@ -12,6 +12,12 @@ import {
 } from '@heroicons/react/24/outline';
 import { Resource, FileUpload } from '../../../types/educator/course';
 
+// Extend FileUpload type locally to include serverProgress
+interface ExtendedFileUpload extends FileUpload {
+  serverProgress?: number;
+  uploadId?: string;
+}
+
 interface ResourceUploadComponentProps {
   onResourcesAdded: (resources: Resource[]) => void;
   onClose: () => void;
@@ -41,7 +47,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
   lessonId
 }) => {
   const [uploadMode, setUploadMode] = useState<'file' | 'link'>('file');
-  const [fileUploads, setFileUploads] = useState<FileUpload[]>([]);
+  const [fileUploads, setFileUploads] = useState<ExtendedFileUpload[]>([]);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkName, setLinkName] = useState('');
   const [linkType, setLinkType] = useState<'link' | 'youtube' | 'drive'>('link');
@@ -115,12 +121,12 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
     if (!allAllowedTypes.includes(ext)) {
       return 'File type not supported';
     }
-    
+
     // Warn user about large files
     if (file.size > 100 * 1024 * 1024) { // 100MB
       console.warn('Large file selected:', file.name, (file.size / 1024 / 1024).toFixed(2), 'MB');
     }
-    
+
     return null;
   };
 
@@ -130,7 +136,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       console.log('API_BASE_URL:', API_BASE_URL);
       console.log('File:', file.name, 'Size:', file.size, 'Type:', file.type);
       console.log('CourseId:', courseId, 'LessonId:', lessonId);
-      
+
       // Warn user about large file uploads
       if (file.size > 100 * 1024 * 1024) { // 100MB
         console.warn('Large file detected:', (file.size / 1024 / 1024).toFixed(2), 'MB');
@@ -160,11 +166,37 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         return;
       }
 
+      // Generate unique upload ID
+      const uploadId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
       setFileUploads(prev =>
         prev.map((fu, i) =>
-          i === index ? { ...fu, status: 'uploading', progress: 0 } : fu
+          i === index ? { ...fu, status: 'uploading', progress: 0, serverProgress: 0, uploadId } : fu
         )
       );
+
+      // Setup SSE for progress tracking
+      const eventSource = new EventSource(`${API_BASE_URL}/api/upload/progress/${uploadId}`);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.status === 'uploading' && typeof data.progress === 'number') {
+            setFileUploads(prev =>
+              prev.map((fu, i) =>
+                i === index ? { ...fu, serverProgress: data.progress } : fu
+              )
+            );
+          }
+        } catch (e) {
+          console.error('Error parsing SSE message:', e);
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        console.error('SSE Error:', err);
+        eventSource.close();
+      };
 
       const formData = new FormData();
       formData.append('file', file);
@@ -194,6 +226,9 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         console.log('Status:', xhr.status);
         console.log('Response:', xhr.responseText);
 
+        // Close SSE connection
+        eventSource.close();
+
         if (xhr.status === 200) {
           try {
             const response = JSON.parse(xhr.responseText);
@@ -205,6 +240,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                     ...fu,
                     status: 'completed',
                     progress: 100,
+                    serverProgress: 100,
                     uploadedData: response.data
                   }
                   : fu
@@ -223,7 +259,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         } else {
           console.error('Upload failed with status:', xhr.status);
           let errorMessage = `Upload failed (Status: ${xhr.status})`;
-          
+
           // Provide more specific error messages
           if (xhr.status === 0) {
             errorMessage = 'Network error - check your internet connection and try again';
@@ -232,7 +268,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
           } else if (xhr.status >= 500) {
             errorMessage = 'Server error - please try again later';
           }
-          
+
           setFileUploads(prev =>
             prev.map((fu, i) =>
               i === index
@@ -247,19 +283,15 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       xhr.addEventListener('error', (e) => {
         console.error('=== XHR Error Event ===');
         console.error('Event:', e);
-        console.error('Status:', xhr.status);
-        console.error('Status Text:', xhr.statusText);
-        console.error('Ready state:', xhr.readyState);
-        console.error('Response Text:', xhr.responseText);
-        console.error('Response URL:', xhr.responseURL);
-        
+        eventSource.close();
+
         let errorMessage = `Network error (Status: ${xhr.status}, ReadyState: ${xhr.readyState})`;
-        
+
         // Provide more specific error messages
         if (xhr.status === 0) {
           errorMessage = 'Network connection failed - check your internet connection. If this persists, our servers may be temporarily unavailable.';
         }
-        
+
         setFileUploads(prev =>
           prev.map((fu, i) =>
             i === index
@@ -272,9 +304,10 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       // Handle timeout
       xhr.addEventListener('timeout', () => {
         console.error('=== XHR Timeout ===');
+        eventSource.close();
         const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
         const errorMessage = `Upload timed out for ${file.name} (${fileSizeMB}MB). Try again or use a faster connection.`;
-        
+
         setFileUploads(prev =>
           prev.map((fu, i) =>
             i === index
@@ -289,6 +322,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       console.log('Upload URL:', uploadUrl);
       console.log('API_BASE_URL:', API_BASE_URL);
       xhr.open('POST', uploadUrl);
+      xhr.setRequestHeader('X-Upload-ID', uploadId); // Send ID in header
       xhr.timeout = UPLOAD_TIMEOUT; // Extended timeout for large files
       console.log('XHR opened, sending data...');
       xhr.send(formData);
@@ -309,7 +343,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
     if (!files || files.length === 0) return;
 
     setError('');
-    const newUploads: FileUpload[] = [];
+    const newUploads: ExtendedFileUpload[] = [];
 
     Array.from(files).forEach(file => {
       const validationError = validateFile(file);
@@ -321,6 +355,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       newUploads.push({
         file,
         progress: 0,
+        serverProgress: 0,
         status: 'pending'
       });
     });
@@ -528,7 +563,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                 </p>
                 <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-xs text-yellow-700">
-                    <strong>Note:</strong> Large files (over 100MB) may take several minutes to upload. 
+                    <strong>Note:</strong> Large files (over 100MB) may take several minutes to upload.
                     Please be patient and maintain a stable internet connection.
                   </p>
                 </div>
@@ -540,6 +575,9 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                   <h3 className="text-sm font-semibold text-gray-900">Uploading Files</h3>
                   {fileUploads.map((upload, index) => {
                     const Icon = getFileIcon(getFileType(upload.file.name));
+                    const isProcessing = upload.progress === 100 && upload.status === 'uploading';
+                    const serverProgress = upload.serverProgress || 0;
+
                     return (
                       <div
                         key={index}
@@ -556,6 +594,11 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                                 {formatFileSize(upload.file.size)}
                                 {upload.status === 'error' && upload.error && (
                                   <span className="text-red-600 ml-2">• {upload.error}</span>
+                                )}
+                                {isProcessing && (
+                                  <span className="text-indigo-600 ml-2 font-medium">
+                                    • Processing: {serverProgress}%
+                                  </span>
                                 )}
                               </p>
                             </div>
@@ -576,11 +619,20 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                           </div>
                         </div>
                         {upload.status === 'uploading' && (
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${upload.progress}%` }}
-                            />
+                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                            {isProcessing ? (
+                              <div
+                                className="bg-indigo-400 h-2 rounded-full transition-all duration-300 relative"
+                                style={{ width: `${Math.max(5, serverProgress)}%` }}
+                              >
+                                <div className="absolute inset-0 bg-white/30 animate-[shimmer_2s_infinite] w-full h-full" />
+                              </div>
+                            ) : (
+                              <div
+                                className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${upload.progress}%` }}
+                              />
+                            )}
                           </div>
                         )}
                       </div>

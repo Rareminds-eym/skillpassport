@@ -43,14 +43,14 @@ setInterval(() => {
     heapUsed: (memory.heapUsed / 1024 / 1024).toFixed(2),
     external: (memory.external / 1024 / 1024).toFixed(2)
   };
-  
+
   console.log('Memory usage:', memoryMB);
-  
+
   // Warn if memory usage is getting high
   if (memory.rss > 400 * 1024 * 1024) {
     console.warn('⚠️  High memory usage detected! RSS:', memoryMB.rss, 'MB');
   }
-  
+
   if (memory.heapUsed > 300 * 1024 * 1024) {
     console.warn('⚠️  High heap usage detected! Heap used:', memoryMB.heapUsed, 'MB');
   }
@@ -92,7 +92,7 @@ app.options('*', (req, res) => {
   console.log('Origin:', req.headers.origin);
   console.log('Method:', req.headers['access-control-request-method']);
   console.log('Headers:', req.headers['access-control-request-headers']);
-  
+
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
@@ -107,7 +107,7 @@ app.options('/api/upload', (req, res) => {
   console.log('Origin:', req.headers.origin);
   console.log('Method:', req.headers['access-control-request-method']);
   console.log('Headers:', req.headers['access-control-request-headers']);
-  
+
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
@@ -120,15 +120,15 @@ app.options('/api/upload', (req, res) => {
 app.use((req, res, next) => {
   console.log('=== Setting CORS Headers ===');
   console.log('Request Origin:', req.headers.origin);
-  
+
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.header('Access-Control-Allow-Credentials', 'true');
-  
+
   // For debugging - log all requests
   console.log(`${req.method} ${req.path}`);
-  
+
   next();
 });
 
@@ -151,7 +151,7 @@ try {
     endpoint: process.env.R2_ACCOUNT_ID ? `https://${process.env.R2_ACCOUNT_ID.substring(0, 8)}...r2.cloudflarestorage.com` : 'NOT_SET',
     accessKeyId: process.env.R2_ACCESS_KEY_ID ? `${process.env.R2_ACCESS_KEY_ID.substring(0, 8)}...` : 'NOT_SET'
   });
-  
+
   r2Client = new S3Client({
     region: 'auto',
     endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -161,7 +161,7 @@ try {
     },
     maxAttempts: 3,
   });
-  
+
   console.log('✓ R2 client initialized successfully');
 } catch (error) {
   console.error('❌ Failed to initialize R2 client:', error);
@@ -181,8 +181,8 @@ const BUCKET_NAME = process.env.R2_BUCKET_NAME;
 console.log('Bucket name:', BUCKET_NAME || 'NOT_SET');
 
 // Validate required environment variables
-if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || 
-    !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME) {
+if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID ||
+  !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME) {
   console.error('❌ Missing required R2 environment variables:');
   console.error('  R2_ACCOUNT_ID:', process.env.R2_ACCOUNT_ID ? 'SET' : 'MISSING');
   console.error('  R2_ACCESS_KEY_ID:', process.env.R2_ACCESS_KEY_ID ? 'SET' : 'MISSING');
@@ -201,7 +201,7 @@ setTimeout(async () => {
         Bucket: BUCKET_NAME,
         MaxKeys: 1
       });
-      
+
       await r2Client.send(command);
       console.log('✓ R2 connectivity test successful');
     } else {
@@ -221,6 +221,78 @@ const generateFileKey = (originalName, courseId, lessonId) => {
 };
 
 // ============================================
+// PROGRESS TRACKING STORE
+// ============================================
+const uploadProgressMap = new Map();
+
+// Clean up old progress entries periodically (every 1 hour)
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, data] of uploadProgressMap.entries()) {
+    if (now - data.timestamp > 3600000) { // 1 hour expiration
+      uploadProgressMap.delete(id);
+    }
+  }
+}, 3600000);
+
+// ============================================
+// SSE PROGRESS ENDPOINT
+// ============================================
+app.get('/api/upload/progress/:uploadId', (req, res) => {
+  const { uploadId } = req.params;
+  console.log(`=== SSE Connection Request for ${uploadId} ===`);
+
+  // Set headers for SSE
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': req.headers.origin || '*'
+  });
+
+  // Send initial connection message
+  res.write(`data: ${JSON.stringify({ status: 'connected', progress: 0 })}\n\n`);
+
+  // Store the response object to send updates later
+  if (!uploadProgressMap.has(uploadId)) {
+    uploadProgressMap.set(uploadId, {
+      clients: [],
+      progress: 0,
+      timestamp: Date.now()
+    });
+  }
+
+  const progressData = uploadProgressMap.get(uploadId);
+  progressData.clients.push(res);
+
+  // Remove client on close
+  req.on('close', () => {
+    console.log(`=== SSE Connection Closed for ${uploadId} ===`);
+    if (uploadProgressMap.has(uploadId)) {
+      const data = uploadProgressMap.get(uploadId);
+      data.clients = data.clients.filter(client => client !== res);
+      if (data.clients.length === 0 && data.progress >= 100) {
+        uploadProgressMap.delete(uploadId);
+      }
+    }
+  });
+});
+
+// Helper to broadcast progress
+const broadcastProgress = (uploadId, progress) => {
+  if (uploadProgressMap.has(uploadId)) {
+    const data = uploadProgressMap.get(uploadId);
+    data.progress = progress;
+    data.timestamp = Date.now();
+
+    const message = JSON.stringify({ status: 'uploading', progress });
+    data.clients.forEach(client => {
+      client.write(`data: ${message}\n\n`);
+    });
+  }
+};
+
+// ============================================
 // STREAMING SINGLE FILE UPLOAD ENDPOINT
 // ============================================
 app.post('/api/upload', (req, res) => {
@@ -229,11 +301,11 @@ app.post('/api/upload', (req, res) => {
   console.log('Request URL:', req.url);
   console.log('Origin header:', req.headers.origin);
   console.log('Content-Type header:', req.headers['content-type']);
-  
+
   // Set CORS headers early
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, X-Upload-ID');
   res.header('Access-Control-Allow-Credentials', 'true');
 
   const contentType = req.headers['content-type'];
@@ -241,8 +313,12 @@ app.post('/api/upload', (req, res) => {
     return res.status(400).json({ error: 'Content-Type must be multipart/form-data' });
   }
 
+  // Get uploadId from headers or query
+  const uploadId = req.headers['x-upload-id'] || req.query.uploadId;
+  console.log('Upload ID:', uploadId);
+
   // Create busboy instance for parsing multipart data
-  const busboy = Busboy({ 
+  const busboy = Busboy({
     headers: req.headers,
     limits: {
       fileSize: 500 * 1024 * 1024, // 500MB limit
@@ -269,7 +345,7 @@ app.post('/api/upload', (req, res) => {
     const { filename, encoding, mimeType } = info;
     console.log('=== Multer File Filter ===');
     console.log('File:', { fieldname, filename, encoding, mimeType });
-    
+
     fileInfo = {
       originalname: filename,
       mimetype: mimeType,
@@ -310,7 +386,12 @@ app.post('/api/upload', (req, res) => {
     // Log upload progress
     upload.on('httpUploadProgress', (progress) => {
       const mb = ((progress.loaded || 0) / 1024 / 1024).toFixed(2);
-      console.log(`Upload progress: ${mb} MB uploaded`);
+      // console.log(`Upload progress: ${mb} MB uploaded`);
+
+      if (uploadId && progress.total) {
+        const percentage = Math.round((progress.loaded / progress.total) * 100);
+        broadcastProgress(uploadId, percentage);
+      }
     });
 
     uploadPromise = upload.done();
@@ -319,6 +400,9 @@ app.post('/api/upload', (req, res) => {
   // Handle busboy errors
   busboy.on('error', (error) => {
     console.error('Busboy error:', error);
+    if (uploadId) {
+      broadcastProgress(uploadId, -1); // Error state
+    }
     res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
     res.status(500).json({ error: 'Upload parsing failed', message: error.message });
   });
@@ -332,7 +416,7 @@ app.post('/api/upload', (req, res) => {
       size: fileInfo.size,
       mimetype: fileInfo.mimetype
     } : 'No file');
-    
+
     // Validate required fields
     if (!courseId) {
       console.error('ERROR: courseId is required');
@@ -354,10 +438,14 @@ app.post('/api/upload', (req, res) => {
       console.log('Uploading to R2...');
       console.log('Bucket:', BUCKET_NAME);
       console.log('File key:', fileKey);
-      
+
       // Wait for the upload to complete
       await uploadPromise;
       console.log('✓ File uploaded to R2 successfully');
+
+      if (uploadId) {
+        broadcastProgress(uploadId, 100);
+      }
 
       // Force garbage collection after large file upload
       if (global.gc && fileInfo.size > 100 * 1024 * 1024) {
@@ -388,7 +476,7 @@ app.post('/api/upload', (req, res) => {
           type: fileInfo.mimetype,
         },
       };
-      
+
       console.log('Sending response:', response);
       res.json(response);
     } catch (error) {
@@ -396,7 +484,11 @@ app.post('/api/upload', (req, res) => {
       console.error('Error:', error);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
-      
+
+      if (uploadId) {
+        broadcastProgress(uploadId, -1); // Error state
+      }
+
       res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
       res.status(500).json({ error: 'Upload failed', message: error.message });
     }
@@ -411,7 +503,7 @@ app.post('/api/upload', (req, res) => {
 // ============================================
 app.post('/api/upload-multiple', (req, res) => {
   console.log('=== Streaming Multiple Upload Started ===');
-  
+
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Credentials', 'true');
 
@@ -420,7 +512,7 @@ app.post('/api/upload-multiple', (req, res) => {
     return res.status(400).json({ error: 'Content-Type must be multipart/form-data' });
   }
 
-  const busboy = Busboy({ 
+  const busboy = Busboy({
     headers: req.headers,
     limits: {
       fileSize: 100 * 1024 * 1024, // 100MB per file for multiple uploads
@@ -443,7 +535,7 @@ app.post('/api/upload-multiple', (req, res) => {
     const { filename, encoding, mimeType } = info;
     console.log('=== Multer File Filter (Multiple) ===');
     console.log('File:', { fieldname, filename, mimeType });
-    
+
     const fileInfo = {
       originalname: filename,
       mimetype: mimeType,
@@ -502,7 +594,7 @@ app.post('/api/upload-multiple', (req, res) => {
 
   busboy.on('finish', async () => {
     console.log('=== Busboy Finished Parsing (Multiple) ===');
-    
+
     if (!courseId || !lessonId) {
       res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
       return res.status(400).json({ error: 'courseId and lessonId are required' });
@@ -515,7 +607,7 @@ app.post('/api/upload-multiple', (req, res) => {
 
     try {
       const results = await Promise.all(uploadPromises);
-      
+
       // Generate presigned URLs for successful uploads
       const data = await Promise.all(
         results
@@ -645,12 +737,12 @@ app.get('/api/files/:courseId/:lessonId', async (req, res) => {
 app.get('/echo', (req, res) => {
   console.log('=== Echo Endpoint Hit ===');
   console.log('Origin:', req.headers.origin);
-  
+
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.header('Access-Control-Allow-Credentials', 'true');
-  
+
   res.json({
     message: 'Echo endpoint working',
     timestamp: new Date().toISOString(),
@@ -662,13 +754,13 @@ app.get('/echo', (req, res) => {
 app.get('/health', (req, res) => {
   console.log('=== Health Check Endpoint Hit ===');
   console.log('Origin:', req.headers.origin);
-  
+
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.header('Access-Control-Allow-Credentials', 'true');
-  
-  res.json({ 
+
+  res.json({
     status: 'OK',
     version: 'streaming',
     timestamp: new Date().toISOString(),
@@ -681,12 +773,12 @@ app.get('/health', (req, res) => {
 app.get('/cors-test', (req, res) => {
   console.log('=== CORS Test Endpoint ===');
   console.log('Origin:', req.headers.origin);
-  
+
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.header('Access-Control-Allow-Credentials', 'true');
-  
+
   res.json({
     message: 'CORS test successful',
     origin: req.headers.origin,
@@ -699,15 +791,15 @@ app.get('/test-r2', async (req, res) => {
   try {
     console.log('Testing R2 connectivity...');
     console.log('Bucket name:', BUCKET_NAME);
-    
+
     const command = new ListObjectsV2Command({
       Bucket: BUCKET_NAME,
       MaxKeys: 1
     });
-    
+
     const response = await r2Client.send(command);
     console.log('R2 connection test successful');
-    
+
     res.json({
       success: true,
       message: 'R2 connection successful',
@@ -728,12 +820,12 @@ app.get('/test-r2', async (req, res) => {
 app.use((err, req, res, next) => {
   console.error('=== Global Error Handler ===');
   console.error('Error:', err);
-  
+
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.header('Access-Control-Allow-Credentials', 'true');
-  
+
   res.status(500).json({
     error: 'Internal server error',
     message: err.message || 'An unexpected error occurred'
