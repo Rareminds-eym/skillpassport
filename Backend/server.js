@@ -13,11 +13,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, '..', '.env') });
 
+console.log('=== Server Startup ===');
+console.log('Environment variables loaded:');
+console.log('  PORT:', process.env.PORT || 3001);
+console.log('  R2_ACCOUNT_ID:', process.env.R2_ACCOUNT_ID ? `${process.env.R2_ACCOUNT_ID.substring(0, 8)}...` : 'NOT_SET');
+console.log('  R2_ACCESS_KEY_ID:', process.env.R2_ACCESS_KEY_ID ? `${process.env.R2_ACCESS_KEY_ID.substring(0, 8)}...` : 'NOT_SET');
+console.log('  R2_SECRET_ACCESS_KEY:', process.env.R2_SECRET_ACCESS_KEY ? 'SET' : 'NOT_SET');
+console.log('  R2_BUCKET_NAME:', process.env.R2_BUCKET_NAME || 'NOT_SET');
+
 const app = express();
 
-// Configure CORS with specific options for file uploads
+// Configure CORS with comprehensive options
 const corsOptions = {
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'https://skillpassport.vercel.app'],
+  origin: true, // Reflect the request origin
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -25,10 +33,38 @@ const corsOptions = {
   exposedHeaders: ['Access-Control-Allow-Origin']
 };
 
+// Apply CORS middleware early
 app.use(cors(corsOptions));
 
-// Handle preflight requests explicitly
-app.options('*', cors(corsOptions));
+// Handle preflight requests for all routes
+app.options('*', (req, res) => {
+  console.log('=== Preflight Request ===');
+  console.log('Origin:', req.headers.origin);
+  console.log('Method:', req.headers['access-control-request-method']);
+  console.log('Headers:', req.headers['access-control-request-headers']);
+  
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(204);
+});
+
+// Add a middleware to always set CORS headers
+app.use((req, res, next) => {
+  console.log('=== Setting CORS Headers ===');
+  console.log('Request Origin:', req.headers.origin);
+  
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // For debugging - log all requests
+  console.log(`${req.method} ${req.path}`);
+  
+  next();
+});
 
 app.use(express.json());
 
@@ -85,7 +121,29 @@ if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID ||
   console.error('  R2_ACCESS_KEY_ID:', process.env.R2_ACCESS_KEY_ID ? 'SET' : 'MISSING');
   console.error('  R2_SECRET_ACCESS_KEY:', process.env.R2_SECRET_ACCESS_KEY ? 'SET' : 'MISSING');
   console.error('  R2_BUCKET_NAME:', process.env.R2_BUCKET_NAME ? 'SET' : 'MISSING');
+} else {
+  console.log('✓ All required R2 environment variables are set');
 }
+
+// Test R2 connectivity on startup
+setTimeout(async () => {
+  try {
+    console.log('Testing R2 connectivity on startup...');
+    if (BUCKET_NAME) {
+      const command = new ListObjectsV2Command({
+        Bucket: BUCKET_NAME,
+        MaxKeys: 1
+      });
+      
+      await r2Client.send(command);
+      console.log('✓ R2 connectivity test successful');
+    } else {
+      console.log('⚠️  Skipping R2 connectivity test - bucket name not set');
+    }
+  } catch (error) {
+    console.error('❌ R2 connectivity test failed:', error.message);
+  }
+}, 5000); // Test after 5 seconds to allow server to start
 
 // Configure multer for memory storage
 const upload = multer({
@@ -93,7 +151,27 @@ const upload = multer({
   limits: {
     fileSize: 500 * 1024 * 1024, // 500MB
   },
-});
+  // Add file filter for debugging
+  fileFilter: (req, file, cb) => {
+    console.log('=== Multer File Filter ===');
+    console.log('File:', file);
+    cb(null, true); // Accept all files
+  }
+}).single('file');
+
+// Also create a multiple file upload handler
+const uploadMultiple = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 500 * 1024 * 1024, // 500MB
+    files: 10 // Max 10 files
+  },
+  fileFilter: (req, file, cb) => {
+    console.log('=== Multer File Filter (Multiple) ===');
+    console.log('File:', file);
+    cb(null, true); // Accept all files
+  }
+}).array('files', 10);
 
 // Generate unique file key
 const generateFileKey = (originalName, courseId, lessonId) => {
@@ -104,9 +182,34 @@ const generateFileKey = (originalName, courseId, lessonId) => {
 };
 
 // Upload file to R2
-app.post('/api/upload', upload.single('file'), async (req, res) => {
+app.post('/api/upload', (req, res, next) => {
+  console.log('=== Starting Multer Upload ===');
+  upload(req, res, (err) => {
+    if (err) {
+      console.error('Multer error:', err);
+      return res.status(400).json({ error: 'Upload error', message: err.message });
+    }
+    console.log('Multer upload completed successfully');
+    next();
+  });
+}, async (req, res) => {
   try {
     console.log('=== Upload Request Received ===');
+    console.log('Request headers:', req.headers);
+    console.log('Request body:', req.body);
+    console.log('Request file:', req.file);
+    
+    // Log if there are any errors with multer
+    if (req.fileValidationError) {
+      console.error('File validation error:', req.fileValidationError);
+      return res.status(400).json({ error: 'File validation error', message: req.fileValidationError });
+    }
+    
+    if (!req.file && !req.body) {
+      console.error('No data received in request');
+      return res.status(400).json({ error: 'No data received' });
+    }
+
     console.log('Body:', req.body);
     console.log('File:', req.file ? {
       name: req.file.originalname,
@@ -119,11 +222,6 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ? 'SET' : 'NOT_SET',
       R2_BUCKET_NAME: process.env.R2_BUCKET_NAME ? 'SET' : 'NOT_SET'
     });
-
-    // Add CORS headers explicitly for this endpoint
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
 
     const { courseId, lessonId } = req.body;
     const file = req.file;
@@ -196,23 +294,23 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
     
-    // Add CORS headers for error responses too
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    
     res.status(500).json({ error: 'Upload failed', message: error.message });
   }
 });
 
 // Upload multiple files
-app.post('/api/upload-multiple', upload.array('files', 10), async (req, res) => {
+app.post('/api/upload-multiple', (req, res, next) => {
+  console.log('=== Starting Multer Upload (Multiple) ===');
+  uploadMultiple(req, res, (err) => {
+    if (err) {
+      console.error('Multer error (multiple):', err);
+      return res.status(400).json({ error: 'Upload error', message: err.message });
+    }
+    console.log('Multer upload (multiple) completed successfully');
+    next();
+  });
+}, async (req, res) => {
   try {
-    // Add CORS headers explicitly for this endpoint
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-
     const { courseId, lessonId } = req.body;
     const files = req.files;
 
@@ -260,12 +358,6 @@ app.post('/api/upload-multiple', upload.array('files', 10), async (req, res) => 
     });
   } catch (error) {
     console.error('Upload error:', error);
-    
-    // Add CORS headers for error responses too
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    
     res.status(500).json({ error: 'Upload failed', message: error.message });
   }
 });
@@ -404,7 +496,45 @@ app.get('/echo', (req, res) => {
   });
 });
 
+// CORS test endpoint
+app.get('/cors-test', (req, res) => {
+  console.log('=== CORS Test Endpoint ===');
+  console.log('Origin:', req.headers.origin);
+  
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  res.json({
+    message: 'CORS test successful',
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
+  });
+});
+
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('=== Uncaught Exception ===');
+  console.error(err);
+  console.error(err.stack);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('=== Unhandled Rejection ===');
+  console.error(err);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('Process terminated');
+  });
 });
