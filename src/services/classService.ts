@@ -156,12 +156,19 @@ const calculateStudentProgress = async (studentId: string, classId: string): Pro
   }
 }
 
-export const fetchEducatorClasses = async (): Promise<ServiceResponse<EducatorClass[]>> => {
+export const fetchEducatorClasses = async (schoolId?: string): Promise<ServiceResponse<EducatorClass[]>> => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from("school_classes")
       .select("*")
       .order("created_at", { ascending: false })
+
+    // Filter by school if provided
+    if (schoolId) {
+      query = query.eq("school_id", schoolId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       return { data: null, error: error.message }
@@ -240,13 +247,21 @@ export const getClassById = async (classId: string): Promise<ServiceResponse<Edu
   }
 }
 
-export const fetchStudentDirectory = async (): Promise<ServiceResponse<StudentDirectoryEntry[]>> => {
+export const fetchStudentDirectory = async (schoolId?: string): Promise<ServiceResponse<StudentDirectoryEntry[]>> => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from("students")
-      .select("id, name, email")
+      .select("id, name, email, school_id")
       .is("school_class_id", null)
+      .eq("is_deleted", false)
       .limit(100)
+
+    // Filter by school if provided
+    if (schoolId) {
+      query = query.eq("school_id", schoolId)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       return { data: null, error: error.message }
@@ -363,24 +378,24 @@ type CreateClassPayload = {
   grade: string
   section: string
   academicYear: string
-  educator: string
-  educatorEmail: string
   maxStudents: number
   status: ClassStatus
   skillAreas: string[]
+  schoolId: string
+  educatorId: string
+  educatorName: string
+  educatorEmail: string
 }
 
 export const createClass = async (payload: CreateClassPayload): Promise<MutateResponse<EducatorClass>> => {
   try {
     const skills = Array.from(new Set(payload.skillAreas.map((skill) => skill.trim()).filter(Boolean)))
 
-    const schoolId = "550e8400-e29b-41d4-a716-446655440000"
-
     const { data, error } = await supabase
       .from("school_classes")
       .insert([
         {
-          school_id: schoolId,
+          school_id: payload.schoolId,
           name: payload.name,
           grade: payload.grade,
           section: payload.section,
@@ -391,8 +406,9 @@ export const createClass = async (payload: CreateClassPayload): Promise<MutateRe
           metadata: {
             skillAreas: skills,
             status: payload.status,
-            educator: payload.educator,
-            educatorEmail: payload.educatorEmail
+            educator: payload.educatorName,
+            educatorEmail: payload.educatorEmail,
+            educatorId: payload.educatorId
           }
         }
       ])
@@ -410,7 +426,7 @@ export const createClass = async (payload: CreateClassPayload): Promise<MutateRe
     const classItem = transformDBClassToClass(data)
     classItem.skillAreas = skills
     classItem.status = payload.status
-    classItem.educator = payload.educator
+    classItem.educator = payload.educatorName
     classItem.educatorEmail = payload.educatorEmail
 
     return {
@@ -438,8 +454,9 @@ export const updateClass = async (classId: string, payload: CreateClassPayload):
         metadata: {
           skillAreas: skills,
           status: payload.status,
-          educator: payload.educator,
-          educatorEmail: payload.educatorEmail
+          educator: payload.educatorName,
+          educatorEmail: payload.educatorEmail,
+          educatorId: payload.educatorId
         }
       })
       .eq("id", classId)
@@ -457,7 +474,7 @@ export const updateClass = async (classId: string, payload: CreateClassPayload):
     const classItem = transformDBClassToClass(data)
     classItem.skillAreas = skills
     classItem.status = payload.status
-    classItem.educator = payload.educator
+    classItem.educator = payload.educatorName
     classItem.educatorEmail = payload.educatorEmail
 
     const students = await fetchClassStudents(classId)
