@@ -20,7 +20,7 @@ interface ResourceUploadComponentProps {
   lessonId: string;
 }
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 const ALLOWED_FILE_TYPES = {
   pdf: ['.pdf'],
   document: ['.doc', '.docx', '.ppt', '.pptx', '.txt'],
@@ -187,11 +187,11 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
               prev.map((fu, i) =>
                 i === index
                   ? {
-                      ...fu,
-                      status: 'completed',
-                      progress: 100,
-                      uploadedData: response.data
-                    }
+                    ...fu,
+                    status: 'completed',
+                    progress: 100,
+                    uploadedData: response.data
+                  }
                   : fu
               )
             );
@@ -313,7 +313,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
 
   const removeFileUpload = async (index: number) => {
     const upload = fileUploads[index];
-    
+
     // If file was uploaded to R2, delete it
     if (upload.status === 'completed' && upload.uploadedData?.key) {
       try {
@@ -324,7 +324,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         console.error('Delete error:', error);
       }
     }
-    
+
     setFileUploads(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -414,22 +414,20 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setUploadMode('file')}
-              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                uploadMode === 'file'
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${uploadMode === 'file'
                   ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-500'
                   : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:border-gray-300'
-              }`}
+                }`}
             >
               <CloudArrowUpIcon className="h-5 w-5 inline mr-2" />
               Upload Files
             </button>
             <button
               onClick={() => setUploadMode('link')}
-              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                uploadMode === 'link'
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${uploadMode === 'link'
                   ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-500'
                   : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:border-gray-300'
-              }`}
+                }`}
             >
               <LinkIcon className="h-5 w-5 inline mr-2" />
               Add Link
@@ -454,11 +452,10 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
-                  dragActive
+                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${dragActive
                     ? 'border-indigo-500 bg-indigo-50'
                     : 'border-gray-300 hover:border-indigo-400'
-                }`}
+                  }`}
               >
                 <CloudArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-sm font-medium text-gray-900 mb-1">
@@ -550,33 +547,30 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => setLinkType('link')}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
-                      linkType === 'link'
+                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${linkType === 'link'
                         ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                         : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
-                    }`}
+                      }`}
                   >
                     <LinkIcon className="h-5 w-5 mx-auto mb-1" />
                     URL Link
                   </button>
                   <button
                     onClick={() => setLinkType('youtube')}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
-                      linkType === 'youtube'
+                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${linkType === 'youtube'
                         ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                         : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
-                    }`}
+                      }`}
                   >
                     <VideoCameraIcon className="h-5 w-5 mx-auto mb-1" />
                     YouTube
                   </button>
                   <button
                     onClick={() => setLinkType('drive')}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
-                      linkType === 'drive'
+                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${linkType === 'drive'
                         ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                         : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
-                    }`}
+                      }`}
                   >
                     <CloudArrowUpIcon className="h-5 w-5 mx-auto mb-1" />
                     Google Drive
@@ -610,8 +604,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                     linkType === 'youtube'
                       ? 'https://youtube.com/watch?v=...'
                       : linkType === 'drive'
-                      ? 'https://drive.google.com/...'
-                      : 'https://example.com/resource'
+                        ? 'https://drive.google.com/...'
+                        : 'https://example.com/resource'
                   }
                 />
               </div>
