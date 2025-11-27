@@ -609,8 +609,6 @@ app.post('/api/upload',
     let responseHandled = false;
     let passThroughStream = null;
     let fileStreamInfo = null;
-    let bytesReceived = 0;
-    let lastProgressUpdate = 0;
 
     // Handle form fields
     busboy.on('field', (fieldname, val) => {
@@ -660,22 +658,7 @@ app.post('/api/upload',
 
       fileStream.on('data', (chunk) => {
         fileInfo.size += chunk.length;
-        bytesReceived += chunk.length;
         passThroughStream.write(chunk);
-        
-        // Broadcast progress every 1% or every 500KB, whichever comes first
-        if (uploadId && contentLength > 0) {
-          const currentProgress = Math.round((bytesReceived / contentLength) * 100);
-          const bytesSinceLastUpdate = bytesReceived - lastProgressUpdate;
-          
-          if (currentProgress > lastProgressUpdate || bytesSinceLastUpdate > 512 * 1024) {
-            lastProgressUpdate = bytesReceived;
-            broadcastProgress(uploadId, Math.min(currentProgress, 99), 'uploading', {
-              bytesReceived,
-              totalBytes: contentLength
-            });
-          }
-        }
       });
 
       fileStream.on('end', () => {
@@ -691,7 +674,7 @@ app.post('/api/upload',
       // Handle file size limit
       fileStream.on('limit', () => {
         logger.warn('File size limit reached', { requestId });
-        if (uploadId) broadcastProgress(uploadId, -1, 'error', { bytesReceived, totalBytes: contentLength });
+        if (uploadId) broadcastProgress(uploadId, -1, 'error', { bytesReceived: fileInfo.size, totalBytes: contentLength });
         if (!responseHandled) {
           responseHandled = true;
           res.status(413).json({
@@ -760,9 +743,9 @@ app.post('/api/upload',
         
         // Update progress to show we're now uploading to R2
         if (uploadId) {
-          broadcastProgress(uploadId, 99, 'processing', {
-            bytesReceived: fileInfo.size,
-            totalBytes: contentLength
+          broadcastProgress(uploadId, 0, 'uploading', {
+            bytesReceived: 0,
+            totalBytes: fileInfo.size
           });
         }
 
@@ -786,13 +769,28 @@ app.post('/api/upload',
           leavePartsOnError: false,
         });
 
-        // R2 upload progress (optional, might not have total)
+        // Track R2 upload progress (this is what matters for large files)
+        let lastR2Progress = 0;
         uploadInstance.on('httpUploadProgress', (progress) => {
+          const loaded = progress.loaded || 0;
+          const total = fileInfo.size; // Use actual file size since progress.total may be undefined
+          const percentage = Math.round((loaded / total) * 100);
+          
           logger.debug('R2 upload progress', { 
             requestId, 
-            loaded: progress.loaded, 
-            total: progress.total 
+            loaded,
+            total,
+            percentage
           });
+          
+          // Broadcast progress to SSE clients
+          if (uploadId && percentage > lastR2Progress) {
+            lastR2Progress = percentage;
+            broadcastProgress(uploadId, Math.min(percentage, 99), 'uploading', {
+              bytesReceived: loaded,
+              totalBytes: total
+            });
+          }
         });
 
         await uploadInstance.done();
@@ -807,13 +805,29 @@ app.post('/api/upload',
           });
         }
 
-        // Garbage collection for large files
-        if (global.gc && fileInfo.size > 100 * 1024 * 1024) {
+        // ============================================
+        // MEMORY CLEANUP - Critical for 512MB servers
+        // ============================================
+        
+        // Destroy the PassThrough stream to release buffer memory
+        if (passThroughStream) {
+          passThroughStream.destroy();
+          passThroughStream = null;
+        }
+        
+        // Clear references
+        fileStreamInfo = null;
+        
+        // Force garbage collection if available
+        if (global.gc && fileInfo.size > 50 * 1024 * 1024) {
           try {
             global.gc();
-            logger.debug('Garbage collection triggered', { requestId });
+            logger.info('Garbage collection triggered after upload', { 
+              requestId, 
+              fileSize: `${(fileInfo.size / 1024 / 1024).toFixed(2)}MB` 
+            });
           } catch (err) {
-            // Ignore GC errors
+            logger.warn('Garbage collection failed', { error: err.message });
           }
         }
 
@@ -842,6 +856,12 @@ app.post('/api/upload',
           error: error.message,
           stack: error.stack
         });
+        
+        // Cleanup on error too
+        if (passThroughStream) {
+          passThroughStream.destroy();
+          passThroughStream = null;
+        }
 
         if (uploadId) broadcastProgress(uploadId, -1, 'error');
 
