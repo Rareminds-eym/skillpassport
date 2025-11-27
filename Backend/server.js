@@ -42,7 +42,7 @@ const BUCKET_NAME = process.env.R2_BUCKET_NAME;
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 100 * 1024 * 1024, // Increased from 50MB to 100MB
+    fileSize: 500 * 1024 * 1024, // Increased from 50MB to 100MB
   },
 });
 
