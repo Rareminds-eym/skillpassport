@@ -245,6 +245,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       });
 
       xhr.open('POST', `${API_BASE_URL}/api/upload`);
+      xhr.timeout = 300000; // 5 minutes timeout for large files
       console.log('XHR opened, sending data...');
       xhr.send(formData);
     } catch (error) {
@@ -415,8 +416,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
             <button
               onClick={() => setUploadMode('file')}
               className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${uploadMode === 'file'
-                  ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-500'
-                  : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:border-gray-300'
+                ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-500'
+                : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:border-gray-300'
                 }`}
             >
               <CloudArrowUpIcon className="h-5 w-5 inline mr-2" />
@@ -425,8 +426,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
             <button
               onClick={() => setUploadMode('link')}
               className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${uploadMode === 'link'
-                  ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-500'
-                  : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:border-gray-300'
+                ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-500'
+                : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:border-gray-300'
                 }`}
             >
               <LinkIcon className="h-5 w-5 inline mr-2" />
@@ -453,8 +454,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
                 className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${dragActive
-                    ? 'border-indigo-500 bg-indigo-50'
-                    : 'border-gray-300 hover:border-indigo-400'
+                  ? 'border-indigo-500 bg-indigo-50'
+                  : 'border-gray-300 hover:border-indigo-400'
                   }`}
               >
                 <CloudArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -548,8 +549,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                   <button
                     onClick={() => setLinkType('link')}
                     className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${linkType === 'link'
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
                       }`}
                   >
                     <LinkIcon className="h-5 w-5 mx-auto mb-1" />
@@ -558,8 +559,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                   <button
                     onClick={() => setLinkType('youtube')}
                     className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${linkType === 'youtube'
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
                       }`}
                   >
                     <VideoCameraIcon className="h-5 w-5 mx-auto mb-1" />
@@ -568,8 +569,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                   <button
                     onClick={() => setLinkType('drive')}
                     className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${linkType === 'drive'
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
                       }`}
                   >
                     <CloudArrowUpIcon className="h-5 w-5 mx-auto mb-1" />
