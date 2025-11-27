@@ -28,6 +28,9 @@ const ALLOWED_FILE_TYPES = {
   image: ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp']
 };
 
+// Extended timeout for large file uploads (10 minutes for 500MB files)
+const UPLOAD_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
@@ -112,6 +115,12 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
     if (!allAllowedTypes.includes(ext)) {
       return 'File type not supported';
     }
+    
+    // Warn user about large files
+    if (file.size > 100 * 1024 * 1024) { // 100MB
+      console.warn('Large file selected:', file.name, (file.size / 1024 / 1024).toFixed(2), 'MB');
+    }
+    
     return null;
   };
 
@@ -121,6 +130,12 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       console.log('API_BASE_URL:', API_BASE_URL);
       console.log('File:', file.name, 'Size:', file.size, 'Type:', file.type);
       console.log('CourseId:', courseId, 'LessonId:', lessonId);
+      
+      // Warn user about large file uploads
+      if (file.size > 100 * 1024 * 1024) { // 100MB
+        console.warn('Large file detected:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+        console.warn('Upload may take several minutes depending on your internet connection');
+      }
 
       // CRITICAL: Validate courseId and lessonId are defined
       if (!courseId || courseId === 'undefined') {
@@ -207,10 +222,21 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
           }
         } else {
           console.error('Upload failed with status:', xhr.status);
+          let errorMessage = `Upload failed (Status: ${xhr.status})`;
+          
+          // Provide more specific error messages
+          if (xhr.status === 0) {
+            errorMessage = 'Network error - check your internet connection and try again';
+          } else if (xhr.status === 413) {
+            errorMessage = 'File too large - exceeds server limits';
+          } else if (xhr.status >= 500) {
+            errorMessage = 'Server error - please try again later';
+          }
+          
           setFileUploads(prev =>
             prev.map((fu, i) =>
               i === index
-                ? { ...fu, status: 'error', error: `Upload failed (Status: ${xhr.status})` }
+                ? { ...fu, status: 'error', error: errorMessage }
                 : fu
             )
           );
@@ -226,10 +252,18 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         console.error('Ready state:', xhr.readyState);
         console.error('Response Text:', xhr.responseText);
         console.error('Response URL:', xhr.responseURL);
+        
+        let errorMessage = `Network error (Status: ${xhr.status}, ReadyState: ${xhr.readyState})`;
+        
+        // Provide more specific error messages
+        if (xhr.status === 0) {
+          errorMessage = 'Network connection failed - check your internet connection. If this persists, our servers may be temporarily unavailable.';
+        }
+        
         setFileUploads(prev =>
           prev.map((fu, i) =>
             i === index
-              ? { ...fu, status: 'error', error: `Network error (Status: ${xhr.status}, ReadyState: ${xhr.readyState})` }
+              ? { ...fu, status: 'error', error: errorMessage }
               : fu
           )
         );
@@ -238,10 +272,13 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       // Handle timeout
       xhr.addEventListener('timeout', () => {
         console.error('=== XHR Timeout ===');
+        const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+        const errorMessage = `Upload timed out for ${file.name} (${fileSizeMB}MB). Try again or use a faster connection.`;
+        
         setFileUploads(prev =>
           prev.map((fu, i) =>
             i === index
-              ? { ...fu, status: 'error', error: 'Upload timeout' }
+              ? { ...fu, status: 'error', error: errorMessage }
               : fu
           )
         );
@@ -252,7 +289,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       console.log('Upload URL:', uploadUrl);
       console.log('API_BASE_URL:', API_BASE_URL);
       xhr.open('POST', uploadUrl);
-      xhr.timeout = 300000; // 5 minutes timeout for large files
+      xhr.timeout = UPLOAD_TIMEOUT; // Extended timeout for large files
       console.log('XHR opened, sending data...');
       xhr.send(formData);
     } catch (error) {
@@ -489,6 +526,12 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                 <p className="text-xs text-gray-500 mt-4">
                   Supported: PDF, DOC, DOCX, PPT, PPTX, MP4, Images (Max {formatFileSize(MAX_FILE_SIZE)})
                 </p>
+                <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-xs text-yellow-700">
+                    <strong>Note:</strong> Large files (over 100MB) may take several minutes to upload. 
+                    Please be patient and maintain a stable internet connection.
+                  </p>
+                </div>
               </div>
 
               {/* Upload List */}
