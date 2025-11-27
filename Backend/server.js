@@ -30,16 +30,50 @@ app.use((req, res, next) => {
 });
 
 // Configure R2 client (R2 is S3-compatible)
-const r2Client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-  },
-});
+let r2Client;
+try {
+  console.log('Initializing R2 client with config:', {
+    region: 'auto',
+    endpoint: process.env.R2_ACCOUNT_ID ? `https://${process.env.R2_ACCOUNT_ID.substring(0, 8)}...r2.cloudflarestorage.com` : 'NOT_SET',
+    accessKeyId: process.env.R2_ACCESS_KEY_ID ? `${process.env.R2_ACCESS_KEY_ID.substring(0, 8)}...` : 'NOT_SET'
+  });
+  
+  r2Client = new S3Client({
+    region: 'auto',
+    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: process.env.R2_ACCESS_KEY_ID,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+    },
+  });
+  
+  console.log('✓ R2 client initialized successfully');
+} catch (error) {
+  console.error('❌ Failed to initialize R2 client:', error);
+  console.error('Error message:', error.message);
+  // We'll still create the client but it will fail later
+  r2Client = new S3Client({
+    region: 'auto',
+    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: process.env.R2_ACCESS_KEY_ID,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+    },
+  });
+}
 
 const BUCKET_NAME = process.env.R2_BUCKET_NAME;
+console.log('Bucket name:', BUCKET_NAME || 'NOT_SET');
+
+// Validate required environment variables
+if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || 
+    !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME) {
+  console.error('❌ Missing required R2 environment variables:');
+  console.error('  R2_ACCOUNT_ID:', process.env.R2_ACCOUNT_ID ? 'SET' : 'MISSING');
+  console.error('  R2_ACCESS_KEY_ID:', process.env.R2_ACCESS_KEY_ID ? 'SET' : 'MISSING');
+  console.error('  R2_SECRET_ACCESS_KEY:', process.env.R2_SECRET_ACCESS_KEY ? 'SET' : 'MISSING');
+  console.error('  R2_BUCKET_NAME:', process.env.R2_BUCKET_NAME ? 'SET' : 'MISSING');
+}
 
 // Configure multer for memory storage
 const upload = multer({
@@ -67,6 +101,12 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       size: req.file.size,
       mimetype: req.file.mimetype
     } : 'No file');
+    console.log('Environment variables check:', {
+      R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID ? 'SET' : 'NOT_SET',
+      R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID ? 'SET' : 'NOT_SET',
+      R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ? 'SET' : 'NOT_SET',
+      R2_BUCKET_NAME: process.env.R2_BUCKET_NAME ? 'SET' : 'NOT_SET'
+    });
 
     const { courseId, lessonId } = req.body;
     const file = req.file;
@@ -76,6 +116,17 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No file provided' });
     }
 
+    // Validate required parameters
+    if (!courseId) {
+      console.error('ERROR: courseId is required');
+      return res.status(400).json({ error: 'courseId is required' });
+    }
+
+    if (!lessonId) {
+      console.error('ERROR: lessonId is required');
+      return res.status(400).json({ error: 'lessonId is required' });
+    }
+
     console.log('Generating file key...');
     const fileKey = generateFileKey(file.originalname, courseId, lessonId);
     console.log('File key:', fileKey);
@@ -83,6 +134,8 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     // Upload to R2
     console.log('Uploading to R2...');
     console.log('Bucket:', BUCKET_NAME);
+    console.log('R2 endpoint:', `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`);
+    
     const command = new PutObjectCommand({
       Bucket: BUCKET_NAME,
       Key: fileKey,
@@ -95,6 +148,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       },
     });
 
+    console.log('Sending command to R2...');
     await r2Client.send(command);
     console.log('✓ File uploaded to R2 successfully');
 
@@ -264,6 +318,56 @@ app.get('/api/files/:courseId/:lessonId', async (req, res) => {
     console.error('List files error:', error);
     res.status(500).json({ error: 'Failed to list files', message: error.message });
   }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    bucketName: BUCKET_NAME || 'NOT_SET',
+    r2Configured: !!process.env.R2_ACCOUNT_ID && !!process.env.R2_ACCESS_KEY_ID && !!process.env.R2_SECRET_ACCESS_KEY
+  });
+});
+
+// Test R2 connectivity endpoint
+app.get('/test-r2', async (req, res) => {
+  try {
+    console.log('Testing R2 connectivity...');
+    console.log('Bucket name:', BUCKET_NAME);
+    
+    // Try to list objects in the bucket (this will test the R2 connection)
+    const command = new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      MaxKeys: 1
+    });
+    
+    const response = await r2Client.send(command);
+    console.log('R2 connection test successful');
+    
+    res.json({
+      success: true,
+      message: 'R2 connection successful',
+      bucket: BUCKET_NAME,
+      objectCount: response.Contents ? response.Contents.length : 0
+    });
+  } catch (error) {
+    console.error('R2 connection test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      bucket: BUCKET_NAME
+    });
+  }
+});
+
+// Simple echo endpoint for testing connectivity
+app.get('/echo', (req, res) => {
+  res.json({
+    message: 'Echo endpoint working',
+    timestamp: new Date().toISOString(),
+    headers: req.headers
+  });
 });
 
 const PORT = process.env.PORT || 3001;
