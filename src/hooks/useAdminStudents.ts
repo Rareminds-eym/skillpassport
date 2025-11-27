@@ -254,10 +254,62 @@ export function useStudents() {
       setLoading(true)
       setError(null)
       try {
-        console.log('Fetching students from Supabase...');
+        console.log('🚀 [UPDATED CODE v3.0] Fetching students with school filtering...');
+        
+        // Get current user's school_id
+        let schoolId: string | null = null;
+        
+        // First, check if user is logged in via AuthContext (for school admins)
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const userData = JSON.parse(storedUser);
+            console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
+            
+            if (userData.role === 'school_admin' && userData.schoolId) {
+              schoolId = userData.schoolId;
+              console.log('✅ School admin detected, using schoolId from localStorage:', schoolId);
+            }
+          } catch (e) {
+            console.error('Error parsing stored user:', e);
+          }
+        }
+        
+        // If not found in localStorage, try Supabase Auth (for educators/teachers)
+        if (!schoolId) {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user) {
+            console.log('🔍 Checking Supabase auth user:', user.email);
+            
+            // Check school_educators table
+            const { data: educator } = await supabase
+              .from('school_educators')
+              .select('school_id')
+              .eq('user_id', user.id)
+              .single();
+            
+            if (educator?.school_id) {
+              schoolId = educator.school_id;
+              console.log('✅ Found school_id in school_educators:', schoolId);
+            } else {
+              // Check schools table by email
+              const { data: school } = await supabase
+                .from('schools')
+                .select('id')
+                .eq('email', user.email)
+                .single();
+              
+              schoolId = school?.id || null;
+              if (schoolId) {
+                console.log('✅ Found school_id in schools table:', schoolId);
+              }
+            }
+          }
+        }
         
         // Try full query first
-        let result = await supabase
+        let query = supabase
           .from('students')
           .select(`*,
             skills!skills_student_id_fkey(id,name,type,level,description,verified,enabled,approval_status,created_at,updated_at),
@@ -269,14 +321,31 @@ export function useStudents() {
           .order('updatedAt', { ascending: false })
           .limit(500);
         
+        // Filter by school_id if user is a school admin
+        if (schoolId) {
+          console.log('✅ Filtering students by school_id:', schoolId);
+          query = query.eq('school_id', schoolId);
+        } else {
+          console.warn('⚠️ No school_id found - will fetch ALL students');
+        }
+        
+        let result = await query;
+        
         // If full query fails, try simpler query
         if (result.error) {
           console.warn('Full query failed, trying simple query:', result.error);
-          result = await supabase
+          let simpleQuery = supabase
             .from('students')
             .select('*')
             .order('updatedAt', { ascending: false })
             .limit(500);
+          
+          // Filter by school_id if user is a school admin
+          if (schoolId) {
+            simpleQuery = simpleQuery.eq('school_id', schoolId);
+          }
+          
+          result = await simpleQuery;
         }
         
         if (result.error) {
@@ -286,7 +355,7 @@ export function useStudents() {
         
         if (!isMounted) return;
         
-        console.log(`Fetched ${result.data?.length || 0} students`);
+        console.log(`✅ Fetched ${result.data?.length || 0} students for school_id: ${schoolId || 'ALL'}`);
         
         // Log sample data to verify related tables are loaded
         if (result.data && result.data.length > 0) {

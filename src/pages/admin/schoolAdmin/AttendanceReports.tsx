@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   CalendarIcon,
   ClockIcon,
@@ -26,6 +26,8 @@ import SearchBar from "../../../components/common/SearchBar";
 import Pagination from "../../../components/admin/Pagination";
 import KPICard from "../../../components/admin/KPICard";
 import ReactApexChart from "react-apexcharts";
+import { attendanceService } from "../../../services/studentManagementService";
+import { supabase } from "../../../lib/supabaseClient";
 
 // ==================== TYPES ====================
 interface AttendanceRecord {
@@ -183,184 +185,96 @@ const AttendanceReports: React.FC = () => {
     sources: [] as string[],
   });
 
-  // Sample data - In production, this would come from API
-  const [attendanceRecords] = useState<AttendanceRecord[]>([
-    {
-      id: "1",
-      studentId: "STU001",
-      studentName: "Arjun Patel",
-      rollNumber: "10A001",
-      class: "10",
-      section: "A",
-      date: "2025-11-26",
-      status: "present",
-      timeIn: "08:55",
-      timeOut: "15:05",
-      teacher: "Mrs. Sharma",
-      source: "rfid",
-      deviceId: "RFID-001",
-    },
-    {
-      id: "2",
-      studentId: "STU002",
-      studentName: "Priya Singh",
-      rollNumber: "10A002",
-      class: "10",
-      section: "A",
-      date: "2025-11-26",
-      status: "late",
-      timeIn: "09:15",
-      timeOut: "15:03",
-      remarks: "Traffic delay",
-      teacher: "Mrs. Sharma",
-      source: "manual",
-    },
-    {
-      id: "3",
-      studentId: "STU003",
-      studentName: "Rahul Verma",
-      rollNumber: "10A003",
-      class: "10",
-      section: "A",
-      date: "2025-11-26",
-      status: "absent",
-      teacher: "Mrs. Sharma",
-    },
-    {
-      id: "4",
-      studentId: "STU004",
-      studentName: "Sneha Gupta",
-      rollNumber: "10A004",
-      class: "10",
-      section: "A",
-      date: "2025-11-26",
-      status: "present",
-      timeIn: "08:50",
-      timeOut: "15:02",
-      teacher: "Mrs. Sharma",
-      source: "biometric",
-      deviceId: "BIO-002",
-    },
-    {
-      id: "5",
-      studentId: "STU005",
-      studentName: "Vikram Kumar",
-      rollNumber: "10B001",
-      class: "10",
-      section: "B",
-      date: "2025-11-26",
-      status: "present",
-      timeIn: "08:58",
-      timeOut: "15:01",
-      teacher: "Mr. Reddy",
-      source: "rfid",
-      deviceId: "RFID-002",
-    },
-    // Historical data for chronic absentee detection
-    {
-      id: "6",
-      studentId: "STU003",
-      studentName: "Rahul Verma",
-      rollNumber: "10A003",
-      class: "10",
-      section: "A",
-      date: "2025-11-25",
-      status: "absent",
-      teacher: "Mrs. Sharma",
-    },
-    {
-      id: "7",
-      studentId: "STU003",
-      studentName: "Rahul Verma",
-      rollNumber: "10A003",
-      class: "10",
-      section: "A",
-      date: "2025-11-24",
-      status: "absent",
-      teacher: "Mrs. Sharma",
-    },
-    {
-      id: "8",
-      studentId: "STU003",
-      studentName: "Rahul Verma",
-      rollNumber: "10A003",
-      class: "10",
-      section: "A",
-      date: "2025-11-23",
-      status: "absent",
-      teacher: "Mrs. Sharma",
-    },
-    {
-      id: "9",
-      studentId: "STU003",
-      studentName: "Rahul Verma",
-      rollNumber: "10A003",
-      class: "10",
-      section: "A",
-      date: "2025-11-22",
-      status: "absent",
-      teacher: "Mrs. Sharma",
-    },
-    {
-      id: "10",
-      studentId: "STU003",
-      studentName: "Rahul Verma",
-      rollNumber: "10A003",
-      class: "10",
-      section: "A",
-      date: "2025-11-21",
-      status: "absent",
-      teacher: "Mrs. Sharma",
-    },
-  ]);
+  // Real data from backend
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [schoolId, setSchoolId] = useState<string>('550e8400-e29b-41d4-a716-446655440000'); // Your school ID
 
-  const [students] = useState<Student[]>([
-    {
-      id: "STU001",
-      rollNumber: "10A001",
-      name: "Arjun Patel",
-      class: "10",
-      section: "A",
-      email: "arjun.patel@school.edu",
-      phone: "+91-9876543210",
-    },
-    {
-      id: "STU002",
-      rollNumber: "10A002",
-      name: "Priya Singh",
-      class: "10",
-      section: "A",
-      email: "priya.singh@school.edu",
-      phone: "+91-9876543211",
-    },
-    {
-      id: "STU003",
-      rollNumber: "10A003",
-      name: "Rahul Verma",
-      class: "10",
-      section: "A",
-      email: "rahul.verma@school.edu",
-      phone: "+91-9876543212",
-    },
-    {
-      id: "STU004",
-      rollNumber: "10A004",
-      name: "Sneha Gupta",
-      class: "10",
-      section: "A",
-      email: "sneha.gupta@school.edu",
-      phone: "+91-9876543213",
-    },
-    {
-      id: "STU005",
-      rollNumber: "10B001",
-      name: "Vikram Kumar",
-      class: "10",
-      section: "B",
-      email: "vikram.kumar@school.edu",
-      phone: "+91-9876543214",
-    },
-  ]);
+  // Fetch attendance records from backend
+  useEffect(() => {
+    const fetchAttendanceData = async () => {
+      try {
+        setLoading(true);
+        
+        // Calculate date range (last 30 days)
+        const endDate = new Date().toISOString().split('T')[0];
+        const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        // Fetch attendance records
+        const { data: attendanceData, error } = await attendanceService.getAttendance(
+          schoolId,
+          startDate,
+          endDate
+        );
+
+        if (error) {
+          console.error('Error fetching attendance:', error);
+          return;
+        }
+
+        // Transform data to match component format
+        const transformedRecords: AttendanceRecord[] = (attendanceData || []).map((record: any) => ({
+          id: record.id,
+          studentId: record.student_id,
+          studentName: record.student?.name || 'Unknown',
+          rollNumber: record.student?.roll_number || 'N/A',
+          class: record.student?.grade || 'N/A',
+          section: record.student?.section || 'N/A',
+          date: record.date,
+          status: record.status as "present" | "absent" | "late" | "excused",
+          timeIn: record.time_in,
+          timeOut: record.time_out,
+          remarks: record.remarks,
+          teacher: 'Teacher', // You can add teacher info if available
+          source: record.mode as "manual" | "rfid" | "biometric",
+        }));
+
+        setAttendanceRecords(transformedRecords);
+      } catch (err) {
+        console.error('Error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAttendanceData();
+  }, [schoolId]);
+
+  const [students, setStudents] = useState<Student[]>([]);
+
+  // Fetch students from backend
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('students')
+          .select('id, roll_number, name, grade, section, email, contactNumber')
+          .eq('school_id', schoolId)
+          .eq('approval_status', 'approved');
+
+        if (error) {
+          console.error('Error fetching students:', error);
+          return;
+        }
+
+        const transformedStudents: Student[] = (data || []).map((s: any) => ({
+          id: s.id,
+          rollNumber: s.roll_number || 'N/A',
+          name: s.name,
+          class: s.grade || 'N/A',
+          section: s.section || 'N/A',
+          email: s.email,
+          phone: s.contactNumber || 'N/A',
+        }));
+
+        setStudents(transformedStudents);
+      } catch (err) {
+        console.error('Error:', err);
+      }
+    };
+
+    fetchStudents();
+  }, [schoolId]);
 
   // Analytics calculations
   const analytics = useMemo(() => {
@@ -512,6 +426,18 @@ const AttendanceReports: React.FC = () => {
     { id: "rawlogs", label: "Raw Logs", icon: TableCellsIcon },
   ];
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading attendance data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header */}
@@ -520,7 +446,7 @@ const AttendanceReports: React.FC = () => {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
               <DocumentChartBarIcon className="h-8 w-8 text-indigo-600" />
-              Attendance Reports
+              Attendance Reports {attendanceRecords.length > 0 && <span className="text-sm font-normal text-gray-500">({attendanceRecords.length} records)</span>}
             </h1>
             <p className="text-sm sm:text-base mt-2 text-gray-600">
               Comprehensive attendance analytics and reporting
