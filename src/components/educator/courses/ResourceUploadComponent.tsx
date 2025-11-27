@@ -167,7 +167,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       }
 
       // Generate unique upload ID
-      const uploadId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const uploadId = crypto.randomUUID();
 
       setFileUploads(prev =>
         prev.map((fu, i) =>
@@ -181,12 +181,23 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.status === 'uploading' && typeof data.progress === 'number') {
+
+          console.log(`Status: ${data.status}`);
+          console.log(`Progress: ${data.progress}%`);
+          if (data.bytesReceived) console.log(`Received: ${(data.bytesReceived / 1024 / 1024).toFixed(2)} MB`);
+          if (data.totalBytes) console.log(`Total: ${(data.totalBytes / 1024 / 1024).toFixed(2)} MB`);
+
+          // Update progress
+          if (typeof data.progress === 'number') {
             setFileUploads(prev =>
               prev.map((fu, i) =>
                 i === index ? { ...fu, serverProgress: data.progress } : fu
               )
             );
+          }
+
+          if (data.status === 'completed') {
+            eventSource.close();
           }
         } catch (e) {
           console.error('Error parsing SSE message:', e);
