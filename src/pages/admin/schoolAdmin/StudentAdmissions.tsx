@@ -172,7 +172,6 @@ const StudentAdmissions = () => {
   });
 
   const { students, loading, error } = useStudents();
-  console.log('Students:', students);
 
   useEffect(() => {
     setCurrentPage(1);

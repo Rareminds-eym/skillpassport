@@ -43,6 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     management: true,
     learning: true,
+    cocurricular: true,
   });
 
   const handleNavigation = (itemName: string, itemPath: string) => {
@@ -89,7 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       title: "Skill & Co-Curriculm",
-      key: "learning",
+      key: "cocurricular",
       items: [
         {
           name: "Clubs & Compitetion",

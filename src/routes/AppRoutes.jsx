@@ -609,7 +609,14 @@ const AppRoutes = () => {
           />
         </Route>
 
-        <Route path="/educator/*" element={<EducatorLayout />}>
+        <Route
+          path="/educator/*"
+          element={
+            <ProtectedRoute allowedRoles={["educator"]}>
+              <EducatorLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="dashboard" element={<EducatorDashboard />} />
           <Route path="ai-copilot" element={<EducatorAI />} />
           <Route path="students" element={<EducatorStudents />} />

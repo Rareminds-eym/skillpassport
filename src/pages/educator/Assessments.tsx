@@ -29,6 +29,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import StudentSelectionModal from '../../components/educator/StudentSelectionModal';
 import GradingModal from '@/components/educator/GradingModal';
+import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 
 // Configuration
 const SKILL_AREAS = ['Creativity', 'Collaboration', 'Critical Thinking', 'Leadership', 'Communication', 'Problem Solving'];
@@ -160,6 +161,7 @@ const TaskCard = ({ task, onView, onEdit, onAssess, onDelete, onAssignStudents }
 // Main Component
 const Assessments = () => {
     const { user, isAuthenticated } = useAuth();
+    const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -652,7 +654,7 @@ const Assessments = () => {
             </div>
 
             {/* Task Grid */}
-            {loading ? (
+            {(loading || schoolLoading) ? (
                 <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
                     <ArrowPathIcon className="h-16 w-16 text-gray-300 mx-auto mb-4 animate-spin" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Loading assignments...</h3>
@@ -1130,6 +1132,7 @@ const Assessments = () => {
                     onClose={handleStudentSelectionClose}
                     onAssign={handleStudentsAssigned}
                     assignmentId={newlyCreatedAssignmentId}
+                    schoolId={educatorSchool?.id}
                 />
             )}
 

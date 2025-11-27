@@ -1464,9 +1464,8 @@
 // };
 
 // export default MentorNotes;
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { useAuth } from '../../context/AuthContext';
 import {
   User,
   Calendar,
@@ -1479,22 +1478,39 @@ import {
   X,
 } from "lucide-react";
 import {
-  getLoggedInMentor,
-  getStudents,
-  getMentorNotes,
   saveMentorNote,
 } from "../../services/educator/mentorNotes";
+import { useEducatorSchool } from "../../hooks/useEducatorSchool";
+
+interface Student {
+  id: string;
+  name: string;
+  user_id: string;
+}
+
+interface MentorNote {
+  id: string;
+  student_id: string;
+  feedback: string;
+  action_points: string;
+  quick_notes: string[];
+  note_date: string;
+  students: { name: string } | { name: string }[];
+}
+
 const MentorNotes = () => {
+  // Get educator's school
+  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
+
   // main data
-  const [students, setStudents] = useState([]);
-  const [notes, setNotes] = useState([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [notes, setNotes] = useState<MentorNote[]>([]);
 
   // form state for adding new note
   const [loading, setLoading] = useState(false);
-  const [currentEducatorId, setCurrentEducatorId] = useState(null);
 
   const [selectedStudent, setSelectedStudent] = useState("");
-  const [selectedQuickNotes, setSelectedQuickNotes] = useState([]);
+  const [selectedQuickNotes, setSelectedQuickNotes] = useState<string[]>([]);
   const [feedback, setFeedback] = useState("");
   const [actionPoints, setActionPoints] = useState("");
   const [otherNote, setOtherNote] = useState("");
@@ -1516,47 +1532,41 @@ const MentorNotes = () => {
 
   // chip colors
   const chipColors = [
+    "bg-blue-100 text-blue-700 border-blue-300",
     "bg-green-100 text-green-700 border-green-300",
-    "bg-green-100 text-green-700 border-green-300",
-    "bg-green-100 text-green-700 border-green-300",
-    "bg-green-100 text-green-700 border-green-300",
-    "bg-green-100 text-green-700 border-green-300",
-    "bg-green-100 text-green-700 border-green-300",
+    "bg-purple-100 text-purple-700 border-purple-300",
+    "bg-pink-100 text-pink-700 border-pink-300",
+    "bg-yellow-100 text-yellow-700 border-yellow-300",
+    "bg-indigo-100 text-indigo-700 border-indigo-300",
   ];
-
-  const [mentorInfo, setMentorInfo] = useState(null);
 
   // Student dropdown search
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const dropdownRef = useRef();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Quick-notes dropdown
   const [quickDropdownOpen, setQuickDropdownOpen] = useState(false);
-  const quickDropdownRef = useRef();
+  const quickDropdownRef = useRef<HTMLDivElement>(null);
 
   // Pagination
   const [page, setPage] = useState(1);
   const pageSize = 6; // cards per page
 
   // View/Edit modal state
-  const [viewingNote, setViewingNote] = useState(null); // note object or null
-  const [editingNote, setEditingNote] = useState(null); // note object being edited
-  const [editQuickNotes, setEditQuickNotes] = useState([]);
+  const [viewingNote, setViewingNote] = useState<MentorNote | null>(null);
+  const [editingNote, setEditingNote] = useState<MentorNote | null>(null);
+  const [editQuickNotes, setEditQuickNotes] = useState<string[]>([]);
   const [editFeedback, setEditFeedback] = useState("");
   const [editActionPoints, setEditActionPoints] = useState("");
   const [editOther, setEditOther] = useState("");
 
-  // refs for click outside
-  const quickPanelRef = useRef();
-  const studentPanelRef = useRef();
-
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setDropdownOpen(false);
       }
-      if (quickDropdownRef.current && !quickDropdownRef.current.contains(event.target)) {
+      if (quickDropdownRef.current && !quickDropdownRef.current.contains(event.target as Node)) {
         setQuickDropdownOpen(false);
       }
     };
@@ -1572,98 +1582,101 @@ const MentorNotes = () => {
   const displayStudents =
     searchTerm.trim() === "" ? filteredStudents.slice(0, 8) : filteredStudents;
 
- 
-useEffect(() => {
-  const loadMentorData = async () => {
-    try {
-      setLoading(true);
+  // Load students and notes filtered by school
+  useEffect(() => {
+    const loadData = async () => {
+      if (!educatorSchool?.id) return;
 
-      let educatorId = null;
+      try {
+        setLoading(true);
 
-      // 1️⃣ Try localStorage → user object
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          if (parsedUser.educator_id) {
-            educatorId = parsedUser.educator_id;
-            console.log("Using educator_id from localStorage:", educatorId);
-          }
-        } catch (err) {
-          console.error("Error parsing stored user:", err);
+        // Fetch students from educator's school only
+        const { data: schoolStudents, error: studentsError } = await supabase
+          .from("students")
+          .select("id, name, user_id")
+          .eq("school_id", educatorSchool.id)
+          .eq("is_deleted", false)
+          .order("name", { ascending: true });
+
+        if (studentsError) throw studentsError;
+        setStudents(schoolStudents || []);
+
+        // Get student IDs for filtering notes
+        const studentIds = (schoolStudents || []).map(s => s.user_id);
+
+        if (studentIds.length === 0) {
+          setNotes([]);
+          return;
         }
-      }
 
-      // 2️⃣ If not found, get supabase user and fetch educator record
-      if (!educatorId) {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        // Fetch notes only for students in this school
+        const { data: schoolNotes, error: notesError } = await supabase
+          .from("mentor_notes")
+          .select(`
+            id,
+            student_id,
+            feedback,
+            action_points,
+            quick_notes,
+            note_date,
+            students(name)
+          `)
+          .in("student_id", studentIds)
+          .order("note_date", { ascending: false });
 
-        if (user && !authError) {
-          const { data: educatorRecord, error: educatorFetchError } = await supabase
-            .from("school_educators")
-            .select("id")
-            .eq("user_id", user.id)
-            .single();
+        if (notesError) throw notesError;
+        setNotes(schoolNotes || []);
 
-          if (educatorRecord && !educatorFetchError) {
-            educatorId = educatorRecord.id;
-            console.log("Fetched educator_id from DB:", educatorId);
-          }
-        }
-      }
-
-      // 3️⃣ Fallback → dev_educator_id
-      if (!educatorId) {
-        const devEducatorId = localStorage.getItem("dev_educator_id");
-        if (devEducatorId) {
-          educatorId = devEducatorId;
-          console.log("Using dev_educator_id:", educatorId);
-        }
-      }
-
-      // 4️⃣ If still not found
-      if (!educatorId) {
-        console.warn("No educator_id found anywhere!");
-        setCurrentEducatorId(null);
-        setNotes([]);
-        setStudents([]);
-        setMentorInfo(null);
+      } catch (err) {
+        console.error("Error loading mentor data:", err);
+      } finally {
         setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [educatorSchool?.id]);
+
+
+  // -------------------------
+  // helper: refresh notes (filtered by school)
+  // -------------------------
+  const refreshNotes = async () => {
+    if (!educatorSchool?.id) return;
+
+    try {
+      // Get student IDs from this school
+      const studentIds = students.map(s => s.user_id);
+      
+      if (studentIds.length === 0) {
+        setNotes([]);
         return;
       }
 
-      // 5️⃣ Store final educator_id
-      setCurrentEducatorId(educatorId);
+      // Fetch notes only for students in this school
+      const { data: schoolNotes, error } = await supabase
+        .from("mentor_notes")
+        .select(`
+          id,
+          student_id,
+          feedback,
+          action_points,
+          quick_notes,
+          note_date,
+          students(name)
+        `)
+        .in("student_id", studentIds)
+        .order("note_date", { ascending: false });
 
-      // 6️⃣ Load all mentor data now
-      const s = await getStudents();
-      setStudents(s || []);
+      if (error) throw error;
+      setNotes(schoolNotes || []);
 
-      const n = await getMentorNotes();
-      setNotes(n || []);
-
-      setMentorInfo({ mentor_id: educatorId });
-
+      // if current page has no items after refresh, go back a page
+      const lastPage = Math.max(1, Math.ceil((schoolNotes?.length || 0) / pageSize));
+      if (page > lastPage) setPage(lastPage);
     } catch (err) {
-      console.error("Error loading educator or data:", err);
-    } finally {
-      setLoading(false);
+      console.error("Error refreshing notes:", err);
     }
-  };
-
-  loadMentorData();
-}, []);
-
-
-  // -------------------------
-  // helper: refresh notes
-  // -------------------------
-  const refreshNotes = async () => {
-    const n = await getMentorNotes();
-    setNotes(n || []);
-    // if current page has no items after refresh, go back a page
-    const lastPage = Math.max(1, Math.ceil((n?.length || 0) / pageSize));
-    if (page > lastPage) setPage(lastPage);
   };
 
   // -------------------------
@@ -1706,47 +1719,68 @@ useEffect(() => {
   //     alert("Failed to save note.");
   //   }
   // };
-const handleSaveNote = async () => {
-  try {
-    if (!currentEducatorId) {
-      alert("Educator ID missing!");
-      return;
+  const handleSaveNote = async () => {
+    try {
+      if (!educatorSchool?.id) {
+        alert("School information not found!");
+        return;
+      }
+
+      if (!selectedStudent) {
+        alert("Please select a student!");
+        return;
+      }
+
+      // Get the educator ID from school_educators table
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert("User not authenticated!");
+        return;
+      }
+
+      const { data: educator, error: educatorError } = await supabase
+        .from("school_educators")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (educatorError || !educator) {
+        alert("Educator profile not found!");
+        return;
+      }
+
+      const payload = {
+        student_id: selectedStudent,
+        mentor_type: "school",
+        school_educator_id: educator.id,
+        college_lecturer_id: null,
+        quick_notes: selectedQuickNotes || [],
+        feedback: feedback || "",
+        action_points: actionPoints || "",
+      };
+
+      await saveMentorNote(payload);
+
+      alert("Note saved successfully!");
+      await refreshNotes();
+      
+      // Reset form
+      setSelectedStudent("");
+      setSelectedQuickNotes([]);
+      setFeedback("");
+      setActionPoints("");
+      setOtherNote("");
+      setIsOtherSelected(false);
+    } catch (err) {
+      console.error("Save note failed:", err);
+      alert("Failed to save note.");
     }
-
-    if (!selectedStudent) {
-      alert("Please select a student!");
-      return;
-    }
-
-    // Always school educator for now
-    const mentor_type = "school";
-
-    const payload = {
-      student_id: selectedStudent,
-      mentor_type: mentor_type,                 // ✅ NOT NULL
-      school_educator_id: currentEducatorId,    // ✅ ALWAYS SET
-      college_lecturer_id: null,                // ❌ Not used
-      quick_notes: selectedQuickNotes || [],    // ✅ safe
-      feedback: feedback || "",
-      action_points: actionPoints || "",
-    };
-
-    console.log("Saving Payload:", payload);
-
-    await saveMentorNote(payload);
-
-    alert("Note saved successfully!");
-    refreshNotes(); // optional
-  } catch (err) {
-    console.error("Save note failed:", err);
-    alert("Failed to save note.");
-  }
-};
+  };
 
   // -------------------------
   // update & delete helpers
   // -------------------------
-  const updateMentorNote = async (id, updates) => {
+  const updateMentorNote = async (id: string, updates: Partial<MentorNote>) => {
     const { data, error } = await supabase
       .from("mentor_notes")
       .update(updates)
@@ -1756,19 +1790,19 @@ const handleSaveNote = async () => {
     return data;
   };
 
-  const deleteMentorNote = async (id) => {
+  const deleteMentorNote = async (id: string) => {
     const { data, error } = await supabase.from("mentor_notes").delete().eq("id", id);
     if (error) throw error;
     return data;
   };
 
   // open view modal
-  const handleView = (note) => {
+  const handleView = (note: MentorNote) => {
     setViewingNote(note);
   };
 
   // open edit modal and populate state
-  const handleEditOpen = (note) => {
+  const handleEditOpen = (note: MentorNote) => {
     setEditingNote(note);
     setEditQuickNotes(Array.isArray(note.quick_notes) ? [...note.quick_notes] : []);
     setEditFeedback(note.feedback || "");
@@ -1780,7 +1814,7 @@ const handleSaveNote = async () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleEditToggle = (opt) => {
+  const handleEditToggle = (opt: string) => {
     setEditQuickNotes((prev) => {
       if (prev.includes(opt)) return prev.filter((p) => p !== opt);
       return [...prev, opt];
@@ -1805,7 +1839,7 @@ const handleSaveNote = async () => {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this note?")) return;
     try {
       await deleteMentorNote(id);
@@ -1820,7 +1854,7 @@ const handleSaveNote = async () => {
   // -------------------------
   // quick notes add/remove for new note form
   // -------------------------
-  const toggleQuickNote = (note) => {
+  const toggleQuickNote = (note: string) => {
     if (note === "Others") {
       setIsOtherSelected(true);
       setQuickDropdownOpen(true);
@@ -1830,7 +1864,7 @@ const handleSaveNote = async () => {
     setSelectedQuickNotes((prev) => (prev.includes(note) ? prev.filter((n) => n !== note) : [...prev, note]));
   };
 
-  const handleOtherNoteChange = (e) => {
+  const handleOtherNoteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setOtherNote(value);
 
@@ -1846,7 +1880,7 @@ const handleSaveNote = async () => {
     });
   };
 
-  const removeQuickNote = (note) => {
+  const removeQuickNote = (note: string) => {
     setSelectedQuickNotes((prev) => prev.filter((n) => n !== note));
     if (note === otherNote) {
       setOtherNote("");
@@ -1867,11 +1901,23 @@ const handleSaveNote = async () => {
   }, [totalPages, page]);
 
   // small util to get chip color by text (so same text maps same color in component lifetime)
-  const colorForText = (text) => {
+  const colorForText = (text: string) => {
     if (!text) return chipColors[0];
     const idx = [...text].reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % chipColors.length;
     return chipColors[idx];
   };
+
+  // Show loading state
+  if (loading || schoolLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 border-t-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading mentor notes...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -2061,7 +2107,7 @@ const handleSaveNote = async () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Feedback</label>
             <textarea
               className="w-full border border-gray-300 rounded-lg px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              rows="4"
+              rows={4}
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="Enter feedback..."
@@ -2073,7 +2119,7 @@ const handleSaveNote = async () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Action Points</label>
             <textarea
               className="w-full border border-gray-300 rounded-lg px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              rows="3"
+              rows={3}
               value={actionPoints}
               onChange={(e) => setActionPoints(e.target.value)}
               placeholder="Enter action points..."
@@ -2119,7 +2165,9 @@ const handleSaveNote = async () => {
                     <User size={16} className="text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-800">{note.students?.name}</h3>
+                    <h3 className="font-medium text-gray-800">
+                      {Array.isArray(note.students) ? note.students[0]?.name : note.students?.name}
+                    </h3>
                     <div className="text-xs text-gray-400 flex items-center gap-2 mt-1">
                       <Calendar size={14} />
                       <span>{new Date(note.note_date).toLocaleDateString()}</span>
@@ -2220,7 +2268,9 @@ const handleSaveNote = async () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold">View Note</h3>
-                  <div className="text-sm text-gray-500">{viewingNote.students?.name}</div>
+                  <div className="text-sm text-gray-500">
+                    {Array.isArray(viewingNote.students) ? viewingNote.students[0]?.name : viewingNote.students?.name}
+                  </div>
                 </div>
               </div>
               <button onClick={() => setViewingNote(null)} className="p-2 rounded-md hover:bg-gray-100">
@@ -2273,7 +2323,9 @@ const handleSaveNote = async () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold">Edit Note</h3>
-                  <div className="text-sm text-gray-500">{editingNote.students?.name}</div>
+                  <div className="text-sm text-gray-500">
+                    {Array.isArray(editingNote.students) ? editingNote.students[0]?.name : editingNote.students?.name}
+                  </div>
                 </div>
               </div>
               <button onClick={() => setEditingNote(null)} className="p-2 rounded-md hover:bg-gray-100">
