@@ -246,7 +246,9 @@ import("../pages/admin/schoolAdmin/SkillBadges")
 const Reports = lazy(() =>  
 import("../pages/admin/schoolAdmin/Reports")
 );
-
+// Finance & infrastructure buddy
+const FinanceInfrastructure = lazy(() => import("../pages/admin/schoolAdmin/FeeStructureSetup"))
+const Library  = lazy(() => import("../pages/admin/schoolAdmin/Library"))
 const AttendanceReports = lazy(() =>
   import("../pages/admin/schoolAdmin/AttendanceReports")
 );
@@ -381,6 +383,9 @@ const AppRoutes = () => {
           <Route path="skills/clubs" element={<SkillCurricular />} />
           <Route path="skills/badges" element={<SkillBadges />} />
           <Route path="skills/reports" element={<Reports />} />
+          <Route path="finance/fees" element={<FinanceInfrastructure />} />
+          <Route path="infrastructure/library" element={<Library />} />
+          {/* Finance & Infrastructure*/}
 
           {/* Settings */}
           <Route path="settings" element={<SchoolAdminSettings />} />

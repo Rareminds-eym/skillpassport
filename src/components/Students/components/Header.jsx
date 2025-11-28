@@ -85,7 +85,7 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: "applications", label: "Applications" },
     { id: "career-ai", label: "Career AI", icon: "✨" },
     { id: "assignments", label: "Assignments" },
-    {id: "clubs", label: "Skills & Co-Curriculars"},
+    {id: "clubs", label: "Co-Curriculars"},
     { id: "messages", label: "Messages" },
     { id: "analytics", label: "Analytics" },
   ];

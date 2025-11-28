@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
     Search,
     Users,
@@ -10,64 +10,123 @@ import {
     ChevronDown,
     FileDown,
 } from "lucide-react";
+import { supabase } from "../../../lib/supabaseClient";
 
-const sampleClubs = [
-    {
-        club_id: "c1",
-        name: "Robotics Club",
-        category: "robotics",
-        description: "Build and program robots. Participate in competitions and workshops.",
-        members: ["s1", "s2", "s3"],
-        capacity: 30,
-        upcomingCompetitions: ["comp1"],
-    },
-    {
-        club_id: "c2",
-        name: "Literature Circle",
-        category: "literature",
-        description: "Book discussions, creative writing and contests.",
-        members: ["s2"],
-        capacity: 20,
-        upcomingCompetitions: [],
-    },
-    {
-        club_id: "c3",
-        name: "Coding Club",
-        category: "science",
-        description: "Learn programming and participate in hackathons.",
-        members: [],
-        capacity: 50,
-        upcomingCompetitions: ["comp2"],
-    },
-    {
-        club_id: "c4",
-        name: "Football Team",
-        category: "sports",
-        description: "Practice daily, play interschool matches.",
-        members: ["s1", "s4", "s5"],
-        capacity: 25,
-        upcomingCompetitions: [],
-    },
-];
+// Load clubs from localStorage or use defaults
+const loadClubsFromStorage = () => {
+    const stored = localStorage.getItem("skillpassport_clubs");
+    if (stored) {
+        try {
+            return JSON.parse(stored);
+        } catch (e) {
+            console.error("Failed to parse clubs from localStorage", e);
+        }
+    }
+    return [
+        {
+            club_id: "c1",
+            name: "Robotics Club",
+            category: "robotics",
+            description: "Build and program robots. Participate in competitions and workshops.",
+            members: ["s1", "s2", "s3"],
+            capacity: 30,
+            upcomingCompetitions: ["comp1"],
+            meetingDay: "Monday & Thursday",
+            meetingTime: "4:00 PM - 6:00 PM",
+            location: "Lab 101",
+            mentor: "Dr. Sarah Johnson",
+            avgAttendance: 85,
+            upcomingActivities: [
+                { title: "Robot Assembly Workshop", date: "2025-12-01" },
+                { title: "State Competition Prep", date: "2025-12-10" },
+            ],
+        },
+        {
+            club_id: "c2",
+            name: "Literature Circle",
+            category: "literature",
+            description: "Book discussions, creative writing and contests.",
+            members: ["s2"],
+            capacity: 20,
+            upcomingCompetitions: [],
+            meetingDay: "Wednesday",
+            meetingTime: "3:30 PM - 5:00 PM",
+            location: "Library Room 2",
+            mentor: "Prof. Emily Watson",
+            avgAttendance: 92,
+            upcomingActivities: [
+                { title: "Book Discussion: 1984", date: "2025-11-28" },
+                { title: "Poetry Writing Workshop", date: "2025-12-05" },
+            ],
+        },
+        {
+            club_id: "c3",
+            name: "Coding Club",
+            category: "science",
+            description: "Learn programming and participate in hackathons.",
+            members: [],
+            capacity: 50,
+            upcomingCompetitions: ["comp2"],
+            meetingDay: "Tuesday & Friday",
+            meetingTime: "3:00 PM - 5:00 PM",
+            location: "Computer Lab A",
+            mentor: "Mr. David Chen",
+            avgAttendance: 78,
+            upcomingActivities: [
+                { title: "Hackathon Preparation", date: "2025-12-02" },
+                { title: "Web Development Workshop", date: "2025-12-08" },
+            ],
+        },
+        {
+            club_id: "c4",
+            name: "Football Team",
+            category: "sports",
+            description: "Practice daily, play interschool matches.",
+            members: ["s1", "s4", "s5"],
+            capacity: 25,
+            upcomingCompetitions: [],
+            meetingDay: "Monday, Wednesday, Friday",
+            meetingTime: "5:00 PM - 7:00 PM",
+            location: "Main Field",
+            mentor: "Coach Mike Thompson",
+            avgAttendance: 95,
+            upcomingActivities: [
+                { title: "Practice Match vs St. Mary's", date: "2025-11-30" },
+                { title: "Championship Semi-Finals", date: "2025-12-15" },
+            ],
+        },
+    ];
+};
 
-const sampleCompetitions = [
-    {
-        comp_id: "comp1",
-        name: "State Robotics Challenge",
-        level: "district",
-        date: "2026-01-15",
-        participatingClubs: ["c1"],
-        results: [],
-    },
-    {
-        comp_id: "comp2",
-        name: "Inter-school Hackathon",
-        level: "interschool",
-        date: "2025-12-05",
-        participatingClubs: ["c3"],
-        results: [],
-    },
-];
+// Load competitions from localStorage or use defaults
+const loadCompetitionsFromStorage = () => {
+    const stored = localStorage.getItem("skillpassport_competitions");
+    if (stored) {
+        try {
+            return JSON.parse(stored);
+        } catch (e) {
+            console.error("Failed to parse competitions from localStorage", e);
+        }
+    }
+    return [
+        {
+            comp_id: "comp1",
+            name: "State Robotics Challenge",
+            level: "district",
+            date: "2026-01-15",
+            participatingClubs: ["c1"],
+            results: [],
+        },
+        {
+            comp_id: "comp2",
+            name: "Inter-school Hackathon",
+            level: "interschool",
+            date: "2025-12-05",
+            participatingClubs: ["c3"],
+            results: [],
+        },
+    ];
+};
 
 const categories = [
     { id: "all", label: "All" },
@@ -214,8 +273,18 @@ function Modal({ open, onClose, title, children }) {
 export default function ClubsActivitiesPage() {
     const currentStudent = useMemo(() => ({ id: "s_new", name: "You" }), []);
 
-    const [clubs, setClubs] = useState(sampleClubs);
-    const [competitions, setCompetitions] = useState(sampleCompetitions);
+    const [clubs, setClubs] = useState(loadClubsFromStorage);
+    const [competitions, setCompetitions] = useState(loadCompetitionsFromStorage);
+
+    // Save clubs to localStorage whenever they change
+    useEffect(() => {
+        localStorage.setItem("skillpassport_clubs", JSON.stringify(clubs));
+    }, [clubs]);
+
+    // Save competitions to localStorage whenever they change
+    useEffect(() => {
+        localStorage.setItem("skillpassport_competitions", JSON.stringify(competitions));
+    }, [competitions]);
 
     const [q, setQ] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
@@ -229,16 +298,91 @@ export default function ClubsActivitiesPage() {
     const [addClubModal, setAddClubModal] = useState(false);
     const [addCompModal, setAddCompModal] = useState(false);
     const [studentDrawer, setStudentDrawer] = useState({ open: false, club: null });
-const [allStudents] = useState([
-    { id: "s1", name: "Alice Johnson", grade: "10A" },
-    { id: "s2", name: "Bob Smith", grade: "11B" },
-    { id: "s3", name: "Charlie Brown", grade: "10C" },
-    { id: "s4", name: "Diana Prince", grade: "12A" },
-    { id: "s5", name: "Ethan Hunt", grade: "11A" },
-    { id: "s6", name: "Fiona Green", grade: "10B" },
-    { id: "s7", name: "George Wilson", grade: "12C" },
-    { id: "s8", name: "Hannah Lee", grade: "11C" },
-]);
+    const [allStudents, setAllStudents] = useState([]);
+    const [loadingStudents, setLoadingStudents] = useState(true);
+    const [studentSearchQuery, setStudentSearchQuery] = useState("");
+
+    // Fetch real students from Supabase
+    useEffect(() => {
+        const fetchStudents = async () => {
+            try {
+                setLoadingStudents(true);
+                
+                // Try to get logged-in user's email
+                const userEmail = localStorage.getItem('userEmail');
+                
+                // First, try to fetch students filtered by school if we have user email
+                if (userEmail) {
+                    // Try to get the school_id for the logged-in admin
+                    const { data: adminData } = await supabase
+                        .from('school_educators')
+                        .select('school_id')
+                        .eq('email', userEmail)
+                        .maybeSingle();
+
+                    if (adminData?.school_id) {
+                        // Fetch students from this school only
+                        const { data, error } = await supabase
+                            .from('students')
+                            .select('id, email, profile, name, grade, section, roll_number')
+                            .eq('school_id', adminData.school_id)
+                            .order('email');
+
+                        if (!error && data && data.length > 0) {
+                            const mappedStudents = data.map(student => ({
+                                id: student.email,
+                                email: student.email,
+                                name: student.name || student.profile?.name || student.email,
+                                grade: student.grade || student.profile?.grade || student.profile?.class || 'N/A',
+                                section: student.section || student.profile?.section || '',
+                                rollNumber: student.roll_number || student.profile?.rollNumber || ''
+                            }));
+                            setAllStudents(mappedStudents);
+                            setLoadingStudents(false);
+                            return;
+                        }
+                    }
+                }
+
+                // Fallback: Fetch all students if school-specific fetch didn't work
+                const { data, error } = await supabase
+                    .from('students')
+                    .select('id, email, profile, name, grade')
+                    .order('email');
+
+                if (error) {
+                    console.error('Error fetching students:', error);
+                    // Use fallback dummy data
+                    setAllStudents([
+                        { id: "student1@example.com", name: "Alice Johnson", grade: "10A", email: "student1@example.com" },
+                        { id: "student2@example.com", name: "Bob Smith", grade: "11B", email: "student2@example.com" },
+                        { id: "student3@example.com", name: "Charlie Brown", grade: "10C", email: "student3@example.com" },
+                    ]);
+                } else if (data) {
+                    // Map students to the format we need (using email as ID)
+                    const mappedStudents = data.map(student => ({
+                        id: student.email,
+                        email: student.email,
+                        name: student.name || student.profile?.name || student.email,
+                        grade: student.grade || student.profile?.grade || student.profile?.class || 'N/A'
+                    }));
+                    setAllStudents(mappedStudents);
+                }
+            } catch (err) {
+                console.error('Error loading students:', err);
+                // Use fallback dummy data on error
+                setAllStudents([
+                    { id: "student1@example.com", name: "Alice Johnson", grade: "10A", email: "student1@example.com" },
+                    { id: "student2@example.com", name: "Bob Smith", grade: "11B", email: "student2@example.com" },
+                    { id: "student3@example.com", name: "Charlie Brown", grade: "10C", email: "student3@example.com" },
+                ]);
+            } finally {
+                setLoadingStudents(false);
+            }
+        };
+
+        fetchStudents();
+    }, []);
     const [newCompForm, setNewCompForm] = useState({
         name: "",
         level: "district",
@@ -396,13 +540,19 @@ const handleStudentLeave = (studentId, club) => {
         }
 
         const newClub = {
-            club_id: `c${clubs.length + 1}`,
+            club_id: `c${Date.now()}`,
             name: newClubForm.name,
             category: newClubForm.category,
             description: newClubForm.description,
             capacity: parseInt(newClubForm.capacity),
             members: [],
-            upcomingCompetitions: []
+            upcomingCompetitions: [],
+            meetingDay: "TBD",
+            meetingTime: "TBD",
+            location: "TBD",
+            mentor: "TBD",
+            avgAttendance: 0,
+            upcomingActivities: []
         };
 
         setClubs([...clubs, newClub]);
@@ -923,7 +1073,10 @@ const handleStudentLeave = (studentId, club) => {
                 </Modal>
                 <Modal
     open={studentDrawer.open}
-    onClose={() => setStudentDrawer({ open: false, club: null })}
+    onClose={() => {
+        setStudentDrawer({ open: false, club: null });
+        setStudentSearchQuery("");
+    }}
     title={`Manage Students - ${studentDrawer.club?.name ?? ""}`}
 >
     {studentDrawer.club && (
@@ -932,51 +1085,116 @@ const handleStudentLeave = (studentId, club) => {
                 Current Members: {studentDrawer.club.members.length} / {studentDrawer.club.capacity}
             </div>
 
-            <div className="max-h-96 overflow-y-auto space-y-2">
-                {allStudents.map((student) => {
-                    const isEnrolled = studentDrawer.club.members.includes(student.id);
-                    const isFull = studentDrawer.club.members.length >= studentDrawer.club.capacity;
+            {/* Search Bar */}
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                    type="text"
+                    value={studentSearchQuery}
+                    onChange={(e) => setStudentSearchQuery(e.target.value)}
+                    placeholder="Search by name, email, or grade..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {studentSearchQuery && (
+                    <button
+                        onClick={() => setStudentSearchQuery("")}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                        <X size={18} />
+                    </button>
+                )}
+            </div>
 
+            {loadingStudents ? (
+                <div className="text-center py-8 text-slate-500">
+                    Loading students...
+                </div>
+            ) : allStudents.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">
+                    No students found. Students will appear here once they register.
+                </div>
+            ) : (() => {
+                const filteredStudents = allStudents.filter((student) => {
+                    if (!studentSearchQuery) return true;
+                    const query = studentSearchQuery.toLowerCase();
                     return (
-                        <div
-                            key={student.id}
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100"
-                        >
-                            <div>
-                                <div className="font-medium text-sm">{student.name}</div>
-                                <div className="text-xs text-slate-500">{student.grade}</div>
-                            </div>
+                        student.name.toLowerCase().includes(query) ||
+                        student.email.toLowerCase().includes(query) ||
+                        student.grade.toLowerCase().includes(query)
+                    );
+                });
 
-                            {isEnrolled ? (
-                                <button
-                                    onClick={() => handleStudentLeave(student.id, studentDrawer.club)}
-                                    className="flex items-center gap-1 px-3 py-1 text-sm bg-red-50 text-red-600 rounded-md border border-red-100 hover:bg-red-100"
-                                >
-                                    <X size={14} />
-                                    Remove
-                                </button>
+                if (filteredStudents.length === 0) {
+                    return (
+                        <div className="text-center py-8 text-slate-500">
+                            {studentSearchQuery ? (
+                                <>
+                                    No students found matching "{studentSearchQuery}"
+                                    <button
+                                        onClick={() => setStudentSearchQuery("")}
+                                        className="block mx-auto mt-2 text-blue-600 hover:underline text-sm"
+                                    >
+                                        Clear search
+                                    </button>
+                                </>
                             ) : (
-                                <button
-                                    disabled={isFull}
-                                    onClick={() => handleStudentEnroll(student.id, studentDrawer.club)}
-                                    className={`flex items-center gap-1 px-3 py-1 text-sm rounded-md ${
-                                        isFull
-                                            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                                            : "bg-blue-600 text-white hover:bg-blue-700"
-                                    }`}
-                                >
-                                    <Plus size={14} />
-                                    Add
-                                </button>
+                                "No students available"
                             )}
                         </div>
                     );
-                })}
-            </div>
+                }
+
+                return (
+                    <div className="max-h-96 overflow-y-auto space-y-2">
+                        {filteredStudents.map((student) => {
+                            const isEnrolled = studentDrawer.club.members.includes(student.id);
+                            const isFull = studentDrawer.club.members.length >= studentDrawer.club.capacity;
+
+                            return (
+                                <div
+                                    key={student.id}
+                                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100"
+                                >
+                                    <div>
+                                        <div className="font-medium text-sm">{student.name}</div>
+                                        <div className="text-xs text-slate-500">{student.grade} • {student.email}</div>
+                                    </div>
+
+                                    {isEnrolled ? (
+                                        <button
+                                            onClick={() => handleStudentLeave(student.id, studentDrawer.club)}
+                                            className="flex items-center gap-1 px-3 py-1 text-sm bg-red-50 text-red-600 rounded-md border border-red-100 hover:bg-red-100"
+                                        >
+                                            <X size={14} />
+                                            Remove
+                                        </button>
+                                    ) : (
+                                        <button
+                                            disabled={isFull}
+                                            onClick={() => handleStudentEnroll(student.id, studentDrawer.club)}
+                                            className={`flex items-center gap-1 px-3 py-1 text-sm rounded-md ${
+                                                isFull
+                                                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                                    : "bg-blue-600 text-white hover:bg-blue-700"
+                                            }`}
+                                        >
+                                            <Plus size={14} />
+                                            Add
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            })()}
 
             <div className="pt-4 border-t">
                 <button
-                    onClick={() => setStudentDrawer({ open: false, club: null })}
+                    onClick={() => {
+                        setStudentDrawer({ open: false, club: null });
+                        setStudentSearchQuery("");
+                    }}
                     className="w-full px-4 py-2 border rounded-md hover:bg-gray-50"
                 >
                     Close
