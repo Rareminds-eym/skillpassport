@@ -19,7 +19,7 @@ import { loginRecruiter } from "../../services/recruiterProfile";
 
 export default function LoginRecruiter() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState(""); // ignored, can be random
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -35,24 +35,39 @@ export default function LoginRecruiter() {
     setError("");
     setLoading(true);
 
-    const { success, data, error: errMsg } = await loginRecruiter(email, password);
+    try {
+      // Validate inputs
+      if (!email || !password) {
+        setError("Please enter both email and password.");
+        setLoading(false);
+        return;
+      }
 
-    if (!success) {
-      setError(errMsg || "Login failed");
+      // Authenticate with Supabase Auth
+      const { success, data, error: errMsg } = await loginRecruiter(email, password);
+
+      if (!success) {
+        setError(errMsg || "Login failed. Please check your credentials.");
+        setLoading(false);
+        return;
+      }
+
+      // Save recruiter session in context
+      login({
+        id: data.id,
+        user_id: data.user_id,
+        name: data.name,
+        email: data.email,
+        role: "recruiter",
+      });
+
+      navigate("/recruitment");
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("An error occurred during login. Please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // ✅ Save recruiter session in context
-    login({
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      role: "recruiter",
-    });
-
-    navigate("/recruitment");
-    setLoading(false);
   };
 
   const renderForm = (isLg) => (

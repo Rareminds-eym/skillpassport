@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabaseClient';
+import { loginAdmin } from '../../services/adminAuthService';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { Label } from '../../components/Students/components/ui/label';
@@ -103,35 +103,22 @@ const LoginAdmin = () => {
         );
       }
 
-      // Check account status
-      if (school.account_status !== 'active' && school.account_status !== 'pending') {
-        throw new Error('Your school account is inactive. Please contact RareMinds admin.');
-      }
-
-      // In a real implementation, you would verify the password here
-      // For now, we'll accept any non-empty password since this is a basic implementation
-      // TODO: Implement proper password verification with Supabase Auth or a secure method
-
-      // Successful login
-      const userData = {
-        id: school.id,
-        name: school.principal_name || school.name,
-        email: school.email,
-        role: 'school_admin',
-        schoolId: school.id,
-        schoolName: school.name,
-        schoolCode: school.code,
-      };
-
-      login(userData);
+      // Store admin data in context
+      login(result.admin);
 
       toast({
         title: 'Login Successful',
-        description: `Welcome back, ${school.name}!`,
+        description: `Welcome back, ${result.admin.name}!`,
       });
 
-      // Redirect to school admin dashboard
-      navigate('/school-admin/dashboard');
+      // Redirect based on admin role
+      if (result.admin.role === 'college_admin') {
+        navigate('/college-admin/dashboard');
+      } else if (result.admin.role === 'university_admin') {
+        navigate('/university-admin/dashboard');
+      } else {
+        navigate('/school-admin/dashboard');
+      }
     } catch (error) {
       toast({
         title: 'Login Failed',
