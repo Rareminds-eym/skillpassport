@@ -14,8 +14,13 @@ import { Resource, FileUpload } from '../../../types/educator/course';
 
 // Extend FileUpload type locally to include serverProgress
 interface ExtendedFileUpload extends FileUpload {
-  serverProgress?: number;
-  uploadId?: string;
+  uploadedData?: {
+    key: string;
+    url: string;
+    size: number;
+    type: string;
+    name: string;
+  };
 }
 
 interface ResourceUploadComponentProps {
@@ -132,13 +137,13 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
 
   const uploadToR2 = async (file: File, index: number) => {
     try {
-      console.log('=== Upload Starting ===');
+      console.log('=== Upload Starting (Direct-to-R2) ===');
       console.log('API_BASE_URL:', API_BASE_URL);
       console.log('File:', file.name, 'Size:', file.size, 'Type:', file.type);
       console.log('CourseId:', courseId, 'LessonId:', lessonId);
 
       // Warn user about large file uploads
-      if (file.size > 100 * 1024 * 1024) { // 100MB
+      if (file.size > 100 * 1024 * 1024) {
         console.warn('Large file detected:', (file.size / 1024 / 1024).toFixed(2), 'MB');
         console.warn('Upload may take several minutes depending on your internet connection');
       }
@@ -166,184 +171,139 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         return;
       }
 
-      // Generate unique upload ID
-      const uploadId = crypto.randomUUID();
-
       setFileUploads(prev =>
         prev.map((fu, i) =>
-          i === index ? { ...fu, status: 'uploading', progress: 0, serverProgress: 0, uploadId } : fu
+          i === index ? { ...fu, status: 'uploading', progress: 0 } : fu
         )
       );
 
-      // Setup SSE for progress tracking
-      const eventSource = new EventSource(`${API_BASE_URL}/api/upload/progress/${uploadId}`);
+      // STEP 1: Request presigned URL
+      console.log('Step 1: Requesting presigned URL...');
+      const presignedResponse = await fetch(`${API_BASE_URL}/api/upload/presigned`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          fileSize: file.size,
+          courseId,
+          lessonId,
+        }),
+      });
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
+      if (!presignedResponse.ok) {
+        const errorData = await presignedResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to get upload URL (${presignedResponse.status})`);
+      }
 
-          console.log(`Status: ${data.status}`);
-          console.log(`Progress: ${data.progress}%`);
-          if (data.bytesReceived) console.log(`Received: ${(data.bytesReceived / 1024 / 1024).toFixed(2)} MB`);
-          if (data.totalBytes) console.log(`Total: ${(data.totalBytes / 1024 / 1024).toFixed(2)} MB`);
+      const { data: presignedData } = await presignedResponse.json();
+      const { uploadUrl, fileKey } = presignedData;
+      console.log('Presigned URL received, fileKey:', fileKey);
 
-          // Update progress
-          if (typeof data.progress === 'number') {
+      // STEP 2: Upload directly to R2
+      console.log('Step 2: Uploading to R2...');
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const progress = (e.loaded / e.total) * 100;
+            console.log(`Upload progress: ${progress.toFixed(2)}%`);
             setFileUploads(prev =>
               prev.map((fu, i) =>
-                i === index ? { ...fu, serverProgress: data.progress } : fu
+                i === index ? { ...fu, progress } : fu
               )
             );
           }
+        });
 
-          if (data.status === 'completed') {
-            eventSource.close();
+        // Handle completion
+        xhr.addEventListener('load', () => {
+          console.log('=== R2 Upload Complete ===');
+          console.log('Status:', xhr.status);
+
+          if (xhr.status === 200) {
+            resolve();
+          } else {
+            reject(new Error(`Upload to R2 failed (Status: ${xhr.status})`));
           }
-        } catch (e) {
-          console.error('Error parsing SSE message:', e);
-        }
-      };
+        });
 
-      eventSource.onerror = (err) => {
-        console.error('SSE Error:', err);
-        eventSource.close();
-      };
+        // Handle errors
+        xhr.addEventListener('error', () => {
+          console.error('=== R2 Upload Error ===');
+          reject(new Error('Network error during R2 upload'));
+        });
 
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('courseId', courseId);
-      formData.append('lessonId', lessonId);
+        // Handle timeout
+        xhr.addEventListener('timeout', () => {
+          console.error('=== R2 Upload Timeout ===');
+          const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+          reject(new Error(`Upload timed out for ${file.name} (${fileSizeMB}MB)`));
+        });
 
-      console.log('FormData created, sending request to:', `${API_BASE_URL}/api/upload`);
-
-      const xhr = new XMLHttpRequest();
-
-      // Track upload progress
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const progress = (e.loaded / e.total) * 100;
-          console.log(`Upload progress: ${progress.toFixed(2)}%`);
-          setFileUploads(prev =>
-            prev.map((fu, i) =>
-              i === index ? { ...fu, progress } : fu
-            )
-          );
-        }
+        // Upload to R2
+        xhr.open('PUT', uploadUrl);
+        xhr.setRequestHeader('Content-Type', file.type);
+        xhr.timeout = UPLOAD_TIMEOUT;
+        xhr.send(file);
       });
 
-      // Handle completion
-      xhr.addEventListener('load', () => {
-        console.log('=== XHR Load Event ===');
-        console.log('Status:', xhr.status);
-        console.log('Response:', xhr.responseText);
-
-        // Close SSE connection
-        eventSource.close();
-
-        if (xhr.status === 200) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            console.log('Parsed response:', response);
-            setFileUploads(prev =>
-              prev.map((fu, i) =>
-                i === index
-                  ? {
-                    ...fu,
-                    status: 'completed',
-                    progress: 100,
-                    serverProgress: 100,
-                    uploadedData: response.data
-                  }
-                  : fu
-              )
-            );
-          } catch (parseError) {
-            console.error('Error parsing response:', parseError);
-            setFileUploads(prev =>
-              prev.map((fu, i) =>
-                i === index
-                  ? { ...fu, status: 'error', error: 'Invalid server response' }
-                  : fu
-              )
-            );
-          }
-        } else {
-          console.error('Upload failed with status:', xhr.status);
-          let errorMessage = `Upload failed (Status: ${xhr.status})`;
-
-          // Provide more specific error messages
-          if (xhr.status === 0) {
-            errorMessage = 'Network error - check your internet connection and try again';
-          } else if (xhr.status === 413) {
-            errorMessage = 'File too large - exceeds server limits';
-          } else if (xhr.status >= 500) {
-            errorMessage = 'Server error - please try again later';
-          }
-
-          setFileUploads(prev =>
-            prev.map((fu, i) =>
-              i === index
-                ? { ...fu, status: 'error', error: errorMessage }
-                : fu
-            )
-          );
-        }
+      // STEP 3: Confirm upload
+      console.log('Step 3: Confirming upload...');
+      const confirmResponse = await fetch(`${API_BASE_URL}/api/upload/confirm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileKey,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+        }),
       });
 
-      // Handle errors
-      xhr.addEventListener('error', (e) => {
-        console.error('=== XHR Error Event ===');
-        console.error('Event:', e);
-        eventSource.close();
+      if (!confirmResponse.ok) {
+        const errorData = await confirmResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to confirm upload (${confirmResponse.status})`);
+      }
 
-        let errorMessage = `Network error (Status: ${xhr.status}, ReadyState: ${xhr.readyState})`;
+      const { data: uploadedData } = await confirmResponse.json();
+      console.log('Upload confirmed:', uploadedData);
 
-        // Provide more specific error messages
-        if (xhr.status === 0) {
-          errorMessage = 'Network connection failed - check your internet connection. If this persists, our servers may be temporarily unavailable.';
-        }
-
-        setFileUploads(prev =>
-          prev.map((fu, i) =>
-            i === index
-              ? { ...fu, status: 'error', error: errorMessage }
-              : fu
-          )
-        );
-      });
-
-      // Handle timeout
-      xhr.addEventListener('timeout', () => {
-        console.error('=== XHR Timeout ===');
-        eventSource.close();
-        const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-        const errorMessage = `Upload timed out for ${file.name} (${fileSizeMB}MB). Try again or use a faster connection.`;
-
-        setFileUploads(prev =>
-          prev.map((fu, i) =>
-            i === index
-              ? { ...fu, status: 'error', error: errorMessage }
-              : fu
-          )
-        );
-      });
-
-      const uploadUrl = `${API_BASE_URL}/api/upload`;
-      console.log('=== Preparing Upload ===');
-      console.log('Upload URL:', uploadUrl);
-      console.log('API_BASE_URL:', API_BASE_URL);
-      xhr.open('POST', uploadUrl);
-      xhr.setRequestHeader('X-Upload-ID', uploadId); // Send ID in header
-      xhr.timeout = UPLOAD_TIMEOUT; // Extended timeout for large files
-      console.log('XHR opened, sending data...');
-      xhr.send(formData);
-    } catch (error) {
-      console.error('=== Upload Exception ===');
-      console.error('Error:', error);
       setFileUploads(prev =>
         prev.map((fu, i) =>
           i === index
-            ? { ...fu, status: 'error', error: 'Upload failed: ' + (error as Error).message }
+            ? {
+              ...fu,
+              status: 'completed',
+              progress: 100,
+              uploadedData
+            }
+            : fu
+        )
+      );
+    } catch (error) {
+      console.error('=== Upload Exception ===');
+      console.error('Error:', error);
+
+      let errorMessage = 'Upload failed: ' + (error as Error).message;
+
+      // Provide more specific error messages
+      if (errorMessage.includes('Network error')) {
+        errorMessage = 'Network connection failed - check your internet connection';
+      } else if (errorMessage.includes('timed out')) {
+        errorMessage = (error as Error).message;
+      }
+
+      setFileUploads(prev =>
+        prev.map((fu, i) =>
+          i === index
+            ? { ...fu, status: 'error', error: errorMessage }
             : fu
         )
       );
@@ -366,7 +326,6 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       newUploads.push({
         file,
         progress: 0,
-        serverProgress: 0,
         status: 'pending'
       });
     });
@@ -586,8 +545,6 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                   <h3 className="text-sm font-semibold text-gray-900">Uploading Files</h3>
                   {fileUploads.map((upload, index) => {
                     const Icon = getFileIcon(getFileType(upload.file.name));
-                    const isProcessing = upload.progress === 100 && upload.status === 'uploading';
-                    const serverProgress = upload.serverProgress || 0;
 
                     return (
                       <div
@@ -605,11 +562,6 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                                 {formatFileSize(upload.file.size)}
                                 {upload.status === 'error' && upload.error && (
                                   <span className="text-red-600 ml-2">• {upload.error}</span>
-                                )}
-                                {isProcessing && (
-                                  <span className="text-indigo-600 ml-2 font-medium">
-                                    • Processing: {serverProgress}%
-                                  </span>
                                 )}
                               </p>
                             </div>
@@ -631,19 +583,10 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                         </div>
                         {upload.status === 'uploading' && (
                           <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                            {isProcessing ? (
-                              <div
-                                className="bg-indigo-400 h-2 rounded-full transition-all duration-300 relative"
-                                style={{ width: `${Math.max(5, serverProgress)}%` }}
-                              >
-                                <div className="absolute inset-0 bg-white/30 animate-[shimmer_2s_infinite] w-full h-full" />
-                              </div>
-                            ) : (
-                              <div
-                                className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${upload.progress}%` }}
-                              />
-                            )}
+                            <div
+                              className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${upload.progress}%` }}
+                            />
                           </div>
                         )}
                       </div>

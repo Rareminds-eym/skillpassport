@@ -1,24 +1,42 @@
-#!/usr/bin/env node --expose-gc
+#!/usr/bin/env node
 
 // ============================================
-// INDUSTRIAL GRADE FILE UPLOAD SERVER
-// Version: 2.0.0
-// Features: Streaming uploads, Rate limiting, Security headers,
-//           Request timeouts, Input validation, Request ID tracking
+// PRODUCTION GRADE FILE UPLOAD SERVER
+// Version: 3.0.0 - Direct-to-R2 Architecture
+// 
+// Memory Usage: ~50MB constant (regardless of file size!)
+// The server NEVER touches file data - clients upload directly to R2
+//
+// Features:
+// - Single file presigned upload
+// - Multiple file presigned upload (batch)
+// - Upload confirmation (single & batch)
+// - File retrieval (presigned URLs)
+// - File deletion (single & batch)
+// - File listing (by lesson & course)
+// - Health checks (basic & deep)
+// - Rate limiting
+// - Input validation
+// - Structured logging
+// - CORS support
+// - Security headers (Helmet)
 // ============================================
 
-// Import required modules
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import crypto from 'crypto';
-import { S3Client, GetObjectCommand, ListObjectsV2Command, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { Upload } from '@aws-sdk/lib-storage';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+  HeadObjectCommand
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import Busboy from 'busboy';
-import { PassThrough } from 'stream';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 
@@ -31,52 +49,50 @@ dotenv.config({ path: join(__dirname, '..', '.env') });
 
 const CONFIG = {
   port: process.env.PORT || 3001,
-  maxFileSize: 500 * 1024 * 1024, // 500MB
-  maxFileSizeMultiple: 100 * 1024 * 1024, // 100MB per file
-  maxFiles: 3,
-  presignedUrlExpiry: 604800, // 7 days
-  presignedUrlExpiryShort: 3600, // 1 hour
-  uploadTimeout: 10 * 60 * 1000, // 10 minutes
+  maxFileSize: 500 * 1024 * 1024, // 500MB for single file
+  maxFileSizeMultiple: 100 * 1024 * 1024, // 100MB per file for multiple uploads
+  maxFiles: 10, // Max files in batch upload
+  presignedUrlExpiry: 3600, // 1 hour for upload URLs
+  downloadUrlExpiry: 604800, // 7 days for download URLs
   rateLimitWindow: 15 * 60 * 1000, // 15 minutes
-  rateLimitMaxUploads: 3, // REDUCED: Only 3 concurrent uploads (prevent memory overload)
-  rateLimitMaxRequests: 100, // general requests per window
-  maxMemoryUsage: 400 * 1024 * 1024, // 400MB - Reject uploads if memory exceeds this
-  gcThreshold: 100 * 1024 * 1024, // 100MB - Trigger GC after uploads larger than this
+  rateLimitMaxRequests: 100,
+  rateLimitMaxUploads: 50,
+  allowedMimeTypes: [
+    // Video
+    'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska',
+    // Audio
+    'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/webm',
+    // Images
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+    // Documents
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
+  ]
 };
 
 // ============================================
-// LOGGER - Structured logging
+// LOGGER
 // ============================================
-const LOG_LEVELS = {
-  ERROR: 'ERROR',
-  WARN: 'WARN',
-  INFO: 'INFO',
-  DEBUG: 'DEBUG'
-};
+const LOG_LEVELS = { ERROR: 'ERROR', WARN: 'WARN', INFO: 'INFO', DEBUG: 'DEBUG' };
 
 const logger = {
   _format(level, message, meta = {}) {
-    const logEntry = {
+    return JSON.stringify({
       timestamp: new Date().toISOString(),
       level,
       message,
       ...meta,
-    };
-    return JSON.stringify(logEntry);
+    });
   },
-
-  error(message, meta = {}) {
-    console.error(this._format(LOG_LEVELS.ERROR, message, meta));
-  },
-
-  warn(message, meta = {}) {
-    console.warn(this._format(LOG_LEVELS.WARN, message, meta));
-  },
-
-  info(message, meta = {}) {
-    console.log(this._format(LOG_LEVELS.INFO, message, meta));
-  },
-
+  error(message, meta = {}) { console.error(this._format(LOG_LEVELS.ERROR, message, meta)); },
+  warn(message, meta = {}) { console.warn(this._format(LOG_LEVELS.WARN, message, meta)); },
+  info(message, meta = {}) { console.log(this._format(LOG_LEVELS.INFO, message, meta)); },
   debug(message, meta = {}) {
     if (process.env.NODE_ENV !== 'production') {
       console.log(this._format(LOG_LEVELS.DEBUG, message, meta));
@@ -88,79 +104,59 @@ const logger = {
 // INPUT VALIDATION
 // ============================================
 const validators = {
-  // Validate courseId - alphanumeric, dashes, underscores, 1-100 chars
   courseId(value) {
-    if (!value || typeof value !== 'string') {
-      return { valid: false, error: 'courseId is required' };
-    }
-    if (value.length > 100) {
-      return { valid: false, error: 'courseId must be 100 characters or less' };
-    }
-    if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
-      return { valid: false, error: 'courseId contains invalid characters' };
-    }
+    if (!value || typeof value !== 'string') return { valid: false, error: 'courseId is required' };
+    if (value.length > 100) return { valid: false, error: 'courseId must be 100 characters or less' };
+    if (!/^[a-zA-Z0-9_-]+$/.test(value)) return { valid: false, error: 'courseId contains invalid characters' };
     return { valid: true };
   },
 
-  // Validate lessonId - alphanumeric, dashes, underscores, 1-100 chars
   lessonId(value) {
-    if (!value || typeof value !== 'string') {
-      return { valid: false, error: 'lessonId is required' };
-    }
-    if (value.length > 100) {
-      return { valid: false, error: 'lessonId must be 100 characters or less' };
-    }
-    if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
-      return { valid: false, error: 'lessonId contains invalid characters' };
-    }
+    if (!value || typeof value !== 'string') return { valid: false, error: 'lessonId is required' };
+    if (value.length > 100) return { valid: false, error: 'lessonId must be 100 characters or less' };
+    if (!/^[a-zA-Z0-9_-]+$/.test(value)) return { valid: false, error: 'lessonId contains invalid characters' };
     return { valid: true };
   },
 
-  // Validate filename - prevent path traversal
   filename(value) {
-    if (!value || typeof value !== 'string') {
-      return { valid: false, error: 'filename is required' };
-    }
-    // Remove path components, only keep filename
-    const sanitized = value.replace(/^.*[\\\/]/, '');
-    // Check for dangerous patterns
-    if (sanitized.includes('..') || sanitized.includes('\0')) {
-      return { valid: false, error: 'Invalid filename' };
-    }
-    if (sanitized.length > 255) {
-      return { valid: false, error: 'Filename too long' };
-    }
+    if (!value || typeof value !== 'string') return { valid: false, error: 'filename is required' };
+    const sanitized = value.replace(/^.*[\\\/]/, '').replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 255);
+    if (sanitized.includes('..') || sanitized.includes('\0')) return { valid: false, error: 'Invalid filename' };
     return { valid: true, sanitized };
   },
 
-  // Validate file key for retrieval/deletion
-  fileKey(value) {
-    if (!value || typeof value !== 'string') {
-      return { valid: false, error: 'fileKey is required' };
-    }
-    // Must start with 'courses/'
-    if (!value.startsWith('courses/')) {
-      return { valid: false, error: 'Invalid file key format' };
-    }
-    // No path traversal
-    if (value.includes('..') || value.includes('\0')) {
-      return { valid: false, error: 'Invalid file key' };
+  contentType(value) {
+    if (!value) return { valid: false, error: 'contentType is required' };
+    const allowedPrefixes = ['video/', 'audio/', 'image/', 'text/', 'application/'];
+    const isAllowed = CONFIG.allowedMimeTypes.includes(value) ||
+      allowedPrefixes.some(prefix => value.startsWith(prefix));
+    if (!isAllowed) {
+      return { valid: false, error: `File type not allowed: ${value}` };
     }
     return { valid: true };
   },
 
-  // Validate content type
-  contentType(value) {
-    if (!value) return { valid: true }; // Optional
+  fileSize(value, maxSize = CONFIG.maxFileSize) {
+    const size = parseInt(value, 10);
+    if (isNaN(size) || size <= 0) return { valid: false, error: 'Invalid file size' };
+    if (size > maxSize) {
+      return { valid: false, error: `File too large. Maximum size is ${maxSize / 1024 / 1024}MB` };
+    }
+    return { valid: true };
+  },
 
-    const allowedTypes = [
-      'video/', 'audio/', 'image/', 'application/pdf',
-      'application/msword', 'application/vnd.', 'text/'
-    ];
+  fileKey(value) {
+    if (!value || typeof value !== 'string') return { valid: false, error: 'fileKey is required' };
+    if (!value.startsWith('courses/')) return { valid: false, error: 'Invalid file key format' };
+    if (value.includes('..') || value.includes('\0')) return { valid: false, error: 'Invalid file key' };
+    return { valid: true };
+  },
 
-    const isAllowed = allowedTypes.some(type => value.startsWith(type));
-    if (!isAllowed) {
-      return { valid: false, error: 'File type not allowed' };
+  filesArray(files) {
+    if (!Array.isArray(files)) return { valid: false, error: 'files must be an array' };
+    if (files.length === 0) return { valid: false, error: 'At least one file is required' };
+    if (files.length > CONFIG.maxFiles) {
+      return { valid: false, error: `Maximum ${CONFIG.maxFiles} files allowed per request` };
     }
     return { valid: true };
   }
@@ -170,7 +166,8 @@ const validators = {
 // STARTUP LOGGING
 // ============================================
 logger.info('Server starting', {
-  version: '2.0.0',
+  version: '3.0.0',
+  architecture: 'direct-to-r2',
   nodeVersion: process.version,
   environment: process.env.NODE_ENV || 'development'
 });
@@ -178,74 +175,46 @@ logger.info('Server starting', {
 logger.info('Configuration loaded', {
   port: CONFIG.port,
   maxFileSize: `${CONFIG.maxFileSize / 1024 / 1024}MB`,
+  maxFileSizeMultiple: `${CONFIG.maxFileSizeMultiple / 1024 / 1024}MB`,
+  maxFiles: CONFIG.maxFiles,
   r2AccountId: process.env.R2_ACCOUNT_ID ? `${process.env.R2_ACCOUNT_ID.substring(0, 8)}...` : 'NOT_SET',
   r2Bucket: process.env.R2_BUCKET_NAME || 'NOT_SET'
 });
 
-// Log initial memory usage
 const initialMemory = process.memoryUsage();
 logger.info('Initial memory usage', {
   rss: `${(initialMemory.rss / 1024 / 1024).toFixed(2)}MB`,
-  heapTotal: `${(initialMemory.heapTotal / 1024 / 1024).toFixed(2)}MB`,
-  heapUsed: `${(initialMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`,
-  external: `${(initialMemory.external / 1024 / 1024).toFixed(2)}MB`
+  heapUsed: `${(initialMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`
 });
-
-// ============================================
-// PERIODIC TASKS
-// ============================================
 
 // Memory monitoring
 setInterval(() => {
   const memory = process.memoryUsage();
   const memoryMB = {
     rss: (memory.rss / 1024 / 1024).toFixed(2),
-    heapTotal: (memory.heapTotal / 1024 / 1024).toFixed(2),
-    heapUsed: (memory.heapUsed / 1024 / 1024).toFixed(2),
-    external: (memory.external / 1024 / 1024).toFixed(2)
+    heapUsed: (memory.heapUsed / 1024 / 1024).toFixed(2)
   };
 
-  if (memory.rss > 400 * 1024 * 1024) {
-    logger.warn('High memory usage detected', { memory: memoryMB });
+  if (memory.rss > 150 * 1024 * 1024) {
+    logger.warn('Memory usage higher than expected for direct-to-R2', { memory: memoryMB });
   } else {
     logger.debug('Memory usage', { memory: memoryMB });
   }
 }, 30000);
 
-// Garbage collection
-if (global.gc) {
-  logger.info('Garbage collection available');
-  setInterval(() => {
-    try {
-      global.gc();
-      logger.debug('Manual garbage collection triggered');
-    } catch (err) {
-      logger.error('Garbage collection failed', { error: err.message });
-    }
-  }, 60000);
-} else {
-  logger.warn('Garbage collection not exposed, start with --expose-gc flag');
-}
-
 // ============================================
 // EXPRESS APP SETUP
 // ============================================
 const app = express();
-
-// Trust proxy (for rate limiting behind reverse proxy)
 app.set('trust proxy', 1);
 
-// ============================================
-// SECURITY HEADERS (Helmet)
-// ============================================
+// Security headers
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
-  contentSecurityPolicy: false, // Disable CSP for API server
+  contentSecurityPolicy: false,
 }));
 
-// ============================================
-// REQUEST ID MIDDLEWARE
-// ============================================
+// Request ID
 app.use((req, res, next) => {
   req.id = req.headers['x-request-id'] || crypto.randomUUID();
   res.setHeader('X-Request-ID', req.id);
@@ -253,77 +222,34 @@ app.use((req, res, next) => {
 });
 
 // ============================================
-// REQUEST TIMEOUT MIDDLEWARE
-// ============================================
-const timeoutMiddleware = (timeout) => (req, res, next) => {
-  req.setTimeout(timeout, () => {
-    if (!res.headersSent) {
-      logger.error('Request timeout', {
-        requestId: req.id,
-        path: req.path,
-        method: req.method,
-        timeout
-      });
-      res.status(408).json({
-        error: 'Request timeout',
-        message: 'The request took too long to process'
-      });
-    }
-  });
-  next();
-};
-
-// ============================================
 // RATE LIMITING
 // ============================================
-
-// General API rate limiter
 const generalLimiter = rateLimit({
   windowMs: CONFIG.rateLimitWindow,
   max: CONFIG.rateLimitMaxRequests,
-  message: {
-    error: 'Too many requests',
-    message: 'Please try again later',
-    retryAfter: Math.ceil(CONFIG.rateLimitWindow / 1000)
-  },
+  message: { error: 'Too many requests', message: 'Please try again later', retryAfter: Math.ceil(CONFIG.rateLimitWindow / 1000) },
   standardHeaders: true,
   legacyHeaders: false,
-  // Use default keyGenerator (handles IPv6 properly)
-  // It uses req.ip by default which works with trust proxy
-  validate: { xForwardedForHeader: false }, // Disable validation warning for x-forwarded-for
+  validate: { xForwardedForHeader: false },
   handler: (req, res, next, options) => {
-    logger.warn('Rate limit exceeded', {
-      requestId: req.id,
-      ip: req.ip,
-      path: req.path
-    });
+    logger.warn('Rate limit exceeded', { requestId: req.id, ip: req.ip, path: req.path });
     res.status(429).json(options.message);
   }
 });
 
-// Upload-specific rate limiter (stricter)
 const uploadLimiter = rateLimit({
   windowMs: CONFIG.rateLimitWindow,
   max: CONFIG.rateLimitMaxUploads,
-  message: {
-    error: 'Too many uploads',
-    message: 'Please try again later',
-    retryAfter: Math.ceil(CONFIG.rateLimitWindow / 1000)
-  },
+  message: { error: 'Too many upload requests', message: 'Please try again later', retryAfter: Math.ceil(CONFIG.rateLimitWindow / 1000) },
   standardHeaders: true,
   legacyHeaders: false,
-  // Use default keyGenerator (handles IPv6 properly)
   validate: { xForwardedForHeader: false },
   handler: (req, res, next, options) => {
-    logger.warn('Upload rate limit exceeded', {
-      requestId: req.id,
-      ip: req.ip
-    });
+    logger.warn('Upload rate limit exceeded', { requestId: req.id, ip: req.ip });
     res.status(429).json(options.message);
   }
 });
 
-// Apply general rate limiter to all routes
 app.use(generalLimiter);
 
 // ============================================
@@ -340,7 +266,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Handle preflight requests
 app.options('*', (req, res) => {
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -350,7 +275,6 @@ app.options('*', (req, res) => {
   res.sendStatus(204);
 });
 
-// CORS headers middleware
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -361,13 +285,9 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '1mb' }));
 
-// ============================================
-// REQUEST LOGGING MIDDLEWARE
-// ============================================
+// Request logging
 app.use((req, res, next) => {
   const startTime = Date.now();
-
-  // Log request
   logger.info('Request received', {
     requestId: req.id,
     method: req.method,
@@ -376,11 +296,9 @@ app.use((req, res, next) => {
     userAgent: req.headers['user-agent']
   });
 
-  // Log response when finished
   res.on('finish', () => {
     const duration = Date.now() - startTime;
     const level = res.statusCode >= 400 ? 'warn' : 'info';
-
     logger[level]('Request completed', {
       requestId: req.id,
       method: req.method,
@@ -389,12 +307,11 @@ app.use((req, res, next) => {
       duration: `${duration}ms`
     });
   });
-
   next();
 });
 
 // ============================================
-// R2 CLIENT SETUP
+// R2 CLIENT
 // ============================================
 let r2Client;
 try {
@@ -415,700 +332,359 @@ try {
 
 const BUCKET_NAME = process.env.R2_BUCKET_NAME;
 
-// Validate required environment variables
+// Validate env vars
 if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID ||
   !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME) {
   logger.error('Missing required R2 environment variables');
   process.exit(1);
 }
 
-// Test R2 connectivity on startup
+// Test R2 connection
 setTimeout(async () => {
   try {
-    const command = new ListObjectsV2Command({ Bucket: BUCKET_NAME, MaxKeys: 1 });
-    await r2Client.send(command);
+    await r2Client.send(new ListObjectsV2Command({ Bucket: BUCKET_NAME, MaxKeys: 1 }));
     logger.info('R2 connectivity test successful', { bucket: BUCKET_NAME });
   } catch (error) {
     logger.error('R2 connectivity test failed', { error: error.message });
   }
-}, 5000);
+}, 3000);
 
 // ============================================
-// UTILITY FUNCTIONS
+// HELPER FUNCTIONS
 // ============================================
-
-// Generate unique file key
-const generateFileKey = (originalName, courseId, lessonId) => {
+const generateFileKey = (filename, courseId, lessonId) => {
   const timestamp = Date.now();
-  const randomString = crypto.randomBytes(8).toString('hex');
-  const extension = originalName.substring(originalName.lastIndexOf('.'));
-  return `courses/${courseId}/lessons/${lessonId}/${timestamp}-${randomString}${extension}`;
-};
-
-// Sanitize filename
-const sanitizeFilename = (filename) => {
-  return filename
-    .replace(/^.*[\\\/]/, '') // Remove path
-    .replace(/[^a-zA-Z0-9._-]/g, '_') // Replace unsafe chars
-    .substring(0, 255); // Limit length
+  const random = crypto.randomBytes(8).toString('hex');
+  const ext = filename.substring(filename.lastIndexOf('.')) || '';
+  return `courses/${courseId}/lessons/${lessonId}/${timestamp}-${random}${ext}`;
 };
 
 // ============================================
-// PROGRESS TRACKING
+// API ENDPOINTS
 // ============================================
-const uploadProgressMap = new Map();
 
-// Clean up old progress entries
-setInterval(() => {
-  const now = Date.now();
-  let cleaned = 0;
-  for (const [id, data] of uploadProgressMap.entries()) {
-    if (now - data.timestamp > 3600000) {
-      uploadProgressMap.delete(id);
-      cleaned++;
-    }
-  }
-  if (cleaned > 0) {
-    logger.debug('Cleaned up progress entries', { count: cleaned });
-  }
-}, 3600000);
+// ------------------------------------------
+// SINGLE FILE PRESIGNED URL
+// ------------------------------------------
+app.post('/api/upload/presigned', uploadLimiter, async (req, res) => {
+  try {
+    const { filename, contentType, fileSize, courseId, lessonId } = req.body;
 
-// ============================================
-// SSE PROGRESS ENDPOINT
-// ============================================
-app.get('/api/upload/progress/:uploadId', (req, res) => {
-  const { uploadId } = req.params;
-
-  logger.info('SSE connection opened', { requestId: req.id, uploadId });
-
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': req.headers.origin || '*'
-  });
-
-  res.write(`data: ${JSON.stringify({ status: 'connected', progress: 0, bytesReceived: 0, totalBytes: 0 })}\n\n`);
-
-  if (!uploadProgressMap.has(uploadId)) {
-    uploadProgressMap.set(uploadId, {
-      clients: [],
-      progress: 0,
-      bytesReceived: 0,
-      totalBytes: 0,
-      timestamp: Date.now()
+    logger.info('Presigned URL requested', {
+      requestId: req.id,
+      filename,
+      contentType,
+      fileSize: fileSize ? `${(fileSize / 1024 / 1024).toFixed(2)}MB` : 'unknown',
+      courseId,
+      lessonId
     });
-  }
 
-  const progressData = uploadProgressMap.get(uploadId);
-  progressData.clients.push(res);
+    // Validate all inputs
+    const validations = [
+      { name: 'filename', result: validators.filename(filename) },
+      { name: 'contentType', result: validators.contentType(contentType) },
+      { name: 'fileSize', result: validators.fileSize(fileSize) },
+      { name: 'courseId', result: validators.courseId(courseId) },
+      { name: 'lessonId', result: validators.lessonId(lessonId) },
+    ];
 
-  req.on('close', () => {
-    logger.info('SSE connection closed', { requestId: req.id, uploadId });
-    if (uploadProgressMap.has(uploadId)) {
-      const data = uploadProgressMap.get(uploadId);
-      data.clients = data.clients.filter(client => client !== res);
-      if (data.clients.length === 0 && data.progress >= 100) {
-        uploadProgressMap.delete(uploadId);
+    for (const v of validations) {
+      if (!v.result.valid) {
+        logger.warn('Validation failed', { requestId: req.id, field: v.name, error: v.result.error });
+        return res.status(400).json({ error: v.result.error });
       }
     }
-  });
+
+    const sanitizedFilename = validators.filename(filename).sanitized;
+    const fileKey = generateFileKey(sanitizedFilename, courseId, lessonId);
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileKey,
+      ContentType: contentType,
+      ContentLength: parseInt(fileSize, 10),
+      Metadata: {
+        originalname: sanitizedFilename,
+        courseid: courseId,
+        lessonid: lessonId,
+        uploadedat: new Date().toISOString(),
+      },
+    });
+
+    const uploadUrl = await getSignedUrl(r2Client, command, {
+      expiresIn: CONFIG.presignedUrlExpiry
+    });
+
+    logger.info('Presigned URL generated', { requestId: req.id, fileKey });
+
+    res.json({
+      success: true,
+      data: {
+        uploadUrl,
+        fileKey,
+        expiresIn: CONFIG.presignedUrlExpiry,
+      }
+    });
+  } catch (error) {
+    logger.error('Failed to generate presigned URL', { requestId: req.id, error: error.message });
+    res.status(500).json({ error: 'Failed to generate upload URL', message: error.message });
+  }
 });
 
-// Helper to broadcast progress
-const broadcastProgress = (uploadId, progress, status = 'uploading', extra = {}) => {
-  if (uploadProgressMap.has(uploadId)) {
-    const data = uploadProgressMap.get(uploadId);
-    data.progress = progress;
-    data.timestamp = Date.now();
+// ------------------------------------------
+// MULTIPLE FILES PRESIGNED URLs
+// ------------------------------------------
+app.post('/api/upload/presigned-multiple', uploadLimiter, async (req, res) => {
+  try {
+    const { files, courseId, lessonId } = req.body;
 
-    if (extra.bytesReceived !== undefined) data.bytesReceived = extra.bytesReceived;
-    if (extra.totalBytes !== undefined) data.totalBytes = extra.totalBytes;
-
-    const message = JSON.stringify({
-      status,
-      progress,
-      bytesReceived: data.bytesReceived,
-      totalBytes: data.totalBytes
-    });
-
-    data.clients.forEach(client => {
-      try {
-        client.write(`data: ${message}\n\n`);
-      } catch (err) {
-        // Client disconnected
-      }
-    });
-  }
-};
-
-// ============================================
-// MEMORY PRESSURE DETECTION MIDDLEWARE
-// ============================================
-const checkMemoryPressure = (req, res, next) => {
-  const memory = process.memoryUsage();
-  const memoryMB = (memory.rss / 1024 / 1024).toFixed(2);
-
-  if (memory.rss > CONFIG.maxMemoryUsage) {
-    logger.warn('Upload rejected due to high memory usage', {
+    logger.info('Multiple presigned URLs requested', {
       requestId: req.id,
-      memoryUsage: `${memoryMB}MB`,
-      threshold: `${(CONFIG.maxMemoryUsage / 1024 / 1024).toFixed(2)}MB`
+      fileCount: files?.length,
+      courseId,
+      lessonId
     });
 
-    // Try to trigger GC before rejecting
-    if (global.gc) {
-      try {
-        global.gc();
-        const memAfterGC = process.memoryUsage();
-        logger.info('Emergency GC triggered', {
-          before: `${memoryMB}MB`,
-          after: `${(memAfterGC.rss / 1024 / 1024).toFixed(2)}MB`
-        });
-
-        // If GC freed enough memory, allow the upload
-        if (memAfterGC.rss <= CONFIG.maxMemoryUsage) {
-          return next();
-        }
-      } catch (err) {
-        logger.error('Emergency GC failed', { error: err.message });
-      }
+    // Validate courseId and lessonId
+    const courseIdValidation = validators.courseId(courseId);
+    if (!courseIdValidation.valid) {
+      return res.status(400).json({ error: courseIdValidation.error });
     }
 
-    return res.status(503).json({
-      error: 'Server busy',
-      message: 'Server is currently under heavy load. Please try again in a few moments.',
-      retryAfter: 60
-    });
-  }
-
-  next();
-};
-
-// ============================================
-// UPLOAD ENDPOINT - Single File
-// ============================================
-app.post('/api/upload',
-  uploadLimiter,
-  checkMemoryPressure, // Check memory before starting upload
-  timeoutMiddleware(CONFIG.uploadTimeout),
-  (req, res) => {
-    const requestId = req.id;
-
-    logger.info('Upload started', {
-      requestId,
-      contentLength: req.headers['content-length'],
-      contentType: req.headers['content-type']
-    });
-
-    // Validate content type
-    const contentType = req.headers['content-type'];
-    if (!contentType || !contentType.includes('multipart/form-data')) {
-      logger.warn('Invalid content type', { requestId, contentType });
-      return res.status(400).json({
-        error: 'Invalid content type',
-        message: 'Content-Type must be multipart/form-data'
-      });
+    const lessonIdValidation = validators.lessonId(lessonId);
+    if (!lessonIdValidation.valid) {
+      return res.status(400).json({ error: lessonIdValidation.error });
     }
 
-    // Check Content-Length early
-    const contentLength = parseInt(req.headers['content-length'], 10) || 0;
-    if (contentLength > CONFIG.maxFileSize + (1024 * 1024)) { // +1MB for form overhead
-      logger.warn('File too large', { requestId, contentLength });
-      return res.status(413).json({
-        error: 'File too large',
-        message: `Maximum file size is ${CONFIG.maxFileSize / 1024 / 1024}MB`
-      });
+    // Validate files array
+    const filesValidation = validators.filesArray(files);
+    if (!filesValidation.valid) {
+      return res.status(400).json({ error: filesValidation.error });
     }
 
-    const uploadId = req.headers['x-upload-id'] || req.query.uploadId;
+    const results = [];
+    const errors = [];
 
-    // Initialize progress tracking with total bytes from Content-Length
-    if (uploadId && contentLength > 0) {
-      if (!uploadProgressMap.has(uploadId)) {
-        uploadProgressMap.set(uploadId, {
-          clients: [],
-          progress: 0,
-          bytesReceived: 0,
-          totalBytes: contentLength,
-          timestamp: Date.now()
-        });
-      } else {
-        const data = uploadProgressMap.get(uploadId);
-        data.totalBytes = contentLength;
-      }
-    }
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const { filename, contentType, fileSize } = file;
 
-    const busboy = Busboy({
-      headers: req.headers,
-      limits: {
-        fileSize: CONFIG.maxFileSize,
-        files: 1
-      }
-    });
-
-    let courseId = null;
-    let lessonId = null;
-    let fileInfo = null;
-    let fileKey = null;
-    let uploadStarted = false;
-    let responseHandled = false;
-    let passThroughStream = null;
-    let fileStreamInfo = null;
-
-    // Handle form fields
-    busboy.on('field', (fieldname, val) => {
-      logger.debug('Field received', { requestId, fieldname, value: val });
-      if (fieldname === 'courseId') courseId = val;
-      if (fieldname === 'lessonId') lessonId = val;
-    });
-
-    // Handle file stream
-    busboy.on('file', (fieldname, fileStream, info) => {
-      const { filename, mimeType } = info;
-
-      // Validate filename
+      // Validate each file
       const filenameValidation = validators.filename(filename);
       if (!filenameValidation.valid) {
-        logger.warn('Invalid filename', { requestId, filename, error: filenameValidation.error });
-        fileStream.resume(); // Drain the stream
-        return;
+        errors.push({ index: i, filename, error: filenameValidation.error });
+        continue;
       }
 
-      // Validate content type
-      const contentTypeValidation = validators.contentType(mimeType);
+      const contentTypeValidation = validators.contentType(contentType);
       if (!contentTypeValidation.valid) {
-        logger.warn('Invalid file type', { requestId, mimeType, error: contentTypeValidation.error });
-        fileStream.resume();
-        return;
+        errors.push({ index: i, filename, error: contentTypeValidation.error });
+        continue;
       }
 
-      const sanitizedFilename = sanitizeFilename(filename);
-
-      logger.info('File received', {
-        requestId,
-        filename: sanitizedFilename,
-        mimeType
-      });
-
-      fileInfo = {
-        originalname: sanitizedFilename,
-        mimetype: mimeType,
-        size: 0
-      };
-
-      fileStreamInfo = { filename: sanitizedFilename, mimeType };
-      uploadStarted = true;
-
-      // Create PassThrough with low memory footprint
-      passThroughStream = new PassThrough({
-        highWaterMark: 64 * 1024, // 64KB buffer (reduced from default 16KB for better performance)
-        // This prevents excessive buffering when R2 upload is slower than client upload
-      });
-
-      fileStream.on('data', (chunk) => {
-        fileInfo.size += chunk.length;
-        passThroughStream.write(chunk);
-      });
-
-      fileStream.on('end', () => {
-        logger.debug('File stream ended', { requestId, size: fileInfo.size });
-        passThroughStream.end();
-      });
-
-      fileStream.on('error', (err) => {
-        logger.error('File stream error', { requestId, error: err.message });
-        passThroughStream.destroy(err);
-      });
-
-      // Handle file size limit
-      fileStream.on('limit', () => {
-        logger.warn('File size limit reached', { requestId });
-        if (uploadId) broadcastProgress(uploadId, -1, 'error', { bytesReceived: fileInfo.size, totalBytes: contentLength });
-        if (!responseHandled) {
-          responseHandled = true;
-          res.status(413).json({
-            error: 'File too large',
-            message: `Maximum file size is ${CONFIG.maxFileSize / 1024 / 1024}MB`
-          });
-        }
-      });
-    });
-
-    busboy.on('error', (error) => {
-      logger.error('Busboy error', { requestId, error: error.message });
-      if (uploadId) broadcastProgress(uploadId, -1, 'error');
-      if (!responseHandled) {
-        responseHandled = true;
-        res.status(500).json({ error: 'Upload parsing failed', message: error.message });
-      }
-    });
-
-    busboy.on('finish', async () => {
-      logger.debug('Busboy finished', { requestId, courseId, lessonId });
-
-      // Validate courseId
-      const courseIdValidation = validators.courseId(courseId);
-      if (!courseIdValidation.valid) {
-        logger.warn('Invalid courseId', { requestId, error: courseIdValidation.error });
-        if (uploadId) broadcastProgress(uploadId, -1, 'error');
-        if (!responseHandled) {
-          responseHandled = true;
-          return res.status(400).json({ error: courseIdValidation.error });
-        }
-        return;
-      }
-
-      // Validate lessonId
-      const lessonIdValidation = validators.lessonId(lessonId);
-      if (!lessonIdValidation.valid) {
-        logger.warn('Invalid lessonId', { requestId, error: lessonIdValidation.error });
-        if (uploadId) broadcastProgress(uploadId, -1, 'error');
-        if (!responseHandled) {
-          responseHandled = true;
-          return res.status(400).json({ error: lessonIdValidation.error });
-        }
-        return;
-      }
-
-      if (!uploadStarted || !passThroughStream) {
-        logger.warn('No file provided', { requestId });
-        if (uploadId) broadcastProgress(uploadId, -1, 'error');
-        if (!responseHandled) {
-          responseHandled = true;
-          return res.status(400).json({ error: 'No file provided' });
-        }
-        return;
+      const fileSizeValidation = validators.fileSize(fileSize, CONFIG.maxFileSizeMultiple);
+      if (!fileSizeValidation.valid) {
+        errors.push({ index: i, filename, error: fileSizeValidation.error });
+        continue;
       }
 
       try {
-        fileKey = generateFileKey(fileStreamInfo.filename, courseId, lessonId);
+        const sanitizedFilename = filenameValidation.sanitized;
+        const fileKey = generateFileKey(sanitizedFilename, courseId, lessonId);
 
-        logger.info('Starting R2 upload', {
-          requestId,
-          bucket: BUCKET_NAME,
+        const command = new PutObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: fileKey,
+          ContentType: contentType,
+          ContentLength: parseInt(fileSize, 10),
+          Metadata: {
+            originalname: sanitizedFilename,
+            courseid: courseId,
+            lessonid: lessonId,
+            uploadedat: new Date().toISOString(),
+          },
+        });
+
+        const uploadUrl = await getSignedUrl(r2Client, command, {
+          expiresIn: CONFIG.presignedUrlExpiry
+        });
+
+        results.push({
+          index: i,
+          filename: sanitizedFilename,
+          originalFilename: filename,
+          uploadUrl,
           fileKey,
-          size: fileInfo.size
+          fileSize: parseInt(fileSize, 10),
+          contentType,
+          expiresIn: CONFIG.presignedUrlExpiry,
         });
-
-        // Update progress to show we're now uploading to R2
-        if (uploadId) {
-          broadcastProgress(uploadId, 0, 'uploading', {
-            bytesReceived: 0,
-            totalBytes: fileInfo.size
-          });
-        }
-
-        const uploadInstance = new Upload({
-          client: r2Client,
-          params: {
-            Bucket: BUCKET_NAME,
-            Key: fileKey,
-            Body: passThroughStream,
-            ContentType: fileStreamInfo.mimeType,
-            Metadata: {
-              originalName: fileStreamInfo.filename,
-              courseId,
-              lessonId,
-              uploadedAt: new Date().toISOString(),
-              requestId
-            },
-          },
-          partSize: 5 * 1024 * 1024, // Minimum R2 part size
-          queueSize: 1, // CRITICAL: Reduced from 4 to 1 (only 5MB in memory vs 20MB)
-          leavePartsOnError: false,
-        });
-
-        // Track R2 upload progress (this is what matters for large files)
-        let lastR2Progress = 0;
-        uploadInstance.on('httpUploadProgress', (progress) => {
-          const loaded = progress.loaded || 0;
-          const total = fileInfo.size; // Use actual file size since progress.total may be undefined
-          const percentage = Math.round((loaded / total) * 100);
-
-          logger.debug('R2 upload progress', {
-            requestId,
-            loaded,
-            total,
-            percentage
-          });
-
-          // Broadcast progress to SSE clients
-          if (uploadId && percentage > lastR2Progress) {
-            lastR2Progress = percentage;
-            broadcastProgress(uploadId, Math.min(percentage, 99), 'uploading', {
-              bytesReceived: loaded,
-              totalBytes: total
-            });
-          }
-        });
-
-        await uploadInstance.done();
-
-        logger.info('R2 upload completed', { requestId, fileKey, size: fileInfo.size });
-
-        // Final progress update
-        if (uploadId) {
-          broadcastProgress(uploadId, 100, 'completed', {
-            bytesReceived: fileInfo.size,
-            totalBytes: fileInfo.size
-          });
-        }
-
-        // ============================================
-        // MEMORY CLEANUP - Critical for 512MB servers
-        // ============================================
-
-        // Destroy the PassThrough stream to release buffer memory
-        if (passThroughStream) {
-          passThroughStream.destroy();
-          passThroughStream = null;
-        }
-
-        // Clear references
-        fileStreamInfo = null;
-
-        // Force garbage collection if available (more aggressive for memory management)
-        if (global.gc && fileInfo.size > CONFIG.gcThreshold) {
-          try {
-            global.gc();
-            const memAfterGC = process.memoryUsage();
-            logger.info('Garbage collection triggered after upload', {
-              requestId,
-              fileSize: `${(fileInfo.size / 1024 / 1024).toFixed(2)}MB`,
-              memoryAfterGC: `${(memAfterGC.rss / 1024 / 1024).toFixed(2)}MB`
-            });
-          } catch (err) {
-            logger.warn('Garbage collection failed', { error: err.message });
-          }
-        }
-
-        // Generate presigned URL
-        const getCommand = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: fileKey });
-        const url = await getSignedUrl(r2Client, getCommand, { expiresIn: CONFIG.presignedUrlExpiry });
-
-        const response = {
-          success: true,
-          data: {
-            key: fileKey,
-            url,
-            name: fileInfo.originalname,
-            size: fileInfo.size,
-            type: fileInfo.mimetype,
-          },
-        };
-
-        if (!responseHandled) {
-          responseHandled = true;
-          res.json(response);
-        }
-      } catch (error) {
-        logger.error('Upload failed', {
-          requestId,
-          error: error.message,
-          stack: error.stack
-        });
-
-        // Cleanup on error too
-        if (passThroughStream) {
-          passThroughStream.destroy();
-          passThroughStream = null;
-        }
-
-        if (uploadId) broadcastProgress(uploadId, -1, 'error');
-
-        if (!responseHandled) {
-          responseHandled = true;
-          res.status(500).json({ error: 'Upload failed', message: error.message });
-        }
+      } catch (err) {
+        errors.push({ index: i, filename, error: err.message });
       }
-    });
-
-    req.pipe(busboy);
-  }
-);
-
-// ============================================
-// UPLOAD ENDPOINT - Multiple Files
-// ============================================
-app.post('/api/upload-multiple',
-  uploadLimiter,
-  timeoutMiddleware(CONFIG.uploadTimeout),
-  (req, res) => {
-    const requestId = req.id;
-
-    logger.info('Multiple upload started', { requestId });
-
-    const contentType = req.headers['content-type'];
-    if (!contentType || !contentType.includes('multipart/form-data')) {
-      return res.status(400).json({ error: 'Content-Type must be multipart/form-data' });
     }
 
-    const busboy = Busboy({
-      headers: req.headers,
-      limits: {
-        fileSize: CONFIG.maxFileSizeMultiple,
-        files: CONFIG.maxFiles
-      }
+    logger.info('Multiple presigned URLs generated', {
+      requestId: req.id,
+      requested: files.length,
+      successful: results.length,
+      failed: errors.length
     });
 
-    let courseId = null;
-    let lessonId = null;
-    let responseHandled = false;
-    const pendingFiles = [];
-
-    busboy.on('field', (fieldname, val) => {
-      if (fieldname === 'courseId') courseId = val;
-      if (fieldname === 'lessonId') lessonId = val;
-    });
-
-    busboy.on('file', (fieldname, fileStream, info) => {
-      const { filename, mimeType } = info;
-
-      const filenameValidation = validators.filename(filename);
-      if (!filenameValidation.valid) {
-        fileStream.resume();
-        return;
-      }
-
-      const sanitizedFilename = sanitizeFilename(filename);
-
-      const fileData = {
-        filename: sanitizedFilename,
-        mimeType,
-        size: 0,
-        passThroughStream: new PassThrough(),
-        key: null
-      };
-      pendingFiles.push(fileData);
-
-      fileStream.on('data', (chunk) => {
-        fileData.size += chunk.length;
-        fileData.passThroughStream.write(chunk);
-      });
-
-      fileStream.on('end', () => {
-        fileData.passThroughStream.end();
-      });
-
-      fileStream.on('error', (err) => {
-        fileData.passThroughStream.destroy(err);
-      });
-    });
-
-    busboy.on('error', (error) => {
-      logger.error('Busboy error (multiple)', { requestId, error: error.message });
-      if (!responseHandled) {
-        responseHandled = true;
-        res.status(500).json({ error: 'Upload parsing failed', message: error.message });
-      }
-    });
-
-    busboy.on('finish', async () => {
-      // Validate inputs
-      const courseIdValidation = validators.courseId(courseId);
-      const lessonIdValidation = validators.lessonId(lessonId);
-
-      if (!courseIdValidation.valid || !lessonIdValidation.valid) {
-        if (!responseHandled) {
-          responseHandled = true;
-          return res.status(400).json({
-            error: courseIdValidation.error || lessonIdValidation.error
-          });
+    res.json({
+      success: true,
+      data: {
+        files: results,
+        errors: errors.length > 0 ? errors : undefined,
+        summary: {
+          requested: files.length,
+          successful: results.length,
+          failed: errors.length
         }
-        return;
       }
+    });
+  } catch (error) {
+    logger.error('Failed to generate multiple presigned URLs', { requestId: req.id, error: error.message });
+    res.status(500).json({ error: 'Failed to generate upload URLs', message: error.message });
+  }
+});
 
-      if (pendingFiles.length === 0) {
-        if (!responseHandled) {
-          responseHandled = true;
-          return res.status(400).json({ error: 'No files provided' });
-        }
-        return;
+// ------------------------------------------
+// CONFIRM SINGLE UPLOAD
+// ------------------------------------------
+app.post('/api/upload/confirm', async (req, res) => {
+  try {
+    const { fileKey, fileName, fileSize, fileType } = req.body;
+
+    logger.info('Upload confirmation requested', { requestId: req.id, fileKey });
+
+    const validation = validators.fileKey(fileKey);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    // Verify file exists in R2
+    let metadata;
+    try {
+      metadata = await r2Client.send(new HeadObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: fileKey,
+      }));
+    } catch (err) {
+      if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
+        logger.warn('File not found during confirmation', { requestId: req.id, fileKey });
+        return res.status(404).json({
+          error: 'File not found',
+          message: 'Upload may have failed. Please try again.'
+        });
+      }
+      throw err;
+    }
+
+    // Generate download URL
+    const downloadUrl = await getSignedUrl(r2Client, new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileKey,
+    }), { expiresIn: CONFIG.downloadUrlExpiry });
+
+    logger.info('Upload confirmed', { requestId: req.id, fileKey, size: metadata.ContentLength });
+
+    res.json({
+      success: true,
+      data: {
+        key: fileKey,
+        url: downloadUrl,
+        size: metadata.ContentLength || fileSize,
+        type: metadata.ContentType || fileType,
+        name: fileName || metadata.Metadata?.originalname || fileKey.split('/').pop(),
+      }
+    });
+  } catch (error) {
+    logger.error('Failed to confirm upload', { requestId: req.id, error: error.message });
+    res.status(500).json({ error: 'Failed to confirm upload', message: error.message });
+  }
+});
+
+// ------------------------------------------
+// CONFIRM MULTIPLE UPLOADS
+// ------------------------------------------
+app.post('/api/upload/confirm-multiple', async (req, res) => {
+  try {
+    const { files } = req.body;
+
+    logger.info('Multiple upload confirmation requested', { requestId: req.id, fileCount: files?.length });
+
+    if (!Array.isArray(files) || files.length === 0) {
+      return res.status(400).json({ error: 'files array is required' });
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (const file of files) {
+      const { fileKey, fileName, fileSize, fileType } = file;
+
+      const validation = validators.fileKey(fileKey);
+      if (!validation.valid) {
+        errors.push({ fileKey, error: validation.error });
+        continue;
       }
 
       try {
-        const uploadPromises = pendingFiles.map(async (fileData) => {
-          const fileKey = generateFileKey(fileData.filename, courseId, lessonId);
-          fileData.key = fileKey;
+        const metadata = await r2Client.send(new HeadObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: fileKey,
+        }));
 
-          const upload = new Upload({
-            client: r2Client,
-            params: {
-              Bucket: BUCKET_NAME,
-              Key: fileKey,
-              Body: fileData.passThroughStream,
-              ContentType: fileData.mimeType,
-              Metadata: {
-                originalName: fileData.filename,
-                courseId,
-                lessonId,
-                uploadedAt: new Date().toISOString(),
-                requestId
-              },
-            },
-            partSize: 5 * 1024 * 1024, // Minimum R2 part size
-            queueSize: 1, // CRITICAL: Reduced from 4 to 1 (only 5MB in memory vs 20MB)
-            leavePartsOnError: false,
-          });
+        const downloadUrl = await getSignedUrl(r2Client, new GetObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: fileKey,
+        }), { expiresIn: CONFIG.downloadUrlExpiry });
 
-          try {
-            await upload.done();
-            return { success: true, fileData };
-          } catch (err) {
-            logger.error('File upload failed', { requestId, filename: fileData.filename, error: err.message });
-            return { success: false, fileData, error: err.message };
-          }
+        results.push({
+          key: fileKey,
+          url: downloadUrl,
+          size: metadata.ContentLength || fileSize,
+          type: metadata.ContentType || fileType,
+          name: fileName || metadata.Metadata?.originalname || fileKey.split('/').pop(),
         });
-
-        const results = await Promise.all(uploadPromises);
-
-        const data = await Promise.all(
-          results
-            .filter(r => r.success)
-            .map(async (r) => {
-              const getCommand = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: r.fileData.key });
-              const url = await getSignedUrl(r2Client, getCommand, { expiresIn: CONFIG.presignedUrlExpiry });
-              return {
-                key: r.fileData.key,
-                url,
-                name: r.fileData.filename,
-                size: r.fileData.size,
-                type: r.fileData.mimeType,
-              };
-            })
-        );
-
-        if (global.gc) {
-          try { global.gc(); } catch (err) { }
+      } catch (err) {
+        if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
+          errors.push({ fileKey, error: 'File not found - upload may have failed' });
+        } else {
+          errors.push({ fileKey, error: err.message });
         }
+      }
+    }
 
-        logger.info('Multiple upload completed', {
-          requestId,
-          totalFiles: pendingFiles.length,
-          successfulFiles: data.length
-        });
+    logger.info('Multiple uploads confirmed', {
+      requestId: req.id,
+      requested: files.length,
+      successful: results.length,
+      failed: errors.length
+    });
 
-        if (!responseHandled) {
-          responseHandled = true;
-          res.json({ success: true, data });
-        }
-      } catch (error) {
-        logger.error('Multiple upload failed', { requestId, error: error.message });
-        if (!responseHandled) {
-          responseHandled = true;
-          res.status(500).json({ error: 'Upload failed', message: error.message });
+    res.json({
+      success: true,
+      data: {
+        files: results,
+        errors: errors.length > 0 ? errors : undefined,
+        summary: {
+          requested: files.length,
+          successful: results.length,
+          failed: errors.length
         }
       }
     });
-
-    req.pipe(busboy);
+  } catch (error) {
+    logger.error('Failed to confirm multiple uploads', { requestId: req.id, error: error.message });
+    res.status(500).json({ error: 'Failed to confirm uploads', message: error.message });
   }
-);
+});
 
-// ============================================
-// FILE RETRIEVAL ENDPOINT
-// ============================================
+// ------------------------------------------
+// GET FILE URL
+// ------------------------------------------
 app.get('/api/file/:key(*)', async (req, res) => {
   try {
     const fileKey = req.params.key;
@@ -1118,8 +694,10 @@ app.get('/api/file/:key(*)', async (req, res) => {
       return res.status(400).json({ error: validation.error });
     }
 
-    const command = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: fileKey });
-    const url = await getSignedUrl(r2Client, command, { expiresIn: CONFIG.presignedUrlExpiryShort });
+    const url = await getSignedUrl(r2Client, new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileKey,
+    }), { expiresIn: CONFIG.downloadUrlExpiry });
 
     res.json({ success: true, url });
   } catch (error) {
@@ -1128,9 +706,9 @@ app.get('/api/file/:key(*)', async (req, res) => {
   }
 });
 
-// ============================================
-// FILE DELETION ENDPOINT
-// ============================================
+// ------------------------------------------
+// DELETE SINGLE FILE
+// ------------------------------------------
 app.delete('/api/file/:key(*)', async (req, res) => {
   try {
     const fileKey = req.params.key;
@@ -1140,42 +718,101 @@ app.delete('/api/file/:key(*)', async (req, res) => {
       return res.status(400).json({ error: validation.error });
     }
 
-    const command = new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: fileKey });
-    await r2Client.send(command);
+    await r2Client.send(new DeleteObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileKey,
+    }));
 
     logger.info('File deleted', { requestId: req.id, fileKey });
     res.json({ success: true, message: 'File deleted successfully' });
   } catch (error) {
     logger.error('Delete error', { requestId: req.id, error: error.message });
-    res.status(500).json({ error: 'Delete failed', message: error.message });
+    res.status(500).json({ error: 'Failed to delete file', message: error.message });
   }
 });
 
-// ============================================
-// LIST FILES ENDPOINT
-// ============================================
+// ------------------------------------------
+// DELETE MULTIPLE FILES
+// ------------------------------------------
+app.post('/api/files/delete', async (req, res) => {
+  try {
+    const { fileKeys } = req.body;
+
+    if (!Array.isArray(fileKeys) || fileKeys.length === 0) {
+      return res.status(400).json({ error: 'fileKeys array is required' });
+    }
+
+    const deleted = [];
+    const errors = [];
+
+    for (const fileKey of fileKeys) {
+      const validation = validators.fileKey(fileKey);
+      if (!validation.valid) {
+        errors.push({ fileKey, error: validation.error });
+        continue;
+      }
+
+      try {
+        await r2Client.send(new DeleteObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: fileKey,
+        }));
+        deleted.push(fileKey);
+      } catch (err) {
+        errors.push({ fileKey, error: err.message });
+      }
+    }
+
+    logger.info('Multiple files deleted', {
+      requestId: req.id,
+      requested: fileKeys.length,
+      deleted: deleted.length,
+      failed: errors.length
+    });
+
+    res.json({
+      success: true,
+      data: {
+        deleted,
+        errors: errors.length > 0 ? errors : undefined,
+        summary: {
+          requested: fileKeys.length,
+          deleted: deleted.length,
+          failed: errors.length
+        }
+      }
+    });
+  } catch (error) {
+    logger.error('Multiple delete error', { requestId: req.id, error: error.message });
+    res.status(500).json({ error: 'Failed to delete files', message: error.message });
+  }
+});
+
+// ------------------------------------------
+// LIST FILES FOR LESSON
+// ------------------------------------------
 app.get('/api/files/:courseId/:lessonId', async (req, res) => {
   try {
     const { courseId, lessonId } = req.params;
 
-    const courseIdValidation = validators.courseId(courseId);
-    const lessonIdValidation = validators.lessonId(lessonId);
+    const courseValidation = validators.courseId(courseId);
+    const lessonValidation = validators.lessonId(lessonId);
 
-    if (!courseIdValidation.valid) {
-      return res.status(400).json({ error: courseIdValidation.error });
-    }
-    if (!lessonIdValidation.valid) {
-      return res.status(400).json({ error: lessonIdValidation.error });
-    }
+    if (!courseValidation.valid) return res.status(400).json({ error: courseValidation.error });
+    if (!lessonValidation.valid) return res.status(400).json({ error: lessonValidation.error });
 
     const prefix = `courses/${courseId}/lessons/${lessonId}/`;
-    const command = new ListObjectsV2Command({ Bucket: BUCKET_NAME, Prefix: prefix });
-    const response = await r2Client.send(command);
+    const response = await r2Client.send(new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      Prefix: prefix,
+    }));
 
     const files = await Promise.all(
       (response.Contents || []).map(async (item) => {
-        const getCommand = new GetObjectCommand({ Bucket: BUCKET_NAME, Key: item.Key });
-        const url = await getSignedUrl(r2Client, getCommand, { expiresIn: CONFIG.presignedUrlExpiryShort });
+        const url = await getSignedUrl(r2Client, new GetObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: item.Key
+        }), { expiresIn: CONFIG.downloadUrlExpiry });
         return {
           key: item.Key,
           url,
@@ -1192,15 +829,53 @@ app.get('/api/files/:courseId/:lessonId', async (req, res) => {
   }
 });
 
+// ------------------------------------------
+// LIST ALL FILES FOR COURSE
+// ------------------------------------------
+app.get('/api/files/:courseId', async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const courseValidation = validators.courseId(courseId);
+    if (!courseValidation.valid) return res.status(400).json({ error: courseValidation.error });
+
+    const prefix = `courses/${courseId}/`;
+    const response = await r2Client.send(new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      Prefix: prefix,
+    }));
+
+    const files = await Promise.all(
+      (response.Contents || []).map(async (item) => {
+        const url = await getSignedUrl(r2Client, new GetObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: item.Key
+        }), { expiresIn: CONFIG.downloadUrlExpiry });
+        return {
+          key: item.Key,
+          url,
+          size: item.Size,
+          lastModified: item.LastModified,
+        };
+      })
+    );
+
+    res.json({ success: true, data: files });
+  } catch (error) {
+    logger.error('List course files error', { requestId: req.id, error: error.message });
+    res.status(500).json({ error: 'Failed to list files', message: error.message });
+  }
+});
+
 // ============================================
 // HEALTH CHECK ENDPOINTS
 // ============================================
-// Root endpoint for Render health checks
 app.get('/', (req, res) => {
   res.json({
     status: 'OK',
     service: 'Skill Passport File Upload Server',
-    version: '2.0.0',
+    version: '3.0.0',
+    architecture: 'direct-to-r2',
     timestamp: new Date().toISOString()
   });
 });
@@ -1208,7 +883,8 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
-    version: '2.0.0',
+    version: '3.0.0',
+    architecture: 'direct-to-r2',
     timestamp: new Date().toISOString()
   });
 });
@@ -1216,7 +892,8 @@ app.get('/health', (req, res) => {
 app.get('/health/deep', async (req, res) => {
   const health = {
     status: 'OK',
-    version: '2.0.0',
+    version: '3.0.0',
+    architecture: 'direct-to-r2',
     timestamp: new Date().toISOString(),
     checks: {}
   };
@@ -1224,49 +901,36 @@ app.get('/health/deep', async (req, res) => {
   // Memory check
   const memory = process.memoryUsage();
   health.checks.memory = {
-    status: memory.rss < 450 * 1024 * 1024 ? 'OK' : 'WARNING',
+    status: memory.rss < 150 * 1024 * 1024 ? 'OK' : 'WARNING',
     rss: `${(memory.rss / 1024 / 1024).toFixed(2)}MB`,
-    heapUsed: `${(memory.heapUsed / 1024 / 1024).toFixed(2)}MB`
+    heapUsed: `${(memory.heapUsed / 1024 / 1024).toFixed(2)}MB`,
+    note: 'Direct-to-R2 architecture - memory should stay constant'
   };
 
   // R2 check
   try {
-    const command = new ListObjectsV2Command({ Bucket: BUCKET_NAME, MaxKeys: 1 });
-    await r2Client.send(command);
+    await r2Client.send(new ListObjectsV2Command({ Bucket: BUCKET_NAME, MaxKeys: 1 }));
     health.checks.r2 = { status: 'OK', bucket: BUCKET_NAME };
   } catch (error) {
     health.checks.r2 = { status: 'ERROR', error: error.message };
     health.status = 'DEGRADED';
   }
 
-  const statusCode = health.status === 'OK' ? 200 : 503;
-  res.status(statusCode).json(health);
+  res.status(health.status === 'OK' ? 200 : 503).json(health);
 });
 
-// ============================================
-// UTILITY ENDPOINTS
-// ============================================
+// Utility endpoints
 app.get('/echo', (req, res) => {
-  res.json({
-    message: 'Echo endpoint working',
-    requestId: req.id,
-    timestamp: new Date().toISOString()
-  });
+  res.json({ message: 'Echo endpoint working', requestId: req.id, timestamp: new Date().toISOString() });
 });
 
 app.get('/cors-test', (req, res) => {
-  res.json({
-    message: 'CORS test successful',
-    origin: req.headers.origin,
-    requestId: req.id,
-    timestamp: new Date().toISOString()
-  });
+  res.json({ message: 'CORS test successful', origin: req.headers.origin, timestamp: new Date().toISOString() });
 });
 
 app.get('/test-r2', async (req, res) => {
   try {
-    const command = new ListObjectsV2Command({ Bucket: BUCKET_NAME, MaxKeys: 1 });
-    const response = await r2Client.send(command);
+    const response = await r2Client.send(new ListObjectsV2Command({ Bucket: BUCKET_NAME, MaxKeys: 1 }));
     res.json({
       success: true,
       message: 'R2 connection successful',
@@ -1279,31 +943,18 @@ app.get('/test-r2', async (req, res) => {
 });
 
 // ============================================
-// 404 HANDLER
+// ERROR HANDLING
 // ============================================
 app.use((req, res) => {
   logger.warn('Route not found', { requestId: req.id, path: req.path });
-  res.status(404).json({
-    error: 'Not found',
-    message: `Route ${req.method} ${req.path} not found`
-  });
+  res.status(404).json({ error: 'Not found', message: `Route ${req.method} ${req.path} not found` });
 });
 
-// ============================================
-// GLOBAL ERROR HANDLER
-// ============================================
 app.use((err, req, res, next) => {
-  logger.error('Unhandled error', {
-    requestId: req.id,
-    error: err.message,
-    stack: err.stack
-  });
-
+  logger.error('Unhandled error', { requestId: req.id, error: err.message, stack: err.stack });
   res.status(500).json({
     error: 'Internal server error',
-    message: process.env.NODE_ENV === 'production'
-      ? 'An unexpected error occurred'
-      : err.message,
+    message: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message,
     requestId: req.id
   });
 });
@@ -1314,27 +965,20 @@ app.use((err, req, res, next) => {
 const server = app.listen(CONFIG.port, () => {
   logger.info('Server started', {
     port: CONFIG.port,
+    architecture: 'direct-to-r2',
     environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// ============================================
-// GRACEFUL SHUTDOWN
-// ============================================
+// Graceful shutdown
 const gracefulShutdown = (signal) => {
   logger.info('Shutdown signal received', { signal });
-
   server.close(() => {
     logger.info('HTTP server closed');
-
-    // Close R2 client
     r2Client.destroy();
     logger.info('R2 client closed');
-
     process.exit(0);
   });
-
-  // Force shutdown after 30 seconds
   setTimeout(() => {
     logger.error('Forced shutdown after timeout');
     process.exit(1);
@@ -1343,12 +987,10 @@ const gracefulShutdown = (signal) => {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception', { error: err.message, stack: err.stack });
   gracefulShutdown('uncaughtException');
 });
-
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled rejection', { reason: reason?.message || reason });
 });
