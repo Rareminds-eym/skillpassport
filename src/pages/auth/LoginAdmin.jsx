@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabaseClient';
+import { loginAdmin } from '../../services/adminAuthService';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { Label } from '../../components/Students/components/ui/label';
@@ -28,103 +28,29 @@ const LoginAdmin = () => {
         throw new Error('Please enter both email and password');
       }
 
-      // DEMO CREDENTIALS - Hardcoded for testing
-      const DEMO_CREDENTIALS = {
-        'university@admin.com': {
-          id: 'demo-university-001',
-          name: 'Demo University',
-          email: 'university@admin.com',
-          role: 'school_admin',
-          schoolId: 'demo-university-001',
-          schoolName: 'Demo University',
-          schoolCode: 'DEMO-UNI',
-        },
-        'college@admin.com': {
-          id: 'demo-college-001',
-          name: 'Demo College',
-          email: 'college@admin.com',
-          role: 'school_admin',
-          schoolId: 'demo-college-001',
-          schoolName: 'Demo College',
-          schoolCode: 'DEMO-COL',
-        },
-        'school@admin.com': {
-          id: 'demo-school-001',
-          name: 'Demo School',
-          email: 'school@admin.com',
-          role: 'school_admin',
-          schoolId: 'demo-school-001',
-          schoolName: 'Demo School',
-          schoolCode: 'DEMO-SCH',
-        },
-      };
+      // Authenticate with Supabase Auth via admin service
+      const result = await loginAdmin(email, password);
 
-      // Check if it's a demo credential
-      if (DEMO_CREDENTIALS[email.trim().toLowerCase()]) {
-        const demoUser = DEMO_CREDENTIALS[email.trim().toLowerCase()];
-        
-        login(demoUser);
-
-        toast({
-          title: 'Login Successful (Demo)',
-          description: `Welcome back, ${demoUser.name}!`,
-        });
-
-        navigate('/school-admin/dashboard');
-        return;
+      if (!result.success) {
+        throw new Error(result.error || 'Login failed');
       }
 
-      // Query the schools table for the entered email
-      const { data: school, error: schoolError } = await supabase
-        .from('schools')
-        .select('*')
-        .eq('email', email.trim())
-        .single();
-
-      if (schoolError || !school) {
-        throw new Error('Invalid email or school not found');
-      }
-
-      // Check if the school is approved
-      if (school.approval_status !== 'approved') {
-        throw new Error(
-          school.approval_status === 'pending'
-            ? 'Your school registration is pending approval. Please contact RareMinds admin.'
-            : school.approval_status === 'rejected'
-            ? `Your school registration was rejected. Reason: ${school.rejection_reason || 'Not specified'}. Please contact RareMinds admin.`
-            : 'Your school account is not approved. Please contact RareMinds admin.'
-        );
-      }
-
-      // Check account status
-      if (school.account_status !== 'active' && school.account_status !== 'pending') {
-        throw new Error('Your school account is inactive. Please contact RareMinds admin.');
-      }
-
-      // In a real implementation, you would verify the password here
-      // For now, we'll accept any non-empty password since this is a basic implementation
-      // TODO: Implement proper password verification with Supabase Auth or a secure method
-
-      // Successful login
-      const userData = {
-        id: school.id,
-        name: school.principal_name || school.name,
-        email: school.email,
-        role: 'school_admin',
-        schoolId: school.id,
-        schoolName: school.name,
-        schoolCode: school.code,
-      };
-
-      login(userData);
+      // Store admin data in context
+      login(result.admin);
 
       toast({
         title: 'Login Successful',
-        description: `Welcome back, ${school.name}!`,
+        description: `Welcome back, ${result.admin.name}!`,
       });
 
-      // Redirect to school admin dashboard
-      navigate('/school-admin/dashboard');
+      // Redirect based on admin role
+      if (result.admin.role === 'college_admin') {
+        navigate('/college-admin/dashboard');
+      } else if (result.admin.role === 'university_admin') {
+        navigate('/university-admin/dashboard');
+      } else {
+        navigate('/school-admin/dashboard');
+      }
     } catch (error) {
       toast({
         title: 'Login Failed',
