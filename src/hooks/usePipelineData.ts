@@ -5,7 +5,7 @@ import {
   getPipelineCandidatesWithFilters
 } from '../services/pipelineService';
 // @ts-ignore
-import AppliedJobsService from '../services/AppliedJobsService';
+import AppliedJobsService from '../services/appliedJobsService';
 import { recruiterInsights } from '../features/recruiter-copilot/services/recruiterInsights';
 import { PipelineFilters, PipelineSortOptions } from '../types/recruiter';
 
