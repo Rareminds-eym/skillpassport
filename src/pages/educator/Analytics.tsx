@@ -16,6 +16,7 @@ import {
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { useAnalytics } from '../../hooks/useAnalytics';
+import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 
 interface StatCardProps {
   title: string;
@@ -63,7 +64,10 @@ const Analytics = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Get analytics data from hook
+  // Get educator's school
+  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
+
+  // Get analytics data from hook - filtered by school
   const {
     loading,
     refreshing,
@@ -80,7 +84,7 @@ const Analytics = () => {
     fetchAnalyticsData,
     exportAsCSV,
     exportAsPDF,
-  } = useAnalytics();
+  } = useAnalytics({ schoolId: educatorSchool?.id });
 
   useEffect(() => {
     setTotalPages(Math.ceil(leaderboard.length / itemsPerPage));
@@ -612,7 +616,7 @@ const Analytics = () => {
     setItemsPerPage(value);
   };
 
-  if (loading) {
+  if (loading || schoolLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6 flex items-center justify-center">
         <div className="text-center">

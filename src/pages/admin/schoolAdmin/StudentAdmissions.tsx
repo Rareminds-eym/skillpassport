@@ -19,6 +19,7 @@ import CareerPathDrawer from '@/components/admin/components/CareerPathDrawer';
 import { useStudents } from '../../../hooks/useAdminStudents';
 import { generateCareerPath, type CareerPathResponse, type StudentProfile } from '@/services/aiCareerPathService';
 
+
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -172,7 +173,6 @@ const StudentAdmissions = () => {
   });
 
   const { students, loading, error } = useStudents();
-  console.log('Students:', students);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -748,6 +748,7 @@ const StudentAdmissions = () => {
         error={careerPathError}
         onRetry={handleRetryCareerPath}
       />
+
     </div>
   );
 };

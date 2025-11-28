@@ -2,11 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-// import { Button } from '@/components/ui/button';
-// import { Input } from '@/components/ui/input';
-// import { Label } from '@/components/ui/label';
-// import { Checkbox } from '@/components/ui/checkbox';
-// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { Label } from '../../components/Students/components/ui/label';
@@ -22,42 +18,113 @@ const LoginAdmin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // ===== Dummy credential-based role mapping =====
-  const credentials = {
-    'school@admin.com': { name: 'School Admin', role: 'school_admin' },
-    'college@admin.com': { name: 'College Admin', role: 'college_admin' },
-    'university@admin.com': { name: 'University Admin', role: 'university_admin' },
-  };
-
-  // ===== Dashboard path mapping =====
-  const dashboardRoutes = {
-    school_admin: '/school-admin/dashboard',
-    college_admin: '/college-admin/dashboard',
-    university_admin: '/university-admin/dashboard',
-  };
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Simulated login logic
-      const user = credentials[email];
-
-      if (!user || password.trim() === '') {
-        throw new Error('Invalid email or password');
+      // Validate inputs
+      if (!email || !password.trim()) {
+        throw new Error('Please enter both email and password');
       }
 
-      // Call context login
-      login({ name: user.name, email, role: user.role });
+      // DEMO CREDENTIALS - Hardcoded for testing
+      const DEMO_CREDENTIALS = {
+        'university@admin.com': {
+          id: 'demo-university-001',
+          name: 'Demo University',
+          email: 'university@admin.com',
+          role: 'school_admin',
+          schoolId: 'demo-university-001',
+          schoolName: 'Demo University',
+          schoolCode: 'DEMO-UNI',
+        },
+        'college@admin.com': {
+          id: 'demo-college-001',
+          name: 'Demo College',
+          email: 'college@admin.com',
+          role: 'school_admin',
+          schoolId: 'demo-college-001',
+          schoolName: 'Demo College',
+          schoolCode: 'DEMO-COL',
+        },
+        'school@admin.com': {
+          id: 'demo-school-001',
+          name: 'Demo School',
+          email: 'school@admin.com',
+          role: 'school_admin',
+          schoolId: 'demo-school-001',
+          schoolName: 'Demo School',
+          schoolCode: 'DEMO-SCH',
+        },
+      };
+
+      // Check if it's a demo credential
+      if (DEMO_CREDENTIALS[email.trim().toLowerCase()]) {
+        const demoUser = DEMO_CREDENTIALS[email.trim().toLowerCase()];
+        
+        login(demoUser);
+
+        toast({
+          title: 'Login Successful (Demo)',
+          description: `Welcome back, ${demoUser.name}!`,
+        });
+
+        navigate('/school-admin/dashboard');
+        return;
+      }
+
+      // Query the schools table for the entered email
+      const { data: school, error: schoolError } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('email', email.trim())
+        .single();
+
+      if (schoolError || !school) {
+        throw new Error('Invalid email or school not found');
+      }
+
+      // Check if the school is approved
+      if (school.approval_status !== 'approved') {
+        throw new Error(
+          school.approval_status === 'pending'
+            ? 'Your school registration is pending approval. Please contact RareMinds admin.'
+            : school.approval_status === 'rejected'
+            ? `Your school registration was rejected. Reason: ${school.rejection_reason || 'Not specified'}. Please contact RareMinds admin.`
+            : 'Your school account is not approved. Please contact RareMinds admin.'
+        );
+      }
+
+      // Check account status
+      if (school.account_status !== 'active' && school.account_status !== 'pending') {
+        throw new Error('Your school account is inactive. Please contact RareMinds admin.');
+      }
+
+      // In a real implementation, you would verify the password here
+      // For now, we'll accept any non-empty password since this is a basic implementation
+      // TODO: Implement proper password verification with Supabase Auth or a secure method
+
+      // Successful login
+      const userData = {
+        id: school.id,
+        name: school.principal_name || school.name,
+        email: school.email,
+        role: 'school_admin',
+        schoolId: school.id,
+        schoolName: school.name,
+        schoolCode: school.code,
+      };
+
+      login(userData);
 
       toast({
         title: 'Login Successful',
-        description: `Welcome back, ${user.name}!`,
+        description: `Welcome back, ${school.name}!`,
       });
 
-      // Redirect based on role
-      navigate(dashboardRoutes[user.role] || '/admin/dashboard');
+      // Redirect to school admin dashboard
+      navigate('/school-admin/dashboard');
     } catch (error) {
       toast({
         title: 'Login Failed',
@@ -69,11 +136,7 @@ const LoginAdmin = () => {
     }
   };
 
-  const demoCredentials = [
-    { role: 'School Admin', email: 'school@admin.com', password: 'school123' },
-    { role: 'College Admin', email: 'college@admin.com', password: 'college123' },
-    { role: 'University Admin', email: 'university@admin.com', password: 'university123' },
-  ];
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
@@ -156,32 +219,15 @@ const LoginAdmin = () => {
           </CardContent>
         </Card>
 
-        {/* Demo Credentials */}
-        {/* <Card className="bg-slate-50 border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-gray-700">
-              Demo Login Credentials
-            </CardTitle>
-            <CardDescription className="text-xs text-gray-500">
-              Use these to explore different admin dashboards
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {demoCredentials.map((cred, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between text-xs p-2 bg-white rounded-lg border hover:bg-slate-100 transition"
-              >
-                <span className="font-medium">{cred.role}</span>
-                <div className="flex gap-2 text-gray-500">
-                  <code>{cred.email}</code>
-                  <span>•</span>
-                  <code>{cred.password}</code>
-                </div>
-              </div>
-            ))}
+        {/* Info Card */}
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="pt-4">
+            <p className="text-sm text-blue-800">
+              <strong>Note:</strong> Only schools with approved status can login. 
+              If your registration is pending or rejected, please contact RareMinds admin.
+            </p>
           </CardContent>
-        </Card> */}
+        </Card>
       </div>
     </div>
   );

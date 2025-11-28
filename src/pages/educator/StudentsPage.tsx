@@ -12,6 +12,7 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { useStudents, UICandidate } from '../../hooks/useStudents';
+import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 import { useSearch } from '../../context/SearchContext';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/educator/Pagination';
@@ -362,7 +363,13 @@ const StudentsPage = () => {
     maxScore: 100
   });
 
-  const { students, loading, error, refetch } = useStudents();
+  // Get educator's school information
+  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
+
+  // Fetch students filtered by educator's school
+  const { students, loading, error, refetch } = useStudents({ 
+    schoolId: educatorSchool?.id 
+  });
 
   // Reset to page 1 when filters or search change
   useEffect(() => {
@@ -988,9 +995,9 @@ const StudentsPage = () => {
           <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {loading && <div className="text-sm text-gray-500">Loading students...</div>}
+                {(loading || schoolLoading) && <div className="text-sm text-gray-500">Loading students...</div>}
                 {error && <div className="text-sm text-red-600">{error}</div>}
-                {!loading && paginatedStudents.map((student) => (
+                {!loading && !schoolLoading && paginatedStudents.map((student) => (
                   <StudentCard
                     key={student.id}
                     student={student}
@@ -1001,15 +1008,19 @@ const StudentsPage = () => {
                     onToggleSelect={handleToggleStudent}
                   />
                 ))}
-                {!loading && paginatedStudents.length === 0 && !error && (
+                {!loading && !schoolLoading && paginatedStudents.length === 0 && !error && (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500">
                       {searchQuery || filters.skills.length > 0 || filters.locations.length > 0
                         ? 'No students match your current filters'
-                        : 'No students found.'}
+                        : educatorSchool 
+                          ? `No students found in ${educatorSchool.name}`
+                          : 'No students found.'}
                     </p>
                     <p className="text-xs text-gray-400 mt-2">
-                      Try adjusting your search terms or filters.
+                      {educatorSchool 
+                        ? 'Students are filtered by your assigned school.'
+                        : 'Try adjusting your search terms or filters.'}
                     </p>
                     {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
                       <button

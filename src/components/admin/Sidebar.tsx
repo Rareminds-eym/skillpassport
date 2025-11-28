@@ -76,7 +76,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             },
             {
               name: "Attendance & Reports",
-              path: "/school-admin/students/attendance",
+              path: "/school-admin/students/attendance-reports",
               icon: ChartBarIcon,
             },
           ],
@@ -177,6 +177,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             {
               name: "Skill Badges",
               path: "/school-admin/skills/badges",
+              icon: ChartPieIcon,
+            },
+            {
+              name: "Reports",
+              path: "/school-admin/skills/reports",
               icon: ChartPieIcon,
             },
           ],
