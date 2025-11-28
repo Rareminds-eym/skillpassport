@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
     Users,
     Calendar,
@@ -10,147 +10,191 @@ import {
     MapPin,
 } from "lucide-react";
 
-// Sample data - in real app, this would come from your database
-const sampleClubs = [
-    {
-        club_id: "c1",
-        name: "Robotics Club",
-        category: "robotics",
-        members: ["s1", "s2", "s3", "s4", "s5"],
-        capacity: 30,
-        avgAttendance: 85,
-        description: "Build and program robots for competitions",
-        meetingDay: "Monday & Thursday",
-        meetingTime: "4:00 PM - 6:00 PM",
-        location: "Lab 101",
-        mentor: "Dr. Sarah Johnson",
-        upcomingActivities: [
-            { title: "Robot Assembly Workshop", date: "2025-12-01" },
-            { title: "State Competition Prep", date: "2025-12-10" },
-        ],
-    },
-    {
-        club_id: "c2",
-        name: "Literature Circle",
-        category: "literature",
-        members: ["s2", "s6", "s7"],
-        capacity: 20,
-        avgAttendance: 92,
-        description: "Explore classic and contemporary literature",
-        meetingDay: "Wednesday",
-        meetingTime: "3:30 PM - 5:00 PM",
-        location: "Library Room 2",
-        mentor: "Prof. Emily Watson",
-        upcomingActivities: [
-            { title: "Book Discussion: 1984", date: "2025-11-28" },
-            { title: "Poetry Writing Workshop", date: "2025-12-05" },
-        ],
-    },
-    {
-        club_id: "c3",
-        name: "Coding Club",
-        category: "science",
-        members: ["s1", "s3", "s5", "s8", "s9", "s10"],
-        capacity: 50,
-        avgAttendance: 78,
-        description: "Learn programming and software development",
-        meetingDay: "Tuesday & Friday",
-        meetingTime: "3:00 PM - 5:00 PM",
-        location: "Computer Lab A",
-        mentor: "Mr. David Chen",
-        upcomingActivities: [
-            { title: "Hackathon Preparation", date: "2025-12-02" },
-            { title: "Web Development Workshop", date: "2025-12-08" },
-        ],
-    },
-    {
-        club_id: "c4",
-        name: "Football Team",
-        category: "sports",
-        members: ["s1", "s4", "s5", "s11", "s12", "s13", "s14", "s15"],
-        capacity: 25,
-        avgAttendance: 95,
-        description: "Competitive football training and matches",
-        meetingDay: "Monday, Wednesday, Friday",
-        meetingTime: "5:00 PM - 7:00 PM",
-        location: "Main Field",
-        mentor: "Coach Mike Thompson",
-        upcomingActivities: [
-            { title: "Practice Match vs St. Mary's", date: "2025-11-30" },
-            { title: "Championship Semi-Finals", date: "2025-12-15" },
-        ],
-    },
-    {
-        club_id: "c5",
-        name: "Drama Society",
-        category: "arts",
-        members: ["s2", "s7", "s9"],
-        capacity: 25,
-        avgAttendance: 88,
-        description: "Theater performances and acting workshops",
-        meetingDay: "Thursday",
-        meetingTime: "4:00 PM - 6:30 PM",
-        location: "Auditorium",
-        mentor: "Ms. Rachel Green",
-        upcomingActivities: [
-            { title: "Annual Play Rehearsal", date: "2025-12-03" },
-            { title: "Improv Night", date: "2025-12-12" },
-        ],
-    },
-];
+// Load clubs from localStorage (synced with educator page)
+const loadClubsFromStorage = () => {
+    const stored = localStorage.getItem("skillpassport_clubs");
+    if (stored) {
+        try {
+            return JSON.parse(stored);
+        } catch (e) {
+            console.error("Failed to parse clubs from localStorage", e);
+        }
+    }
+    // Fallback to default clubs if nothing in storage
+    return [
+        {
+            club_id: "c1",
+            name: "Robotics Club",
+            category: "robotics",
+            members: ["s1", "s2", "s3", "s4", "s5"],
+            capacity: 30,
+            avgAttendance: 85,
+            description: "Build and program robots for competitions",
+            meetingDay: "Monday & Thursday",
+            meetingTime: "4:00 PM - 6:00 PM",
+            location: "Lab 101",
+            mentor: "Dr. Sarah Johnson",
+            upcomingActivities: [
+                { title: "Robot Assembly Workshop", date: "2025-12-01" },
+                { title: "State Competition Prep", date: "2025-12-10" },
+            ],
+        },
+        {
+            club_id: "c2",
+            name: "Literature Circle",
+            category: "literature",
+            members: ["s2", "s6", "s7"],
+            capacity: 20,
+            avgAttendance: 92,
+            description: "Explore classic and contemporary literature",
+            meetingDay: "Wednesday",
+            meetingTime: "3:30 PM - 5:00 PM",
+            location: "Library Room 2",
+            mentor: "Prof. Emily Watson",
+            upcomingActivities: [
+                { title: "Book Discussion: 1984", date: "2025-11-28" },
+                { title: "Poetry Writing Workshop", date: "2025-12-05" },
+            ],
+        },
+        {
+            club_id: "c3",
+            name: "Coding Club",
+            category: "science",
+            members: ["s1", "s3", "s5", "s8", "s9", "s10"],
+            capacity: 50,
+            avgAttendance: 78,
+            description: "Learn programming and software development",
+            meetingDay: "Tuesday & Friday",
+            meetingTime: "3:00 PM - 5:00 PM",
+            location: "Computer Lab A",
+            mentor: "Mr. David Chen",
+            upcomingActivities: [
+                { title: "Hackathon Preparation", date: "2025-12-02" },
+                { title: "Web Development Workshop", date: "2025-12-08" },
+            ],
+        },
+        {
+            club_id: "c4",
+            name: "Football Team",
+            category: "sports",
+            members: ["s1", "s4", "s5", "s11", "s12", "s13", "s14", "s15"],
+            capacity: 25,
+            avgAttendance: 95,
+            description: "Competitive football training and matches",
+            meetingDay: "Monday, Wednesday, Friday",
+            meetingTime: "5:00 PM - 7:00 PM",
+            location: "Main Field",
+            mentor: "Coach Mike Thompson",
+            upcomingActivities: [
+                { title: "Practice Match vs St. Mary's", date: "2025-11-30" },
+                { title: "Championship Semi-Finals", date: "2025-12-15" },
+            ],
+        },
+        {
+            club_id: "c5",
+            name: "Drama Society",
+            category: "arts",
+            members: ["s2", "s7", "s9"],
+            capacity: 25,
+            avgAttendance: 88,
+            description: "Theater performances and acting workshops",
+            meetingDay: "Thursday",
+            meetingTime: "4:00 PM - 6:30 PM",
+            location: "Auditorium",
+            mentor: "Ms. Rachel Green",
+            upcomingActivities: [
+                { title: "Annual Play Rehearsal", date: "2025-12-03" },
+                { title: "Improv Night", date: "2025-12-12" },
+            ],
+        },
+    ];
+};
 
-const sampleCompetitions = [
-    {
-        comp_id: "comp1",
-        name: "State Robotics Challenge",
-        level: "state",
-        date: "2026-01-15",
-        club_id: "c1",
-        studentResults: [
-            { student_id: "s1", rank: 1, award: "Gold Medal" },
-            { student_id: "s2", rank: 3, award: "Bronze Medal" },
-        ],
-    },
-    {
-        comp_id: "comp2",
-        name: "Inter-school Hackathon",
-        level: "district",
-        date: "2025-12-05",
-        club_id: "c3",
-        studentResults: [
-            { student_id: "s1", rank: 1, award: "Gold Medal" },
-            { student_id: "s3", rank: 4, award: "Certificate" },
-        ],
-    },
-    {
-        comp_id: "comp3",
-        name: "National Football Championship",
-        level: "national",
-        date: "2025-12-20",
-        club_id: "c4",
-        studentResults: [
-            { student_id: "s1", rank: 1, award: "MVP Trophy" },
-        ],
-    },
-];
+// Load competitions from localStorage
+const loadCompetitionsFromStorage = () => {
+    const stored = localStorage.getItem("skillpassport_competitions");
+    if (stored) {
+        try {
+            return JSON.parse(stored);
+        } catch (e) {
+            console.error("Failed to parse competitions from localStorage", e);
+        }
+    }
+    return [
+        {
+            comp_id: "comp1",
+            name: "State Robotics Challenge",
+            level: "state",
+            date: "2026-01-15",
+            club_id: "c1",
+            studentResults: [
+                { student_id: "s1", rank: 1, award: "Gold Medal" },
+                { student_id: "s2", rank: 3, award: "Bronze Medal" },
+            ],
+        },
+        {
+            comp_id: "comp2",
+            name: "Inter-school Hackathon",
+            level: "district",
+            date: "2025-12-05",
+            club_id: "c3",
+            studentResults: [
+                { student_id: "s1", rank: 1, award: "Gold Medal" },
+                { student_id: "s3", rank: 4, award: "Certificate" },
+            ],
+        },
+        {
+            comp_id: "comp3",
+            name: "National Football Championship",
+            level: "national",
+            date: "2025-12-20",
+            club_id: "c4",
+            studentResults: [
+                { student_id: "s1", rank: 1, award: "MVP Trophy" },
+            ],
+        },
+    ];
+};
 
 export default function StudentDashboard() {
-    // Current logged-in student ID (in real app, this comes from auth)
-    const [currentStudentId] = useState("s1");
+    // Get logged-in student's email from localStorage
+    const userEmail = localStorage.getItem("userEmail");
+    const [currentStudentId] = useState(userEmail); // Use email as student ID
     const [selectedClub, setSelectedClub] = useState(null);
+    const [clubs, setClubs] = useState(loadClubsFromStorage);
+    const [competitions, setCompetitions] = useState(loadCompetitionsFromStorage);
+
+    // Listen for changes in localStorage (when educator updates clubs)
+    useEffect(() => {
+        const handleStorageChange = () => {
+            setClubs(loadClubsFromStorage());
+            setCompetitions(loadCompetitionsFromStorage());
+        };
+
+        // Listen for storage events from other tabs/windows
+        window.addEventListener("storage", handleStorageChange);
+
+        // Also poll for changes every 2 seconds (for same-tab updates)
+        const interval = setInterval(handleStorageChange, 2000);
+
+        return () => {
+            window.removeEventListener("storage", handleStorageChange);
+            clearInterval(interval);
+        };
+    }, []);
 
     // Get clubs the student is enrolled in
     const myClubs = useMemo(() => {
-        return sampleClubs.filter((club) =>
+        return clubs.filter((club) =>
             club.members.includes(currentStudentId)
         );
-    }, [currentStudentId]);
+    }, [clubs, currentStudentId]);
 
     // Get student's competition achievements
     const myAchievements = useMemo(() => {
         const achievements = [];
-        sampleCompetitions.forEach((comp) => {
-            const studentResult = comp.studentResults.find(
+        competitions.forEach((comp) => {
+            const studentResult = comp.studentResults?.find(
                 (r) => r.student_id === currentStudentId
             );
             if (studentResult) {
@@ -161,7 +205,7 @@ export default function StudentDashboard() {
             }
         });
         return achievements;
-    }, [currentStudentId]);
+    }, [competitions, currentStudentId]);
 
     // Get upcoming activities across all clubs
     const upcomingActivities = useMemo(() => {
