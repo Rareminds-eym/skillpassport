@@ -498,7 +498,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
           <h2 className="text-xl font-bold text-gray-900">Add Resources</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={isUploading}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <XMarkIcon className="h-6 w-6 text-gray-400" />
           </button>
