@@ -7,15 +7,50 @@ import { supabase } from '../lib/supabaseClient';
 
 /**
  * Authenticate student with email and password
- * HYBRID SYSTEM: Supports both legacy students (no auth) and new students (with Supabase Auth)
+ * Uses Supabase Auth for proper session management
  * @param {string} email - Student email
- * @param {string} password - Student password (optional for legacy students)
+ * @param {string} password - Student password
  * @returns {Promise<{success: boolean, student: object|null, session: object|null, error: string|null, isLegacy: boolean}>}
  */
 export const loginStudent = async (email, password) => {
   try {
-    // App-level auth: validate student record only (no Supabase Auth)
-    const { data: student, error } = await supabase
+    // Validate inputs
+    if (!email || !password) {
+      return { 
+        success: false, 
+        student: null, 
+        session: null, 
+        error: 'Email and password are required.' 
+      };
+    }
+
+    // Step 1: Authenticate with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError) {
+      console.error('❌ Auth error:', authError);
+      return { 
+        success: false, 
+        student: null, 
+        session: null, 
+        error: authError.message || 'Invalid email or password.' 
+      };
+    }
+
+    if (!authData.user || !authData.session) {
+      return { 
+        success: false, 
+        student: null, 
+        session: null, 
+        error: 'Authentication failed. Please try again.' 
+      };
+    }
+
+    // Step 2: Fetch student profile from database
+    const { data: student, error: studentError } = await supabase
       .from('students')
       .select(`
         id,
@@ -33,27 +68,45 @@ export const loginStudent = async (email, password) => {
           approval_status
         )
       `)
-      .eq('email', email)
+      .eq('user_id', authData.user.id)
       .maybeSingle();
 
-    if (error) {
-      console.error('❌ Database error:', error);
-      return { success: false, student: null, session: null, error: 'Database error. Please try again.' };
+    if (studentError) {
+      console.error('❌ Database error:', studentError);
+      return { 
+        success: false, 
+        student: null, 
+        session: authData.session, 
+        error: 'Failed to load student profile.' 
+      };
     }
 
     if (!student) {
-      return { success: false, student: null, session: null, error: 'No student account found with this email.' };
+      // User exists in auth but not in students table
+      return { 
+        success: false, 
+        student: null, 
+        session: authData.session, 
+        error: 'No student profile found. Please contact support.' 
+      };
     }
 
-
-    // Note: Students may or may not have school_id/university_college_id
-    // Allow login regardless of institutional linkage
-
-    // Success: return student; caller will store in AuthContext/localStorage
-    return { success: true, student, session: null, error: null };
+    // Success: return student with session
+    return { 
+      success: true, 
+      student, 
+      session: authData.session, 
+      error: null,
+      isLegacy: false 
+    };
   } catch (err) {
     console.error('❌ Unexpected login error:', err);
-    return { success: false, student: null, session: null, error: err.message || 'Login failed' };
+    return { 
+      success: false, 
+      student: null, 
+      session: null, 
+      error: err.message || 'Login failed' 
+    };
   }
 };
 
