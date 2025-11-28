@@ -110,6 +110,7 @@ export const createEducatorProfile = async (userId, educatorData) => {
             };
         } else {
             // Insert into school_educators table with snake_case columns
+            // Note: entity_type is stored in the users table, not school_educators
             const insertData = {
                 user_id: userId,
                 first_name: educatorData.firstName,
@@ -120,7 +121,6 @@ export const createEducatorProfile = async (userId, educatorData) => {
                 department: educatorData.department || null,
                 employee_id: educatorData.employeeId || null,
                 school_id: educatorData.schoolId,
-                entity_type: 'school',
                 account_status: 'active',
                 verification_status: 'Pending',
                 created_at: new Date().toISOString(),
