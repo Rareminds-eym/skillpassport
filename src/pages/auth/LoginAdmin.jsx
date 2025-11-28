@@ -28,11 +28,79 @@ const LoginAdmin = () => {
         throw new Error('Please enter both email and password');
       }
 
-      // Authenticate with Supabase Auth via admin service
-      const result = await loginAdmin(email, password);
+      // DEMO CREDENTIALS - Hardcoded for testing
+      const DEMO_CREDENTIALS = {
+        'university@admin.com': {
+          id: 'university-001',
+          name: 'University',
+          email: 'university@admin.com',
+          role: 'university_admin',
+          schoolId: 'university-001',
+          schoolName: 'University',
+          schoolCode: 'UNI',
+        },
+        'college@admin.com': {
+          id: 'college-001',
+          name: 'College',
+          email: 'college@admin.com',
+          role: 'college_admin',
+          schoolId: 'college-001',
+          schoolName: 'College',
+          schoolCode: 'COL',
+        },
+        'school@admin.com': {
+          id: 'school-001',
+          name: 'School',
+          email: 'school@admin.com',
+          role: 'school_admin',
+          schoolId: 'school-001',
+          schoolName: 'School',
+          schoolCode: 'SCH',
+        },
+      };
 
-      if (!result.success) {
-        throw new Error(result.error || 'Login failed');
+      // Check if it's a demo credential
+      if (DEMO_CREDENTIALS[email.trim().toLowerCase()]) {
+        const demoUser = DEMO_CREDENTIALS[email.trim().toLowerCase()];
+        
+        login(demoUser);
+
+        toast({
+          title: 'Login Successful',
+          description: `Welcome back, ${demoUser.name}!`,
+        });
+
+        // Route based on role
+        const dashboardRoutes = {
+          'university_admin': '/university-admin/dashboard',
+          'college_admin': '/college-admin/dashboard',
+          'school_admin': '/school-admin/dashboard',
+        };
+        
+        navigate(dashboardRoutes[demoUser.role] || '/school-admin/dashboard');
+        return;
+      }
+
+      // Query the schools table for the entered email
+      const { data: school, error: schoolError } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('email', email.trim())
+        .single();
+
+      if (schoolError || !school) {
+        throw new Error('Invalid email or school not found');
+      }
+
+      // Check if the school is approved
+      if (school.approval_status !== 'approved') {
+        throw new Error(
+          school.approval_status === 'pending'
+            ? 'Your school registration is pending approval. Please contact RareMinds admin.'
+            : school.approval_status === 'rejected'
+            ? `Your school registration was rejected. Reason: ${school.rejection_reason || 'Not specified'}. Please contact RareMinds admin.`
+            : 'Your school account is not approved. Please contact RareMinds admin.'
+        );
       }
 
       // Store admin data in context

@@ -1,0 +1,819 @@
+================================================================================
+SCHOOL ADMIN - PENDING UI ITEMS
+Based on School Portal FRD Document Analysis
+================================================================================
+
+This document lists all pending UI implementation items for School Admin roles
+(Principal, Vice Principal, IT Admin) based on the comprehensive FRD review.
+
+================================================================================
+1. DASHBOARD UI (Section 4.1)
+================================================================================
+
+1.1 KPI CARDS (6-8 Cards Required) ✅ COMPLETED
+-----------------------------------
+✅ Total Students (auto-calculated, numeric display)
+✅ Attendance % Today (updates every 15 minutes, numeric)
+✅ Exams Scheduled (count of active exams, numeric)
+✅ Pending Assessments (teacher-driven, numeric)
+✅ Fee Collection (Daily/Weekly/Monthly - currency format)
+✅ Career Readiness Index (1-100 scale, AI-driven)
+✅ Library Overdue Items (numeric count)
+
+IMPLEMENTATION DETAILS:
+- Component: src/components/admin/KPIDashboard.tsx
+- Advanced Version: src/components/admin/KPIDashboardAdvanced.tsx
+- Backend: Connected to Supabase (students, attendance, exams, marks, fee_payments, career_recommendations, book_issue tables)
+- Auto-refresh: Every 15 minutes (configurable)
+- Features: Real-time data, error handling, loading states, color coding, currency formatting
+- Status: Production-ready
+
+1.2 INTERACTIVE COMPONENTS
+---------------------------
+□ Charts for visual data representation
+□ Alerts Panel with priority levels
+□ Quick Actions Menu
+□ Date Filter (Daily/Weekly/Monthly toggle)
+□ Drilldown functionality (KPI → Grade → Section → Student → Reports)
+□ Export insights button
+
+1.3 ALERTS PANEL FEATURES
+--------------------------
+□ Behavior Alerts display
+□ Attendance Shortage alerts (<75%)
+□ Fee Pending alerts (> 30 days)
+□ Skill Assessment Due notifications
+□ Career Assessment Due notifications
+□ Grievances Submitted alerts
+□ Timestamp display for each alert
+□ Priority level indicator
+□ Responsible user assignment
+
+1.4 ERROR HANDLING & STATES
+----------------------------
+□ "No Records Found" state
+□ API failure graceful fallback with cached data
+□ Loading → Loaded → Filtered → Refreshed state transitions
+□ Role-based variants (different views for teachers vs parents)
+
+
+================================================================================
+2. STUDENT MANAGEMENT UI (Section 4.2)
+================================================================================
+
+2.1 STUDENT ADMISSION FORM
+---------------------------
+□ Multi-step form with tabs:
+  - Personal Info tab
+  - Parent Details tab
+  - Address tab
+  - Documents tab
+  - Program tab
+□ File upload drag-drop zone
+□ Progress indicator across steps
+□ Real-time validation messages
+□ Save Draft button
+□ Submit Application button
+□ Reset Form button
+□ Age-to-class validation logic
+□ Duplicate student detection UI feedback
+□ Error messages:
+  - "Date of birth does not match eligibility for Class X."
+  - "Invalid file format. Only PDF/JPEG allowed."
+
+2.2 STUDENT PROFILE SCREEN
+---------------------------
+□ Tabbed navigation for 7 sections:
+  1. Personal Details tab
+  2. Academic Details tab
+  3. Attendance Summary tab
+  4. Career Module Summary tab
+  5. Fee Status tab
+  6. Documents tab
+  7. Teacher Notes tab
+□ Timeline view for career development
+□ Graphs for attendance visualization
+□ Graphs for marks visualization
+□ Edit Profile button
+□ Add Notes button
+□ Download Profile button
+
+2.3 DAILY ATTENDANCE SCREEN
+----------------------------
+□ Student list table
+□ Checkboxes for attendance status (Present/Absent/Late/Excused)
+□ "Mark All Present" button (only available before 10 AM)
+□ Save Attendance button
+□ Submit for Principal Review button
+□ Real-time conflict detection (student in two classes)
+□ 24-hour edit lock indicator
+□ Principal approval override workflow
+□ Remarks field (max 280 chars)
+□ Date picker (cannot be future date)
+
+
+================================================================================
+3. TEACHER MANAGEMENT UI (Section 4.3)
+================================================================================
+
+3.1 TEACHER ONBOARDING SCREEN
+------------------------------
+□ Multi-section form:
+  - Personal Details section
+  - Subjects & Classes section
+  - Experience section
+  - Document Upload section
+□ Auto-generated Teacher ID (read-only field display)
+□ Multi-select dropdown for subjects
+□ File upload component (max 5MB each, PDF/JPG only)
+□ Approve button
+□ Reject button
+□ Save as Draft button
+□ Validation messages:
+  - "Invalid name."
+  - "Email already exists."
+  - "Phone invalid."
+  - "Assign at least one subject."
+  - "Invalid file format."
+
+3.2 TIMETABLE BUILDER
+----------------------
+□ Drag & drop interface for subjects
+□ Auto-conflict detection with red highlights
+□ Free periods highlighting
+□ Teacher load indicator
+□ Auto-generate button
+□ Save timetable button
+□ Publish button
+□ Collision rules visualization:
+  - No teacher double-booking indicator
+  - No room double-booking indicator
+  - Max 3 consecutive periods warning
+□ Max 30 periods/week validation
+□ Conflict resolution suggestions
+
+
+================================================================================
+4. ACADEMIC MANAGEMENT UI (Section 4.4)
+================================================================================
+
+4.1 CURRICULUM BUILDER
+-----------------------
+□ Subject selection dropdown
+□ Chapter List management interface
+□ Learning Outcomes editor
+□ Assessment Style mapping dropdown
+□ Add Chapter button
+□ Add Outcome button
+□ Publish Curriculum button
+□ Validation messages:
+  - "Learning Outcome required."
+  - "Chapter name min 3 chars."
+  - "Subject Selection mandatory."
+
+4.2 EXAM CREATION SCREEN
+-------------------------
+□ Exam Name text field
+□ Class & Section dropdown
+□ Total Marks numeric field (must be > 0)
+□ Exam Date picker with conflict detection
+□ Syllabus Coverage multi-select
+□ Create Exam button
+□ Assign Invigilators button
+□ Publish button
+□ Date overlap validation with visual feedback
+□ Error messages:
+  - "Exam name cannot be blank."
+  - "Invalid total marks."
+  - "Exam conflict."
+  - "Select chapters."
+
+4.3 LESSON PLAN WORKFLOW
+-------------------------
+□ Lesson objectives editor
+□ Teaching methodology input
+□ Required materials list
+□ Evaluation criteria fields
+□ Submit for review button
+□ Approval/rejection workflow UI
+
+4.4 MARKS ENTRY & MODERATION
+-----------------------------
+□ Mark entry interface
+□ Marks validation (0 ≤ marks ≤ max)
+□ Moderation interface (±10% rule enforcement)
+□ Publishing workflow
+□ Academic risk alerts (score < 40%, drop > 20%)
+
+
+================================================================================
+5. PARENT & COMMUNICATION UI (Section 4.5)
+================================================================================
+
+5.1 MESSAGE CENTER
+------------------
+□ Chat-like interface
+□ Read receipts display
+□ Priority tagging system (Academic/Fee/Attendance/Urgent)
+□ Broadcast message creation interface
+□ One-to-one messaging interface
+□ Delivery tracking indicators:
+  - Delivered status
+  - Read status
+  - Acknowledged status
+□ Attachment support (max 5MB, PDF/JPG)
+□ Message text field (max 500 chars)
+□ Category selection dropdown
+□ Distribution via:
+  - In-app notification
+  - SMS
+  - Email
+
+5.2 PARENT PORTAL VIEW (Admin Monitoring)
+------------------------------------------
+□ View parent access logs
+□ Monitor parent engagement
+□ Track notification delivery status
+
+
+================================================================================
+6. FINANCE & INFRASTRUCTURE UI (Section 4.6)
+================================================================================
+
+6.1 FEE STRUCTURE SETUP
+------------------------
+□ Fee Head input field
+□ Amount field (must be > 0 validation)
+□ Frequency dropdown (monthly/term/annual)
+□ Late Fee % field (max 50% validation)
+□ Create fee structure button
+□ Edit fee structure button
+□ Delete fee structure button
+□ Class-wise fee structure view
+□ Validation messages:
+  - "Amount > 0"
+  - "Late fee cannot exceed 50%"
+
+6.2 FEE COLLECTION INTERFACE
+-----------------------------
+□ Invoice generation interface
+□ Payment recording form
+□ Payment mode selection (UPI/Card/Netbanking/Cash)
+□ Receipt generation and display
+□ Payment status tracking (Success/Failed/Pending)
+□ Late fee auto-calculation display
+□ Concession workflow interface
+
+6.3 LIBRARY DASHBOARD
+----------------------
+□ Book Search functionality
+□ Student Borrow History table
+□ Overdue Alerts panel
+□ Issue book interface
+□ Return book interface
+□ Fine auto-calculation display
+□ Damage/lost workflow UI
+□ Max books per student indicator
+□ Due date display (7-14 days)
+
+
+================================================================================
+7. SKILL & CO-CURRICULAR UI (Section 4.7)
+================================================================================
+
+7.1 CLUBS & ACTIVITIES MANAGEMENT
+----------------------------------
+□ Club cards display
+□ Join/Leave button for each club
+□ Upcoming competitions list
+□ Competition management interface
+□ Skill badge dashboard
+□ Certificate generation UI
+□ Club enrollment interface
+□ Club capacity indicator
+□ Max clubs per student validation
+□ Competition levels display (intraschool/interschool/district/national)
+
+7.2 CLUB PARTICIPATION TRACKING
+--------------------------------
+□ Student participation view
+□ Attendance tracking for club activities
+□ Performance metrics display
+
+
+================================================================================
+8. CAREER READINESS MODULE UI (Section 4.8)
+================================================================================
+
+8.1 SKILL ASSESSMENT DASHBOARD
+-------------------------------
+□ Skill proficiency radar chart
+□ Assessment history timeline
+□ "Take Assessment" button
+□ Assessment states display:
+  - Not started
+  - In progress
+  - Completed
+  - Expired
+□ Question panel
+□ Timer display
+□ Options list
+□ Progress bar
+□ Auto-save indicator (every 10 seconds)
+□ Resume test functionality
+□ Network disconnect recovery
+
+8.2 CAREER INTEREST ASSESSMENT
+-------------------------------
+□ Personality questions with Likert scale (1-5)
+□ Progress tracking bar
+□ RIASEC wheel result display (6-dimensional)
+□ Dominant interest zones display (top 2)
+□ Primary interest zone indicator
+□ Matching job families list
+□ Suggested academic subjects
+□ Example professionals display
+
+8.3 AMBITIONS & DREAMS SCREEN
+------------------------------
+□ Dream career input field
+□ Inspiration text area
+□ Notes section (max 300 chars)
+□ Target timeline selector
+□ Update annually button
+□ Compare ambitions over years functionality
+□ Year-over-year trend visualization
+□ Teacher/Counselor notes section
+□ Ambition categories display (STEM/arts/management/service/sports/military/entrepreneurship)
+
+8.4 SKILL GAP REPORT
+---------------------
+□ Heatmap of skill gaps with color coding:
+  - Red → critical gap
+  - Yellow → moderate gap
+  - Green → no gap
+□ Recommended interventions list
+□ Download PDF button
+□ Skills missing display
+□ Recommended courses list
+□ Recommended school clubs
+□ Recommended competitions
+□ Suggested timeline to improve
+
+
+8.5 AI CAREER RECOMMENDATIONS
+------------------------------
+□ Primary career suggestions display
+□ Secondary careers list
+□ Backup career paths list
+□ Suitability score visualization (0-100)
+□ "Why this career?" AI explanation text
+□ Skill match bar (progress bar visualization)
+□ Academic match bar (progress bar visualization)
+□ AI confidence score display (0-1 range)
+□ Skills alignment display
+□ Gaps identification
+□ Intervention suggestions
+□ No opaque AI - full explainability required
+
+8.6 CAREER TIMELINE VIEWER
+---------------------------
+□ Horizontal milestone timeline
+□ Required exams display
+□ Courses needed list
+□ "You Are Here" marker (current grade indicator)
+□ Path difficulty indicator
+□ Year-wise roadmap display:
+  - Class 6-8 → Foundation
+  - Class 9-10 → Exploration
+  - Class 11-12 → Preparation
+  - UG Level → Specialization
+  - Job Level → Entry Roles
+□ Entrance exams timeline
+□ Required subjects display
+□ Higher education options
+□ Internships timeline
+□ Career growth ladder
+□ Milestone completion toggle
+□ Required vs optional paths distinction
+
+8.7 CAREER PASSPORT (PDF VIEW)
+-------------------------------
+□ Tab preview interface
+□ Print button
+□ Download button
+□ QR code for verification display
+□ School branding/watermark
+□ Multi-page layout
+□ Contents display:
+  - Student profile
+  - Interest assessment outputs
+  - Skill test report
+  - Ambitions record
+  - AI recommendations
+  - Skill gap analysis
+  - Career timeline
+  - Teacher notes
+  - Parent acknowledgements
+□ Version history tracking
+□ A4 printable format
+
+
+================================================================================
+9. REPORTING & ANALYTICS UI (Section 9)
+================================================================================
+
+9.1 ATTENDANCE REPORTS
+----------------------
+□ Daily Attendance Summary Report
+  - Date filter
+  - Class filter
+  - Section filter
+  - Teacher filter
+  - Columns: Class, Section, Total Students, Present Count, Absent Count, Attendance %
+  - Red highlight for attendance < 75%
+  - Export options: CSV, Excel, PDF
+
+□ Student Attendance Trend Report
+  - Monthly attendance trend line chart
+  - Heatmap calendar (green = present, red = absent)
+  - Fields: Student ID, Name, Total classes, Present days, Absences, Late arrivals
+
+□ Chronic Absentee Report
+  - Criteria: Attendance < 75% over last 30 days OR Absent 5 consecutive days
+  - Auto-generate parent meeting request
+  - Mark for counselor review
+
+9.2 ACADEMIC PERFORMANCE REPORTS
+---------------------------------
+□ Class Performance Report
+  - Columns: Student Name, Roll No, Subject-wise marks, Total, Percentage, Rank
+  - Auto ranking functionality
+  - Top 5 / Bottom 5 identification
+  - Grade distribution graph
+
+□ Subject Performance Report
+  - Average score per subject
+  - Pass rate display
+  - Difficulty level (auto-calculated)
+  - Question-level correctness drill-down
+  - Topics requiring re-teaching identification
+
+□ Exam Analytics Dashboard
+  - Widgets: Highest Score, Average Score, Lowest Score, Pass %, Failure Count
+  - Performance trend (term-to-term) chart
+
+9.3 BEHAVIOR & ENGAGEMENT REPORTS
+----------------------------------
+□ Behavioral Alert Report
+  - Triggers: Multiple disciplinary notes, Repeated late arrivals, Multiple grievances
+  - Fields: Student Name, Incident Count, Severity, Action Taken
+
+□ Engagement & Participation Report
+  - Club participation metrics
+  - Competition involvement
+  - Volunteer hours
+  - Leadership indicators
+
+
+9.4 SKILL & CO-CURRICULAR REPORTS
+----------------------------------
+□ Club Participation Report
+  - Columns: Club Name, Student Count, Average attendance, Top performers, Participation score
+
+□ Competition Performance Report
+  - Fields: Competition Name, Level, Student Results, Awards
+
+9.5 CAREER READINESS REPORTS
+-----------------------------
+□ Career Readiness Index Report
+  - Formula breakdown display:
+    * Skill score (40%)
+    * Interest match (20%)
+    * Academic alignment (20%)
+    * Engagement score (10%)
+    * Behavior/discipline score (10%)
+  - Index value (0-100)
+  - Readiness band (Beginner → Expert)
+
+□ Career Recommendation Log Report
+  - Fields: student_id, recommended career, suitability score, AI confidence, Explanation text, Timestamp
+  - Explainability mandate compliance
+  - Audit trail display
+
+□ Skill Gap Analysis Report
+  - Columns: Student Name, Target Career, Missing Skills, Gap Severity, Suggested Interventions
+
+□ Career Timeline Report
+  - Career selected
+  - Milestones display
+  - Year-by-year steps
+  - Required subjects
+  - Entrance exam prep timeline
+
+□ Career Passport Generation Report
+  - Track all generated PDFs
+  - Version history
+
+9.6 FINANCE REPORTS
+-------------------
+□ Fee Collection Summary Report
+  - Widgets: Total collected, Due amount, Pending invoices
+  - Payment mode pie chart
+
+□ Outstanding Dues Report
+  - Filters: Class, Section, Range (0-30 days, 31-60 days, 60+ days)
+  - Fields: Student Name, Parent Phone, Amount Due, Last Reminder Sent
+
+□ Payment Mode Breakdown
+□ Concession/Scholarship Report
+□ Monthly Ledger Summary
+□ Audit-ready fee reports
+
+
+9.7 SYSTEM & AUDIT REPORTS
+---------------------------
+□ Audit Log Report
+  - Fields: user_id, role, module, action, timestamp, old_value, new_value, ip_address
+  - 7-year retention display
+  - Search and filter functionality
+
+□ Role & Permission Change Report
+  - Track modifications to user roles
+  - Change history timeline
+
+□ System Performance Report
+  - Metrics: API latency, Error rates, Server load, Database query performance
+
+9.8 ANALYTICS & AI-INSIGHTS
+----------------------------
+□ Predictive Attendance Risk Model
+  - Outputs: "High Risk", "Medium Risk", "Low Risk" with confidence scores
+  - Based on: Past attendance, Behavior records, Academic history, Seasonal patterns
+
+□ Career Path Success Prediction
+  - Expected career readiness at Class 12
+  - Probability of achieving chosen career
+
+□ Skill Development Recommendation Engine
+  - Suggested: Courses, Clubs, Competitions, Projects, Learning paths
+
+9.9 EXPORT FUNCTIONALITY (ALL REPORTS)
+---------------------------------------
+□ PDF export with school logo watermark
+□ Excel export
+□ CSV export
+□ JSON export
+□ Reports load in < 2 seconds requirement
+□ Exports complete in < 10 seconds requirement
+□ Heavy reports use asynchronous job queue
+□ PII exclusion unless authorized
+□ Every export logged in audit_log
+
+
+================================================================================
+10. SETTINGS MODULE (Section 3.8)
+================================================================================
+
+10.1 ROLE-BASED ACCESS CONTROL
+-------------------------------
+□ Role management interface
+□ Permission assignment UI
+□ RBAC matrix visualization
+□ User role assignment
+□ Permission levels display (V/C/U/D/A/N/A)
+
+10.2 ACADEMIC YEAR CONFIGURATION
+---------------------------------
+□ Academic year setup interface
+□ Term/semester configuration
+□ Holiday calendar management
+□ Exam schedule configuration
+
+10.3 SUBJECTS & CLASSES SETUP
+------------------------------
+□ Subject creation interface
+□ Class creation interface
+□ Section management
+□ Subject-class mapping
+□ Core/Elective/Skill type selection
+
+10.4 NOTIFICATION TRIGGERS
+---------------------------
+□ Notification rules configuration
+□ Trigger conditions setup
+□ SMS/Email template management
+□ Automated reminder configuration
+
+10.5 SYSTEM SETTINGS
+--------------------
+□ Multi-lingual support configuration
+□ Biometric/RFID attendance device setup
+□ Low bandwidth mode toggle
+□ Mobile accessibility settings
+□ School branding configuration (logo, colors)
+
+
+================================================================================
+11. AUTHENTICATION & SECURITY UI
+================================================================================
+
+11.1 AUTHENTICATION SCREENS
+----------------------------
+□ Login screen with username/password
+□ OTP login interface for parents
+□ MFA setup interface
+□ Password reset workflow
+□ Password requirements display:
+  - ≥ 8 characters
+  - 1 uppercase
+  - 1 lowercase
+  - 1 number
+  - 1 special character
+□ SSO integration (OAuth2/SAML/OpenID Connect)
+
+11.2 SESSION MANAGEMENT
+------------------------
+□ 30-minute inactivity timeout warning
+□ Auto-logout notifications
+□ Multi-device conflict handling
+□ Session status indicator
+
+11.3 PASSWORD MANAGEMENT
+-------------------------
+□ Password change interface
+□ Password history check (last 5 passwords)
+□ Mandatory reset reminder (every 180 days)
+□ Password strength indicator
+
+
+================================================================================
+12. SYSTEM-WIDE UI REQUIREMENTS
+================================================================================
+
+12.1 ERROR HANDLING & VALIDATION
+---------------------------------
+□ Graceful error messages for all validation failures
+□ "No Records Found" states
+□ API failure fallback with cached data
+□ Network disconnect recovery
+□ Form-level validation feedback
+□ Field-level validation messages
+□ Duplicate detection warnings
+□ Conflict resolution interfaces
+
+12.2 ACCESSIBILITY FEATURES
+----------------------------
+□ Increased font option
+□ Text-to-speech support
+□ Low bandwidth optimization
+□ Mobile-responsive design
+□ Keyboard navigation support
+□ Screen reader compatibility
+
+12.3 STATE TRANSITIONS & FEEDBACK
+----------------------------------
+□ Loading states (spinners/skeletons)
+□ Success feedback (toasts/notifications)
+□ Failure feedback with retry options
+□ Progress indicators for long operations
+□ Auto-save indicators
+□ Real-time update notifications
+
+12.4 PERFORMANCE REQUIREMENTS
+------------------------------
+□ Dashboard loads in < 2 seconds
+□ Reports generate in < 2 seconds
+□ Exports complete in < 10 seconds
+□ Real-time updates every 15 minutes (attendance)
+□ Auto-save every 10 seconds (assessments)
+□ Asynchronous job queue for heavy operations
+
+12.5 DATA DISPLAY STANDARDS
+----------------------------
+□ Pagination for large datasets
+□ Infinite scroll where appropriate
+□ Search and filter functionality
+□ Sort functionality on tables
+□ Column customization
+□ Data export options on all tables
+
+
+================================================================================
+13. INTEGRATION UI COMPONENTS
+================================================================================
+
+13.1 PAYMENT GATEWAY INTEGRATION
+---------------------------------
+□ Payment initiation interface
+□ Payment status tracking display
+□ Payment callback handling UI
+□ Payment history view
+□ Refund interface
+□ Payment mode selection (Razorpay/PayU/Stripe/Cashfree)
+
+13.2 SMS/EMAIL GATEWAY
+----------------------
+□ SMS delivery status display
+□ Email delivery status display
+□ Failed message retry interface
+□ Message template preview
+□ Bulk messaging interface
+
+13.3 BIOMETRIC/RFID DEVICE
+--------------------------
+□ Device status monitoring
+□ Real-time attendance sync display
+□ Device configuration interface
+□ RFID tag management
+□ Fingerprint enrollment interface
+
+13.4 AI ENGINE INTEGRATION
+---------------------------
+□ AI model status display
+□ AI confidence score visualization
+□ AI explanation display
+□ Model performance metrics
+□ Fallback handling UI
+
+13.5 DOCUMENT GENERATION
+-------------------------
+□ PDF generation progress indicator
+□ Document preview interface
+□ Watermark configuration
+□ QR code generation display
+□ Batch document generation interface
+
+
+================================================================================
+14. SUMMARY - MAJOR UI WORK CATEGORIES
+================================================================================
+
+TOTAL PENDING UI COMPONENTS:
+
+□ 8 KPI Cards with real-time updates
+□ 20+ Complete Screens across all modules
+□ 15+ Report Types with export functionality
+□ 8 Career Module Sub-screens with AI integration
+□ 1 Timetable Builder with drag-drop functionality
+□ 5+ Multi-step forms (admissions, onboarding, etc.)
+□ 10+ Real-time dashboards with charts and graphs
+□ 1 Message Center with chat interface
+□ Multiple role-based UI variations
+□ Comprehensive validation and error handling across all forms
+□ 50+ Individual UI components and widgets
+□ 100+ Form fields with validation
+□ 30+ Action buttons and workflows
+□ 20+ Data visualization components (charts, graphs, timelines)
+
+================================================================================
+PRIORITY LEVELS (Suggested)
+================================================================================
+
+HIGH PRIORITY (Core Admin Functions):
+- Dashboard UI with KPI Cards
+- Student Admission Form
+- Daily Attendance Screen
+- Teacher Onboarding
+- Exam Creation
+- Fee Structure Setup
+- Message Center
+
+MEDIUM PRIORITY (Enhanced Features):
+- Student Profile with tabs
+- Timetable Builder
+- Curriculum Builder
+- Library Dashboard
+- All Reporting interfaces
+- Settings Module
+
+LOW PRIORITY (Advanced Features):
+- Career Readiness Module (all 8 sub-screens)
+- AI-driven analytics
+- Predictive models
+- Advanced visualizations
+- Integration monitoring interfaces
+
+================================================================================
+ESTIMATED DEVELOPMENT EFFORT
+================================================================================
+
+Based on the comprehensive requirements:
+- Dashboard & Core Modules: 4-6 weeks
+- Student & Teacher Management: 6-8 weeks
+- Academic & Finance Modules: 4-6 weeks
+- Career Readiness Module: 8-10 weeks
+- Reporting & Analytics: 6-8 weeks
+- Settings & Security: 3-4 weeks
+- Integration Components: 4-5 weeks
+- Testing & Refinement: 4-6 weeks
+
+TOTAL ESTIMATED: 39-53 weeks (approximately 9-12 months)
+
+Note: This assumes a team of 3-4 frontend developers working in parallel.
+
+================================================================================
+END OF DOCUMENT
+================================================================================
+Generated from: School Portal FRD Document Analysis
+Date: November 28, 2025
