@@ -17,13 +17,17 @@ import {
   CalendarIcon,
   ArrowsUpDownIcon,
   ChevronUpIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  UserGroupIcon,
+  ClipboardDocumentListIcon
 } from '@heroicons/react/24/outline';
 import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
 import { supabase } from '../../lib/supabaseClient';
 import AdvancedRequisitionFilters from '../../components/Recruiter/components/AdvancedRequisitionFilters';
 import { RequisitionFilters } from '../../types/recruiter';
 import { useAuth } from '../../context/AuthContext';
+import TalentPool from './TalentPool';
+import ApplicantsList from './ApplicantsList';
 
 interface Opportunity {
   id: string;
