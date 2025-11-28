@@ -11,7 +11,11 @@ import { Course, CourseModule, Lesson, Resource } from '../../types/educator/cou
  */
 export const getCoursesByEducator = async (educatorId: string): Promise<Course[]> => {
   try {
-    console.log('📡 Fetching courses for educator:', educatorId);
+    // Verify session before making request
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      throw new Error('Authentication session expired. Please log in again.');
+    }
     
     // Step 1: Fetch basic course data only
     const { data: coursesData, error: coursesError } = await supabase
@@ -22,16 +26,14 @@ export const getCoursesByEducator = async (educatorId: string): Promise<Course[]
       .order('created_at', { ascending: false });
 
     if (coursesError) {
-      console.error('❌ Error fetching courses:', coursesError);
+      console.error('Error fetching courses:', coursesError);
       throw coursesError;
     }
 
     if (!coursesData || coursesData.length === 0) {
-      console.log('✅ No courses found');
       return [];
     }
 
-    console.log('✅ Courses fetched:', coursesData.length);
     const courseIds = coursesData.map((c: any) => c.course_id);
 
     // Step 2: Fetch all related data in parallel
@@ -73,8 +75,6 @@ export const getCoursesByEducator = async (educatorId: string): Promise<Course[]
         .in('course_id', courseIds)
     ]);
 
-    console.log('✅ Related data fetched');
-
     // Process results
     const skillsData = skillsResult.status === 'fulfilled' ? skillsResult.value.data : [];
     const classesData = classesResult.status === 'fulfilled' ? classesResult.value.data : [];
@@ -82,10 +82,10 @@ export const getCoursesByEducator = async (educatorId: string): Promise<Course[]
     const coEducatorsData = coEducatorsResult.status === 'fulfilled' ? coEducatorsResult.value.data : [];
 
     // Log any errors
-    if (skillsResult.status === 'rejected') console.warn('⚠️ Skills fetch failed:', skillsResult.reason);
-    if (classesResult.status === 'rejected') console.warn('⚠️ Classes fetch failed:', classesResult.reason);
-    if (modulesResult.status === 'rejected') console.warn('⚠️ Modules fetch failed:', modulesResult.reason);
-    if (coEducatorsResult.status === 'rejected') console.warn('⚠️ Co-educators fetch failed:', coEducatorsResult.reason);
+    if (skillsResult.status === 'rejected') console.error('Skills fetch failed:', skillsResult.reason);
+    if (classesResult.status === 'rejected') console.error('Classes fetch failed:', classesResult.reason);
+    if (modulesResult.status === 'rejected') console.error('Modules fetch failed:', modulesResult.reason);
+    if (coEducatorsResult.status === 'rejected') console.error('Co-educators fetch failed:', coEducatorsResult.reason);
 
     // Step 3: Build lookup maps
     const skillsMap: { [key: string]: string[] } = {};
@@ -159,7 +159,6 @@ export const getCoursesByEducator = async (educatorId: string): Promise<Course[]
       updatedAt: courseRow.updated_at
     }));
 
-    console.log('✅ Courses transformed:', transformedCourses.length);
     return transformedCourses;
   } catch (error) {
     console.error('❌ Error fetching courses:', error);
@@ -196,8 +195,6 @@ export const createCourse = async (
   educatorName: string
 ): Promise<Course> => {
   try {
-    console.log('📡 Creating course:', courseData);
-    
     // Insert course
     const { data: courseRow, error: courseError } = await supabase
       .from('courses')
@@ -217,16 +214,10 @@ export const createCourse = async (
       .select()
       .single();
 
-    if (courseError) {
-      console.error('❌ Error creating course:', courseError);
-      throw courseError;
-    }
-
-    console.log('✅ Course created:', courseRow.course_id);
+    if (courseError) throw courseError;
 
     // Insert skills
     if (courseData.skillsCovered.length > 0) {
-      console.log('📡 Inserting skills:', courseData.skillsCovered);
       const skillsToInsert = courseData.skillsCovered.map(skill => ({
         course_id: courseRow.course_id,
         skill_name: skill
@@ -236,16 +227,11 @@ export const createCourse = async (
         .from('course_skills')
         .insert(skillsToInsert);
 
-      if (skillsError) {
-        console.error('❌ Error inserting skills:', skillsError);
-        throw skillsError;
-      }
-      console.log('✅ Skills inserted');
+      if (skillsError) throw skillsError;
     }
 
     // Insert classes
     if (courseData.linkedClasses.length > 0) {
-      console.log('📡 Inserting classes:', courseData.linkedClasses);
       const classesToInsert = courseData.linkedClasses.map(className => ({
         course_id: courseRow.course_id,
         class_name: className
@@ -255,31 +241,22 @@ export const createCourse = async (
         .from('course_classes')
         .insert(classesToInsert);
 
-      if (classesError) {
-        console.error('❌ Error inserting classes:', classesError);
-        throw classesError;
-      }
-      console.log('✅ Classes inserted');
+      if (classesError) throw classesError;
     }
 
     // Insert modules
     if (courseData.modules.length > 0) {
-      console.log('📡 Inserting modules:', courseData.modules.length);
       await insertModules(courseRow.course_id, courseData.modules);
-      console.log('✅ Modules inserted');
     }
 
     // Fetch and return the complete course
-    console.log('📡 Fetching complete course data');
     const courses = await getCoursesByEducator(educatorId);
     const newCourse = courses.find(c => c.id === courseRow.course_id);
 
     if (!newCourse) {
-      console.error('❌ Failed to retrieve created course');
       throw new Error('Failed to retrieve created course');
     }
 
-    console.log('✅ Course creation complete');
     return newCourse;
   } catch (error) {
     console.error('❌ Error creating course:', error);
@@ -295,8 +272,6 @@ export const updateCourse = async (
   updates: Partial<Course>
 ): Promise<Course> => {
   try {
-    console.log('📡 Updating course:', courseId, updates);
-    
     // Update course basic info
     const { error: courseError } = await supabase
       .from('courses')
@@ -316,23 +291,15 @@ export const updateCourse = async (
       })
       .eq('course_id', courseId);
 
-    if (courseError) {
-      console.error('❌ Error updating course:', courseError);
-      throw courseError;
-    }
-
-    console.log('✅ Course basic info updated');
+    if (courseError) throw courseError;
 
     // Update skills if provided
     if (updates.skillsCovered) {
-      console.log('📡 Updating skills');
-      // Delete existing skills
       await supabase
         .from('course_skills')
         .delete()
         .eq('course_id', courseId);
 
-      // Insert new skills
       if (updates.skillsCovered.length > 0) {
         const skillsToInsert = updates.skillsCovered.map(skill => ({
           course_id: courseId,
@@ -343,19 +310,15 @@ export const updateCourse = async (
           .from('course_skills')
           .insert(skillsToInsert);
       }
-      console.log('✅ Skills updated');
     }
 
     // Update classes if provided
     if (updates.linkedClasses) {
-      console.log('📡 Updating classes');
-      // Delete existing classes
       await supabase
         .from('course_classes')
         .delete()
         .eq('course_id', courseId);
 
-      // Insert new classes
       if (updates.linkedClasses.length > 0) {
         const classesToInsert = updates.linkedClasses.map(className => ({
           course_id: courseId,
@@ -366,31 +329,22 @@ export const updateCourse = async (
           .from('course_classes')
           .insert(classesToInsert);
       }
-      console.log('✅ Classes updated');
     }
 
     // Get updated course
-    console.log('📡 Fetching updated course');
     const { data: courseData } = await supabase
       .from('courses')
       .select('educator_id')
       .eq('course_id', courseId)
       .single();
 
-    if (!courseData) {
-      console.error('❌ Course not found');
-      throw new Error('Course not found');
-    }
+    if (!courseData) throw new Error('Course not found');
 
     const courses = await getCoursesByEducator(courseData.educator_id);
     const updatedCourse = courses.find(c => c.id === courseId);
 
-    if (!updatedCourse) {
-      console.error('❌ Failed to retrieve updated course');
-      throw new Error('Failed to retrieve updated course');
-    }
+    if (!updatedCourse) throw new Error('Failed to retrieve updated course');
 
-    console.log('✅ Course update complete');
     return updatedCourse;
   } catch (error) {
     console.error('❌ Error updating course:', error);

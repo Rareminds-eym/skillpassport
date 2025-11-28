@@ -10,6 +10,8 @@ import {
 import NotificationPanel from './NotificationPanel'
 import { supabase } from '../../lib/supabaseClient'
 import { useNotifications } from '../../hooks/useNotifications'
+// @ts-ignore - AuthContext is a .jsx file
+import { useAuth } from '../../context/AuthContext'
 
 interface HeaderProps {
   onMenuToggle: () => void
@@ -25,6 +27,7 @@ const Header: React.FC<HeaderProps> = ({
   const [educatorProfile, setEducatorProfile] = useState<any>(null)
   const [educatorEmail, setEducatorEmail] = useState<string | null>(null)
   const navigate = useNavigate()
+  const { logout } = useAuth()
 
   // Get notifications using the unified notification system
   const {
@@ -114,8 +117,9 @@ const Header: React.FC<HeaderProps> = ({
     navigate('/educator/settings')
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowProfileMenu(false)
+    await logout()
     navigate('/')
   }
 

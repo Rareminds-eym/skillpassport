@@ -22,6 +22,7 @@ import {
   createCourse,
   updateCourse
 } from '../../services/educator/coursesService';
+import { supabase } from '../../lib/supabaseClient';
 import toast from 'react-hot-toast';
 // @ts-ignore - AuthContext is a .jsx file
 import { useAuth } from '../../context/AuthContext';
@@ -65,49 +66,36 @@ const Courses: React.FC = () => {
   useEffect(() => {
     const loadEducatorAndCourses = async () => {
       try {
-        console.log('=== LOADING EDUCATOR AND COURSES ===');
         setLoading(true);
         setError(null);
 
-        // Check AuthContext first
         if (!isAuthenticated || !user) {
-          console.log('❌ No authenticated user in AuthContext');
           setError('Please log in to view courses');
           setLoading(false);
           return;
         }
 
-        console.log('✅ User authenticated from AuthContext:', user.id);
-        console.log('User email:', user.email);
-        console.log('User role:', user.role);
+        // Verify Supabase session is valid
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) {
+          console.error('Session error:', sessionError);
+          setError('Your session has expired. Please log in again.');
+          setLoading(false);
+          return;
+        }
 
         setEducatorId(user.id);
-        console.log('✅ Educator ID set:', user.id);
-
-        // Use full_name from AuthContext if available
         const fullName = user.full_name || user.email?.split('@')[0] || 'Educator';
         setEducatorName(fullName);
-        console.log('✅ Educator name set:', fullName);
 
-        // Load courses
-        console.log('📡 Fetching courses for educator:', user.id);
         const coursesData = await getCoursesByEducator(user.id);
-        console.log('✅ Courses loaded:', coursesData.length, 'courses');
-        console.log('Courses:', coursesData);
         setCourses(coursesData);
 
       } catch (err: any) {
-        console.error('❌ Error loading courses:', err);
-        console.error('Error details:', {
-          message: err?.message,
-          code: err?.code,
-          details: err?.details,
-          hint: err?.hint
-        });
+        console.error('Error loading courses:', err);
         setError(err?.message || 'Failed to load courses.');
       } finally {
         setLoading(false);
-        console.log('=== LOADING COMPLETE ===');
       }
     };
 
@@ -195,22 +183,13 @@ const Courses: React.FC = () => {
    *  HANDLERS
    * ───────────────────────────────────────────── */
   const handleCreateCourse = async (courseData: Partial<Course>) => {
-    console.log('=== HANDLE CREATE COURSE ===');
-    console.log('Educator ID:', educatorId);
-    console.log('Educator Name:', educatorName);
-    console.log('Course Data:', courseData);
-    
     if (!educatorId || !educatorName) {
-      console.error('❌ Missing educator information');
-      console.log('educatorId:', educatorId);
-      console.log('educatorName:', educatorName);
       setError('Educator information not available. Please refresh the page and try again.');
       return;
     }
 
     try {
       setLoading(true);
-      console.log('📡 Calling createCourse service...');
 
       const newCourse = await createCourse(
         {
@@ -232,87 +211,55 @@ const Courses: React.FC = () => {
         educatorName
       );
 
-      console.log('✅ Course created successfully:', newCourse);
       setCourses([...courses, newCourse]);
       setShowCreateModal(false);
-      console.log('✅ Modal closed, courses updated');
       toast.success('Course created successfully!');
 
     } catch (err: any) {
-      console.error('❌ Error creating course:', err);
-      console.error('Error details:', {
-        message: err?.message,
-        code: err?.code,
-        details: err?.details,
-        hint: err?.hint
-      });
+      console.error('Error creating course:', err);
       setError('Failed to create course: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
-      console.log('=== CREATE COURSE COMPLETE ===');
     }
   };
 
   const handleEditCourse = (course: Course) => {
-    console.log('Editing course:', course);
     setEditingCourse(course);
     setShowDetailDrawer(false);
     setShowCreateModal(true);
   };
 
   const handleUpdateCourse = async (courseData: Partial<Course>) => {
-    console.log('=== HANDLE UPDATE COURSE ===');
-    console.log('Editing course:', editingCourse);
-    console.log('Update data:', courseData);
-    
-    if (!editingCourse) {
-      console.error('❌ No editing course set');
-      return;
-    }
+    if (!editingCourse) return;
 
     try {
       setLoading(true);
-      console.log('📡 Calling updateCourse service...');
       const updatedCourse = await updateCourse(editingCourse.id, courseData);
-
-      console.log('✅ Course updated successfully:', updatedCourse);
       setCourses(courses.map(c => (c.id === editingCourse.id ? updatedCourse : c)));
       setEditingCourse(null);
       setShowCreateModal(false);
-      console.log('✅ Modal closed, courses updated');
     } catch (err: any) {
-      console.error('❌ Error updating course:', err);
-      console.error('Error details:', {
-        message: err?.message,
-        code: err?.code,
-        details: err?.details,
-        hint: err?.hint
-      });
+      console.error('Error updating course:', err);
       setError('Failed to update course: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
-      console.log('=== UPDATE COURSE COMPLETE ===');
     }
   };
 
   const handleViewCourse = (course: Course) => {
-    console.log('Viewing course:', course);
     setSelectedCourse(course);
     setShowDetailDrawer(true);
   };
 
   const handleArchiveCourse = async (course: Course) => {
     const newStatus = course.status === 'Archived' ? 'Draft' : 'Archived';
-    console.log('Archiving course:', course.id, 'New status:', newStatus);
 
     try {
       setLoading(true);
       const updatedCourse = await updateCourse(course.id, { status: newStatus });
-
-      console.log('✅ Course archived successfully');
       setCourses(courses.map(c => (c.id === course.id ? updatedCourse : c)));
     } catch (err: any) {
-      console.error('❌ Error archiving course:', err);
+      console.error('Error archiving course:', err);
       setError('Failed to archive course: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
@@ -320,18 +267,13 @@ const Courses: React.FC = () => {
   };
 
   const handleCourseUpdate = async (updatedCourse: Course) => {
-    console.log('Updating course from drawer:', updatedCourse);
-    
     try {
       setLoading(true);
-
       const savedCourse = await updateCourse(updatedCourse.id, updatedCourse);
-      console.log('✅ Course updated successfully');
       setCourses(courses.map(c => (c.id === savedCourse.id ? savedCourse : c)));
       setSelectedCourse(savedCourse);
-
     } catch (err: any) {
-      console.error('❌ Error updating course:', err);
+      console.error('Error updating course:', err);
       setError('Failed to update course: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
@@ -343,7 +285,6 @@ const Courses: React.FC = () => {
   };
 
   const handleClearFilters = () => {
-    console.log('Clearing filters');
     setSearchQuery('');
     setStatusFilter('All');
     setSkillFilter('All');
@@ -417,9 +358,6 @@ const Courses: React.FC = () => {
 
         <button
           onClick={() => {
-            console.log('Create Course button clicked');
-            console.log('Current educatorId:', educatorId);
-            console.log('Current educatorName:', educatorName);
             setEditingCourse(null);
             setShowCreateModal(true);
           }}
