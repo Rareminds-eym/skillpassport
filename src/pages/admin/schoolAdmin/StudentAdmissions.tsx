@@ -12,10 +12,12 @@ import {
   PhoneIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
+import { UserPlusIcon } from 'lucide-react';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/admin/Pagination';
 import StudentProfileDrawer from '@/components/admin/components/StudentProfileDrawer';
 import CareerPathDrawer from '@/components/admin/components/CareerPathDrawer';
+import AddStudentModal from '../../../components/educator/modals/Addstudentmodal';
 import { useStudents } from '../../../hooks/useAdminStudents';
 import { generateCareerPath, type CareerPathResponse, type StudentProfile } from '@/services/aiCareerPathService';
 
@@ -160,6 +162,7 @@ const StudentAdmissions = () => {
   const [careerPathLoading, setCareerPathLoading] = useState(false);
   const [careerPathError, setCareerPathError] = useState<string | null>(null);
   const [currentStudentForCareer, setCurrentStudentForCareer] = useState<any>(null);
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -406,6 +409,13 @@ const StudentAdmissions = () => {
           <h1 className="text-xl md:text-3xl font-bold text-gray-900">Student Admissions</h1>
           <p className="text-base md:text-lg mt-2 text-gray-600">Manage student applications and admissions.</p>
         </div>
+        <button
+          onClick={() => setShowAddStudentModal(true)}
+          className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
+        >
+          <UserPlusIcon className="h-5 w-5 mr-2" />
+          Add Student
+        </button>
       </div>
 
       <div className="px-4 sm:px-6 lg:px-8 hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
@@ -747,6 +757,22 @@ const StudentAdmissions = () => {
         isLoading={careerPathLoading}
         error={careerPathError}
         onRetry={handleRetryCareerPath}
+      />
+
+      {/* Add Student Modal */}
+      <AddStudentModal
+        isOpen={showAddStudentModal}
+        onClose={() => {
+          setShowAddStudentModal(false);
+          // Small delay to let user see the modal close, then refresh
+          setTimeout(() => {
+            window.location.reload();
+          }, 300);
+        }}
+        onSuccess={() => {
+          // Success is handled in the modal - just log it
+          console.log('Student created successfully');
+        }}
       />
 
     </div>
