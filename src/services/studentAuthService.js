@@ -2,20 +2,46 @@ import { supabase } from '../lib/supabaseClient';
 
 /**
  * Student Authentication Service
- * Handles authentication for students based on school_id and user_id
+ * Handles authentication for students using Supabase Auth
  */
 
 /**
- * Authenticate student with email and password
- * HYBRID SYSTEM: Supports both legacy students (no auth) and new students (with Supabase Auth)
+ * Authenticate student with email and password using Supabase Auth
  * @param {string} email - Student email
- * @param {string} password - Student password (optional for legacy students)
- * @returns {Promise<{success: boolean, student: object|null, session: object|null, error: string|null, isLegacy: boolean}>}
+ * @param {string} password - Student password
+ * @returns {Promise<{success: boolean, student: object|null, session: object|null, error: string|null}>}
  */
 export const loginStudent = async (email, password) => {
   try {
-    // App-level auth: validate student record only (no Supabase Auth)
-    const { data: student, error } = await supabase
+    // Validate inputs
+    if (!email || !password) {
+      return { success: false, student: null, session: null, error: 'Email and password are required.' };
+    }
+
+    // Step 1: Authenticate with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password
+    });
+
+    if (authError) {
+      console.error('❌ Auth error:', authError);
+      return { 
+        success: false, 
+        student: null, 
+        session: null, 
+        error: authError.message === 'Invalid login credentials' 
+          ? 'Invalid email or password. Please try again.' 
+          : authError.message 
+      };
+    }
+
+    if (!authData.user) {
+      return { success: false, student: null, session: null, error: 'Authentication failed. Please try again.' };
+    }
+
+    // Step 2: Fetch student profile from students table
+    const { data: student, error: studentError } = await supabase
       .from('students')
       .select(`
         id,
@@ -31,26 +57,35 @@ export const loginStudent = async (email, password) => {
           name,
           code,
           approval_status
+        ),
+        university_colleges:university_college_id (
+          id,
+          name
         )
       `)
-      .eq('email', email)
+      .eq('user_id', authData.user.id)
       .maybeSingle();
 
-    if (error) {
-      console.error('❌ Database error:', error);
-      return { success: false, student: null, session: null, error: 'Database error. Please try again.' };
+    if (studentError) {
+      console.error('❌ Database error:', studentError);
+      // Sign out since we couldn't get the student profile
+      await supabase.auth.signOut();
+      return { success: false, student: null, session: null, error: 'Error fetching student profile.' };
     }
 
     if (!student) {
-      return { success: false, student: null, session: null, error: 'No student account found with this email.' };
+      // User exists in auth but not in students table - might be wrong role
+      await supabase.auth.signOut();
+      return { success: false, student: null, session: null, error: 'No student account found. Please check if you are using the correct login portal.' };
     }
 
-
-    // Note: Students may or may not have school_id/university_college_id
-    // Allow login regardless of institutional linkage
-
-    // Success: return student; caller will store in AuthContext/localStorage
-    return { success: true, student, session: null, error: null };
+    // Success: return student and session
+    return { 
+      success: true, 
+      student, 
+      session: authData.session, 
+      error: null 
+    };
   } catch (err) {
     console.error('❌ Unexpected login error:', err);
     return { success: false, student: null, session: null, error: err.message || 'Login failed' };

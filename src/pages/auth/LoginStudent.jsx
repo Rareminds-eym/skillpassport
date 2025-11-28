@@ -38,16 +38,17 @@ export default function LoginStudent() {
     setLoading(true);
 
     try {
-      // Authenticate student with Supabase
+      // Validate inputs
+      if (!email || !password) {
+        setError("Please enter both email and password.");
+        setLoading(false);
+        return;
+      }
+
+      // Authenticate student with Supabase Auth
       const result = await loginStudent(email, password);
 
       if (!result.success) {
-        if (result.isOtpSent) {
-          setError("");
-          setLoading(false);
-          alert("We’ve sent a secure login link to your email. Open it to finish signing in.");
-          return;
-        }
         setError(result.error || "Login failed. Please check your credentials.");
         setLoading(false);
         return;
@@ -65,14 +66,13 @@ export default function LoginStudent() {
         university_college_id: studentData.university_college_id,
         school: studentData.schools,
         university_college: studentData.university_colleges,
-        approval_status: studentData.approval_status,
-        legacyAuth: result.isLegacy || false
+        approval_status: studentData.approval_status
       });
 
       // Navigate to dashboard
       navigate("/student/dashboard");
     } catch (err) {
-      console.error("❌ Login error:", err);
+      console.error("Login error:", err);
       setError("An error occurred during login. Please try again.");
     } finally {
       setLoading(false);
@@ -102,7 +102,6 @@ export default function LoginStudent() {
               placeholder="Enter email"
               autoComplete="username"
               aria-label="Email ID"
-              // frosted on mobile/tablet, solid on lg
               className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/60 lg:placeholder:text-gray-400 ${
                 isLg
                   ? "bg-white/90"
@@ -158,7 +157,6 @@ export default function LoginStudent() {
         {/* Buttons */}
         <div className="space-y-3">
           {isLg ? (
-            // LG button — IDENTICAL to your original lg styling (kept exactly)
             <button
               type="submit"
               disabled={loading}
@@ -170,7 +168,6 @@ export default function LoginStudent() {
               {loading ? "Validating..." : "Login"}
             </button>
           ) : (
-            // Mobile/tablet button with glass-friendly gradient
             <button
               type="submit"
               disabled={loading}
@@ -187,7 +184,6 @@ export default function LoginStudent() {
 
         {/* Links */}
         <div className="flex justify-between mt-4 text-sm">
-          {/* forgot password: white on mobile, original red on lg */}
           <a
             href="/resetpassword"
             className={
@@ -198,18 +194,17 @@ export default function LoginStudent() {
           >
             Forgot password?
           </a>
-
-          {/* preserve existing commented register link on lg */}
           {isLg ? <></> : <></>}
         </div>
       </form>
     );
   };
 
+
   return (
     <div className="flex items-center lg:py-10 bg-white">
       <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[700px] overflow-hidden">
-        {/* LEFT SIDE with Background Image (UNCHANGED for lg) */}
+        {/* LEFT SIDE with Background Image */}
         <div
           className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-cover bg-center"
           style={{
@@ -217,7 +212,6 @@ export default function LoginStudent() {
             backgroundRepeat: "no-repeat",
           }}
         >
-          {/* Text content */}
           <div className="relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold leading-tight">
               Your Skills. Your Passport. Your Future.
@@ -227,7 +221,6 @@ export default function LoginStudent() {
             </p>
           </div>
 
-          {/* Floating Feature Cards */}
           <div className="relative z-10 flex justify-start items-end h-full mt-12">
             <motion.div
               className="absolute top-4 lg:left-[8rem] xl:left-[12rem]"
@@ -264,14 +257,12 @@ export default function LoginStudent() {
 
         {/* RIGHT SIDE (LOGIN BOX) */}
         <div className="relative flex items-center justify-center px-4 sm:px-8 md:px-12 py-10 lg:py-8">
-          {/* Background image for mobile & tablet only */}
           <img
             src={studentIllustration}
             alt=""
             className="absolute inset-0 h-full w-full object-cover lg:hidden opacity-90 pointer-events-none"
           />
 
-          {/* Dark overlay for mobile/tablet so inputs/buttons stand out */}
           <div
             className="absolute inset-0 lg:hidden"
             style={{
@@ -281,12 +272,10 @@ export default function LoginStudent() {
             aria-hidden
           />
 
-          {/* Clean white bg for desktop (unchanged) */}
           <div className="hidden lg:block absolute inset-0 bg-white" />
 
-          {/* -------- MOBILE / TABLET: clean wrapper (no glass) -------- */}
+          {/* MOBILE / TABLET */}
           <div className="relative w-full max-w-md lg:hidden">
-            {/* header (mobile colors) */}
             <div className="text-center mb-6">
               <h3 className="text-3xl font-bold text-white">Student Login</h3>
               <p className="text-sm text-white/80 mt-2">
@@ -294,9 +283,7 @@ export default function LoginStudent() {
               </p>
             </div>
 
-            {/* simple clean wrapper */}
             <div className="rounded-2xl p-5 sm:p-6 bg-transparent">
-              {/* inline error */}
               {error && (
                 <div className="bg-red-50/90 border border-red-200 rounded-lg p-4 flex items-start gap-3 mb-4">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -308,9 +295,8 @@ export default function LoginStudent() {
             </div>
           </div>
 
-          {/* -------- DESKTOP (lg): keep original layout & styling EXACTLY as you had -------- */}
+          {/* DESKTOP */}
           <div className="relative w-full max-w-md hidden lg:block">
-            {/* header (lg colors unchanged) */}
             <div className="text-center mb-8">
               <h3 className="text-3xl font-bold text-[#000000]">
                 Student Login
@@ -320,9 +306,7 @@ export default function LoginStudent() {
               </p>
             </div>
 
-            {/* original desktop card styling */}
             <div className="rounded-2xl bg-white/95 shadow-xl lg:shadow-none lg:bg-white ring-1 lg:ring-0 ring-black/5 p-6 sm:p-8">
-              {/* inline error */}
               {error && (
                 <div className="bg-red-50/90 border border-red-200 rounded-lg p-4 flex items-start gap-3 mb-4">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
