@@ -188,46 +188,141 @@ const AttendanceReports: React.FC = () => {
   // Real data from backend
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [schoolId, setSchoolId] = useState<string>('550e8400-e29b-41d4-a716-446655440000'); // Your school ID
+  const [schoolId, setSchoolId] = useState<string | null>(null);
+
+  // Fetch school ID first
+  useEffect(() => {
+    const fetchSchoolId = async () => {
+      try {
+        // Get current user's school_id
+        let currentSchoolId: string | null = null;
+
+        // First, check if user is logged in via AuthContext (for school admins)
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const userData = JSON.parse(storedUser);
+            if (userData.role === 'school_admin' && userData.schoolId) {
+              currentSchoolId = userData.schoolId;
+              console.log('✅ School admin detected, using schoolId:', currentSchoolId);
+            }
+          } catch (e) {
+            console.error('Error parsing stored user:', e);
+          }
+        }
+
+        // If not found in localStorage, try Supabase Auth (for educators/teachers)
+        if (!currentSchoolId) {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user) {
+            // Check school_educators table
+            const { data: educator } = await supabase
+              .from('school_educators')
+              .select('school_id')
+              .eq('user_id', user.id)
+              .single();
+
+            if (educator?.school_id) {
+              currentSchoolId = educator.school_id;
+            } else {
+              // Check schools table by email
+              const { data: school } = await supabase
+                .from('schools')
+                .select('id')
+                .eq('email', user.email)
+                .single();
+
+              currentSchoolId = school?.id || null;
+            }
+          }
+        }
+
+        if (!currentSchoolId) {
+          console.error('❌ No school_id found for this user');
+        } else {
+          console.log('✅ Using school_id:', currentSchoolId);
+        }
+
+        setSchoolId(currentSchoolId);
+      } catch (error) {
+        console.error('Error fetching school ID:', error);
+      }
+    };
+
+    fetchSchoolId();
+  }, []);
 
   // Fetch attendance records from backend
   useEffect(() => {
+    if (!schoolId) return; // Wait for schoolId to be set
+
     const fetchAttendanceData = async () => {
       try {
         setLoading(true);
+        
+        console.log('📊 Fetching attendance for school:', schoolId);
         
         // Calculate date range (last 30 days)
         const endDate = new Date().toISOString().split('T')[0];
         const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         
-        // Fetch attendance records
-        const { data: attendanceData, error } = await attendanceService.getAttendance(
-          schoolId,
-          startDate,
-          endDate
-        );
+        console.log('📅 Date range:', startDate, 'to', endDate);
+        console.log('🔍 Query params:', { schoolId, startDate, endDate });
+        
+        // Fetch ALL attendance records for this school (last 60 days to be safe)
+        const safeStartDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        const { data: attendanceData, error } = await supabase
+          .from('attendance_records')
+          .select('*')
+          .eq('school_id', schoolId)
+          .gte('date', safeStartDate)
+          .order('date', { ascending: false });
 
         if (error) {
-          console.error('Error fetching attendance:', error);
+          console.error('❌ Error fetching attendance:', error);
           return;
         }
 
-        // Transform data to match component format
-        const transformedRecords: AttendanceRecord[] = (attendanceData || []).map((record: any) => ({
-          id: record.id,
-          studentId: record.student_id,
-          studentName: record.student?.name || 'Unknown',
-          rollNumber: record.student?.roll_number || 'N/A',
-          class: record.student?.grade || 'N/A',
-          section: record.student?.section || 'N/A',
-          date: record.date,
-          status: record.status as "present" | "absent" | "late" | "excused",
-          timeIn: record.time_in,
-          timeOut: record.time_out,
-          remarks: record.remarks,
-          teacher: 'Teacher', // You can add teacher info if available
-          source: record.mode as "manual" | "rfid" | "biometric",
-        }));
+        console.log('✅ Fetched attendance records:', attendanceData?.length || 0);
+        
+        // Fetch students separately
+        const { data: studentsData } = await supabase
+          .from('students')
+          .select('id, name, roll_number, grade, section')
+          .eq('school_id', schoolId);
+        
+        // Create a student lookup map
+        const studentMap = new Map();
+        (studentsData || []).forEach((s: any) => {
+          studentMap.set(s.id, s);
+        });
+
+        // Transform data to match component format with manual join
+        const transformedRecords: AttendanceRecord[] = (attendanceData || []).map((record: any) => {
+          const student = studentMap.get(record.student_id);
+          return {
+            id: record.id,
+            studentId: record.student_id,
+            studentName: student?.name || 'Unknown',
+            rollNumber: student?.roll_number || 'N/A',
+            class: student?.grade || 'N/A',
+            section: student?.section || 'N/A',
+            date: record.date,
+            status: record.status as "present" | "absent" | "late" | "excused",
+            timeIn: record.time_in,
+            timeOut: record.time_out,
+            remarks: record.remarks,
+            teacher: 'Teacher',
+            source: record.mode as "manual" | "rfid" | "biometric",
+          };
+        });
+
+        console.log('✅ Transformed records:', transformedRecords.length);
+        if (transformedRecords.length > 0) {
+          console.log('📝 Sample record:', transformedRecords[0]);
+        }
 
         setAttendanceRecords(transformedRecords);
       } catch (err) {
@@ -244,18 +339,23 @@ const AttendanceReports: React.FC = () => {
 
   // Fetch students from backend
   useEffect(() => {
+    if (!schoolId) return; // Wait for schoolId to be set
+
     const fetchStudents = async () => {
       try {
+        console.log('👥 Fetching students for school:', schoolId);
+        
         const { data, error } = await supabase
           .from('students')
           .select('id, roll_number, name, grade, section, email, contactNumber')
-          .eq('school_id', schoolId)
-          .eq('approval_status', 'approved');
+          .eq('school_id', schoolId);
 
         if (error) {
-          console.error('Error fetching students:', error);
+          console.error('❌ Error fetching students:', error);
           return;
         }
+
+        console.log('✅ Fetched students:', data?.length || 0);
 
         const transformedStudents: Student[] = (data || []).map((s: any) => ({
           id: s.id,
@@ -276,45 +376,31 @@ const AttendanceReports: React.FC = () => {
     fetchStudents();
   }, [schoolId]);
 
-  // Analytics calculations
-  const analytics = useMemo(() => {
-    const todayRecords = attendanceRecords.filter(r => r.date === selectedDate);
-    const totalStudents = new Set(todayRecords.map(r => r.studentId)).size;
-    const presentCount = todayRecords.filter(r => r.status === "present" || r.status === "late" || r.status === "excused").length;
-    const absentCount = todayRecords.filter(r => r.status === "absent").length;
-    const attendancePercentage = totalStudents > 0 ? (presentCount / totalStudents) * 100 : 0;
+  // Filtered records (MUST be defined before analytics)
+  const filteredRecords = useMemo(() => {
+    console.log('🔍 Filtering', attendanceRecords.length, 'records with filters:', filters, 'search:', searchQuery);
+    const filtered = attendanceRecords.filter((record) => {
+      const matchesSearch =
+        searchQuery === "" ||
+        record.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        record.rollNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        record.class.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // Calculate chronic absentees (attendance < 75% in last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const recentRecords = attendanceRecords.filter(r => new Date(r.date) >= thirtyDaysAgo);
-    
-    const studentAttendance = new Map<string, { present: number; total: number }>();
-    recentRecords.forEach(record => {
-      const current = studentAttendance.get(record.studentId) || { present: 0, total: 0 };
-      current.total++;
-      if (record.status === "present" || record.status === "late" || record.status === "excused") {
-        current.present++;
-      }
-      studentAttendance.set(record.studentId, current);
+      const matchesClass = filters.classes.length === 0 || filters.classes.includes(record.class);
+      const matchesSection = filters.sections.length === 0 || filters.sections.includes(record.section);
+      const matchesTeacher = filters.teachers.length === 0 || filters.teachers.includes(record.teacher);
+      const matchesStatus = filters.statuses.length === 0 || filters.statuses.includes(record.status);
+      const matchesSource = filters.sources.length === 0 || (record.source && filters.sources.includes(record.source));
+
+      const matchesDateRange =
+        (!dateRange.from || record.date >= dateRange.from) &&
+        (!dateRange.to || record.date <= dateRange.to);
+
+      return matchesSearch && matchesClass && matchesSection && matchesTeacher && matchesStatus && matchesSource && matchesDateRange;
     });
-
-    const chronicAbsentees = Array.from(studentAttendance.entries()).filter(
-      ([, stats]) => (stats.present / stats.total) * 100 < 75
-    ).length;
-
-    // Students below 75% attendance
-    const below75Count = Array.from(studentAttendance.entries()).filter(
-      ([, stats]) => (stats.present / stats.total) * 100 < 75
-    ).length;
-
-    return {
-      todayAttendance: attendancePercentage.toFixed(1),
-      studentsAbsentToday: absentCount,
-      studentsBelow75: below75Count,
-      chronicAbsentees,
-    };
-  }, [attendanceRecords, selectedDate]);
+    console.log('✅ Filtered to', filtered.length, 'records');
+    return filtered;
+  }, [attendanceRecords, searchQuery, filters, dateRange]);
 
   // Filter options
   const classOptions = useMemo(() => {
@@ -345,28 +431,45 @@ const AttendanceReports: React.FC = () => {
     { value: "biometric", label: "Biometric", count: attendanceRecords.filter(r => r.source === "biometric").length },
   ];
 
-  // Filtered records
-  const filteredRecords = useMemo(() => {
-    return attendanceRecords.filter((record) => {
-      const matchesSearch =
-        searchQuery === "" ||
-        record.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        record.rollNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        record.class.toLowerCase().includes(searchQuery.toLowerCase());
+  // Analytics calculations (use filtered records)
+  const analytics = useMemo(() => {
+    const todayRecords = filteredRecords.filter(r => r.date === selectedDate);
+    const totalStudents = new Set(todayRecords.map(r => r.studentId)).size;
+    const presentCount = todayRecords.filter(r => r.status === "present" || r.status === "late" || r.status === "excused").length;
+    const absentCount = todayRecords.filter(r => r.status === "absent").length;
+    const attendancePercentage = totalStudents > 0 ? (presentCount / totalStudents) * 100 : 0;
 
-      const matchesClass = filters.classes.length === 0 || filters.classes.includes(record.class);
-      const matchesSection = filters.sections.length === 0 || filters.sections.includes(record.section);
-      const matchesTeacher = filters.teachers.length === 0 || filters.teachers.includes(record.teacher);
-      const matchesStatus = filters.statuses.length === 0 || filters.statuses.includes(record.status);
-      const matchesSource = filters.sources.length === 0 || (record.source && filters.sources.includes(record.source));
-
-      const matchesDateRange =
-        (!dateRange.from || record.date >= dateRange.from) &&
-        (!dateRange.to || record.date <= dateRange.to);
-
-      return matchesSearch && matchesClass && matchesSection && matchesTeacher && matchesStatus && matchesSource && matchesDateRange;
+    // Calculate chronic absentees (attendance < 75% in last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentRecords = filteredRecords.filter(r => new Date(r.date) >= thirtyDaysAgo);
+    
+    const studentAttendance = new Map<string, { present: number; total: number }>();
+    recentRecords.forEach(record => {
+      const current = studentAttendance.get(record.studentId) || { present: 0, total: 0 };
+      current.total++;
+      if (record.status === "present" || record.status === "late" || record.status === "excused") {
+        current.present++;
+      }
+      studentAttendance.set(record.studentId, current);
     });
-  }, [attendanceRecords, searchQuery, filters, dateRange]);
+
+    const chronicAbsentees = Array.from(studentAttendance.entries()).filter(
+      ([, stats]) => (stats.present / stats.total) * 100 < 75
+    ).length;
+
+    // Students below 75% attendance
+    const below75Count = Array.from(studentAttendance.entries()).filter(
+      ([, stats]) => (stats.present / stats.total) * 100 < 75
+    ).length;
+
+    return {
+      todayAttendance: attendancePercentage.toFixed(1),
+      studentsAbsentToday: absentCount,
+      studentsBelow75: below75Count,
+      chronicAbsentees,
+    };
+  }, [filteredRecords, selectedDate]);
 
   const handleClearFilters = () => {
     setFilters({
@@ -401,11 +504,19 @@ const AttendanceReports: React.FC = () => {
   };
 
   const exportToPDF = () => {
-    alert("PDF export functionality would be implemented here");
+    // For now, use browser's print to PDF functionality
+    window.print();
   };
 
   const printReport = () => {
+    console.log('🖨️ Opening print dialog');
+    // Add print-friendly class to body
+    document.body.classList.add('printing');
     window.print();
+    // Remove class after print dialog closes
+    setTimeout(() => {
+      document.body.classList.remove('printing');
+    }, 1000);
   };
 
   const totalFilters =
@@ -468,19 +579,26 @@ const AttendanceReports: React.FC = () => {
               PDF
             </button>
             <button
-              onClick={() => exportToCSV(filteredRecords.map(r => ({
-                Date: r.date,
-                'Roll Number': r.rollNumber,
-                'Student Name': r.studentName,
-                Class: r.class,
-                Section: r.section,
-                Status: r.status,
-                'Time In': r.timeIn || '',
-                'Time Out': r.timeOut || '',
-                Teacher: r.teacher,
-                Source: r.source || '',
-                Remarks: r.remarks || '',
-              })), `attendance_report_${new Date().toISOString().split('T')[0]}.csv`)}
+              onClick={() => {
+                console.log('📥 Exporting CSV with', filteredRecords.length, 'records');
+                if (filteredRecords.length === 0) {
+                  alert('No data to export. Please adjust your filters or date range.');
+                  return;
+                }
+                exportToCSV(filteredRecords.map(r => ({
+                  Date: r.date,
+                  'Roll Number': r.rollNumber,
+                  'Student Name': r.studentName,
+                  Class: r.class,
+                  Section: r.section,
+                  Status: r.status,
+                  'Time In': r.timeIn || '',
+                  'Time Out': r.timeOut || '',
+                  Teacher: r.teacher,
+                  Source: r.source || '',
+                  Remarks: r.remarks || '',
+                })), `attendance_report_${new Date().toISOString().split('T')[0]}.csv`);
+              }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
             >
               <ArrowDownTrayIcon className="h-4 w-4" />
@@ -559,10 +677,13 @@ const AttendanceReports: React.FC = () => {
               <DailySummaryTab
                 selectedDate={selectedDate}
                 setSelectedDate={setSelectedDate}
-                attendanceRecords={attendanceRecords}
+                attendanceRecords={filteredRecords}
                 filters={filters}
                 searchQuery={searchQuery}
                 exportToCSV={exportToCSV}
+                showFilters={showFilters}
+                setShowFilters={setShowFilters}
+                totalFilters={totalFilters}
               />
             )}
 
@@ -570,7 +691,7 @@ const AttendanceReports: React.FC = () => {
             {activeTab === "student" && (
               <StudentTrendTab
                 students={students}
-                attendanceRecords={attendanceRecords}
+                attendanceRecords={filteredRecords}
                 selectedStudent={selectedStudent}
                 setSelectedStudent={setSelectedStudent}
                 exportToCSV={exportToCSV}
@@ -580,7 +701,7 @@ const AttendanceReports: React.FC = () => {
             {/* Chronic Absentee Tab */}
             {activeTab === "chronic" && (
               <ChronicAbsenteeTab
-                attendanceRecords={attendanceRecords}
+                attendanceRecords={filteredRecords}
                 students={students}
                 filters={filters}
                 searchQuery={searchQuery}
@@ -591,7 +712,7 @@ const AttendanceReports: React.FC = () => {
             {/* Class-wise Tab */}
             {activeTab === "classwise" && (
               <ClasswiseTab
-                attendanceRecords={attendanceRecords}
+                attendanceRecords={filteredRecords}
                 dateRange={dateRange}
                 setDateRange={setDateRange}
                 filters={filters}
@@ -620,10 +741,10 @@ const AttendanceReports: React.FC = () => {
       {showFilters && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-gray-900/40 lg:hidden"
+            className="fixed inset-0 top-16 z-40 bg-gray-900/40"
             onClick={() => setShowFilters(false)}
           />
-          <div className="fixed inset-y-0 right-0 z-50 w-80 bg-white border-l border-gray-200 overflow-y-auto shadow-xl lg:static lg:z-auto lg:shadow-none">
+          <div className="fixed top-16 bottom-0 right-0 z-50 w-80 bg-white border-l border-gray-200 overflow-y-auto shadow-xl">
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-medium text-gray-900">Filters</h2>
@@ -636,7 +757,7 @@ const AttendanceReports: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setShowFilters(false)}
-                    className="lg:hidden text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 hover:text-gray-600"
                   >
                     <XMarkIcon className="h-5 w-5" />
                   </button>
@@ -730,19 +851,6 @@ const AttendanceReports: React.FC = () => {
         </>
       )}
 
-      {/* Floating Filter Button */}
-      <button
-        onClick={() => setShowFilters(!showFilters)}
-        className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all hover:shadow-xl"
-      >
-        <FunnelIcon className="h-5 w-5" />
-        <span className="font-medium">Filters</span>
-        {totalFilters > 0 && (
-          <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none bg-white text-indigo-600 rounded-full">
-            {totalFilters}
-          </span>
-        )}
-      </button>
     </div>
   );
 };
@@ -750,7 +858,7 @@ const AttendanceReports: React.FC = () => {
 // ==================== TAB COMPONENTS ====================
 
 // Daily Summary Tab
-const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, filters, searchQuery, exportToCSV }: any) => {
+const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, filters, searchQuery, exportToCSV, showFilters, setShowFilters, totalFilters }: any) => {
   const dailyData = useMemo(() => {
     const records = attendanceRecords.filter((r: AttendanceRecord) => r.date === selectedDate);
     
@@ -798,23 +906,37 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
-        <button
-          onClick={() => exportToCSV(dailyData.map((d: any) => ({
-            Class: d.class,
-            Section: d.section,
-            'Total Students': d.totalStudents,
-            Present: d.present,
-            Absent: d.absent,
-            Late: d.late,
-            Excused: d.excused,
-            'Attendance %': d.percentage,
-            Teacher: d.teacher,
-          })), `daily_summary_${selectedDate}.csv`)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
-        >
-          <ArrowDownTrayIcon className="h-4 w-4" />
-          Export Report
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 relative"
+          >
+            <FunnelIcon className="h-4 w-4" />
+            Filters
+            {totalFilters > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-indigo-600 rounded-full">
+                {totalFilters}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => exportToCSV(dailyData.map((d: any) => ({
+              Class: d.class,
+              Section: d.section,
+              'Total Students': d.totalStudents,
+              Present: d.present,
+              Absent: d.absent,
+              Late: d.late,
+              Excused: d.excused,
+              'Attendance %': d.percentage,
+              Teacher: d.teacher,
+            })), `daily_summary_${selectedDate}.csv`)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
+          >
+            <ArrowDownTrayIcon className="h-4 w-4" />
+            Export Report
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto">

@@ -103,8 +103,7 @@ const StudentReports: React.FC = () => {
           section,
           extended:student_management_records(enrollment_number)
         `)
-        .eq('school_id', currentSchoolId)
-        .eq('approval_status', 'approved');
+        .eq('school_id', currentSchoolId);
 
       if (studentsError) throw studentsError;
 
