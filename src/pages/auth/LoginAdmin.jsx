@@ -31,31 +31,31 @@ const LoginAdmin = () => {
       // DEMO CREDENTIALS - Hardcoded for testing
       const DEMO_CREDENTIALS = {
         'university@admin.com': {
-          id: 'demo-university-001',
-          name: 'Demo University',
+          id: 'university-001',
+          name: 'University',
           email: 'university@admin.com',
-          role: 'school_admin',
-          schoolId: 'demo-university-001',
-          schoolName: 'Demo University',
-          schoolCode: 'DEMO-UNI',
+          role: 'university_admin',
+          schoolId: 'university-001',
+          schoolName: 'University',
+          schoolCode: 'UNI',
         },
         'college@admin.com': {
-          id: 'demo-college-001',
-          name: 'Demo College',
+          id: 'college-001',
+          name: 'College',
           email: 'college@admin.com',
-          role: 'school_admin',
-          schoolId: 'demo-college-001',
-          schoolName: 'Demo College',
-          schoolCode: 'DEMO-COL',
+          role: 'college_admin',
+          schoolId: 'college-001',
+          schoolName: 'College',
+          schoolCode: 'COL',
         },
         'school@admin.com': {
-          id: 'demo-school-001',
-          name: 'Demo School',
+          id: 'school-001',
+          name: 'School',
           email: 'school@admin.com',
           role: 'school_admin',
-          schoolId: 'demo-school-001',
-          schoolName: 'Demo School',
-          schoolCode: 'DEMO-SCH',
+          schoolId: 'school-001',
+          schoolName: 'School',
+          schoolCode: 'SCH',
         },
       };
 
@@ -66,11 +66,18 @@ const LoginAdmin = () => {
         login(demoUser);
 
         toast({
-          title: 'Login Successful (Demo)',
+          title: 'Login Successful',
           description: `Welcome back, ${demoUser.name}!`,
         });
 
-        navigate('/school-admin/dashboard');
+        // Route based on role
+        const dashboardRoutes = {
+          'university_admin': '/university-admin/dashboard',
+          'college_admin': '/college-admin/dashboard',
+          'school_admin': '/school-admin/dashboard',
+        };
+        
+        navigate(dashboardRoutes[demoUser.role] || '/school-admin/dashboard');
         return;
       }
 
