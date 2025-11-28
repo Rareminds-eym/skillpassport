@@ -33,6 +33,15 @@ export const getCoursesByEducator = async (educatorId: string): Promise<Course[]
 
     console.log('✅ Courses fetched:', coursesData.length);
     const courseIds = coursesData.map((c: any) => c.course_id);
+    console.log('📋 Course IDs for modules query:', courseIds);
+
+    // Debug: Check if user is authenticated with Supabase
+    const { data: sessionData } = await supabase.auth.getSession();
+    console.log('🔐 Supabase session:', sessionData?.session ? 'Active' : 'No session');
+    if (sessionData?.session) {
+      console.log('🔐 Session user ID:', sessionData.session.user.id);
+      console.log('🔐 Session expires at:', new Date(sessionData.session.expires_at! * 1000).toISOString());
+    }
 
     // Step 2: Fetch all related data in parallel
     const [
@@ -75,17 +84,77 @@ export const getCoursesByEducator = async (educatorId: string): Promise<Course[]
 
     console.log('✅ Related data fetched');
 
-    // Process results
-    const skillsData = skillsResult.status === 'fulfilled' ? skillsResult.value.data : [];
-    const classesData = classesResult.status === 'fulfilled' ? classesResult.value.data : [];
-    const modulesData = modulesResult.status === 'fulfilled' ? modulesResult.value.data : [];
-    const coEducatorsData = coEducatorsResult.status === 'fulfilled' ? coEducatorsResult.value.data : [];
+    // Process results with better error handling
+    let skillsData: any[] = [];
+    let classesData: any[] = [];
+    let modulesData: any[] = [];
+    let coEducatorsData: any[] = [];
 
-    // Log any errors
-    if (skillsResult.status === 'rejected') console.warn('⚠️ Skills fetch failed:', skillsResult.reason);
-    if (classesResult.status === 'rejected') console.warn('⚠️ Classes fetch failed:', classesResult.reason);
-    if (modulesResult.status === 'rejected') console.warn('⚠️ Modules fetch failed:', modulesResult.reason);
-    if (coEducatorsResult.status === 'rejected') console.warn('⚠️ Co-educators fetch failed:', coEducatorsResult.reason);
+    // Handle skills result
+    if (skillsResult.status === 'fulfilled') {
+      if (skillsResult.value.error) {
+        console.warn('⚠️ Skills fetch error:', skillsResult.value.error);
+      } else {
+        skillsData = skillsResult.value.data || [];
+      }
+    } else {
+      console.warn('⚠️ Skills fetch rejected:', skillsResult.reason);
+    }
+
+    // Handle classes result
+    if (classesResult.status === 'fulfilled') {
+      if (classesResult.value.error) {
+        console.warn('⚠️ Classes fetch error:', classesResult.value.error);
+      } else {
+        classesData = classesResult.value.data || [];
+      }
+    } else {
+      console.warn('⚠️ Classes fetch rejected:', classesResult.reason);
+    }
+
+    // Handle modules result - THIS IS THE KEY ONE
+    if (modulesResult.status === 'fulfilled') {
+      if (modulesResult.value.error) {
+        console.error('❌ Modules fetch error:', modulesResult.value.error);
+        console.error('Error details:', JSON.stringify(modulesResult.value.error, null, 2));
+      } else {
+        modulesData = modulesResult.value.data || [];
+        console.log('✅ Modules fetched:', modulesData.length, 'modules');
+        // Log first module to verify structure
+        if (modulesData.length > 0) {
+          console.log('📋 First module sample:', JSON.stringify(modulesData[0], null, 2));
+        } else {
+          // Debug: Try a simple query to see if we can access course_modules at all
+          console.log('⚠️ No modules returned, trying debug query...');
+          const debugResult = await supabase
+            .from('course_modules')
+            .select('module_id, course_id, title')
+            .limit(5);
+          console.log('🔍 Debug query result:', debugResult.data?.length || 0, 'modules');
+          if (debugResult.error) {
+            console.error('🔍 Debug query error:', debugResult.error);
+          } else if (debugResult.data && debugResult.data.length > 0) {
+            console.log('🔍 Debug modules found:', debugResult.data);
+            console.log('🔍 Checking if any debug module course_id matches our courseIds...');
+            const matchingIds = debugResult.data.filter((m: any) => courseIds.includes(m.course_id));
+            console.log('🔍 Matching modules:', matchingIds.length);
+          }
+        }
+      }
+    } else {
+      console.error('❌ Modules fetch rejected:', modulesResult.reason);
+    }
+
+    // Handle co-educators result
+    if (coEducatorsResult.status === 'fulfilled') {
+      if (coEducatorsResult.value.error) {
+        console.warn('⚠️ Co-educators fetch error:', coEducatorsResult.value.error);
+      } else {
+        coEducatorsData = coEducatorsResult.value.data || [];
+      }
+    } else {
+      console.warn('⚠️ Co-educators fetch rejected:', coEducatorsResult.reason);
+    }
 
     // Step 3: Build lookup maps
     const skillsMap: { [key: string]: string[] } = {};
@@ -105,6 +174,10 @@ export const getCoursesByEducator = async (educatorId: string): Promise<Course[]
       if (!modulesMap[m.course_id]) modulesMap[m.course_id] = [];
       modulesMap[m.course_id].push(m);
     });
+    
+    // Log modules map for debugging
+    console.log('📊 Modules map keys:', Object.keys(modulesMap));
+    console.log('📊 Total modules in map:', Object.values(modulesMap).flat().length);
 
     const coEducatorsMap: { [key: string]: string[] } = {};
     (coEducatorsData || []).forEach((ce: any) => {

@@ -93,7 +93,17 @@ const Courses: React.FC = () => {
         console.log('📡 Fetching courses for educator:', user.id);
         const coursesData = await getCoursesByEducator(user.id);
         console.log('✅ Courses loaded:', coursesData.length, 'courses');
-        console.log('Courses:', coursesData);
+        
+        // Debug: Log module counts for each course
+        coursesData.forEach((course, index) => {
+          console.log(`📚 Course ${index + 1}: "${course.title}" has ${course.modules?.length || 0} modules`);
+          if (course.modules && course.modules.length > 0) {
+            course.modules.forEach((mod, modIndex) => {
+              console.log(`   └─ Module ${modIndex + 1}: "${mod.title}" has ${mod.lessons?.length || 0} lessons`);
+            });
+          }
+        });
+        
         setCourses(coursesData);
 
       } catch (err: any) {
