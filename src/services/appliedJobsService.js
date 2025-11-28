@@ -341,7 +341,7 @@ export class AppliedJobsService {
       const studentIds = [...new Set(appliedJobs.map(job => job.student_id))];
       const { data: students, error: studentsError } = await supabase
         .from('students')
-        .select('id, user_id, name, email, contact_number, university, branch_field, currentCgpa, expectedGraduationDate, approval_status, profile')
+        .select('id, user_id, name, email, contact_number, university, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status, profile')
         .in('user_id', studentIds);
 
       if (studentsError) {
@@ -369,15 +369,16 @@ export class AppliedJobsService {
           email: student.email || profile.email || '',
           phone: student.contact_number ? String(student.contact_number) : (profile.contact_number ? String(profile.contact_number) : ''),
           photo: profile.photo || null,
-          department: student.branch_field || profile.branch_field || '',
+          // Use direct DB columns first, then fallback to profile JSONB
+          department: student.branch_field || student.course_name || profile.branch_field || '',
           university: student.university || profile.university || '',
+          college: student.college_school_name || student.university || profile.college_school_name || '',
+          district: student.district_name || profile.district_name || '',
+          course: student.course_name || profile.course || '',
           cgpa: student.currentCgpa || profile.cgpa || '',
           year_of_passing: student.expectedGraduationDate ? student.expectedGraduationDate.split('-')[0] : (profile.year_of_passing || ''),
           verified: student.approval_status === 'approved' || false,
           employability_score: 0, // Not available in schema, set default
-          district: profile.district_name || '',
-          college: profile.college_school_name || '',
-          course: profile.course || '',
           skill: profile.skill || ''
         };
         return acc;
