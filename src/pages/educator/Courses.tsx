@@ -17,16 +17,18 @@ import CourseFilters from '../../components/educator/courses/CourseFilters';
 import CreateCourseModal from '../../components/educator/courses/CreateCourseModal';
 import CourseDetailDrawer from '../../components/educator/courses/CourseDetailDrawer';
 
-import { supabase } from '../../lib/supabaseClient';
 import {
   getCoursesByEducator,
   createCourse,
   updateCourse
 } from '../../services/educator/coursesService';
 import toast from 'react-hot-toast';
+// @ts-ignore - AuthContext is a .jsx file
+import { useAuth } from '../../context/AuthContext';
 
 const Courses: React.FC = () => {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
 
   /** ─────────────────────────────────────────────
    *  STATE
@@ -67,51 +69,23 @@ const Courses: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Get session
-        console.log('📡 Fetching session...');
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        
-        console.log('Session data:', sessionData);
-        console.log('Session error:', sessionError);
-        
-        if (sessionError) {
-          console.error('❌ Session error:', sessionError);
-          setError('Authentication error: ' + sessionError.message);
-          setLoading(false);
-          return;
-        }
-        
-        if (!sessionData.session) {
-          console.log('❌ No active session');
+        // Check AuthContext first
+        if (!isAuthenticated || !user) {
+          console.log('❌ No authenticated user in AuthContext');
           setError('Please log in to view courses');
           setLoading(false);
           return;
         }
 
-        const user = sessionData.session.user;
-        console.log('✅ User authenticated:', user.id);
+        console.log('✅ User authenticated from AuthContext:', user.id);
         console.log('User email:', user.email);
-        console.log('Full user object:', user);
+        console.log('User role:', user.role);
 
         setEducatorId(user.id);
         console.log('✅ Educator ID set:', user.id);
 
-        // Get educator profile
-        console.log('📡 Fetching educator profile...');
-        const { data: educatorProfile, error: profileError } = await supabase
-          .from('school_educators')
-          .select('first_name, last_name')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        console.log('Educator profile:', educatorProfile);
-        console.log('Profile error:', profileError);
-
-        const fullName =
-          educatorProfile?.first_name && educatorProfile?.last_name
-            ? `${educatorProfile.first_name} ${educatorProfile.last_name}`
-            : educatorProfile?.first_name || user.email?.split('@')[0] || 'Educator';
-
+        // Use full_name from AuthContext if available
+        const fullName = user.full_name || user.email?.split('@')[0] || 'Educator';
         setEducatorName(fullName);
         console.log('✅ Educator name set:', fullName);
 
@@ -119,7 +93,17 @@ const Courses: React.FC = () => {
         console.log('📡 Fetching courses for educator:', user.id);
         const coursesData = await getCoursesByEducator(user.id);
         console.log('✅ Courses loaded:', coursesData.length, 'courses');
-        console.log('Courses:', coursesData);
+        
+        // Debug: Log module counts for each course
+        coursesData.forEach((course, index) => {
+          console.log(`📚 Course ${index + 1}: "${course.title}" has ${course.modules?.length || 0} modules`);
+          if (course.modules && course.modules.length > 0) {
+            course.modules.forEach((mod, modIndex) => {
+              console.log(`   └─ Module ${modIndex + 1}: "${mod.title}" has ${mod.lessons?.length || 0} lessons`);
+            });
+          }
+        });
+        
         setCourses(coursesData);
 
       } catch (err: any) {
@@ -138,7 +122,7 @@ const Courses: React.FC = () => {
     };
 
     loadEducatorAndCourses();
-  }, []);
+  }, [user, isAuthenticated]);
 
   /** ─────────────────────────────────────────────
    *  FILTER + SORT

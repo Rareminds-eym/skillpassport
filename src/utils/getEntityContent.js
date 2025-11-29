@@ -73,6 +73,10 @@ export function getEntityContent(studentType) {
         } else {
             subtitle = 'Select the plan that best suits your needs';
         }
+    } else if (entity === 'university' && role === 'admin') {
+        subtitle = 'Manage your university college with powerful tools for student management, placements, and analytics';
+    } else if (entity === 'university' && role === 'student') {
+        subtitle = 'Access skill assessments, build your portfolio, and connect with top recruiters through your university';
     } else {
         const subtitles = {
             student: `Unlock your potential with skill assessments and career opportunities tailored for ${entityName.toLowerCase()} students`,
@@ -286,6 +290,36 @@ function getPlansForRole(role, entity) {
         ]
     };
 
+    // University Admin-specific features
+    const universityAdminFeatures = {
+        basic: [
+            'Manage single college under university',
+            'Basic student management',
+            'Standard course management',
+            'Basic analytics dashboard',
+            'Email support'
+        ],
+        pro: [
+            'All Basic features',
+            'Advanced student analytics',
+            'Faculty management tools',
+            'Custom course creation',
+            'Placement tracking',
+            'Parent communication portal',
+            'Priority support'
+        ],
+        enterprise: [
+            'All Professional features',
+            'Multi-department management',
+            'Advanced placement analytics',
+            'Industry partnership tools',
+            'Custom integrations & API access',
+            'Dedicated account manager',
+            '24/7 Premium support',
+            'Custom SLA agreements'
+        ]
+    };
+
     // Recruitment Admin-specific features
     const recruitmentAdminFeatures = {
         basic: [
@@ -362,6 +396,8 @@ function getPlansForRole(role, entity) {
         } else {
             features = studentFeatures; // fallback
         }
+    } else if (entity === 'university' && role === 'admin') {
+        features = universityAdminFeatures;
     } else {
         const featureMap = {
             student: studentFeatures,

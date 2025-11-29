@@ -18,16 +18,19 @@ interface StudentSelectionModalProps {
     isOpen: boolean;
     onClose: () => void;
     onAssign: (studentIds: string[]) => Promise<void>;
+    schoolId?: string;
 }
 
 const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
     assignmentId,
     isOpen,
     onClose,
-    onAssign
+    onAssign,
+    schoolId
 }) => {
     const [students, setStudents] = useState<Student[]>([]);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [initiallyAssignedIds, setInitiallyAssignedIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [assigning, setAssigning] = useState(false);
     const [filters, setFilters] = useState({
@@ -36,12 +39,42 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
         search: ''
     });
 
+    // Fetch already assigned students when modal opens
+    useEffect(() => {
+        if (isOpen && assignmentId) {
+            fetchAssignedStudents();
+        }
+    }, [isOpen, assignmentId]);
+
     // Fetch students based on filters
     useEffect(() => {
         if (isOpen) {
             fetchStudents();
         }
-    }, [isOpen, filters]);
+    }, [isOpen, filters, schoolId]);
+
+    // Fetch students already assigned to this assignment
+    const fetchAssignedStudents = async () => {
+        try {
+            const { data: assignedStudents, error } = await supabase
+                .from('student_assignments')
+                .select('student_id')
+                .eq('assignment_id', assignmentId)
+                .eq('is_deleted', false);
+
+            if (error) {
+                console.error('Error fetching assigned students:', error);
+                return;
+            }
+
+            // Pre-select already assigned students
+            const assignedIds = (assignedStudents || []).map(sa => sa.student_id);
+            setSelectedIds(assignedIds);
+            setInitiallyAssignedIds(assignedIds); // Track originally assigned students
+        } catch (error) {
+            console.error('Error fetching assigned students:', error);
+        }
+    };
 
 const fetchStudents = async () => {
     try {
@@ -49,7 +82,13 @@ const fetchStudents = async () => {
         
         let query = supabase
             .from('students')
-            .select('*');
+            .select('*')
+            .eq('is_deleted', false);
+
+        // Filter by school if schoolId is provided
+        if (schoolId) {
+            query = query.eq('school_id', schoolId);
+        }
 
         // Apply filters - check both root level and profile JSONB
         if (filters.department !== 'all') {
@@ -126,10 +165,17 @@ const fetchStudents = async () => {
 
     const fetchFiltersData = async () => {
         try {
-            // Get all students to extract unique departments and years from profile JSONB
-            const { data: studentsData } = await supabase
+            // Get students from school to extract unique departments and years from profile JSONB
+            let query = supabase
                 .from('students')
-                .select('profile');
+                .select('profile')
+                .eq('is_deleted', false);
+            
+            if (schoolId) {
+                query = query.eq('school_id', schoolId);
+            }
+            
+            const { data: studentsData } = await query;
             
             const depts = studentsData?.map(s => s.profile?.department).filter(Boolean) || [];
             const uniqueDepts = [...new Set(depts)];
@@ -192,7 +238,14 @@ const fetchStudents = async () => {
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-gray-900">Assign to Students</h2>
-                            <p className="text-sm text-gray-600">Select students to assign this assignment</p>
+                            <p className="text-sm text-gray-600">
+                                Select students to assign this assignment
+                                {initiallyAssignedIds.length > 0 && (
+                                    <span className="ml-2 text-emerald-600 font-medium">
+                                        • {initiallyAssignedIds.length} already assigned
+                                    </span>
+                                )}
+                            </p>
                         </div>
                     </div>
                     <button
@@ -279,22 +332,35 @@ const fetchStudents = async () => {
                         </div>
                     ) : (
                         <div className="space-y-2">
-                            {students.map(student => (
-                                <label
-                                    key={student.id}
-                                    className="flex items-center p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedIds.includes(student.id)}
-                                        onChange={() => handleToggleStudent(student.id)}
-                                        className="rounded text-emerald-600 focus:ring-emerald-500"
-                                    />
-                                    <div className="ml-4 flex-1">
-                                        <div className="flex items-center justify-between">
-                                            <p className="font-medium text-gray-900">{student.name}</p>
-                                            <span className="text-xs text-gray-500">{student.id.substring(0, 8)}</span>
-                                        </div>
+                            {students.map(student => {
+                                const isAlreadyAssigned = initiallyAssignedIds.includes(student.id);
+                                return (
+                                    <label
+                                        key={student.id}
+                                        className={`flex items-center p-4 bg-white border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
+                                            isAlreadyAssigned 
+                                                ? 'border-emerald-300 bg-emerald-50/30' 
+                                                : 'border-gray-200'
+                                        }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedIds.includes(student.id)}
+                                            onChange={() => handleToggleStudent(student.id)}
+                                            className="rounded text-emerald-600 focus:ring-emerald-500"
+                                        />
+                                        <div className="ml-4 flex-1">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-medium text-gray-900">{student.name}</p>
+                                                    {isAlreadyAssigned && (
+                                                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full border border-emerald-300">
+                                                            Already Assigned
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs text-gray-500">{student.id.substring(0, 8)}</span>
+                                            </div>
                                         <div className="flex items-center gap-3 mt-1 flex-wrap">
                                             <p className="text-sm text-gray-600">{student.email}</p>
                                             {student.registration_number && (
@@ -318,7 +384,8 @@ const fetchStudents = async () => {
                                         </div>
                                     </div>
                                 </label>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

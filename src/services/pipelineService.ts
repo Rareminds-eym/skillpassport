@@ -501,11 +501,13 @@ export const addCandidateToPipeline = async (pipelineData: {
       recruiterNotes += recruiterNotes ? ` | Employability Score: ${employabilityScore}/100` : `Employability Score: ${employabilityScore}/100`;
     }
 
+    const stage = pipelineData.stage || 'sourced';
+    
     const { data, error } = await supabase
       .from('pipeline_candidates')
       .insert([{
         ...pipelineData,
-        stage: pipelineData.stage || 'sourced',
+        stage: stage,
         source: pipelineData.source || 'talent_pool',
         status: 'active',
         recruiter_notes: recruiterNotes || pipelineData.next_action_notes || null
@@ -525,6 +527,46 @@ export const addCandidateToPipeline = async (pipelineData: {
         };
       }
       throw error;
+    }
+
+    // Sync with applied_jobs table - map pipeline stage to application status
+    const stageToStatusMap: { [key: string]: string } = {
+      sourced: 'applied',
+      screened: 'under_review',
+      interview_1: 'interview_scheduled',
+      interview_2: 'interviewed',
+      offer: 'offer_received',
+      hired: 'accepted',
+      rejected: 'rejected'
+    };
+
+    const applicationStatus = stageToStatusMap[stage];
+    if (applicationStatus && pipelineData.student_id && pipelineData.opportunity_id) {
+      try {
+        // Check if applied_jobs record exists
+        const { data: existingApplication } = await supabase
+          .from('applied_jobs')
+          .select('id')
+          .eq('student_id', pipelineData.student_id)
+          .eq('opportunity_id', pipelineData.opportunity_id)
+          .maybeSingle();
+
+        if (existingApplication) {
+          // Update existing application status
+          await supabase
+            .from('applied_jobs')
+            .update({
+              application_status: applicationStatus,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingApplication.id);
+        }
+        // If no existing application, the candidate was added from talent pool
+        // and doesn't have an applied_jobs record yet - that's okay
+      } catch (syncError) {
+        console.error('Error syncing with applied_jobs:', syncError);
+        // Don't fail the main operation if sync fails
+      }
     }
 
     // Log activity
@@ -584,6 +626,41 @@ export const moveCandidateToStage = async (
       .single();
 
     if (error) throw error;
+
+    // Sync with applied_jobs table - map pipeline stage to application status
+    const stageToStatusMap: { [key: string]: string } = {
+      sourced: 'applied',
+      screened: 'under_review',
+      interview_1: 'interview_scheduled',
+      interview_2: 'interviewed',
+      offer: 'offer_received',
+      hired: 'accepted',
+      rejected: 'rejected'
+    };
+
+    const applicationStatus = stageToStatusMap[newStage];
+    if (applicationStatus && currentData.student_id && currentData.opportunity_id) {
+      try {
+        const updateData: any = {
+          application_status: applicationStatus,
+          updated_at: new Date().toISOString()
+        };
+
+        // Add specific timestamp fields based on status
+        if (applicationStatus === 'interview_scheduled') {
+          updateData.interview_scheduled_at = new Date().toISOString();
+        }
+
+        await supabase
+          .from('applied_jobs')
+          .update(updateData)
+          .eq('student_id', currentData.student_id)
+          .eq('opportunity_id', currentData.opportunity_id);
+      } catch (syncError) {
+        console.error('Error syncing with applied_jobs:', syncError);
+        // Don't fail the main operation if sync fails
+      }
+    }
 
     // Log the stage change
     await logPipelineActivity({

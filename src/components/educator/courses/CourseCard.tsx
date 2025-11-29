@@ -230,9 +230,15 @@ const CourseCard: React.FC<CourseCardProps> = ({
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <AcademicCapIcon className="h-4 w-4" />
-          <span>{course.linkedClasses.length} class(es)</span>
+        <div className="flex items-center gap-4 text-xs text-gray-600">
+          <div className="flex items-center gap-1">
+            <BookOpenIcon className="h-4 w-4" />
+            <span>{course.modules?.length || 0} module(s)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <AcademicCapIcon className="h-4 w-4" />
+            <span>{course.linkedClasses.length} class(es)</span>
+          </div>
         </div>
         {course.evidencePending > 0 && (
           <div className="flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded-full border border-amber-200">

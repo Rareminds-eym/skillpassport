@@ -36,6 +36,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [csvPreview, setCsvPreview] = useState<any[]>([])
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
+  const [createdStudentPassword, setCreatedStudentPassword] = useState<string | null>(null)
+  const [createdStudentEmail, setCreatedStudentEmail] = useState<string | null>(null)
   
   const [formData, setFormData] = useState<StudentFormData>({
     name: '',
@@ -82,6 +84,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setMode('manual')
       setCsvFile(null)
       setCsvPreview([])
+      setCreatedStudentPassword(null)
+      setCreatedStudentEmail(null)
     }
   }, [isOpen])
 
@@ -144,16 +148,47 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     setSuccess(null)
 
     try {
-      // Try to refresh session if user is logged in (optional)
-      const { data: { session } } = await supabase.auth.getSession()
+      // Get current user from localStorage (custom auth - same as teacher onboarding)
+      const userEmail = localStorage.getItem('userEmail')
+      const userStr = localStorage.getItem('user')
       
-      if (session) {
-        await supabase.auth.refreshSession()
+      console.log('Current user from localStorage:', { userEmail, user: userStr })
+      
+      if (!userEmail) {
+        throw new Error('You are not logged in. Please login and try again.')
       }
+      
+      // Get schoolId from localStorage
+      let schoolId = null
+      try {
+        const userData = JSON.parse(userStr || '{}')
+        schoolId = userData.schoolId || null
+      } catch (e) {
+        console.warn('Could not parse user data from localStorage')
+      }
+      
+      console.log('✅ User authenticated:', userEmail, 'School ID:', schoolId)
 
-      // Call the create-student Edge Function
-      const { data, error: functionError } = await supabase.functions.invoke('create-student', {
-        body: {
+      // Call the create-student Edge Function using direct fetch for better error handling
+      console.log('Calling create-student Edge Function with data:', {
+        name: formData.name,
+        email: formData.email,
+        contactNumber: formData.contactNumber
+      })
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-student`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'apikey': supabaseAnonKey
+        },
+        body: JSON.stringify({
+          userEmail: userEmail,
+          schoolId: schoolId, // Send schoolId from localStorage
           student: {
             name: formData.name.trim(),
             email: formData.email.trim().toLowerCase(),
@@ -172,35 +207,38 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             pincode: formData.pincode.trim() || null,
             bloodGroup: formData.bloodGroup || null,
             approval_status: 'approved',
-            student_type: 'educator_added',
-            profile: JSON.stringify({
-              source: 'educator_manual_entry',
-              added_at: new Date().toISOString()
-            })
+            student_type: 'educator_added'
           }
-        }
+        })
       })
 
+      const data = await response.json()
+      console.log('Edge Function Response:', JSON.stringify(data, null, 2))
+
       // Check if operation failed
-      if (functionError) {
-        throw new Error('Unable to connect to server. Please try again.')
-      }
-      
-      if (!data?.success) {
-        throw new Error(data?.error || 'Failed to create student')
+      if (!response.ok || !data?.success) {
+        console.error('Function returned error:', data)
+        throw new Error(data?.error || data?.details || 'Failed to create student')
       }
 
-      // Show success message
-      setSuccess(`✅ Student "${formData.name}" added successfully!`)
+      // Store the generated password and email
+      if (data?.data?.password) {
+        setCreatedStudentPassword(data.data.password)
+        setCreatedStudentEmail(data.data.email)
+      }
+
+      // Show success message with password
+      const successMsg = data?.data?.password 
+        ? `✅ Student "${formData.name}" added successfully!\n\n🔑 Login Credentials:\nEmail: ${data.data.email}\nPassword: ${data.data.password}\n\n⚠️ Please save these credentials and share them with the student.`
+        : `✅ Student "${formData.name}" added successfully!`
+      
+      setSuccess(successMsg)
       setError(null)
       
-      // Call parent callback
-      onSuccess?.()
-      
-      // Auto-close after 2 seconds
-      setTimeout(() => {
-        onClose()
-      }, 2000)
+      // DON'T call onSuccess immediately - let user see the password first
+      // The modal will stay open so admin can copy the credentials
+      // User will manually close it, then we refresh
+      console.log('✅ Student created successfully! Password:', data?.data?.password)
     } catch (err: any) {
       setError(err.message || 'Failed to create student. Please try again.')
       setSuccess(null)
@@ -359,17 +397,50 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
             setUploadProgress({ current: 0, total: validStudents.length })
 
+            // Get userEmail and schoolId from localStorage
+            const userEmail = localStorage.getItem('userEmail')
+            const userStr = localStorage.getItem('user')
+            
+            if (!userEmail) {
+              setError('You are not logged in. Please login and try again.')
+              setLoading(false)
+              return
+            }
+
+            let schoolId = null
+            try {
+              const userData = JSON.parse(userStr || '{}')
+              schoolId = userData.schoolId || null
+            } catch (e) {
+              console.warn('Could not parse user data from localStorage')
+            }
+
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
             for (let i = 0; i < validStudents.length; i += BATCH_SIZE) {
               const batch = validStudents.slice(i, i + BATCH_SIZE)
               
               const batchPromises = batch.map(async ({ row, data }) => {
                 try {
-                  const { data: result, error: functionError } = await supabase.functions.invoke('create-student', {
-                    body: { student: data }
+                  const response = await fetch(`${supabaseUrl}/functions/v1/create-student`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${supabaseAnonKey}`,
+                      'apikey': supabaseAnonKey
+                    },
+                    body: JSON.stringify({
+                      userEmail: userEmail,
+                      schoolId: schoolId,
+                      student: data
+                    })
                   })
 
-                  if (functionError || !result?.success) {
-                    const errorMsg = result?.error || functionError?.message || 'Failed to create student'
+                  const result = await response.json()
+
+                  if (!response.ok || !result?.success) {
+                    const errorMsg = result?.error || 'Failed to create student'
                     processingErrors.push(`Row ${row}: ${errorMsg}`)
                     return false
                   }
@@ -475,8 +546,38 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-green-800">{success}</p>
+                <div className="ml-3 flex-1">
+                  <p className="text-sm font-medium text-green-800 whitespace-pre-line">{success}</p>
+                  
+                  {/* Show password in a copyable box if available */}
+                  {createdStudentPassword && createdStudentEmail && (
+                    <div className="mt-3 p-3 bg-white border border-green-200 rounded-md">
+                      <p className="text-xs font-semibold text-gray-700 mb-2">📋 Login Credentials (Click to copy):</p>
+                      <div className="space-y-2">
+                        <div 
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100"
+                          onClick={() => {
+                            navigator.clipboard.writeText(createdStudentEmail)
+                            alert('Email copied to clipboard!')
+                          }}
+                        >
+                          <span className="text-xs text-gray-600">Email:</span>
+                          <span className="text-xs font-mono font-semibold text-gray-900">{createdStudentEmail}</span>
+                        </div>
+                        <div 
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100"
+                          onClick={() => {
+                            navigator.clipboard.writeText(createdStudentPassword)
+                            alert('Password copied to clipboard!')
+                          }}
+                        >
+                          <span className="text-xs text-gray-600">Password:</span>
+                          <span className="text-xs font-mono font-semibold text-gray-900">{createdStudentPassword}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-amber-600 mt-2">⚠️ Save these credentials before closing!</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

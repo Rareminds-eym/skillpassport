@@ -257,16 +257,22 @@ function mapToUICandidate(row: StudentRow): UICandidate {
   }
 }
 
-export function useStudents() {
+interface UseStudentsOptions {
+  schoolId?: string | null;
+}
+
+export function useStudents(options?: UseStudentsOptions) {
   const [data, setData] = useState<UICandidate[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+  const schoolId = options?.schoolId
 
   const fetchStudents = async () => {
     setLoading(true)
     setError(null)
+    
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('students')
         .select(`
           id,
@@ -313,6 +319,7 @@ export function useStudents() {
           updated_at,
           updatedAt,
           imported_at,
+          school_id,
           skills!skills_student_id_fkey(
             id,
             name,
@@ -387,9 +394,18 @@ export function useStudents() {
           )
         `)
         .eq('is_deleted', false)
+
+      // Apply school filter if provided
+      if (schoolId) {
+        query = query.eq('school_id', schoolId)
+      }
+
+      const { data, error } = await query
         .order('updated_at', { ascending: false })
         .limit(500)
+
       if (error) throw error
+      
       const mapped = (data as StudentRow[]).map(mapToUICandidate)
       setData(mapped)
     } catch (e) {
@@ -403,13 +419,19 @@ export function useStudents() {
     let isMounted = true
     const wrappedFetch = async () => {
       if (!isMounted) return
+      // Only fetch if we have a schoolId (when filtering is expected)
+      // Skip the fetch if schoolId is explicitly expected but not yet loaded
+      if (options !== undefined && schoolId === undefined) {
+        return
+      }
       await fetchStudents()
     }
     wrappedFetch()
     return () => {
       isMounted = false
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schoolId])
 
   const stats = useMemo(() => ({ count: data.length }), [data])
 

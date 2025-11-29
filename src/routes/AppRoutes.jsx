@@ -246,7 +246,9 @@ import("../pages/admin/schoolAdmin/SkillBadges")
 const Reports = lazy(() =>  
 import("../pages/admin/schoolAdmin/Reports")
 );
-
+// Finance & infrastructure buddy
+const FinanceInfrastructure = lazy(() => import("../pages/admin/schoolAdmin/FeeStructureSetup"))
+const Library  = lazy(() => import("../pages/admin/schoolAdmin/Library"))
 const AttendanceReports = lazy(() =>
   import("../pages/admin/schoolAdmin/AttendanceReports")
 );
@@ -381,6 +383,9 @@ const AppRoutes = () => {
           <Route path="skills/clubs" element={<SkillCurricular />} />
           <Route path="skills/badges" element={<SkillBadges />} />
           <Route path="skills/reports" element={<Reports />} />
+          <Route path="finance/fees" element={<FinanceInfrastructure />} />
+          <Route path="infrastructure/library" element={<Library />} />
+          {/* Finance & Infrastructure*/}
 
           {/* Settings */}
           <Route path="settings" element={<SchoolAdminSettings />} />
@@ -422,7 +427,7 @@ const AppRoutes = () => {
           <Route path="overview" element={<Overview />} />
           <Route path="projects" element={<ProjectHiringWithNav />} />
           {/* <Route path="talent-scout" element={<RecruiterAI />} /> */}
-          {/* <Route path="talent-pool" element={<TalentPool />} /> */}
+          <Route path="talent-pool" element={<TalentPool />} />
           <Route path="requisition" element={<Requisitions />} />
           <Route path="requisition/applicants" element={<ApplicantsList />} />
           <Route path="pipelines" element={<Pipelines />} />
@@ -609,7 +614,14 @@ const AppRoutes = () => {
           />
         </Route>
 
-        <Route path="/educator/*" element={<EducatorLayout />}>
+        <Route
+          path="/educator/*"
+          element={
+            <ProtectedRoute allowedRoles={["educator"]}>
+              <EducatorLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="dashboard" element={<EducatorDashboard />} />
           <Route path="ai-copilot" element={<EducatorAI />} />
           <Route path="students" element={<EducatorStudents />} />

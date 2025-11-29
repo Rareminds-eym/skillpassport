@@ -17,6 +17,7 @@ import {
   ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
 import { createClient } from '@supabase/supabase-js';
+import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
@@ -547,25 +548,50 @@ const Activities = () => {
   });
   const [sortBy, setSortBy] = useState('date_desc');
 
+  // Get educator's school information
+  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
+
   useEffect(() => {
+    // Wait for school data before fetching activities
+    if (schoolLoading || !educatorSchool) return;
     fetchActivities();
-  }, []);
+  }, [educatorSchool, schoolLoading]);
 
   const fetchActivities = async () => {
+    if (!educatorSchool?.id) return;
+    
     setLoading(true);
     try {
-      // Fetch student data first
-      const { data: students } = await supabase.from('students').select('id, name, user_id');
+      // Fetch student data filtered by school
+      const { data: students } = await supabase
+        .from('students')
+        .select('id, name, user_id')
+        .eq('school_id', educatorSchool.id)
+        .eq('is_deleted', false);
       
       // Create a mapping of user_id to student name
       const studentMap = {};
+      const studentIds = new Set();
       students?.forEach(student => {
         studentMap[student.user_id] = student.name || `Student ${student.id.substring(0, 8)}`;
+        studentIds.add(student.user_id);
       });
 
-      const { data: projects } = await supabase.from('projects').select('*');
-      const { data: trainings } = await supabase.from('trainings').select('*');
-      const { data: certificates } = await supabase.from('certificates').select('*');
+      // Fetch activities only for students in this school
+      const { data: projects } = await supabase
+        .from('projects')
+        .select('*')
+        .in('student_id', Array.from(studentIds));
+      
+      const { data: trainings } = await supabase
+        .from('trainings')
+        .select('*')
+        .in('student_id', Array.from(studentIds));
+      
+      const { data: certificates } = await supabase
+        .from('certificates')
+        .select('*')
+        .in('student_id', Array.from(studentIds));
 
       const allActivities: Activity[] = [
         ...(projects || []).map((p: any) => ({
@@ -1102,7 +1128,7 @@ const Activities = () => {
 
           {/* Results */}
           <div className="flex-1 overflow-y-auto p-4">
-            {loading ? (
+            {(loading || schoolLoading) ? (
               <div className="text-center py-8">
                 <div className="text-sm text-gray-500">Loading activities...</div>
               </div>
