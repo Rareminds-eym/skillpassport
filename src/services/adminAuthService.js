@@ -54,51 +54,78 @@ export const loginAdmin = async (email, password) => {
       console.error('❌ Database error fetching user:', userError);
     }
 
+    // Get effective role from metadata or users table
+    const effectiveRole = userRole || userData?.role;
+
     // Step 4: Fetch admin profile from schools table (using created_by or email match)
-    const { data: school, error: schoolError } = await supabase
+    // Use .limit(1) to handle multiple matches gracefully
+    const { data: schools, error: schoolError } = await supabase
       .from('schools')
       .select('*')
       .or(`created_by.eq.${authData.user.id},email.eq.${authData.user.email}`)
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1);
 
     if (schoolError && schoolError.code !== 'PGRST116') {
       console.error('❌ Database error:', schoolError);
     }
 
+    const school = schools?.[0];
+
     if (school) {
       // Check if the school is approved
-      if (school.approval_status !== 'approved') {
-        await supabase.auth.signOut();
-        const statusMessage = school.approval_status === 'pending'
-          ? 'Your school registration is pending approval. Please contact RareMinds admin.'
-          : school.approval_status === 'rejected'
-          ? `Your school registration was rejected. Reason: ${school.rejection_reason || 'Not specified'}. Please contact RareMinds admin.`
-          : 'Your school account is not approved. Please contact RareMinds admin.';
-        
-        return { success: false, admin: null, session: null, error: statusMessage };
-      }
+      if (school.approval_status === 'approved') {
+        // Check account status - allow active, pending, or approved
+        if (school.account_status === 'inactive' || school.account_status === 'suspended') {
+          await supabase.auth.signOut();
+          return { success: false, admin: null, session: null, error: 'Your school account is inactive. Please contact RareMinds admin.' };
+        }
 
-      // Check account status
-      if (school.account_status !== 'active' && school.account_status !== 'pending') {
-        await supabase.auth.signOut();
-        return { success: false, admin: null, session: null, error: 'Your school account is inactive. Please contact RareMinds admin.' };
+        return {
+          success: true,
+          admin: {
+            id: school.id,
+            user_id: authData.user.id,
+            name: school.principal_name || school.name,
+            email: school.email,
+            role: 'school_admin',
+            schoolId: school.id,
+            schoolName: school.name,
+            schoolCode: school.code,
+          },
+          session: authData.session,
+          error: null
+        };
       }
-
-      return {
-        success: true,
-        admin: {
-          id: school.id,
-          user_id: authData.user.id,
-          name: school.principal_name || school.name,
-          email: school.email,
-          role: 'school_admin',
-          schoolId: school.id,
-          schoolName: school.name,
-          schoolCode: school.code,
-        },
-        session: authData.session,
-        error: null
-      };
+      
+      // School exists but not approved - check if user has admin role in users table
+      // If they have the role, allow login without requiring school approval
+      if (effectiveRole === 'school_admin') {
+        return {
+          success: true,
+          admin: {
+            id: authData.user.id,
+            user_id: authData.user.id,
+            name: userData?.firstName ? `${userData.firstName} ${userData.lastName || ''}`.trim() : school.principal_name || school.name || authData.user.email,
+            email: authData.user.email,
+            role: 'school_admin',
+            schoolId: school.id,
+            schoolName: school.name,
+          },
+          session: authData.session,
+          error: null
+        };
+      }
+      
+      // No admin role in users table, reject with approval message
+      await supabase.auth.signOut();
+      const statusMessage = school.approval_status === 'pending'
+        ? 'Your school registration is pending approval. Please contact RareMinds admin.'
+        : school.approval_status === 'rejected'
+        ? `Your school registration was rejected. Reason: ${school.rejection_reason || 'Not specified'}. Please contact RareMinds admin.`
+        : 'Your school account is not approved. Please contact RareMinds admin.';
+      
+      return { success: false, admin: null, session: null, error: statusMessage };
     }
 
     // Step 5: Check colleges table for college admin
@@ -157,8 +184,8 @@ export const loginAdmin = async (email, password) => {
       };
     }
 
-    // No admin profile found - check if user has admin role in metadata
-    if (userRole === 'school_admin' || userRole === 'college_admin' || userRole === 'university_admin') {
+    // No admin profile found - check if user has admin role in metadata OR users table
+    if (effectiveRole === 'school_admin' || effectiveRole === 'college_admin' || effectiveRole === 'university_admin') {
       return {
         success: true,
         admin: {
@@ -166,7 +193,7 @@ export const loginAdmin = async (email, password) => {
           user_id: authData.user.id,
           name: userData?.firstName ? `${userData.firstName} ${userData.lastName || ''}`.trim() : authData.user.email,
           email: authData.user.email,
-          role: userRole,
+          role: effectiveRole,
         },
         session: authData.session,
         error: null
