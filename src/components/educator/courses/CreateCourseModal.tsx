@@ -857,7 +857,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
           </button>
 
           <div className="flex items-center gap-3">
-            {currentStep < steps.length ? (
+            {currentStep < steps[steps.length - 1].number ? (
               <button
                 onClick={() => {
                   console.log('Next clicked, going to step:', currentStep + 1);

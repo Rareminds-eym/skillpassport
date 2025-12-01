@@ -18,13 +18,34 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
   editingLesson
 }) => {
   const [lessonData, setLessonData] = useState<Partial<Lesson>>({
-    title: editingLesson?.title || '',
-    description: editingLesson?.description || '',
-    content: editingLesson?.content || '',
-    duration: editingLesson?.duration || '',
-    resources: editingLesson?.resources || []
+    title: '',
+    description: '',
+    content: '',
+    duration: '',
+    resources: []
   });
   const [isFormatting, setIsFormatting] = useState(false);
+
+  // Update state when editingLesson changes
+  React.useEffect(() => {
+    if (editingLesson) {
+      setLessonData({
+        title: editingLesson.title || '',
+        description: editingLesson.description || '',
+        content: editingLesson.content || '',
+        duration: editingLesson.duration || '',
+        resources: editingLesson.resources || []
+      });
+    } else {
+      setLessonData({
+        title: '',
+        description: '',
+        content: '',
+        duration: '',
+        resources: []
+      });
+    }
+  }, [editingLesson, isOpen]);
 
   if (!isOpen) return null;
 

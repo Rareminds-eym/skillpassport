@@ -240,8 +240,8 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
       console.log('After adding resources:', updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources);
 
       setCourse(updatedCourse);
-      // Don't call onUpdateCourse since we already saved to database
-      // onUpdateCourse?.(updatedCourse);
+      // Also update parent state to keep it in sync
+      onUpdateCourse?.(updatedCourse);
       setShowResourceUpload(false);
 
       toast.success(`${savedResources.length} resource(s) added successfully`, {
