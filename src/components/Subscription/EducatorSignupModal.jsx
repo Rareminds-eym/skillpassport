@@ -219,11 +219,13 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
 
         try {
             // Determine user_role and institution IDs based on entityType
+            // Convert empty strings to null to avoid UUID validation errors
             const isCollege = entityType === 'college';
+            const selectedInstitutionId = formData.schoolId?.trim() || null;
             const institutionData = {
                 user_role: isCollege ? 'college_educator' : 'school_educator',  // Maps to 'role' column in DB
-                schoolId: isCollege ? null : formData.schoolId,
-                collegeId: isCollege ? formData.schoolId : null
+                schoolId: isCollege ? null : selectedInstitutionId,
+                collegeId: isCollege ? selectedInstitutionId : null
             };
 
             // Step 1: Create auth user with role 'educator'
@@ -498,7 +500,8 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                                 {/* Institution Selection */}
                                 {/* <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        {entityType === 'college' ? 'Select Your College' : 'Select Your School'} *
+                                        {entityType === 'college' ? 'Select Your College' : 'Select Your School'} {entityType !== 'college' && '*'}
+                                        {entityType === 'college' && <span className="text-gray-500 text-xs ml-1">(Optional)</span>}
                                     </label>
                                     <div className="relative">
                                         <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
