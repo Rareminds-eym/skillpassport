@@ -131,8 +131,7 @@ function CollegeSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, on
                 email: formData.email,
                 firstName: formData.deanName.split(' ')[0],
                 lastName: formData.deanName.split(' ').slice(1).join(' ') || '',
-                role: 'admin',
-                entity_type: 'college'
+                role: 'college_admin'
             });
 
             if (!userRecordResult.success) {

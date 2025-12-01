@@ -213,8 +213,7 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
         options: {
           data: {
             full_name: formData.fullName,
-            role: 'recruiter',
-            entity_type: 'recruitment-recruiter'
+            user_role: 'recruiter'
           }
         }
       });
@@ -238,7 +237,6 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
           firstName: formData.fullName.split(' ')[0],
           lastName: formData.fullName.split(' ').slice(1).join(' ') || null,
           role: 'recruiter',
-          entity_type: 'recruitment-recruiter',
           isActive: true
         });
 
@@ -273,8 +271,7 @@ export default function RecruiterSignupModal({ isOpen, onClose, selectedPlan, st
         name: formData.fullName,
         email: formData.email,
         phone: formData.phone,
-        role: 'recruiter',
-        entity_type: 'recruitment-recruiter',
+        user_role: 'recruiter',
         companyId: formData.companyId,
         isNewUser: true
       };

@@ -47,13 +47,13 @@ function UniversityAdminLoginModal({ isOpen, onClose, selectedPlan, onLoginSucce
             // Verify user is a university admin
             const { data: userData, error: userError } = await supabase
                 .from('users')
-                .select('role, entity_type')
+                .select('role')
                 .eq('id', data.user.id)
                 .single();
 
             if (userError) {
                 console.warn('Could not verify user role:', userError);
-            } else if (userData?.entity_type !== 'university') {
+            } else if (userData?.role !== 'university_admin') {
                 // Sign out if not a university admin
                 await supabase.auth.signOut();
                 throw new Error('This account is not registered as a University Admin');

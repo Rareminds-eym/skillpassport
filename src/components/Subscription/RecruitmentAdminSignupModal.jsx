@@ -249,8 +249,7 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
         options: {
           data: {
             full_name: formData.adminFullName,
-            role: 'recruitment_admin',
-            entity_type: 'recruitment-admin'
+            user_role: 'rm_admin'
           }
         }
       });
@@ -269,8 +268,7 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
           email: formData.adminEmail,
           firstName: nameParts[0] || '',
           lastName: nameParts.slice(1).join(' ') || null,
-          role: 'recruiter',
-          entity_type: 'recruitment-admin',
+          role: 'rm_admin',
           isActive: true,
           metadata: {
             phone: formData.adminPhone,

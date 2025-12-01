@@ -14,15 +14,14 @@ import { supabase } from '../lib/supabaseClient';
  */
 export const createUserRecord = async (userId, userData) => {
   try {
-    const { email, firstName, lastName, role, entity_type } = userData;
+    const { email, firstName, lastName, user_role } = userData;
 
     const userRecord = {
       id: userId,
       email: email,
       firstName: firstName || null,
       lastName: lastName || null,
-      role: role || 'student',
-      entity_type: entity_type || 'student',
+      role: user_role || 'school_student',
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -77,7 +76,9 @@ export const createStudent = async (studentData, userId) => {
     } = studentData;
 
     // Prepare student record
+    // IMPORTANT: id must match userId due to FK constraint students_id_fkey -> users.id
     const student = {
+      id: userId, // Required: students.id must reference users.id
       user_id: userId,
       name: name,
       email: email,
@@ -148,12 +149,17 @@ export const completeStudentRegistration = async (userId, registrationData) => {
     const lastName = nameParts.slice(1).join(' ') || '';
 
     // Step 1: Create user record
+    // Map studentType to user_role
+    const userRoleMap = {
+      'school': 'school_student',
+      'college': 'college_student',
+      'university': 'college_student' // University students use college_student role
+    };
     const userResult = await createUserRecord(userId, {
       email: email,
       firstName: firstName,
       lastName: lastName,
-      role: 'student',
-      entity_type: studentType || 'student'
+      user_role: userRoleMap[studentType] || 'school_student'  // user_role is passed to createUserRecord which maps to 'role' column
     });
 
     if (!userResult.success) {

@@ -21,8 +21,7 @@ export const createUserRecord = async (userId, userData) => {
                 email: userData.email,
                 firstName: userData.firstName || null,
                 lastName: userData.lastName || null,
-                role: userData.role || 'educator',
-                entity_type: userData.entity_type || 'school',
+                role: userData.user_role || 'school_educator',
                 isActive: true,
                 metadata: userData.metadata || {}
             }])
@@ -63,8 +62,9 @@ export const createUserRecord = async (userId, userData) => {
  */
 export const createEducatorProfile = async (userId, educatorData) => {
     try {
-        // Route to appropriate table based on entity type
-        if (educatorData.entity_type === 'college') {
+        // Route to appropriate table based on user_role
+        const isCollegeEducator = educatorData.user_role === 'college_educator';
+        if (isCollegeEducator) {
             // Insert into college_lecturers table with camelCase columns
             const insertData = {
                 user_id: userId,
@@ -110,7 +110,7 @@ export const createEducatorProfile = async (userId, educatorData) => {
             };
         } else {
             // Insert into school_educators table with snake_case columns
-            // Note: entity_type is stored in the users table, not school_educators
+            // Note: user_role is stored in the users table, not school_educators
             const insertData = {
                 user_id: userId,
                 first_name: educatorData.firstName,
@@ -221,15 +221,15 @@ export const getEducatorByEmail = async (email) => {
  */
 export const getEducatorProfile = async (userId) => {
     try {
-        // First check which entity type this user is
+        // First check which role this user has
         const { data: userData, error: userError } = await supabase
             .from('users')
-            .select('entity_type')
+            .select('role')
             .eq('id', userId)
             .single();
 
         if (userError || !userData) {
-            console.error('❌ Error fetching user entity type:', userError);
+            console.error('❌ Error fetching user role:', userError);
             return {
                 success: false,
                 data: null,
@@ -237,8 +237,8 @@ export const getEducatorProfile = async (userId) => {
             };
         }
 
-        // Query appropriate table based on entity type
-        if (userData.entity_type === 'college') {
+        // Query appropriate table based on role
+        if (userData.role === 'college_educator') {
             const { data, error } = await supabase
                 .from('college_lecturers')
                 .select(`
@@ -277,7 +277,7 @@ export const getEducatorProfile = async (userId) => {
                 success: true,
                 data: {
                     ...data,
-                    entity_type: 'college',
+                    user_role: 'college_educator',
                     first_name: data.metadata?.firstName,
                     last_name: data.metadata?.lastName,
                     email: data.metadata?.email,
@@ -328,7 +328,7 @@ export const getEducatorProfile = async (userId) => {
                 success: true,
                 data: {
                     ...data,
-                    entity_type: 'school'
+                    user_role: 'school_educator'
                 },
                 error: null
             };
@@ -421,15 +421,15 @@ export const getColleges = async () => {
  */
 export const updateEducatorProfile = async (userId, updates) => {
     try {
-        // First check which entity type this user is
+        // First check which role this user has
         const { data: userData, error: userError } = await supabase
             .from('users')
-            .select('entity_type')
+            .select('role')
             .eq('id', userId)
             .single();
 
         if (userError || !userData) {
-            console.error('❌ Error fetching user entity type:', userError);
+            console.error('❌ Error fetching user role:', userError);
             return {
                 success: false,
                 data: null,
@@ -437,8 +437,8 @@ export const updateEducatorProfile = async (userId, updates) => {
             };
         }
 
-        // Update appropriate table based on entity type
-        if (userData.entity_type === 'college') {
+        // Update appropriate table based on role
+        if (userData.role === 'college_educator') {
             // Map updates to camelCase for college_lecturers
             const collegeUpdates = {
                 updatedAt: new Date().toISOString()

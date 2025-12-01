@@ -129,8 +129,7 @@ function SchoolSignupModal({ isOpen, onClose, selectedPlan, onSignupSuccess, onS
                 email: formData.email,
                 firstName: formData.principalName.split(' ')[0],
                 lastName: formData.principalName.split(' ').slice(1).join(' ') || '',
-                role: 'admin',
-                entity_type: 'school'
+                role: 'school_admin'
             });
 
             if (!userRecordResult.success) {

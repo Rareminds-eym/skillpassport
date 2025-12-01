@@ -179,8 +179,7 @@ function UniversityAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSuc
                 email: formData.email,
                 firstName: nameParts[0] || '',
                 lastName: nameParts.slice(1).join(' ') || '',
-                role: 'admin',
-                entity_type: 'university'
+                role: 'university_admin'
             });
 
             if (!userRecordResult.success) {

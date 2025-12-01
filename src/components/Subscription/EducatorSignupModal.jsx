@@ -218,10 +218,10 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
         setLoading(true);
 
         try {
-            // Determine entity_type and institution IDs based on entityType
+            // Determine user_role and institution IDs based on entityType
             const isCollege = entityType === 'college';
             const institutionData = {
-                entity_type: isCollege ? 'college' : 'school',
+                user_role: isCollege ? 'college_educator' : 'school_educator',  // Maps to 'role' column in DB
                 schoolId: isCollege ? null : formData.schoolId,
                 collegeId: isCollege ? formData.schoolId : null
             };
@@ -251,8 +251,7 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                 email: formData.email,
                 firstName: formData.firstName,
                 lastName: formData.lastName,
-                role: 'educator',
-                entity_type: institutionData.entity_type
+                user_role: institutionData.user_role
             });
 
             if (!userRecordResult.success) {
@@ -269,7 +268,7 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                 phone: formData.phone,
                 schoolId: institutionData.schoolId,
                 collegeId: institutionData.collegeId,
-                entity_type: institutionData.entity_type
+                user_role: institutionData.user_role
             });
 
             if (!profileResult.success) {
@@ -284,11 +283,9 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                 name: `${formData.firstName} ${formData.lastName}`,
                 email: formData.email,
                 phone: formData.phone,
-                role: 'educator',
-                schoolRole: 'Educator',
+                user_role: institutionData.user_role,
                 schoolId: institutionData.schoolId,
                 collegeId: institutionData.collegeId,
-                entity_type: institutionData.entity_type,
                 isNewUser: true
             };
 

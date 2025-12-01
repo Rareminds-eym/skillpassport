@@ -312,8 +312,7 @@ const SignupAdmin = () => {
           email: formData.adminEmail,
           firstName: firstName,
           lastName: lastName,
-          role: 'recruiter', // Use 'recruiter' role as per schema
-          entity_type: 'recruitment',
+          role: 'rm_admin',
           metadata: {
             phone: formData.adminPhone,
             isAdmin: true,
