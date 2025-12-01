@@ -168,10 +168,10 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
         }
 
         // Institution validation - required for both schools and colleges
-        if (!formData.schoolId || formData.schoolId.trim() === '') {
-            const institutionLabel = entityType === 'college' ? 'college' : 'school';
-            newErrors.schoolId = `Please select a ${institutionLabel}`;
-        }
+        // if (!formData.schoolId || formData.schoolId.trim() === '') {
+        //     const institutionLabel = entityType === 'college' ? 'college' : 'school';
+        //     newErrors.schoolId = `Please select a ${institutionLabel}`;
+        // }
 
         // Password validation
         if (!formData.password) {
@@ -499,7 +499,7 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                                 </div>
 
                                 {/* Institution Selection */}
-                                <div>
+                                {/* <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         {entityType === 'college' ? 'Select Your College' : 'Select Your School'} *
                                     </label>
@@ -514,8 +514,8 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                                                 }`}
                                         >
                                             <option value="">
-                                                {loadingInstitutions 
-                                                    ? `Loading ${entityType}s...` 
+                                                {loadingInstitutions
+                                                    ? `Loading ${entityType}s...`
                                                     : `Select your ${entityType}`}
                                             </option>
                                             {institutions.map(institution => (
@@ -531,7 +531,7 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                                             {errors.schoolId}
                                         </p>
                                     )}
-                                </div>
+                                </div> */}
 
                                 {/* Password Fields - Two columns */}
                                 <div className="grid grid-cols-2 gap-4">
