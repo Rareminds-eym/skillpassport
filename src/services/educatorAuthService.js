@@ -21,7 +21,7 @@ export const createUserRecord = async (userId, userData) => {
                 email: userData.email,
                 firstName: userData.firstName || null,
                 lastName: userData.lastName || null,
-                role: userData.user_role || 'school_educator',
+                role: userData.role || userData.user_role || 'school_educator',
                 isActive: true,
                 metadata: userData.metadata || {}
             }])

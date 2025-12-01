@@ -249,7 +249,7 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
         options: {
           data: {
             full_name: formData.adminFullName,
-            user_role: 'rm_admin'
+            user_role: 'company_admin'
           }
         }
       });
@@ -268,7 +268,7 @@ function RecruitmentAdminSignupModal({ isOpen, onClose, selectedPlan, onSignupSu
           email: formData.adminEmail,
           firstName: nameParts[0] || '',
           lastName: nameParts.slice(1).join(' ') || null,
-          role: 'rm_admin',
+          role: 'company_admin',
           isActive: true,
           metadata: {
             phone: formData.adminPhone,
