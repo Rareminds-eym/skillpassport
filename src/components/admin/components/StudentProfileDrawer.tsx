@@ -658,23 +658,51 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                     <p className="text-sm text-gray-600 mt-1">{student.email}</p>
 
                     <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">College</p>
-                        <p className="text-sm font-medium text-gray-900 mt-1">{student.college || student.profile?.university || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">Degree</p>
-                        <p className="text-sm font-medium text-gray-900 mt-1">{student.profile?.education?.[0]?.degree || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">CGPA</p>
-                        <p className="text-sm font-medium text-gray-900 mt-1">{student.profile?.education?.[0]?.cgpa || 'N/A'}</p>
-                      </div>
+                      {/* Show different fields based on student type */}
+                      {student.school_id ? (
+                        // School Student Fields
+                        <>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">School</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">{student.college_school_name || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">Grade</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">{student.grade || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">Section</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">{student.section || 'N/A'}</p>
+                          </div>
+                        </>
+                      ) : (
+                        // University/College Student Fields
+                        <>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">College</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">{student.college || student.profile?.university || student.college_school_name || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">Degree</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">{student.profile?.education?.[0]?.degree || student.branch_field || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">Section</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">{student.section || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">CGPA</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">{student.profile?.education?.[0]?.cgpa || student.currentCgpa || 'N/A'}</p>
+                          </div>
+                        </>
+                      )}
                     </div>
                     
                     <div className="mt-3 flex items-center gap-1">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide">Admission Status:</p>
-                      <Badge type={student.admission_status || 'pending'} />
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        {student.school_id ? 'Admission Status:' : 'Enrollment Status:'}
+                      </p>
+                      <Badge type={student.admission_status || student.approval_status || student.enrollment_status || 'pending'} />
                     </div>
                   </div>
 
@@ -713,7 +741,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                 <div className="flex items-center space-x-4 text-sm">
                   <div className="flex items-center text-gray-600">
                     <PhoneIcon className="h-4 w-4 mr-1" />
-                    <span>{student.profile?.contact_number || student.phone || 'Not provided'}</span>
+                    <span>{student.contact_number || student.contactNumber || student.profile?.contact_number || student.phone || 'Not provided'}</span>
                   </div>
                   <div className="flex items-center text-gray-600">
                     <EnvelopeIcon className="h-4 w-4 mr-1" />
@@ -754,33 +782,223 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                         </div>
                         <div className="flex flex-col">
                           <span className="text-gray-500 text-xs mb-1">Contact</span>
-                          <span className="font-medium text-gray-900">{student.contact_number || student.phone || 'N/A'}</span>
+                          <span className="font-medium text-gray-900">{student.contact_number || student.contactNumber || student.phone || 'N/A'}</span>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-gray-500 text-xs mb-1">Institution</span>
-                          <span className="font-medium text-gray-900">{student.college || student.profile?.university || 'N/A'}</span>
-                        </div>
-                        {student.profile?.age && (
-                          <div className="flex flex-col">
-                            <span className="text-gray-500 text-xs mb-1">Age</span>
-                            <span className="font-medium text-gray-900">{student.profile.age}</span>
-                          </div>
-                        )}
-                        {student.profile?.linkedin_link && (
-                          <div className="flex flex-col">
-                            <span className="text-gray-500 text-xs mb-1">LinkedIn</span>
-                            <a
-                              href={student.profile.linkedin_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-medium text-blue-600 hover:text-blue-700 truncate"
-                            >
-                              View Profile →
-                            </a>
-                          </div>
+                        
+                        {/* School-specific fields */}
+                        {student.school_id ? (
+                          <>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">School</span>
+                              <span className="font-medium text-gray-900">{student.college_school_name || 'N/A'}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Grade</span>
+                              <span className="font-medium text-gray-900">{student.grade || 'N/A'}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Section</span>
+                              <span className="font-medium text-gray-900">{student.section || 'N/A'}</span>
+                            </div>
+                            {student.roll_number && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Roll Number</span>
+                                <span className="font-medium text-gray-900">{student.roll_number}</span>
+                              </div>
+                            )}
+                            {student.admission_number && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Admission Number</span>
+                                <span className="font-medium text-gray-900">{student.admission_number}</span>
+                              </div>
+                            )}
+                            {student.date_of_birth && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Date of Birth</span>
+                                <span className="font-medium text-gray-900">{new Date(student.date_of_birth).toLocaleDateString()}</span>
+                              </div>
+                            )}
+                            {student.age && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Age</span>
+                                <span className="font-medium text-gray-900">{student.age}</span>
+                              </div>
+                            )}
+                            {student.gender && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Gender</span>
+                                <span className="font-medium text-gray-900">{student.gender}</span>
+                              </div>
+                            )}
+                            {student.bloodGroup && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Blood Group</span>
+                                <span className="font-medium text-gray-900">{student.bloodGroup}</span>
+                              </div>
+                            )}
+                            {student.district_name && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">District</span>
+                                <span className="font-medium text-gray-900">{student.district_name}</span>
+                              </div>
+                            )}
+                            {student.university && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">University</span>
+                                <span className="font-medium text-gray-900">{student.university}</span>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          // University/College fields
+                          <>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">College</span>
+                              <span className="font-medium text-gray-900">{student.college || student.profile?.university || student.college_school_name || 'N/A'}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Degree</span>
+                              <span className="font-medium text-gray-900">{student.profile?.education?.[0]?.degree || student.branch_field || 'N/A'}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Section</span>
+                              <span className="font-medium text-gray-900">{student.section || 'N/A'}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">CGPA</span>
+                              <span className="font-medium text-gray-900">{student.profile?.education?.[0]?.cgpa || student.currentCgpa || 'N/A'}</span>
+                            </div>
+                            {student.enrollment_number && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Enrollment Number</span>
+                                <span className="font-medium text-gray-900">{student.enrollment_number}</span>
+                              </div>
+                            )}
+                            {student.registration_number && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Registration Number</span>
+                                <span className="font-medium text-gray-900">{student.registration_number}</span>
+                              </div>
+                            )}
+                            {student.date_of_birth && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Date of Birth</span>
+                                <span className="font-medium text-gray-900">{new Date(student.date_of_birth).toLocaleDateString()}</span>
+                              </div>
+                            )}
+                            {(student.age || student.profile?.age) && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Age</span>
+                                <span className="font-medium text-gray-900">{student.age || student.profile.age}</span>
+                              </div>
+                            )}
+                            {student.gender && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Gender</span>
+                                <span className="font-medium text-gray-900">{student.gender}</span>
+                              </div>
+                            )}
+                            {student.district_name && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">District</span>
+                                <span className="font-medium text-gray-900">{student.district_name}</span>
+                              </div>
+                            )}
+                            {student.university && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">University</span>
+                                <span className="font-medium text-gray-900">{student.university}</span>
+                              </div>
+                            )}
+                            {student.profile?.linkedin_link && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">LinkedIn</span>
+                                <a
+                                  href={student.profile.linkedin_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-medium text-blue-600 hover:text-blue-700 truncate"
+                                >
+                                  View Profile →
+                                </a>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
+                    
+                    {/* Guardian Information for School Students */}
+                    {student.school_id && (student.guardianName || student.guardianPhone || student.guardianEmail) && (
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Guardian Information</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                          {student.guardianName && (
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Guardian Name</span>
+                              <span className="font-medium text-gray-900">{student.guardianName}</span>
+                            </div>
+                          )}
+                          {student.guardianPhone && (
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Guardian Phone</span>
+                              <span className="font-medium text-gray-900">{student.guardianPhone}</span>
+                            </div>
+                          )}
+                          {student.guardianEmail && (
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Guardian Email</span>
+                              <span className="font-medium text-gray-900">{student.guardianEmail}</span>
+                            </div>
+                          )}
+                          {student.guardianRelation && (
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Relation</span>
+                              <span className="font-medium text-gray-900">{student.guardianRelation}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Address Information for School Students */}
+                    {student.school_id && (student.address || student.city || student.state) && (
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Address Information</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                          {student.address && (
+                            <div className="flex flex-col sm:col-span-2">
+                              <span className="text-gray-500 text-xs mb-1">Address</span>
+                              <span className="font-medium text-gray-900">{student.address}</span>
+                            </div>
+                          )}
+                          {student.city && (
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">City</span>
+                              <span className="font-medium text-gray-900">{student.city}</span>
+                            </div>
+                          )}
+                          {student.state && (
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">State</span>
+                              <span className="font-medium text-gray-900">{student.state}</span>
+                            </div>
+                          )}
+                          {student.country && (
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Country</span>
+                              <span className="font-medium text-gray-900">{student.country}</span>
+                            </div>
+                          )}
+                          {student.pincode && (
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Pincode</span>
+                              <span className="font-medium text-gray-900">{student.pincode}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {student.profile?.bio && (
                       <div>
@@ -820,55 +1038,193 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
 
                 {activeTab === 'academic' && (
                   <div className="p-6 space-y-6">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">Education</h3>
-                      {student.profile?.education && student.profile.education.length > 0 ? (
-                        <div className="space-y-4">
-                          {student.profile.education.map((edu: any, index: number) => (
-                            <div key={edu.id || index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                                <div className="flex flex-col">
-                                  <span className="text-gray-500 text-xs mb-1">Degree</span>
-                                  <span className="font-medium text-gray-900">{edu.degree || 'N/A'}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-gray-500 text-xs mb-1">Level</span>
-                                  <span className="font-medium text-gray-900">{edu.level || 'N/A'}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-gray-500 text-xs mb-1">University</span>
-                                  <span className="font-medium text-gray-900">{edu.university || 'N/A'}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-gray-500 text-xs mb-1">CGPA</span>
-                                  <span className="font-medium text-gray-900">{edu.cgpa || 'N/A'}</span>
-                                </div>
-                                {edu.department && (
-                                  <div className="flex flex-col">
-                                    <span className="text-gray-500 text-xs mb-1">Department</span>
-                                    <span className="font-medium text-gray-900">{edu.department}</span>
-                                  </div>
-                                )}
-                                {edu.yearOfPassing && (
-                                  <div className="flex flex-col">
-                                    <span className="text-gray-500 text-xs mb-1">Year of Passing</span>
-                                    <span className="font-medium text-gray-900">{edu.yearOfPassing}</span>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="mt-3">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${edu.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                                  }`}>
-                                  {edu.status?.charAt(0).toUpperCase() + edu.status?.slice(1) || 'N/A'}
-                                </span>
-                              </div>
+                    {student.school_id ? (
+                      // School Student Academic Info
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Academic Information</h3>
+                        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">School</span>
+                              <span className="font-medium text-gray-900">{student.college_school_name || 'N/A'}</span>
                             </div>
-                          ))}
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Grade</span>
+                              <span className="font-medium text-gray-900">{student.grade || 'N/A'}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Section</span>
+                              <span className="font-medium text-gray-900">{student.section || 'N/A'}</span>
+                            </div>
+                            {student.roll_number && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Roll Number</span>
+                                <span className="font-medium text-gray-900">{student.roll_number}</span>
+                              </div>
+                            )}
+                            {student.admission_number && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Admission Number</span>
+                                <span className="font-medium text-gray-900">{student.admission_number}</span>
+                              </div>
+                            )}
+                            {student.enrollmentNumber && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Enrollment Number</span>
+                                <span className="font-medium text-gray-900">{student.enrollmentNumber}</span>
+                              </div>
+                            )}
+                            {student.student_id && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Student ID</span>
+                                <span className="font-medium text-gray-900">{student.student_id}</span>
+                              </div>
+                            )}
+                            {student.student_type && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Student Type</span>
+                                <span className="font-medium text-gray-900">{student.student_type}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="mt-3">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              student.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {student.approval_status?.charAt(0).toUpperCase() + student.approval_status?.slice(1) || 'Pending'}
+                            </span>
+                          </div>
                         </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">No education information available</p>
-                      )}
-                    </div>
+                        
+                        {/* Show subjects if available */}
+                        {student.subjects && student.subjects.length > 0 && (
+                          <div className="mt-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4">Subjects</h3>
+                            <div className="flex flex-wrap gap-2">
+                              {student.subjects.map((subject: string, index: number) => (
+                                <span
+                                  key={index}
+                                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                                >
+                                  {subject}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      // University/College Student Education Info
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Academic Information</h3>
+                        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">College</span>
+                              <span className="font-medium text-gray-900">{student.college || student.profile?.university || student.college_school_name || 'N/A'}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Degree</span>
+                              <span className="font-medium text-gray-900">{student.profile?.education?.[0]?.degree || student.branch_field || 'N/A'}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">Section</span>
+                              <span className="font-medium text-gray-900">{student.section || 'N/A'}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 text-xs mb-1">CGPA</span>
+                              <span className="font-medium text-gray-900">{student.profile?.education?.[0]?.cgpa || student.currentCgpa || 'N/A'}</span>
+                            </div>
+                            {student.enrollment_number && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Enrollment Number</span>
+                                <span className="font-medium text-gray-900">{student.enrollment_number}</span>
+                              </div>
+                            )}
+                            {student.registration_number && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Registration Number</span>
+                                <span className="font-medium text-gray-900">{student.registration_number}</span>
+                              </div>
+                            )}
+                            {student.student_id && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Student ID</span>
+                                <span className="font-medium text-gray-900">{student.student_id}</span>
+                              </div>
+                            )}
+                            {student.student_type && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Student Type</span>
+                                <span className="font-medium text-gray-900">{student.student_type}</span>
+                              </div>
+                            )}
+                            {student.university && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">University</span>
+                                <span className="font-medium text-gray-900">{student.university}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="mt-3">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              student.approval_status === 'approved' || student.enrollment_status === 'enrolled' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {student.enrollment_status?.charAt(0).toUpperCase() + student.enrollment_status?.slice(1) || student.approval_status?.charAt(0).toUpperCase() + student.approval_status?.slice(1) || 'Pending'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Show detailed education if available */}
+                        {student.profile?.education && student.profile.education.length > 0 && (
+                          <div className="mt-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4">Education History</h3>
+                            <div className="space-y-4">
+                              {student.profile.education.map((edu: any, index: number) => (
+                                <div key={edu.id || index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                    <div className="flex flex-col">
+                                      <span className="text-gray-500 text-xs mb-1">Degree</span>
+                                      <span className="font-medium text-gray-900">{edu.degree || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="text-gray-500 text-xs mb-1">Level</span>
+                                      <span className="font-medium text-gray-900">{edu.level || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="text-gray-500 text-xs mb-1">University</span>
+                                      <span className="font-medium text-gray-900">{edu.university || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="text-gray-500 text-xs mb-1">CGPA</span>
+                                      <span className="font-medium text-gray-900">{edu.cgpa || 'N/A'}</span>
+                                    </div>
+                                    {edu.department && (
+                                      <div className="flex flex-col">
+                                        <span className="text-gray-500 text-xs mb-1">Department</span>
+                                        <span className="font-medium text-gray-900">{edu.department}</span>
+                                      </div>
+                                    )}
+                                    {edu.yearOfPassing && (
+                                      <div className="flex flex-col">
+                                        <span className="text-gray-500 text-xs mb-1">Year of Passing</span>
+                                        <span className="font-medium text-gray-900">{edu.yearOfPassing}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="mt-3">
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${edu.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                                      }`}>
+                                      {edu.status?.charAt(0).toUpperCase() + edu.status?.slice(1) || 'N/A'}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {student.profile?.technicalSkills && student.profile.technicalSkills.length > 0 && (
                       <div>
