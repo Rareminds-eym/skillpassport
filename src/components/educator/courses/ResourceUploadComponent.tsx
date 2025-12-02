@@ -39,10 +39,9 @@ const ALLOWED_FILE_TYPES = {
   image: ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp']
 };
 
-// Extended timeout for large file uploads (10 minutes for 500MB files)
-const UPLOAD_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// For Netlify Functions, use relative path. For local dev, use localhost
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.MODE === 'production' ? '' : 'http://localhost:3001');
 
 const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
   onResourcesAdded,
@@ -326,18 +325,14 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       newUploads.push({
         file,
         progress: 0,
-        status: 'pending'
+        status: 'pending' // Files stay pending until user clicks "Add Files"
       });
     });
 
     if (newUploads.length > 0) {
-      const startIndex = fileUploads.length;
       setFileUploads([...fileUploads, ...newUploads]);
-
-      // Start uploads
-      newUploads.forEach((upload, index) => {
-        uploadToR2(upload.file, startIndex + index);
-      });
+      // NOTE: Upload is now deferred until handleSaveFiles is called
+      // This prevents orphaned files in storage when user cancels
     }
   };
 
@@ -364,16 +359,18 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
   const removeFileUpload = async (index: number) => {
     const upload = fileUploads[index];
 
-    // If file was uploaded to R2, delete it
+    // If file was already uploaded to R2, delete it from storage
     if (upload.status === 'completed' && upload.uploadedData?.key) {
       try {
         await fetch(`${API_BASE_URL}/api/file/${upload.uploadedData.key}`, {
           method: 'DELETE',
         });
+        console.log('Deleted file from R2:', upload.uploadedData.key);
       } catch (error) {
         console.error('Delete error:', error);
       }
     }
+    // For pending files, just remove from list (no cleanup needed)
 
     setFileUploads(prev => prev.filter((_, i) => i !== index));
   };
@@ -418,32 +415,79 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
     onClose();
   };
 
-  const handleSaveFiles = () => {
+  const handleSaveFiles = async () => {
     console.log('=== handleSaveFiles called ===');
     console.log('File uploads:', fileUploads);
 
-    const completedUploads = fileUploads.filter(fu => fu.status === 'completed');
-    console.log('Completed uploads:', completedUploads);
+    const pendingUploads = fileUploads.filter(fu => fu.status === 'pending');
+    const alreadyCompleted = fileUploads.filter(fu => fu.status === 'completed');
+    
+    console.log('Pending uploads:', pendingUploads.length);
+    console.log('Already completed:', alreadyCompleted.length);
 
-    if (completedUploads.length === 0) {
-      setError('Please wait for uploads to complete');
-      console.error('No completed uploads');
+    if (pendingUploads.length === 0 && alreadyCompleted.length === 0) {
+      setError('Please select files to upload');
       return;
     }
 
-    const newResources: Resource[] = completedUploads.map(fu => ({
-      id: fu.uploadedData?.key || `resource-${Date.now()}-${Math.random()}`,
-      name: fu.file.name,
-      type: getFileType(fu.file.name),
-      url: fu.uploadedData?.url || '',
-      size: formatFileSize(fu.file.size)
-    }));
+    setIsUploading(true);
+    setError('');
 
-    console.log('New resources to be added:', newResources);
-    onResourcesAdded(newResources);
-    console.log('✓ Resources sent to parent, closing modal');
-    onClose();
+    // Upload all pending files
+    const uploadPromises = pendingUploads.map((upload) => {
+      const actualIndex = fileUploads.findIndex(fu => fu.file === upload.file);
+      return uploadToR2(upload.file, actualIndex);
+    });
+
+    try {
+      // Wait for all uploads to complete
+      await Promise.all(uploadPromises);
+      
+      // Small delay to ensure state is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Get the updated state with completed uploads
+      // We need to read from the latest state
+    } catch (error) {
+      console.error('Upload error:', error);
+      setError('Some files failed to upload. Please try again.');
+      setIsUploading(false);
+      return;
+    }
   };
+
+  // Effect to handle completion after uploads finish
+  React.useEffect(() => {
+    if (!isUploading) return;
+    
+    const completedUploads = fileUploads.filter(fu => fu.status === 'completed');
+    const pendingUploads = fileUploads.filter(fu => fu.status === 'pending');
+    const uploadingUploads = fileUploads.filter(fu => fu.status === 'uploading');
+    const errorUploads = fileUploads.filter(fu => fu.status === 'error');
+    
+    // Still uploading
+    if (uploadingUploads.length > 0 || pendingUploads.length > 0) return;
+    
+    // All done (either completed or errored)
+    if (completedUploads.length > 0) {
+      const newResources: Resource[] = completedUploads.map(fu => ({
+        id: fu.uploadedData?.key || `resource-${Date.now()}-${Math.random()}`,
+        name: fu.file.name,
+        type: getFileType(fu.file.name),
+        url: fu.uploadedData?.url || '',
+        size: formatFileSize(fu.file.size)
+      }));
+
+      console.log('New resources to be added:', newResources);
+      onResourcesAdded(newResources);
+      console.log('✓ Resources sent to parent, closing modal');
+      setIsUploading(false);
+      onClose();
+    } else if (errorUploads.length > 0) {
+      setError('All uploads failed. Please try again.');
+      setIsUploading(false);
+    }
+  }, [fileUploads, isUploading]);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
@@ -453,7 +497,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
           <h2 className="text-xl font-bold text-gray-900">Add Resources</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={isUploading}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <XMarkIcon className="h-6 w-6 text-gray-400" />
           </button>
@@ -542,7 +587,9 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
               {/* Upload List */}
               {fileUploads.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-gray-900">Uploading Files</h3>
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    {isUploading ? 'Uploading Files...' : 'Selected Files'}
+                  </h3>
                   {fileUploads.map((upload, index) => {
                     const Icon = getFileIcon(getFileType(upload.file.name));
 
@@ -567,6 +614,14 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            {upload.status === 'pending' && (
+                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">Ready</span>
+                            )}
+                            {upload.status === 'uploading' && (
+                              <span className="text-xs text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded">
+                                {Math.round(upload.progress)}%
+                              </span>
+                            )}
                             {upload.status === 'completed' && (
                               <CheckCircleIcon className="h-5 w-5 text-emerald-600" />
                             )}
@@ -575,7 +630,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                             )}
                             <button
                               onClick={() => removeFileUpload(index)}
-                              className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              disabled={upload.status === 'uploading'}
+                              className="p-1 hover:bg-gray-200 rounded transition-colors disabled:opacity-50"
                             >
                               <TrashIcon className="h-4 w-4 text-gray-600" />
                             </button>
@@ -688,20 +744,26 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={isUploading}
+            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={uploadMode === 'file' ? handleSaveFiles : handleAddLink}
             disabled={
-              uploadMode === 'file'
-                ? fileUploads.filter(fu => fu.status === 'completed').length === 0
-                : !linkUrl.trim()
+              isUploading ||
+              (uploadMode === 'file'
+                ? fileUploads.length === 0
+                : !linkUrl.trim())
             }
             className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
-            {uploadMode === 'file' ? 'Add Files' : 'Add Link'}
+            {isUploading 
+              ? 'Uploading...' 
+              : uploadMode === 'file' 
+                ? `Upload & Add ${fileUploads.length > 0 ? `(${fileUploads.length})` : ''}` 
+                : 'Add Link'}
           </button>
         </div>
       </div>

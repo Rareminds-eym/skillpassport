@@ -59,6 +59,10 @@ const LoginStudent = lazy(() => import("../pages/auth/LoginStudent"));
 const LoginRecruiter = lazy(() => import("../pages/auth/LoginRecruiter"));
 const LoginAdmin = lazy(() => import("../pages/auth/LoginAdmin"));
 const Register = lazy(() => import("../pages/auth/components/SignIn/Register"));
+const UnifiedLogin = lazy(() => import("../pages/auth/UnifiedLogin"));
+const UnifiedForgotPassword = lazy(() => import("../pages/auth/UnifiedForgotPassword"));
+const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
+const DebugRoles = lazy(() => import("../pages/auth/DebugRoles"));
 const SignupRecruiter = lazy(() =>
   import("../pages/auth/components/SignIn/recruitment/SignupRecruiter")
 );
@@ -222,6 +226,7 @@ const AttendanceTracking = lazy(() =>
 const CurriculumBuilder = lazy(() =>
   import("../pages/admin/schoolAdmin/CurriculumBuilder")
 );
+const SchoolAdminCourses = lazy(() => import("../pages/admin/schoolAdmin/Courses"));
 const LessonPlan = lazy(() => import("../pages/admin/schoolAdmin/LessonPlan"));
 const ExamsAssessments = lazy(() =>
   import("../pages/admin/schoolAdmin/ExamsAssessments")
@@ -270,11 +275,21 @@ const AppRoutes = () => {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/login/student" element={<LoginStudent />} />
-          <Route path="/login/recruiter" element={<LoginRecruiter />} />
+          
+          {/* Unified Login */}
+          <Route path="/login" element={<UnifiedLogin />} />
+          <Route path="/forgot-password" element={<UnifiedForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/debug-roles" element={<DebugRoles />} />
+          
+          {/* Deprecated login routes - redirect to unified login */}
+          <Route path="/login/student" element={<Navigate to="/login" replace />} />
+          <Route path="/login/recruiter" element={<Navigate to="/login" replace />} />
+          <Route path="/login/admin" element={<Navigate to="/login" replace />} />
+          <Route path="/login/educator" element={<Navigate to="/login" replace />} />
+          
+          {/* Registration routes */}
           <Route path="/register/recruitment" element={<Register />} />
-          <Route path="/login/admin" element={<LoginAdmin />} />
-          <Route path="/login/educator" element={<EducatorLogin />} />
           <Route path="/register" element={<Register />} />
           <Route path="/register/:type" element={<Register />} />
           <Route
@@ -374,6 +389,7 @@ const AppRoutes = () => {
           <Route path="teachers/timetable" element={<TeacherTimetable />} />
           <Route path="lesson-plans/approvals" element={<LessonPlanApprovals />} />
           {/* Academic Management System Routes */}
+          <Route path="academics/courses" element={<SchoolAdminCourses />} />
           <Route path="academics/curriculum" element={<CurriculumBuilder />} />
           <Route path="academics/lesson-plans" element={<LessonPlan />} />
           <Route path="academics/exams" element={<ExamsAssessments />} />

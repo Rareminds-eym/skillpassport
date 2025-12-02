@@ -33,20 +33,30 @@ export const courseEnrollmentService = {
       if (!courseData) throw new Error('Course not found');
 
       // Check if already enrolled
-      const { data: existingEnrollment } = await supabase
+      const { data: existingEnrollment, error: checkError } = await supabase
         .from('course_enrollments')
         .select('*')
         .eq('student_id', studentData.id)
         .eq('course_id', courseId)
         .single();
 
+      // If enrollment exists, return it
       if (existingEnrollment) {
+        console.log('Student already enrolled, returning existing enrollment');
         return {
           success: true,
           message: 'Already enrolled',
           data: existingEnrollment
         };
       }
+
+      // If error is anything other than "not found", throw it
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking enrollment:', checkError);
+        throw checkError;
+      }
+
+      // If we reach here, student is not enrolled yet (PGRST116 = not found)
 
       // We'll set total_lessons to 0 initially and update it when the student first accesses the course
       const totalLessons = 0;

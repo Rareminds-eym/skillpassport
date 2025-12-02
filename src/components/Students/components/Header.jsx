@@ -300,7 +300,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                 className="text-red-600"
                 onClick={() => {
                   logout();
-                  navigate("/login/student");
+                  navigate("/login");
                 }}
               >
                 <LogOut className="w-4 h-4 mr-2" />
