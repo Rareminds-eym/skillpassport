@@ -20,10 +20,10 @@ interface SchoolClass {
 interface TimetableSlot {
   id?: string;
   educator_id: string;
-  teacher_id?: string;
+  teacher_id: string;
   teacher_name?: string;
   class_id?: string;
-  class_name?: string;
+  class_name: string;
   day_of_week: number;
   period_number: number;
   start_time: string;
@@ -71,33 +71,56 @@ const TimetableBuilderEnhanced: React.FC = () => {
     }
   }, [timetableId]);
 
+  const getSchoolId = async (): Promise<string | null> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('No user found');
+        return null;
+      }
+
+      // Get user role first
+      const { data: userData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      // For school_admin: lookup school by created_by
+      if (userData?.role === "school_admin") {
+        const { data: schoolData } = await supabase
+          .from("schools")
+          .select("id")
+          .eq("created_by", user.id)
+          .maybeSingle();
+
+        if (schoolData?.id) {
+          return schoolData.id;
+        }
+      }
+
+      // For school_educator: lookup from school_educators table
+      if (userData?.role === "school_educator") {
+        const { data: educatorData } = await supabase
+          .from("school_educators")
+          .select("school_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (educatorData?.school_id) {
+          return educatorData.school_id;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error fetching school ID:", error);
+      return null;
+    }
+  };
+
   const loadTeachers = async () => {
-    // Get current user's school_id
-    const userEmail = localStorage.getItem('userEmail');
-    if (!userEmail) {
-      console.error('No user email found');
-      return;
-    }
-
-    // Get school_id
-    const { data: educatorData } = await supabase
-      .from('school_educators')
-      .select('school_id')
-      .eq('email', userEmail)
-      .maybeSingle();
-
-    let schoolId = educatorData?.school_id;
-
-    if (!schoolId) {
-      const { data: schoolData } = await supabase
-        .from('schools')
-        .select('id')
-        .eq('email', userEmail)
-        .maybeSingle();
-      
-      schoolId = schoolData?.id;
-    }
-
+    const schoolId = await getSchoolId();
     if (!schoolId) {
       console.error('No school_id found');
       return;
@@ -108,36 +131,18 @@ const TimetableBuilderEnhanced: React.FC = () => {
       .from("school_educators")
       .select("id, teacher_id, first_name, last_name")
       .eq("school_id", schoolId)
-      .eq("onboarding_status", "active")
+      .eq("account_status", "active")
       .order("first_name");
     
     if (data) setTeachers(data);
   };
 
   const loadClasses = async () => {
-    // Get current user's school_id
-    const userEmail = localStorage.getItem('userEmail');
-    if (!userEmail) return;
-
-    const { data: educatorData } = await supabase
-      .from('school_educators')
-      .select('school_id')
-      .eq('email', userEmail)
-      .maybeSingle();
-
-    let schoolId = educatorData?.school_id;
-
+    const schoolId = await getSchoolId();
     if (!schoolId) {
-      const { data: schoolData } = await supabase
-        .from('schools')
-        .select('id')
-        .eq('email', userEmail)
-        .maybeSingle();
-      
-      schoolId = schoolData?.id;
+      console.error('No school_id found for classes');
+      return;
     }
-
-    if (!schoolId) return;
 
     // Load classes
     const { data } = await supabase
@@ -148,6 +153,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
       .order("grade")
       .order("section");
     
+    console.log('Loaded classes:', data);
     if (data) setClasses(data);
   };
 
@@ -190,6 +196,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
     if (data) {
       const slotsWithNames = data.map(slot => ({
         ...slot,
+        teacher_id: slot.educator_id,
         teacher_name: slot.school_educators ? `${slot.school_educators.first_name} ${slot.school_educators.last_name}` : "",
         class_name: slot.school_classes ? slot.school_classes.name : ""
       }));
@@ -341,10 +348,16 @@ const TimetableBuilderEnhanced: React.FC = () => {
     const existingSlot = getSlotForCell(day, period);
     if (existingSlot) return; // Don't open modal if slot exists
     
+    // Check if teacher and class are selected
+    if (!newSlot.teacher_id || !newSlot.class_id) {
+      alert("Please select a Teacher and Class from the dropdowns above first.");
+      return;
+    }
+    
     setSelectedCell({ day, period });
+    // Keep teacher_id and class_id, only reset subject and room
     setNewSlot({
-      teacher_id: "",
-      class_id: "",
+      ...newSlot,
       subject_name: "",
       room_number: "",
     });
@@ -503,38 +516,87 @@ const TimetableBuilderEnhanced: React.FC = () => {
         </button>
       </div>
 
-      {/* Teacher Load Indicators */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <h3 className="font-semibold text-gray-900 mb-3">Teacher Load</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {teachers.map(teacher => {
-            const load = getTeacherLoad(teacher.id);
-            const percentage = (load / 30) * 100;
-            return (
-              <div key={teacher.id} className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {teacher.first_name} {teacher.last_name}
-                </p>
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all ${
-                        percentage > 100 ? "bg-red-500" :
-                        percentage > 80 ? "bg-yellow-500" :
-                        "bg-green-500"
-                      }`}
-                      style={{ width: `${Math.min(percentage, 100)}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-medium text-gray-600">
-                    {load}/30
-                  </span>
+      {/* Teacher Load and Class Selection - Dropdowns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Teacher Load - Dropdown */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <h3 className="font-semibold text-gray-900 mb-3">Teacher Load</h3>
+          <select
+            value={newSlot.teacher_id}
+            onChange={(e) => setNewSlot({ ...newSlot, teacher_id: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 mb-3"
+          >
+            <option value="">-- Select Teacher --</option>
+            {teachers.map((teacher) => {
+              const load = getTeacherLoad(teacher.id);
+              return (
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.first_name} {teacher.last_name} ({load}/30 periods)
+                </option>
+              );
+            })}
+          </select>
+          {newSlot.teacher_id && (
+            <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+              <p className="text-sm font-medium text-indigo-900">
+                Selected: {teachers.find(t => t.id === newSlot.teacher_id)?.first_name} {teachers.find(t => t.id === newSlot.teacher_id)?.last_name}
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all ${
+                      (getTeacherLoad(newSlot.teacher_id) / 30) * 100 > 100 ? "bg-red-500" :
+                      (getTeacherLoad(newSlot.teacher_id) / 30) * 100 > 80 ? "bg-yellow-500" :
+                      "bg-green-500"
+                    }`}
+                    style={{ width: `${Math.min((getTeacherLoad(newSlot.teacher_id) / 30) * 100, 100)}%` }}
+                  />
                 </div>
+                <span className="text-xs font-medium text-gray-600">
+                  {getTeacherLoad(newSlot.teacher_id)}/30
+                </span>
               </div>
-            );
-          })}
+            </div>
+          )}
+        </div>
+
+        {/* Classes in School - Dropdown */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <h3 className="font-semibold text-gray-900 mb-3">Classes in School</h3>
+          <select
+            value={newSlot.class_id}
+            onChange={(e) => setNewSlot({ ...newSlot, class_id: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 mb-3"
+          >
+            <option value="">-- Select Class --</option>
+            {classes.map((cls) => (
+              <option key={cls.id} value={cls.id}>
+                {cls.grade}{cls.section ? `-${cls.section}` : ''} ({cls.name})
+              </option>
+            ))}
+          </select>
+          {newSlot.class_id && (
+            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+              <p className="text-sm font-medium text-green-900">
+                Selected: {classes.find(c => c.id === newSlot.class_id)?.grade}
+                {classes.find(c => c.id === newSlot.class_id)?.section ? `-${classes.find(c => c.id === newSlot.class_id)?.section}` : ''}
+              </p>
+              <p className="text-xs text-green-600">{classes.find(c => c.id === newSlot.class_id)?.name}</p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Selection Info */}
+      {newSlot.teacher_id && newSlot.class_id && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+          <p className="text-sm text-indigo-800">
+            <span className="font-medium">Ready to add slots:</span> Click "+ Add Slot" in the grid below to assign{' '}
+            <span className="font-semibold">{teachers.find(t => t.id === newSlot.teacher_id)?.first_name} {teachers.find(t => t.id === newSlot.teacher_id)?.last_name}</span> to{' '}
+            <span className="font-semibold">{classes.find(c => c.id === newSlot.class_id)?.grade}{classes.find(c => c.id === newSlot.class_id)?.section ? `-${classes.find(c => c.id === newSlot.class_id)?.section}` : ''}</span>
+          </p>
+        </div>
+      )}
 
       {/* Timetable Grid */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
@@ -670,56 +732,35 @@ const TimetableBuilderEnhanced: React.FC = () => {
         </div>
       </div>
 
-      {/* Add Slot Modal */}
+      {/* Add Slot Modal - Only Subject and Room */}
       {showAddModal && selectedCell && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
               Add Slot - {days[selectedCell.day - 1]} Period {selectedCell.period}
             </h3>
             <p className="text-sm text-gray-600 mb-4">
               Time: {timeSlots[selectedCell.period - 1]}
             </p>
 
+            {/* Show selected Teacher and Class */}
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-4">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-indigo-700 font-medium">Teacher:</span>
+                <span className="text-indigo-900">
+                  {teachers.find(t => t.id === newSlot.teacher_id)?.first_name} {teachers.find(t => t.id === newSlot.teacher_id)?.last_name}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-sm mt-1">
+                <span className="text-indigo-700 font-medium">Class:</span>
+                <span className="text-indigo-900">
+                  {classes.find(c => c.id === newSlot.class_id)?.grade}
+                  {classes.find(c => c.id === newSlot.class_id)?.section ? `-${classes.find(c => c.id === newSlot.class_id)?.section}` : ''} ({classes.find(c => c.id === newSlot.class_id)?.name})
+                </span>
+              </div>
+            </div>
+
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Teacher *
-                </label>
-                <select
-                  value={newSlot.teacher_id}
-                  onChange={(e) => setNewSlot({ ...newSlot, teacher_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  required
-                >
-                  <option value="">Select Teacher</option>
-                  {teachers.map((teacher) => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {teacher.first_name} {teacher.last_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Class *
-                </label>
-                <select
-                  value={newSlot.class_id}
-                  onChange={(e) => setNewSlot({ ...newSlot, class_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  required
-                >
-                  <option value="">Select Class</option>
-                  {classes.map((cls) => (
-                    <option key={cls.id} value={cls.id}>
-                      {cls.name} ({cls.grade}{cls.section ? `-${cls.section}` : ''})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Subject *
@@ -731,6 +772,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
                   placeholder="e.g., Mathematics"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   required
+                  autoFocus
                 />
               </div>
 
