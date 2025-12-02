@@ -32,41 +32,124 @@ import {
     getTraitInterpretation
 } from './assessment-data/scoringUtils';
 
+// Import Gemini service for fallback
+import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentService';
+import { riasecQuestions } from './assessment-data/riasecQuestions';
+import { bigFiveQuestions } from './assessment-data/bigFiveQuestions';
+import { workValuesQuestions } from './assessment-data/workValuesQuestions';
+import { employabilityQuestions } from './assessment-data/employabilityQuestions';
+import { streamKnowledgeQuestions } from './assessment-data/streamKnowledgeQuestions';
+
 const AssessmentResult = () => {
     const navigate = useNavigate();
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isGeminiPowered, setIsGeminiPowered] = useState(false);
+    const [geminiInsights, setGeminiInsights] = useState(null);
 
     useEffect(() => {
-        // Load answers from localStorage
-        const answersJson = localStorage.getItem('assessment_answers');
+        const loadResults = async () => {
+            // Load answers from localStorage
+            const answersJson = localStorage.getItem('assessment_answers');
+            const geminiResultsJson = localStorage.getItem('assessment_gemini_results');
+            const stream = localStorage.getItem('assessment_stream');
 
-        if (!answersJson) {
-            // No assessment data found, redirect to test
-            navigate('/student/assessment/test');
-            return;
-        }
+            if (!answersJson) {
+                // No assessment data found, redirect to test
+                navigate('/student/assessment/test');
+                return;
+            }
 
-        const answers = JSON.parse(answersJson);
+            const answers = JSON.parse(answersJson);
 
-        // Calculate all scores
-        const riasecResults = calculateRIASEC(answers);
-        const bigFiveResults = calculateBigFive(answers);
-        const workValuesResults = calculateWorkValues(answers);
-        const employabilityResults = calculateEmployability(answers);
-        const knowledgeResults = calculateKnowledgeScore(answers);
-        const careerClusters = getCareerClusters(riasecResults.code);
+            // Check if we have Gemini results
+            if (geminiResultsJson) {
+                try {
+                    const geminiResults = JSON.parse(geminiResultsJson);
+                    setIsGeminiPowered(true);
+                    setGeminiInsights(geminiResults);
 
-        setResults({
-            riasec: riasecResults,
-            bigFive: bigFiveResults,
-            workValues: workValuesResults,
-            employability: employabilityResults,
-            knowledge: knowledgeResults,
-            clusters: careerClusters
-        });
+                    // Use Gemini-analyzed results
+                    setResults({
+                        riasec: geminiResults.riasec,
+                        bigFive: geminiResults.bigFive,
+                        workValues: geminiResults.workValues,
+                        employability: geminiResults.employability,
+                        knowledge: geminiResults.knowledge,
+                        clusters: [
+                            geminiResults.careerRecommendations.primaryCluster,
+                            geminiResults.careerRecommendations.secondaryCluster
+                        ],
+                        careerRecommendations: geminiResults.careerRecommendations,
+                        overallSummary: geminiResults.overallSummary
+                    });
+                    setLoading(false);
+                    return;
+                } catch (e) {
+                    console.error('Error parsing Gemini results:', e);
+                }
+            }
 
-        setLoading(false);
+            // Fallback: Try to get Gemini analysis now if not available
+            if (!geminiResultsJson && stream) {
+                try {
+                    const questionBanks = {
+                        riasecQuestions,
+                        bigFiveQuestions,
+                        workValuesQuestions,
+                        employabilityQuestions,
+                        streamKnowledgeQuestions
+                    };
+
+                    const geminiResults = await analyzeAssessmentWithGemini(answers, stream, questionBanks);
+                    
+                    if (geminiResults) {
+                        localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
+                        setIsGeminiPowered(true);
+                        setGeminiInsights(geminiResults);
+
+                        setResults({
+                            riasec: geminiResults.riasec,
+                            bigFive: geminiResults.bigFive,
+                            workValues: geminiResults.workValues,
+                            employability: geminiResults.employability,
+                            knowledge: geminiResults.knowledge,
+                            clusters: [
+                                geminiResults.careerRecommendations.primaryCluster,
+                                geminiResults.careerRecommendations.secondaryCluster
+                            ],
+                            careerRecommendations: geminiResults.careerRecommendations,
+                            overallSummary: geminiResults.overallSummary
+                        });
+                        setLoading(false);
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Gemini analysis failed:', e);
+                }
+            }
+
+            // Final fallback: Use local calculation
+            const riasecResults = calculateRIASEC(answers);
+            const bigFiveResults = calculateBigFive(answers);
+            const workValuesResults = calculateWorkValues(answers);
+            const employabilityResults = calculateEmployability(answers);
+            const knowledgeResults = calculateKnowledgeScore(answers);
+            const careerClusters = getCareerClusters(riasecResults.code);
+
+            setResults({
+                riasec: riasecResults,
+                bigFive: bigFiveResults,
+                workValues: workValuesResults,
+                employability: employabilityResults,
+                knowledge: knowledgeResults,
+                clusters: careerClusters
+            });
+
+            setLoading(false);
+        };
+
+        loadResults();
     }, [navigate]);
 
     if (loading || !results) {
@@ -147,6 +230,85 @@ const AssessmentResult = () => {
                     </div>
                 </div>
             </div>
+
+            {/* AI-Powered Insights Section */}
+            {isGeminiPowered && geminiInsights && (
+                <section>
+                    <div className="flex items-center gap-2 mb-6">
+                        <Zap className="w-6 h-6 text-amber-500" />
+                        <h2 className="text-2xl font-bold text-gray-800">AI-Powered Career Insights</h2>
+                        <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white ml-2">
+                            Powered by Gemini AI
+                        </Badge>
+                    </div>
+
+                    <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-pink-50 border-l-4 border-l-purple-500">
+                        <CardContent className="pt-6">
+                            {/* Overall Summary */}
+                            <div className="mb-6">
+                                <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
+                                    <Brain className="w-5 h-5 text-purple-600" />
+                                    Your Profile Summary
+                                </h3>
+                                <p className="text-gray-700 leading-relaxed bg-white/60 p-4 rounded-xl">
+                                    {results.overallSummary}
+                                </p>
+                            </div>
+
+                            {/* Career Recommendations */}
+                            {results.careerRecommendations && (
+                                <>
+                                    <div className="mb-6">
+                                        <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
+                                            <Briefcase className="w-5 h-5 text-purple-600" />
+                                            Recommended Career Roles
+                                        </h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {results.careerRecommendations.suggestedRoles?.map((role, idx) => (
+                                                <Badge key={idx} variant="outline" className="bg-white/80 text-purple-700 border-purple-200 px-3 py-1">
+                                                    {role}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-6">
+                                        <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
+                                            <TrendingUp className="w-5 h-5 text-purple-600" />
+                                            Skills to Focus On
+                                        </h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {results.careerRecommendations.skillsToFocus?.map((skill, idx) => (
+                                                <Badge key={idx} className="bg-green-100 text-green-700 px-3 py-1">
+                                                    {skill}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white/60 p-4 rounded-xl">
+                                        <h3 className="font-bold text-lg text-gray-800 mb-2 flex items-center gap-2">
+                                            <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                                            Personalized Advice
+                                        </h3>
+                                        <p className="text-gray-700 leading-relaxed">
+                                            {results.careerRecommendations.personalizedAdvice}
+                                        </p>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* RIASEC Interpretation */}
+                            {riasec.interpretation && (
+                                <div className="mt-6 p-4 bg-blue-50/80 rounded-xl border border-blue-100">
+                                    <h4 className="font-semibold text-blue-900 mb-2">Career Interest Interpretation</h4>
+                                    <p className="text-sm text-blue-800">{riasec.interpretation}</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </section>
+            )}
 
             {/* Career Interest Profile (RIASEC) */}
             <section>

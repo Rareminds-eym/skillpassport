@@ -30,6 +30,9 @@ import { workValuesQuestions } from './assessment-data/workValuesQuestions';
 import { employabilityQuestions } from './assessment-data/employabilityQuestions';
 import { streamKnowledgeQuestions } from './assessment-data/streamKnowledgeQuestions';
 
+// Import Gemini assessment service
+import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentService';
+
 const AssessmentTest = () => {
     const navigate = useNavigate();
     const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
@@ -195,14 +198,44 @@ const AssessmentTest = () => {
         }
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         setIsSubmitting(true);
-        // Save answers to backend/localStorage
-        localStorage.setItem('assessment_answers', JSON.stringify(answers));
+        
+        try {
+            // Save answers to localStorage first
+            localStorage.setItem('assessment_answers', JSON.stringify(answers));
+            localStorage.setItem('assessment_stream', studentStream);
 
-        setTimeout(() => {
+            // Prepare question banks for Gemini analysis
+            const questionBanks = {
+                riasecQuestions,
+                bigFiveQuestions,
+                workValuesQuestions,
+                employabilityQuestions,
+                streamKnowledgeQuestions
+            };
+
+            // Analyze with Gemini AI
+            const geminiResults = await analyzeAssessmentWithGemini(
+                answers, 
+                studentStream, 
+                questionBanks
+            );
+
+            if (geminiResults) {
+                // Save AI-analyzed results
+                localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
+                console.log('Gemini analysis complete:', geminiResults);
+            } else {
+                console.log('Gemini analysis unavailable, using local calculation');
+            }
+
             navigate('/student/assessment/result');
-        }, 2000);
+        } catch (error) {
+            console.error('Error submitting assessment:', error);
+            // Still navigate even if Gemini fails - local calculation will be used
+            navigate('/student/assessment/result');
+        }
     };
 
     const currentQuestion = currentSection?.questions[currentQuestionIndex];
