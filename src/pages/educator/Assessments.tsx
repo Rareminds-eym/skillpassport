@@ -17,7 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import {
-    createAssignment,
+    createAssignmentsForClasses,
     getAssignmentsByEducator,
     deleteAssignment,
     addAssignmentAttachment,
@@ -29,7 +29,6 @@ import { useAuth } from '../../context/AuthContext';
 import StudentSelectionModal from '../../components/educator/StudentSelectionModal';
 import GradingModal from '@/components/educator/GradingModal';
 import { useEducatorSchool } from '../../hooks/useEducatorSchool';
-import { getEducatorAssignedClassIds } from '../../services/educator/assignmentsService';
 
 // Configuration
 const SKILL_AREAS = ['Creativity', 'Collaboration', 'Critical Thinking', 'Leadership', 'Communication', 'Problem Solving'];
@@ -302,19 +301,27 @@ const Assessments = () => {
 
                 setCurrentEducatorId(educatorId);
 
-                // Fetch assigned classes for this educator
-                const classIds = await getEducatorAssignedClassIds(educatorId);
-                
-                if (classIds.length > 0) {
+                // Fetch educator's school_id first
+                const { data: educatorData, error: educatorFetchError } = await supabase
+                    .from('school_educators')
+                    .select('school_id')
+                    .eq('id', educatorId)
+                    .single();
+
+                if (!educatorFetchError && educatorData?.school_id) {
+                    // Fetch all classes from the educator's school
                     const { data: classesData, error: classesError } = await supabase
                         .from('school_classes')
                         .select('id, name, grade, section')
-                        .in('id', classIds);
+                        .eq('school_id', educatorData.school_id)
+                        .eq('account_status', 'active')
+                        .order('grade', { ascending: true })
+                        .order('section', { ascending: true });
 
                     if (!classesError && classesData) {
                         setAssignedClasses(classesData.map(cls => ({
                             id: cls.id,
-                            name: cls.name || `Grade ${cls.grade} - ${cls.section || 'General'}`
+                            name: cls.name || `Grade ${cls.grade}${cls.section ? ' - ' + cls.section : ''}`
                         })));
                     }
                 }
@@ -405,7 +412,12 @@ const Assessments = () => {
                 return;
             }
 
-            const assignmentData = {
+            if (newTask.assignedTo.length === 0) {
+                alert('Please select at least one class to assign the task.');
+                return;
+            }
+
+            const baseAssignmentData = {
                 title: newTask.title,
                 description: newTask.description,
                 instructions: newTask.instructions || newTask.description,
@@ -416,43 +428,44 @@ const Assessments = () => {
                 total_points: newTask.totalPoints,
                 assignment_type: newTask.assignmentType,
                 skill_outcomes: newTask.skillTags,
-                assign_classes: newTask.assignedTo.length > 0 ? newTask.assignedTo[0] : null, // Store first class ID
                 document_pdf: newTask.documentPdf || null,
                 due_date: newTask.deadline,
                 available_from: newTask.availableFrom || new Date().toISOString(),
                 allow_late_submission: newTask.allowLateSubmissions
             };
 
-            let assignmentId;
-
             if (selectedTask) {
-                // Update existing assignment
+                // Update existing assignment - update school_class_id as well
+                const updateData = {
+                    ...baseAssignmentData,
+                    assign_classes: newTask.assignedTo[0],
+                    school_class_id: newTask.assignedTo[0]
+                };
+
                 const { error } = await supabase
                     .from('assignments')
-                    .update(assignmentData)
+                    .update(updateData)
                     .eq('assignment_id', selectedTask.id);
 
                 if (error) {
                     throw error;
                 }
 
-                assignmentId = selectedTask.id;
-
                 // Update the task in the UI
                 const stats = await getAssignmentStatistics(selectedTask.id);
                 const updatedTask: Task = {
                     id: selectedTask.id,
-                    title: assignmentData.title,
-                    description: assignmentData.description || '',
-                    skillTags: assignmentData.skill_outcomes || [],
+                    title: baseAssignmentData.title,
+                    description: baseAssignmentData.description || '',
+                    skillTags: baseAssignmentData.skill_outcomes || [],
                     status: newTask.status,
-                    assignedTo: newTask.assignedTo,
-                    deadline: assignmentData.due_date,
+                    assignedTo: [newTask.assignedTo[0]],
+                    deadline: baseAssignmentData.due_date,
                     submissions: stats.submitted + stats.graded,
                     pending: stats.submitted,
                     averageScore: stats.averageGrade,
                     totalStudents: stats.total,
-                    totalPoints: assignmentData.total_points,
+                    totalPoints: baseAssignmentData.total_points,
                     attachments: newTask.attachments,
                     rubric: []
                 };
@@ -463,45 +476,48 @@ const Assessments = () => {
                 resetTaskForm();
                 return;
             } else {
-                // Create new assignment
-                const createdAssignment = await createAssignment(assignmentData);
-                assignmentId = createdAssignment.assignment_id;
+                // Create new assignments - one row per selected class
+                const createdAssignments = await createAssignmentsForClasses(baseAssignmentData, newTask.assignedTo);
 
-                // Add attachments if any
-                for (const attachment of newTask.attachments) {
-                    await addAssignmentAttachment(assignmentId, {
-                        file_name: attachment,
-                        file_type: 'application/pdf',
-                        file_size: 0,
-                        file_url: ''
-                    });
+                // Add attachments to each created assignment
+                for (const assignment of createdAssignments) {
+                    for (const attachment of newTask.attachments) {
+                        await addAssignmentAttachment(assignment.assignment_id, {
+                            file_name: attachment,
+                            file_type: 'application/pdf',
+                            file_size: 0,
+                            file_url: ''
+                        });
+                    }
                 }
 
-                // Transform to UI format
-                const uiTask: Task = {
-                    id: assignmentId,
-                    title: assignmentData.title,
-                    description: assignmentData.description || '',
-                    skillTags: assignmentData.skill_outcomes || [],
+                // Transform to UI format - create one UI task per assignment
+                const newUiTasks: Task[] = createdAssignments.map((assignment: any) => ({
+                    id: assignment.assignment_id,
+                    title: assignment.title,
+                    description: assignment.description || '',
+                    skillTags: assignment.skill_outcomes || [],
                     status: newTask.status,
-                    assignedTo: newTask.assignedTo,
-                    deadline: assignmentData.due_date,
+                    assignedTo: [assignment.school_class_id],
+                    deadline: assignment.due_date,
                     submissions: 0,
                     pending: 0,
                     averageScore: 0,
                     totalStudents: 0,
-                    totalPoints: assignmentData.total_points,
+                    totalPoints: assignment.total_points,
                     attachments: newTask.attachments,
                     rubric: []
-                };
+                }));
 
-                setTasks([...tasks, uiTask]);
+                setTasks([...tasks, ...newUiTasks]);
                 setShowTaskModal(false);
 
-                // Open student selection modal after creating assignment
-                setNewlyCreatedAssignmentId(assignmentId);
-                setSelectedClassesForAssignment(newTask.assignedTo);
-                setShowStudentSelectionModal(true);
+                // Open student selection modal for the first created assignment
+                if (createdAssignments.length > 0) {
+                    setNewlyCreatedAssignmentId(createdAssignments[0].assignment_id);
+                    setSelectedClassesForAssignment([createdAssignments[0].school_class_id]);
+                    setShowStudentSelectionModal(true);
+                }
             }
         } catch (err) {
             console.error('Error creating assignment:', err);
