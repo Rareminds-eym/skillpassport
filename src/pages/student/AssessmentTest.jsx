@@ -330,56 +330,82 @@ const AssessmentTest = () => {
                     </div>
                 </div>
 
-                {/* Section Steps with Progress Lines */}
-                <div className="relative flex items-start justify-between">
-                    {/* Connector Lines as Progress Bar */}
-                    <div className="absolute top-5 left-0 right-0 flex items-center" style={{ paddingLeft: '10%', paddingRight: '10%' }}>
-                        {sections.slice(0, -1).map((_, idx) => (
-                            <div 
-                                key={idx}
-                                className="flex-1 h-1.5 rounded-full bg-gray-200 overflow-hidden"
-                            >
-                                <motion.div
-                                    className={`h-full rounded-full ${idx < currentSectionIndex ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gray-200'}`}
-                                    initial={{ width: 0 }}
-                                    animate={{ width: idx < currentSectionIndex ? '100%' : '0%' }}
-                                    transition={{ duration: 0.5, ease: "easeOut" }}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                    
-                    {/* Steps */}
-                    {sections.map((section, idx) => {
-                        const isCompleted = idx < currentSectionIndex;
-                        const isCurrent = idx === currentSectionIndex;
-                        const isUpcoming = idx > currentSectionIndex;
-                        
-                        return (
-                            <div key={section.id} className="flex flex-col items-center z-10" style={{ width: `${100 / sections.length}%` }}>
-                                <div className={`
-                                    w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 bg-white
-                                    ${isCompleted ? 'bg-green-500 text-white shadow-lg shadow-green-200' : ''}
-                                    ${isCurrent ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 ring-4 ring-indigo-100' : ''}
-                                    ${isUpcoming ? 'bg-gray-100 text-gray-400 border-2 border-gray-200' : ''}
-                                `}>
-                                    {isCompleted ? (
-                                        <CheckCircle2 className="w-5 h-5" />
-                                    ) : (
-                                        <span className="text-sm font-bold">{idx + 1}</span>
+                {/* Section Steps with Progress Lines - Proper Alignment */}
+                <div className="relative">
+                    {/* Circles and Lines Row */}
+                    <div className="flex items-center">
+                        {sections.map((section, idx) => {
+                            const isCompleted = idx < currentSectionIndex;
+                            const isCurrent = idx === currentSectionIndex;
+                            const isUpcoming = idx > currentSectionIndex;
+                            
+                            let lineProgress = 0;
+                            if (idx < currentSectionIndex) {
+                                lineProgress = 100;
+                            } else if (idx === currentSectionIndex) {
+                                const totalQuestions = sections[idx].questions.length;
+                                lineProgress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
+                            }
+                            
+                            return (
+                                <div key={section.id} className={`flex items-center ${idx < sections.length - 1 ? 'flex-1' : ''}`}>
+                                    {/* Step Circle */}
+                                    <div className={`
+                                        w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 border-2 shrink-0
+                                        ${isCompleted ? 'bg-green-500 border-green-500 text-white shadow-md' : ''}
+                                        ${isCurrent ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg ring-4 ring-indigo-100' : ''}
+                                        ${isUpcoming ? 'bg-white border-gray-300 text-gray-500' : ''}
+                                    `}>
+                                        {isCompleted ? (
+                                            <CheckCircle2 className="w-5 h-5" />
+                                        ) : (
+                                            <span className="text-sm font-bold">{idx + 1}</span>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Connector Line */}
+                                    {idx < sections.length - 1 && (
+                                        <div className="flex-1 h-1.5 rounded-full bg-gray-200 overflow-hidden mx-2">
+                                            <motion.div
+                                                className={`h-full rounded-full ${
+                                                    idx < currentSectionIndex 
+                                                        ? 'bg-green-500' 
+                                                        : idx === currentSectionIndex 
+                                                            ? 'bg-indigo-500'
+                                                            : ''
+                                                }`}
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${lineProgress}%` }}
+                                                transition={{ duration: 0.3, ease: "easeOut" }}
+                                            />
+                                        </div>
                                     )}
                                 </div>
-                                <span className={`
-                                    text-xs mt-2 font-medium text-center leading-tight hidden sm:block
-                                    ${isCompleted ? 'text-green-600' : ''}
-                                    ${isCurrent ? 'text-indigo-600' : ''}
-                                    ${isUpcoming ? 'text-gray-400' : ''}
-                                `}>
-                                    {section.title.split(' ')[0]}
-                                </span>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
+                    
+                    {/* Labels Row - Separate for proper alignment */}
+                    <div className="hidden sm:flex items-start mt-2">
+                        {sections.map((section, idx) => {
+                            const isCompleted = idx < currentSectionIndex;
+                            const isCurrent = idx === currentSectionIndex;
+                            const isUpcoming = idx > currentSectionIndex;
+                            
+                            return (
+                                <div key={`label-${section.id}`} className={`${idx < sections.length - 1 ? 'flex-1' : ''}`}>
+                                    <span className={`
+                                        text-[10px] font-semibold text-center leading-tight block w-10
+                                        ${isCompleted ? 'text-green-700' : ''}
+                                        ${isCurrent ? 'text-indigo-700' : ''}
+                                        ${isUpcoming ? 'text-gray-500' : ''}
+                                    `}>
+                                        {section.title.split(' ')[0]}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
