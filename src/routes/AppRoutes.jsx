@@ -59,6 +59,10 @@ const LoginStudent = lazy(() => import("../pages/auth/LoginStudent"));
 const LoginRecruiter = lazy(() => import("../pages/auth/LoginRecruiter"));
 const LoginAdmin = lazy(() => import("../pages/auth/LoginAdmin"));
 const Register = lazy(() => import("../pages/auth/components/SignIn/Register"));
+const UnifiedLogin = lazy(() => import("../pages/auth/UnifiedLogin"));
+const UnifiedForgotPassword = lazy(() => import("../pages/auth/UnifiedForgotPassword"));
+const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
+const DebugRoles = lazy(() => import("../pages/auth/DebugRoles"));
 const SignupRecruiter = lazy(() =>
   import("../pages/auth/components/SignIn/recruitment/SignupRecruiter")
 );
@@ -270,11 +274,21 @@ const AppRoutes = () => {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/login/student" element={<LoginStudent />} />
-          <Route path="/login/recruiter" element={<LoginRecruiter />} />
+          
+          {/* Unified Login */}
+          <Route path="/login" element={<UnifiedLogin />} />
+          <Route path="/forgot-password" element={<UnifiedForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/debug-roles" element={<DebugRoles />} />
+          
+          {/* Deprecated login routes - redirect to unified login */}
+          <Route path="/login/student" element={<Navigate to="/login" replace />} />
+          <Route path="/login/recruiter" element={<Navigate to="/login" replace />} />
+          <Route path="/login/admin" element={<Navigate to="/login" replace />} />
+          <Route path="/login/educator" element={<Navigate to="/login" replace />} />
+          
+          {/* Registration routes */}
           <Route path="/register/recruitment" element={<Register />} />
-          <Route path="/login/admin" element={<LoginAdmin />} />
-          <Route path="/login/educator" element={<EducatorLogin />} />
           <Route path="/register" element={<Register />} />
           <Route path="/register/:type" element={<Register />} />
           <Route
