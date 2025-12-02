@@ -288,38 +288,39 @@ const Opportunities = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-8">
-        <div className="flex gap-6">
-          {/* Left Sidebar */}
-          <div className="w-64 flex-shrink-0">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden sticky top-20">
+        {/* Tab Switcher */}
+        <div className="mb-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-1.5">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setActiveTab('my-jobs')}
-                className={`w-full px-6 py-4 text-left font-medium transition-all flex items-center gap-3 ${
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
                   activeTab === 'my-jobs'
-                    ? 'bg-slate-700 text-white'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
+                    : 'bg-transparent text-gray-600 hover:bg-gray-50'
                 }`}
               >
                 <Briefcase className="w-5 h-5" />
-                My Jobs
+                <span>My Jobs</span>
               </button>
               <button
                 onClick={() => setActiveTab('my-applications')}
-                className={`w-full px-6 py-4 text-left font-medium transition-all flex items-center gap-3 border-t border-gray-200 ${
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
                   activeTab === 'my-applications'
-                    ? 'bg-slate-700 text-white'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
+                    : 'bg-transparent text-gray-600 hover:bg-gray-50'
                 }`}
               >
                 <FileText className="w-5 h-5" />
-                My Applications
+                <span>My Applications</span>
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Main Content Area */}
-          <div className="flex-1">
-            {activeTab === 'my-jobs' && (
+        {/* Main Content Area */}
+        <div>
+          {activeTab === 'my-jobs' && (
               <MyJobsContent
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
@@ -361,7 +362,6 @@ const Opportunities = () => {
                 queryClient={queryClient}
               />
             )}
-          </div>
         </div>
       </div>
     </div>

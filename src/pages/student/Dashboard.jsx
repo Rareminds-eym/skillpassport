@@ -69,11 +69,16 @@ import { useNavigate } from "react-router-dom";
 import { useStudentTraining } from "../../hooks/useStudentTraining";
 import { useStudentCertificates } from "../../hooks/useStudentCertificates";
 import { useStudentProjects } from "../../hooks/useStudentProjects";
+import AnalyticsView from "../../components/Students/components/AnalyticsView";
+import { BarChart3, LayoutDashboard } from "lucide-react";
 // Debug utilities removed for production cleanliness
 
 const StudentDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // State for view toggle (dashboard or analytics)
+  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' or 'analytics'
 
   // Check if viewing someone else's profile (from QR scan)
   const isViewingOthersProfile =
@@ -2301,6 +2306,37 @@ const StudentDashboard = () => {
       />
 
       <div className="max-w-7xl mx-auto">
+        {/* View Switcher Tabs */}
+        {!isViewingOthersProfile && (
+          <div className="mb-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-1.5">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setActiveView('dashboard')}
+                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                    activeView === 'dashboard'
+                      ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
+                      : 'bg-transparent text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  <span>Dashboard</span>
+                </button>
+                <button
+                  onClick={() => setActiveView('analytics')}
+                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                    activeView === 'analytics'
+                      ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
+                      : 'bg-transparent text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  <span>Analytics</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Navigation Bar */}
         {/* <div className="mb-6">
           <Card className="shadow-lg">
@@ -2337,9 +2373,13 @@ const StudentDashboard = () => {
           </Card>
         </div> */}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT COLUMN - User Activity & Updates - Only show for own profile */}
-          {!isViewingOthersProfile && (
+        {/* Conditional Rendering based on active view */}
+        {activeView === 'analytics' && !isViewingOthersProfile ? (
+          <AnalyticsView studentId={studentData?.id} userEmail={userEmail} />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* LEFT COLUMN - User Activity & Updates - Only show for own profile */}
+            {!isViewingOthersProfile && (
             <div className="lg:col-span-1 space-y-6">
               {/* Sticky container for both cards */}
               <div className="sticky top-20 z-30 flex flex-col gap-6">
@@ -2636,6 +2676,7 @@ const StudentDashboard = () => {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Modals for editing sections */}
