@@ -16,11 +16,9 @@ import {
     Code
 } from 'lucide-react';
 import { Button } from '../../components/Students/components/ui/button';
-import { Progress } from '../../components/Students/components/ui/progress';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 import { Label } from '../../components/Students/components/ui/label';
-import { Badge } from '../../components/Students/components/ui/badge';
 
 // Import question banks
 import { riasecQuestions } from './assessment-data/riasecQuestions';
@@ -316,26 +314,72 @@ const AssessmentTest = () => {
 
     return (
         <div className="min-h-screen bg-gray-50/50 flex flex-col items-center py-8 px-4">
-            {/* Top Progress Bar */}
-            <div className="w-full max-w-4xl mb-8">
-                <div className="flex justify-between text-sm font-medium text-gray-500 mb-2">
-                    <span>Overall Progress</span>
-                    <span>{Math.round(progress)}% Complete</span>
+            {/* Modern Progress Header */}
+            <div className="w-full max-w-4xl mb-6">
+                {/* Progress Stats */}
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                            <Award className="w-4 h-4 text-indigo-600" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-700">Career Assessment</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-full">
+                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+                        <span className="text-sm font-semibold text-indigo-700">{Math.round(progress)}% Complete</span>
+                    </div>
                 </div>
-                <Progress value={progress} className="h-2 bg-gray-200" />
 
-                {/* Section Pills */}
-                <div className="flex gap-2 mt-4 flex-wrap">
-                    {sections.map((section, idx) => (
-                        <Badge
-                            key={section.id}
-                            variant={idx === currentSectionIndex ? "default" : idx < currentSectionIndex ? "secondary" : "outline"}
-                            className={`${idx === currentSectionIndex ? 'bg-indigo-600' : idx < currentSectionIndex ? 'bg-green-100 text-green-700' : ''}`}
-                        >
-                            {idx < currentSectionIndex && <CheckCircle2 className="w-3 h-3 mr-1" />}
-                            {section.title}
-                        </Badge>
-                    ))}
+                {/* Section Steps with Progress Lines */}
+                <div className="relative flex items-start justify-between">
+                    {/* Connector Lines as Progress Bar */}
+                    <div className="absolute top-5 left-0 right-0 flex items-center" style={{ paddingLeft: '10%', paddingRight: '10%' }}>
+                        {sections.slice(0, -1).map((_, idx) => (
+                            <div 
+                                key={idx}
+                                className="flex-1 h-1.5 rounded-full bg-gray-200 overflow-hidden"
+                            >
+                                <motion.div
+                                    className={`h-full rounded-full ${idx < currentSectionIndex ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gray-200'}`}
+                                    initial={{ width: 0 }}
+                                    animate={{ width: idx < currentSectionIndex ? '100%' : '0%' }}
+                                    transition={{ duration: 0.5, ease: "easeOut" }}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                    
+                    {/* Steps */}
+                    {sections.map((section, idx) => {
+                        const isCompleted = idx < currentSectionIndex;
+                        const isCurrent = idx === currentSectionIndex;
+                        const isUpcoming = idx > currentSectionIndex;
+                        
+                        return (
+                            <div key={section.id} className="flex flex-col items-center z-10" style={{ width: `${100 / sections.length}%` }}>
+                                <div className={`
+                                    w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 bg-white
+                                    ${isCompleted ? 'bg-green-500 text-white shadow-lg shadow-green-200' : ''}
+                                    ${isCurrent ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 ring-4 ring-indigo-100' : ''}
+                                    ${isUpcoming ? 'bg-gray-100 text-gray-400 border-2 border-gray-200' : ''}
+                                `}>
+                                    {isCompleted ? (
+                                        <CheckCircle2 className="w-5 h-5" />
+                                    ) : (
+                                        <span className="text-sm font-bold">{idx + 1}</span>
+                                    )}
+                                </div>
+                                <span className={`
+                                    text-xs mt-2 font-medium text-center leading-tight hidden sm:block
+                                    ${isCompleted ? 'text-green-600' : ''}
+                                    ${isCurrent ? 'text-indigo-600' : ''}
+                                    ${isUpcoming ? 'text-gray-400' : ''}
+                                `}>
+                                    {section.title.split(' ')[0]}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
