@@ -69,7 +69,7 @@ const Header = ({ activeTab, setActiveTab }) => {
       "career-ai": "✨",
       assignments: "📋",
       messages: "💬",
-      analytics: "📊",
+      clubs: "🎭",
     };
     return icons[tabId] || "📄";
   };
@@ -85,7 +85,7 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: "assignments", label: "My Class" },
     {id: "clubs", label: "Co-Curriculars"},
     { id: "messages", label: "Messages" },
-    { id: "analytics", label: "Analytics" },
+    // Analytics removed - now integrated in Dashboard with tabs
   ];
 
   return (
@@ -147,8 +147,6 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/career-ai");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
-                  } else if (tab.id === "analytics") {
-                    navigate("/student/analytics");
                   }
                 }}
                 className={`relative py-2 px-1 lg:px-1.5 xl:px-2 text-xs lg:text-xs xl:text-sm font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === tab.id ? "font-semibold" : ""
@@ -212,8 +210,6 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/career-ai");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
-                  } else if (tab.id === "analytics") {
-                    navigate("/student/analytics");
                   }
                 }}
                 className={`relative py-2 px-3 text-xs font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none whitespace-nowrap flex-shrink-0 ${activeTab === tab.id ? "font-semibold" : ""
@@ -357,8 +353,6 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/clubs");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
-                  } else if (tab.id === "analytics") {
-                    navigate("/student/analytics");
                   }
                   setMobileMenuOpen(false);
                 }}
