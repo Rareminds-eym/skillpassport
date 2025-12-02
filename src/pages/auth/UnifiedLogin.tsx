@@ -1,7 +1,7 @@
 import { useState, FormEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
-import { signIn } from '../../services/unifiedAuthService';
+import { Eye, EyeOff, Mail, Lock, AlertCircle, Loader2, UserCircle } from 'lucide-react';
+import { signIn, UserRole } from '../../services/unifiedAuthService';
 import { getUserRole } from '../../services/roleLookupService';
 import { redirectToRoleDashboard } from '../../utils/roleBasedRouter';
 import { useAuth } from '../../context/AuthContext';
@@ -12,8 +12,6 @@ interface LoginState {
   showPassword: boolean;
   loading: boolean;
   error: string;
-  showRoleSelection: boolean;
-  availableRoles: Array<{ role: UserRole; userData: any }>;
   selectedRole: UserRole | null;
 }
 
@@ -27,17 +25,44 @@ const UnifiedLogin = () => {
     showPassword: false,
     loading: false,
     error: '',
-    showRoleSelection: false,
-    availableRoles: [],
     selectedRole: null
   });
+
+  const allRoles: UserRole[] = [
+    'student',
+    'recruiter',
+    'educator',
+    'school_admin',
+    'college_admin',
+    'university_admin'
+  ];
+
+  const getRoleDisplayName = (role: UserRole): string => {
+    const roleNames: Record<UserRole, string> = {
+      student: 'Student',
+      recruiter: 'Recruiter',
+      educator: 'Educator',
+      school_admin: 'School Administrator',
+      college_admin: 'College Administrator',
+      university_admin: 'University Administrator'
+    };
+    return roleNames[role];
+  };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setState(prev => ({
       ...prev,
       [name]: value,
-      error: '' // Clear error on input change
+      error: ''
+    }));
+  };
+
+  const handleRoleChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    setState(prev => ({
+      ...prev,
+      selectedRole: e.target.value as UserRole,
+      error: ''
     }));
   };
 
@@ -60,6 +85,15 @@ const UnifiedLogin = () => {
       return;
     }
 
+    // Validate role selection
+    if (!state.selectedRole) {
+      setState(prev => ({
+        ...prev,
+        error: 'Please select a role'
+      }));
+      return;
+    }
+
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
@@ -75,20 +109,13 @@ const UnifiedLogin = () => {
         return;
       }
 
-      // Step 2: Determine user role
+      // Step 2: Determine user roles
       const roleLookup = await getUserRole(authResult.user.id, authResult.user.email);
 
-      // Debug logging
-      console.log('🔍 Role lookup result:', {
-        role: roleLookup.role,
-        roles: roleLookup.roles,
-        hasMultipleRoles: roleLookup.roles && roleLookup.roles.length > 1,
-        userData: roleLookup.userData,
-        allUserData: roleLookup.allUserData
-      });
+      console.log('🔍 Role lookup result:', roleLookup);
 
-      // Handle error
-      if (roleLookup.error) {
+      // Handle error - no roles found
+      if (roleLookup.error || (!roleLookup.role && (!roleLookup.roles || roleLookup.roles.length === 0))) {
         console.error('❌ Role lookup error:', roleLookup.error);
         setState(prev => ({
           ...prev,
@@ -98,44 +125,43 @@ const UnifiedLogin = () => {
         return;
       }
 
-      // Handle multiple roles - show role selection
-      if (roleLookup.roles && roleLookup.roles.length > 1 && roleLookup.allUserData) {
-        console.log('✅ Multiple roles detected, showing selection screen');
-        const rolesWithData = roleLookup.roles.map((role, index) => ({
-          role,
-          userData: roleLookup.allUserData![index]
-        }));
+      // Step 3: Check if user has the selected role
+      let userHasSelectedRole = false;
+      let userDataForRole = null;
 
+      if (roleLookup.roles && roleLookup.roles.length > 0 && roleLookup.allUserData) {
+        // Multiple roles
+        const roleIndex = roleLookup.roles.indexOf(state.selectedRole);
+        if (roleIndex !== -1) {
+          userHasSelectedRole = true;
+          userDataForRole = roleLookup.allUserData[roleIndex];
+        }
+      } else if (roleLookup.role === state.selectedRole && roleLookup.userData) {
+        // Single role matches
+        userHasSelectedRole = true;
+        userDataForRole = roleLookup.userData;
+      }
+
+      if (!userHasSelectedRole || !state.selectedRole) {
         setState(prev => ({
           ...prev,
           loading: false,
-          showRoleSelection: true,
-          availableRoles: rolesWithData
+          error: `Not authorized. You do not have access to the ${state.selectedRole ? getRoleDisplayName(state.selectedRole) : 'selected'} role.`
         }));
         return;
       }
 
-      // Handle single role
-      if (!roleLookup.role || !roleLookup.userData) {
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Account not properly configured. Contact support'
-        }));
-        return;
-      }
-
-      // Step 3: Store user data in auth context
+      // Step 4: Store user data in auth context
       const userData = {
-        ...roleLookup.userData,
-        role: roleLookup.role,
+        ...userDataForRole,
+        role: state.selectedRole,
         user_id: authResult.user.id
       };
 
       login(userData);
 
-      // Step 4: Redirect to role-specific dashboard
-      redirectToRoleDashboard(roleLookup.role, navigate);
+      // Step 5: Redirect to role-specific dashboard
+      redirectToRoleDashboard(state.selectedRole, navigate);
 
     } catch (error) {
       console.error('Login error:', error);
@@ -151,47 +177,13 @@ const UnifiedLogin = () => {
     navigate('/forgot-password');
   };
 
-  const handleRoleSelection = (role: UserRole, userData: any) => {
-    setState(prev => ({ ...prev, loading: true }));
-
-    // Store user data in auth context
-    const completeUserData = {
-      ...userData,
-      role: role
-    };
-
-    login(completeUserData);
-
-    // Redirect to role-specific dashboard
-    redirectToRoleDashboard(role, navigate);
-  };
-
-  const getRoleDisplayName = (role: UserRole): string => {
-    const roleNames: Record<UserRole, string> = {
-      student: 'Student',
-      recruiter: 'Recruiter',
-      educator: 'Educator',
-      school_admin: 'School Administrator',
-      college_admin: 'College Administrator',
-      university_admin: 'University Administrator'
-    };
-    return roleNames[role];
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-50 px-4 py-8">
       <div className="w-full max-w-md">
         {/* Logo/Brand */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {state.showRoleSelection ? 'Select Your Role' : 'Welcome Back'}
-          </h1>
-          <p className="text-gray-600">
-            {state.showRoleSelection 
-              ? 'You have multiple roles. Please select one to continue'
-              : 'Sign in to access your dashboard'
-            }
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+          <p className="text-gray-600">Sign in to access your dashboard</p>
         </div>
 
         {/* Login Card */}
@@ -204,41 +196,8 @@ const UnifiedLogin = () => {
             </div>
           )}
 
-          {/* Role Selection */}
-          {state.showRoleSelection ? (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600 mb-4">
-                Your account has access to multiple roles. Please select the role you want to use:
-              </p>
-              {state.availableRoles.map(({ role, userData }) => (
-                <button
-                  key={role}
-                  onClick={() => handleRoleSelection(role, userData)}
-                  disabled={state.loading}
-                  className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 text-left disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{getRoleDisplayName(role)}</h3>
-                      {userData.name && (
-                        <p className="text-sm text-gray-600 mt-1">{userData.name}</p>
-                      )}
-                      {userData.school_id && (
-                        <p className="text-xs text-gray-500 mt-1">School ID: {userData.school_id}</p>
-                      )}
-                    </div>
-                    <div className="text-blue-600">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          ) : (
-            /* Login Form */
-            <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email Input */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -300,6 +259,42 @@ const UnifiedLogin = () => {
               </div>
             </div>
 
+            {/* Role Selection */}
+            <div>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
+                Select Role
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <UserCircle className="h-5 w-5 text-gray-400" />
+                </div>
+                <select
+                  id="role"
+                  name="role"
+                  value={state.selectedRole || ''}
+                  onChange={handleRoleChange}
+                  disabled={state.loading}
+                  required
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500 transition-colors appearance-none bg-white"
+                >
+                  <option value="">Choose your role...</option>
+                  {allRoles.map((role) => (
+                    <option key={role} value={role}>
+                      {getRoleDisplayName(role)}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Select the role you want to log in as
+              </p>
+            </div>
+
             {/* Forgot Password Link */}
             <div className="flex items-center justify-end">
               <button
@@ -327,26 +322,23 @@ const UnifiedLogin = () => {
                 <span>Sign In</span>
               )}
             </button>
-            </form>
-          )}
+          </form>
 
           {/* Additional Links */}
-          {!state.showRoleSelection && (
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
-                <a href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-                  Sign up
-                </a>
-              </p>
-            </div>
-          )}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Don't have an account?{' '}
+              <a href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+                Sign up
+              </a>
+            </p>
+          </div>
         </div>
 
         {/* Footer */}
-        {/* <div className="mt-8 text-center text-sm text-gray-500">
+        <div className="mt-8 text-center text-sm text-gray-500">
           <p>© 2024 Your Company. All rights reserved.</p>
-        </div> */}
+        </div>
       </div>
     </div>
   );

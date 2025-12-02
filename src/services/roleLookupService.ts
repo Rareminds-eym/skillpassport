@@ -26,6 +26,7 @@ export interface RoleLookupResult {
  */
 export const getUserRole = async (userId: string, email: string): Promise<RoleLookupResult> => {
   try {
+    console.log('🔍 getUserRole called with:', { userId, email });
     const foundRoles: UserRole[] = [];
     const foundUserData: UserData[] = [];
 
@@ -111,23 +112,38 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
     }
 
     // 5. Check users table for admin roles
+    // Note: users table uses 'id' column that references auth.users(id) directly
+    console.log('🔍 Checking users table for admin roles, userId:', userId, 'email:', email);
+    
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .maybeSingle();
+    
+    console.log('👤 Users table result:', { userData, userError });
 
     if (!userError && userData && userData.role) {
       const adminRole = userData.role as UserRole;
+      console.log('🎭 Found role in users table:', adminRole);
       if (['school_admin', 'college_admin', 'university_admin'].includes(adminRole)) {
         foundRoles.push(adminRole);
         foundUserData.push({
           id: userData.id,
-          email: userData.email,
-          name: userData.name,
+          email: userData.email || email,
+          name: userData.firstName && userData.lastName 
+            ? `${userData.firstName} ${userData.lastName}`
+            : userData.firstName || userData.lastName || undefined,
           role: adminRole,
           ...userData
         });
+      } else {
+        console.log('⚠️ User has role but not an admin role:', adminRole);
+      }
+    } else {
+      console.log('⚠️ No admin role found in users table');
+      if (userData) {
+        console.log('⚠️ User data found but no role field:', userData);
       }
     }
 

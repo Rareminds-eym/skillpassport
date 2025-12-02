@@ -101,11 +101,16 @@ const DebugRoles = () => {
       }
 
       // Users (admin roles)
-      const { data: userData } = await supabase
+      // Note: users table uses 'id' column that references auth.users(id) directly
+      console.log('Checking users table for userId:', userId);
+      
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .maybeSingle();
+
+      console.log('Users table result:', { userData, userError });
 
       if (userData && userData.role) {
         const adminRoles = ['school_admin', 'college_admin', 'university_admin'];
@@ -115,7 +120,13 @@ const DebugRoles = () => {
             table: 'users',
             data: userData
           });
+        } else {
+          console.log('User has role but not an admin role:', userData.role);
         }
+      } else if (userData) {
+        console.log('User found but no role field:', userData);
+      } else {
+        console.log('No user found in users table');
       }
 
       // Test the getUserRole function
