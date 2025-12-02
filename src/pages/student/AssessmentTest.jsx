@@ -372,10 +372,13 @@ const AssessmentTest = () => {
                                                     className="space-y-3"
                                                 >
                                                     {currentSection.responseScale.map((option) => (
-                                                        <div key={option.value} className={`flex items-center space-x-3 border rounded-xl p-4 transition-all cursor-pointer hover:bg-gray-50 ${answers[questionId] === option.value
-                                                            ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20'
-                                                            : 'border-gray-200'
-                                                            }`}>
+                                                        <div
+                                                            key={option.value}
+                                                            onClick={() => handleAnswer(option.value)}
+                                                            className={`flex items-center space-x-3 border rounded-xl p-4 transition-all cursor-pointer hover:bg-gray-50 ${answers[questionId] === option.value
+                                                                ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20'
+                                                                : 'border-gray-200'
+                                                                }`}>
                                                             <RadioGroupItem value={option.value.toString()} id={`opt-${option.value}`} className="text-indigo-600" />
                                                             <Label htmlFor={`opt-${option.value}`} className="flex-1 cursor-pointer font-medium text-gray-700">
                                                                 {option.label}
@@ -391,10 +394,13 @@ const AssessmentTest = () => {
                                                     className="space-y-3"
                                                 >
                                                     {currentQuestion.options.map((option, idx) => (
-                                                        <div key={idx} className={`flex items-center space-x-3 border rounded-xl p-4 transition-all cursor-pointer hover:bg-gray-50 ${answers[questionId] === option
-                                                            ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20'
-                                                            : 'border-gray-200'
-                                                            }`}>
+                                                        <div
+                                                            key={idx}
+                                                            onClick={() => handleAnswer(option)}
+                                                            className={`flex items-center space-x-3 border rounded-xl p-4 transition-all cursor-pointer hover:bg-gray-50 ${answers[questionId] === option
+                                                                ? 'border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-600/20'
+                                                                : 'border-gray-200'
+                                                                }`}>
                                                             <RadioGroupItem value={option} id={`opt-${idx}`} className="text-indigo-600" />
                                                             <Label htmlFor={`opt-${idx}`} className="flex-1 cursor-pointer font-medium text-gray-700">
                                                                 {option}
