@@ -75,6 +75,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               icon: UserGroupIcon,
             },
             {
+              name: "Class Management",
+              path: "/school-admin/classes/management",
+              icon: AcademicCapIcon,
+            },
+            {
               name: "Attendance & Reports",
               path: "/school-admin/students/attendance-reports",
               icon: ChartBarIcon,

@@ -32,7 +32,13 @@ export const AuthProvider = ({ children }) => {
           if (storedUser) {
             const parsedUser = JSON.parse(storedUser);
             // Verify the stored user matches the session user
-            if (parsedUser.id === session.user.id) {
+            // Check user_id (for admins) or id (for regular users) or email
+            const userMatches = 
+              parsedUser.user_id === session.user.id || 
+              parsedUser.id === session.user.id ||
+              parsedUser.email === session.user.email;
+            
+            if (userMatches) {
               setUser(parsedUser);
             } else {
               // Mismatch - clear and use session data
@@ -55,10 +61,24 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('user', JSON.stringify(userData));
           }
         } else {
-          // No session - clear any stored user data
-          setUser(null);
-          localStorage.removeItem('user');
-          localStorage.removeItem('userEmail');
+          // No session - check for demo users in localStorage
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            // Allow demo users (they don't have Supabase sessions)
+            if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
+              setUser(parsedUser);
+            } else {
+              // Real user but no session - clear
+              setUser(null);
+              localStorage.removeItem('user');
+              localStorage.removeItem('userEmail');
+            }
+          } else {
+            setUser(null);
+            localStorage.removeItem('user');
+            localStorage.removeItem('userEmail');
+          }
         }
       } catch (err) {
         console.error('Error initializing auth:', err);
@@ -84,12 +104,26 @@ export const AuthProvider = ({ children }) => {
           const storedUser = localStorage.getItem('user');
           if (storedUser) {
             const parsedUser = JSON.parse(storedUser);
-            if (parsedUser.id === session.user.id) {
+            // Check user_id (for admins) or id (for regular users) or email
+            const userMatches = 
+              parsedUser.user_id === session.user.id || 
+              parsedUser.id === session.user.id ||
+              parsedUser.email === session.user.email;
+            
+            if (userMatches) {
               setUser(parsedUser);
             }
           }
         } else if (event === 'SIGNED_OUT') {
-          // User signed out - clear state
+          // User signed out - clear state (but preserve demo users)
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            // Don't clear demo users
+            if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
+              return;
+            }
+          }
           setUser(null);
           localStorage.removeItem('user');
           localStorage.removeItem('userEmail');

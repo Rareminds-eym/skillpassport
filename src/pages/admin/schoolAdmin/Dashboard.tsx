@@ -29,24 +29,29 @@ const SchoolDashboard: React.FC = () => {
         return;
       }
 
-      // If not in user object, fetch from database based on user email
+      // Fetch school_id from school_educators table using user_id
       try {
         const { data, error } = await supabase
-          .from('users')
+          .from('school_educators')
           .select('school_id')
-          .eq('email', user.email)
-          .single();
+          .eq('user_id', user.id)
+          .maybeSingle(); // Use maybeSingle() instead of single() to handle 0 rows gracefully
 
         if (error) {
           console.error('Error fetching school_id:', error);
+          // Set schoolId to undefined so dashboard shows data without school filter
+          setSchoolId(undefined);
         } else if (data?.school_id) {
           console.log('School ID from database:', data.school_id);
           setSchoolId(data.school_id);
         } else {
-          console.warn('No school_id found for user');
+          console.warn('No school_id found for user - showing all data');
+          // Set schoolId to undefined so dashboard shows data without school filter
+          setSchoolId(undefined);
         }
       } catch (err) {
         console.error('Failed to fetch school_id:', err);
+        setSchoolId(undefined);
       }
     };
 
