@@ -375,6 +375,9 @@ const AssessmentResult = () => {
                         <div className="space-y-4">
                             {Object.entries(riasec.scores).map(([type, score]) => {
                                 const isTop3 = riasec.topThree.includes(type);
+                                // Calculate max possible score (assuming 5 questions per type, max 5 points each = 25)
+                                const maxScore = riasec.maxScore || 25;
+                                const displayScore = typeof score === 'number' ? Math.round(score) : score;
                                 return (
                                     <div key={type}>
                                         <div className="flex justify-between items-center mb-2">
@@ -382,10 +385,10 @@ const AssessmentResult = () => {
                                                 <span className="font-semibold text-gray-800">{type} - {riasecNames[type]}</span>
                                                 {isTop3 && <Badge className="bg-green-100 text-green-700">Top 3</Badge>}
                                             </div>
-                                            <span className="text-sm font-medium text-gray-600">{score.toFixed(1)} / 5.0</span>
+                                            <span className="text-sm font-medium text-gray-600">{displayScore} / {maxScore}</span>
                                         </div>
                                         <Progress
-                                            value={(score / 5) * 100}
+                                            value={(score / maxScore) * 100}
                                             className="h-3"
                                             indicatorClassName={isTop3 ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gray-400'}
                                         />

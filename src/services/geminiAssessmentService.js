@@ -192,8 +192,16 @@ const buildAnalysisPrompt = (assessmentData) => {
 
 ## Student Stream: ${assessmentData.stream.toUpperCase()}
 
-## RIASEC Career Interest Responses (1-5 scale: 1=Strongly Dislike, 5=Strongly Like):
+## RIASEC Career Interest Responses (1-5 scale: 1=Strongly Dislike, 2=Dislike, 3=Neutral, 4=Like, 5=Strongly Like):
 ${JSON.stringify(assessmentData.riasecAnswers, null, 2)}
+
+RIASEC SCORING RULES:
+- Response 1 (Strongly Dislike): 0 points - DO NOT count
+- Response 2 (Dislike): 0 points - DO NOT count  
+- Response 3 (Neutral): 0 points
+- Response 4 (Like): 1 point
+- Response 5 (Strongly Like): 2 points
+- Maximum score per type = 20 (10 questions × 2 points max)
 
 ## Big Five Personality Responses (1-5 scale: 1=Very Inaccurate, 5=Very Accurate):
 ${JSON.stringify(assessmentData.bigFiveAnswers, null, 2)}
@@ -216,15 +224,16 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
 {
   "riasec": {
     "scores": {
-      "R": <number 0-5>,
-      "I": <number 0-5>,
-      "A": <number 0-5>,
-      "S": <number 0-5>,
-      "E": <number 0-5>,
-      "C": <number 0-5>
+      "R": <TOTAL using scoring rules: 0 for responses 1-3, 1 for response 4, 2 for response 5>,
+      "I": <TOTAL using scoring rules>,
+      "A": <TOTAL using scoring rules>,
+      "S": <TOTAL using scoring rules>,
+      "E": <TOTAL using scoring rules>,
+      "C": <TOTAL using scoring rules>
     },
-    "code": "<3-letter RIASEC code>",
-    "topThree": ["<letter>", "<letter>", "<letter>"],
+    "maxScore": 20,
+    "code": "<3-letter code formed by the 3 letters with HIGHEST scores, sorted from highest to lowest>",
+    "topThree": ["<letter with HIGHEST score>", "<letter with 2nd HIGHEST score>", "<letter with 3rd HIGHEST score>"],
     "interpretation": "<2-3 sentence interpretation of their career interests>"
   },
   "bigFive": {
@@ -298,7 +307,8 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
 \`\`\`
 
 Important:
-- Calculate RIASEC scores by averaging responses for each type (R, I, A, S, E, C based on question ID prefixes)
+- RIASEC SCORING: For each response, convert using: 1,2,3→0 points, 4→1 point, 5→2 points. Sum these converted scores for each type. Max score per type is 20.
+- RIASEC TOP THREE: Sort all 6 types (R,I,A,S,E,C) by their calculated scores in DESCENDING order. The "topThree" array MUST contain the 3 letters with the HIGHEST scores. The "code" is these 3 letters joined together. Example: if scores are R=15, I=8, A=12, S=6, E=10, C=4, then topThree=["R","A","E"] and code="RAE".
 - Calculate Big Five by averaging responses for each trait (O, C, E, A, N based on question ID prefixes)
 - For knowledge score, count correct answers and calculate percentage
 - Provide actionable, encouraging career guidance
