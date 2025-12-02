@@ -64,12 +64,6 @@ type MutateResponse<T> = { data: T; error: null } | { data: null; error: string 
 
 const createId = () => `${Math.random().toString(36).slice(2, 10)}`
 
-const computePerformanceBand = (avg: number): PerformanceBand => {
-  if (avg >= 70) return "High"
-  if (avg >= 40) return "Medium"
-  return "Low"
-}
-
 const computeAggregates = (classItem: EducatorClass) => {
   const total = classItem.students.length
   const avg = total === 0 ? 0 : Math.round(classItem.students.reduce((acc, curr) => acc + curr.progress, 0) / total)
@@ -85,6 +79,30 @@ const syncClassAggregates = (classItem: EducatorClass) => {
   classItem.avg_progress = avg
   classItem.performance_band = band
   return classItem
+}
+
+/**
+ * Get class IDs assigned to an educator
+ * @param educatorId - The UUID of the educator
+ * @returns Array of class IDs
+ */
+export const getEducatorAssignedClassIds = async (educatorId: string): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase
+      .from("school_educator_class_assignments")
+      .select("class_id")
+      .eq("educator_id", educatorId)
+
+    if (error) {
+      console.error("Error fetching educator assigned classes:", error)
+      return []
+    }
+
+    return (data || []).map(ac => ac.class_id)
+  } catch (err) {
+    console.error("Error fetching educator assigned classes:", err)
+    return []
+  }
 }
 
 const transformDBClassToClass = (dbClass: any): EducatorClass => {
@@ -156,14 +174,61 @@ const calculateStudentProgress = async (studentId: string, classId: string): Pro
   }
 }
 
-export const fetchEducatorClasses = async (schoolId?: string): Promise<ServiceResponse<EducatorClass[]>> => {
+export const fetchEducatorClasses = async (schoolId?: string, educatorId?: string): Promise<ServiceResponse<EducatorClass[]>> => {
   try {
+    // If educatorId is provided, fetch only assigned classes
+    if (educatorId) {
+      const { data: assignments, error: assignmentError } = await supabase
+        .from("school_educator_class_assignments")
+        .select("class_id")
+        .eq("educator_id", educatorId)
+
+      if (assignmentError) {
+        return { data: null, error: assignmentError.message }
+      }
+
+      const classIds = (assignments || []).map(a => a.class_id)
+
+      if (classIds.length === 0) {
+        return { data: [], error: null }
+      }
+
+      let query = supabase
+        .from("school_classes")
+        .select("*")
+        .in("id", classIds)
+        .order("created_at", { ascending: false })
+
+      if (schoolId) {
+        query = query.eq("school_id", schoolId)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        return { data: null, error: error.message }
+      }
+
+      const classesWithStudents = await Promise.all(
+        (data || []).map(async (dbClass) => {
+          const classItem = transformDBClassToClass(dbClass)
+          const students = await fetchClassStudents(dbClass.id)
+          classItem.students = students
+          const tasks = await fetchClassTasks(dbClass.id)
+          classItem.tasks = tasks
+          return syncClassAggregates(classItem)
+        })
+      )
+
+      return { data: classesWithStudents, error: null }
+    }
+
+    // If no educatorId, fetch all classes (for admin view)
     let query = supabase
       .from("school_classes")
       .select("*")
       .order("created_at", { ascending: false })
 
-    // Filter by school if provided
     if (schoolId) {
       query = query.eq("school_id", schoolId)
     }
@@ -179,6 +244,8 @@ export const fetchEducatorClasses = async (schoolId?: string): Promise<ServiceRe
         const classItem = transformDBClassToClass(dbClass)
         const students = await fetchClassStudents(dbClass.id)
         classItem.students = students
+        const tasks = await fetchClassTasks(dbClass.id)
+        classItem.tasks = tasks
         return syncClassAggregates(classItem)
       })
     )
@@ -186,6 +253,38 @@ export const fetchEducatorClasses = async (schoolId?: string): Promise<ServiceRe
     return { data: classesWithStudents, error: null }
   } catch (err: any) {
     return { data: null, error: err?.message || "Unable to fetch classes" }
+  }
+}
+
+/**
+ * Fetch assignments/tasks for a specific class
+ */
+export const fetchClassTasks = async (classId: string): Promise<ClassTask[]> => {
+  try {
+    const { data, error } = await supabase
+      .from("assignments")
+      .select("*")
+      .eq("assign_classes", classId)
+      .eq("is_deleted", false)
+      .order("due_date", { ascending: true })
+
+    if (error) {
+      console.error("Error fetching class tasks:", error)
+      return []
+    }
+
+    return (data || []).map((assignment: any) => ({
+      id: assignment.assignment_id,
+      name: assignment.title,
+      dueDate: assignment.due_date,
+      skillTags: assignment.skill_outcomes || [],
+      referenceLink: assignment.document_pdf || undefined,
+      attachment: undefined,
+      status: assignment.is_deleted ? "Completed" : "Pending"
+    }))
+  } catch (err: any) {
+    console.error("Error fetching class tasks:", err)
+    return []
   }
 }
 
@@ -240,6 +339,10 @@ export const getClassById = async (classId: string): Promise<ServiceResponse<Edu
     const classItem = transformDBClassToClass(data)
     const students = await fetchClassStudents(classId)
     classItem.students = students
+    
+    // Fetch tasks from assignments table
+    const tasks = await fetchClassTasks(classId)
+    classItem.tasks = tasks
     
     return { data: syncClassAggregates(classItem), error: null }
   } catch (err: any) {

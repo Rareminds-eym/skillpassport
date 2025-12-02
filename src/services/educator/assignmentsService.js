@@ -7,6 +7,26 @@ import { supabase } from '../../lib/supabaseClient';
  */
 
 /**
+ * Get class IDs assigned to an educator
+ * @param {string} educatorId - The UUID of the educator
+ * @returns {Promise<Array>} Array of class IDs
+ */
+export const getEducatorAssignedClassIds = async (educatorId) => {
+  try {
+    const { data, error } = await supabase
+      .from('school_educator_class_assignments')
+      .select('class_id')
+      .eq('educator_id', educatorId);
+
+    if (error) throw error;
+    return (data || []).map(ac => ac.class_id);
+  } catch (error) {
+    console.error('Error fetching educator assigned classes:', error);
+    throw error;
+  }
+};
+
+/**
  * Create a new assignment
  * @param {Object} assignmentData - Assignment data
  * @returns {Promise<Object>} Created assignment
@@ -52,6 +72,15 @@ export const createAssignment = async (assignmentData) => {
  */
 export const getAssignmentsByEducator = async (educatorId) => {
   try {
+    // Get the classes assigned to this educator
+    const classIds = await getEducatorAssignedClassIds(educatorId);
+
+    // If educator has no assigned classes, return empty array
+    if (classIds.length === 0) {
+      return [];
+    }
+
+    // Fetch assignments for assigned classes only
     const { data, error } = await supabase
       .from('assignments')
       .select(`
@@ -59,6 +88,7 @@ export const getAssignmentsByEducator = async (educatorId) => {
         assignment_attachments (*)
       `)
       .eq('educator_id', educatorId)
+      .in('assign_classes', classIds)
       .eq('is_deleted', false)
       .order('created_date', { ascending: false });
 

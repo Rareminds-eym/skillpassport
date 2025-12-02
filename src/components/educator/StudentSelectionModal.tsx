@@ -19,6 +19,7 @@ interface StudentSelectionModalProps {
     onClose: () => void;
     onAssign: (studentIds: string[]) => Promise<void>;
     schoolId?: string;
+    classIds?: string[];
 }
 
 const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
@@ -26,18 +27,45 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
     isOpen,
     onClose,
     onAssign,
-    schoolId
+    schoolId,
+    classIds = []
 }) => {
     const [students, setStudents] = useState<Student[]>([]);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [initiallyAssignedIds, setInitiallyAssignedIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [assigning, setAssigning] = useState(false);
+    const [classNames, setClassNames] = useState<string[]>([]);
     const [filters, setFilters] = useState({
         department: 'all',
         year: 'all',
         search: ''
     });
+
+    // Fetch class names if classIds are provided
+    useEffect(() => {
+        if (isOpen && classIds && classIds.length > 0) {
+            fetchClassNames();
+        }
+    }, [isOpen, classIds]);
+
+    const fetchClassNames = async () => {
+        if (!classIds || classIds.length === 0) return;
+        
+        try {
+            const { data, error } = await supabase
+                .from('school_classes')
+                .select('name, grade, section')
+                .in('id', classIds);
+
+            if (!error && data) {
+                const names = data.map(cls => cls.name || `Grade ${cls.grade} - ${cls.section || 'General'}`);
+                setClassNames(names);
+            }
+        } catch (error) {
+            console.error('Error fetching class names:', error);
+        }
+    };
 
     // Fetch already assigned students when modal opens
     useEffect(() => {
@@ -51,7 +79,7 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
         if (isOpen) {
             fetchStudents();
         }
-    }, [isOpen, filters, schoolId]);
+    }, [isOpen, filters, schoolId, classIds]);
 
     // Fetch students already assigned to this assignment
     const fetchAssignedStudents = async () => {
@@ -85,8 +113,11 @@ const fetchStudents = async () => {
             .select('*')
             .eq('is_deleted', false);
 
-        // Filter by school if schoolId is provided
-        if (schoolId) {
+        // Filter by classes if classIds are provided (priority filter)
+        if (classIds && classIds.length > 0) {
+            query = query.in('school_class_id', classIds);
+        } else if (schoolId) {
+            // Filter by school if schoolId is provided and no classIds
             query = query.eq('school_id', schoolId);
         }
 
@@ -239,7 +270,17 @@ const fetchStudents = async () => {
                         <div>
                             <h2 className="text-xl font-bold text-gray-900">Assign to Students</h2>
                             <p className="text-sm text-gray-600">
-                                Select students to assign this assignment
+                                {classIds && classIds.length > 0 && classNames.length > 0 ? (
+                                    <>
+                                        Select students from <span className="font-semibold text-emerald-600">
+                                            {classNames.length === 1 
+                                                ? classNames[0] 
+                                                : `${classNames.length} classes (${classNames.join(', ')})`}
+                                        </span>
+                                    </>
+                                ) : (
+                                    'Select students to assign this assignment'
+                                )}
                                 {initiallyAssignedIds.length > 0 && (
                                     <span className="ml-2 text-emerald-600 font-medium">
                                         • {initiallyAssignedIds.length} already assigned

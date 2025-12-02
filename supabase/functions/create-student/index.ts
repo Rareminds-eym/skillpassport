@@ -165,6 +165,7 @@ serve(async (req)=>{
         name: student.name,
         role: 'school_student',
         phone: student.contactNumber,
+        password: studentPassword, // Store password in metadata for CSV imports
         added_by: user.id,
         added_at: new Date().toISOString()
       }
@@ -196,7 +197,8 @@ serve(async (req)=>{
           addedByEmail: user.email,
           addedAt: new Date().toISOString(),
           contactNumber: student.contactNumber,
-          enrollmentNumber: student.enrollmentNumber || null
+          enrollmentNumber: student.enrollmentNumber || null,
+          password: studentPassword // Store password in metadata for CSV imports
         }
       }).select().single();
       if (publicUserError) {
@@ -262,7 +264,8 @@ serve(async (req)=>{
           source: 'school_admin_added',
           addedBy: user.id,
           addedByEmail: user.email,
-          addedAt: new Date().toISOString()
+          addedAt: new Date().toISOString(),
+          password: studentPassword // Store password in metadata for CSV imports
         }
       }).select().single();
       if (studentError) {
