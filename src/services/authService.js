@@ -1,25 +1,62 @@
 import { supabase } from '../lib/supabaseClient';
+import {
+  AUTH_ERROR_CODES,
+  AuthError,
+  validateCredentials,
+  validateEmail,
+  validatePassword,
+  mapSupabaseError,
+  handleAuthError,
+  logAuthEvent,
+  withRetry,
+  withTimeout,
+  buildSuccessResponse,
+  buildErrorResponse,
+  generateCorrelationId,
+} from '../utils/authErrorHandler';
 
 /**
  * Authentication Service
- * Handles user authentication checks and role management
+ * Industrial-grade authentication with comprehensive error handling
+ * 
+ * Features:
+ * - Input validation and sanitization
+ * - Standardized error codes
+ * - Retry logic for transient failures
+ * - Secure logging (no sensitive data exposure)
+ * - Timeout handling
+ * - Rate limit detection
  */
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const AUTH_TIMEOUT_MS = 30000; // 30 seconds
+const MAX_RETRIES = 2;
+
+// ============================================================================
+// CHECK AUTHENTICATION
+// ============================================================================
 
 /**
  * Check if user is authenticated
  * @returns {Promise<{ isAuthenticated: boolean, user: object | null, role: string | null }>}
  */
 export const checkAuthentication = async () => {
+  const correlationId = generateCorrelationId();
+  
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const sessionPromise = supabase.auth.getSession();
+    const { data: { session }, error } = await withTimeout(sessionPromise, AUTH_TIMEOUT_MS);
 
     if (error) {
-      console.error('Error checking authentication:', error);
+      logAuthEvent('warn', 'Session check failed', { correlationId, errorCode: mapSupabaseError(error) });
       return {
         isAuthenticated: false,
         user: null,
         role: null,
-        error: error.message
+        error: 'Unable to verify session. Please try again.',
       };
     }
 
@@ -27,31 +64,39 @@ export const checkAuthentication = async () => {
       return {
         isAuthenticated: false,
         user: null,
-        role: null
+        role: null,
       };
     }
 
-    // Extract role from raw_user_meta_data
+    // Extract role from user metadata
     const role = session.user.raw_user_meta_data?.role ||
       session.user.user_metadata?.role ||
       null;
+
+    logAuthEvent('info', 'Session verified', { correlationId, userId: session.user.id, role });
 
     return {
       isAuthenticated: true,
       user: session.user,
       role: role,
-      session: session
+      session: session,
     };
   } catch (error) {
-    console.error('Unexpected error checking authentication:', error);
+    const errorCode = error instanceof AuthError ? error.code : mapSupabaseError(error);
+    logAuthEvent('error', 'Authentication check failed', { correlationId, errorCode });
+    
     return {
       isAuthenticated: false,
       user: null,
       role: null,
-      error: error.message
+      error: 'Unable to verify authentication status.',
     };
   }
 };
+
+// ============================================================================
+// SIGN UP
+// ============================================================================
 
 /**
  * Sign up a new user with role
@@ -61,149 +106,216 @@ export const checkAuthentication = async () => {
  * @returns {Promise<{ success: boolean, user: object | null, error: string | null }>}
  */
 export const signUpWithRole = async (email, password, userData = {}) => {
+  const correlationId = generateCorrelationId();
+  
   try {
-    // Sign up with email confirmation disabled for smooth flow
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          role: userData.role || 'student',
-          name: userData.name || '',
-          phone: userData.phone || '',
-          ...userData
+    // Validate inputs
+    const validation = validateCredentials(email, password);
+    if (!validation.valid) {
+      logAuthEvent('warn', 'Signup validation failed', { correlationId, field: validation.field });
+      return buildErrorResponse(validation.code, { field: validation.field });
+    }
+
+    // Additional password strength check for signup
+    if (password.length < 8) {
+      return buildErrorResponse(AUTH_ERROR_CODES.PASSWORD_TOO_WEAK);
+    }
+
+    logAuthEvent('info', 'Signup attempt', { correlationId, email: validation.email });
+
+    // Perform signup with retry for transient failures
+    const signupOperation = async () => {
+      const { data, error } = await supabase.auth.signUp({
+        email: validation.email,
+        password,
+        options: {
+          data: {
+            role: userData.role || 'student',
+            name: userData.name || '',
+            phone: userData.phone || '',
+            ...userData,
+          },
+          emailRedirectTo: undefined,
         },
-        // This helps avoid the "Database error saving new user" issue
-        emailRedirectTo: undefined
-      }
-    });
+      });
 
-    if (error) {
-      console.error('❌ Sign up error:', error);
-
-      // Handle specific error cases
-      if (error.message.includes('Database error')) {
-        return {
-          success: false,
-          user: null,
-          error: 'Unable to create account. The email might already be registered or there is a database configuration issue. Please try a different email or contact support.'
-        };
+      if (error) {
+        throw error;
       }
 
-      if (error.message.includes('already registered')) {
-        return {
-          success: false,
-          user: null,
-          error: 'This email is already registered. Please sign in instead.'
-        };
-      }
+      return data;
+    };
 
-      return {
-        success: false,
-        user: null,
-        error: error.message
-      };
-    }
+    const data = await withTimeout(
+      withRetry(signupOperation, { maxRetries: MAX_RETRIES }),
+      AUTH_TIMEOUT_MS
+    );
 
-    // Check if user was created successfully
     if (!data.user) {
-      return {
-        success: false,
-        user: null,
-        error: 'User registration failed. Please try again.'
-      };
+      logAuthEvent('error', 'Signup returned no user', { correlationId });
+      return buildErrorResponse(AUTH_ERROR_CODES.UNEXPECTED_ERROR);
     }
 
+    logAuthEvent('info', 'Signup successful', { correlationId, userId: data.user.id });
 
     return {
       success: true,
       user: data.user,
       session: data.session,
-      error: null
+      error: null,
     };
+
   } catch (error) {
-    console.error('❌ Unexpected sign up error:', error);
-    return {
-      success: false,
-      user: null,
-      error: error.message || 'An unexpected error occurred during registration.'
-    };
+    const errorCode = mapSupabaseError(error);
+    logAuthEvent('error', 'Signup failed', { correlationId, errorCode });
+
+    // Handle specific signup errors with user-friendly messages
+    if (error.message?.includes('already registered')) {
+      return buildErrorResponse(AUTH_ERROR_CODES.INVALID_CREDENTIALS, {
+        customMessage: 'This email is already registered. Please sign in instead.',
+      });
+    }
+
+    if (error.message?.includes('Database error')) {
+      return {
+        success: false,
+        user: null,
+        error: 'Unable to create account. Please try a different email or contact support.',
+        errorCode: AUTH_ERROR_CODES.DATABASE_ERROR,
+        correlationId,
+      };
+    }
+
+    return handleAuthError(error, { correlationId, operation: 'signup' });
   }
 };
 
+// ============================================================================
+// SIGN IN
+// ============================================================================
+
 /**
- * Sign in user
+ * Sign in user with comprehensive error handling
  * @param {string} email 
  * @param {string} password 
  * @returns {Promise<{ success: boolean, user: object | null, role: string | null, error: string | null }>}
  */
 export const signIn = async (email, password) => {
+  const correlationId = generateCorrelationId();
+  
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) {
-      console.error('Sign in error:', error);
-      return {
-        success: false,
-        user: null,
-        role: null,
-        error: error.message
-      };
+    // Validate inputs
+    const validation = validateCredentials(email, password);
+    if (!validation.valid) {
+      logAuthEvent('warn', 'Sign-in validation failed', { correlationId, field: validation.field });
+      return buildErrorResponse(validation.code, { field: validation.field });
     }
+
+    logAuthEvent('info', 'Sign-in attempt', { correlationId });
+
+    // Perform sign-in with retry for transient failures
+    const signInOperation = async () => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: validation.email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    };
+
+    const data = await withTimeout(
+      withRetry(signInOperation, { 
+        maxRetries: 1, // Fewer retries for login to prevent lockouts
+        shouldRetry: (err) => {
+          // Don't retry on invalid credentials or rate limits
+          const code = err.code || mapSupabaseError(err);
+          return ![
+            AUTH_ERROR_CODES.INVALID_CREDENTIALS,
+            AUTH_ERROR_CODES.RATE_LIMITED,
+            AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS,
+            AUTH_ERROR_CODES.ACCOUNT_LOCKED,
+          ].includes(code);
+        },
+      }),
+      AUTH_TIMEOUT_MS
+    );
 
     const role = data.user?.raw_user_meta_data?.role ||
       data.user?.user_metadata?.role ||
       null;
+
+    logAuthEvent('info', 'Sign-in successful', { correlationId, userId: data.user.id, role });
 
     return {
       success: true,
       user: data.user,
       role: role,
       session: data.session,
-      error: null
+      error: null,
     };
+
   } catch (error) {
-    console.error('Unexpected sign in error:', error);
-    return {
-      success: false,
-      user: null,
-      role: null,
-      error: error.message
-    };
+    const errorCode = mapSupabaseError(error);
+    logAuthEvent('error', 'Sign-in failed', { correlationId, errorCode });
+
+    // Return user-friendly error response
+    return handleAuthError(error, { correlationId, operation: 'signin' });
   }
 };
+
+// ============================================================================
+// SIGN OUT
+// ============================================================================
 
 /**
  * Sign out user
  * @returns {Promise<{ success: boolean, error: string | null }>}
  */
 export const signOut = async () => {
+  const correlationId = generateCorrelationId();
+  
   try {
-    const { error } = await supabase.auth.signOut();
+    logAuthEvent('info', 'Sign-out attempt', { correlationId });
+
+    const { error } = await withTimeout(
+      supabase.auth.signOut(),
+      AUTH_TIMEOUT_MS
+    );
 
     if (error) {
-      console.error('Sign out error:', error);
+      logAuthEvent('warn', 'Sign-out error', { correlationId, errorCode: mapSupabaseError(error) });
+      // Still return success as the local session should be cleared
       return {
-        success: false,
-        error: error.message
+        success: true,
+        error: null,
+        warning: 'Session cleared locally. Server-side sign-out may have failed.',
       };
     }
 
+    logAuthEvent('info', 'Sign-out successful', { correlationId });
+
     return {
       success: true,
-      error: null
+      error: null,
     };
   } catch (error) {
-    console.error('Unexpected sign out error:', error);
+    logAuthEvent('error', 'Sign-out failed', { correlationId });
+    // For sign-out, we generally want to proceed even on error
     return {
-      success: false,
-      error: error.message
+      success: true,
+      error: null,
+      warning: 'Sign-out completed with warnings.',
     };
   }
 };
+
+// ============================================================================
+// ROLE CHECKING
+// ============================================================================
 
 /**
  * Check if user has specific role
@@ -217,22 +329,26 @@ export const checkUserRole = async (requiredRole) => {
     if (!isAuthenticated) {
       return {
         hasRole: false,
-        role: null
+        role: null,
       };
     }
 
     return {
       hasRole: role === requiredRole,
-      role: role
+      role: role,
     };
   } catch (error) {
-    console.error('Error checking user role:', error);
+    logAuthEvent('error', 'Role check failed', { errorCode: mapSupabaseError(error) });
     return {
       hasRole: false,
-      role: null
+      role: null,
     };
   }
 };
+
+// ============================================================================
+// USER METADATA
+// ============================================================================
 
 /**
  * Update user metadata including role
@@ -240,46 +356,59 @@ export const checkUserRole = async (requiredRole) => {
  * @returns {Promise<{ success: boolean, error: string | null }>}
  */
 export const updateUserMetadata = async (metadata) => {
+  const correlationId = generateCorrelationId();
+  
   try {
-    const { data, error } = await supabase.auth.updateUser({
-      data: metadata
-    });
+    if (!metadata || typeof metadata !== 'object') {
+      return buildErrorResponse(AUTH_ERROR_CODES.INVALID_INPUT_FORMAT);
+    }
+
+    logAuthEvent('info', 'Metadata update attempt', { correlationId });
+
+    const { data, error } = await withTimeout(
+      supabase.auth.updateUser({ data: metadata }),
+      AUTH_TIMEOUT_MS
+    );
 
     if (error) {
-      console.error('Update metadata error:', error);
-      return {
-        success: false,
-        error: error.message
-      };
+      logAuthEvent('error', 'Metadata update failed', { correlationId, errorCode: mapSupabaseError(error) });
+      return handleAuthError(error, { correlationId, operation: 'updateMetadata' });
     }
+
+    logAuthEvent('info', 'Metadata update successful', { correlationId });
 
     return {
       success: true,
       user: data.user,
-      error: null
+      error: null,
     };
   } catch (error) {
-    console.error('Unexpected update metadata error:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    return handleAuthError(error, { correlationId, operation: 'updateMetadata' });
   }
 };
+
+// ============================================================================
+// GET CURRENT USER
+// ============================================================================
 
 /**
  * Get current authenticated user with role
  * @returns {Promise<{ user: object | null, role: string | null }>}
  */
 export const getCurrentUser = async () => {
+  const correlationId = generateCorrelationId();
+  
   try {
-    const { data: { user }, error } = await supabase.auth.getUser();
+    const { data: { user }, error } = await withTimeout(
+      supabase.auth.getUser(),
+      AUTH_TIMEOUT_MS
+    );
 
     if (error) {
-      console.error('Error getting current user:', error);
+      logAuthEvent('warn', 'Get current user failed', { correlationId, errorCode: mapSupabaseError(error) });
       return {
         user: null,
-        role: null
+        role: null,
       };
     }
 
@@ -289,16 +418,20 @@ export const getCurrentUser = async () => {
 
     return {
       user: user,
-      role: role
+      role: role,
     };
   } catch (error) {
-    console.error('Unexpected error getting current user:', error);
+    logAuthEvent('error', 'Get current user error', { correlationId });
     return {
       user: null,
-      role: null
+      role: null,
     };
   }
 };
+
+// ============================================================================
+// PASSWORD RESET
+// ============================================================================
 
 /**
  * Send password reset OTP via Edge Function
@@ -306,36 +439,45 @@ export const getCurrentUser = async () => {
  * @returns {Promise<{ success: boolean, error: string | null }>}
  */
 export const sendPasswordResetOtp = async (email) => {
+  const correlationId = generateCorrelationId();
+  
   try {
-    const { data, error } = await supabase.functions.invoke('reset-password', {
-      body: { action: 'send', email }
-    });
+    // Validate email
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      return buildErrorResponse(emailValidation.code);
+    }
+
+    logAuthEvent('info', 'Password reset OTP request', { correlationId });
+
+    const { data, error } = await withTimeout(
+      supabase.functions.invoke('reset-password', {
+        body: { action: 'send', email: emailValidation.sanitized },
+      }),
+      AUTH_TIMEOUT_MS
+    );
 
     if (error) {
-      console.error('Error invoking reset-password function:', error);
+      logAuthEvent('error', 'Password reset OTP failed', { correlationId, errorCode: mapSupabaseError(error) });
+      return handleAuthError(error, { correlationId, operation: 'sendResetOtp' });
+    }
+
+    if (!data?.success) {
       return {
         success: false,
-        error: error.message
+        error: 'Unable to send reset code. Please try again later.',
+        correlationId,
       };
     }
 
-    if (!data.success) {
-      return {
-        success: false,
-        error: data.error || 'Failed to send OTP'
-      };
-    }
+    logAuthEvent('info', 'Password reset OTP sent', { correlationId });
 
     return {
       success: true,
-      error: null
+      error: null,
     };
   } catch (error) {
-    console.error('Unexpected error sending reset password OTP:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    return handleAuthError(error, { correlationId, operation: 'sendResetOtp' });
   }
 };
 
@@ -347,55 +489,84 @@ export const sendPasswordResetOtp = async (email) => {
  * @returns {Promise<{ success: boolean, error: string | null }>}
  */
 export const verifyOtpAndResetPassword = async (email, otp, newPassword) => {
+  const correlationId = generateCorrelationId();
+  
   try {
-    const { data, error } = await supabase.functions.invoke('reset-password', {
-      body: { action: 'verify', email, otp, newPassword }
-    });
+    // Validate inputs
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      return buildErrorResponse(emailValidation.code);
+    }
+
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.valid) {
+      return buildErrorResponse(passwordValidation.code);
+    }
+
+    if (!otp || typeof otp !== 'string' || otp.trim().length === 0) {
+      return buildErrorResponse(AUTH_ERROR_CODES.INVALID_INPUT_FORMAT, {
+        customMessage: 'Please enter the verification code.',
+      });
+    }
+
+    logAuthEvent('info', 'Password reset verification', { correlationId });
+
+    const { data, error } = await withTimeout(
+      supabase.functions.invoke('reset-password', {
+        body: { 
+          action: 'verify', 
+          email: emailValidation.sanitized, 
+          otp: otp.trim(), 
+          newPassword,
+        },
+      }),
+      AUTH_TIMEOUT_MS
+    );
 
     if (error) {
-      console.error('Error invoking reset-password function:', error);
+      logAuthEvent('error', 'Password reset verification failed', { correlationId });
+      return handleAuthError(error, { correlationId, operation: 'verifyResetOtp' });
+    }
+
+    if (!data?.success) {
       return {
         success: false,
-        error: error.message
+        error: data?.error || 'Invalid or expired verification code.',
+        correlationId,
       };
     }
 
-    if (!data.success) {
+    // Attempt auto-login after successful reset
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: emailValidation.sanitized,
+        password: newPassword,
+      });
+
+      if (signInError) {
+        logAuthEvent('warn', 'Auto-login after reset failed', { correlationId });
+        return {
+          success: true,
+          error: null,
+          message: 'Password reset successful. Please log in with your new password.',
+        };
+      }
+    } catch {
+      // Auto-login failed, but password reset was successful
       return {
-        success: false,
-        error: data.error || 'Failed to verify OTP or reset password'
-      };
-    }
-
-    // After successful reset, we might want to sign the user in automatically.
-    // However, the Edge Function only updates the password.
-    // The user will need to sign in with the new password.
-    // Or we could try to sign in here if we had the password, which we do.
-
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password: newPassword
-    });
-
-    if (signInError) {
-      // Password was reset but auto-login failed
-      return {
-        success: true, // Still success for the reset part
+        success: true,
         error: null,
-        message: 'Password reset successful. Please log in with your new password.'
+        message: 'Password reset successful. Please log in with your new password.',
       };
     }
+
+    logAuthEvent('info', 'Password reset and auto-login successful', { correlationId });
 
     return {
       success: true,
-      error: null
+      error: null,
     };
   } catch (error) {
-    console.error('Unexpected error resetting password:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    return handleAuthError(error, { correlationId, operation: 'verifyResetOtp' });
   }
 };
-

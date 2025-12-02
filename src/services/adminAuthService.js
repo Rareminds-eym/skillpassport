@@ -1,9 +1,38 @@
 import { supabase } from '../lib/supabaseClient';
+import {
+  AUTH_ERROR_CODES,
+  validateCredentials,
+  mapSupabaseError,
+  handleAuthError,
+  logAuthEvent,
+  withRetry,
+  withTimeout,
+  buildErrorResponse,
+  generateCorrelationId,
+} from '../utils/authErrorHandler';
 
 /**
  * Admin Authentication Service
- * Handles authentication for school/college/university admins using Supabase Auth
+ * Industrial-grade authentication for school/college/university admins
+ * 
+ * Features:
+ * - Multi-entity support (schools, colleges, universities)
+ * - Approval status verification
+ * - Account status checks
+ * - Comprehensive error handling
+ * - Secure logging
  */
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const AUTH_TIMEOUT_MS = 30000;
+const DB_QUERY_TIMEOUT_MS = 15000;
+
+// ============================================================================
+// ADMIN LOGIN
+// ============================================================================
 
 /**
  * Login admin (school/college/university) with Supabase Auth
@@ -12,311 +41,495 @@ import { supabase } from '../lib/supabaseClient';
  * @returns {Promise<{success: boolean, admin: object|null, session: object|null, error: string|null}>}
  */
 export const loginAdmin = async (email, password) => {
+  const correlationId = generateCorrelationId();
+  
   try {
     // Validate inputs
-    if (!email || !password) {
-      return { success: false, admin: null, session: null, error: 'Email and password are required.' };
-    }
-
-    // Step 1: Authenticate with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password
-    });
-
-    if (authError) {
-      console.error('❌ Auth error:', authError);
+    const validation = validateCredentials(email, password);
+    if (!validation.valid) {
+      logAuthEvent('warn', 'Admin login validation failed', { correlationId, field: validation.field });
+      const response = buildErrorResponse(validation.code);
       return { 
         success: false, 
         admin: null, 
         session: null, 
-        error: authError.message === 'Invalid login credentials' 
-          ? 'Invalid email or password. Please try again.' 
-          : authError.message 
+        error: response.error,
+        errorCode: response.errorCode,
+        correlationId,
+      };
+    }
+
+    logAuthEvent('info', 'Admin login attempt', { correlationId });
+
+    // Step 1: Authenticate with Supabase Auth
+    let authData;
+    try {
+      const authOperation = async () => {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: validation.email,
+          password,
+        });
+
+        if (error) throw error;
+        return data;
+      };
+
+      authData = await withTimeout(
+        withRetry(authOperation, {
+          maxRetries: 1,
+          shouldRetry: (err) => {
+            const code = err.code || mapSupabaseError(err);
+            return ![
+              AUTH_ERROR_CODES.INVALID_CREDENTIALS,
+              AUTH_ERROR_CODES.RATE_LIMITED,
+              AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS,
+            ].includes(code);
+          },
+        }),
+        AUTH_TIMEOUT_MS
+      );
+    } catch (authError) {
+      const errorCode = mapSupabaseError(authError);
+      logAuthEvent('error', 'Admin auth failed', { correlationId, errorCode });
+      
+      if (errorCode === AUTH_ERROR_CODES.INVALID_CREDENTIALS) {
+        return {
+          success: false,
+          admin: null,
+          session: null,
+          error: 'Invalid email or password. Please try again.',
+          errorCode,
+          correlationId,
+        };
+      }
+      
+      if (errorCode === AUTH_ERROR_CODES.RATE_LIMITED || errorCode === AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS) {
+        return {
+          success: false,
+          admin: null,
+          session: null,
+          error: 'Too many login attempts. Please wait a few minutes and try again.',
+          errorCode,
+          correlationId,
+        };
+      }
+      
+      const response = handleAuthError(authError, { correlationId, operation: 'adminLogin' });
+      return { 
+        success: false, 
+        admin: null, 
+        session: null, 
+        error: response.error,
+        errorCode: response.errorCode,
+        correlationId,
       };
     }
 
     if (!authData.user) {
-      return { success: false, admin: null, session: null, error: 'Authentication failed. Please try again.' };
+      logAuthEvent('error', 'Admin auth returned no user', { correlationId });
+      return { 
+        success: false, 
+        admin: null, 
+        session: null, 
+        error: 'Authentication failed. Please try again.',
+        errorCode: AUTH_ERROR_CODES.UNEXPECTED_ERROR,
+        correlationId,
+      };
     }
 
-    // Step 2: Check user role from metadata
+    // Step 2: Get user role from metadata
     const userRole = authData.user.user_metadata?.role || authData.user.raw_user_meta_data?.role;
-    
-    // Step 3: Check user role from users table
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', authData.user.id)
-      .maybeSingle();
 
-    if (userError) {
-      console.error('❌ Database error fetching user:', userError);
+    // Step 3: Fetch user data from users table (optional, for additional info)
+    let userData = null;
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from('users')
+          .select('*')
+          .eq('id', authData.user.id)
+          .maybeSingle(),
+        DB_QUERY_TIMEOUT_MS
+      );
+      
+      if (!error) {
+        userData = data;
+      }
+    } catch {
+      // Non-critical, continue without user data
+      logAuthEvent('warn', 'Failed to fetch user data', { correlationId });
     }
 
-    // Get effective role from metadata or users table
-    const effectiveRole = userRole || userData?.role;
-
-    // Step 4: Fetch admin profile from schools table (using created_by or email match)
-    // Use .limit(1) to handle multiple matches gracefully
-    const { data: schools, error: schoolError } = await supabase
-      .from('schools')
-      .select('*')
-      .or(`created_by.eq.${authData.user.id},email.eq.${authData.user.email}`)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (schoolError && schoolError.code !== 'PGRST116') {
-      console.error('❌ Database error:', schoolError);
-    }
-
-    const school = schools?.[0];
-
-    if (school) {
-      // Check if the school is approved
-      if (school.approval_status === 'approved') {
-        // Check account status - allow active, pending, or approved
-        if (school.account_status === 'inactive' || school.account_status === 'suspended') {
-          await supabase.auth.signOut();
-          return { success: false, admin: null, session: null, error: 'Your school account is inactive. Please contact RareMinds admin.' };
-        }
-
+    // Step 4: Check schools table
+    const schoolResult = await checkSchoolAdmin(authData.user, correlationId);
+    if (schoolResult.found) {
+      if (!schoolResult.success) {
+        await safeSignOut();
         return {
-          success: true,
-          admin: {
-            id: school.id,
-            user_id: authData.user.id,
-            name: school.principal_name || school.name,
-            email: school.email,
-            role: 'school_admin',
-            schoolId: school.id,
-            schoolName: school.name,
-            schoolCode: school.code,
-          },
-          session: authData.session,
-          error: null
+          success: false,
+          admin: null,
+          session: null,
+          error: schoolResult.error,
+          errorCode: schoolResult.errorCode,
+          correlationId,
         };
       }
       
-      // School exists but not approved - check if user has admin role in users table
-      // If they have the role, allow login without requiring school approval
-      if (effectiveRole === 'school_admin') {
-        return {
-          success: true,
-          admin: {
-            id: authData.user.id,
-            user_id: authData.user.id,
-            name: userData?.firstName ? `${userData.firstName} ${userData.lastName || ''}`.trim() : school.principal_name || school.name || authData.user.email,
-            email: authData.user.email,
-            role: 'school_admin',
-            schoolId: school.id,
-            schoolName: school.name,
-          },
-          session: authData.session,
-          error: null
-        };
-      }
-      
-      // No admin role in users table, reject with approval message
-      await supabase.auth.signOut();
-      const statusMessage = school.approval_status === 'pending'
-        ? 'Your school registration is pending approval. Please contact RareMinds admin.'
-        : school.approval_status === 'rejected'
-        ? `Your school registration was rejected. Reason: ${school.rejection_reason || 'Not specified'}. Please contact RareMinds admin.`
-        : 'Your school account is not approved. Please contact RareMinds admin.';
-      
-      return { success: false, admin: null, session: null, error: statusMessage };
-    }
-
-    // Step 5: Check colleges table for college admin
-    const { data: college, error: collegeError } = await supabase
-      .from('colleges')
-      .select('*')
-      .or(`created_by.eq.${authData.user.id},email.eq.${authData.user.email}`)
-      .maybeSingle();
-
-    if (collegeError && collegeError.code !== 'PGRST116') {
-      console.error('❌ Database error:', collegeError);
-    }
-
-    if (college) {
+      logAuthEvent('info', 'School admin login successful', { correlationId, adminId: schoolResult.admin.id });
       return {
         success: true,
-        admin: {
-          id: college.id,
-          user_id: authData.user.id,
-          name: college.name,
-          email: college.email || authData.user.email,
-          role: 'college_admin',
-          collegeId: college.id,
-          collegeName: college.name,
-        },
+        admin: schoolResult.admin,
         session: authData.session,
-        error: null
+        error: null,
       };
     }
 
-    // Step 6: Check universities table for university admin
-    const { data: university, error: universityError } = await supabase
-      .from('universities')
-      .select('*')
-      .or(`created_by.eq.${authData.user.id},email.eq.${authData.user.email}`)
-      .maybeSingle();
-
-    if (universityError && universityError.code !== 'PGRST116') {
-      console.error('❌ Database error:', universityError);
-    }
-
-    if (university) {
+    // Step 5: Check colleges table
+    const collegeResult = await checkCollegeAdmin(authData.user, correlationId);
+    if (collegeResult.found) {
+      logAuthEvent('info', 'College admin login successful', { correlationId, adminId: collegeResult.admin.id });
       return {
         success: true,
-        admin: {
-          id: university.id,
-          user_id: authData.user.id,
-          name: university.name,
-          email: university.email || authData.user.email,
-          role: 'university_admin',
-          universityId: university.id,
-          universityName: university.name,
-        },
+        admin: collegeResult.admin,
         session: authData.session,
-        error: null
+        error: null,
       };
     }
 
-    // No admin profile found - check if user has admin role in metadata OR users table
-    if (effectiveRole === 'school_admin' || effectiveRole === 'college_admin' || effectiveRole === 'university_admin') {
+    // Step 6: Check universities table
+    const universityResult = await checkUniversityAdmin(authData.user, correlationId);
+    if (universityResult.found) {
+      logAuthEvent('info', 'University admin login successful', { correlationId, adminId: universityResult.admin.id });
+      return {
+        success: true,
+        admin: universityResult.admin,
+        session: authData.session,
+        error: null,
+      };
+    }
+
+    // Step 7: Check if user has admin role in metadata (fallback)
+    if (['school_admin', 'college_admin', 'university_admin'].includes(userRole)) {
+      logAuthEvent('info', 'Admin login via metadata role', { correlationId, role: userRole });
       return {
         success: true,
         admin: {
           id: authData.user.id,
           user_id: authData.user.id,
-          name: userData?.firstName ? `${userData.firstName} ${userData.lastName || ''}`.trim() : authData.user.email,
+          name: userData?.firstName 
+            ? `${userData.firstName} ${userData.lastName || ''}`.trim() 
+            : authData.user.email,
           email: authData.user.email,
           role: effectiveRole,
         },
         session: authData.session,
-        error: null
+        error: null,
       };
     }
 
     // No admin profile found
-    await supabase.auth.signOut();
+    logAuthEvent('warn', 'No admin profile found', { correlationId, userId: authData.user.id });
+    await safeSignOut();
+    
     return { 
       success: false, 
       admin: null, 
       session: null, 
-      error: 'No admin account found. Please check if you are using the correct login portal.' 
+      error: 'No admin account found. Please check if you are using the correct login portal.',
+      errorCode: AUTH_ERROR_CODES.WRONG_PORTAL,
+      correlationId,
     };
 
   } catch (err) {
-    console.error('❌ Unexpected login error:', err);
-    return { success: false, admin: null, session: null, error: err.message || 'Login failed' };
+    logAuthEvent('error', 'Unexpected admin login error', { correlationId, errorCode: mapSupabaseError(err) });
+    const response = handleAuthError(err, { correlationId, operation: 'adminLogin' });
+    return { 
+      success: false, 
+      admin: null, 
+      session: null, 
+      error: response.error,
+      errorCode: response.errorCode,
+      correlationId,
+    };
   }
 };
+
+// ============================================================================
+// ENTITY CHECKERS
+// ============================================================================
+
+/**
+ * Check if user is a school admin
+ */
+const checkSchoolAdmin = async (user, correlationId) => {
+  try {
+    const { data: school, error } = await withTimeout(
+      supabase
+        .from('schools')
+        .select('*')
+        .or(`created_by.eq.${user.id},email.eq.${user.email}`)
+        .maybeSingle(),
+      DB_QUERY_TIMEOUT_MS
+    );
+
+    if (error && error.code !== 'PGRST116') {
+      logAuthEvent('error', 'School lookup failed', { correlationId, errorCode: error.code });
+      return { found: false };
+    }
+
+    if (!school) {
+      return { found: false };
+    }
+
+    // Check approval status
+    if (school.approval_status !== 'approved') {
+      let statusMessage;
+      
+      if (school.approval_status === 'pending') {
+        statusMessage = 'Your school registration is pending approval. Please contact RareMinds admin.';
+      } else if (school.approval_status === 'rejected') {
+        statusMessage = school.rejection_reason
+          ? `Your school registration was rejected: ${school.rejection_reason}. Please contact RareMinds admin.`
+          : 'Your school registration was rejected. Please contact RareMinds admin.';
+      } else {
+        statusMessage = 'Your school account is not approved. Please contact RareMinds admin.';
+      }
+
+      return {
+        found: true,
+        success: false,
+        error: statusMessage,
+        errorCode: school.approval_status === 'pending' 
+          ? AUTH_ERROR_CODES.ACCOUNT_PENDING_APPROVAL 
+          : AUTH_ERROR_CODES.ACCOUNT_REJECTED,
+      };
+    }
+
+    // Check account status
+    if (school.account_status !== 'active' && school.account_status !== 'pending') {
+      return {
+        found: true,
+        success: false,
+        error: 'Your school account is inactive. Please contact RareMinds admin.',
+        errorCode: AUTH_ERROR_CODES.ACCOUNT_DISABLED,
+      };
+    }
+
+    return {
+      found: true,
+      success: true,
+      admin: {
+        id: school.id,
+        user_id: user.id,
+        name: school.principal_name || school.name,
+        email: school.email,
+        role: 'school_admin',
+        schoolId: school.id,
+        schoolName: school.name,
+        schoolCode: school.code,
+      },
+    };
+  } catch (error) {
+    logAuthEvent('error', 'School admin check failed', { correlationId });
+    return { found: false };
+  }
+};
+
+/**
+ * Check if user is a college admin
+ */
+const checkCollegeAdmin = async (user, correlationId) => {
+  try {
+    const { data: college, error } = await withTimeout(
+      supabase
+        .from('colleges')
+        .select('*')
+        .or(`created_by.eq.${user.id},email.eq.${user.email}`)
+        .maybeSingle(),
+      DB_QUERY_TIMEOUT_MS
+    );
+
+    if (error && error.code !== 'PGRST116') {
+      logAuthEvent('error', 'College lookup failed', { correlationId, errorCode: error.code });
+      return { found: false };
+    }
+
+    if (!college) {
+      return { found: false };
+    }
+
+    return {
+      found: true,
+      success: true,
+      admin: {
+        id: college.id,
+        user_id: user.id,
+        name: college.name,
+        email: college.email || user.email,
+        role: 'college_admin',
+        collegeId: college.id,
+        collegeName: college.name,
+      },
+    };
+  } catch (error) {
+    logAuthEvent('error', 'College admin check failed', { correlationId });
+    return { found: false };
+  }
+};
+
+/**
+ * Check if user is a university admin
+ */
+const checkUniversityAdmin = async (user, correlationId) => {
+  try {
+    const { data: university, error } = await withTimeout(
+      supabase
+        .from('universities')
+        .select('*')
+        .or(`created_by.eq.${user.id},email.eq.${user.email}`)
+        .maybeSingle(),
+      DB_QUERY_TIMEOUT_MS
+    );
+
+    if (error && error.code !== 'PGRST116') {
+      logAuthEvent('error', 'University lookup failed', { correlationId, errorCode: error.code });
+      return { found: false };
+    }
+
+    if (!university) {
+      return { found: false };
+    }
+
+    return {
+      found: true,
+      success: true,
+      admin: {
+        id: university.id,
+        user_id: user.id,
+        name: university.name,
+        email: university.email || user.email,
+        role: 'university_admin',
+        universityId: university.id,
+        universityName: university.name,
+      },
+    };
+  } catch (error) {
+    logAuthEvent('error', 'University admin check failed', { correlationId });
+    return { found: false };
+  }
+};
+
+// ============================================================================
+// GET CURRENT ADMIN
+// ============================================================================
 
 /**
  * Get current admin profile
  * @returns {Promise<{success: boolean, admin: object|null, error: string|null}>}
  */
 export const getCurrentAdmin = async () => {
+  const correlationId = generateCorrelationId();
+  
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await withTimeout(
+      supabase.auth.getUser(),
+      AUTH_TIMEOUT_MS
+    );
 
     if (authError || !user) {
-      return { success: false, admin: null, error: 'Not authenticated' };
+      return { 
+        success: false, 
+        admin: null, 
+        error: 'Not authenticated',
+        errorCode: AUTH_ERROR_CODES.SESSION_EXPIRED,
+      };
     }
 
     // Check schools table
-    const { data: school } = await supabase
-      .from('schools')
-      .select('*')
-      .or(`created_by.eq.${user.id},email.eq.${user.email}`)
-      .maybeSingle();
-
-    if (school) {
+    const schoolResult = await checkSchoolAdmin(user, correlationId);
+    if (schoolResult.found && schoolResult.success) {
       return {
         success: true,
-        admin: {
-          id: school.id,
-          user_id: user.id,
-          name: school.principal_name || school.name,
-          email: school.email,
-          role: 'school_admin',
-          schoolId: school.id,
-          schoolName: school.name,
-          schoolCode: school.code,
-        },
-        error: null
+        admin: schoolResult.admin,
+        error: null,
       };
     }
 
     // Check colleges table
-    const { data: college } = await supabase
-      .from('colleges')
-      .select('*')
-      .or(`created_by.eq.${user.id},email.eq.${user.email}`)
-      .maybeSingle();
-
-    if (college) {
+    const collegeResult = await checkCollegeAdmin(user, correlationId);
+    if (collegeResult.found) {
       return {
         success: true,
-        admin: {
-          id: college.id,
-          user_id: user.id,
-          name: college.name,
-          email: college.email || user.email,
-          role: 'college_admin',
-          collegeId: college.id,
-          collegeName: college.name,
-        },
-        error: null
+        admin: collegeResult.admin,
+        error: null,
       };
     }
 
     // Check universities table
-    const { data: university } = await supabase
-      .from('universities')
-      .select('*')
-      .or(`created_by.eq.${user.id},email.eq.${user.email}`)
-      .maybeSingle();
-
-    if (university) {
+    const universityResult = await checkUniversityAdmin(user, correlationId);
+    if (universityResult.found) {
       return {
         success: true,
-        admin: {
-          id: university.id,
-          user_id: user.id,
-          name: university.name,
-          email: university.email || user.email,
-          role: 'university_admin',
-          universityId: university.id,
-          universityName: university.name,
-        },
-        error: null
+        admin: universityResult.admin,
+        error: null,
       };
     }
 
-    return { success: false, admin: null, error: 'Admin profile not found' };
+    return { 
+      success: false, 
+      admin: null, 
+      error: 'Admin profile not found',
+      errorCode: AUTH_ERROR_CODES.PROFILE_NOT_FOUND,
+    };
 
   } catch (error) {
-    console.error('❌ Error fetching current admin:', error);
-    return { success: false, admin: null, error: error.message };
+    logAuthEvent('error', 'Get current admin failed', { correlationId });
+    return { 
+      success: false, 
+      admin: null, 
+      error: 'Unable to load admin profile',
+      errorCode: mapSupabaseError(error),
+    };
   }
 };
+
+// ============================================================================
+// ADMIN LOGOUT
+// ============================================================================
 
 /**
  * Sign out admin
  * @returns {Promise<{success: boolean, error: string|null}>}
  */
 export const logoutAdmin = async () => {
+  const correlationId = generateCorrelationId();
+  
   try {
+    logAuthEvent('info', 'Admin logout', { correlationId });
     const { error } = await supabase.auth.signOut();
+    
     if (error) {
-      return { success: false, error: error.message };
+      logAuthEvent('warn', 'Admin logout error', { correlationId });
+      // Still return success as local session should be cleared
     }
+    
     return { success: true, error: null };
-  } catch (error) {
-    return { success: false, error: error.message };
+  } catch {
+    return { success: true, error: null };
+  }
+};
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Safe sign out - doesn't throw on error
+ */
+const safeSignOut = async () => {
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // Ignore sign out errors
   }
 };

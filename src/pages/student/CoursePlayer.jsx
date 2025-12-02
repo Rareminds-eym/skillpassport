@@ -9,16 +9,21 @@ import {
   ChevronRight,
   CheckCircle,
   Circle,
-  Home,
   Clock,
   Award,
   Menu,
-  X
+  X,
+  FileText,
+  Video,
+  Image,
+  Link as LinkIcon,
+  Youtube
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
 import { useAuth } from '../../context/AuthContext';
+import { fileService } from '../../services/fileService';
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
@@ -32,6 +37,9 @@ const CoursePlayer = () => {
   const [completedLessons, setCompletedLessons] = useState(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [enrollment, setEnrollment] = useState(null);
+  const [lessonVideoUrl, setLessonVideoUrl] = useState(null);
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [lessonResources, setLessonResources] = useState([]);
 
   // Enroll student and load existing progress
   useEffect(() => {
@@ -89,27 +97,173 @@ const CoursePlayer = () => {
     fetchCourse();
   }, [courseId]);
 
+  // Fetch video and resources when lesson changes
+  useEffect(() => {
+    if (course && currentModuleIndex !== null && currentLessonIndex !== null) {
+      fetchLessonMedia();
+    }
+  }, [course, currentModuleIndex, currentLessonIndex]);
+
+  const fetchLessonMedia = async () => {
+    const currentLesson = getCurrentLesson();
+    if (!currentLesson) return;
+
+    // Reset states
+    setLessonVideoUrl(null);
+    setLessonResources([]);
+    setVideoLoading(true);
+
+    try {
+      // Check if lesson has resources from educator upload
+      if (currentLesson.resources && currentLesson.resources.length > 0) {
+        console.log('Lesson resources:', currentLesson.resources);
+
+        // Find video resources (uploaded by educator)
+        const videoResource = currentLesson.resources.find(
+          r => r.type === 'video' || r.type === 'youtube'
+        );
+
+        if (videoResource) {
+          // Check if URL is an R2 file key or a full URL
+          if (videoResource.url && videoResource.url.startsWith('courses/')) {
+            // It's an R2 file key, fetch fresh presigned URL
+            try {
+              const freshUrl = await fileService.getFileUrl(videoResource.url);
+              setLessonVideoUrl(freshUrl);
+            } catch (error) {
+              console.error('Error fetching fresh video URL:', error);
+              // Fallback to stored URL if available
+              if (videoResource.embedUrl) {
+                setLessonVideoUrl(videoResource.embedUrl);
+              }
+            }
+          } else if (videoResource.embedUrl) {
+            // For YouTube videos, use embed URL
+            setLessonVideoUrl(videoResource.embedUrl);
+          } else if (videoResource.url) {
+            // Use the stored URL directly (presigned URL or external link)
+            setLessonVideoUrl(videoResource.url);
+          }
+        }
+
+        // Get all non-video resources (PDFs, documents, links, etc.)
+        const otherResources = currentLesson.resources.filter(
+          r => r.type !== 'video' || r.type === 'youtube'
+        );
+
+        if (otherResources.length > 0) {
+          setLessonResources(otherResources.map(r => ({
+            title: r.name,
+            url: r.url,
+            type: r.type,
+            size: r.size
+          })));
+        }
+      }
+      // Fallback: Check for old-style video_url field
+      else if (currentLesson.video_url &&
+               (currentLesson.video_url.startsWith('http') ||
+                currentLesson.video_url.startsWith('https'))) {
+        setLessonVideoUrl(currentLesson.video_url);
+      }
+    } catch (error) {
+      console.error('Error loading lesson media:', error);
+    } finally {
+      setVideoLoading(false);
+    }
+  };
+
   const fetchCourse = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+
+      // Fetch course basic info
+      const { data: courseData, error: courseError } = await supabase
         .from('courses')
         .select('*')
         .eq('course_id', courseId)
         .single();
 
-      if (error) throw error;
+      if (courseError) throw courseError;
 
-      if (!data) {
+      if (!courseData) {
         navigate('/student/courses');
         return;
       }
 
-      setCourse(data);
+      // Fetch modules with lessons and resources
+      const { data: modulesData, error: modulesError } = await supabase
+        .from('course_modules')
+        .select(`
+          *,
+          lessons!fk_module (
+            *,
+            lesson_resources!fk_lesson (*)
+          )
+        `)
+        .eq('course_id', courseId)
+        .order('order_index', { ascending: true });
+
+      if (modulesError) {
+        console.error('Error fetching modules:', modulesError);
+      }
+
+      console.log('Raw modules data from Supabase:', modulesData);
+
+      // Transform modules data to match expected structure
+      const transformedModules = (modulesData || []).map(module => {
+        console.log('Processing module:', module.title, 'Raw lessons:', module.lessons);
+
+        // Sort lessons by order_index
+        const sortedLessons = (module.lessons || []).sort((a, b) =>
+          (a.order_index || 0) - (b.order_index || 0)
+        );
+
+        return {
+          id: module.module_id,
+          title: module.title,
+          description: module.description || '',
+          skillTags: module.skill_tags || [],
+          activities: module.activities || [],
+          order: module.order_index,
+          lessons: sortedLessons.map(lesson => {
+            console.log('Processing lesson:', lesson.title, 'Resources:', lesson.lesson_resources);
+            return {
+              id: lesson.lesson_id,
+              title: lesson.title,
+              content: lesson.content || '',
+              description: lesson.description || '',
+              duration: lesson.duration || '',
+              order: lesson.order_index,
+              resources: (lesson.lesson_resources || []).map(resource => ({
+                id: resource.resource_id,
+                name: resource.name,
+                type: resource.type,
+                url: resource.url,
+                size: resource.file_size,
+                thumbnailUrl: resource.thumbnail_url,
+                embedUrl: resource.embed_url
+              }))
+            };
+          })
+        };
+      });
+
+      // Combine course data with modules
+      const fullCourse = {
+        ...courseData,
+        modules: transformedModules
+      };
+
+      console.log('Full course loaded:', fullCourse);
+      console.log('Modules count:', transformedModules.length);
+      console.log('Total lessons:', transformedModules.reduce((acc, m) => acc + m.lessons.length, 0));
+
+      setCourse(fullCourse);
 
       // Update total_lessons in enrollment if needed
-      if (data.modules && enrollment) {
-        const totalLessons = data.modules.reduce(
+      if (transformedModules.length > 0 && enrollment) {
+        const totalLessons = transformedModules.reduce(
           (acc, module) => acc + (module.lessons?.length || 0),
           0
         );
@@ -198,6 +352,26 @@ const CoursePlayer = () => {
 
   const canGoPrevious = () => {
     return currentLessonIndex > 0 || currentModuleIndex > 0;
+  };
+
+  // Get appropriate icon for resource type
+  const getResourceIcon = (type) => {
+    switch (type) {
+      case 'pdf':
+      case 'document':
+        return FileText;
+      case 'video':
+        return Video;
+      case 'image':
+        return Image;
+      case 'youtube':
+        return Video;
+      case 'link':
+      case 'drive':
+        return LinkIcon;
+      default:
+        return BookOpen;
+    }
   };
 
   if (loading) {
@@ -381,35 +555,80 @@ const CoursePlayer = () => {
                       )}
                     </div>
 
-                    {/* Video/Media Placeholder */}
-                    {currentLesson.video_url && (
-                      <div className="mb-8 aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                        <iframe
-                          src={currentLesson.video_url}
-                          className="w-full h-full"
-                          allowFullScreen
-                          title={currentLesson.title}
-                        />
+                    {/* Video Player */}
+                    {videoLoading ? (
+                      <div className="mb-8 aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div>
+                          <p className="text-sm text-gray-600">Loading video...</p>
+                        </div>
                       </div>
-                    )}
+                    ) : lessonVideoUrl ? (
+                      <div className="mb-8">
+                        {/* Check if it's a YouTube embed URL */}
+                        {lessonVideoUrl.includes('youtube.com/embed') ? (
+                          <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
+                            <iframe
+                              src={lessonVideoUrl}
+                              className="w-full h-full"
+                              allowFullScreen
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              title={currentLesson.title}
+                            />
+                          </div>
+                        ) : (
+                          <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
+                            <video
+                              src={lessonVideoUrl}
+                              className="w-full h-full"
+                              controls
+                              controlsList="nodownload"
+                              title={currentLesson.title}
+                            >
+                              Your browser does not support the video tag.
+                            </video>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
 
                     {/* Resources */}
-                    {currentLesson.resources && currentLesson.resources.length > 0 && (
+                    {lessonResources.length > 0 && (
                       <div className="mb-8">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Resources</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                          📚 Course Resources
+                        </h3>
                         <div className="space-y-2">
-                          {currentLesson.resources.map((resource, index) => (
-                            <a
-                              key={index}
-                              href={resource.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                              <BookOpen className="w-4 h-4 text-indigo-600" />
-                              <span className="text-sm text-gray-700">{resource.title}</span>
-                            </a>
-                          ))}
+                          {lessonResources.map((resource, index) => {
+                            const ResourceIcon = getResourceIcon(resource.type);
+                            return (
+                              <a
+                                key={`resource-${index}`}
+                                href={resource.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-between p-3 bg-gray-50 hover:bg-indigo-50 border border-gray-200 hover:border-indigo-300 rounded-lg transition-all group"
+                              >
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  <div className="p-2 bg-white rounded-lg group-hover:bg-indigo-100 transition-colors">
+                                    <ResourceIcon className="w-5 h-5 text-indigo-600" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                      {resource.title}
+                                    </p>
+                                    <p className="text-xs text-gray-500 capitalize">
+                                      {resource.type}
+                                      {resource.size && ` • ${resource.size}`}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="ml-3 flex-shrink-0">
+                                  <LinkIcon className="w-4 h-4 text-gray-400 group-hover:text-indigo-600" />
+                                </div>
+                              </a>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

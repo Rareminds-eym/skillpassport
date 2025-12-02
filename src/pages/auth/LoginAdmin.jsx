@@ -81,9 +81,9 @@ const LoginAdmin = () => {
         return;
       }
 
-      // Use the loginAdmin service to authenticate
+      // Use the loginAdmin service for actual authentication
       const result = await loginAdmin(email, password);
-
+      
       if (!result.success) {
         throw new Error(result.error || 'Login failed');
       }
@@ -114,8 +114,6 @@ const LoginAdmin = () => {
       setIsLoading(false);
     }
   };
-
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
