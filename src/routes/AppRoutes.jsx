@@ -114,7 +114,7 @@ const BrowseJobs = lazy(() => import("../pages/student/BrowseJobs"));
 const Messages = lazy(() => import("../pages/student/Messages"));
 const StudentAnalytics = lazy(() => import("../pages/student/Analytics"));
 const Assignments = lazy(() => import("../pages/student/Assignments"));
-const Clubs = lazy(() => import ("../pages/student/Clubs"))
+const Clubs = lazy(() => import("../pages/student/Clubs"))
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
 const CareerAI = lazy(() => import("../features/career-assistant/components/CareerAssistant"));
@@ -123,6 +123,8 @@ const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")
 );
 const Settings = lazy(() => import("../pages/student/Settings"));
+const AssessmentTest = lazy(() => import("../pages/student/AssessmentTest"));
+const AssessmentResult = lazy(() => import("../pages/student/AssessmentResult"));
 
 // Educator pages
 const EducatorDashboard = lazy(() => import("../pages/educator/Dashboard"));
@@ -139,7 +141,7 @@ const EducatorManagement = lazy(() => import("../pages/educator/EducatorManageme
 const EducatorCommunication = lazy(() =>
   import("../pages/educator/Communication")
 );
-const SkillCurriculars = lazy (() => import("../pages/educator/SkillCurricular"))
+const SkillCurriculars = lazy(() => import("../pages/educator/SkillCurricular"))
 const EducatorAnalytics = lazy(() => import("../pages/educator/Analytics"));
 const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
 const EducatorReports = lazy(() => import("../pages/educator/Reports"));
@@ -241,15 +243,15 @@ const CircularsFeedback = lazy(() =>
 const SkillCurricular = lazy(() =>
   import("../pages/admin/schoolAdmin/SkillCurricular")
 );
-const SkillBadges = lazy(() =>  
-import("../pages/admin/schoolAdmin/SkillBadges")
+const SkillBadges = lazy(() =>
+  import("../pages/admin/schoolAdmin/SkillBadges")
 );
-const Reports = lazy(() =>  
-import("../pages/admin/schoolAdmin/Reports")
+const Reports = lazy(() =>
+  import("../pages/admin/schoolAdmin/Reports")
 );
 // Finance & infrastructure buddy
 const FinanceInfrastructure = lazy(() => import("../pages/admin/schoolAdmin/FeeStructureSetup"))
-const Library  = lazy(() => import("../pages/admin/schoolAdmin/Library"))
+const Library = lazy(() => import("../pages/admin/schoolAdmin/Library"))
 const AttendanceReports = lazy(() =>
   import("../pages/admin/schoolAdmin/AttendanceReports")
 );
@@ -482,6 +484,9 @@ const AppRoutes = () => {
           <Route path="clubs" element={<Clubs />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
+          <Route path="assessment-report" element={<AssessmentTest />} /> {/* Keep old path for backward compat if needed, or redirect */}
+          <Route path="assessment/test" element={<AssessmentTest />} />
+          <Route path="assessment/result" element={<AssessmentResult />} />
 
           {/* Digital Portfolio routes with required providers */}
           <Route

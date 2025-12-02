@@ -83,9 +83,10 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: "opportunities", label: "Opportunities" },
     { id: "career-ai", label: "Career AI", icon: "✨" },
     { id: "assignments", label: "Assignments" },
-    {id: "clubs", label: "Co-Curriculars"},
+    { id: "clubs", label: "Co-Curriculars" },
     { id: "messages", label: "Messages" },
     { id: "analytics", label: "Analytics" },
+    { id: "assessment-report", label: "Assessment", icon: "📋" },
   ];
 
   return (
@@ -149,6 +150,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/messages");
                   } else if (tab.id === "analytics") {
                     navigate("/student/analytics");
+                  } else if (tab.id === "assessment-report") {
+                    navigate("/student/assessment/test");
                   }
                 }}
                 className={`relative py-2 px-1 lg:px-1.5 xl:px-2 text-xs lg:text-xs xl:text-sm font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === tab.id ? "font-semibold" : ""
@@ -214,6 +217,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/messages");
                   } else if (tab.id === "analytics") {
                     navigate("/student/analytics");
+                  } else if (tab.id === "assessment-report") {
+                    navigate("/student/assessment/test");
                   }
                 }}
                 className={`relative py-2 px-3 text-xs font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none whitespace-nowrap flex-shrink-0 ${activeTab === tab.id ? "font-semibold" : ""
@@ -353,12 +358,14 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
-                   } else if (tab.id === "clubs") {
+                  } else if (tab.id === "clubs") {
                     navigate("/student/clubs");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
                   } else if (tab.id === "analytics") {
                     navigate("/student/analytics");
+                  } else if (tab.id === "assessment-report") {
+                    navigate("/student/assessment/test");
                   }
                   setMobileMenuOpen(false);
                 }}
