@@ -166,8 +166,12 @@ function parseCareerPathResponse(content: string): CareerPathResponse {
     currentRole: parsed.currentRole || 'Entry Level',
     careerGoal: parsed.careerGoal || 'Career Development',
     overallScore: Math.min(100, Math.max(0, parsed.overallScore || 65)),
-    strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
-    gaps: Array.isArray(parsed.gaps) ? parsed.gaps : [],
+    strengths: Array.isArray(parsed.strengths) 
+      ? parsed.strengths.map((s: any) => typeof s === 'string' ? s : (s.strength || s.name || JSON.stringify(s))) 
+      : [],
+    gaps: Array.isArray(parsed.gaps) 
+      ? parsed.gaps.map((g: any) => typeof g === 'string' ? g : (g.gap || g.skill || g.name || JSON.stringify(g))) 
+      : [],
     recommendedPath: Array.isArray(parsed.recommendedPath) ? parsed.recommendedPath.map((step: any) => ({
       roleTitle: step.roleTitle || 'Role',
       level: ['entry', 'junior', 'mid', 'senior', 'lead'].includes(step.level) ? step.level : 'entry',
@@ -180,9 +184,21 @@ function parseCareerPathResponse(content: string): CareerPathResponse {
       salaryRange: step.salaryRange || 'Market rate',
       keyResponsibilities: Array.isArray(step.keyResponsibilities) ? step.keyResponsibilities : [],
     })) : [],
-    alternativePaths: Array.isArray(parsed.alternativePaths) ? parsed.alternativePaths : [],
-    actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems : [],
-    nextSteps: Array.isArray(parsed.nextSteps) ? parsed.nextSteps : [],
+    alternativePaths: Array.isArray(parsed.alternativePaths) 
+      ? parsed.alternativePaths.map((path: any) => 
+          typeof path === 'string' ? path : (path.path || path.title || path.description || JSON.stringify(path))
+        ) 
+      : [],
+    actionItems: Array.isArray(parsed.actionItems) 
+      ? parsed.actionItems.map((item: any) => 
+          typeof item === 'string' ? item : (item.action || item.item || item.description || JSON.stringify(item))
+        ) 
+      : [],
+    nextSteps: Array.isArray(parsed.nextSteps) 
+      ? parsed.nextSteps.map((step: any) => 
+          typeof step === 'string' ? step : (step.step || step.action || step.description || JSON.stringify(step))
+        ) 
+      : [],
     generatedAt: new Date().toISOString(),
   };
 }
@@ -260,16 +276,26 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
     const careerPath = parseCareerPathResponse(responseContent);
     careerPath.studentName = student.name;
     
+    // Ensure all required fields exist
+    careerPath.strengths = careerPath.strengths || [];
+    careerPath.gaps = careerPath.gaps || [];
+    careerPath.recommendedPath = careerPath.recommendedPath || [];
+    careerPath.alternativePaths = careerPath.alternativePaths || [];
+    careerPath.actionItems = careerPath.actionItems || [];
+    careerPath.nextSteps = careerPath.nextSteps || [];
+    
     // Store original student data for chat context
     careerPath.studentData = {
-      skills: student.skills,
-      certificates: student.certificates,
-      experience: student.experience,
-      trainings: student.trainings,
-      interests: student.interests,
-      projects: student.projects,
-      education: student.education,
+      skills: student.skills || [],
+      certificates: student.certificates || [],
+      experience: student.experience || [],
+      trainings: student.trainings || [],
+      interests: student.interests || [],
+      projects: student.projects || [],
+      education: student.education || [],
     };
+    
+    console.log('Final career path object:', careerPath);
     
     return careerPath;
   } catch (error) {
