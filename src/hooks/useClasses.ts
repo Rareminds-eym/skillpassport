@@ -3,6 +3,7 @@ import { EducatorClass, fetchEducatorClasses } from "../services/classService"
 
 interface UseClassesOptions {
   schoolId?: string | null;
+  educatorId?: string | null;
 }
 
 export function useClasses(options?: UseClassesOptions) {
@@ -10,10 +11,11 @@ export function useClasses(options?: UseClassesOptions) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const schoolId = options?.schoolId
+  const educatorId = options?.educatorId
 
   const loadClasses = async () => {
     setLoading(true)
-    const { data, error: serviceError } = await fetchEducatorClasses(schoolId || undefined)
+    const { data, error: serviceError } = await fetchEducatorClasses(schoolId || undefined, educatorId || undefined)
     if (serviceError || !data) {
       setError(serviceError || "Failed to load classes")
       setClasses([])
@@ -39,7 +41,7 @@ export function useClasses(options?: UseClassesOptions) {
       isMounted = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId])
+  }, [schoolId, educatorId])
 
   const upsertClass = useCallback((updated: EducatorClass) => {
     setClasses((prev) => {
@@ -51,7 +53,7 @@ export function useClasses(options?: UseClassesOptions) {
 
   const refresh = useCallback(() => {
     loadClasses()
-  }, [schoolId])
+  }, [schoolId, educatorId])
 
   const stats = useMemo(() => {
     const total = classes.length
