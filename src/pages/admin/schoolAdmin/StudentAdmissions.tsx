@@ -421,9 +421,9 @@ const StudentAdmissions = () => {
       <div className="px-4 sm:px-6 lg:px-8 hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
         <div className="w-80 flex-shrink-0 pr-4 text-left">
           <div className="inline-flex items-baseline">
-            <h1 className="text-xl font-semibold text-gray-900">Applications</h1>
+            <h1 className="text-xl font-semibold text-gray-900">Students</h1>
             <span className="ml-2 text-sm text-gray-500">
-              ({totalItems} {searchQuery || filters.class.length > 0 ? 'matching' : ''} applications)
+              ({totalItems} {searchQuery || filters.class.length > 0 ? 'matching' : ''} Students)
             </span>
           </div>
         </div>

@@ -221,6 +221,7 @@ const AttendanceTracking = lazy(() =>
 const CurriculumBuilder = lazy(() =>
   import("../pages/admin/schoolAdmin/CurriculumBuilder")
 );
+const SchoolAdminCourses = lazy(() => import("../pages/admin/schoolAdmin/Courses"));
 const LessonPlan = lazy(() => import("../pages/admin/schoolAdmin/LessonPlan"));
 const ExamsAssessments = lazy(() =>
   import("../pages/admin/schoolAdmin/ExamsAssessments")
@@ -251,6 +252,9 @@ const FinanceInfrastructure = lazy(() => import("../pages/admin/schoolAdmin/FeeS
 const Library  = lazy(() => import("../pages/admin/schoolAdmin/Library"))
 const AttendanceReports = lazy(() =>
   import("../pages/admin/schoolAdmin/AttendanceReports")
+);
+const ClassManagement = lazy(() =>
+  import("../pages/admin/schoolAdmin/ClassManagement")
 );
 
 // Settings
@@ -364,11 +368,13 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<SchoolAdminDashboard />} />
           <Route path="students/admissions" element={<StudentAdmissions />} />
           <Route path="students/attendance-reports" element={<AttendanceReports />} />
+          <Route path="classes/management" element={<ClassManagement />} />
           <Route path="teachers/list" element={<TeacherList />} />
           <Route path="teachers/onboarding" element={<TeacherOnboarding />} />
           <Route path="teachers/timetable" element={<TeacherTimetable />} />
           <Route path="lesson-plans/approvals" element={<LessonPlanApprovals />} />
           {/* Academic Management System Routes */}
+          <Route path="academics/courses" element={<SchoolAdminCourses />} />
           <Route path="academics/curriculum" element={<CurriculumBuilder />} />
           <Route path="academics/lesson-plans" element={<LessonPlan />} />
           <Route path="academics/exams" element={<ExamsAssessments />} />

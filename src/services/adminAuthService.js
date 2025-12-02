@@ -220,7 +220,7 @@ export const loginAdmin = async (email, password) => {
             ? `${userData.firstName} ${userData.lastName || ''}`.trim() 
             : authData.user.email,
           email: authData.user.email,
-          role: userRole,
+          role: effectiveRole,
         },
         session: authData.session,
         error: null,

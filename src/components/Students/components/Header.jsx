@@ -66,7 +66,6 @@ const Header = ({ activeTab, setActiveTab }) => {
       courses: "📚",
       "digital-portfolio": "🎨",
       opportunities: "🚀",
-      applications: "📝",
       "career-ai": "✨",
       assignments: "📋",
       messages: "💬",
@@ -76,13 +75,12 @@ const Header = ({ activeTab, setActiveTab }) => {
   };
 
   const tabs = [
-    { id: "skills", label: "Skills" },
-    { id: "training", label: "Training" },
-    { id: "experience", label: "Experience" },
+    // { id: "skills", label: "Skills" },
+    { id: "training", label: "My Learning" },
+    // { id: "experience", label: "Experience" },
     { id: "courses", label: "Courses", },
     { id: "digital-portfolio", label: "Digital Portfolio" },
     { id: "opportunities", label: "Opportunities" },
-    { id: "applications", label: "Applications" },
     { id: "career-ai", label: "Career AI", icon: "✨" },
     { id: "assignments", label: "Assignments" },
     {id: "clubs", label: "Co-Curriculars"},

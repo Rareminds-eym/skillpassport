@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react'
-import { XMarkIcon, UserPlusIcon, DocumentArrowUpIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, UserPlusIcon, DocumentArrowUpIcon, ArrowDownTrayIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../../../lib/supabaseClient'
 import Papa from 'papaparse'
+
+// Validated row interface for enhanced preview
+interface ValidatedStudent {
+  rowNumber: number
+  data: any
+  isValid: boolean
+  errors: string[]
+}
 
 interface Props {
   isOpen: boolean
@@ -26,6 +34,8 @@ interface StudentFormData {
   country: string
   pincode: string
   bloodGroup: string
+  district: string
+  university: string
 }
 
 const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
@@ -34,7 +44,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [success, setSuccess] = useState<string | null>(null)
   const [mode, setMode] = useState<'manual' | 'csv'>('csv')
   const [csvFile, setCsvFile] = useState<File | null>(null)
-  const [csvPreview, setCsvPreview] = useState<any[]>([])
+  const [validatedStudents, setValidatedStudents] = useState<ValidatedStudent[]>([])
+  const [showEnhancedPreview, setShowEnhancedPreview] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [createdStudentPassword, setCreatedStudentPassword] = useState<string | null>(null)
   const [createdStudentEmail, setCreatedStudentEmail] = useState<string | null>(null)
@@ -55,7 +66,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     state: '',
     country: 'India',
     pincode: '',
-    bloodGroup: ''
+    bloodGroup: '',
+    district: '',
+    university: ''
   })
 
   useEffect(() => {
@@ -76,14 +89,17 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         state: '',
         country: 'India',
         pincode: '',
-        bloodGroup: ''
+        bloodGroup: '',
+        district: '',
+        university: ''
       })
       setError(null)
       setSuccess(null)
       setLoading(false)
       setMode('manual')
       setCsvFile(null)
-      setCsvPreview([])
+      setValidatedStudents([])
+      setShowEnhancedPreview(false)
       setCreatedStudentPassword(null)
       setCreatedStudentEmail(null)
     }
@@ -92,12 +108,13 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   // Download sample CSV template
   const downloadSampleCSV = () => {
     const sampleData = [
-      ['name', 'email', 'contactNumber', 'dateOfBirth', 'gender', 'enrollmentNumber', 'bloodGroup', 'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation', 'address', 'city', 'state', 'country', 'pincode'],
-      ['John Doe', 'john@example.com', '+919876543210', '2000-01-15', 'Male', 'ENR2024001', 'O+', 'Jane Doe', '+919876543211', 'jane@example.com', 'Mother', '123 Main St', 'Mumbai', 'Maharashtra', 'India', '400001'],
-      ['Alice Smith', 'alice@example.com', '+919876543212', '1999-05-20', 'Female', 'ENR2024002', 'A+', 'Bob Smith', '+919876543213', 'bob@example.com', 'Father', '456 Park Ave', 'Delhi', 'Delhi', 'India', '110001']
+      ['name', 'email', 'contactNumber', 'alternateNumber', 'dateOfBirth', 'gender', 'enrollmentNumber', 'registrationNumber', 'rollNumber', 'admissionNumber', 'grade', 'section', 'academicYear', 'bloodGroup', 'district', 'university', 'collegeSchoolName', 'profilePicture', 'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation', 'address', 'city', 'state', 'country', 'pincode'],
+      ['Aarav Sharma', 'aarav.sharma@school.com', '919876501234', '919876543299', '2010-04-15', 'Male', 'ENR2024101', 'REG2024101', '1', 'ADM2024101', '10', 'A', '2024-25', 'O+', 'Mumbai', '', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=12', 'Rajesh Sharma', '919877654321', 'rajesh.sharma@parent.com', 'Father', 'Flat 301 Sunrise Apartments Andheri West', 'Mumbai', 'Maharashtra', 'India', '400053'],
+      ['Diya Patel', 'diya.patel@school.com', '919876502345', '', '2011-08-22', 'Female', 'ENR2024102', 'REG2024102', '2', 'ADM2024102', '9', 'B', '2024-25', 'A+', 'Mumbai', '', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=47', 'Priya Patel', '919877654322', 'priya.patel@parent.com', 'Mother', 'Bungalow 12 Green Valley Society Borivali', 'Mumbai', 'Maharashtra', 'India', '400092'],
+      ['Arjun Reddy', 'arjun.reddy@school.com', '919876503456', '919876543298', '2012-12-10', 'Male', 'ENR2024103', 'REG2024103', '3', 'ADM2024103', '8', 'C', '2024-25', 'B+', 'Mumbai', '', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=33', 'Venkatesh Reddy', '919877654323', 'venkatesh.reddy@parent.com', 'Father', 'Tower B 1502 Oberoi Heights Goregaon East', 'Mumbai', 'Maharashtra', 'India', '400063']
     ]
     
-    const csv = sampleData.map(row => row.join(',')).join('\n')
+    const csv = sampleData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -205,6 +222,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             state: formData.state.trim() || null,
             country: formData.country || 'India',
             pincode: formData.pincode.trim() || null,
+            district: formData.district.trim() || null,
+            university: formData.university.trim() || null,
             bloodGroup: formData.bloodGroup || null,
             approval_status: 'approved',
             student_type: 'educator_added'
@@ -247,6 +266,18 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     }
   }
 
+  // Validation helper functions
+  const validateEmailFormat = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const validatePhoneFormat = (phone: string): boolean => {
+    const cleaned = phone.replace(/[\s-]/g, '')
+    const phoneRegex = /^(\+?\d{1,3})?\d{10}$/
+    return phoneRegex.test(cleaned)
+  }
+
   const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -254,41 +285,204 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     setCsvFile(file)
     setError(null)
     setSuccess(null)
-    setCsvPreview([])
+    setValidatedStudents([])
+    setShowEnhancedPreview(false)
+    setLoading(true)
 
     // Parse CSV using PapaParse
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       transformHeader: (header) => header.trim().toLowerCase().replace(/[^a-z0-9]/g, ''),
-      complete: (results) => {
-        if (results.errors.length > 0) {
-          const errorMsg = results.errors.map(e => `Row ${e.row + 1}: ${e.message}`).join(', ')
-          setError(`CSV parsing errors: ${errorMsg}`)
-          return
+      complete: async (results) => {
+        try {
+          if (results.errors.length > 0) {
+            const errorMsg = results.errors.map(e => `Row ${(e.row ?? 0) + 1}: ${e.message}`).join(', ')
+            setError(`CSV parsing errors: ${errorMsg}`)
+            setLoading(false)
+            return
+          }
+
+          if (!results.data || results.data.length === 0) {
+            setError('CSV file is empty or contains no valid data')
+            setLoading(false)
+            return
+          }
+
+          // Validate required columns
+          const firstRow: any = results.data[0]
+          const hasName = 'name' in firstRow
+          const hasEmail = 'email' in firstRow
+          const hasContact = 'contactnumber' in firstRow
+
+          if (!hasName || !hasEmail || !hasContact) {
+            setError('CSV must contain required columns: name, email, contactNumber')
+            setLoading(false)
+            return
+          }
+
+          // Get school ID for class validation
+          const userStr = localStorage.getItem('user')
+          const userEmail = localStorage.getItem('userEmail')
+          let schoolId: string | null = null
+          
+          try {
+            const userData = JSON.parse(userStr || '{}')
+            schoolId = userData.schoolId || null
+          } catch (e) {
+            console.warn('Could not parse user data from localStorage')
+          }
+
+          console.log('🔍 DEBUG: Initial schoolId from localStorage:', schoolId)
+          console.log('🔍 DEBUG: User email:', userEmail)
+
+          // If schoolId not in localStorage, fetch from database
+          if (!schoolId && userEmail) {
+            console.log('🔍 DEBUG: Fetching schoolId from database for user:', userEmail)
+            
+            // Check school_educators table
+            const { data: educatorData, error: educatorError } = await supabase
+              .from('school_educators')
+              .select('school_id')
+              .eq('email', userEmail)
+              .maybeSingle()
+
+            if (!educatorError && educatorData) {
+              schoolId = educatorData.school_id
+              console.log('🔍 DEBUG: Found schoolId from school_educators:', schoolId)
+            } else {
+              console.log('🔍 DEBUG: No educator found, checking users table...')
+              
+              // Check users.organizationId
+              const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('organizationId')
+                .eq('email', userEmail)
+                .maybeSingle()
+
+              if (!userError && userData) {
+                schoolId = userData.organizationId
+                console.log('🔍 DEBUG: Found schoolId from users.organizationId:', schoolId)
+              }
+            }
+          }
+
+          // Collect unique class combinations from CSV
+          const classesToCheck = new Map<string, { grade: string; section: string }>()
+          ;(results.data as any[]).forEach((student) => {
+            const grade = student.grade || student.class
+            const section = student.section || student.division
+            if (grade && section) {
+              const key = `${grade}-${section}`
+              if (!classesToCheck.has(key)) {
+                classesToCheck.set(key, { grade, section })
+              }
+            }
+          })
+
+          console.log('🔍 DEBUG: Classes to check from CSV:', Array.from(classesToCheck.entries()))
+          console.log('🔍 DEBUG: School ID:', schoolId)
+
+          // Check which classes exist in database and store their IDs
+          const existingClasses = new Set<string>()
+          const classIdMap = new Map<string, string>() // Map of "grade-section" to class_id
+          
+          if (schoolId && classesToCheck.size > 0) {
+            console.log('🔍 DEBUG: Checking classes in database for school:', schoolId)
+            
+            const { data: classes, error: classError } = await supabase
+              .from('school_classes')
+              .select('id, grade, section, name, academic_year')
+              .eq('school_id', schoolId)
+              .eq('account_status', 'active')
+
+            console.log('🔍 DEBUG: Database query result:', { classes, error: classError })
+
+            if (!classError && classes) {
+              classes.forEach((cls: { id: string; grade: string; section: string; name: string; academic_year: string }) => {
+                const key = `${cls.grade}-${cls.section}`
+                existingClasses.add(key)
+                classIdMap.set(key, cls.id)
+                console.log(`🔍 DEBUG: Found class in DB: ${key} (id: ${cls.id}, name: ${cls.name}, year: ${cls.academic_year})`)
+              })
+              console.log('🔍 DEBUG: All existing classes:', Array.from(existingClasses))
+              console.log('🔍 DEBUG: Class ID map:', Array.from(classIdMap.entries()))
+            } else if (classError) {
+              console.error('🔍 DEBUG: Error fetching classes:', classError)
+            }
+          } else {
+            console.log('🔍 DEBUG: Skipping class check - schoolId:', schoolId, 'classesToCheck.size:', classesToCheck.size)
+          }
+
+          // Validate ALL rows and create enhanced preview
+          const validated: ValidatedStudent[] = (results.data as any[]).map((student, index) => {
+            const rowNum = index + 2 // +2 for header row and 0-index
+            const errors: string[] = []
+
+            // Validate required fields
+            if (!student.name || !student.name.trim()) {
+              errors.push('Name is required')
+            }
+            if (!student.email || !student.email.trim()) {
+              errors.push('Email is required')
+            } else if (!validateEmailFormat(student.email)) {
+              errors.push('Invalid email format')
+            }
+            if (!student.contactnumber || !student.contactnumber.trim()) {
+              errors.push('Contact number is required')
+            } else if (!validatePhoneFormat(student.contactnumber)) {
+              errors.push('Invalid phone format')
+            }
+
+            // Validate class exists if grade and section provided
+            const grade = student.grade || student.class
+            const section = student.section || student.division
+            let schoolClassId: string | null = null
+            
+            console.log(`🔍 DEBUG Row ${rowNum}: grade="${grade}", section="${section}", student.grade="${student.grade}", student.section="${student.section}"`)
+            
+            if (grade && section) {
+              const classKey = `${grade}-${section}`
+              const exists = existingClasses.has(classKey)
+              console.log(`🔍 DEBUG Row ${rowNum}: Checking class "${classKey}" - exists: ${exists}`)
+              if (!exists) {
+                errors.push(`Class ${grade}-${section} does not exist. Please create the class first.`)
+                console.log(`🔍 DEBUG Row ${rowNum}: Added error - class not found`)
+              } else {
+                // Get the class ID
+                schoolClassId = classIdMap.get(classKey) || null
+                console.log(`🔍 DEBUG Row ${rowNum}: Found class ID: ${schoolClassId}`)
+              }
+            } else if (grade && !section) {
+              errors.push('Section is required when grade is provided')
+              console.log(`🔍 DEBUG Row ${rowNum}: Missing section`)
+            } else if (!grade && section) {
+              errors.push('Grade is required when section is provided')
+              console.log(`🔍 DEBUG Row ${rowNum}: Missing grade`)
+            }
+
+            // Store the schoolClassId in the student data
+            student.schoolClassId = schoolClassId
+
+            return {
+              rowNumber: rowNum,
+              data: { ...student, grade, section },
+              isValid: errors.length === 0,
+              errors
+            }
+          })
+
+          setValidatedStudents(validated)
+          setShowEnhancedPreview(true)
+        } catch (err: any) {
+          setError(`Error validating CSV: ${err.message}`)
+        } finally {
+          setLoading(false)
         }
-
-        if (!results.data || results.data.length === 0) {
-          setError('CSV file is empty or contains no valid data')
-          return
-        }
-
-        // Validate required columns
-        const firstRow: any = results.data[0]
-        const hasName = 'name' in firstRow
-        const hasEmail = 'email' in firstRow
-        const hasContact = 'contactnumber' in firstRow
-
-        if (!hasName || !hasEmail || !hasContact) {
-          setError('CSV must contain required columns: name, email, contactNumber')
-          return
-        }
-
-        // Show preview of first 5 rows
-        setCsvPreview(results.data.slice(0, 5))
       },
       error: (error) => {
         setError(`Failed to parse CSV: ${error.message}`)
+        setLoading(false)
       }
     })
   }
@@ -326,6 +520,60 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               return
             }
 
+            // Get userEmail and schoolId FIRST (moved up)
+            const userEmail = localStorage.getItem('userEmail')
+            const userStr = localStorage.getItem('user')
+            
+            if (!userEmail) {
+              setError('You are not logged in. Please login and try again.')
+              setLoading(false)
+              return
+            }
+
+            let schoolId: string | null = null
+            try {
+              const userData = JSON.parse(userStr || '{}')
+              schoolId = userData.schoolId || null
+            } catch (e) {
+              console.warn('Could not parse user data from localStorage')
+            }
+
+            // If schoolId not in localStorage, fetch from database
+            if (!schoolId && userEmail) {
+              const { data: educatorData } = await supabase
+                .from('school_educators')
+                .select('school_id')
+                .eq('email', userEmail)
+                .maybeSingle()
+
+              if (educatorData) {
+                schoolId = educatorData.school_id
+              }
+            }
+
+            if (!schoolId) {
+              setError('School ID not found. Please ensure you are logged in as a school admin.')
+              setLoading(false)
+              return
+            }
+
+            // Fetch class IDs for mapping
+            const { data: classes } = await supabase
+              .from('school_classes')
+              .select('id, grade, section')
+              .eq('school_id', schoolId)
+              .eq('account_status', 'active')
+
+            const classIdMap = new Map<string, string>()
+            if (classes) {
+              classes.forEach((cls: { id: string; grade: string; section: string }) => {
+                const key = `${cls.grade}-${cls.section}`
+                classIdMap.set(key, cls.id)
+              })
+            }
+
+            console.log('🔍 CSV SUBMIT: Class ID map:', Array.from(classIdMap.entries()))
+
             // Validate and prepare students data
             const validStudents: any[] = []
             const errors: string[] = []
@@ -354,31 +602,57 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 return
               }
 
+              // Support both 'parent' and 'guardian' prefixes for parent/guardian fields
+              const guardianName = student.guardianname || student.parentname || null
+              const guardianPhone = student.guardianphone || student.parentphone || null
+              const guardianEmail = student.guardianemail || student.parentemail || null
+              const guardianRelation = student.guardianrelation || student.parentrelation || 'Parent'
+
+              // Get grade and section
+              const grade = student.grade || student.class || null
+              const section = student.section || student.division || null
+              
+              // Look up the class ID
+              let schoolClassId: string | null = null
+              if (grade && section) {
+                const classKey = `${grade}-${section}`
+                schoolClassId = classIdMap.get(classKey) || null
+                console.log(`🔍 CSV SUBMIT Row ${rowNum}: grade=${grade}, section=${section}, classKey=${classKey}, schoolClassId=${schoolClassId}`)
+              }
+
               validStudents.push({
                 row: rowNum,
                 data: {
                   name: student.name.trim(),
                   email: student.email.trim().toLowerCase(),
                   contactNumber: student.contactnumber.trim(),
+                  alternateNumber: student.alternatenumber?.trim() || null,
                   dateOfBirth: student.dateofbirth || null,
                   gender: student.gender || null,
                   enrollmentNumber: student.enrollmentnumber || null,
-                  guardianName: student.guardianname || null,
-                  guardianPhone: student.guardianphone || null,
-                  guardianEmail: student.guardianemail || null,
-                  guardianRelation: student.guardianrelation || null,
+                  registrationNumber: student.registrationnumber || null,
+                  rollNumber: student.rollnumber || null,
+                  admissionNumber: student.admissionnumber || null,
+                  grade: grade,
+                  section: section,
+                  academicYear: student.academicyear || student.year || null,
+                  schoolClassId: schoolClassId, // Use the looked-up class ID
+                  guardianName: guardianName,
+                  guardianPhone: guardianPhone,
+                  guardianEmail: guardianEmail,
+                  guardianRelation: guardianRelation,
+                  bloodGroup: student.bloodgroup || null,
+                  district: student.district || null,
+                  university: student.university || null,
+                  collegeSchoolName: student.collegeschoolname || null,
+                  profilePicture: student.profilepicture || null,
                   address: student.address || null,
                   city: student.city || null,
                   state: student.state || null,
                   country: student.country || 'India',
                   pincode: student.pincode || null,
-                  bloodGroup: student.bloodgroup || null,
                   approval_status: 'approved',
-                  student_type: 'educator_added',
-                  profile: JSON.stringify({
-                    source: 'educator_csv_import',
-                    imported_at: new Date().toISOString()
-                  })
+                  student_type: 'csv_import'
                 }
               })
             })
@@ -396,24 +670,6 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             const processingErrors: string[] = [...errors]
 
             setUploadProgress({ current: 0, total: validStudents.length })
-
-            // Get userEmail and schoolId from localStorage
-            const userEmail = localStorage.getItem('userEmail')
-            const userStr = localStorage.getItem('user')
-            
-            if (!userEmail) {
-              setError('You are not logged in. Please login and try again.')
-              setLoading(false)
-              return
-            }
-
-            let schoolId = null
-            try {
-              const userData = JSON.parse(userStr || '{}')
-              schoolId = userData.schoolId || null
-            } catch (e) {
-              console.warn('Could not parse user data from localStorage')
-            }
 
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
             const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -812,6 +1068,28 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     placeholder="123456"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
+                  <input
+                    type="text"
+                    value={formData.district}
+                    onChange={(e) => handleInputChange('district', e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="District name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">University</label>
+                  <input
+                    type="text"
+                    value={formData.university}
+                    onChange={(e) => handleInputChange('university', e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="University name"
+                  />
+                </div>
               </div>
             </div>
           ) : (
@@ -826,8 +1104,16 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     <span>name, email, contactNumber</span>
                   </li>
                   <li className="flex items-start">
+                    <span className="font-semibold mr-2">• School Students:</span>
+                    <span>grade, section, rollNumber, collegeSchoolName <span className="text-amber-600">(class must exist, leave university empty)</span></span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="font-semibold mr-2">• University Students:</span>
+                    <span>university, registrationNumber <span className="text-amber-600">(leave grade/section empty)</span></span>
+                  </li>
+                  <li className="flex items-start">
                     <span className="font-semibold mr-2">• Optional:</span>
-                    <span>dateOfBirth, gender, enrollmentNumber, bloodGroup</span>
+                    <span>alternateNumber, dateOfBirth, gender, enrollmentNumber, bloodGroup, academicYear, profilePicture</span>
                   </li>
                   <li className="flex items-start">
                     <span className="font-semibold mr-2">• Guardian:</span>
@@ -835,7 +1121,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   </li>
                   <li className="flex items-start">
                     <span className="font-semibold mr-2">• Address:</span>
-                    <span>address, city, state, country, pincode</span>
+                    <span>address, city, state, country, pincode, district</span>
                   </li>
                 </ul>
                 
@@ -871,6 +1157,19 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
               </div>
 
+              {/* Validation Loading */}
+              {loading && !uploadProgress && csvFile && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex items-center">
+                    <svg className="animate-spin h-5 w-5 text-blue-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span className="text-sm font-medium text-blue-900">Validating CSV and checking classes...</span>
+                  </div>
+                </div>
+              )}
+
               {/* Upload Progress */}
               {uploadProgress && (
                 <div className="mb-4 p-4 bg-primary-50 border border-primary-200 rounded-md">
@@ -891,33 +1190,220 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
               )}
 
-              {csvPreview.length > 0 && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Preview (First 5 rows)</h4>
-                  <div className="overflow-x-auto border border-gray-200 rounded-md">
-                    <table className="min-w-full divide-y divide-gray-200 text-xs">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          {Object.keys(csvPreview[0]).map((header) => (
-                            <th key={header} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                              {header}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {csvPreview.map((row, idx) => (
-                          <tr key={idx}>
-                            {Object.values(row).map((value: any, cellIdx) => (
-                              <td key={cellIdx} className="px-3 py-2 whitespace-nowrap text-gray-900">
-                                {value}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              {/* Enhanced Preview with Valid/Invalid Separation */}
+              {showEnhancedPreview && validatedStudents.length > 0 && (
+                <div className="space-y-4">
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+                      <div className="text-lg font-semibold text-gray-900">{validatedStudents.length}</div>
+                      <div className="text-xs text-gray-500">Total Rows</div>
+                    </div>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                      <div className="text-lg font-semibold text-green-700">{validatedStudents.filter(s => s.isValid).length}</div>
+                      <div className="text-xs text-green-600">Valid</div>
+                    </div>
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                      <div className="text-lg font-semibold text-red-700">{validatedStudents.filter(s => !s.isValid).length}</div>
+                      <div className="text-xs text-red-600">Invalid</div>
+                    </div>
                   </div>
+
+                  {/* Valid Students */}
+                  {validatedStudents.filter(s => s.isValid).length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center">
+                        <CheckCircleIcon className="h-4 w-4 text-green-500 mr-1" />
+                        Valid Students ({validatedStudents.filter(s => s.isValid).length})
+                      </h4>
+                      <div className="overflow-x-auto border border-green-200 rounded-md max-h-96">
+                        <table className="min-w-full divide-y divide-gray-200 text-xs">
+                          <thead className="bg-green-50 sticky top-0">
+                            <tr>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Row</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Photo</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Name</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Email</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Phone</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Alt. Phone</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Type</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Class</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">School Name</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">University</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Reg No.</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Roll</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Gender</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Blood</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Guardian</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {validatedStudents.filter(s => s.isValid).slice(0, 15).map((student) => {
+                              const isSchoolStudent = student.data.grade && student.data.section;
+                              const isUniversityStudent = student.data.university;
+                              const hasProfilePicture = student.data.profilepicture && student.data.profilepicture.trim();
+                              return (
+                                <tr key={student.rowNumber} className="hover:bg-gray-50">
+                                  <td className="px-2 py-2 text-gray-500 font-medium">{student.rowNumber}</td>
+                                  <td className="px-2 py-2">
+                                    {hasProfilePicture ? (
+                                      <img 
+                                        src={student.data.profilepicture} 
+                                        alt={student.data.name}
+                                        className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = 'none';
+                                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                        }}
+                                      />
+                                    ) : null}
+                                    <div className={`w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 ${hasProfilePicture ? 'hidden' : ''}`}>
+                                      {student.data.name?.charAt(0)?.toUpperCase() || '?'}
+                                    </div>
+                                  </td>
+                                  <td className="px-2 py-2 font-medium text-gray-900 whitespace-nowrap">{student.data.name}</td>
+                                  <td className="px-2 py-2 text-gray-600 text-xs">{student.data.email}</td>
+                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{student.data.contactnumber || '-'}</td>
+                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
+                                    {student.data.alternatenumber ? (
+                                      <span className="text-blue-600">{student.data.alternatenumber}</span>
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    {isSchoolStudent ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                        School
+                                      </span>
+                                    ) : isUniversityStudent ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                        University
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
+                                  </td>
+                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
+                                    {student.data.grade && student.data.section 
+                                      ? `${student.data.grade}-${student.data.section}` 
+                                      : <span className="text-gray-400">-</span>}
+                                  </td>
+                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{student.data.collegeschoolname || '-'}</td>
+                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{student.data.university || '-'}</td>
+                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{student.data.registrationnumber || '-'}</td>
+                                  <td className="px-2 py-2 text-gray-600">{student.data.rollnumber || '-'}</td>
+                                  <td className="px-2 py-2 text-gray-600">{student.data.gender || '-'}</td>
+                                  <td className="px-2 py-2 text-gray-600">{student.data.bloodgroup || '-'}</td>
+                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{student.data.guardianname || student.data.parentname || '-'}</td>
+                                  <td className="px-2 py-2">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                      ✓
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                        {validatedStudents.filter(s => s.isValid).length > 15 && (
+                          <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50">
+                            ...and {validatedStudents.filter(s => s.isValid).length - 15} more valid students
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Invalid Students */}
+                  {validatedStudents.filter(s => !s.isValid).length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center">
+                        <ExclamationTriangleIcon className="h-4 w-4 text-red-500 mr-1" />
+                        Invalid Students ({validatedStudents.filter(s => !s.isValid).length}) - Will Not Be Imported
+                      </h4>
+                      <div className="overflow-x-auto border border-red-200 rounded-md max-h-96">
+                        <table className="min-w-full divide-y divide-gray-200 text-xs">
+                          <thead className="bg-red-50 sticky top-0">
+                            <tr>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Row</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Name</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Email</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Phone</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Alt. Phone</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Type</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Class</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">School/Univ</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Errors</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {validatedStudents.filter(s => !s.isValid).slice(0, 10).map((student) => {
+                              const isSchoolStudent = student.data.grade && student.data.section;
+                              const isUniversityStudent = student.data.university;
+                              return (
+                                <tr key={student.rowNumber} className="hover:bg-red-50">
+                                  <td className="px-2 py-2 text-gray-500 font-medium">{student.rowNumber}</td>
+                                  <td className="px-2 py-2 font-medium text-gray-900">{student.data.name || <span className="text-gray-400 italic">Missing</span>}</td>
+                                  <td className="px-2 py-2 text-gray-600 text-xs">{student.data.email || <span className="text-gray-400 italic">Missing</span>}</td>
+                                  <td className="px-2 py-2 text-gray-600">{student.data.contactnumber || <span className="text-gray-400 italic">Missing</span>}</td>
+                                  <td className="px-2 py-2 text-gray-600">
+                                    {student.data.alternatenumber ? (
+                                      <span className="text-blue-600">{student.data.alternatenumber}</span>
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    {isSchoolStudent ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                        School
+                                      </span>
+                                    ) : isUniversityStudent ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                        University
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
+                                  </td>
+                                  <td className="px-2 py-2 text-gray-600">
+                                    {student.data.grade && student.data.section 
+                                      ? `${student.data.grade}-${student.data.section}` 
+                                      : <span className="text-gray-400">-</span>}
+                                  </td>
+                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
+                                    {student.data.collegeschoolname || student.data.university || '-'}
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    <div className="space-y-1">
+                                      {student.errors.map((err, i) => (
+                                        <div key={i} className="text-xs text-red-600">• {err}</div>
+                                      ))}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                        {validatedStudents.filter(s => !s.isValid).length > 10 && (
+                          <div className="px-3 py-2 text-xs text-red-600 bg-red-50">
+                            ...and {validatedStudents.filter(s => !s.isValid).length - 10} more invalid students
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No valid students warning */}
+                  {validatedStudents.filter(s => s.isValid).length === 0 && (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
+                      <p className="text-sm text-amber-800 font-medium">⚠️ No valid students to import</p>
+                      <p className="text-xs text-amber-700 mt-1">Please fix the errors above and re-upload the CSV file.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -933,7 +1419,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             </button>
             <button
               onClick={mode === 'manual' ? handleSubmit : handleCSVSubmit}
-              disabled={loading || (mode === 'csv' && !csvFile)}
+              disabled={loading || (mode === 'csv' && !csvFile) || (mode === 'csv' && showEnhancedPreview && validatedStudents.filter(s => s.isValid).length === 0)}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center"
             >
               {loading ? (
@@ -947,7 +1433,11 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               ) : (
                 <>
                   <UserPlusIcon className="h-4 w-4 mr-1" />
-                  {mode === 'manual' ? 'Add Student' : 'Upload CSV'}
+                  {mode === 'manual' ? 'Add Student' : (
+                    showEnhancedPreview && validatedStudents.length > 0 
+                      ? `Import ${validatedStudents.filter(s => s.isValid).length} Valid Student${validatedStudents.filter(s => s.isValid).length !== 1 ? 's' : ''}`
+                      : 'Upload CSV'
+                  )}
                 </>
               )}
             </button>

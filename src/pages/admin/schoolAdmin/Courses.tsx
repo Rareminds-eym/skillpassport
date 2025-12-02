@@ -9,24 +9,24 @@ import {
   AcademicCapIcon
 } from '@heroicons/react/24/outline';
 
-import { Course } from '../../types/educator/course';
-import { SKILL_CATEGORIES, CLASSES } from '../../data/educator/mockCourses';
+import { Course } from '../../../types/educator/course';
+import { SKILL_CATEGORIES, CLASSES } from '../../../data/educator/mockCourses';
 
-import CourseCard from '../../components/educator/courses/CourseCard';
-import CourseFilters from '../../components/educator/courses/CourseFilters';
-import CreateCourseModal from '../../components/educator/courses/CreateCourseModal';
-import CourseDetailDrawer from '../../components/educator/courses/CourseDetailDrawer';
+import CourseCard from '../../../components/educator/courses/CourseCard';
+import CourseFilters from '../../../components/educator/courses/CourseFilters';
+import CreateCourseModal from '../../../components/educator/courses/CreateCourseModal';
+import CourseDetailDrawer from '../../../components/educator/courses/CourseDetailDrawer';
+import AssignEducatorModal from '../../../components/educator/courses/AssignEducatorModal';
 
 import {
   getCoursesByEducator,
   createCourse,
   updateCourse
-} from '../../services/educator/coursesService';
+} from '../../../services/educator/coursesService';
 import toast from 'react-hot-toast';
 // @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabaseClient';
-import { View } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
+import { supabase } from '../../../lib/supabaseClient';
 
 const Courses: React.FC = () => {
   const navigate = useNavigate();
@@ -55,13 +55,9 @@ const Courses: React.FC = () => {
 
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-
-  // Track if educator is affiliated with an institution
-  const [isAffiliated, setIsAffiliated] = useState<boolean>(false);
-  const [affiliationInfo, setAffiliationInfo] = useState<{
-    type: 'school' | 'college' | 'university' | null;
-    name: string | null;
-  }>({ type: null, name: null });
+  const [assigningCourse, setAssigningCourse] = useState<Course | null>(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
 
   /** ─────────────────────────────────────────────
    *  CONSTANTS
@@ -69,94 +65,12 @@ const Courses: React.FC = () => {
   const tabFilters = ['All Courses', 'Active', 'Upcoming', 'Archived'];
 
   /** ─────────────────────────────────────────────
-   *  CHECK EDUCATOR AFFILIATION
-   * ───────────────────────────────────────────── */
-  const checkEducatorAffiliation = async (educatorId: string) => {
-    try {
-      console.log('🔍 Checking affiliation for educator:', educatorId);
-      
-      // Check if educator is part of a school
-      const { data: schoolEducator, error: schoolError } = await supabase
-        .from('school_educators')
-        .select('school_id, schools(name)')
-        .eq('user_id', educatorId)
-        .maybeSingle();
-
-      console.log('School check result:', { schoolEducator, schoolError });
-
-      if (!schoolError && schoolEducator) {
-        console.log('✅ Educator is affiliated with school:', (schoolEducator as any).schools?.name);
-        return {
-          isAffiliated: true,
-          info: {
-            type: 'school' as const,
-            name: (schoolEducator as any).schools?.name || 'School'
-          }
-        };
-      }
-
-      // Check if educator is part of a college
-      const { data: collegeEducator, error: collegeError } = await supabase
-        .from('college_educators')
-        .select('college_id, colleges(name)')
-        .eq('user_id', educatorId)
-        .maybeSingle();
-
-      console.log('College check result:', { collegeEducator, collegeError });
-
-      if (!collegeError && collegeEducator) {
-        console.log('✅ Educator is affiliated with college:', (collegeEducator as any).colleges?.name);
-        return {
-          isAffiliated: true,
-          info: {
-            type: 'college' as const,
-            name: (collegeEducator as any).colleges?.name || 'College'
-          }
-        };
-      }
-
-      // Check if educator is part of a university
-      const { data: universityEducator, error: universityError } = await supabase
-        .from('university_educators')
-        .select('university_id, universities(name)')
-        .eq('user_id', educatorId)
-        .maybeSingle();
-
-      console.log('University check result:', { universityEducator, universityError });
-
-      if (!universityError && universityEducator) {
-        console.log('✅ Educator is affiliated with university:', (universityEducator as any).universities?.name);
-        return {
-          isAffiliated: true,
-          info: {
-            type: 'university' as const,
-            name: (universityEducator as any).universities?.name || 'University'
-          }
-        };
-      }
-
-      // Not affiliated with any institution
-      console.log('✅ Educator is independent (not affiliated)');
-      return {
-        isAffiliated: false,
-        info: { type: null, name: null }
-      };
-    } catch (error) {
-      console.error('❌ Error checking educator affiliation:', error);
-      return {
-        isAffiliated: false,
-        info: { type: null, name: null }
-      };
-    }
-  };
-
-  /** ─────────────────────────────────────────────
    *  LOAD EDUCATOR + COURSES
    * ───────────────────────────────────────────── */
   useEffect(() => {
     const loadEducatorAndCourses = async () => {
       try {
-        console.log('=== LOADING EDUCATOR AND COURSES ===');
+        console.log('=== LOADING SCHOOL ADMIN COURSES ===');
         setLoading(true);
         setError(null);
 
@@ -172,29 +86,143 @@ const Courses: React.FC = () => {
         console.log('User email:', user.email);
         console.log('User role:', user.role);
 
-        setEducatorId(user.id);
-        console.log('✅ Educator ID set:', user.id);
+        // Verify Supabase session and use Supabase user ID
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.error('❌ No Supabase session found');
+          setError('Authentication session expired. Please log in again.');
+          setLoading(false);
+          return;
+        }
+        console.log('✅ Supabase session verified:', session.user.id);
+        console.log('AuthContext user ID:', user.id);
+        
+        // IMPORTANT: Use Supabase auth user ID, not AuthContext user ID
+        // This ensures the ID matches what RLS policies expect
+        const supabaseUserId = session.user.id;
+        setEducatorId(supabaseUserId);
+        console.log('✅ Using Supabase user ID for educator_id:', supabaseUserId);
 
         // Use full_name from AuthContext if available
-        const fullName = user.full_name || user.email?.split('@')[0] || 'Educator';
+        const fullName = user.full_name || user.email?.split('@')[0] || 'School Admin';
         setEducatorName(fullName);
-        console.log('✅ Educator name set:', fullName);
+        console.log('✅ School Admin name set:', fullName);
 
-        // Check if educator is affiliated with any institution
-        console.log('📡 Checking educator affiliation...');
-        const affiliation = await checkEducatorAffiliation(user.id);
-        setIsAffiliated(affiliation.isAffiliated);
-        setAffiliationInfo(affiliation.info);
+        // For school admin, fetch ALL courses from their school, not just their own
+        console.log('📡 Fetching all school courses for school admin:', supabaseUserId);
         
-        if (affiliation.isAffiliated) {
-          console.log(`✅ Educator is affiliated with ${affiliation.info.type}: ${affiliation.info.name}`);
-        } else {
-          console.log('✅ Educator is independent (not affiliated)');
+        // First, get the school admin's school ID
+        const { data: schoolData, error: schoolError } = await supabase
+          .from('schools')
+          .select('id')
+          .or(`created_by.eq.${supabaseUserId},email.eq.${user.email}`)
+          .maybeSingle();
+
+        if (schoolError) {
+          console.error('❌ Error fetching school:', schoolError);
         }
 
-        // Load courses
-        console.log('📡 Fetching courses for educator:', user.id);
-        const coursesData = await getCoursesByEducator(user.id);
+        let coursesData: Course[] = [];
+
+        if (schoolData) {
+          console.log('✅ School found:', schoolData.id);
+          setSchoolId(schoolData.id);
+          
+          // Fetch all courses from educators in this school
+          const { data: schoolEducators } = await supabase
+            .from('school_educators')
+            .select('user_id')
+            .eq('school_id', schoolData.id);
+
+          const educatorIds = schoolEducators?.map(se => se.user_id) || [];
+          
+          // Also include the school admin's own ID
+          if (!educatorIds.includes(supabaseUserId)) {
+            educatorIds.push(supabaseUserId);
+          }
+
+          console.log('📡 Fetching courses for', educatorIds.length, 'educators');
+          console.log('📡 Educator IDs:', educatorIds);
+
+          // Fetch courses for all educators in the school
+          if (educatorIds.length > 0) {
+            const { data: allCourses, error: coursesError } = await supabase
+              .from('courses')
+              .select(`
+                *,
+                course_skills(skill_name),
+                course_classes(class_name),
+                course_modules(
+                  *,
+                  lessons(
+                    *,
+                    lesson_resources(*)
+                  )
+                )
+              `)
+              .in('educator_id', educatorIds)
+              .is('deleted_at', null)
+              .order('created_at', { ascending: false });
+
+            if (coursesError) {
+              console.error('❌ Error fetching courses:', coursesError);
+              console.error('Error details:', JSON.stringify(coursesError, null, 2));
+            } else {
+              console.log('✅ Raw courses fetched:', allCourses?.length || 0);
+              // Transform the data to match Course interface
+              coursesData = (allCourses || []).map((courseRow: any) => ({
+                id: courseRow.course_id,
+                title: courseRow.title,
+                code: courseRow.code,
+                description: courseRow.description,
+                thumbnail: courseRow.thumbnail,
+                status: courseRow.status,
+                duration: courseRow.duration,
+                skillsCovered: courseRow.course_skills?.map((s: any) => s.skill_name) || [],
+                skillsMapped: courseRow.skills_mapped || 0,
+                totalSkills: courseRow.total_skills || 0,
+                enrollmentCount: courseRow.enrollment_count || 0,
+                completionRate: courseRow.completion_rate || 0,
+                evidencePending: courseRow.evidence_pending || 0,
+                linkedClasses: courseRow.course_classes?.map((c: any) => c.class_name) || [],
+                targetOutcomes: courseRow.target_outcomes || [],
+                modules: (courseRow.course_modules || []).map((mod: any) => ({
+                  id: mod.module_id,
+                  title: mod.title,
+                  description: mod.description || '',
+                  skillTags: mod.skill_tags || [],
+                  activities: mod.activities || [],
+                  order: mod.order_index,
+                  lessons: (mod.lessons || []).map((les: any) => ({
+                    id: les.lesson_id,
+                    title: les.title,
+                    content: les.content || '',
+                    description: les.description || '',
+                    duration: les.duration || '',
+                    order: les.order_index,
+                    resources: (les.lesson_resources || []).map((res: any) => ({
+                      id: res.resource_id,
+                      name: res.name,
+                      type: res.type,
+                      url: res.url,
+                      size: res.file_size,
+                      thumbnailUrl: res.thumbnail_url,
+                      embedUrl: res.embed_url
+                    }))
+                  }))
+                })),
+                coEducators: [],
+                createdAt: courseRow.created_at,
+                updatedAt: courseRow.updated_at
+              }));
+            }
+          }
+        } else {
+          // Fallback: If no school found, just fetch courses created by this admin
+          console.log('⚠️ No school found, fetching only admin-created courses');
+          coursesData = await getCoursesByEducator(supabaseUserId);
+        }
+
         console.log('✅ Courses loaded:', coursesData.length, 'courses');
         
         // Debug: Log module counts for each course
@@ -309,21 +337,33 @@ const Courses: React.FC = () => {
    * ───────────────────────────────────────────── */
   const handleCreateCourse = async (courseData: Partial<Course>) => {
     console.log('=== HANDLE CREATE COURSE ===');
-    console.log('Educator ID:', educatorId);
-    console.log('Educator Name:', educatorName);
+    console.log('School Admin ID:', educatorId);
+    console.log('School Admin Name:', educatorName);
     console.log('Course Data:', courseData);
     
     if (!educatorId || !educatorName) {
-      console.error('❌ Missing educator information');
+      console.error('❌ Missing school admin information');
       console.log('educatorId:', educatorId);
       console.log('educatorName:', educatorName);
-      setError('Educator information not available. Please refresh the page and try again.');
+      setError('School admin information not available. Please refresh the page and try again.');
+      toast.error('School admin information not available');
+      return;
+    }
+
+    // Verify Supabase session before creating
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error('❌ No Supabase session');
+      setError('Authentication session expired. Please log in again.');
+      toast.error('Session expired. Please log in again.');
       return;
     }
 
     try {
       setLoading(true);
       console.log('📡 Calling createCourse service...');
+      console.log('📡 Using educator_id:', educatorId);
+      console.log('📡 Supabase user ID:', session.user.id);
 
       const newCourse = await createCourse(
         {
@@ -452,7 +492,7 @@ const Courses: React.FC = () => {
   };
 
   const handleViewAnalytics = (course: Course) => {
-    navigate(`/educator/courses/${course.id}/analytics`);
+    navigate(`/school-admin/academics/courses/${course.id}/analytics`);
   };
 
   const handleClearFilters = () => {
@@ -462,6 +502,54 @@ const Courses: React.FC = () => {
     setSkillFilter('All');
     setClassFilter('All');
     setSortBy('name');
+  };
+
+  const handleAssignEducator = (course: Course) => {
+    console.log('Assigning educator for course:', course);
+    setAssigningCourse(course);
+    setShowAssignModal(true);
+  };
+
+  const handleEducatorAssigned = async (educatorId: string, educatorName: string) => {
+    if (!assigningCourse) return;
+
+    try {
+      setLoading(true);
+      console.log('📡 Assigning educator:', educatorId, educatorName, 'to course:', assigningCourse.id);
+
+      // Update the course with new educator
+      const { error } = await supabase
+        .from('courses')
+        .update({
+          educator_id: educatorId,
+          educator_name: educatorName,
+          updated_at: new Date().toISOString()
+        })
+        .eq('course_id', assigningCourse.id);
+
+      if (error) throw error;
+
+      console.log('✅ Educator assigned successfully');
+      
+      // Update local state
+      setCourses(courses.map(c => 
+        c.id === assigningCourse.id 
+          ? { ...c, coEducators: [educatorName] } // Update to show new educator
+          : c
+      ));
+
+      toast.success(`Course assigned to ${educatorName}`);
+      
+      // Reload courses to get fresh data
+      window.location.reload();
+    } catch (err: any) {
+      console.error('❌ Error assigning educator:', err);
+      toast.error('Failed to assign educator: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setLoading(false);
+      setShowAssignModal(false);
+      setAssigningCourse(null);
+    }
   };
 
   /** ─────────────────────────────────────────────
@@ -518,58 +606,29 @@ const Courses: React.FC = () => {
         </div>
       )}
 
-      {isAffiliated && (
-        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AcademicCapIcon className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h4 className="text-sm font-medium text-blue-900">
-                Affiliated Educator
-              </h4>
-              <p className="text-sm text-blue-700 mt-1">
-                You are affiliated with <strong>{affiliationInfo.name}</strong>. 
-                You can view courses allocated to you, but cannot create or modify courses. 
-                Please contact your institution administrator to request course access or changes.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Courses</h1>
           <p className="text-sm text-gray-600 mt-1">
-            {isAffiliated ? (
-              <>
-                View courses allocated by {affiliationInfo.name}
-                {educatorName && <span className="ml-2 text-indigo-600">• {educatorName}</span>}
-              </>
-            ) : (
-              <>
-                Manage courses, curriculum, and skill alignment
-                {educatorName && <span className="ml-2 text-indigo-600">• {educatorName}</span>}
-              </>
-            )}
+            Manage courses, curriculum, and skill alignment
+            {educatorName && <span className="ml-2 text-indigo-600">• {educatorName}</span>}
           </p>
         </div>
 
-        {!isAffiliated && (
-          <button
-            onClick={() => {
-              console.log('Create Course button clicked');
-              console.log('Current educatorId:', educatorId);
-              console.log('Current educatorName:', educatorName);
-              setEditingCourse(null);
-              setShowCreateModal(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm"
-          >
-            <PlusIcon className="h-5 w-5" />
-            Create Course
-          </button>
-        )}
+        <button
+          onClick={() => {
+            console.log('Create Course button clicked');
+            console.log('Current educatorId:', educatorId);
+            console.log('Current educatorName:', educatorName);
+            setEditingCourse(null);
+            setShowCreateModal(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm"
+        >
+          <PlusIcon className="h-5 w-5" />
+          Create Course
+        </button>
       </div>
 
       {/* Tabs */}
@@ -680,12 +739,10 @@ const Courses: React.FC = () => {
           <p className="text-gray-600 mb-4">
             {searchQuery || statusFilter !== 'All' || skillFilter !== 'All' || classFilter !== 'All'
               ? 'Try adjusting your filters'
-              : isAffiliated
-              ? `No courses have been allocated to you by ${affiliationInfo.name} yet`
               : 'Create your first course to get started'}
           </p>
 
-          {!isAffiliated && !(searchQuery || statusFilter !== 'All' || skillFilter !== 'All' || classFilter !== 'All') && (
+          {!(searchQuery || statusFilter !== 'All' || skillFilter !== 'All' || classFilter !== 'All') && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
@@ -704,9 +761,10 @@ const Courses: React.FC = () => {
               key={course.id}
               course={course}
               onView={handleViewCourse}
-              onEdit={isAffiliated ? undefined : handleEditCourse}
-              onArchive={isAffiliated ? undefined : handleArchiveCourse}
+              onEdit={handleEditCourse}
+              onArchive={handleArchiveCourse}
               onViewAnalytics={handleViewAnalytics}
+              onAssignEducator={handleAssignEducator}
             />
           ))}
         </div>
@@ -737,6 +795,21 @@ const Courses: React.FC = () => {
         onEdit={handleEditCourse}
         onUpdateCourse={handleCourseUpdate}
       />
+
+      {/* Assign Educator Modal */}
+      {assigningCourse && schoolId && (
+        <AssignEducatorModal
+          isOpen={showAssignModal}
+          onClose={() => {
+            setShowAssignModal(false);
+            setAssigningCourse(null);
+          }}
+          onAssign={handleEducatorAssigned}
+          currentEducatorId={assigningCourse.id}
+          currentEducatorName={assigningCourse.coEducators?.[0] || 'Not assigned'}
+          schoolId={schoolId}
+        />
+      )}
 
     </div>
   );
