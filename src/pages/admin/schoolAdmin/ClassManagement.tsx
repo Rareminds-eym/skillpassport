@@ -645,25 +645,10 @@ const ClassManagement = () => {
         return
       }
 
-      const { data: educatorData, error: educatorError } = await supabase
-        .from("school_educators")
-        .select("school_id")
-        .eq("user_id", user.id)
-        .maybeSingle()
-
-      if (educatorError && educatorError.code !== 'PGRST116') {
-        console.error("Error fetching educator data:", educatorError)
-      }
-
-      if (educatorData && educatorData.school_id) {
-        console.log("Found school ID from school_educators:", educatorData.school_id)
-        setSchoolId(educatorData.school_id)
-        return
-      }
-
+      // Get user role first
       const { data: userData, error: userError } = await supabase
         .from("users")
-        .select("role, organizationId")
+        .select("role")
         .eq("id", user.id)
         .single()
 
@@ -673,19 +658,10 @@ const ClassManagement = () => {
         return
       }
 
-      console.log("User data:", userData)
-      
-      // Check if user has school-related role
-      const schoolRoles = ["school", "school_admin", "school_educator"]
-      if (schoolRoles.includes(userData?.role)) {
-        // First try organizationId
-        if (userData.organizationId) {
-          console.log("Using organizationId as school ID:", userData.organizationId)
-          setSchoolId(userData.organizationId)
-          return
-        }
+      console.log("User role:", userData?.role)
 
-        // Then try schools table
+      // For school_admin: lookup school by created_by
+      if (userData?.role === "school_admin") {
         const { data: schoolData, error: schoolError } = await supabase
           .from("schools")
           .select("id")
@@ -696,16 +672,39 @@ const ClassManagement = () => {
           console.error("Error fetching school data:", schoolError)
         }
 
-        if (schoolData && schoolData.id) {
-          console.log("Found school ID from schools table:", schoolData.id)
+        if (schoolData?.id) {
+          console.log("Found school ID from schools.created_by:", schoolData.id)
           setSchoolId(schoolData.id)
           return
         }
 
-        toast.error("School profile not properly configured. Please ensure you have a school record.")
-      } else {
-        toast.error("You don't have access to this page")
+        toast.error("School profile not found. Please ensure your school is registered.")
+        return
       }
+
+      // For school_educator: lookup from school_educators table
+      if (userData?.role === "school_educator") {
+        const { data: educatorData, error: educatorError } = await supabase
+          .from("school_educators")
+          .select("school_id")
+          .eq("user_id", user.id)
+          .maybeSingle()
+
+        if (educatorError && educatorError.code !== 'PGRST116') {
+          console.error("Error fetching educator data:", educatorError)
+        }
+
+        if (educatorData?.school_id) {
+          console.log("Found school ID from school_educators:", educatorData.school_id)
+          setSchoolId(educatorData.school_id)
+          return
+        }
+
+        toast.error("Educator profile not found. Please contact your school admin.")
+        return
+      }
+
+      toast.error("You don't have access to this page")
     } catch (error) {
       console.error("Error fetching school ID:", error)
       toast.error("An error occurred while loading school information")
