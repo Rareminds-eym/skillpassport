@@ -8,219 +8,211 @@ import {
     Award,
     Clock,
     MapPin,
+    AlertCircle,
+    CheckCircle,
 } from "lucide-react";
-
-// Load clubs from localStorage (synced with educator page)
-const loadClubsFromStorage = () => {
-    const stored = localStorage.getItem("skillpassport_clubs");
-    if (stored) {
-        try {
-            return JSON.parse(stored);
-        } catch (e) {
-            console.error("Failed to parse clubs from localStorage", e);
-        }
-    }
-    // Fallback to default clubs if nothing in storage
-    return [
-        {
-            club_id: "c1",
-            name: "Robotics Club",
-            category: "robotics",
-            members: ["s1", "s2", "s3", "s4", "s5"],
-            capacity: 30,
-            avgAttendance: 85,
-            description: "Build and program robots for competitions",
-            meetingDay: "Monday & Thursday",
-            meetingTime: "4:00 PM - 6:00 PM",
-            location: "Lab 101",
-            mentor: "Dr. Sarah Johnson",
-            upcomingActivities: [
-                { title: "Robot Assembly Workshop", date: "2025-12-01" },
-                { title: "State Competition Prep", date: "2025-12-10" },
-            ],
-        },
-        {
-            club_id: "c2",
-            name: "Literature Circle",
-            category: "literature",
-            members: ["s2", "s6", "s7"],
-            capacity: 20,
-            avgAttendance: 92,
-            description: "Explore classic and contemporary literature",
-            meetingDay: "Wednesday",
-            meetingTime: "3:30 PM - 5:00 PM",
-            location: "Library Room 2",
-            mentor: "Prof. Emily Watson",
-            upcomingActivities: [
-                { title: "Book Discussion: 1984", date: "2025-11-28" },
-                { title: "Poetry Writing Workshop", date: "2025-12-05" },
-            ],
-        },
-        {
-            club_id: "c3",
-            name: "Coding Club",
-            category: "science",
-            members: ["s1", "s3", "s5", "s8", "s9", "s10"],
-            capacity: 50,
-            avgAttendance: 78,
-            description: "Learn programming and software development",
-            meetingDay: "Tuesday & Friday",
-            meetingTime: "3:00 PM - 5:00 PM",
-            location: "Computer Lab A",
-            mentor: "Mr. David Chen",
-            upcomingActivities: [
-                { title: "Hackathon Preparation", date: "2025-12-02" },
-                { title: "Web Development Workshop", date: "2025-12-08" },
-            ],
-        },
-        {
-            club_id: "c4",
-            name: "Football Team",
-            category: "sports",
-            members: ["s1", "s4", "s5", "s11", "s12", "s13", "s14", "s15"],
-            capacity: 25,
-            avgAttendance: 95,
-            description: "Competitive football training and matches",
-            meetingDay: "Monday, Wednesday, Friday",
-            meetingTime: "5:00 PM - 7:00 PM",
-            location: "Main Field",
-            mentor: "Coach Mike Thompson",
-            upcomingActivities: [
-                { title: "Practice Match vs St. Mary's", date: "2025-11-30" },
-                { title: "Championship Semi-Finals", date: "2025-12-15" },
-            ],
-        },
-        {
-            club_id: "c5",
-            name: "Drama Society",
-            category: "arts",
-            members: ["s2", "s7", "s9"],
-            capacity: 25,
-            avgAttendance: 88,
-            description: "Theater performances and acting workshops",
-            meetingDay: "Thursday",
-            meetingTime: "4:00 PM - 6:30 PM",
-            location: "Auditorium",
-            mentor: "Ms. Rachel Green",
-            upcomingActivities: [
-                { title: "Annual Play Rehearsal", date: "2025-12-03" },
-                { title: "Improv Night", date: "2025-12-12" },
-            ],
-        },
-    ];
-};
-
-// Load competitions from localStorage
-const loadCompetitionsFromStorage = () => {
-    const stored = localStorage.getItem("skillpassport_competitions");
-    if (stored) {
-        try {
-            return JSON.parse(stored);
-        } catch (e) {
-            console.error("Failed to parse competitions from localStorage", e);
-        }
-    }
-    return [
-        {
-            comp_id: "comp1",
-            name: "State Robotics Challenge",
-            level: "state",
-            date: "2026-01-15",
-            club_id: "c1",
-            studentResults: [
-                { student_id: "s1", rank: 1, award: "Gold Medal" },
-                { student_id: "s2", rank: 3, award: "Bronze Medal" },
-            ],
-        },
-        {
-            comp_id: "comp2",
-            name: "Inter-school Hackathon",
-            level: "district",
-            date: "2025-12-05",
-            club_id: "c3",
-            studentResults: [
-                { student_id: "s1", rank: 1, award: "Gold Medal" },
-                { student_id: "s3", rank: 4, award: "Certificate" },
-            ],
-        },
-        {
-            comp_id: "comp3",
-            name: "National Football Championship",
-            level: "national",
-            date: "2025-12-20",
-            club_id: "c4",
-            studentResults: [
-                { student_id: "s1", rank: 1, award: "MVP Trophy" },
-            ],
-        },
-    ];
-};
+import { supabase } from "../../lib/supabaseClient";
+import * as clubsService from "../../services/clubsService";
+import * as competitionsService from "../../services/competitionsService";
 
 export default function StudentDashboard() {
     // Get logged-in student's email from localStorage
     const userEmail = localStorage.getItem("userEmail");
     const [currentStudentId] = useState(userEmail); // Use email as student ID
     const [selectedClub, setSelectedClub] = useState(null);
-    const [clubs, setClubs] = useState(loadClubsFromStorage);
-    const [competitions, setCompetitions] = useState(loadCompetitionsFromStorage);
+    const [clubs, setClubs] = useState([]);
+    const [competitions, setCompetitions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [myMemberships, setMyMemberships] = useState([]);
+    const [attendanceData, setAttendanceData] = useState({});
 
-    // Listen for changes in localStorage (when educator updates clubs)
+    // Fetch clubs, competitions, and student's memberships from Supabase
     useEffect(() => {
-        const handleStorageChange = () => {
-            setClubs(loadClubsFromStorage());
-            setCompetitions(loadCompetitionsFromStorage());
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                console.log('🔍 [Student Clubs] Fetching data for student:', userEmail);
+                
+                if (!userEmail) {
+                    console.warn('❌ [Student Clubs] No user email found');
+                    setLoading(false);
+                    return;
+                }
+
+                // Fetch student's school_id first
+                const { data: studentData, error: studentError } = await supabase
+                    .from('students')
+                    .select('school_id')
+                    .eq('email', userEmail)
+                    .maybeSingle();
+
+                if (studentError) {
+                    console.error('❌ [Student Clubs] Error fetching student data:', studentError);
+                }
+
+                const schoolId = studentData?.school_id;
+                console.log('🏫 [Student Clubs] Student school_id:', schoolId);
+
+                // Fetch all clubs from the student's school
+                const { data: clubsData, error: clubsError } = await supabase
+                    .from('clubs')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .eq('is_active', true)
+                    .order('name');
+
+                if (clubsError) {
+                    console.error('❌ [Student Clubs] Error fetching clubs:', clubsError);
+                } else {
+                    console.log('✅ [Student Clubs] Loaded', clubsData?.length || 0, 'clubs');
+                }
+
+                // Fetch student's memberships
+                const { data: membershipsData, error: membershipsError } = await supabase
+                    .from('club_memberships')
+                    .select('*')
+                    .eq('student_email', userEmail)
+                    .eq('status', 'active');
+
+                if (membershipsError) {
+                    console.error('❌ [Student Clubs] Error fetching memberships:', membershipsError);
+                } else {
+                    console.log('✅ [Student Clubs] Student is member of', membershipsData?.length || 0, 'clubs');
+                    setMyMemberships(membershipsData || []);
+                }
+
+                // Fetch competitions
+                const { data: competitionsData, error: competitionsError } = await supabase
+                    .from('competitions')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .order('competition_date', { ascending: true });
+
+                if (competitionsError) {
+                    console.error('❌ [Student Clubs] Error fetching competitions:', competitionsError);
+                } else {
+                    console.log('✅ [Student Clubs] Loaded', competitionsData?.length || 0, 'competitions');
+                }
+
+                // Fetch attendance data for each membership
+                const attendanceMap = {};
+                if (membershipsData && membershipsData.length > 0) {
+                    for (const membership of membershipsData) {
+                        const { data: attendanceRecords } = await supabase
+                            .from('club_attendance_records')
+                            .select(`
+                                *,
+                                club_attendance (
+                                    session_date,
+                                    session_topic
+                                )
+                            `)
+                            .eq('student_email', userEmail)
+                            .in('attendance_id', 
+                                await supabase
+                                    .from('club_attendance')
+                                    .select('attendance_id')
+                                    .eq('club_id', membership.club_id)
+                                    .then(res => res.data?.map(a => a.attendance_id) || [])
+                            );
+
+                        attendanceMap[membership.club_id] = attendanceRecords || [];
+                    }
+                }
+                setAttendanceData(attendanceMap);
+
+                // Add members array to clubs
+                const clubsWithMembers = await Promise.all(
+                    (clubsData || []).map(async (club) => {
+                        const { data: memberships } = await supabase
+                            .from('club_memberships')
+                            .select('student_email')
+                            .eq('club_id', club.club_id)
+                            .eq('status', 'active');
+
+                        return {
+                            ...club,
+                            members: memberships?.map(m => m.student_email) || []
+                        };
+                    })
+                );
+
+                setClubs(clubsWithMembers);
+                setCompetitions(competitionsData || []);
+                
+            } catch (error) {
+                console.error('❌ [Student Clubs] Error fetching data:', error);
+            } finally {
+                setLoading(false);
+            }
         };
 
-        // Listen for storage events from other tabs/windows
-        window.addEventListener("storage", handleStorageChange);
+        if (userEmail) {
+            fetchData();
+            
+            // Refresh data every 30 seconds to stay in sync
+            const interval = setInterval(fetchData, 30000);
+            
+            return () => clearInterval(interval);
+        }
+    }, [userEmail]);
 
-        // Also poll for changes every 2 seconds (for same-tab updates)
-        const interval = setInterval(handleStorageChange, 2000);
-
-        return () => {
-            window.removeEventListener("storage", handleStorageChange);
-            clearInterval(interval);
-        };
-    }, []);
-
-    // Get clubs the student is enrolled in
+    // Get clubs the student is enrolled in with enhanced data
     const myClubs = useMemo(() => {
-        return clubs.filter((club) =>
-            club.members.includes(currentStudentId)
-        );
-    }, [clubs, currentStudentId]);
+        const memberClubIds = new Set(myMemberships.map(m => m.club_id));
+        return clubs.filter((club) => memberClubIds.has(club.club_id)).map(club => {
+            const membership = myMemberships.find(m => m.club_id === club.club_id);
+            const attendance = attendanceData[club.club_id] || [];
+            const attendancePercentage = membership?.attendance_percentage || 0;
+            
+            return {
+                ...club,
+                avgAttendance: Math.round(attendancePercentage),
+                upcomingActivities: [], // Will be populated from activities table if needed
+                meetingDay: club.meeting_day || 'TBD',
+                meetingTime: club.meeting_time || 'TBD',
+            };
+        });
+    }, [clubs, myMemberships, attendanceData]);
 
-    // Get student's competition achievements
-    const myAchievements = useMemo(() => {
-        const achievements = [];
-        competitions.forEach((comp) => {
-            const studentResult = comp.studentResults?.find(
-                (r) => r.student_id === currentStudentId
-            );
-            if (studentResult) {
-                achievements.push({
-                    ...comp,
-                    ...studentResult,
+    // Get student's competition registrations
+    const myCompetitions = useMemo(() => {
+        // Filter competitions where student is registered
+        return competitions.filter(comp => {
+            // This would check competition_registrations table
+            return false; // Placeholder
+        });
+    }, [competitions]);
+
+    // Get upcoming activities from all clubs
+    const upcomingActivities = useMemo(() => {
+        const activities = [];
+        myClubs.forEach(club => {
+            // Add club meetings as activities
+            if (club.meeting_day && club.meeting_time) {
+                activities.push({
+                    title: `${club.name} Meeting`,
+                    clubName: club.name,
+                    date: new Date(), // Would calculate next meeting date
+                    type: 'meeting'
                 });
             }
         });
-        return achievements;
-    }, [competitions, currentStudentId]);
-
-    // Get upcoming activities across all clubs
-    const upcomingActivities = useMemo(() => {
-        const activities = [];
-        myClubs.forEach((club) => {
-            club.upcomingActivities.forEach((activity) => {
-                activities.push({
-                    ...activity,
-                    clubName: club.name,
-                    club_id: club.club_id,
-                });
-            });
-        });
         return activities.sort((a, b) => new Date(a.date) - new Date(b.date));
     }, [myClubs]);
+
+    // Get student achievements from competitions
+    const myAchievements = useMemo(() => {
+        return competitions
+            .filter(comp => comp.student_email === userEmail && comp.rank)
+            .map(comp => ({
+                name: comp.competition_name,
+                rank: comp.rank,
+                award: comp.award || 'Participant',
+                level: comp.level || 'School',
+                date: comp.competition_date
+            }));
+    }, [competitions, userEmail]);
 
     const categoryColors = {
         robotics: "bg-blue-100 text-blue-700 border-blue-200",
@@ -292,10 +284,10 @@ export default function StudentDashboard() {
                             <div>
                                 <p className="text-sm text-gray-600 mb-1">Avg Attendance</p>
                                 <p className="text-3xl font-bold text-purple-600">
-                                    {myClubs.length > 0
+                                    {myMemberships.length > 0
                                         ? Math.round(
-                                              myClubs.reduce((sum, c) => sum + c.avgAttendance, 0) /
-                                                  myClubs.length
+                                              myMemberships.reduce((sum, m) => sum + (m.attendance_percentage || 0), 0) /
+                                                  myMemberships.length
                                           )
                                         : 0}
                                     %
@@ -358,20 +350,20 @@ export default function StudentDashboard() {
                                         <div className="grid grid-cols-2 gap-4 mb-4">
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <Calendar size={16} className="text-blue-500" />
-                                                <span>{club.meetingDay}</span>
+                                                <span>{club.meeting_day || 'TBD'}</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <Clock size={16} className="text-green-500" />
-                                                <span>{club.meetingTime}</span>
+                                                <span>{club.meeting_time || 'TBD'}</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <MapPin size={16} className="text-red-500" />
-                                                <span>{club.location}</span>
+                                                <span>{club.location || 'TBD'}</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <Users size={16} className="text-purple-500" />
                                                 <span>
-                                                    {club.members.length}/{club.capacity} members
+                                                    {club.members?.length || 0}/{club.capacity} members
                                                 </span>
                                             </div>
                                         </div>
@@ -380,13 +372,13 @@ export default function StudentDashboard() {
                                             <div className="text-sm">
                                                 <span className="text-gray-600">Mentor: </span>
                                                 <span className="font-semibold text-gray-900">
-                                                    {club.mentor}
+                                                    {club.mentor_type === 'educator' ? 'Educator' : 'School Admin'}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <TrendingUp size={16} className="text-green-500" />
                                                 <span className="text-sm font-semibold text-gray-900">
-                                                    {club.avgAttendance}% attendance
+                                                    {club.avgAttendance || 0}% attendance
                                                 </span>
                                             </div>
                                         </div>
