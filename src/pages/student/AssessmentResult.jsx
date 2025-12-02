@@ -15,24 +15,20 @@ import {
     Heart,
     Briefcase,
     Download,
-    Share2
+    Share2,
+    AlertCircle,
+    RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/Students/components/ui/card';
 import { Badge } from '../../components/Students/components/ui/badge';
 import { Progress } from '../../components/Students/components/ui/progress';
 import { Button } from '../../components/Students/components/ui/button';
 import {
-    calculateRIASEC,
-    calculateBigFive,
-    calculateWorkValues,
-    calculateEmployability,
-    calculateKnowledgeScore,
-    getCareerClusters,
     getSkillLevel,
     getTraitInterpretation
 } from './assessment-data/scoringUtils';
 
-// Import Gemini service for fallback
+// Import Gemini service
 import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentService';
 import { riasecQuestions } from './assessment-data/riasecQuestions';
 import { bigFiveQuestions } from './assessment-data/bigFiveQuestions';
@@ -40,36 +36,72 @@ import { workValuesQuestions } from './assessment-data/workValuesQuestions';
 import { employabilityQuestions } from './assessment-data/employabilityQuestions';
 import { streamKnowledgeQuestions } from './assessment-data/streamKnowledgeQuestions';
 
+
 const AssessmentResult = () => {
     const navigate = useNavigate();
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [isGeminiPowered, setIsGeminiPowered] = useState(false);
-    const [geminiInsights, setGeminiInsights] = useState(null);
+    const [error, setError] = useState(null);
+    const [retrying, setRetrying] = useState(false);
 
-    useEffect(() => {
-        const loadResults = async () => {
-            // Load answers from localStorage
-            const answersJson = localStorage.getItem('assessment_answers');
-            const geminiResultsJson = localStorage.getItem('assessment_gemini_results');
-            const stream = localStorage.getItem('assessment_stream');
+    const loadResults = async () => {
+        setLoading(true);
+        setError(null);
 
-            if (!answersJson) {
-                // No assessment data found, redirect to test
-                navigate('/student/assessment/test');
+        // Load answers from localStorage
+        const answersJson = localStorage.getItem('assessment_answers');
+        const geminiResultsJson = localStorage.getItem('assessment_gemini_results');
+        const stream = localStorage.getItem('assessment_stream');
+
+        if (!answersJson) {
+            // No assessment data found, redirect to test
+            navigate('/student/assessment/test');
+            return;
+        }
+
+        // Check if we have Gemini results
+        if (geminiResultsJson) {
+            try {
+                const geminiResults = JSON.parse(geminiResultsJson);
+
+                // Use Gemini-analyzed results
+                setResults({
+                    riasec: geminiResults.riasec,
+                    bigFive: geminiResults.bigFive,
+                    workValues: geminiResults.workValues,
+                    employability: geminiResults.employability,
+                    knowledge: geminiResults.knowledge,
+                    clusters: [
+                        geminiResults.careerRecommendations.primaryCluster,
+                        geminiResults.careerRecommendations.secondaryCluster
+                    ],
+                    careerRecommendations: geminiResults.careerRecommendations,
+                    overallSummary: geminiResults.overallSummary
+                });
+                setLoading(false);
                 return;
+            } catch (e) {
+                console.error('Error parsing Gemini results:', e);
             }
+        }
 
-            const answers = JSON.parse(answersJson);
+        // Try to get Gemini analysis if not available
+        if (!geminiResultsJson && stream) {
+            try {
+                const answers = JSON.parse(answersJson);
+                const questionBanks = {
+                    riasecQuestions,
+                    bigFiveQuestions,
+                    workValuesQuestions,
+                    employabilityQuestions,
+                    streamKnowledgeQuestions
+                };
 
-            // Check if we have Gemini results
-            if (geminiResultsJson) {
-                try {
-                    const geminiResults = JSON.parse(geminiResultsJson);
-                    setIsGeminiPowered(true);
-                    setGeminiInsights(geminiResults);
+                const geminiResults = await analyzeAssessmentWithGemini(answers, stream, questionBanks);
+                
+                if (geminiResults) {
+                    localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
 
-                    // Use Gemini-analyzed results
                     setResults({
                         riasec: geminiResults.riasec,
                         bigFive: geminiResults.bigFive,
@@ -85,79 +117,96 @@ const AssessmentResult = () => {
                     });
                     setLoading(false);
                     return;
-                } catch (e) {
-                    console.error('Error parsing Gemini results:', e);
+                } else {
+                    throw new Error('AI analysis returned no results');
                 }
+            } catch (e) {
+                console.error('Gemini analysis failed:', e);
+                setError(e.message || 'Failed to analyze assessment with AI. Please try again.');
+                setLoading(false);
+                return;
             }
+        }
 
-            // Fallback: Try to get Gemini analysis now if not available
-            if (!geminiResultsJson && stream) {
-                try {
-                    const questionBanks = {
-                        riasecQuestions,
-                        bigFiveQuestions,
-                        workValuesQuestions,
-                        employabilityQuestions,
-                        streamKnowledgeQuestions
-                    };
+        // No results available
+        setError('No AI analysis results found. Please retake the assessment.');
+        setLoading(false);
+    };
 
-                    const geminiResults = await analyzeAssessmentWithGemini(answers, stream, questionBanks);
-                    
-                    if (geminiResults) {
-                        localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
-                        setIsGeminiPowered(true);
-                        setGeminiInsights(geminiResults);
+    const handleRetry = async () => {
+        setRetrying(true);
+        localStorage.removeItem('assessment_gemini_results');
+        await loadResults();
+        setRetrying(false);
+    };
 
-                        setResults({
-                            riasec: geminiResults.riasec,
-                            bigFive: geminiResults.bigFive,
-                            workValues: geminiResults.workValues,
-                            employability: geminiResults.employability,
-                            knowledge: geminiResults.knowledge,
-                            clusters: [
-                                geminiResults.careerRecommendations.primaryCluster,
-                                geminiResults.careerRecommendations.secondaryCluster
-                            ],
-                            careerRecommendations: geminiResults.careerRecommendations,
-                            overallSummary: geminiResults.overallSummary
-                        });
-                        setLoading(false);
-                        return;
-                    }
-                } catch (e) {
-                    console.error('Gemini analysis failed:', e);
-                }
-            }
-
-            // Final fallback: Use local calculation
-            const riasecResults = calculateRIASEC(answers);
-            const bigFiveResults = calculateBigFive(answers);
-            const workValuesResults = calculateWorkValues(answers);
-            const employabilityResults = calculateEmployability(answers);
-            const knowledgeResults = calculateKnowledgeScore(answers);
-            const careerClusters = getCareerClusters(riasecResults.code);
-
-            setResults({
-                riasec: riasecResults,
-                bigFive: bigFiveResults,
-                workValues: workValuesResults,
-                employability: employabilityResults,
-                knowledge: knowledgeResults,
-                clusters: careerClusters
-            });
-
-            setLoading(false);
-        };
-
+    useEffect(() => {
         loadResults();
     }, [navigate]);
 
-    if (loading || !results) {
+    if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
                     <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4 mx-auto"></div>
-                    <p className="text-gray-600">Loading your results...</p>
+                    <p className="text-gray-600">Analyzing your results with AI...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <Card className="w-full max-w-md border-none shadow-xl">
+                    <CardContent className="pt-8 pb-8 text-center">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6 mx-auto">
+                            <AlertCircle className="w-8 h-8 text-red-600" />
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800 mb-2">Analysis Error</h2>
+                        <p className="text-red-600 mb-6">{error}</p>
+                        <div className="flex flex-col gap-3">
+                            <Button
+                                onClick={handleRetry}
+                                disabled={retrying}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white w-full"
+                            >
+                                {retrying ? (
+                                    <>
+                                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                        Retrying...
+                                    </>
+                                ) : (
+                                    <>
+                                        <RefreshCw className="w-4 h-4 mr-2" />
+                                        Try Again
+                                    </>
+                                )}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => navigate('/student/assessment/test')}
+                            >
+                                Retake Assessment
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    if (!results) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-gray-600">No results available.</p>
+                    <Button
+                        onClick={() => navigate('/student/assessment/test')}
+                        className="mt-4"
+                    >
+                        Take Assessment
+                    </Button>
                 </div>
             </div>
         );
@@ -232,7 +281,7 @@ const AssessmentResult = () => {
             </div>
 
             {/* AI-Powered Insights Section */}
-            {isGeminiPowered && geminiInsights && (
+            {results.careerRecommendations && (
                 <section>
                     <div className="flex items-center gap-2 mb-6">
                         <Zap className="w-6 h-6 text-amber-500" />

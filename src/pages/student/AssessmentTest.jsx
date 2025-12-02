@@ -42,6 +42,7 @@ const AssessmentTest = () => {
     const [timeRemaining, setTimeRemaining] = useState(null);
     const [studentStream, setStudentStream] = useState(null);
     const [showStreamSelection, setShowStreamSelection] = useState(true);
+    const [error, setError] = useState(null);
 
     // Define assessment sections
     const sections = [
@@ -200,11 +201,14 @@ const AssessmentTest = () => {
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
+        setError(null);
         
         try {
             // Save answers to localStorage first
             localStorage.setItem('assessment_answers', JSON.stringify(answers));
             localStorage.setItem('assessment_stream', studentStream);
+            // Clear any previous results
+            localStorage.removeItem('assessment_gemini_results');
 
             // Prepare question banks for Gemini analysis
             const questionBanks = {
@@ -215,7 +219,7 @@ const AssessmentTest = () => {
                 streamKnowledgeQuestions
             };
 
-            // Analyze with Gemini AI
+            // Analyze with Gemini AI - this is required, no fallback
             const geminiResults = await analyzeAssessmentWithGemini(
                 answers, 
                 studentStream, 
@@ -226,15 +230,14 @@ const AssessmentTest = () => {
                 // Save AI-analyzed results
                 localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
                 console.log('Gemini analysis complete:', geminiResults);
+                navigate('/student/assessment/result');
             } else {
-                console.log('Gemini analysis unavailable, using local calculation');
+                throw new Error('AI analysis returned no results. Please check your API key configuration.');
             }
-
-            navigate('/student/assessment/result');
-        } catch (error) {
-            console.error('Error submitting assessment:', error);
-            // Still navigate even if Gemini fails - local calculation will be used
-            navigate('/student/assessment/result');
+        } catch (err) {
+            console.error('Error submitting assessment:', err);
+            setIsSubmitting(false);
+            setError(err.message || 'Failed to analyze assessment with AI. Please try again.');
         }
     };
 
@@ -366,7 +369,38 @@ const AssessmentTest = () => {
                         {/* Question Area */}
                         <div className="md:w-2/3 p-8 flex flex-col relative">
                             <AnimatePresence mode="wait">
-                                {isSubmitting ? (
+                                {error ? (
+                                    <motion.div
+                                        key="error"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        className="flex-1 flex flex-col items-center justify-center text-center"
+                                    >
+                                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6">
+                                            <AlertCircle className="w-8 h-8 text-red-600" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-gray-800 mb-2">Analysis Failed</h3>
+                                        <p className="text-red-600 mb-4 max-w-md">{error}</p>
+                                        <div className="flex gap-3">
+                                            <Button
+                                                onClick={() => {
+                                                    setError(null);
+                                                    handleSubmit();
+                                                }}
+                                                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                            >
+                                                Try Again
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => setError(null)}
+                                            >
+                                                Go Back
+                                            </Button>
+                                        </div>
+                                    </motion.div>
+                                ) : isSubmitting ? (
                                     <motion.div
                                         key="submitting"
                                         initial={{ opacity: 0 }}
@@ -375,8 +409,8 @@ const AssessmentTest = () => {
                                         className="flex-1 flex flex-col items-center justify-center text-center"
                                     >
                                         <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
-                                        <h3 className="text-xl font-bold text-gray-800 mb-2">Analyzing your profile...</h3>
-                                        <p className="text-gray-500">Generating your personalized career roadmap.</p>
+                                        <h3 className="text-xl font-bold text-gray-800 mb-2">Analyzing your profile with AI...</h3>
+                                        <p className="text-gray-500">Gemini AI is generating your personalized career roadmap.</p>
                                     </motion.div>
                                 ) : (
                                     <motion.div

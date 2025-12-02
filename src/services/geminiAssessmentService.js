@@ -18,76 +18,77 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   
   if (!apiKey) {
-    console.warn('Gemini API key not found, falling back to local calculation');
-    return null;
+    throw new Error('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your .env file.');
   }
 
-  try {
-    // Prepare the assessment data for Gemini
-    const assessmentData = prepareAssessmentData(answers, stream, questionBanks);
-    
-    const prompt = buildAnalysisPrompt(assessmentData);
+  // Prepare the assessment data for Gemini
+  const assessmentData = prepareAssessmentData(answers, stream, questionBanks);
+  
+  const prompt = buildAnalysisPrompt(assessmentData);
 
-    // Try different model variants for compatibility
-    const models = ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-pro'];
-    let response = null;
-    let lastError = null;
+  // Try different model variants for compatibility
+  const models = ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-pro'];
+  let response = null;
+  let lastError = null;
 
-    for (const model of models) {
-      try {
-        response = await fetch(getGeminiApiUrl(model) + `?key=${apiKey}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{ text: prompt }]
-            }],
-            generationConfig: {
-              temperature: 0.7,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 4096,
-            }
-          })
-        });
+  for (const model of models) {
+    try {
+      response = await fetch(getGeminiApiUrl(model) + `?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: prompt }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 4096,
+          }
+        })
+      });
 
-        if (response.ok) {
-          console.log(`Gemini API success with model: ${model}`);
-          break;
-        }
-        lastError = `Model ${model} returned ${response.status}`;
-      } catch (e) {
-        lastError = e.message;
+      if (response.ok) {
+        console.log(`Gemini API success with model: ${model}`);
+        break;
       }
+      
+      // Get error details from response
+      const errorData = await response.json().catch(() => ({}));
+      lastError = errorData.error?.message || `Model ${model} returned ${response.status}`;
+    } catch (e) {
+      lastError = e.message;
     }
-
-    if (!response || !response.ok) {
-      throw new Error(`Gemini API error: ${lastError}`);
-    }
-
-    const data = await response.json();
-    const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!textContent) {
-      throw new Error('No response from Gemini');
-    }
-
-    // Parse the JSON response from Gemini
-    const jsonMatch = textContent.match(/```json\n?([\s\S]*?)\n?```/) || 
-                      textContent.match(/\{[\s\S]*\}/);
-    
-    if (jsonMatch) {
-      const jsonStr = jsonMatch[1] || jsonMatch[0];
-      return JSON.parse(jsonStr);
-    }
-
-    throw new Error('Could not parse Gemini response');
-  } catch (error) {
-    console.error('Gemini assessment analysis error:', error);
-    return null;
   }
+
+  if (!response || !response.ok) {
+    throw new Error(`Gemini API error: ${lastError}`);
+  }
+
+  const data = await response.json();
+  const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!textContent) {
+    throw new Error('No response received from Gemini AI');
+  }
+
+  // Parse the JSON response from Gemini
+  const jsonMatch = textContent.match(/```json\n?([\s\S]*?)\n?```/) || 
+                    textContent.match(/\{[\s\S]*\}/);
+  
+  if (jsonMatch) {
+    const jsonStr = jsonMatch[1] || jsonMatch[0];
+    try {
+      return JSON.parse(jsonStr);
+    } catch (parseError) {
+      throw new Error('Failed to parse AI response. Please try again.');
+    }
+  }
+
+  throw new Error('Invalid response format from Gemini AI');
 };
 
 /**
