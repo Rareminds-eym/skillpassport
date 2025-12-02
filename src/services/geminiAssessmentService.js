@@ -26,8 +26,13 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
   
   const prompt = buildAnalysisPrompt(assessmentData);
 
-  // Try different model variants for compatibility
-  const models = ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-pro'];
+  // Try different model variants for compatibility (updated Dec 2024)
+  const models = [
+    'gemini-2.0-flash',
+    'gemini-1.5-flash', 
+    'gemini-1.5-pro',
+    'gemini-1.0-pro'
+  ];
   let response = null;
   let lastError = null;
 

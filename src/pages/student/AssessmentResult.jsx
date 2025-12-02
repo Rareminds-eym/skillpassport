@@ -449,7 +449,8 @@ const AssessmentResult = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-6">
-                            {Object.entries(bigFive).map(([trait, score]) => {
+                            {['O', 'C', 'E', 'A', 'N'].map((trait) => {
+                                const score = bigFive[trait] || 0;
                                 const level = getSkillLevel(score);
                                 return (
                                     <div key={trait} className="space-y-2">
@@ -467,6 +468,12 @@ const AssessmentResult = () => {
                                 );
                             })}
                         </div>
+                        {bigFive.workStyleSummary && (
+                            <div className="mt-6 p-4 bg-purple-50 rounded-xl border border-purple-100">
+                                <h4 className="font-semibold text-purple-900 mb-2">Work Style Summary</h4>
+                                <p className="text-sm text-purple-800">{bigFive.workStyleSummary}</p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </section>
