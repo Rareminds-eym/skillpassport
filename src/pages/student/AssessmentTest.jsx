@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -8,7 +8,6 @@ import {
     BrainCircuit,
     Heart,
     Target,
-    Zap,
     Clock,
     AlertCircle,
     Award,
@@ -43,6 +42,8 @@ const AssessmentTest = () => {
     const [studentStream, setStudentStream] = useState(null);
     const [showStreamSelection, setShowStreamSelection] = useState(true);
     const [error, setError] = useState(null);
+    const [showSectionIntro, setShowSectionIntro] = useState(true);
+    const [showSectionComplete, setShowSectionComplete] = useState(false);
 
     // Define assessment sections
     const sections = [
@@ -161,6 +162,12 @@ const AssessmentTest = () => {
     const handleStreamSelect = (streamId) => {
         setStudentStream(streamId);
         setShowStreamSelection(false);
+        setShowSectionIntro(true);
+    };
+
+    const handleStartSection = () => {
+        setShowSectionIntro(false);
+        setShowSectionComplete(false);
     };
 
     const handleAnswer = (value) => {
@@ -175,15 +182,22 @@ const AssessmentTest = () => {
         if (currentQuestionIndex < currentSection.questions.length - 1) {
             setCurrentQuestionIndex(prev => prev + 1);
         } else {
-            handleNextSection();
+            // Show section complete message before moving to next section
+            if (currentSectionIndex < sections.length - 1) {
+                setShowSectionComplete(true);
+            } else {
+                handleSubmit();
+            }
         }
     };
 
     const handleNextSection = () => {
+        setShowSectionComplete(false);
         if (currentSectionIndex < sections.length - 1) {
             setCurrentSectionIndex(prev => prev + 1);
             setCurrentQuestionIndex(0);
             setTimeRemaining(null);
+            setShowSectionIntro(true);
         } else {
             handleSubmit();
         }
@@ -329,8 +343,186 @@ const AssessmentTest = () => {
             <Card className="w-full max-w-4xl border-none shadow-xl bg-white overflow-hidden relative">
                 <div className={`absolute top-0 left-0 w-full h-1.5 bg-${currentSection.color}-500`}></div>
 
-                <CardContent className="p-0">
-                    <div className="flex flex-col md:flex-row min-h-[600px]">
+                <CardContent className="p-0 overflow-hidden">
+                    <AnimatePresence mode="wait">
+                    {/* Section Complete - Full Width */}
+                    {showSectionComplete && !error && !isSubmitting ? (
+                        <motion.div
+                            key={`section-complete-${currentSectionIndex}`}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="min-h-[600px] flex flex-col items-center justify-center text-center p-8 bg-gray-50"
+                        >
+                            <motion.div 
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.1 }}
+                                className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mb-6"
+                            >
+                                <motion.div
+                                    initial={{ scale: 0, rotate: -90 }}
+                                    animate={{ scale: 1, rotate: 0 }}
+                                    transition={{ type: "spring", stiffness: 200, damping: 10, delay: 0.3 }}
+                                >
+                                    <CheckCircle2 className="w-12 h-12 text-green-600" />
+                                </motion.div>
+                            </motion.div>
+                            <motion.h2 
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4, duration: 0.3 }}
+                                className="text-3xl font-bold text-gray-800 mb-3"
+                            >
+                                {currentSection.title} Complete!
+                            </motion.h2>
+                            <motion.p 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.5, duration: 0.3 }}
+                                className="text-gray-600 mb-6 max-w-md leading-relaxed text-lg"
+                            >
+                                Great job! You've finished this section.
+                            </motion.p>
+                            {currentSectionIndex < sections.length - 1 && (
+                                <motion.p 
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ delay: 0.6, duration: 0.3 }}
+                                    className="text-gray-500 mb-6"
+                                >
+                                    Next up: <span className="font-semibold text-indigo-600">{sections[currentSectionIndex + 1]?.title}</span>
+                                </motion.p>
+                            )}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.7, duration: 0.3 }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                <Button
+                                    onClick={handleNextSection}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-4 text-lg shadow-lg"
+                                >
+                                    Continue
+                                    <ChevronRight className="w-5 h-5 ml-2" />
+                                </Button>
+                            </motion.div>
+                        </motion.div>
+                    ) : showSectionIntro && !error && !isSubmitting ? (
+                        <motion.div
+                            key={`section-intro-${currentSectionIndex}`}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="min-h-[600px] flex flex-col items-center justify-center text-center p-8 bg-gray-50"
+                        >
+                            <motion.div 
+                                initial={{ scale: 0, rotate: -180 }}
+                                animate={{ scale: 1, rotate: 0 }}
+                                transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                                className={`w-20 h-20 rounded-2xl bg-${currentSection.color}-100 flex items-center justify-center mb-6 shadow-lg`}
+                            >
+                                {currentSection.icon}
+                            </motion.div>
+                            <motion.h2 
+                                initial={{ opacity: 0, y: 30 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ type: "spring", stiffness: 100, damping: 12, delay: 0.2 }}
+                                className="text-3xl font-bold text-gray-800 mb-4"
+                            >
+                                {currentSection.title}
+                            </motion.h2>
+                            <motion.p 
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ type: "spring", stiffness: 100, damping: 12, delay: 0.3 }}
+                                className="text-gray-600 mb-6 max-w-lg leading-relaxed text-lg"
+                            >
+                                {currentSection.description}
+                            </motion.p>
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ type: "spring", stiffness: 100, damping: 12, delay: 0.4 }}
+                                className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 mb-6 max-w-lg w-full"
+                            >
+                                <p className="text-sm font-medium text-indigo-700">
+                                    {currentSection.instruction}
+                                </p>
+                            </motion.div>
+                            {/* Section type indicator */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.45, duration: 0.3 }}
+                                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 ${
+                                    currentSection.id === 'knowledge' 
+                                        ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                }`}
+                            >
+                                {currentSection.id === 'knowledge' ? (
+                                    <>
+                                        <Code className="w-4 h-4" />
+                                        <span className="text-sm font-medium">Knowledge Test - Answers will be scored</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        <span className="text-sm font-medium">No right or wrong answers</span>
+                                    </>
+                                )}
+                            </motion.div>
+                            <motion.div 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.5, duration: 0.3 }}
+                                className="flex items-center gap-6 text-sm text-gray-500 mb-6"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Target className="w-4 h-4" />
+                                    <span>Section {currentSectionIndex + 1} of {sections.length}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Users className="w-4 h-4" />
+                                    <span>{currentSection.questions.length} questions</span>
+                                </div>
+                                {currentSection.isTimed && (
+                                    <div className="flex items-center gap-2 text-orange-600 font-medium">
+                                        <Clock className="w-4 h-4" />
+                                        <span>30 minutes</span>
+                                    </div>
+                                )}
+                            </motion.div>
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ type: "spring", stiffness: 100, damping: 12, delay: 0.6 }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                <Button
+                                    onClick={handleStartSection}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-4 text-lg shadow-lg"
+                                >
+                                    Start Section
+                                    <ChevronRight className="w-5 h-5 ml-2" />
+                                </Button>
+                            </motion.div>
+                        </motion.div>
+                    ) : (
+                    <motion.div 
+                        key={`questions-${currentSectionIndex}`}
+                        initial={{ opacity: 0, x: 100 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -100 }}
+                        transition={{ type: "spring", stiffness: 80, damping: 15 }}
+                        className="flex flex-col md:flex-row min-h-[600px]"
+                    >
 
                         {/* Sidebar */}
                         <div className="md:w-1/3 bg-gray-50 p-8 border-r border-gray-100">
@@ -341,8 +533,27 @@ const AssessmentTest = () => {
                                 <h2 className="text-xl font-bold text-gray-800 mb-2">{currentSection.title}</h2>
                                 <p className="text-sm text-gray-500 leading-relaxed mb-4">{currentSection.description}</p>
 
-                                <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                                <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100 mb-4">
                                     <p className="text-xs font-medium text-indigo-700">{currentSection.instruction}</p>
+                                </div>
+
+                                {/* Section type indicator */}
+                                <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
+                                    currentSection.id === 'knowledge' 
+                                        ? 'bg-blue-50 text-blue-600 border border-blue-100' 
+                                        : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                }`}>
+                                    {currentSection.id === 'knowledge' ? (
+                                        <>
+                                            <Code className="w-3.5 h-3.5" />
+                                            <span>Answers scored</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                            <span>No right or wrong</span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
@@ -415,10 +626,10 @@ const AssessmentTest = () => {
                                 ) : (
                                     <motion.div
                                         key={`${currentSectionIndex}-${currentQuestionIndex}`}
-                                        initial={{ opacity: 0, x: 20 }}
+                                        initial={{ opacity: 0, x: 30 }}
                                         animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -20 }}
-                                        transition={{ duration: 0.3 }}
+                                        exit={{ opacity: 0, x: -30 }}
+                                        transition={{ type: "spring", stiffness: 100, damping: 15 }}
                                         className="flex-1 flex flex-col"
                                     >
                                         <div className="mb-6">
@@ -481,8 +692,8 @@ const AssessmentTest = () => {
                                 )}
                             </AnimatePresence>
 
-                            {/* Navigation */}
-                            {!isSubmitting && (
+                            {/* Navigation - only show when answering questions */}
+                            {!isSubmitting && !showSectionComplete && !error && (
                                 <div className="mt-8 flex justify-between items-center pt-6 border-t border-gray-100">
                                     <Button
                                         variant="ghost"
@@ -512,7 +723,9 @@ const AssessmentTest = () => {
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </motion.div>
+                    )}
+                    </AnimatePresence>
                 </CardContent>
             </Card>
         </div>
