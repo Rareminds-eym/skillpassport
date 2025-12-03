@@ -27,6 +27,8 @@ import {
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
 import { FileTextIcon } from "lucide-react";
+import { useCurriculum } from "../../../hooks/useLessonPlans";
+import type { LessonPlan as LessonPlanType } from "../../../services/lessonPlansService";
 
 /* ==============================
    TYPES & INTERFACES
@@ -553,12 +555,33 @@ const ViewLessonPlanModal = ({
 };
 
 /* ==============================
+   PROPS INTERFACE
+   ============================== */
+interface LessonPlanProps {
+  initialLessonPlans?: LessonPlanType[];
+  onCreateLessonPlan?: (formData: any, classId: string) => Promise<{ data: any; error: any }>;
+  onUpdateLessonPlan?: (id: string, formData: any, classId: string) => Promise<{ data: any; error: any }>;
+  onDeleteLessonPlan?: (id: string) => Promise<{ error: any }>;
+  subjects?: string[];
+  classes?: any[];
+  schoolId?: string;
+}
+
+/* ==============================
    MAIN COMPONENT
    ============================== */
-const LessonPlan: React.FC = () => {
-  // Sample data
-  const subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "English", "History"];
-  const classes = ["9", "10", "11", "12"];
+const LessonPlan: React.FC<LessonPlanProps> = ({
+  initialLessonPlans = [],
+  onCreateLessonPlan,
+  onUpdateLessonPlan,
+  onDeleteLessonPlan,
+  subjects: propSubjects,
+  classes: propClasses,
+  schoolId,
+}) => {
+  // Use props or fallback to sample data
+  const subjects = propSubjects || ["Mathematics", "Physics", "Chemistry", "Biology", "English", "History"];
+  const classes = propClasses?.map(c => c.grade || c) || ["9", "10", "11", "12"];
 
   // Sample curriculum data (in real app, this would come from API/database)
   const sampleCurriculums: Curriculum[] = [
@@ -672,87 +695,34 @@ const LessonPlan: React.FC = () => {
     },
   ];
 
+  // Convert backend data to UI format
+  const convertToUIFormat = (backendPlans: LessonPlanType[]): LessonPlan[] => {
+    return backendPlans.map(plan => ({
+      id: plan.id,
+      title: plan.title,
+      subject: plan.subject,
+      class: plan.class_name,
+      date: plan.date,
+      chapterId: plan.chapter_id || "",
+      chapterName: plan.chapter_name || "",
+      duration: plan.duration ? `${plan.duration} minutes` : "",
+      selectedLearningOutcomes: plan.selected_learning_outcomes || [],
+      learningObjectives: plan.learning_objectives,
+      teachingMethodology: plan.teaching_methodology || "",
+      requiredMaterials: plan.required_materials || "",
+      resourceFiles: plan.resource_files || [],
+      resourceLinks: plan.resource_links || [],
+      evaluationCriteria: plan.evaluation_criteria || "",
+      evaluationItems: plan.evaluation_items || [],
+      homework: plan.homework,
+      differentiationNotes: plan.differentiation_notes,
+    }));
+  };
+
   // State
-  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([
-    {
-      id: "1",
-      title: "Introduction to Algebra",
-      subject: "Mathematics",
-      class: "9",
-      date: "2025-12-01",
-      chapterId: "ch-1",
-      chapterName: "Algebraic Expressions",
-      duration: "8 hours",
-      selectedLearningOutcomes: ["lo-1", "lo-2"],
-      learningObjectives: "Students will understand basic algebraic concepts and operations, including variables, expressions, and simple equations. They will be able to solve linear equations and apply algebraic thinking to real-world problems.",
-      teachingMethodology: "Interactive teaching with practical examples, group problem-solving sessions, and hands-on activities with algebraic manipulatives. Students will work in pairs to solve progressively challenging problems.",
-      requiredMaterials: "Whiteboard, Algebra worksheets, Calculator, Algebraic manipulatives, Online interactive tools",
-      resourceFiles: [
-        { id: "f1", name: "Algebra_Worksheet.pdf", size: 245000, type: "application/pdf" },
-        { id: "f2", name: "Practice_Problems.docx", size: 128000, type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
-      ],
-      resourceLinks: [
-        { id: "l1", title: "Khan Academy - Algebra Basics", url: "https://www.khanacademy.org/math/algebra" },
-        { id: "l2", title: "Interactive Algebra Tool", url: "https://www.desmos.com/calculator" },
-      ],
-      evaluationCriteria: "Students will be assessed through multiple methods to ensure comprehensive understanding",
-      evaluationItems: [
-        { id: "e1", criterion: "Exit ticket", percentage: 30 },
-        { id: "e2", criterion: "Class participation", percentage: 30 },
-        { id: "e3", criterion: "Homework assignments", percentage: 25 },
-        { id: "e4", criterion: "Group activity performance", percentage: 15 },
-      ],
-      homework: "Complete worksheet problems 1-15, practice solving equations using online tool",
-    },
-    {
-      id: "2",
-      title: "Newton's Laws of Motion",
-      subject: "Physics",
-      class: "10",
-      date: "2025-12-03",
-      chapterId: "ch-3",
-      chapterName: "Forces and Motion",
-      duration: "3 weeks",
-      selectedLearningOutcomes: ["lo-4", "lo-5"],
-      learningObjectives: "Students will explain and demonstrate Newton's three laws of motion, understand the concepts of force, mass, and acceleration, and apply these principles to everyday situations.",
-      teachingMethodology: "Demonstration-based learning with real-world examples, laboratory experiments showing each law, video demonstrations of forces in action, and student-led presentations on applications.",
-      requiredMaterials: "Physics lab equipment, demonstration models, spring scales, toy cars, ramps, video projector, online simulation software",
-      resourceFiles: [],
-      resourceLinks: [
-        { id: "l3", title: "PhET Physics Simulations", url: "https://phet.colorado.edu/en/simulations/filter?subjects=motion" },
-      ],
-      evaluationCriteria: "Assessment through practical and theoretical components",
-      evaluationItems: [
-        { id: "e5", criterion: "Practical demonstration", percentage: 35 },
-        { id: "e6", criterion: "Quiz", percentage: 35 },
-        { id: "e7", criterion: "Lab observation", percentage: 20 },
-        { id: "e8", criterion: "Class participation", percentage: 10 },
-      ],
-      differentiationNotes: "Provide additional support for students struggling with mathematical calculations. Advanced students can explore real-world applications in engineering.",
-    },
-    {
-      id: "3",
-      title: "Photosynthesis Process",
-      subject: "Biology",
-      class: "9",
-      date: "2025-11-28",
-      chapterId: "ch-4",
-      chapterName: "Plant Biology",
-      duration: "10 hours",
-      selectedLearningOutcomes: ["lo-6", "lo-7"],
-      learningObjectives: "Students will understand the complete process of photosynthesis, identify the key components involved, explain the importance of photosynthesis for life on Earth, and recognize factors affecting the rate of photosynthesis.",
-      teachingMethodology: "Visual presentation with detailed diagrams, hands-on lab experiment observing photosynthesis, microscope work examining plant cells, and group discussions on environmental impact.",
-      requiredMaterials: "Microscope, plant samples, presentation slides, lab equipment, photosynthesis model, test tubes, indicator solutions",
-      resourceFiles: [],
-      resourceLinks: [],
-      evaluationCriteria: "Observation rubric for lab work and written assessment",
-      evaluationItems: [
-        { id: "e9", criterion: "Lab report", percentage: 50 },
-        { id: "e10", criterion: "Quiz", percentage: 30 },
-        { id: "e11", criterion: "Observation notes", percentage: 20 },
-      ],
-    },
-  ]);
+  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>(
+    initialLessonPlans ? convertToUIFormat(initialLessonPlans) : []
+  );
 
   const [showEditor, setShowEditor] = useState(false);
   const [editingPlan, setEditingPlan] = useState<LessonPlan | null>(null);
@@ -790,6 +760,24 @@ const LessonPlan: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  // Use curriculum hook for backend data
+  const { chapters, learningOutcomes, loadChapters, loadLearningOutcomes } = 
+    useCurriculum(formData.subject, formData.class);
+
+  // Load chapters when subject and class are selected
+  useEffect(() => {
+    if (formData.subject && formData.class && chapters.length > 0) {
+      // Chapters are automatically loaded by the hook
+    }
+  }, [formData.subject, formData.class, chapters]);
+
+  // Load learning outcomes when chapter is selected
+  useEffect(() => {
+    if (formData.chapterId) {
+      loadLearningOutcomes(formData.chapterId);
+    }
+  }, [formData.chapterId, loadLearningOutcomes]);
+
   // Filter lesson plans
   const filteredPlans = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -819,32 +807,16 @@ const LessonPlan: React.FC = () => {
     }, {} as Record<string, number>),
   };
 
-  // Get available curriculums based on selected subject and class
-  const availableCurriculums = useMemo(() => {
-    if (!formData.subject || !formData.class) return [];
-    return sampleCurriculums.filter(
-      (c) => c.subject === formData.subject && c.class === formData.class
-    );
-  }, [formData.subject, formData.class]);
-
-  // Get chapters from selected curriculum
-  const availableChapters = useMemo(() => {
-    if (availableCurriculums.length === 0) return [];
-    return availableCurriculums[0].chapters;
-  }, [availableCurriculums]);
+  // Get available chapters from curriculum hook
+  const availableChapters = chapters;
 
   // Get learning outcomes for selected chapter
-  const availableLearningOutcomes = useMemo(() => {
-    if (!formData.chapterId || availableCurriculums.length === 0) return [];
-    return availableCurriculums[0].learningOutcomes.filter(
-      (lo) => lo.chapterId === formData.chapterId
-    );
-  }, [formData.chapterId, availableCurriculums]);
+  const availableLearningOutcomes = learningOutcomes;
 
   // Get selected chapter details
   const selectedChapter = useMemo(() => {
     if (!formData.chapterId) return null;
-    return availableChapters.find((ch) => ch.id === formData.chapterId);
+    return availableChapters.find((ch: any) => ch.id === formData.chapterId);
   }, [formData.chapterId, availableChapters]);
 
   // Auto-fill duration when chapter is selected
@@ -983,54 +955,110 @@ const LessonPlan: React.FC = () => {
   };
 
   // Handle submit
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateForm()) {
       return;
     }
 
     setSubmitting(true);
 
-    setTimeout(() => {
-      const chapter = selectedChapter;
-      const duration = chapter?.estimatedDuration
-        ? `${chapter.estimatedDuration} ${chapter.durationUnit}`
-        : undefined;
+    try {
+      // Find class ID
+      const classObj = propClasses?.find((c: any) => c.grade === formData.class || c === formData.class);
+      const classId = classObj?.id || "";
 
-      if (editingPlan) {
-        setLessonPlans((prev) =>
-          prev.map((p) =>
-            p.id === editingPlan.id
-              ? {
-                  ...p,
-                  ...formData,
-                  chapterName: chapter?.name || "",
-                  duration,
-                  selectedLearningOutcomes,
-                  resourceFiles,
-                  resourceLinks,
-                  evaluationItems,
-                }
-              : p
-          )
-        );
-      } else {
-        const newPlan: LessonPlan = {
-          id: Date.now().toString(),
-          ...formData,
-          chapterName: chapter?.name || "",
-          duration,
-          selectedLearningOutcomes,
-          resourceFiles,
-          resourceLinks,
-          evaluationItems,
-        };
-        setLessonPlans([newPlan, ...lessonPlans]);
+      if (!classId) {
+        alert("Class not found. Please select a valid class.");
+        setSubmitting(false);
+        return;
       }
 
-      setSubmitting(false);
+      const submitData = {
+        ...formData,
+        selectedLearningOutcomes,
+        resourceFiles,
+        resourceLinks,
+        evaluationItems,
+      };
+
+      if (editingPlan) {
+        // Update existing lesson plan
+        if (onUpdateLessonPlan) {
+          const { data, error } = await onUpdateLessonPlan(editingPlan.id, submitData, classId);
+          if (error) {
+            alert("Error updating lesson plan: " + error);
+            setSubmitting(false);
+            return;
+          }
+          if (data) {
+            const converted = convertToUIFormat([data])[0];
+            setLessonPlans((prev) =>
+              prev.map((p) => (p.id === editingPlan.id ? converted : p))
+            );
+          }
+        } else {
+          // Fallback to local state update
+          const chapter = selectedChapter;
+          const duration = chapter?.estimatedDuration
+            ? `${chapter.estimatedDuration} ${chapter.durationUnit}`
+            : undefined;
+          setLessonPlans((prev) =>
+            prev.map((p) =>
+              p.id === editingPlan.id
+                ? {
+                    ...p,
+                    ...formData,
+                    chapterName: chapter?.name || "",
+                    duration,
+                    selectedLearningOutcomes,
+                    resourceFiles,
+                    resourceLinks,
+                    evaluationItems,
+                  }
+                : p
+            )
+          );
+        }
+      } else {
+        // Create new lesson plan
+        if (onCreateLessonPlan) {
+          const { data, error } = await onCreateLessonPlan(submitData, classId);
+          if (error) {
+            alert("Error creating lesson plan: " + error);
+            setSubmitting(false);
+            return;
+          }
+          if (data) {
+            const converted = convertToUIFormat([data])[0];
+            setLessonPlans([converted, ...lessonPlans]);
+          }
+        } else {
+          // Fallback to local state update
+          const chapter = selectedChapter;
+          const duration = chapter?.estimatedDuration
+            ? `${chapter.estimatedDuration} ${chapter.durationUnit}`
+            : undefined;
+          const newPlan: LessonPlan = {
+            id: Date.now().toString(),
+            ...formData,
+            chapterName: chapter?.name || "",
+            duration,
+            selectedLearningOutcomes,
+            resourceFiles,
+            resourceLinks,
+            evaluationItems,
+          };
+          setLessonPlans([newPlan, ...lessonPlans]);
+        }
+      }
+
       resetForm();
       setShowEditor(false);
-    }, 800);
+    } catch (error: any) {
+      alert("Error: " + error.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Handle edit

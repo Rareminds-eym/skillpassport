@@ -227,7 +227,7 @@ const CurriculumBuilder = lazy(() =>
   import("../pages/admin/schoolAdmin/CurriculumBuilderWrapper")
 );
 const SchoolAdminCourses = lazy(() => import("../pages/admin/schoolAdmin/Courses"));
-const LessonPlan = lazy(() => import("../pages/admin/schoolAdmin/LessonPlan"));
+const LessonPlan = lazy(() => import("../pages/admin/schoolAdmin/LessonPlanWrapper"));
 const ExamsAssessments = lazy(() =>
   import("../pages/admin/schoolAdmin/ExamsAssessments")
 );
