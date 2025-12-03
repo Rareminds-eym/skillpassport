@@ -1,4 +1,11 @@
+<<<<<<< HEAD
 import { supabase } from '../lib/supabaseClient';
+=======
+import { supabase } from "@/lib/supabaseClient";
+
+// Export supabase for use in hooks
+export { supabase };
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
 
 export interface AssessmentType {
   id: string;
@@ -63,173 +70,271 @@ export const getAssessmentTypes = async (): Promise<AssessmentType[]> => {
 
 // Get all subjects (school-specific + global fallback)
 export const getSubjects = async (): Promise<string[]> => {
-  const schoolId = await getCurrentEducatorSchoolId();
-  
-  // First, try to get school-specific subjects
-  let { data, error } = await supabase
-    .from('curriculum_subjects')
-    .select('name')
-    .eq('school_id', schoolId)
-    .eq('is_active', true)
-    .order('display_order');
+  try {
+    const schoolId = await getCurrentEducatorSchoolId();
+    
+    if (!schoolId) {
+      // Try to get global subjects as fallback
+      const { data: globalData, error: globalError } = await supabase
+        .from('curriculum_subjects')
+        .select('name')
+        .is('school_id', null)
+        .eq('is_active', true)
+        .order('display_order');
 
-  // If no school-specific subjects, get global subjects
-  if (!data || data.length === 0) {
-    const result = await supabase
+      if (globalError) throw globalError;
+      return globalData?.map(s => s.name) || [];
+    }
+    
+    // First, try to get school-specific subjects
+    const { data: schoolData, error: schoolError } = await supabase
+      .from('curriculum_subjects')
+      .select('name')
+      .eq('school_id', schoolId)
+      .eq('is_active', true)
+      .order('display_order');
+
+    if (schoolError) {
+      console.error('Error fetching school subjects:', schoolError);
+    }
+
+    // If we have school-specific subjects, return them
+    if (schoolData && schoolData.length > 0) {
+      return schoolData.map(s => s.name);
+    }
+
+    // Otherwise, get global subjects
+    const { data: globalData, error: globalError } = await supabase
       .from('curriculum_subjects')
       .select('name')
       .is('school_id', null)
       .eq('is_active', true)
       .order('display_order');
-    
-    data = result.data;
-    error = result.error;
-  }
 
-  if (error) throw error;
-  return data?.map(s => s.name) || [];
+    if (globalError) throw globalError;
+    return globalData?.map(s => s.name) || [];
+  } catch (error) {
+    console.error('Error in getSubjects:', error);
+    throw error;
+  }
 };
 
 // Get all classes (from school_classes.grade field + curriculum_classes fallback)
 export const getClasses = async (): Promise<string[]> => {
-  const schoolId = await getCurrentEducatorSchoolId();
-  
-  if (schoolId) {
-    // Get unique grades from school_classes for this school
-    const { data: schoolClassesData, error: schoolError } = await supabase
-      .from('school_classes')
-      .select('grade')
-      .eq('school_id', schoolId)
-      .order('grade');
+  try {
+    const schoolId = await getCurrentEducatorSchoolId();
+    
+    if (schoolId) {
+      // Get unique grades from school_classes for this school
+      const { data: schoolClassesData, error: schoolError } = await supabase
+        .from('school_classes')
+        .select('grade')
+        .eq('school_id', schoolId)
+        .order('grade');
 
-    if (!schoolError && schoolClassesData && schoolClassesData.length > 0) {
-      // Get unique grades and sort them
-      const uniqueGrades = [...new Set(schoolClassesData.map(c => c.grade))];
-      return uniqueGrades.sort((a, b) => {
-        // Try to sort numerically if possible
-        const numA = parseInt(a);
-        const numB = parseInt(b);
-        if (!isNaN(numA) && !isNaN(numB)) {
-          return numA - numB;
-        }
-        return a.localeCompare(b);
-      });
+      if (schoolError) {
+        console.error('Error fetching school classes:', schoolError);
+      } else if (schoolClassesData && schoolClassesData.length > 0) {
+        // Get unique grades and sort them
+        const uniqueGrades = [...new Set(schoolClassesData.map(c => c.grade))];
+        return uniqueGrades.sort((a, b) => {
+          const numA = parseInt(a);
+          const numB = parseInt(b);
+          if (!isNaN(numA) && !isNaN(numB)) {
+            return numA - numB;
+          }
+          return a.localeCompare(b);
+        });
+      }
+      
+      // Fallback 1: Try curriculum_classes for this school
+      const { data: schoolCurrData, error: schoolCurrError } = await supabase
+        .from('curriculum_classes')
+        .select('name')
+        .eq('school_id', schoolId)
+        .eq('is_active', true)
+        .order('display_order');
+
+      if (schoolCurrError) {
+        console.error('Error fetching school curriculum classes:', schoolCurrError);
+      } else if (schoolCurrData && schoolCurrData.length > 0) {
+        return schoolCurrData.map(c => c.name);
+      }
     }
-  }
-  
-  // Fallback 1: Try curriculum_classes for this school
-  let { data, error } = await supabase
-    .from('curriculum_classes')
-    .select('name')
-    .eq('school_id', schoolId)
-    .eq('is_active', true)
-    .order('display_order');
 
-  // Fallback 2: Get global curriculum_classes
-  if (!data || data.length === 0) {
-    const result = await supabase
+    // Fallback: Get global curriculum_classes
+    const { data: globalData, error: globalError } = await supabase
       .from('curriculum_classes')
       .select('name')
       .is('school_id', null)
       .eq('is_active', true)
       .order('display_order');
-    
-    data = result.data;
-    error = result.error;
-  }
 
-  if (error) throw error;
-  return data?.map(c => c.name) || [];
+    if (globalError) throw globalError;
+    return globalData?.map(c => c.name) || [];
+  } catch (error) {
+    console.error('Error in getClasses:', error);
+    throw error;
+  }
 };
 
 // Get all academic years (school-specific + global fallback)
 export const getAcademicYears = async (): Promise<string[]> => {
-  const schoolId = await getCurrentEducatorSchoolId();
-  
-  // First, try to get school-specific academic years
-  let { data, error } = await supabase
-    .from('curriculum_academic_years')
-    .select('year')
-    .eq('school_id', schoolId)
-    .eq('is_active', true)
-    .order('year', { ascending: false });
+  try {
+    const schoolId = await getCurrentEducatorSchoolId();
+    
+    if (!schoolId) {
+      // Get global years
+      const { data: globalData, error: globalError } = await supabase
+        .from('curriculum_academic_years')
+        .select('year')
+        .is('school_id', null)
+        .eq('is_active', true)
+        .order('year', { ascending: false });
 
-  // If no school-specific years, get global years
-  if (!data || data.length === 0) {
-    const result = await supabase
+      if (globalError) throw globalError;
+      return globalData?.map(y => y.year) || [];
+    }
+    
+    // First, try to get school-specific academic years
+    const { data: schoolData, error: schoolError } = await supabase
+      .from('curriculum_academic_years')
+      .select('year')
+      .eq('school_id', schoolId)
+      .eq('is_active', true)
+      .order('year', { ascending: false });
+
+    if (schoolError) {
+      console.error('Error fetching school academic years:', schoolError);
+    }
+
+    // If we have school-specific years, return them
+    if (schoolData && schoolData.length > 0) {
+      return schoolData.map(y => y.year);
+    }
+
+    // Otherwise, get global years
+    const { data: globalData, error: globalError } = await supabase
       .from('curriculum_academic_years')
       .select('year')
       .is('school_id', null)
       .eq('is_active', true)
       .order('year', { ascending: false });
-    
-    data = result.data;
-    error = result.error;
-  }
 
-  if (error) throw error;
-  return data?.map(y => y.year) || [];
+    if (globalError) throw globalError;
+    return globalData?.map(y => y.year) || [];
+  } catch (error) {
+    console.error('Error in getAcademicYears:', error);
+    throw error;
+  }
 };
 
 // Get current academic year (school-specific + global fallback)
 export const getCurrentAcademicYear = async (): Promise<string | null> => {
-  const schoolId = await getCurrentEducatorSchoolId();
-  
-  // First, try to get school-specific current year
-  let { data, error } = await supabase
-    .from('curriculum_academic_years')
-    .select('year')
-    .eq('school_id', schoolId)
-    .eq('is_active', true)
-    .eq('is_current', true)
-    .maybeSingle();
+  try {
+    const schoolId = await getCurrentEducatorSchoolId();
+    
+    if (schoolId) {
+      // First, try to get school-specific current year
+      const { data: schoolData, error: schoolError } = await supabase
+        .from('curriculum_academic_years')
+        .select('year')
+        .eq('school_id', schoolId)
+        .eq('is_active', true)
+        .eq('is_current', true)
+        .maybeSingle();
 
-  // If no school-specific current year, get global current year
-  if (!data) {
-    const result = await supabase
+      if (schoolError) {
+        console.error('Error fetching school current year:', schoolError);
+      }
+
+      // If we have a school-specific current year, return it
+      if (schoolData) {
+        return schoolData.year;
+      }
+    }
+
+    // Otherwise, get global current year
+    const { data: globalData, error: globalError } = await supabase
       .from('curriculum_academic_years')
       .select('year')
       .is('school_id', null)
       .eq('is_active', true)
       .eq('is_current', true)
       .maybeSingle();
-    
-    data = result.data;
-    error = result.error;
+
+    if (globalError) {
+      console.error('Error fetching global current year:', globalError);
+      // Don't throw here, just return null
+      return null;
+    }
+
+    return globalData?.year || null;
+  } catch (error) {
+    console.error('Error in getCurrentAcademicYear:', error);
+    return null;
   }
-
-  if (error) throw error;
-  return data?.year || null;
 };
 
-// Get current educator's school_id
+// Get current educator's school_id (works for both school_educator and school_admin roles)
 export const getCurrentEducatorSchoolId = async (): Promise<string | null> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) return null;
 
-  const { data, error } = await supabase
-    .from('school_educators')
-    .select('id, school_id')
-    .eq('user_id', user.id)
-    .single();
+    // First, check if user is a school_educator
+    const { data: educatorData, error: educatorError } = await supabase
+      .from('school_educators')
+      .select('id, school_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-  if (error) throw error;
-  return data?.school_id || null;
+    if (educatorError) {
+      console.error('Error fetching school educator:', educatorError);
+    }
+
+    if (educatorData && educatorData.school_id) {
+      return educatorData.school_id;
+    }
+
+    // If not a school_educator, check if user is school_admin
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userData?.role === 'school_admin') {
+      const { data: schoolData, error: schoolError } = await supabase
+        .from('schools')
+        .select('id, name')
+        .eq('created_by', user.id)
+        .maybeSingle();
+
+      if (schoolError) {
+        console.error('Error fetching school for admin:', schoolError);
+      }
+
+      if (schoolData) {
+        return schoolData.id;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error in getCurrentEducatorSchoolId:', error);
+    return null;
+  }
 };
 
-// Get current educator's ID
+// Get current educator's ID (returns user_id for curriculum creation)
 export const getCurrentEducatorId = async (): Promise<string | null> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data, error } = await supabase
-    .from('school_educators')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
-
-  if (error) throw error;
-  return data?.id || null;
+  // Return the user_id directly since curriculums.created_by references users.id
+  return user.id;
 };
 
 // Get curriculum by subject, class, and academic year
@@ -498,17 +603,39 @@ export const validateCurriculum = async (curriculumId: string): Promise<{
   isValid: boolean;
   errors: string[];
 }> => {
-  const { data, error } = await supabase
-    .rpc('validate_curriculum', { p_curriculum_id: curriculumId });
+  try {
+    const { data, error } = await supabase
+      .rpc('validate_curriculum', { p_curriculum_id: curriculumId });
 
-  if (error) throw error;
+    if (error) {
+      console.error('Validation RPC error:', error);
+      throw error;
+    }
 
-  const result = data?.[0] || { is_valid: false, validation_errors: [] };
-  
-  return {
-    isValid: result.is_valid,
-    errors: result.validation_errors.map((e: any) => e.message),
-  };
+    // Handle different response formats
+    let result;
+    if (Array.isArray(data)) {
+      result = data[0] || { is_valid: false, validation_errors: [] };
+    } else if (data && typeof data === 'object') {
+      result = data;
+    } else {
+      result = { is_valid: false, validation_errors: [] };
+    }
+    
+    return {
+      isValid: result.is_valid || false,
+      errors: Array.isArray(result.validation_errors) 
+        ? result.validation_errors.map((e: any) => typeof e === 'string' ? e : e.message || String(e))
+        : [],
+    };
+  } catch (error) {
+    console.error('Error in validateCurriculum:', error);
+    // Return a basic validation result instead of throwing
+    return {
+      isValid: false,
+      errors: ['Validation service unavailable. Please ensure you have added chapters and learning outcomes.'],
+    };
+  }
 };
 
 // Copy curriculum template

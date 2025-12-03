@@ -27,8 +27,24 @@ import {
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
 import { FileTextIcon } from "lucide-react";
+<<<<<<< HEAD
 import { useCurriculum } from "../../../hooks/useLessonPlans";
 import type { LessonPlan as LessonPlanType } from "../../../services/lessonPlansService";
+=======
+import { lessonPlanService } from "../../../services/lessonPlanService";
+import { supabase } from "../../../lib/supabaseClient";
+import { 
+  getSubjects, 
+  getClasses, 
+  getCurriculum, 
+  getChapters, 
+  getLearningOutcomes,
+  getCurrentEducatorSchoolId,
+  getCurrentAcademicYear,
+  type Chapter as CurriculumChapter,
+  type LearningOutcome as CurriculumLearningOutcome
+} from "../../../services/curriculumService";
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
 
 /* ==============================
    TYPES & INTERFACES
@@ -216,11 +232,25 @@ const LessonPlanCard = ({
   return (
     <div className="group bg-white rounded-xl border-2 border-gray-200 p-5 transition-all hover:border-indigo-300 hover:shadow-md">
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-semibold text-gray-900 line-clamp-1 mb-2">
             {plan.title}
           </h3>
+          {/* Status Badge on New Row */}
+          <div>
+            {plan.status === 'approved' ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                <CheckCircleIcon className="h-3 w-3" />
+                Published
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
+                <DocumentIcon className="h-3 w-3" />
+                Draft
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0 ml-3">
@@ -570,6 +600,7 @@ interface LessonPlanProps {
 /* ==============================
    MAIN COMPONENT
    ============================== */
+<<<<<<< HEAD
 const LessonPlan: React.FC<LessonPlanProps> = ({
   initialLessonPlans = [],
   onCreateLessonPlan,
@@ -582,119 +613,24 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   // Use props or fallback to sample data
   const subjects = propSubjects || ["Mathematics", "Physics", "Chemistry", "Biology", "English", "History"];
   const classes = propClasses?.map(c => c.grade || c) || ["9", "10", "11", "12"];
+=======
+const LessonPlan: React.FC = () => {
+  // State for dynamic data
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [curriculums, setCurriculums] = useState<Curriculum[]>([]);
+  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
+  const [currentAcademicYear, setCurrentAcademicYear] = useState<string>("");
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
 
-  // Sample curriculum data (in real app, this would come from API/database)
-  const sampleCurriculums: Curriculum[] = [
-    {
-      id: "curr-1",
-      subject: "Mathematics",
-      class: "9",
-      academicYear: "2024-2025",
-      chapters: [
-        {
-          id: "ch-1",
-          name: "Algebraic Expressions",
-          code: "CH-01",
-          description: "Introduction to variables, expressions, and equations",
-          order: 1,
-          estimatedDuration: 8,
-          durationUnit: "hours",
-        },
-        {
-          id: "ch-2",
-          name: "Linear Equations",
-          code: "CH-02",
-          description: "Solving linear equations in one variable",
-          order: 2,
-          estimatedDuration: 2,
-          durationUnit: "weeks",
-        },
-      ],
-      learningOutcomes: [
-        {
-          id: "lo-1",
-          chapterId: "ch-1",
-          outcome: "Students will understand basic algebraic concepts and operations",
-          bloomLevel: "Understand",
-        },
-        {
-          id: "lo-2",
-          chapterId: "ch-1",
-          outcome: "Students will be able to solve simple algebraic expressions",
-          bloomLevel: "Apply",
-        },
-        {
-          id: "lo-3",
-          chapterId: "ch-2",
-          outcome: "Students will solve linear equations and apply to real-world problems",
-          bloomLevel: "Apply",
-        },
-      ],
-    },
-    {
-      id: "curr-2",
-      subject: "Physics",
-      class: "10",
-      academicYear: "2024-2025",
-      chapters: [
-        {
-          id: "ch-3",
-          name: "Forces and Motion",
-          code: "CH-05",
-          description: "Newton's laws and their applications",
-          order: 5,
-          estimatedDuration: 3,
-          durationUnit: "weeks",
-        },
-      ],
-      learningOutcomes: [
-        {
-          id: "lo-4",
-          chapterId: "ch-3",
-          outcome: "Students will explain and demonstrate Newton's three laws of motion",
-          bloomLevel: "Understand",
-        },
-        {
-          id: "lo-5",
-          chapterId: "ch-3",
-          outcome: "Students will apply force concepts to everyday situations",
-          bloomLevel: "Apply",
-        },
-      ],
-    },
-    {
-      id: "curr-3",
-      subject: "Biology",
-      class: "9",
-      academicYear: "2024-2025",
-      chapters: [
-        {
-          id: "ch-4",
-          name: "Plant Biology",
-          code: "CH-03",
-          description: "Photosynthesis and plant structures",
-          order: 3,
-          estimatedDuration: 10,
-          durationUnit: "hours",
-        },
-      ],
-      learningOutcomes: [
-        {
-          id: "lo-6",
-          chapterId: "ch-4",
-          outcome: "Students will understand the complete process of photosynthesis",
-          bloomLevel: "Understand",
-        },
-        {
-          id: "lo-7",
-          chapterId: "ch-4",
-          outcome: "Students will identify key components involved in photosynthesis",
-          bloomLevel: "Remember",
-        },
-      ],
-    },
-  ];
+  // Load initial data
+  useEffect(() => {
+    loadInitialData();
+  }, []);
 
+<<<<<<< HEAD
   // Convert backend data to UI format
   const convertToUIFormat = (backendPlans: LessonPlanType[]): LessonPlan[] => {
     return backendPlans.map(plan => ({
@@ -723,6 +659,103 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>(
     initialLessonPlans ? convertToUIFormat(initialLessonPlans) : []
   );
+=======
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      
+      // Get school ID and academic year
+      const [fetchedSchoolId, fetchedAcademicYear, fetchedSubjects, fetchedClasses] = await Promise.all([
+        getCurrentEducatorSchoolId(),
+        getCurrentAcademicYear(),
+        getSubjects(),
+        getClasses(),
+      ]);
+
+      setSchoolId(fetchedSchoolId);
+      setCurrentAcademicYear(fetchedAcademicYear || "2024-2025");
+      setSubjects(fetchedSubjects);
+      setClasses(fetchedClasses);
+
+      // Load lesson plans if school ID is available
+      if (fetchedSchoolId) {
+        const plans = await lessonPlanService.getLessonPlans(fetchedSchoolId);
+        setLessonPlans(plans.map(plan => ({
+          ...plan,
+          class: plan.class_name, // Map class_name to class for form compatibility
+          chapterId: plan.chapter_id || "", // Map chapter_id to chapterId
+          chapterName: plan.chapter_name || "",
+          duration: plan.duration ? `${plan.duration} minutes` : "",
+          selectedLearningOutcomes: plan.selected_learning_outcomes || [],
+          learningObjectives: plan.learning_objectives || "",
+          teachingMethodology: plan.teaching_methodology || "",
+          requiredMaterials: plan.required_materials || "",
+          resourceFiles: plan.resource_files || [],
+          resourceLinks: plan.resource_links || [],
+          evaluationCriteria: plan.evaluation_criteria || "",
+          evaluationItems: plan.evaluation_items || [],
+          homework: plan.homework || "",
+          differentiationNotes: plan.differentiation_notes || "",
+        })));
+      }
+    } catch (error) {
+      console.error("Error loading initial data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load curriculum when subject and class change
+  const loadCurriculumData = async (subject: string, className: string) => {
+    if (!subject || !className || !currentAcademicYear) return;
+
+    try {
+      const curriculum = await getCurriculum(subject, className, currentAcademicYear);
+      if (!curriculum) return;
+
+      const [chapters, learningOutcomes] = await Promise.all([
+        getChapters(curriculum.id),
+        getLearningOutcomes(curriculum.id),
+      ]);
+
+      // Map to the expected format
+      const mappedCurriculum: Curriculum = {
+        id: curriculum.id,
+        subject: curriculum.subject,
+        class: curriculum.class,
+        academicYear: curriculum.academic_year,
+        chapters: chapters.map(ch => ({
+          id: ch.id,
+          name: ch.name,
+          code: ch.code,
+          description: ch.description,
+          order: ch.order_number,
+          estimatedDuration: ch.estimated_duration,
+          durationUnit: ch.duration_unit,
+        })),
+        learningOutcomes: learningOutcomes.map(lo => ({
+          id: lo.id,
+          chapterId: lo.chapter_id,
+          outcome: lo.outcome,
+          bloomLevel: lo.bloom_level,
+        })),
+      };
+
+      // Update or add curriculum to state
+      setCurriculums(prev => {
+        const existing = prev.findIndex(c => c.id === mappedCurriculum.id);
+        if (existing >= 0) {
+          const updated = [...prev];
+          updated[existing] = mappedCurriculum;
+          return updated;
+        }
+        return [...prev, mappedCurriculum];
+      });
+    } catch (error) {
+      console.error("Error loading curriculum:", error);
+    }
+  };
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
 
   const [showEditor, setShowEditor] = useState(false);
   const [editingPlan, setEditingPlan] = useState<LessonPlan | null>(null);
@@ -743,6 +776,13 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     homework: "",
     differentiationNotes: "",
   });
+
+  // Load curriculum when subject or class changes
+  useEffect(() => {
+    if (formData.subject && formData.class) {
+      loadCurriculumData(formData.subject, formData.class);
+    }
+  }, [formData.subject, formData.class]);
 
   const [selectedLearningOutcomes, setSelectedLearningOutcomes] = useState<string[]>([]);
 
@@ -807,8 +847,24 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     }, {} as Record<string, number>),
   };
 
+<<<<<<< HEAD
   // Get available chapters from curriculum hook
   const availableChapters = chapters;
+=======
+  // Get available curriculums based on selected subject and class
+  const availableCurriculums = useMemo(() => {
+    if (!formData.subject || !formData.class) return [];
+    return curriculums.filter(
+      (c) => c.subject === formData.subject && c.class === formData.class
+    );
+  }, [formData.subject, formData.class, curriculums]);
+
+  // Get chapters from selected curriculum
+  const availableChapters = useMemo(() => {
+    if (availableCurriculums.length === 0) return [];
+    return availableCurriculums[0].chapters;
+  }, [availableCurriculums]);
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
 
   // Get learning outcomes for selected chapter
   const availableLearningOutcomes = learningOutcomes;
@@ -931,31 +987,53 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    // Basic required fields
+    if (!formData.title.trim()) {
+      newErrors.title = "Lesson title is required";
+    }
+    if (!formData.subject) {
+      newErrors.subject = "Please select a subject";
+    }
+    if (!formData.class) {
+      newErrors.class = "Please select a class";
+    }
+    if (!formData.date) {
+      newErrors.date = "Please select a date for the lesson";
+    }
+    
+    // Curriculum-linked fields
     if (!formData.chapterId) {
       newErrors.chapterId = "Please select a chapter from curriculum";
     }
     if (selectedLearningOutcomes.length === 0) {
       newErrors.learningOutcomes = "Please select at least one learning outcome";
     }
+    
+    // Content fields
     if (!formData.learningObjectives.trim()) {
-      newErrors.learningObjectives = "Lesson Objectives are mandatory";
+      newErrors.learningObjectives = "Lesson Objectives are required";
     }
     if (!formData.teachingMethodology.trim()) {
-      newErrors.teachingMethodology = "Teaching Methodology is mandatory";
+      newErrors.teachingMethodology = "Teaching Methodology is required";
     }
     if (!formData.requiredMaterials.trim() && resourceFiles.length === 0 && resourceLinks.length === 0) {
       newErrors.requiredMaterials = "Please provide at least one material (text, file, or link)";
     }
     if (!formData.evaluationCriteria.trim() && evaluationItems.length === 0) {
-      newErrors.evaluationCriteria = "Evaluation Criteria are mandatory";
+      newErrors.evaluationCriteria = "Evaluation Criteria are required";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+<<<<<<< HEAD
   // Handle submit
   const handleSubmit = async () => {
+=======
+  // Handle submit with status parameter
+  const handleSubmit = async (status: 'draft' | 'approved' = 'draft') => {
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
     if (!validateForm()) {
       return;
     }
@@ -963,6 +1041,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     setSubmitting(true);
 
     try {
+<<<<<<< HEAD
       // Find class ID
       const classObj = propClasses?.find((c: any) => c.grade === formData.class || c === formData.class);
       const classId = classObj?.id || "";
@@ -1050,25 +1129,163 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
           };
           setLessonPlans([newPlan, ...lessonPlans]);
         }
+=======
+      // Get the current educator's ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert("User not authenticated");
+        setSubmitting(false);
+        return;
+      }
+
+      // Get educator_id from school_educators table
+      const { data: educatorData, error: educatorError } = await supabase
+        .from('school_educators')
+        .select('id, school_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (educatorError || !educatorData) {
+        console.error("Educator not found:", educatorError);
+        alert("Educator profile not found. Please contact administrator.");
+        setSubmitting(false);
+        return;
+      }
+
+      // Get class_id from school_classes based on grade and school
+      let classId = null;
+      if (formData.class && educatorData.school_id) {
+        const { data: classData, error: classError } = await supabase
+          .from('school_classes')
+          .select('id, name, grade, section')
+          .eq('school_id', educatorData.school_id)
+          .eq('grade', formData.class)
+          .eq('academic_year', currentAcademicYear)
+          .limit(1);
+        
+        if (classError) {
+          console.error("Error fetching class:", classError);
+        }
+        
+        // Take the first matching class if multiple sections exist
+        if (classData && classData.length > 0) {
+          classId = classData[0].id;
+          console.log("Linked to class:", classData[0].name, "ID:", classId);
+        } else {
+          console.warn("No matching school_class found for grade:", formData.class);
+        }
+      }
+
+      const chapter = selectedChapter;
+      const duration = chapter?.estimatedDuration || 45; // Default 45 minutes
+
+      const lessonPlanData = {
+        educator_id: educatorData.id, // Use the actual educator ID from school_educators
+        class_id: classId, // Link to school_classes
+        title: formData.title,
+        subject: formData.subject,
+        class_name: formData.class,
+        date: formData.date,
+        duration,
+        chapter_id: formData.chapterId || null,
+        chapter_name: chapter?.name || null,
+        selected_learning_outcomes: selectedLearningOutcomes,
+        learning_objectives: formData.learningObjectives,
+        teaching_methodology: formData.teachingMethodology || null,
+        required_materials: formData.requiredMaterials || null,
+        resource_files: resourceFiles,
+        resource_links: resourceLinks,
+        evaluation_criteria: formData.evaluationCriteria || null,
+        evaluation_items: evaluationItems,
+        homework: formData.homework || null,
+        differentiation_notes: formData.differentiationNotes || null,
+        status: status, // Use the status parameter
+        activities: [],
+        resources: [],
+        assessment_methods: null,
+        notes: null,
+        submitted_at: status === 'approved' ? new Date().toISOString() : null,
+        reviewed_by: status === 'approved' ? user.id : null,
+        reviewed_at: status === 'approved' ? new Date().toISOString() : null,
+        review_comments: null,
+      };
+
+      if (editingPlan) {
+        const updated = await lessonPlanService.updateLessonPlan(editingPlan.id, lessonPlanData);
+        setLessonPlans((prev) =>
+          prev.map((p) =>
+            p.id === editingPlan.id
+              ? {
+                  ...updated,
+                  class: updated.class_name, // Map class_name to class
+                  chapterId: updated.chapter_id || "", // Map chapter_id to chapterId
+                  chapterName: updated.chapter_name || "",
+                  duration: updated.duration ? `${updated.duration} minutes` : "",
+                  selectedLearningOutcomes: updated.selected_learning_outcomes || [],
+                  learningObjectives: updated.learning_objectives || "",
+                  teachingMethodology: updated.teaching_methodology || "",
+                  requiredMaterials: updated.required_materials || "",
+                  resourceFiles: updated.resource_files || [],
+                  resourceLinks: updated.resource_links || [],
+                  evaluationCriteria: updated.evaluation_criteria || "",
+                  evaluationItems: updated.evaluation_items || [],
+                  homework: updated.homework || "",
+                  differentiationNotes: updated.differentiation_notes || "",
+                }
+              : p
+          )
+        );
+      } else {
+        const created = await lessonPlanService.createLessonPlan(lessonPlanData);
+        const newPlan: LessonPlan = {
+          ...created,
+          class: created.class_name, // Map class_name to class
+          chapterId: created.chapter_id || "", // Map chapter_id to chapterId
+          chapterName: created.chapter_name || "",
+          duration: created.duration ? `${created.duration} minutes` : "",
+          selectedLearningOutcomes: created.selected_learning_outcomes || [],
+          learningObjectives: created.learning_objectives || "",
+          teachingMethodology: created.teaching_methodology || "",
+          requiredMaterials: created.required_materials || "",
+          resourceFiles: created.resource_files || [],
+          resourceLinks: created.resource_links || [],
+          evaluationCriteria: created.evaluation_criteria || "",
+          evaluationItems: created.evaluation_items || [],
+          homework: created.homework || "",
+          differentiationNotes: created.differentiation_notes || "",
+        };
+        setLessonPlans([newPlan, ...lessonPlans]);
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
       }
 
       resetForm();
       setShowEditor(false);
+<<<<<<< HEAD
     } catch (error: any) {
       alert("Error: " + error.message);
+=======
+    } catch (error) {
+      console.error("Error saving lesson plan:", error);
+      alert("Failed to save lesson plan. Please try again.");
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
     } finally {
       setSubmitting(false);
     }
   };
 
   // Handle edit
-  const handleEdit = (plan: LessonPlan) => {
+  const handleEdit = async (plan: LessonPlan) => {
+    // Load curriculum data first if subject and class are available
+    if (plan.subject && plan.class) {
+      await loadCurriculumData(plan.subject, plan.class);
+    }
+    
     setFormData({
       title: plan.title,
       subject: plan.subject,
       class: plan.class,
       date: plan.date,
-      chapterId: plan.chapterId,
+      chapterId: plan.chapterId || "",
       learningObjectives: plan.learningObjectives,
       teachingMethodology: plan.teachingMethodology,
       requiredMaterials: plan.requiredMaterials,
@@ -1085,13 +1302,18 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   };
 
   // Handle duplicate
-  const handleDuplicate = (plan: LessonPlan) => {
+  const handleDuplicate = async (plan: LessonPlan) => {
+    // Load curriculum data first if subject and class are available
+    if (plan.subject && plan.class) {
+      await loadCurriculumData(plan.subject, plan.class);
+    }
+    
     setFormData({
       title: `${plan.title} (Copy)`,
       subject: plan.subject,
       class: plan.class,
       date: "",
-      chapterId: plan.chapterId,
+      chapterId: plan.chapterId || "",
       learningObjectives: plan.learningObjectives,
       teachingMethodology: plan.teachingMethodology,
       requiredMaterials: plan.requiredMaterials,
@@ -1106,6 +1328,17 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     setEditingPlan(null);
     setShowEditor(true);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <ArrowPathIcon className="h-12 w-12 text-indigo-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading lesson plans...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
@@ -1425,7 +1658,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Lesson Date
+                      Lesson Date <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="date"
@@ -1433,8 +1666,18 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                       onChange={(e) =>
                         setFormData({ ...formData, date: e.target.value })
                       }
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                      className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:ring-2 transition-colors ${
+                        errors.date
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-500/20"
+                          : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20"
+                      }`}
                     />
+                    {errors.date && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                        <ExclamationTriangleIcon className="h-4 w-4" />
+                        {errors.date}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1663,7 +1906,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                             type="text"
                             value={newLinkTitle}
                             onChange={(e) => setNewLinkTitle(e.target.value)}
-                            placeholder="Link Title (e.g., Khan Academy Tutorial)"
+                            placeholder="Link Title (e.g., Google Drive, YouTube Video, etc.)"
                             className="w-full px-3 py-2 rounded-lg border border-indigo-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                           />
                         </div>
@@ -1977,9 +2220,9 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                   Cancel
                 </button>
                 <button
-                  onClick={handleSubmit}
+                  onClick={() => handleSubmit('draft')}
                   disabled={submitting}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors shadow-md"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gray-600 text-white text-sm font-semibold hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-md"
                 >
                   {submitting ? (
                     <>
@@ -1988,8 +2231,25 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                     </>
                   ) : (
                     <>
+                      <DocumentIcon className="h-4 w-4" />
+                      Save as Draft
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => handleSubmit('approved')}
+                  disabled={submitting}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors shadow-md"
+                >
+                  {submitting ? (
+                    <>
+                      <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    <>
                       <CheckCircleIcon className="h-4 w-4" />
-                      {editingPlan ? "Update Lesson Plan" : "Create Lesson Plan"}
+                      Publish
                     </>
                   )}
                 </button>

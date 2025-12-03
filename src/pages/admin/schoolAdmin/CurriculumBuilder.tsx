@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import {
   BookOpenIcon,
   PlusCircleIcon,
@@ -367,6 +368,7 @@ const AddLearningOutcomeModal = ({
   chapters,
   editOutcome,
   assessmentTypes,
+  selectedChapterForOutcome,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -374,6 +376,7 @@ const AddLearningOutcomeModal = ({
   chapters: Chapter[];
   editOutcome?: LearningOutcome | null;
   assessmentTypes: AssessmentType[];
+  selectedChapterForOutcome?: string | null;
 }) => {
   const bloomLevels = [
     "Remember",
@@ -400,14 +403,15 @@ const AddLearningOutcomeModal = ({
       setBloomLevel(editOutcome.bloomLevel || "");
       setAssessmentMappings(editOutcome.assessmentMappings || []);
     } else {
-      setChapterId("");
+      // If opened from a specific chapter, pre-select it
+      setChapterId(selectedChapterForOutcome || "");
       setOutcome("");
       setBloomLevel("");
       setAssessmentMappings([]);
     }
     setCurrentAssessmentType("");
     setCurrentWeightage("");
-  }, [editOutcome, isOpen]);
+  }, [editOutcome, isOpen, selectedChapterForOutcome]);
 
   const resetForm = () => {
     setChapterId("");
@@ -1060,6 +1064,28 @@ interface CurriculumBuilderProps {
 }
 
 const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
+  // Check if current user is school_admin
+  const [isSchoolAdmin, setIsSchoolAdmin] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+          setIsSchoolAdmin(userData?.role === 'school_admin');
+        }
+      } catch (error) {
+        console.error('Error checking user role:', error);
+      }
+    };
+    checkUserRole();
+  }, []);
+
   // Configuration data - use props or fallback to hardcoded defaults
   const subjects = props.subjects ?? [
     "Mathematics",
@@ -1135,7 +1161,6 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
   const loading = props.loading ?? false;
   
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [createdBy] = useState("current_teacher_id"); // TODO: Get from auth context
   const [approvedBy, setApprovedBy] = useState<string | undefined>();
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -1309,14 +1334,17 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
         return;
       }
 
-      if (
-        window.confirm(
-          "Are you sure you want to submit this curriculum for Academic Coordinator approval?"
-        )
-      ) {
-        setStatus("pending_approval");
+      const confirmMessage = isSchoolAdmin
+        ? "Are you sure you want to approve and publish this curriculum?"
+        : "Are you sure you want to submit this curriculum for Academic Coordinator approval?";
+
+      const successMessage = isSchoolAdmin
+        ? "Curriculum approved and published successfully!"
+        : "Curriculum submitted for approval! The Academic Coordinator will review it.";
+
+      if (window.confirm(confirmMessage)) {
+        setStatus(isSchoolAdmin ? "approved" : "pending_approval");
         setHasUnsavedChanges(false);
-        alert("Curriculum submitted for approval! The Academic Coordinator will review it.");
       }
     }
   };
@@ -1329,9 +1357,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
       // Fallback to local state
       if (window.confirm("Approve this curriculum?")) {
         setStatus("approved");
-        setApprovedBy("academic_coordinator_id"); // TODO: Get from auth context
         setHasUnsavedChanges(false);
-        alert("Curriculum approved successfully!");
       }
     }
   };
@@ -1347,7 +1373,6 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
         setStatus("rejected");
         setRejectionReason(reason);
         setHasUnsavedChanges(false);
-        alert("Curriculum rejected. Teacher will be notified.");
       }
     }
   };
@@ -1364,15 +1389,14 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
 
   // Copy curriculum handler
   const handleCopyCurriculum = (sourceClass: string, sourceSubject: string) => {
-    // TODO: Fetch curriculum from source and copy
-    // For now, just show a success message
-    console.log(`Copying from Class ${sourceClass} - ${sourceSubject}`);
+    // Implementation pending - will fetch and copy curriculum from source
+    console.log(`Copy feature: Class ${sourceClass} - ${sourceSubject}`);
   };
 
   // Export curriculum handler
   const handleExportCurriculum = (format: "pdf" | "excel") => {
-    // TODO: Implement actual export logic
-    console.log(`Exporting as ${format}`);
+    // Implementation pending - will export curriculum to PDF/Excel
+    console.log(`Export feature: ${format.toUpperCase()}`);
   };
 
   // Stats
@@ -1515,6 +1539,13 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
         <aside className="w-full lg:w-80 space-y-5 flex-shrink-0">
           {/* Subject & Class Selection */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
+            {(!selectedAcademicYear || !selectedSubject || !selectedClass) && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs font-medium text-amber-800">
+                  ⚠️ Please select all three fields below to start building your curriculum
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Academic Year <span className="text-red-500">*</span>
@@ -1522,7 +1553,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
               <select
                 value={selectedAcademicYear}
                 onChange={(e) => setSelectedAcademicYear(e.target.value)}
-                disabled={status === "approved" || status === "pending_approval"}
+                disabled={(status === "approved" && !isSchoolAdmin) || status === "pending_approval"}
                 className={`w-full rounded-lg border ${
                   errors.academicYear ? "border-red-300" : "border-gray-300"
                 } px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
@@ -1543,7 +1574,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
               <select
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                disabled={status === "approved" || status === "pending_approval"}
+                disabled={(status === "approved" && !isSchoolAdmin) || status === "pending_approval"}
                 className={`w-full rounded-lg border ${
                   errors.subject ? "border-red-300" : "border-gray-300"
                 } px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
@@ -1564,7 +1595,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
-                disabled={status === "approved" || status === "pending_approval"}
+                disabled={(status === "approved" && !isSchoolAdmin) || status === "pending_approval"}
                 className={`w-full rounded-lg border ${
                   errors.class ? "border-red-300" : "border-gray-300"
                 } px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
@@ -1703,10 +1734,14 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
                 </h2>
                 <button
                   onClick={() => {
+                    if (!selectedAcademicYear || !selectedSubject || !selectedClass) {
+                      alert('Please select Academic Year, Subject, and Class first before adding chapters.');
+                      return;
+                    }
                     setEditingChapter(null);
                     setShowAddChapterModal(true);
                   }}
-                  disabled={status === "approved" || status === "pending_approval"}
+                  disabled={(status === "approved" && !isSchoolAdmin) || status === "pending_approval"}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 active:scale-95 transition-all disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   <PlusCircleIcon className="h-5 w-5" />
@@ -1741,9 +1776,13 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
                       ? "Start building your curriculum by adding chapters"
                       : "Try adjusting your search criteria"}
                   </p>
-                  {chapters.length === 0 && status !== "approved" && status !== "pending_approval" && (
+                  {chapters.length === 0 && ((status !== "approved" || isSchoolAdmin) && status !== "pending_approval") && (
                     <button
                       onClick={() => {
+                        if (!selectedAcademicYear || !selectedSubject || !selectedClass) {
+                          alert('Please select Academic Year, Subject, and Class first before adding chapters.');
+                          return;
+                        }
                         setEditingChapter(null);
                         setShowAddChapterModal(true);
                       }}
@@ -1841,7 +1880,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
                                 <AcademicCapIcon className="h-4 w-4" />
                                 {outcomes.length} Outcome{outcomes.length !== 1 ? "s" : ""}
                               </span>
-                              {status !== "approved" && status !== "pending_approval" && (
+                              {((status !== "approved" || isSchoolAdmin) && status !== "pending_approval") && (
                                 <button
                                   onClick={() =>
                                     handleAddOutcomeToChapter(chapter.id)
@@ -1866,7 +1905,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
                               <p className="text-sm text-gray-500 mb-3">
                                 No learning outcomes defined for this chapter yet
                               </p>
-                              {status !== "approved" && status !== "pending_approval" && (
+                              {((status !== "approved" || isSchoolAdmin) && status !== "pending_approval") && (
                                 <button
                                   onClick={() =>
                                     handleAddOutcomeToChapter(chapter.id)
@@ -1925,7 +1964,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
                                       )}
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
-                                      {status !== "approved" && status !== "pending_approval" && (
+                                      {((status !== "approved" || isSchoolAdmin) && status !== "pending_approval") && (
                                         <>
                                           <button
                                             onClick={() => handleEditOutcome(outcome)}
@@ -1960,7 +1999,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
 
           {/* Action Buttons */}
           <div className="flex items-center justify-end gap-4 pb-6">
-            {(status === "draft" || status === "rejected") && (
+            {(status === "draft" || status === "rejected" || (status === "approved" && isSchoolAdmin)) && (
               <>
                 <button
                   onClick={handleSaveDraft}
@@ -1975,17 +2014,21 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
                   className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium shadow-md hover:shadow-lg"
                 >
                   <DocumentCheckIcon className="h-5 w-5" />
-                  Submit for Approval
+                  {status === "approved" && isSchoolAdmin 
+                    ? "Update & Re-approve" 
+                    : isSchoolAdmin 
+                    ? "Approve & Publish" 
+                    : "Submit for Approval"}
                 </button>
               </>
             )}
-            {status === "pending_approval" && (
+            {status === "pending_approval" && !isSchoolAdmin && (
               <div className="text-sm text-amber-600 font-medium">
                 ⏳ Waiting for Academic Coordinator approval...
               </div>
             )}
-            {/* TODO: Show these buttons only for Academic Coordinator role */}
-            {status === "pending_approval" && false && ( // Change false to role check
+            {/* Academic Coordinator approval buttons - role check needed */}
+            {status === "pending_approval" && false && (
               <>
                 <button
                   onClick={handleReject}
@@ -2025,19 +2068,11 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
           setEditingOutcome(null);
           setSelectedChapterForOutcome(null);
         }}
-        onCreated={(outcome) => {
-          if (selectedChapterForOutcome && !editingOutcome) {
-            handleAddOutcome({
-              ...outcome,
-              chapterId: selectedChapterForOutcome,
-            });
-          } else {
-            handleAddOutcome(outcome);
-          }
-        }}
+        onCreated={handleAddOutcome}
         chapters={chapters}
         editOutcome={editingOutcome}
         assessmentTypes={assessmentTypes}
+        selectedChapterForOutcome={selectedChapterForOutcome}
       />
 
       <CopyCurriculumModal

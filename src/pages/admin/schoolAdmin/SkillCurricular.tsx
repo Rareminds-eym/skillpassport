@@ -15,6 +15,10 @@ import {
 import { supabase } from "../../../lib/supabaseClient";
 import * as clubsService from "../../../services/clubsService";
 import * as competitionsService from "../../../services/competitionsService";
+import * as XLSX from 'xlsx';
+
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 // Helper function to get school_id from logged-in user
 async function getSchoolId() {
@@ -239,8 +243,8 @@ export default function ClubsActivitiesPage() {
         category: "arts",
         description: "",
         capacity: 30,
-        meeting_day: "",
-        meeting_time: "",
+        meeting_day: null,
+        meeting_time: null,
         location: "",
         mentor_name: ""
     });
@@ -252,6 +256,7 @@ export default function ClubsActivitiesPage() {
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceTopic, setAttendanceTopic] = useState("");
     const [attendanceRecords, setAttendanceRecords] = useState({});
+    const [currentPage, setCurrentPage] = useState(1);
 
     // Fetch real students from Supabase (only from the same school)
     useEffect(() => {
@@ -381,6 +386,7 @@ export default function ClubsActivitiesPage() {
         date: "",
         description: "",
         category: "",
+        status: "upcoming",
         results: [],
         participatingClubs: []
     });
@@ -390,15 +396,16 @@ export default function ClubsActivitiesPage() {
         category: "arts",
         description: "",
         capacity: 30,
-        meeting_day: "",
-        meeting_time: "",
+        meeting_day: null,
+        meeting_time: null,
         location: "",
         mentor_name: ""
     });
     const [registrationForm, setRegistrationForm] = useState({
         studentEmail: "",
         teamMembers: "",
-        notes: ""
+        notes: "",
+        status: "upcoming"
     });
     
     const [editCompModal, setEditCompModal] = useState(null);
@@ -408,6 +415,7 @@ export default function ClubsActivitiesPage() {
         date: "",
         description: "",
         category: "",
+        status: "upcoming",
         participatingClubs: []
     });
     const [competitionRegistrations, setCompetitionRegistrations] = useState([]);
@@ -426,6 +434,17 @@ export default function ClubsActivitiesPage() {
             return true;
         });
     }, [clubs, q, categoryFilter, showMine, currentStudent]);
+
+    const ITEMS_PER_PAGE = 6;
+    const totalPages = Math.ceil(filteredClubs.length / ITEMS_PER_PAGE);
+    const paginatedClubs = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredClubs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    }, [filteredClubs, currentPage]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [q, categoryFilter, showMine]);
 
     const enrollStudent = (club) => {
         setStudentDrawer({ open: true, club: club });
@@ -682,6 +701,58 @@ const handleStudentLeave = async (studentId, club) => {
         setShowExportMenu(false);
     };
 
+    const exportClubsExcel = async () => {
+        const rows = await buildClubParticipationRows();
+        if (rows && rows.length > 0) {
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Club Participation");
+            
+            // Auto-size columns
+            const maxWidth = rows.reduce((w, r) => {
+                return Object.keys(r).reduce((acc, key) => {
+                    const value = r[key]?.toString() || '';
+                    acc[key] = Math.max(acc[key] || 10, value.length);
+                    return acc;
+                }, w);
+            }, {});
+            
+            worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: Math.min(maxWidth[key] + 2, 50) }));
+            
+            XLSX.writeFile(workbook, "club_participation_report.xlsx");
+            setNotice({ type: "success", text: "Excel file downloaded successfully!" });
+        } else {
+            setNotice({ type: "error", text: "No data available to export" });
+        }
+        setShowExportMenu(false);
+    };
+
+    const exportCompetitionsExcel = async () => {
+        const rows = await buildCompetitionPerformanceRows();
+        if (rows && rows.length > 0) {
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Competition Performance");
+            
+            // Auto-size columns
+            const maxWidth = rows.reduce((w, r) => {
+                return Object.keys(r).reduce((acc, key) => {
+                    const value = r[key]?.toString() || '';
+                    acc[key] = Math.max(acc[key] || 10, value.length);
+                    return acc;
+                }, w);
+            }, {});
+            
+            worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: Math.min(maxWidth[key] + 2, 50) }));
+            
+            XLSX.writeFile(workbook, "competition_performance_report.xlsx");
+            setNotice({ type: "success", text: "Excel file downloaded successfully!" });
+        } else {
+            setNotice({ type: "error", text: "No data available to export" });
+        }
+        setShowExportMenu(false);
+    };
+
     const handleAddClub = async () => {
         if (!newClubForm.name.trim()) {
             setNotice({ type: "error", text: "Club name is required" });
@@ -803,6 +874,13 @@ const handleStudentLeave = async (studentId, club) => {
         }
     }, [registerCompModal]);
 
+    // Load registrations when viewing competition details
+    useEffect(() => {
+        if (viewComp) {
+            loadCompetitionRegistrations(viewComp.comp_id);
+        }
+    }, [viewComp]);
+
     const loadCompetitionRegistrations = async (compId) => {
         try {
             setLoadingRegistrations(true);
@@ -861,11 +939,26 @@ const handleStudentLeave = async (studentId, club) => {
                 });
             }
 
+            // Update competition status if changed
+            if (registrationForm.status && registrationForm.status !== registerCompModal?.status) {
+                await competitionsService.updateCompetition(registerCompModal.comp_id, {
+                    status: registrationForm.status
+                });
+                
+                // Update local state
+                const updatedCompetitions = competitions.map(c => 
+                    c.comp_id === registerCompModal.comp_id 
+                        ? { ...c, status: registrationForm.status }
+                        : c
+                );
+                setCompetitions(updatedCompetitions);
+            }
+
             // Reload registrations
             await loadCompetitionRegistrations(registerCompModal.comp_id);
             
             // Reset form
-            setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "" });
+            setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
             setEditingRegistration(null);
         } catch (error) {
             console.error('Error registering for competition:', error);
@@ -878,7 +971,8 @@ const handleStudentLeave = async (studentId, club) => {
         setRegistrationForm({
             studentEmail: registration.student_email,
             teamMembers: registration.team_members?.members?.join(', ') || '',
-            notes: registration.notes || ''
+            notes: registration.notes || '',
+            status: registration.status || 'upcoming'
         });
     };
 
@@ -899,7 +993,7 @@ const handleStudentLeave = async (studentId, club) => {
 
     const handleCancelEdit = () => {
         setEditingRegistration(null);
-        setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "" });
+        setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
     };
     const handleAddCompetition = async () => {
         if (!newCompForm.name.trim()) {
@@ -919,6 +1013,7 @@ const handleStudentLeave = async (studentId, club) => {
                 date: newCompForm.date,
                 description: newCompForm.description,
                 category: newCompForm.category,
+                status: newCompForm.status,
                 participatingClubs: newCompForm.participatingClubs
             });
 
@@ -932,6 +1027,7 @@ const handleStudentLeave = async (studentId, club) => {
                 date: "",
                 description: "",
                 category: "",
+                status: "upcoming",
                 participatingClubs: []
             });
         } catch (error) {
@@ -947,6 +1043,7 @@ const handleStudentLeave = async (studentId, club) => {
             date: comp.competition_date || comp.date,
             description: comp.description || "",
             category: comp.category || "",
+            status: comp.status || "upcoming",
             participatingClubs: comp.participatingClubs || []
         });
         setEditCompModal(comp);
@@ -970,6 +1067,7 @@ const handleStudentLeave = async (studentId, club) => {
                 date: editCompForm.date,
                 description: editCompForm.description,
                 category: editCompForm.category,
+                status: editCompForm.status,
                 participatingClubs: editCompForm.participatingClubs
             });
 
@@ -988,6 +1086,7 @@ const handleStudentLeave = async (studentId, club) => {
                 date: "",
                 description: "",
                 category: "",
+                status: "upcoming",
                 participatingClubs: []
             });
         } catch (error) {
@@ -1042,13 +1141,19 @@ const handleStudentLeave = async (studentId, club) => {
                                             onClick={exportClubsCSV}
                                             className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
                                         >
-                                            Export Clubs (CSV)
+                                            📄 Export Clubs (CSV)
+                                        </button>
+                                        <button
+                                            onClick={exportClubsExcel}
+                                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                                        >
+                                            📊 Export Clubs (Excel)
                                         </button>
                                         <button
                                             onClick={exportClubsPDF}
                                             className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
                                         >
-                                            Export Clubs (PDF)
+                                            📑 Export Clubs (PDF)
                                         </button>
 
                                         <div className="border-t my-1"></div>
@@ -1058,13 +1163,19 @@ const handleStudentLeave = async (studentId, club) => {
                                             onClick={exportCompetitionsCSV}
                                             className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
                                         >
-                                            Export Competitions (CSV)
+                                            📄 Export Competitions (CSV)
+                                        </button>
+                                        <button
+                                            onClick={exportCompetitionsExcel}
+                                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                                        >
+                                            📊 Export Competitions (Excel)
                                         </button>
                                         <button
                                             onClick={exportCompetitionsPDF}
                                             className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
                                         >
-                                            Export Competitions (PDF)
+                                            📑 Export Competitions (PDF)
                                         </button>
                                     </div>
                                 </div>
@@ -1127,20 +1238,44 @@ const handleStudentLeave = async (studentId, club) => {
                     {filteredClubs.length === 0 ? (
                         <div className="p-6 bg-white rounded-2xl text-center">No clubs found</div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {filteredClubs.map((club) => (
-                                <ClubCard
-                                    key={club.club_id}
-                                    club={club}
-                                    isJoined={joinedClubIds.has(club.club_id)}
-                                    onJoin={enrollStudent}
-                                    onLeave={leaveClub}
-                                    onOpenDetails={openDetails}
-                                    onEdit={handleEditClub}
-                                    onDelete={handleDeleteClub}
-                                />
-                            ))}
-                        </div>
+                        <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {paginatedClubs.map((club) => (
+                                    <ClubCard
+                                        key={club.club_id}
+                                        club={club}
+                                        isJoined={joinedClubIds.has(club.club_id)}
+                                        onJoin={enrollStudent}
+                                        onLeave={leaveClub}
+                                        onOpenDetails={openDetails}
+                                        onEdit={handleEditClub}
+                                        onDelete={handleDeleteClub}
+                                    />
+                                ))}
+                            </div>
+
+                            <div className="mt-6 flex items-center justify-between">
+                                <button
+                                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                >
+                                    ← Previous
+                                </button>
+                                
+                                <span className="text-sm text-slate-600">
+                                    Page {currentPage} of {totalPages} ({filteredClubs.length} total clubs)
+                                </span>
+                                
+                                <button
+                                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                >
+                                    Next →
+                                </button>
+                            </div>
+                        </>
                     )}
                 </section>
 
@@ -1168,6 +1303,20 @@ const handleStudentLeave = async (studentId, club) => {
                                     <div className="text-slate-400">
                                         <Calendar />
                                     </div>
+                                </div>
+
+                                <div className="mt-2">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                        comp.status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
+                                        comp.status === 'ongoing' ? 'bg-green-100 text-green-700' :
+                                        comp.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                                        'bg-red-100 text-red-700'
+                                    }`}>
+                                        {comp.status === 'upcoming' ? '🔜 Upcoming' :
+                                         comp.status === 'ongoing' ? '▶️ Ongoing' :
+                                         comp.status === 'completed' ? '✅ Completed' :
+                                         '❌ Cancelled'}
+                                    </span>
                                 </div>
 
                                 <p className="mt-3 text-sm text-slate-600">Participating Clubs: {comp.participatingClubs?.length ?? 0}</p>
@@ -1322,13 +1471,20 @@ const handleStudentLeave = async (studentId, club) => {
                             
                             <div className="mb-3">
                                 <label className="block text-sm font-medium mb-1">📅 Meeting Day</label>
-                                <input
-                                    type="text"
+                                <select
                                     value={newClubForm.meeting_day}
                                     onChange={(e) => setNewClubForm({ ...newClubForm, meeting_day: e.target.value })}
-                                    placeholder="e.g., Monday, Wednesday"
                                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
+                                >
+                                    <option value="">Select a day</option>
+                                    <option value="Monday">Monday</option>
+                                    <option value="Tuesday">Tuesday</option>
+                                    <option value="Wednesday">Wednesday</option>
+                                    <option value="Thursday">Thursday</option>
+                                    <option value="Friday">Friday</option>
+                                    <option value="Saturday">Saturday</option>
+                                    <option value="Sunday">Sunday</option>
+                                </select>
                             </div>
 
                             <div className="mb-3">
@@ -1348,17 +1504,6 @@ const handleStudentLeave = async (studentId, club) => {
                                     value={newClubForm.location}
                                     onChange={(e) => setNewClubForm({ ...newClubForm, location: e.target.value })}
                                     placeholder="e.g., Room 101, Auditorium"
-                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium mb-1">👨‍🏫 Mentor Name</label>
-                                <input
-                                    type="text"
-                                    value={newClubForm.mentor_name}
-                                    onChange={(e) => setNewClubForm({ ...newClubForm, mentor_name: e.target.value })}
-                                    placeholder="Enter mentor/teacher name"
                                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
@@ -1438,13 +1583,18 @@ const handleStudentLeave = async (studentId, club) => {
                             
                             <div className="mb-3">
                                 <label className="block text-sm font-medium mb-1">📅 Meeting Day</label>
-                                <input
-                                    type="text"
+                                <select
                                     value={editClubForm.meeting_day}
                                     onChange={(e) => setEditClubForm({ ...editClubForm, meeting_day: e.target.value })}
-                                    placeholder="e.g., Monday, Wednesday"
                                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
+                                >
+                                    <option value="">Select a day</option>
+                                    <option value="Monday">Monday</option>
+                                    <option value="Tuesday">Tuesday</option>
+                                    <option value="Wednesday">Wednesday</option>
+                                    <option value="Thursday">Thursday</option>
+                                    <option value="Friday">Friday</option>
+                                </select>
                             </div>
 
                             <div className="mb-3">
@@ -1502,13 +1652,26 @@ const handleStudentLeave = async (studentId, club) => {
                     onClose={() => {
                         setRegisterCompModal(null);
                         setEditingRegistration(null);
-                        setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "" });
+                        setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
                     }}
                     title={`${editingRegistration ? 'Edit' : 'Register for'} ${registerCompModal?.name ?? ""}`}
                 >
                     <div className="space-y-4">
                         <div className="bg-blue-50 p-3 rounded-md text-sm">
-                            <div className="font-medium">{registerCompModal?.name}</div>
+                            <div className="flex items-center justify-between">
+                                <div className="font-medium">{registerCompModal?.name}</div>
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                    registerCompModal?.status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
+                                    registerCompModal?.status === 'ongoing' ? 'bg-green-100 text-green-700' :
+                                    registerCompModal?.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                                    'bg-red-100 text-red-700'
+                                }`}>
+                                    {registerCompModal?.status === 'upcoming' ? '🔜 Upcoming' :
+                                     registerCompModal?.status === 'ongoing' ? '▶️ Ongoing' :
+                                     registerCompModal?.status === 'completed' ? '✅ Completed' :
+                                     '❌ Cancelled'}
+                                </span>
+                            </div>
                             <div className="text-xs text-slate-600 mt-1">
                                 {registerCompModal?.level} • {formatDate(registerCompModal?.competition_date || registerCompModal?.date)}
                             </div>
@@ -1600,6 +1763,21 @@ const handleStudentLeave = async (studentId, club) => {
                                 </div>
 
                                 <div>
+                                    <label className="block text-sm font-medium mb-1">Competition Status</label>
+                                    <select
+                                        value={registrationForm.status || registerCompModal?.status || 'upcoming'}
+                                        onChange={(e) => setRegistrationForm({ ...registrationForm, status: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="upcoming">🔜 Upcoming</option>
+                                        <option value="ongoing">▶️ Ongoing</option>
+                                        <option value="completed">✅ Completed</option>
+                                        <option value="cancelled">❌ Cancelled</option>
+                                    </select>
+                                    <p className="text-xs text-slate-500 mt-1">Current status of the competition</p>
+                                </div>
+
+                                <div>
                                     <label className="block text-sm font-medium mb-1">Additional Notes</label>
                                     <textarea
                                         value={registrationForm.notes}
@@ -1631,7 +1809,7 @@ const handleStudentLeave = async (studentId, club) => {
                                 onClick={() => {
                                     setRegisterCompModal(null);
                                     setEditingRegistration(null);
-                                    setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "" });
+                                    setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
                                 }}
                                 className="px-4 py-2 border rounded-md hover:bg-gray-50"
                             >
@@ -1755,30 +1933,81 @@ const handleStudentLeave = async (studentId, club) => {
                 >
                     {viewComp && (
                         <div className="space-y-4">
-                            <h2 className="text-xl font-semibold">{viewComp.name}</h2>
-
-                            <p className="text-sm text-slate-600">
-                                Category: <span className="capitalize">{viewComp.category}</span>
-                            </p>
-
-                            <p className="text-sm text-slate-700">{viewComp.description}</p>
-
-                            <div className="grid grid-cols-2 gap-3 text-sm text-slate-700">
-                                <p>Reward: {viewComp.reward}</p>
-                                <p>Skill Level: {viewComp.skill_level}</p>
-                                <p>Team Size: {viewComp.team_size}</p>
-                                <p>Status: {viewComp.status}</p>
+                            <div className="flex items-start justify-between">
+                                <h2 className="text-xl font-semibold">{viewComp.name}</h2>
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                    viewComp.status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
+                                    viewComp.status === 'ongoing' ? 'bg-green-100 text-green-700' :
+                                    viewComp.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                                    'bg-red-100 text-red-700'
+                                }`}>
+                                    {viewComp.status === 'upcoming' ? '🔜 Upcoming' :
+                                     viewComp.status === 'ongoing' ? '▶️ Ongoing' :
+                                     viewComp.status === 'completed' ? '✅ Completed' :
+                                     '❌ Cancelled'}
+                                </span>
                             </div>
 
-                            <button
-                                onClick={() => {
-                                    setRegisterCompModal(viewComp.comp_id);
-                                    setViewComp(null);
-                                }}
-                                className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                            >
-                                Register Now
-                            </button>
+                            {viewComp.category && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-slate-600">Category:</span>
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 capitalize">
+                                        {viewComp.category}
+                                    </span>
+                                </div>
+                            )}
+
+                            {viewComp.description && (
+                                <div className="bg-slate-50 p-3 rounded-lg">
+                                    <p className="text-sm text-slate-700">{viewComp.description}</p>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-blue-50 p-3 rounded-lg">
+                                    <div className="text-xs text-blue-600 font-medium mb-1">Competition Level</div>
+                                    <div className="text-sm font-semibold text-blue-900 capitalize">{viewComp.level}</div>
+                                </div>
+                                
+                                <div className="bg-green-50 p-3 rounded-lg">
+                                    <div className="text-xs text-green-600 font-medium mb-1">Competition Date</div>
+                                    <div className="text-sm font-semibold text-green-900">
+                                        {formatDate(viewComp.competition_date || viewComp.date)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-orange-50 p-3 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-xs text-orange-600 font-medium mb-1">Participating Clubs</div>
+                                        <div className="text-sm font-semibold text-orange-900">
+                                            {viewComp.participatingClubs?.length ?? 0} {viewComp.participatingClubs?.length === 1 ? 'Club' : 'Clubs'}
+                                        </div>
+                                    </div>
+                                    <div className="text-2xl">🏆</div>
+                                </div>
+                            </div>
+
+                            
+
+                            <div className="flex gap-3 pt-4 border-t">
+                                <button
+                                    onClick={() => {
+                                        setRegisterCompModal(viewComp);
+                                        setViewComp(null);
+                                    }}
+                                    className="flex-1 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+                                >
+                                    Register Students
+                                </button>
+                                <button
+                                    onClick={() => setViewComp(null)}
+                                    className="px-6 py-2 border rounded-md hover:bg-gray-50"
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     )}
                 </Modal>
