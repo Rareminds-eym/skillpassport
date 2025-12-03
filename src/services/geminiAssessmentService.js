@@ -8,6 +8,179 @@ const getGeminiApiUrl = (model = 'gemini-1.5-flash-latest') =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 /**
+ * Validate that all required fields are present in the response
+ * @param {Object} results - Parsed results from Gemini
+ * @returns {Object} - { isValid: boolean, missingFields: string[], fixedResults: Object }
+ */
+const validateAndFixResults = (results) => {
+  const missingFields = [];
+  const fixedResults = { ...results };
+
+  // Validate and fix RIASEC
+  if (!fixedResults.riasec || !fixedResults.riasec.topThree || fixedResults.riasec.topThree.length === 0) {
+    missingFields.push('riasec.topThree');
+    fixedResults.riasec = fixedResults.riasec || {};
+    fixedResults.riasec.topThree = fixedResults.riasec.topThree || ['I', 'E', 'S'];
+    fixedResults.riasec.interpretation = fixedResults.riasec.interpretation || 'Based on your responses, you show interest in investigative and social activities.';
+  }
+
+  // Validate and fix Big Five
+  if (!fixedResults.bigFive) {
+    missingFields.push('bigFive');
+    fixedResults.bigFive = { O: 3, C: 3, E: 3, A: 3, N: 3, workStyleSummary: 'Balanced personality profile.' };
+  } else {
+    ['O', 'C', 'E', 'A', 'N'].forEach(trait => {
+      if (typeof fixedResults.bigFive[trait] === 'undefined') {
+        fixedResults.bigFive[trait] = 3;
+      }
+    });
+    fixedResults.bigFive.workStyleSummary = fixedResults.bigFive.workStyleSummary || 'Balanced work style with adaptable approach.';
+  }
+
+  // Validate and fix Work Values
+  if (!fixedResults.workValues || !fixedResults.workValues.topThree || fixedResults.workValues.topThree.length === 0) {
+    missingFields.push('workValues.topThree');
+    fixedResults.workValues = fixedResults.workValues || {};
+    fixedResults.workValues.topThree = fixedResults.workValues.topThree || [
+      { value: 'Growth', score: 4 },
+      { value: 'Impact', score: 4 },
+      { value: 'Security', score: 3 }
+    ];
+    fixedResults.workValues.motivationSummary = fixedResults.workValues.motivationSummary || 'Motivated by growth opportunities and meaningful work.';
+  }
+
+  // Validate and fix Employability
+  if (!fixedResults.employability) {
+    missingFields.push('employability');
+    fixedResults.employability = {
+      strengthAreas: ['Communication', 'Teamwork'],
+      improvementAreas: ['Leadership', 'Problem Solving']
+    };
+  } else {
+    fixedResults.employability.strengthAreas = fixedResults.employability.strengthAreas || ['Communication', 'Adaptability'];
+    fixedResults.employability.improvementAreas = fixedResults.employability.improvementAreas || ['Leadership'];
+  }
+
+  // Validate and fix Knowledge
+  if (!fixedResults.knowledge) {
+    missingFields.push('knowledge');
+    fixedResults.knowledge = {
+      score: 70,
+      strongTopics: ['Core Concepts'],
+      weakTopics: ['Advanced Topics']
+    };
+  } else {
+    fixedResults.knowledge.score = fixedResults.knowledge.score ?? 70;
+    fixedResults.knowledge.strongTopics = fixedResults.knowledge.strongTopics || ['General Knowledge'];
+    fixedResults.knowledge.weakTopics = fixedResults.knowledge.weakTopics || [];
+  }
+
+  // Validate and fix Career Fit
+  if (!fixedResults.careerFit || !fixedResults.careerFit.clusters || fixedResults.careerFit.clusters.length === 0) {
+    missingFields.push('careerFit.clusters');
+    fixedResults.careerFit = fixedResults.careerFit || {};
+    fixedResults.careerFit.clusters = fixedResults.careerFit.clusters || [];
+    fixedResults.careerFit.specificOptions = fixedResults.careerFit.specificOptions || {
+      highFit: ['Analyst', 'Developer'],
+      mediumFit: ['Consultant'],
+      exploreLater: ['Manager']
+    };
+  }
+
+  // Fix each cluster to ensure roles and domains are present
+  if (fixedResults.careerFit.clusters) {
+    fixedResults.careerFit.clusters = fixedResults.careerFit.clusters.map((cluster, idx) => ({
+      ...cluster,
+      title: cluster.title || `Career Path ${idx + 1}`,
+      fit: cluster.fit || 'Medium',
+      matchScore: cluster.matchScore ?? 75,
+      evidence: cluster.evidence || {
+        interest: 'Based on your interest profile',
+        aptitude: 'Aligned with your strengths',
+        personality: 'Matches your work style'
+      },
+      roles: {
+        entry: cluster.roles?.entry?.length > 0 ? cluster.roles.entry : ['Junior Analyst', 'Associate'],
+        mid: cluster.roles?.mid?.length > 0 ? cluster.roles.mid : ['Senior Analyst', 'Team Lead']
+      },
+      domains: cluster.domains?.length > 0 ? cluster.domains : ['Technology', 'Business']
+    }));
+  }
+
+  // Validate and fix Skill Gap
+  if (!fixedResults.skillGap) {
+    missingFields.push('skillGap');
+    fixedResults.skillGap = {
+      currentStrengths: ['Analytical Thinking', 'Communication'],
+      priorityA: [{ skill: 'Technical Skills', currentLevel: 2, targetLevel: 4, whyNeeded: 'Essential for career growth', howToBuild: 'Online courses and practice projects' }],
+      priorityB: [{ skill: 'Leadership' }],
+      learningTracks: [{ track: 'Technical Track', suggestedIf: 'You want to specialize', topics: 'Core technologies' }],
+      recommendedTrack: 'Technical Track'
+    };
+  } else {
+    fixedResults.skillGap.currentStrengths = fixedResults.skillGap.currentStrengths || ['Problem Solving'];
+    fixedResults.skillGap.priorityA = fixedResults.skillGap.priorityA || [];
+    fixedResults.skillGap.priorityB = fixedResults.skillGap.priorityB || [];
+    fixedResults.skillGap.learningTracks = fixedResults.skillGap.learningTracks || [];
+    fixedResults.skillGap.recommendedTrack = fixedResults.skillGap.recommendedTrack || 'General Development';
+  }
+
+  // Validate and fix Roadmap
+  if (!fixedResults.roadmap) {
+    missingFields.push('roadmap');
+    fixedResults.roadmap = {
+      projects: [{ title: 'Portfolio Project', purpose: 'Demonstrate skills', output: 'GitHub repository' }],
+      internship: {
+        types: ['Industry Internship'],
+        timeline: 'Next 6 months',
+        preparation: { resume: 'Update with projects', portfolio: 'Build online presence', interview: 'Practice common questions' }
+      },
+      exposure: {
+        activities: ['Join tech communities', 'Attend workshops'],
+        certifications: ['Industry certification']
+      }
+    };
+  } else {
+    fixedResults.roadmap.projects = fixedResults.roadmap.projects || [];
+    fixedResults.roadmap.internship = fixedResults.roadmap.internship || { types: [], timeline: 'TBD', preparation: {} };
+    fixedResults.roadmap.internship.types = fixedResults.roadmap.internship.types || ['Internship'];
+    fixedResults.roadmap.internship.preparation = fixedResults.roadmap.internship.preparation || {};
+    fixedResults.roadmap.exposure = fixedResults.roadmap.exposure || { activities: [], certifications: [] };
+  }
+
+  // Validate and fix Final Note
+  if (!fixedResults.finalNote) {
+    missingFields.push('finalNote');
+    fixedResults.finalNote = {
+      advantage: 'Your unique combination of skills and interests',
+      growthFocus: 'Continue developing technical and soft skills',
+      nextReview: 'End of next semester'
+    };
+  }
+
+  // Validate overall summary
+  fixedResults.overallSummary = fixedResults.overallSummary || 'Based on your assessment, you show potential in multiple career paths. Focus on building your strengths while addressing skill gaps.';
+
+  // Validate profile snapshot
+  if (!fixedResults.profileSnapshot) {
+    fixedResults.profileSnapshot = {
+      keyPatterns: {
+        enjoyment: 'You enjoy analytical and creative work',
+        strength: 'Strong in problem-solving',
+        workStyle: 'Adaptable and collaborative',
+        motivation: 'Driven by growth and impact'
+      }
+    };
+  }
+
+  return {
+    isValid: missingFields.length === 0,
+    missingFields,
+    fixedResults
+  };
+};
+
+/**
  * Analyze assessment results using Gemini AI
  * @param {Object} answers - All answers from the assessment
  * @param {string} stream - Student's selected stream (cs, bca, bba, dm, animation)
@@ -48,10 +221,11 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
             parts: [{ text: prompt }]
           }],
           generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 4096,
+            // Low temperature for consistent, deterministic outputs
+            temperature: 0.2,
+            topK: 20,
+            topP: 0.8,
+            maxOutputTokens: 8192,
           }
         })
       });
@@ -87,7 +261,16 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
   if (jsonMatch) {
     const jsonStr = jsonMatch[1] || jsonMatch[0];
     try {
-      return JSON.parse(jsonStr);
+      const parsedResults = JSON.parse(jsonStr);
+      
+      // Validate and fix any missing fields
+      const { isValid, missingFields, fixedResults } = validateAndFixResults(parsedResults);
+      
+      if (!isValid) {
+        console.warn('Gemini response had missing fields, auto-fixed:', missingFields);
+      }
+      
+      return fixedResults;
     } catch (parseError) {
       throw new Error('Failed to parse AI response. Please try again.');
     }
@@ -188,7 +371,21 @@ const prepareAssessmentData = (answers, stream, questionBanks) => {
  * Build the analysis prompt for Gemini
  */
 const buildAnalysisPrompt = (assessmentData) => {
+  // Create a hash of the answers for consistency tracking
+  const answersHash = JSON.stringify(assessmentData).split('').reduce((a, b) => {
+    a = ((a << 5) - a) + b.charCodeAt(0);
+    return a & a;
+  }, 0);
+
   return `You are a career counselor and psychometric assessment expert. Analyze the following student assessment data and provide comprehensive results.
+
+## CONSISTENCY REQUIREMENT - CRITICAL:
+This analysis must be DETERMINISTIC and CONSISTENT. Given the same input data, you must ALWAYS produce the SAME output.
+- Use ONLY the provided data to make calculations - do not introduce randomness
+- Calculate scores using EXACT mathematical formulas provided below
+- Career recommendations must be derived DIRECTLY from the calculated scores
+- If this same data is analyzed again, the results MUST be identical
+- Session ID for consistency verification: ${answersHash}
 
 ## Student Stream: ${assessmentData.stream.toUpperCase()}
 
@@ -419,13 +616,61 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
 }
 \`\`\`
 
-Important:
-- RIASEC SCORING: For each response, convert using: 1,2,3→0 points, 4→1 point, 5→2 points. Sum these converted scores for each type. Max score per type is 20.
-- RIASEC TOP THREE: Sort all 6 types (R,I,A,S,E,C) by their calculated scores in DESCENDING order. The "topThree" array MUST contain the 3 letters with the HIGHEST scores. The "code" is these 3 letters joined together. Example: if scores are R=15, I=8, A=12, S=6, E=10, C=4, then topThree=["R","A","E"] and code="RAE".
-- Calculate Big Five by averaging responses for each trait (O, C, E, A, N based on question ID prefixes)
-- For knowledge score, count correct answers and calculate percentage
-- Provide actionable, encouraging career guidance
-- Be specific to their stream (${assessmentData.stream}) when recommending careers`;
+CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL OF THESE:
+
+## CONSISTENCY & DETERMINISM (MOST IMPORTANT):
+- This analysis MUST be 100% DETERMINISTIC - same input = same output EVERY TIME
+- DO NOT use any random or variable elements in your analysis
+- All scores must be calculated using EXACT formulas from the data provided
+- Career recommendations must follow a FIXED mapping based on calculated scores
+- If the same assessment data is submitted multiple times, your response MUST be IDENTICAL
+- Use the following deterministic rules for career matching:
+  * Highest RIASEC score determines primary career cluster
+  * Second highest determines secondary cluster
+  * Third highest determines exploratory cluster
+  * Match scores should be calculated as: (sum of relevant trait scores / max possible) * 100
+
+## SCORING RULES:
+
+1. RIASEC SCORING: For each response, convert using: 1,2,3→0 points, 4→1 point, 5→2 points. Sum these converted scores for each type. Max score per type is 20.
+
+2. RIASEC TOP THREE: Sort all 6 types (R,I,A,S,E,C) by their calculated scores in DESCENDING order. The "topThree" array MUST contain the 3 letters with the HIGHEST scores.
+
+3. Calculate Big Five by averaging responses for each trait (O, C, E, A, N based on question ID prefixes). Each trait MUST have a numeric value 0-5. Round to 1 decimal place.
+
+4. For knowledge score, count correct answers and calculate percentage. This must be EXACT.
+
+## DATA COMPLETENESS (MANDATORY):
+
+5. CAREER CLUSTERS - THIS IS MANDATORY:
+   - You MUST provide exactly 3 career clusters
+   - EVERY cluster MUST have ALL of these fields filled with real data:
+     * title: A specific career cluster name (e.g., "Software Development", "Data Analytics", "Business Consulting")
+     * fit: "High" for cluster 1, "Medium" for cluster 2, "Explore" for cluster 3
+     * matchScore: Calculate based on relevant RIASEC + Big Five scores (cluster 1: 80-95%, cluster 2: 70-85%, cluster 3: 60-75%)
+     * evidence: Object with interest, aptitude, and personality explanations
+     * roles.entry: Array with AT LEAST 2 entry-level job titles
+     * roles.mid: Array with AT LEAST 2 mid-level job titles
+     * domains: Array with AT LEAST 2 related industry domains
+   - DO NOT leave any roles or domains arrays empty!
+
+6. SKILL GAP - MANDATORY:
+   - priorityA: Must have at least 2 skills with all fields (skill, currentLevel, targetLevel, whyNeeded, howToBuild)
+   - priorityB: Must have at least 2 skills
+   - learningTracks: Must have at least 2 tracks with all fields
+
+7. ROADMAP - MANDATORY:
+   - projects: Must have at least 2 projects with title, purpose, and output
+   - internship.types: Must have at least 2 internship types
+   - internship.preparation: Must have resume, portfolio, and interview fields filled
+   - exposure.activities: Must have at least 2 activities
+   - exposure.certifications: Must have at least 2 certifications
+
+8. Be specific to their stream (${assessmentData.stream}) when recommending careers, roles, and skills.
+
+9. Provide actionable, encouraging, and SPECIFIC career guidance - avoid generic responses.
+
+10. ALL arrays must contain actual data - NO empty arrays allowed!`;
 };
 
 /**
