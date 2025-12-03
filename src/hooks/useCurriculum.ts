@@ -293,6 +293,24 @@ export const useCurriculum = (
         throw new Error(validation.errors.join(', '));
       }
 
+      // Check if user is school_admin - they can auto-approve
+      const { data: { user } } = await curriculumService.supabase.auth.getUser();
+      if (user) {
+        const { data: userData } = await curriculumService.supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (userData?.role === 'school_admin') {
+          // School admins can directly approve their own curriculums
+          await curriculumService.updateCurriculumStatus(curriculumId, 'approved');
+          setStatus('approved');
+          return;
+        }
+      }
+
+      // For regular educators, submit for approval
       await curriculumService.updateCurriculumStatus(curriculumId, 'pending_approval');
       setStatus('pending_approval');
     } catch (error: any) {
