@@ -164,6 +164,7 @@ export async function createCompetition(competitionData: {
     participatingClubs?: string[];
     description?: string;
     category?: string;
+    status?: string;
 }): Promise<Competition> {
     try {
         const schoolId = await getCurrentUserSchoolId();
@@ -402,6 +403,95 @@ export async function deleteCompetitionRegistration(registrationId: string): Pro
         if (error) throw error;
     } catch (error) {
         console.error('Error deleting competition registration:', error);
+        throw error;
+    }
+}
+
+// Update competition
+export async function updateCompetition(
+    compId: string,
+    updateData: {
+        name?: string;
+        level?: string;
+        date?: string;
+        description?: string;
+        category?: string;
+        status?: string;
+        participatingClubs?: string[];
+    }
+): Promise<void> {
+    try {
+        const userInfo = await getCurrentUserInfo();
+        if (!userInfo) {
+            throw new Error('User authentication failed');
+        }
+
+        // Update competition basic info
+        const updates: any = {};
+        if (updateData.name) updates.name = updateData.name;
+        if (updateData.level) updates.level = updateData.level;
+        if (updateData.date) updates.competition_date = updateData.date;
+        if (updateData.description !== undefined) updates.description = updateData.description;
+        if (updateData.category !== undefined) updates.category = updateData.category;
+        if (updateData.status !== undefined) updates.status = updateData.status;
+
+        const { error: updateError } = await supabase
+            .from('competitions')
+            .update(updates)
+            .eq('comp_id', compId);
+
+        if (updateError) throw updateError;
+
+        // Update participating clubs if provided
+        if (updateData.participatingClubs !== undefined) {
+            // Delete existing club associations
+            await supabase
+                .from('competition_clubs')
+                .delete()
+                .eq('comp_id', compId);
+
+            // Add new club associations
+            if (updateData.participatingClubs.length > 0) {
+                const clubRecords = updateData.participatingClubs.map(clubId => ({
+                    comp_id: compId,
+                    club_id: clubId,
+                    registered_by_type: userInfo.type,
+                    ...(userInfo.type === 'educator'
+                        ? { registered_by_educator_id: userInfo.id }
+                        : { registered_by_admin_id: userInfo.id }
+                    )
+                }));
+
+                const { error: insertError } = await supabase
+                    .from('competition_clubs')
+                    .insert(clubRecords);
+
+                if (insertError) throw insertError;
+            }
+        }
+    } catch (error) {
+        console.error('Error updating competition:', error);
+        throw error;
+    }
+}
+
+// Delete competition
+export async function deleteCompetition(compId: string): Promise<void> {
+    try {
+        // Delete associated records first (cascade should handle this, but being explicit)
+        await supabase.from('competition_clubs').delete().eq('comp_id', compId);
+        await supabase.from('competition_registrations').delete().eq('comp_id', compId);
+        await supabase.from('competition_results').delete().eq('comp_id', compId);
+
+        // Delete the competition
+        const { error } = await supabase
+            .from('competitions')
+            .delete()
+            .eq('comp_id', compId);
+
+        if (error) throw error;
+    } catch (error) {
+        console.error('Error deleting competition:', error);
         throw error;
     }
 }
