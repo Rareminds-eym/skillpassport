@@ -40,6 +40,8 @@ const CoursePlayer = () => {
   const [lessonVideoUrl, setLessonVideoUrl] = useState(null);
   const [videoLoading, setVideoLoading] = useState(false);
   const [lessonResources, setLessonResources] = useState([]);
+  const [lessonStartTime, setLessonStartTime] = useState(null);
+  const [accumulatedTime, setAccumulatedTime] = useState(0);
 
   // Enroll student and load existing progress
   useEffect(() => {
@@ -92,6 +94,128 @@ const CoursePlayer = () => {
     }
   };
 
+  // Get current lesson
+  const getCurrentLesson = () => {
+    if (!course?.modules || !course.modules[currentModuleIndex]) return null;
+    const currentModule = course.modules[currentModuleIndex];
+    if (!currentModule.lessons || !currentModule.lessons[currentLessonIndex]) return null;
+    return currentModule.lessons[currentLessonIndex];
+  };
+
+  // Save time spent on lesson
+  const saveTimeSpent = async (additionalSeconds) => {
+    if (!user?.id || !courseId) return;
+
+    const currentLesson = getCurrentLesson();
+    if (!currentLesson) return;
+
+    try {
+      // Get current accumulated time from state
+      const totalTime = accumulatedTime + additionalSeconds;
+
+      console.log('Saving time:', { additionalSeconds, accumulatedTime, totalTime });
+
+      const { error } = await supabase
+        .from('student_course_progress')
+        .upsert({
+          student_id: user.id,
+          course_id: courseId,
+          lesson_id: currentLesson.id,
+          time_spent_seconds: totalTime,
+          last_accessed: new Date().toISOString()
+        }, {
+          onConflict: 'student_id,course_id,lesson_id'
+        });
+
+      if (error) {
+        console.error('Error saving time spent:', error);
+      } else {
+        // Update accumulated time after successful save
+        setAccumulatedTime(totalTime);
+      }
+    } catch (error) {
+      console.error('Error in saveTimeSpent:', error);
+    }
+  };
+
+  // Mark lesson as completed
+  const markLessonCompleted = async (lessonId) => {
+    if (!user?.id || !courseId) return;
+
+    try {
+      const { error } = await supabase
+        .from('student_course_progress')
+        .upsert({
+          student_id: user.id,
+          course_id: courseId,
+          lesson_id: lessonId,
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          last_accessed: new Date().toISOString()
+        }, {
+          onConflict: 'student_id,course_id,lesson_id'
+        });
+
+      if (error) {
+        console.error('Error marking lesson complete:', error);
+      }
+    } catch (error) {
+      console.error('Error in markLessonCompleted:', error);
+    }
+  };
+
+  // Initialize lesson progress tracking
+  const initializeLessonProgress = async () => {
+    if (!user?.id || !courseId) return;
+
+    const currentLesson = getCurrentLesson();
+    if (!currentLesson) return;
+
+    try {
+      // Check if progress record exists
+      const { data: existing, error: fetchError } = await supabase
+        .from('student_course_progress')
+        .select('*')
+        .eq('student_id', user.id)
+        .eq('course_id', courseId)
+        .eq('lesson_id', currentLesson.id)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error fetching lesson progress:', fetchError);
+        return;
+      }
+
+      // If record exists, load accumulated time
+      if (existing) {
+        setAccumulatedTime(existing.time_spent_seconds || 0);
+
+        // Update last_accessed
+        await supabase
+          .from('student_course_progress')
+          .update({
+            last_accessed: new Date().toISOString(),
+            status: existing.status === 'completed' ? 'completed' : 'in_progress'
+          })
+          .eq('id', existing.id);
+      } else {
+        // Create new progress record
+        await supabase
+          .from('student_course_progress')
+          .insert({
+            student_id: user.id,
+            course_id: courseId,
+            lesson_id: currentLesson.id,
+            status: 'in_progress',
+            time_spent_seconds: 0,
+            last_accessed: new Date().toISOString()
+          });
+      }
+    } catch (error) {
+      console.error('Error initializing lesson progress:', error);
+    }
+  };
+
   // Fetch course data
   useEffect(() => {
     fetchCourse();
@@ -101,8 +225,41 @@ const CoursePlayer = () => {
   useEffect(() => {
     if (course && currentModuleIndex !== null && currentLessonIndex !== null) {
       fetchLessonMedia();
+      initializeLessonProgress();
     }
   }, [course, currentModuleIndex, currentLessonIndex]);
+
+  // Track time spent on current lesson
+  useEffect(() => {
+    // Start timer when lesson loads
+    setLessonStartTime(Date.now());
+
+    // Don't reset accumulatedTime here - it's loaded in initializeLessonProgress
+
+    // Save progress before unmounting or changing lesson
+    return () => {
+      const currentTime = lessonStartTime ? Math.floor((Date.now() - lessonStartTime) / 1000) : 0;
+      if (currentTime > 0) {
+        // Use the latest accumulated time by accessing it directly
+        saveTimeSpent(currentTime).catch(err => console.error('Error saving on unmount:', err));
+      }
+    };
+  }, [currentModuleIndex, currentLessonIndex]);
+
+  // Auto-save progress every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (lessonStartTime) {
+        const currentTime = Math.floor((Date.now() - lessonStartTime) / 1000);
+        if (currentTime > 0) {
+          saveTimeSpent(currentTime);
+          setLessonStartTime(Date.now()); // Reset timer after save
+        }
+      }
+    }, 30000); // Save every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [lessonStartTime, accumulatedTime, currentModuleIndex, currentLessonIndex]);
 
   const fetchLessonMedia = async () => {
     const currentLesson = getCurrentLesson();
@@ -285,19 +442,25 @@ const CoursePlayer = () => {
     }
   };
 
-  // Get current lesson
-  const getCurrentLesson = () => {
-    if (!course?.modules || !course.modules[currentModuleIndex]) return null;
-    const currentModule = course.modules[currentModuleIndex];
-    if (!currentModule.lessons || !currentModule.lessons[currentLessonIndex]) return null;
-    return currentModule.lessons[currentLessonIndex];
-  };
-
   // Navigation handlers
-  const goToNextLesson = () => {
+  const goToNextLesson = async () => {
     const currentModule = course.modules[currentModuleIndex];
+    const currentLesson = getCurrentLesson();
 
-    // Mark current lesson as completed
+    // Save current time before navigating
+    if (lessonStartTime) {
+      const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
+      if (timeSpent > 0) {
+        await saveTimeSpent(timeSpent);
+      }
+    }
+
+    // Mark current lesson as completed in database
+    if (currentLesson) {
+      await markLessonCompleted(currentLesson.id);
+    }
+
+    // Mark current lesson as completed in local state
     const lessonKey = `${currentModuleIndex}-${currentLessonIndex}`;
     setCompletedLessons(prev => new Set([...prev, lessonKey]));
 
@@ -312,7 +475,15 @@ const CoursePlayer = () => {
     }
   };
 
-  const goToPreviousLesson = () => {
+  const goToPreviousLesson = async () => {
+    // Save current time before navigating
+    if (lessonStartTime) {
+      const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
+      if (timeSpent > 0) {
+        await saveTimeSpent(timeSpent);
+      }
+    }
+
     // Check if there's a previous lesson in current module
     if (currentLessonIndex > 0) {
       setCurrentLessonIndex(prev => prev - 1);
@@ -325,7 +496,15 @@ const CoursePlayer = () => {
     }
   };
 
-  const goToLesson = (moduleIndex, lessonIndex) => {
+  const goToLesson = async (moduleIndex, lessonIndex) => {
+    // Save current time before navigating
+    if (lessonStartTime) {
+      const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
+      if (timeSpent > 0) {
+        await saveTimeSpent(timeSpent);
+      }
+    }
+
     setCurrentModuleIndex(moduleIndex);
     setCurrentLessonIndex(lessonIndex);
   };
