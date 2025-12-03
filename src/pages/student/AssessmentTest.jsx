@@ -23,7 +23,7 @@ import { Label } from '../../components/Students/components/ui/label';
 
 // Import question banks
 import { riasecQuestions } from './assessment-data/riasecQuestions';
-import { getAllAptitudeQuestions } from './assessment-data/aptitudeQuestions';
+import { getAllAptitudeQuestions, getModuleQuestionIndex, aptitudeModules } from './assessment-data/aptitudeQuestions';
 import { bigFiveQuestions } from './assessment-data/bigFiveQuestions';
 import { workValuesQuestions } from './assessment-data/workValuesQuestions';
 import { employabilityQuestions } from './assessment-data/employabilityQuestions';
@@ -634,7 +634,7 @@ const AssessmentTest = () => {
                                     initial={{ opacity: 0, scale: 0.9 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: 0.45, duration: 0.3 }}
-                                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 ${currentSection.id === 'knowledge'
+                                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 ${currentSection.id === 'knowledge' || currentSection.id === 'aptitude'
                                         ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                         : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                         }`}
@@ -644,6 +644,11 @@ const AssessmentTest = () => {
                                             <Code className="w-4 h-4" />
                                             <span className="text-sm font-medium">Knowledge Test - Answers will be scored</span>
                                         </>
+                                    ) : currentSection.id === 'aptitude' ? (
+                                        <>
+                                            <Zap className="w-4 h-4" />
+                                            <span className="text-sm font-medium">Aptitude Test - Speed & accuracy matter</span>
+                                        </>
                                     ) : (
                                         <>
                                             <CheckCircle2 className="w-4 h-4" />
@@ -651,6 +656,26 @@ const AssessmentTest = () => {
                                         </>
                                     )}
                                 </motion.div>
+                                
+                                {/* Module breakdown for Aptitude section */}
+                                {currentSection.id === 'aptitude' && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.5, duration: 0.3 }}
+                                        className="mb-4 p-4 bg-amber-50 rounded-xl border border-amber-200 max-w-lg w-full"
+                                    >
+                                        <p className="text-xs font-bold text-amber-800 mb-2">5 Modules in this section:</p>
+                                        <div className="grid grid-cols-1 gap-1 text-xs">
+                                            {aptitudeModules.map((mod) => (
+                                                <div key={mod.id} className="flex items-center justify-between text-amber-700">
+                                                    <span>{mod.title}</span>
+                                                    <span className="text-amber-500">{mod.questionCount} Qs</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                )}
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -668,7 +693,7 @@ const AssessmentTest = () => {
                                     {currentSection.isTimed && (
                                         <div className="flex items-center gap-2 text-orange-600 font-medium">
                                             <Clock className="w-4 h-4" />
-                                            <span>30 minutes</span>
+                                            <span>{currentSection.id === 'aptitude' ? '10 minutes' : '30 minutes'}</span>
                                         </div>
                                     )}
                                 </motion.div>
@@ -707,16 +732,52 @@ const AssessmentTest = () => {
                                         <h2 className="text-xl font-bold text-gray-800 mb-2">{currentSection.title}</h2>
                                         <p className="text-sm text-gray-500 leading-relaxed mb-4">{currentSection.description}</p>
 
+                                        {/* Module indicator for Aptitude section */}
+                                        {currentSection.id === 'aptitude' && currentQuestion?.moduleTitle && (
+                                            <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mb-4">
+                                                <p className="text-xs font-bold text-amber-800 mb-1">{currentQuestion.moduleTitle}</p>
+                                                <p className="text-xs text-amber-600">
+                                                    {(() => {
+                                                        const moduleInfo = getModuleQuestionIndex(currentQuestionIndex);
+                                                        return `Question ${moduleInfo.moduleIndex} of ${moduleInfo.moduleTotal} in this module`;
+                                                    })()}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Module progress for Aptitude */}
+                                        {currentSection.id === 'aptitude' && (
+                                            <div className="mb-4 space-y-1">
+                                                {aptitudeModules.map((mod, idx) => {
+                                                    const moduleInfo = getModuleQuestionIndex(currentQuestionIndex);
+                                                    const isCurrentModule = moduleInfo.module.id === mod.id;
+                                                    const moduleColors = {
+                                                        blue: 'bg-blue-500',
+                                                        green: 'bg-green-500',
+                                                        purple: 'bg-purple-500',
+                                                        orange: 'bg-orange-500',
+                                                        pink: 'bg-pink-500'
+                                                    };
+                                                    return (
+                                                        <div key={mod.id} className={`flex items-center gap-2 text-xs px-2 py-1 rounded ${isCurrentModule ? 'bg-amber-100 font-semibold' : 'opacity-60'}`}>
+                                                            <div className={`w-2 h-2 rounded-full ${moduleColors[mod.color]}`}></div>
+                                                            <span className="truncate">{mod.title}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
                                         <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100 mb-4">
                                             <p className="text-xs font-medium text-indigo-700">{currentSection.instruction}</p>
                                         </div>
 
                                         {/* Section type indicator */}
-                                        <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${currentSection.id === 'knowledge'
+                                        <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${currentSection.id === 'knowledge' || currentSection.id === 'aptitude'
                                             ? 'bg-blue-50 text-blue-600 border border-blue-100'
                                             : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                                             }`}>
-                                            {currentSection.id === 'knowledge' ? (
+                                            {currentSection.id === 'knowledge' || currentSection.id === 'aptitude' ? (
                                                 <>
                                                     <Code className="w-3.5 h-3.5" />
                                                     <span>Answers scored</span>

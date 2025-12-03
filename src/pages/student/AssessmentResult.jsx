@@ -853,30 +853,38 @@ const AssessmentResult = () => {
                                     <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center">
                                         <Zap className="w-5 h-5 text-white" />
                                     </div>
-                                    <h3 className="font-bold text-gray-800">Cognitive Aptitude Profile</h3>
+                                    <div>
+                                        <h3 className="font-bold text-gray-800">Multi-Aptitude Battery</h3>
+                                        <p className="text-xs text-gray-500">DAT/GATB Style Cognitive Assessment</p>
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     {aptitude?.scores ? (
                                         Object.entries(aptitude.scores).map(([domain, data]) => {
-                                            const domainNames = {
-                                                verbal: 'Verbal',
-                                                numerical: 'Numerical',
-                                                abstract: 'Abstract',
-                                                spatial: 'Spatial',
-                                                clerical: 'Clerical'
+                                            const domainInfo = {
+                                                verbal: { name: 'A) Verbal Reasoning', color: 'bg-blue-500' },
+                                                numerical: { name: 'B) Numerical Ability', color: 'bg-green-500' },
+                                                abstract: { name: 'C) Abstract/Logical', color: 'bg-purple-500' },
+                                                spatial: { name: 'D) Spatial/Mechanical', color: 'bg-orange-500' },
+                                                clerical: { name: 'E) Clerical Speed', color: 'bg-pink-500' }
                                             };
+                                            const info = domainInfo[domain] || { name: domain, color: 'bg-gray-500' };
                                             const percentage = data.percentage || 0;
                                             return (
                                                 <div key={domain} className="flex items-center justify-between bg-white/70 rounded-lg px-3 py-2">
-                                                    <span className="text-sm font-medium text-gray-700">{domainNames[domain]}</span>
                                                     <div className="flex items-center gap-2">
-                                                        <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                        <div className={`w-2 h-2 rounded-full ${info.color}`}></div>
+                                                        <span className="text-xs font-medium text-gray-700">{info.name}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-gray-500">{data.correct}/{data.total}</span>
+                                                        <div className="w-12 h-2 bg-gray-200 rounded-full overflow-hidden">
                                                             <div 
-                                                                className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                                                                className={`h-full rounded-full ${info.color} transition-all duration-500`}
                                                                 style={{ width: `${percentage}%` }}
                                                             />
                                                         </div>
-                                                        <span className="text-xs font-semibold text-gray-600 w-10">{percentage}%</span>
+                                                        <span className="text-xs font-semibold text-gray-600 w-8">{percentage}%</span>
                                                     </div>
                                                 </div>
                                             );
@@ -887,8 +895,13 @@ const AssessmentResult = () => {
                                 </div>
                                 {aptitude?.topStrengths && (
                                     <div className="mt-3 pt-3 border-t border-amber-200">
-                                        <p className="text-xs font-semibold text-amber-700 mb-1">Top Strengths:</p>
+                                        <p className="text-xs font-semibold text-amber-700 mb-1">Top Cognitive Strengths:</p>
                                         <p className="text-sm text-gray-700">{aptitude.topStrengths.join(', ')}</p>
+                                    </div>
+                                )}
+                                {aptitude?.cognitiveProfile && (
+                                    <div className="mt-2">
+                                        <p className="text-xs text-gray-600 italic">{aptitude.cognitiveProfile}</p>
                                     </div>
                                 )}
                             </div>
