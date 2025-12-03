@@ -105,7 +105,7 @@ const printStyles = `
 const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
     if (!results) return null;
     
-    const { riasec, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote, timingAnalysis } = results;
+    const { riasec, aptitude, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote, timingAnalysis } = results;
     
     return (
         <div className="print-view" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', lineHeight: '1.5', color: '#000', padding: '0' }}>
@@ -149,7 +149,31 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                 </ul>
                 <p><em>{riasec?.interpretation}</em></p>
 
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>1.2 Personality Highlights (Big Five)</h3>
+                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>1.2 Multi-Aptitude Battery Results</h3>
+                {aptitude?.scores && (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px' }}>
+                        <thead>
+                            <tr style={{ backgroundColor: '#f5f5f5' }}>
+                                <th style={{ padding: '5px', border: '1px solid #ddd', textAlign: 'left' }}>Domain</th>
+                                <th style={{ padding: '5px', border: '1px solid #ddd', textAlign: 'center' }}>Score</th>
+                                <th style={{ padding: '5px', border: '1px solid #ddd', textAlign: 'center' }}>Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {Object.entries(aptitude.scores).map(([domain, data]) => (
+                                <tr key={domain}>
+                                    <td style={{ padding: '5px', border: '1px solid #ddd', textTransform: 'capitalize' }}>{domain}</td>
+                                    <td style={{ padding: '5px', border: '1px solid #ddd', textAlign: 'center' }}>{data.correct}/{data.total}</td>
+                                    <td style={{ padding: '5px', border: '1px solid #ddd', textAlign: 'center' }}>{data.percentage}%</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+                <p><strong>Top Strengths:</strong> {aptitude?.topStrengths?.join(', ') || 'N/A'}</p>
+                <p><em>{aptitude?.cognitiveProfile}</em></p>
+
+                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>1.3 Personality Highlights (Big Five)</h3>
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px' }}>
                     <thead>
                         <tr style={{ backgroundColor: '#f5f5f5' }}>
@@ -168,7 +192,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                 </table>
                 <p><em>{bigFive?.workStyleSummary}</em></p>
 
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>1.3 Top Work Values</h3>
+                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>1.4 Top Work Values</h3>
                 <ol style={{ marginLeft: '20px' }}>
                     {workValues?.topThree?.map((val, idx) => (
                         <li key={idx}>{val.value} (Score: {val.score})</li>
@@ -176,7 +200,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                 </ol>
                 <p><em>{workValues?.motivationSummary}</em></p>
 
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>1.4 Knowledge Assessment</h3>
+                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>1.5 Knowledge Assessment</h3>
                 <p><strong>Score:</strong> {knowledge?.score}% | <strong>Correct:</strong> {knowledge?.correctCount}/{knowledge?.totalQuestions}</p>
                 <p><strong>Strong Topics:</strong> {knowledge?.strongTopics?.join(', ') || 'N/A'}</p>
 
@@ -604,7 +628,7 @@ const AssessmentResult = () => {
 
     if (!results) return null;
 
-    const { riasec, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote, profileSnapshot, timingAnalysis } = results;
+    const { riasec, aptitude, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote, profileSnapshot, timingAnalysis } = results;
 
     // Validate if all required data sections are present
     const validateResults = () => {
@@ -823,13 +847,59 @@ const AssessmentResult = () => {
                                 </div>
                             </div>
 
+                            {/* Multi-Aptitude Battery Card */}
+                            <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl p-6 border border-amber-100">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center">
+                                        <Zap className="w-5 h-5 text-white" />
+                                    </div>
+                                    <h3 className="font-bold text-gray-800">Cognitive Aptitude Profile</h3>
+                                </div>
+                                <div className="space-y-2">
+                                    {aptitude?.scores ? (
+                                        Object.entries(aptitude.scores).map(([domain, data]) => {
+                                            const domainNames = {
+                                                verbal: 'Verbal',
+                                                numerical: 'Numerical',
+                                                abstract: 'Abstract',
+                                                spatial: 'Spatial',
+                                                clerical: 'Clerical'
+                                            };
+                                            const percentage = data.percentage || 0;
+                                            return (
+                                                <div key={domain} className="flex items-center justify-between bg-white/70 rounded-lg px-3 py-2">
+                                                    <span className="text-sm font-medium text-gray-700">{domainNames[domain]}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                            <div 
+                                                                className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                                                                style={{ width: `${percentage}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-xs font-semibold text-gray-600 w-10">{percentage}%</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <p className="text-sm text-gray-500 italic">Aptitude data not available</p>
+                                    )}
+                                </div>
+                                {aptitude?.topStrengths && (
+                                    <div className="mt-3 pt-3 border-t border-amber-200">
+                                        <p className="text-xs font-semibold text-amber-700 mb-1">Top Strengths:</p>
+                                        <p className="text-sm text-gray-700">{aptitude.topStrengths.join(', ')}</p>
+                                    </div>
+                                )}
+                            </div>
+
                             {/* Aptitude Strengths Card */}
                             <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-6 border border-emerald-100">
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center">
                                         <TrendingUp className="w-5 h-5 text-white" />
                                     </div>
-                                    <h3 className="font-bold text-gray-800">Aptitude Strengths (Top 2)</h3>
+                                    <h3 className="font-bold text-gray-800">Key Strengths Summary</h3>
                                 </div>
                                 <div className="space-y-3">
                                     {profileSnapshot?.aptitudeStrengths ? (

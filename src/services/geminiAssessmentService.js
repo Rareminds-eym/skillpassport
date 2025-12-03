@@ -18,6 +18,10 @@ const validateResults = (results) => {
   // Check RIASEC
   if (!results.riasec?.topThree?.length) missingFields.push('riasec.topThree');
   
+  // Check Aptitude
+  if (!results.aptitude?.scores) missingFields.push('aptitude.scores');
+  if (!results.aptitude?.topStrengths?.length) missingFields.push('aptitude.topStrengths');
+  
   // Check Big Five
   if (!results.bigFive || typeof results.bigFive.O === 'undefined') missingFields.push('bigFive');
   
@@ -175,7 +179,7 @@ const formatTimeForPrompt = (seconds) => {
  * Prepare assessment data for analysis
  */
 const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}) => {
-  const { riasecQuestions, bigFiveQuestions, workValuesQuestions, employabilityQuestions, streamKnowledgeQuestions } = questionBanks;
+  const { riasecQuestions, aptitudeQuestions, bigFiveQuestions, workValuesQuestions, employabilityQuestions, streamKnowledgeQuestions } = questionBanks;
 
   // Extract RIASEC answers
   const riasecAnswers = {};
@@ -188,6 +192,37 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       }
     }
   });
+
+  // Extract Aptitude answers (Multi-Aptitude Battery)
+  const aptitudeAnswers = {
+    verbal: [],
+    numerical: [],
+    abstract: [],
+    spatial: [],
+    clerical: []
+  };
+  
+  if (aptitudeQuestions) {
+    Object.entries(answers).forEach(([key, value]) => {
+      if (key.startsWith('aptitude_')) {
+        const questionId = key.replace('aptitude_', '');
+        const question = aptitudeQuestions.find(q => q.id === questionId);
+        if (question) {
+          const answerData = {
+            questionId,
+            question: question.text,
+            studentAnswer: value,
+            correctAnswer: question.correct,
+            isCorrect: value === question.correct,
+            subtype: question.subtype
+          };
+          if (aptitudeAnswers[question.subtype]) {
+            aptitudeAnswers[question.subtype].push(answerData);
+          }
+        }
+      }
+    });
+  }
 
   // Extract Big Five answers
   const bigFiveAnswers = {};
@@ -248,6 +283,16 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     }
   });
 
+  // Calculate aptitude scores
+  const aptitudeScores = {
+    verbal: { correct: aptitudeAnswers.verbal.filter(a => a.isCorrect).length, total: aptitudeAnswers.verbal.length },
+    numerical: { correct: aptitudeAnswers.numerical.filter(a => a.isCorrect).length, total: aptitudeAnswers.numerical.length },
+    abstract: { correct: aptitudeAnswers.abstract.filter(a => a.isCorrect).length, total: aptitudeAnswers.abstract.length },
+    spatial: { correct: aptitudeAnswers.spatial.filter(a => a.isCorrect).length, total: aptitudeAnswers.spatial.length },
+    clerical: { correct: aptitudeAnswers.clerical.filter(a => a.isCorrect).length, total: aptitudeAnswers.clerical.length }
+  };
+  const totalAptitudeQuestions = aptitudeQuestions?.length || 50;
+
   // Calculate timing metrics
   const timingData = {
     riasec: {
@@ -255,6 +300,13 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       formatted: formatTimeForPrompt(sectionTimings.riasec),
       questionsCount: riasecQuestions.length,
       avgSecondsPerQuestion: sectionTimings.riasec ? Math.round(sectionTimings.riasec / riasecQuestions.length) : 0
+    },
+    aptitude: {
+      seconds: sectionTimings.aptitude || 0,
+      formatted: formatTimeForPrompt(sectionTimings.aptitude),
+      questionsCount: totalAptitudeQuestions,
+      avgSecondsPerQuestion: sectionTimings.aptitude ? Math.round(sectionTimings.aptitude / totalAptitudeQuestions) : 0,
+      timeLimit: 10 * 60 // 10 minutes
     },
     bigfive: {
       seconds: sectionTimings.bigfive || 0,
@@ -288,11 +340,14 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   return {
     stream,
     riasecAnswers,
+    aptitudeAnswers,
+    aptitudeScores,
     bigFiveAnswers,
     workValuesAnswers,
     employabilityAnswers,
     knowledgeAnswers,
     totalKnowledgeQuestions: streamQuestions.length,
+    totalAptitudeQuestions,
     sectionTimings: timingData
   };
 };
@@ -330,6 +385,23 @@ RIASEC SCORING RULES:
 - Response 5 (Strongly Like): 2 points
 - Maximum score per type = 20 (10 questions × 2 points max)
 
+## MULTI-APTITUDE BATTERY RESULTS (DAT/GATB Style):
+Pre-calculated Scores:
+- Verbal Reasoning: ${assessmentData.aptitudeScores?.verbal?.correct || 0}/${assessmentData.aptitudeScores?.verbal?.total || 8} correct
+- Numerical Ability: ${assessmentData.aptitudeScores?.numerical?.correct || 0}/${assessmentData.aptitudeScores?.numerical?.total || 8} correct
+- Abstract/Logical Reasoning: ${assessmentData.aptitudeScores?.abstract?.correct || 0}/${assessmentData.aptitudeScores?.abstract?.total || 8} correct
+- Spatial/Mechanical Reasoning: ${assessmentData.aptitudeScores?.spatial?.correct || 0}/${assessmentData.aptitudeScores?.spatial?.total || 6} correct
+- Clerical Speed & Accuracy: ${assessmentData.aptitudeScores?.clerical?.correct || 0}/${assessmentData.aptitudeScores?.clerical?.total || 20} correct
+
+Detailed Aptitude Answers:
+${JSON.stringify(assessmentData.aptitudeAnswers, null, 2)}
+
+APTITUDE SCORING RULES:
+- Each correct answer = 1 point
+- Convert raw scores to percentages for each domain
+- Identify top 2-3 cognitive strengths based on highest percentage scores
+- Use aptitude profile to inform career cluster recommendations
+
 ## Big Five Personality Responses (1-5 scale: 1=Very Inaccurate, 5=Very Accurate):
 ${JSON.stringify(assessmentData.bigFiveAnswers, null, 2)}
 
@@ -345,6 +417,7 @@ Total Questions: ${assessmentData.totalKnowledgeQuestions}
 
 ## SECTION TIMING DATA (Time spent by student on each section):
 - RIASEC (Career Interests): ${assessmentData.sectionTimings?.riasec?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.riasec?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.riasec?.avgSecondsPerQuestion || 0}s per question)
+- Multi-Aptitude Battery: ${assessmentData.sectionTimings?.aptitude?.formatted || 'Not recorded'} of 10 minutes allowed (${assessmentData.sectionTimings?.aptitude?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.aptitude?.avgSecondsPerQuestion || 0}s per question)
 - Big Five (Personality): ${assessmentData.sectionTimings?.bigfive?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.bigfive?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.bigfive?.avgSecondsPerQuestion || 0}s per question)
 - Work Values: ${assessmentData.sectionTimings?.values?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.values?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.values?.avgSecondsPerQuestion || 0}s per question)
 - Employability Skills: ${assessmentData.sectionTimings?.employability?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.employability?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.employability?.avgSecondsPerQuestion || 0}s per question)
@@ -389,6 +462,20 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
     "code": "<3-letter code formed by the 3 letters with HIGHEST scores, sorted from highest to lowest>",
     "topThree": ["<letter with HIGHEST score>", "<letter with 2nd HIGHEST score>", "<letter with 3rd HIGHEST score>"],
     "interpretation": "<2-3 sentence interpretation of their career interests>"
+  },
+  "aptitude": {
+    "scores": {
+      "verbal": { "correct": <number>, "total": 8, "percentage": <number 0-100> },
+      "numerical": { "correct": <number>, "total": 8, "percentage": <number 0-100> },
+      "abstract": { "correct": <number>, "total": 8, "percentage": <number 0-100> },
+      "spatial": { "correct": <number>, "total": 6, "percentage": <number 0-100> },
+      "clerical": { "correct": <number>, "total": 20, "percentage": <number 0-100> }
+    },
+    "overallScore": <percentage 0-100>,
+    "topStrengths": ["<strongest aptitude domain>", "<second strongest>"],
+    "areasToImprove": ["<weakest domain>"],
+    "cognitiveProfile": "<2-3 sentence summary of cognitive strengths and how they relate to career paths>",
+    "careerImplications": "<1-2 sentence insight on what careers suit this aptitude profile>"
   },
   "bigFive": {
     "O": <number 0-5>,

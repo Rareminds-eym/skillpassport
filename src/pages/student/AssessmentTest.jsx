@@ -13,7 +13,8 @@ import {
     Award,
     TrendingUp,
     Users,
-    Code
+    Code,
+    Zap
 } from 'lucide-react';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
@@ -22,6 +23,7 @@ import { Label } from '../../components/Students/components/ui/label';
 
 // Import question banks
 import { riasecQuestions } from './assessment-data/riasecQuestions';
+import { getAllAptitudeQuestions } from './assessment-data/aptitudeQuestions';
 import { bigFiveQuestions } from './assessment-data/bigFiveQuestions';
 import { workValuesQuestions } from './assessment-data/workValuesQuestions';
 import { employabilityQuestions } from './assessment-data/employabilityQuestions';
@@ -65,6 +67,18 @@ const AssessmentTest = () => {
                 { value: 5, label: "Strongly Like" }
             ],
             instruction: "Rate how much you would LIKE or DISLIKE each activity."
+        },
+        {
+            id: 'aptitude',
+            title: 'Multi-Aptitude Battery',
+            icon: <Zap className="w-6 h-6 text-amber-500" />,
+            description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
+            color: "amber",
+            questions: getAllAptitudeQuestions(),
+            isTimed: true,
+            timeLimit: 10 * 60, // 10 minutes
+            isAptitude: true,
+            instruction: "Choose the correct answer. Speed matters for clerical questions."
         },
         {
             id: 'bigfive',
@@ -290,6 +304,7 @@ const AssessmentTest = () => {
             // Prepare question banks for Gemini analysis
             const questionBanks = {
                 riasecQuestions,
+                aptitudeQuestions: getAllAptitudeQuestions(),
                 bigFiveQuestions,
                 workValuesQuestions,
                 employabilityQuestions,
