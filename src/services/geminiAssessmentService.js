@@ -222,6 +222,18 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
 
 \`\`\`json
 {
+  "profileSnapshot": {
+    "keyPatterns": {
+      "enjoyment": "<Enjoyment pattern based on Interests>",
+      "strength": "<Strength pattern based on Aptitude/Knowledge>",
+      "workStyle": "<Work-style pattern based on Personality>",
+      "motivation": "<Motivation pattern based on Values>"
+    },
+    "aptitudeStrengths": [
+      {"name": "<Strength 1>", "percentile": "<Estimated Percentile>"},
+      {"name": "<Strength 2>", "percentile": "<Estimated Percentile>"}
+    ]
+  },
   "riasec": {
     "scores": {
       "R": <TOTAL using scoring rules: 0 for responses 1-3, 1 for response 4, 2 for response 5>,
@@ -293,7 +305,11 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
         "title": "<Cluster Name>",
         "fit": "<High/Medium/Explore>",
         "matchScore": <percentage 0-100>,
-        "reason": "<Why this fits: evidence from Interest, Aptitude, Personality>",
+        "evidence": {
+            "interest": "<Interest evidence>",
+            "aptitude": "<Aptitude evidence>",
+            "personality": "<Personality/values evidence>"
+        },
         "roles": {
           "entry": ["<role 1>", "<role 2>"],
           "mid": ["<role 1>", "<role 2>"]
@@ -304,7 +320,11 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
         "title": "<Cluster Name>",
         "fit": "<High/Medium/Explore>",
         "matchScore": <percentage 0-100>,
-        "reason": "<Why this fits>",
+        "evidence": {
+            "interest": "<Interest evidence>",
+            "aptitude": "<Aptitude evidence>",
+            "personality": "<Personality/values evidence>"
+        },
         "roles": { "entry": [], "mid": [] },
         "domains": []
       },
@@ -312,7 +332,11 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
         "title": "<Cluster Name>",
         "fit": "<High/Medium/Explore>",
         "matchScore": <percentage 0-100>,
-        "reason": "<Why this fits>",
+        "evidence": {
+            "interest": "<Interest evidence>",
+            "aptitude": "<Aptitude evidence>",
+            "personality": "<Personality/values evidence>"
+        },
         "roles": { "entry": [], "mid": [] },
         "domains": []
       }
@@ -388,7 +412,8 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
   },
   "finalNote": {
     "advantage": "<Biggest advantage>",
-    "growthFocus": "<Top growth focus>"
+    "growthFocus": "<Top growth focus>",
+    "nextReview": "<Suggested review time, e.g. End of 5th Sem>"
   },
   "overallSummary": "<4-5 sentence comprehensive summary of the student's profile, strengths, and career potential>"
 }
