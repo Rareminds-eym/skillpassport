@@ -26,7 +26,7 @@ import { riasecQuestions } from './assessment-data/riasecQuestions';
 import { getAllAptitudeQuestions, getModuleQuestionIndex, aptitudeModules } from './assessment-data/aptitudeQuestions';
 import { bigFiveQuestions } from './assessment-data/bigFiveQuestions';
 import { workValuesQuestions } from './assessment-data/workValuesQuestions';
-import { employabilityQuestions } from './assessment-data/employabilityQuestions';
+import { employabilityQuestions, getCurrentEmployabilityModule, employabilityModules } from './assessment-data/employabilityQuestions';
 import { streamKnowledgeQuestions } from './assessment-data/streamKnowledgeQuestions';
 
 // Import Gemini assessment service
@@ -336,7 +336,17 @@ const AssessmentTest = () => {
 
     const currentQuestion = currentSection?.questions[currentQuestionIndex];
     const questionId = `${currentSection?.id}_${currentQuestion?.id}`;
-    const isCurrentAnswered = !!answers[questionId];
+    
+    // Check if current question is answered (SJT needs both BEST and WORST)
+    const isCurrentAnswered = (() => {
+        const answer = answers[questionId];
+        if (!answer) return false;
+        // For SJT questions, both best and worst must be selected
+        if (currentQuestion?.partType === 'sjt') {
+            return answer.best && answer.worst;
+        }
+        return true;
+    })();
 
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -676,6 +686,28 @@ const AssessmentTest = () => {
                                         </div>
                                     </motion.div>
                                 )}
+
+                                {/* Module breakdown for Employability section */}
+                                {currentSection.id === 'employability' && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.5, duration: 0.3 }}
+                                        className="mb-4 p-4 bg-green-50 rounded-xl border border-green-200 max-w-lg w-full"
+                                    >
+                                        <p className="text-xs font-bold text-green-800 mb-2">2 Parts in this section:</p>
+                                        <div className="space-y-2 text-xs">
+                                            <div className="bg-white/70 rounded-lg p-2">
+                                                <p className="font-semibold text-green-700">Part A: Self-Rating Skills (25 Qs)</p>
+                                                <p className="text-green-600 text-[10px]">Communication, Teamwork, Problem Solving, Adaptability, Leadership, Digital Fluency, Professionalism, Career Readiness</p>
+                                            </div>
+                                            <div className="bg-white/70 rounded-lg p-2">
+                                                <p className="font-semibold text-rose-700">Part B: Situational Judgement Test (6 Qs)</p>
+                                                <p className="text-rose-600 text-[10px]">Choose BEST and WORST response for workplace scenarios</p>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -748,7 +780,7 @@ const AssessmentTest = () => {
                                         {/* Module progress for Aptitude */}
                                         {currentSection.id === 'aptitude' && (
                                             <div className="mb-4 space-y-1">
-                                                {aptitudeModules.map((mod, idx) => {
+                                                {aptitudeModules.map((mod) => {
                                                     const moduleInfo = getModuleQuestionIndex(currentQuestionIndex);
                                                     const isCurrentModule = moduleInfo.module.id === mod.id;
                                                     const moduleColors = {
@@ -765,6 +797,55 @@ const AssessmentTest = () => {
                                                         </div>
                                                     );
                                                 })}
+                                            </div>
+                                        )}
+
+                                        {/* Module indicator for Employability section */}
+                                        {currentSection.id === 'employability' && (
+                                            <div className="p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
+                                                {(() => {
+                                                    const moduleInfo = getCurrentEmployabilityModule(currentQuestionIndex);
+                                                    return (
+                                                        <>
+                                                            <p className="text-xs font-bold text-green-800 mb-1">{moduleInfo.partTitle}</p>
+                                                            <p className="text-xs text-green-700 font-medium">{moduleInfo.domain}</p>
+                                                            <p className="text-xs text-green-600">
+                                                                Question {moduleInfo.questionInDomain} of {moduleInfo.domainTotal}
+                                                            </p>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                        )}
+
+                                        {/* Module progress for Employability */}
+                                        {currentSection.id === 'employability' && (
+                                            <div className="mb-4 space-y-1">
+                                                {(() => {
+                                                    const moduleInfo = getCurrentEmployabilityModule(currentQuestionIndex);
+                                                    const partADomains = ['Communication', 'Teamwork', 'Problem Solving', 'Adaptability', 'Leadership', 'Digital Fluency', 'Professionalism', 'Career Readiness'];
+                                                    const domainColors = ['blue', 'green', 'purple', 'orange', 'red', 'cyan', 'indigo', 'amber'];
+                                                    
+                                                    return (
+                                                        <>
+                                                            <div className={`text-xs font-semibold px-2 py-1 ${moduleInfo.part === 'A' ? 'text-green-700' : 'text-gray-400'}`}>
+                                                                Part A: Self-Rating
+                                                            </div>
+                                                            {partADomains.map((domain, idx) => {
+                                                                const isCurrentDomain = moduleInfo.part === 'A' && moduleInfo.domain === domain;
+                                                                return (
+                                                                    <div key={domain} className={`flex items-center gap-2 text-xs px-2 py-0.5 rounded ml-2 ${isCurrentDomain ? 'bg-green-100 font-semibold' : 'opacity-50'}`}>
+                                                                        <div className={`w-1.5 h-1.5 rounded-full bg-${domainColors[idx]}-500`}></div>
+                                                                        <span className="truncate text-[10px]">{domain}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            <div className={`text-xs font-semibold px-2 py-1 mt-1 ${moduleInfo.part === 'B' ? 'text-rose-700' : 'text-gray-400'}`}>
+                                                                Part B: SJT Scenarios
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
                                             </div>
                                         )}
 
@@ -881,7 +962,77 @@ const AssessmentTest = () => {
                                                 </div>
 
                                                 <div className="space-y-3 mt-4">
-                                                    {currentSection.responseScale ? (
+                                                    {/* SJT Questions - Select BEST and WORST */}
+                                                    {currentQuestion.partType === 'sjt' ? (
+                                                        <div className="space-y-4">
+                                                            <div className="p-3 bg-rose-50 rounded-lg border border-rose-200 mb-4">
+                                                                <p className="text-sm font-medium text-rose-700">
+                                                                    Select the <span className="font-bold text-green-700">BEST</span> response and the <span className="font-bold text-red-700">WORST</span> response for this scenario.
+                                                                </p>
+                                                            </div>
+                                                            
+                                                            {currentQuestion.options.map((option, idx) => {
+                                                                const optionLabel = currentQuestion.optionLabels?.[idx] || String.fromCharCode(97 + idx);
+                                                                const sjtAnswer = answers[questionId] || {};
+                                                                const isBest = sjtAnswer.best === option;
+                                                                const isWorst = sjtAnswer.worst === option;
+                                                                
+                                                                return (
+                                                                    <div
+                                                                        key={idx}
+                                                                        className={`border rounded-xl p-4 transition-all ${
+                                                                            isBest ? 'border-green-500 bg-green-50 ring-1 ring-green-500/30' :
+                                                                            isWorst ? 'border-red-500 bg-red-50 ring-1 ring-red-500/30' :
+                                                                            'border-gray-200 hover:bg-gray-50'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-start gap-3">
+                                                                            <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-600 shrink-0">
+                                                                                {optionLabel}
+                                                                            </span>
+                                                                            <p className="flex-1 text-gray-700 font-medium">{option}</p>
+                                                                        </div>
+                                                                        <div className="flex gap-2 mt-3 ml-9">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    const current = answers[questionId] || {};
+                                                                                    // Can't select same option for both
+                                                                                    if (current.worst === option) return;
+                                                                                    handleAnswer({ ...current, best: option });
+                                                                                }}
+                                                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                                                                    isBest 
+                                                                                        ? 'bg-green-600 text-white shadow-md' 
+                                                                                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                                                } ${isWorst ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                                disabled={isWorst}
+                                                                            >
+                                                                                ✓ BEST
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    const current = answers[questionId] || {};
+                                                                                    // Can't select same option for both
+                                                                                    if (current.best === option) return;
+                                                                                    handleAnswer({ ...current, worst: option });
+                                                                                }}
+                                                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                                                                    isWorst 
+                                                                                        ? 'bg-red-600 text-white shadow-md' 
+                                                                                        : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                                                                } ${isBest ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                                disabled={isBest}
+                                                                            >
+                                                                                ✗ WORST
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : currentSection.responseScale ? (
                                                         // Likert scale response
                                                         <RadioGroup
                                                             value={answers[questionId]?.toString() || ""}

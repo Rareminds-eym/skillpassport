@@ -248,18 +248,58 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     }
   });
 
-  // Extract Employability answers
-  const employabilityAnswers = {};
+  // Extract Employability answers (Part A: Self-rating + Part B: SJT)
+  const employabilityAnswers = {
+    selfRating: {
+      Communication: [],
+      Teamwork: [],
+      ProblemSolving: [],
+      Adaptability: [],
+      Leadership: [],
+      DigitalFluency: [],
+      Professionalism: [],
+      CareerReadiness: []
+    },
+    sjt: []
+  };
+  
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith('employability_')) {
       const questionId = key.replace('employability_', '');
       const question = employabilityQuestions.find(q => q.id === questionId);
       if (question) {
-        employabilityAnswers[questionId] = {
-          question: question.text,
-          answer: value,
-          options: question.options || null
-        };
+        if (question.partType === 'selfRating') {
+          // Part A: Self-rating (1-5 scale)
+          const domain = question.type;
+          if (employabilityAnswers.selfRating[domain]) {
+            employabilityAnswers.selfRating[domain].push({
+              question: question.text,
+              answer: value,
+              domain: question.moduleTitle
+            });
+          }
+        } else if (question.partType === 'sjt') {
+          // Part B: SJT scenarios - value is { best: string, worst: string }
+          const studentBest = value?.best || value;
+          const studentWorst = value?.worst || null;
+          
+          // Calculate SJT score: Best=2, Worst=0, others=1
+          let score = 1; // default for other answers
+          if (studentBest === question.bestAnswer) score = 2;
+          if (studentBest === question.worstAnswer) score = 0;
+          
+          employabilityAnswers.sjt.push({
+            scenario: question.scenario || question.text,
+            question: question.text,
+            studentBestChoice: studentBest,
+            studentWorstChoice: studentWorst,
+            correctBest: question.bestAnswer,
+            correctWorst: question.worstAnswer,
+            bestCorrect: studentBest === question.bestAnswer,
+            worstCorrect: studentWorst === question.worstAnswer,
+            score: score
+          });
+        }
       }
     }
   });
@@ -408,8 +448,23 @@ ${JSON.stringify(assessmentData.bigFiveAnswers, null, 2)}
 ## Work Values Responses (1-5 scale: 1=Not Important, 5=Extremely Important):
 ${JSON.stringify(assessmentData.workValuesAnswers, null, 2)}
 
-## Employability Skills Responses (1-5 scale or MCQ):
-${JSON.stringify(assessmentData.employabilityAnswers, null, 2)}
+## EMPLOYABILITY / 21st-CENTURY SKILLS DIAGNOSTIC:
+
+### Part A: Self-Rating Skills (25 items, 1-5 scale: 1=Not like me, 5=Very much like me)
+${JSON.stringify(assessmentData.employabilityAnswers?.selfRating || {}, null, 2)}
+
+EMPLOYABILITY SCORING RULES:
+- Average each domain (Communication, Teamwork, Problem Solving, Adaptability, Leadership, Digital Fluency, Professionalism, Career Readiness)
+- Create a readiness heat-map based on domain averages
+- Identify strength areas (avg >= 4) and improvement areas (avg <= 2.5)
+
+### Part B: Situational Judgement Test (6 scenarios)
+${JSON.stringify(assessmentData.employabilityAnswers?.sjt || [], null, 2)}
+
+SJT SCORING RULES:
+- Best answer = 2 points, Worst answer = 0 points, Other answers = 1 point
+- Calculate total SJT score out of 12 (6 scenarios × 2 max points)
+- Convert to percentage for overall SJT score
 
 ## Stream Knowledge Test Results:
 ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
