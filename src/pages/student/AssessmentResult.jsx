@@ -41,6 +41,7 @@ import { bigFiveQuestions } from './assessment-data/bigFiveQuestions';
 import { workValuesQuestions } from './assessment-data/workValuesQuestions';
 import { employabilityQuestions } from './assessment-data/employabilityQuestions';
 import { streamKnowledgeQuestions } from './assessment-data/streamKnowledgeQuestions';
+import { supabase } from '../../lib/supabaseClient';
 
 // Animated Progress Ring Component
 const ProgressRing = ({ value, size = 80, strokeWidth = 8, color = "#6366f1" }) => {
@@ -120,10 +121,86 @@ const AssessmentResult = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [retrying, setRetrying] = useState(false);
+    const [studentInfo, setStudentInfo] = useState({
+        name: '—',
+        regNo: '—',
+        college: '—',
+        stream: '—'
+    });
+
+    // Convert string to Title Case (Camel Case for names)
+    const toTitleCase = (str) => {
+        if (!str || str === '—') return str;
+        return str
+            .toLowerCase()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    };
+
+    // Fetch student profile data from Supabase
+    const fetchStudentInfo = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+                // Try to get student profile from students table
+                const { data: studentData } = await supabase
+                    .from('students')
+                    .select('first_name, last_name, full_name, register_number, college_id, colleges(name)')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (studentData) {
+                    const rawName = studentData.full_name || 
+                        `${studentData.first_name || ''} ${studentData.last_name || ''}`.trim() ||
+                        user.user_metadata?.full_name ||
+                        user.email?.split('@')[0] || '—';
+                    
+                    const fullName = toTitleCase(rawName);
+                    
+                    setStudentInfo({
+                        name: fullName,
+                        regNo: studentData.register_number || '—',
+                        college: studentData.colleges?.name || '—',
+                        stream: (localStorage.getItem('assessment_stream') || '—').toUpperCase()
+                    });
+
+                    // Also store in localStorage for PDF generation
+                    localStorage.setItem('studentName', fullName);
+                    localStorage.setItem('studentRegNo', studentData.register_number || '');
+                    localStorage.setItem('collegeName', studentData.colleges?.name || '');
+                } else {
+                    // Fallback to user metadata
+                    const rawName = user.user_metadata?.full_name || user.email?.split('@')[0] || '—';
+                    const name = toTitleCase(rawName);
+                    setStudentInfo(prev => ({
+                        ...prev,
+                        name: name,
+                        stream: (localStorage.getItem('assessment_stream') || '—').toUpperCase()
+                    }));
+                    localStorage.setItem('studentName', name);
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching student info:', err);
+            // Use localStorage fallback
+            const storedName = localStorage.getItem('studentName') || '—';
+            setStudentInfo({
+                name: toTitleCase(storedName),
+                regNo: localStorage.getItem('studentRegNo') || '—',
+                college: localStorage.getItem('collegeName') || '—',
+                stream: (localStorage.getItem('assessment_stream') || '—').toUpperCase()
+            });
+        }
+    };
 
     const loadResults = async () => {
         setLoading(true);
         setError(null);
+
+        // Fetch student info in parallel
+        fetchStudentInfo();
 
         const answersJson = localStorage.getItem('assessment_answers');
         const geminiResultsJson = localStorage.getItem('assessment_gemini_results');
@@ -419,10 +496,10 @@ const AssessmentResult = () => {
                     {/* Student Info Cards */}
                     <div className="p-8 bg-gradient-to-b from-gray-50 to-white border-b border-gray-100">
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            <InfoCard icon={Users} label="Student Name" value={localStorage.getItem('studentName') || '—'} color="indigo" />
-                            <InfoCard icon={FileCheck} label="Register No." value={localStorage.getItem('studentRegNo') || '—'} color="purple" />
-                            <InfoCard icon={GraduationCap} label="Programme/Stream" value={(localStorage.getItem('assessment_stream') || '—').toUpperCase()} color="emerald" />
-                            <InfoCard icon={Briefcase} label="College" value={localStorage.getItem('collegeName') || '—'} color="amber" />
+                            <InfoCard icon={Users} label="Student Name" value={studentInfo.name} color="indigo" />
+                            <InfoCard icon={FileCheck} label="Register No." value={studentInfo.regNo} color="purple" />
+                            <InfoCard icon={GraduationCap} label="Programme/Stream" value={studentInfo.stream} color="emerald" />
+                            <InfoCard icon={Briefcase} label="College" value={studentInfo.college} color="amber" />
                             <InfoCard icon={Calendar} label="Assessment Date" value={new Date().toLocaleDateString()} color="rose" />
                             <InfoCard icon={Brain} label="Assessor" value="SkillPassport AI" color="indigo" />
                         </div>
