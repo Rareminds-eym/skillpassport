@@ -1026,9 +1026,42 @@ const ExportCurriculumModal = ({
 /* ==============================
    MAIN CURRICULUM BUILDER COMPONENT
    ============================== */
-const CurriculumBuilder: React.FC = () => {
-  // Sample data
-  const subjects = [
+interface CurriculumBuilderProps {
+  // Optional props for wrapper integration
+  selectedSubject?: string;
+  setSelectedSubject?: (value: string) => void;
+  selectedClass?: string;
+  setSelectedClass?: (value: string) => void;
+  selectedAcademicYear?: string;
+  setSelectedAcademicYear?: (value: string) => void;
+  // Configuration data
+  subjects?: string[];
+  classes?: string[];
+  academicYears?: string[];
+  // Data
+  curriculumId?: string | null;
+  chapters?: Chapter[];
+  learningOutcomes?: LearningOutcome[];
+  assessmentTypes?: AssessmentType[];
+  status?: "draft" | "pending_approval" | "approved" | "rejected";
+  rejectionReason?: string;
+  loading?: boolean;
+  saveStatus?: "idle" | "saving" | "saved";
+  searchQuery?: string;
+  setSearchQuery?: (value: string) => void;
+  // Handlers
+  onAddChapter?: (chapter: Chapter) => Promise<void>;
+  onDeleteChapter?: (id: string) => Promise<void>;
+  onAddOutcome?: (outcome: LearningOutcome) => Promise<void>;
+  onDeleteOutcome?: (id: string) => Promise<void>;
+  onSubmitForApproval?: () => Promise<void>;
+  onApprove?: () => Promise<void>;
+  onReject?: () => Promise<void>;
+}
+
+const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
+  // Configuration data - use props or fallback to hardcoded defaults
+  const subjects = props.subjects ?? [
     "Mathematics",
     "Physics",
     "Chemistry",
@@ -1039,9 +1072,9 @@ const CurriculumBuilder: React.FC = () => {
     "Economics",
   ];
 
-  const classes = ["9", "10", "11", "12"];
+  const classes = props.classes ?? ["9", "10", "11", "12"];
   
-  const academicYears = [
+  const academicYears = props.academicYears ?? [
     "2024-2025",
     "2025-2026",
     "2026-2027",
@@ -1056,8 +1089,8 @@ const CurriculumBuilder: React.FC = () => {
     "Create",
   ];
 
-  // Assessment Types (as per requirements)
-  const assessmentTypes: AssessmentType[] = [
+  // Assessment Types (as per requirements) - use props or default
+  const defaultAssessmentTypes: AssessmentType[] = [
     { id: "1", name: "Written Test", description: "Traditional written examination" },
     { id: "2", name: "Practical Exam", description: "Hands-on practical assessment" },
     { id: "3", name: "Project", description: "Project-based evaluation" },
@@ -1067,24 +1100,43 @@ const CurriculumBuilder: React.FC = () => {
     { id: "7", name: "Lab Work", description: "Laboratory work evaluation" },
     { id: "8", name: "Class Participation", description: "Active participation in class" },
   ];
+  const assessmentTypes = props.assessmentTypes ?? defaultAssessmentTypes;
 
-  // State
-  const [selectedSubject, setSelectedSubject] = useState("");
-  const [selectedClass, setSelectedClass] = useState("");
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState("");
-  const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [learningOutcomes, setLearningOutcomes] = useState<LearningOutcome[]>(
-    []
-  );
-  const [status, setStatus] = useState<"draft" | "pending_approval" | "approved" | "rejected">("draft");
-  const [searchQuery, setSearchQuery] = useState("");
+  // State - use props if provided, otherwise use local state
+  const [localSelectedSubject, localSetSelectedSubject] = useState("");
+  const [localSelectedClass, localSetSelectedClass] = useState("");
+  const [localSelectedAcademicYear, localSetSelectedAcademicYear] = useState("");
+  const [localChapters, localSetChapters] = useState<Chapter[]>([]);
+  const [localLearningOutcomes, localSetLearningOutcomes] = useState<LearningOutcome[]>([]);
+  const [localStatus, localSetStatus] = useState<"draft" | "pending_approval" | "approved" | "rejected">("draft");
+  const [localSearchQuery, localSetSearchQuery] = useState("");
+  const [localSaveStatus, localSetSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [localRejectionReason, localSetRejectionReason] = useState<string | undefined>();
+  
+  // Use props or local state
+  const selectedSubject = props.selectedSubject ?? localSelectedSubject;
+  const setSelectedSubject = props.setSelectedSubject ?? localSetSelectedSubject;
+  const selectedClass = props.selectedClass ?? localSelectedClass;
+  const setSelectedClass = props.setSelectedClass ?? localSetSelectedClass;
+  const selectedAcademicYear = props.selectedAcademicYear ?? localSelectedAcademicYear;
+  const setSelectedAcademicYear = props.setSelectedAcademicYear ?? localSetSelectedAcademicYear;
+  const chapters = props.chapters ?? localChapters;
+  const setChapters = localSetChapters;
+  const learningOutcomes = props.learningOutcomes ?? localLearningOutcomes;
+  const setLearningOutcomes = localSetLearningOutcomes;
+  const status = props.status ?? localStatus;
+  const setStatus = localSetStatus;
+  const searchQuery = props.searchQuery ?? localSearchQuery;
+  const setSearchQuery = props.setSearchQuery ?? localSetSearchQuery;
+  const saveStatus = props.saveStatus ?? localSaveStatus;
+  const setSaveStatus = localSetSaveStatus;
+  const rejectionReason = props.rejectionReason ?? localRejectionReason;
+  const setRejectionReason = localSetRejectionReason;
+  const loading = props.loading ?? false;
+  
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
-    "idle"
-  );
   const [createdBy] = useState("current_teacher_id"); // TODO: Get from auth context
   const [approvedBy, setApprovedBy] = useState<string | undefined>();
-  const [rejectionReason, setRejectionReason] = useState<string | undefined>();
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
@@ -1164,19 +1216,26 @@ const CurriculumBuilder: React.FC = () => {
   };
 
   // Chapter handlers
-  const handleAddChapter = (chapter: Chapter) => {
-    if (editingChapter) {
-      setChapters((prev) =>
-        prev.map((ch) => (ch.id === chapter.id ? chapter : ch))
-      );
+  const handleAddChapter = async (chapter: Chapter) => {
+    if (props.onAddChapter) {
+      await props.onAddChapter(chapter);
+      setShowAddChapterModal(false);
       setEditingChapter(null);
     } else {
-      setChapters((prev) => [
-        ...prev,
-        { ...chapter, order: prev.length + 1 },
-      ]);
+      // Fallback to local state
+      if (editingChapter) {
+        setChapters((prev) =>
+          prev.map((ch) => (ch.id === chapter.id ? chapter : ch))
+        );
+        setEditingChapter(null);
+      } else {
+        setChapters((prev) => [
+          ...prev,
+          { ...chapter, order: prev.length + 1 },
+        ]);
+      }
+      setShowAddChapterModal(false);
     }
-    setShowAddChapterModal(false);
   };
 
   const handleEditChapter = (chapter: Chapter) => {
@@ -1184,25 +1243,38 @@ const CurriculumBuilder: React.FC = () => {
     setShowAddChapterModal(true);
   };
 
-  const handleDeleteChapter = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this chapter?")) {
-      setChapters((prev) => prev.filter((ch) => ch.id !== id));
-      setLearningOutcomes((prev) => prev.filter((lo) => lo.chapterId !== id));
+  const handleDeleteChapter = async (id: string) => {
+    if (props.onDeleteChapter) {
+      await props.onDeleteChapter(id);
+    } else {
+      // Fallback to local state
+      if (window.confirm("Are you sure you want to delete this chapter?")) {
+        setChapters((prev) => prev.filter((ch) => ch.id !== id));
+        setLearningOutcomes((prev) => prev.filter((lo) => lo.chapterId !== id));
+      }
     }
   };
 
   // Learning outcome handlers
-  const handleAddOutcome = (outcome: LearningOutcome) => {
-    if (editingOutcome) {
-      setLearningOutcomes((prev) =>
-        prev.map((lo) => (lo.id === outcome.id ? outcome : lo))
-      );
+  const handleAddOutcome = async (outcome: LearningOutcome) => {
+    if (props.onAddOutcome) {
+      await props.onAddOutcome(outcome);
+      setShowAddOutcomeModal(false);
       setEditingOutcome(null);
+      setSelectedChapterForOutcome(null);
     } else {
-      setLearningOutcomes((prev) => [...prev, outcome]);
+      // Fallback to local state
+      if (editingOutcome) {
+        setLearningOutcomes((prev) =>
+          prev.map((lo) => (lo.id === outcome.id ? outcome : lo))
+        );
+        setEditingOutcome(null);
+      } else {
+        setLearningOutcomes((prev) => [...prev, outcome]);
+      }
+      setShowAddOutcomeModal(false);
+      setSelectedChapterForOutcome(null);
     }
-    setShowAddOutcomeModal(false);
-    setSelectedChapterForOutcome(null);
   };
 
   const handleEditOutcome = (outcome: LearningOutcome) => {
@@ -1210,9 +1282,14 @@ const CurriculumBuilder: React.FC = () => {
     setShowAddOutcomeModal(true);
   };
 
-  const handleDeleteOutcome = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this outcome?")) {
-      setLearningOutcomes((prev) => prev.filter((lo) => lo.id !== id));
+  const handleDeleteOutcome = async (id: string) => {
+    if (props.onDeleteOutcome) {
+      await props.onDeleteOutcome(id);
+    } else {
+      // Fallback to local state
+      if (window.confirm("Are you sure you want to delete this outcome?")) {
+        setLearningOutcomes((prev) => prev.filter((lo) => lo.id !== id));
+      }
     }
   };
 
@@ -1222,41 +1299,56 @@ const CurriculumBuilder: React.FC = () => {
   };
 
   // Submit for approval handler
-  const handleSubmitForApproval = () => {
-    if (!validateCurriculum()) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
+  const handleSubmitForApproval = async () => {
+    if (props.onSubmitForApproval) {
+      await props.onSubmitForApproval();
+    } else {
+      // Fallback to local state
+      if (!validateCurriculum()) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
 
-    if (
-      window.confirm(
-        "Are you sure you want to submit this curriculum for Academic Coordinator approval?"
-      )
-    ) {
-      setStatus("pending_approval");
-      setHasUnsavedChanges(false);
-      alert("Curriculum submitted for approval! The Academic Coordinator will review it.");
+      if (
+        window.confirm(
+          "Are you sure you want to submit this curriculum for Academic Coordinator approval?"
+        )
+      ) {
+        setStatus("pending_approval");
+        setHasUnsavedChanges(false);
+        alert("Curriculum submitted for approval! The Academic Coordinator will review it.");
+      }
     }
   };
 
   // Approve handler (for Academic Coordinator only)
-  const handleApprove = () => {
-    if (window.confirm("Approve this curriculum?")) {
-      setStatus("approved");
-      setApprovedBy("academic_coordinator_id"); // TODO: Get from auth context
-      setHasUnsavedChanges(false);
-      alert("Curriculum approved successfully!");
+  const handleApprove = async () => {
+    if (props.onApprove) {
+      await props.onApprove();
+    } else {
+      // Fallback to local state
+      if (window.confirm("Approve this curriculum?")) {
+        setStatus("approved");
+        setApprovedBy("academic_coordinator_id"); // TODO: Get from auth context
+        setHasUnsavedChanges(false);
+        alert("Curriculum approved successfully!");
+      }
     }
   };
 
   // Reject handler (for Academic Coordinator only)
-  const handleReject = () => {
-    const reason = prompt("Please provide a reason for rejection:");
-    if (reason) {
-      setStatus("rejected");
-      setRejectionReason(reason);
-      setHasUnsavedChanges(false);
-      alert("Curriculum rejected. Teacher will be notified.");
+  const handleReject = async () => {
+    if (props.onReject) {
+      await props.onReject();
+    } else {
+      // Fallback to local state
+      const reason = prompt("Please provide a reason for rejection:");
+      if (reason) {
+        setStatus("rejected");
+        setRejectionReason(reason);
+        setHasUnsavedChanges(false);
+        alert("Curriculum rejected. Teacher will be notified.");
+      }
     }
   };
 

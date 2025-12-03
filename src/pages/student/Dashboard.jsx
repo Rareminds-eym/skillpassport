@@ -57,7 +57,7 @@ import {
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useOpportunities } from "../../hooks/useOpportunities";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
-import { useAIJobMatching } from "../../hooks/useAIJobMatching";
+import { useAIRecommendations } from "../../hooks/useAIRecommendations";
 import { supabase } from "../../lib/supabaseClient";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
@@ -257,13 +257,23 @@ const StudentDashboard = () => {
     studentSkills: studentSkills,
   });
 
-  // AI Job Matching - Get top 3 matched jobs for student
+  // AI Job Recommendations - Vector-based matching with top 3 results
   const {
-    matchedJobs,
+    recommendations: matchedJobs,
     loading: matchingLoading,
     error: matchingError,
-    refreshMatches,
-  } = useAIJobMatching(studentData, !isViewingOthersProfile, 3);
+    refreshRecommendations: refreshMatches,
+    cached,
+    fallback,
+    trackView,
+    trackApply,
+    getMatchReasons,
+  } = useAIRecommendations({
+    studentId: studentData?.id,
+    enabled: !isViewingOthersProfile,
+    autoFetch: true,
+    limit: 3
+  });
 
   // Fetch recent updates data from recruitment tables (student-specific)
   const {
