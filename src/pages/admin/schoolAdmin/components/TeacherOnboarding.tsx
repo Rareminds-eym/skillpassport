@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Upload, FileText, CheckCircle, AlertCircle, X, Shield } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
-import { validateTeacherOnboarding, validateDocument } from "../../../../utils/teacherValidation";
+import { validateDocument } from "../../../../utils/teacherValidation";
 import { useUserRole } from "../../../../hooks/useUserRole";
 import RoleDebugger from "../../../../components/debug/RoleDebugger";
 
@@ -11,32 +11,19 @@ interface SubjectExpertise {
   years_experience: number;
 }
 
-interface ClassAssignment {
-  class_name: string;
-  subject: string;
-}
-
-interface Experience {
-  organization: string;
-  position: string;
-  start_date: string;
-  end_date: string;
-  description: string;
-}
-
 const TeacherOnboardingPage: React.FC = () => {
-  const { role, canAddTeacher, canApproveTeacher, isPrincipal, isITAdmin, isSchoolAdmin, loading: roleLoading } = useUserRole();
-  const [currentSection, setCurrentSection] = useState<"personal" | "subjects" | "experience" | "documents">("personal");
-  const [generatedTeacherId, setGeneratedTeacherId] = useState<string>("");
+  const { role, canAddTeacher, canApproveTeacher, isPrincipal, isSchoolAdmin, loading: roleLoading } = useUserRole();
   
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
     email: "",
-    phone: "",
-    date_of_birth: "",
-    address: "",
+    phone_number: "",
+    designation: "",
+    department: "",
     qualification: "",
+    specialization: "",
+    experience_years: 0,
     role: "subject_teacher" as "school_admin" | "principal" | "it_admin" | "class_teacher" | "subject_teacher",
   });
 
@@ -47,8 +34,6 @@ const TeacherOnboardingPage: React.FC = () => {
   });
 
   const [subjects, setSubjects] = useState<SubjectExpertise[]>([]);
-  const [classes, setClasses] = useState<ClassAssignment[]>([]);
-  const [experiences, setExperiences] = useState<Experience[]>([]);
   
   const [currentSubject, setCurrentSubject] = useState<SubjectExpertise>({
     name: "",
@@ -56,22 +41,8 @@ const TeacherOnboardingPage: React.FC = () => {
     years_experience: 0,
   });
 
-  const [currentClass, setCurrentClass] = useState<ClassAssignment>({
-    class_name: "",
-    subject: "",
-  });
-
-  const [currentExperience, setCurrentExperience] = useState<Experience>({
-    organization: "",
-    position: "",
-    start_date: "",
-    end_date: "",
-    description: "",
-  });
-
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const handleFileChange = (field: keyof typeof documents, files: FileList | null) => {
     if (!files) return;
@@ -88,23 +59,12 @@ const TeacherOnboardingPage: React.FC = () => {
     });
     
     if (errors.length > 0) {
-      setValidationErrors(prev => ({
-        ...prev,
-        [field]: errors.join(", ")
-      }));
       setMessage({
         type: "error",
         text: errors.join("; ")
       });
       return;
     }
-
-    // Clear validation error for this field
-    setValidationErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors[field];
-      return newErrors;
-    });
 
     if (field === "experience_letters") {
       setDocuments((prev) => ({
@@ -133,26 +93,6 @@ const TeacherOnboardingPage: React.FC = () => {
     setSubjects(subjects.filter((_, i) => i !== index));
   };
 
-  const addClass = () => {
-    if (!currentClass.class_name.trim() || !currentClass.subject.trim()) return;
-    setClasses([...classes, currentClass]);
-    setCurrentClass({ class_name: "", subject: "" });
-  };
-
-  const removeClass = (index: number) => {
-    setClasses(classes.filter((_, i) => i !== index));
-  };
-
-  const addExperience = () => {
-    if (!currentExperience.organization.trim() || !currentExperience.position.trim()) return;
-    setExperiences([...experiences, currentExperience]);
-    setCurrentExperience({ organization: "", position: "", start_date: "", end_date: "", description: "" });
-  };
-
-  const removeExperience = (index: number) => {
-    setExperiences(experiences.filter((_, i) => i !== index));
-  };
-
   const uploadFile = async (file: File, path: string): Promise<string> => {
     const fileExt = file.name.split(".").pop();
     const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -172,26 +112,21 @@ const TeacherOnboardingPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
-    setValidationErrors({});
 
-    // Validate all fields
-    const validation = validateTeacherOnboarding({
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-      email: formData.email,
-      phone: formData.phone,
-      subjects: subjects,
-      degree_certificate: documents.degree_certificate,
-      id_proof: documents.id_proof,
-      // Optional: Add school domain check
-      // schoolDomain: "yourschool.edu"
-    });
-
-    if (!validation.isValid) {
-      setValidationErrors(validation.errors);
+    // Basic validation
+    if (!formData.first_name || !formData.last_name || !formData.email) {
       setMessage({
         type: "error",
-        text: "Please fix the validation errors before submitting."
+        text: "Please fill in all required fields (First Name, Last Name, Email)."
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (subjects.length === 0) {
+      setMessage({
+        type: "error",
+        text: "Please add at least one subject expertise."
       });
       setLoading(false);
       return;
@@ -203,9 +138,18 @@ const TeacherOnboardingPage: React.FC = () => {
         ? await uploadFile(documents.degree_certificate, "degrees")
         : null;
 
-      const idProofUrl = documents.id_proof
-        ? await uploadFile(documents.id_proof, "id-proofs")
-        : null;
+      // If still no school_id, try to get from users table
+      if (!schoolId) {
+        const { data: userRecord } = await supabase
+          .from('users')
+          .select('school_id')
+          .eq('email', email)
+          .maybeSingle();
+
+        if (userRecord?.school_id) {
+          schoolId = userRecord.school_id;
+        }
+      }
 
       const experienceUrls = documents.experience_letters.length > 0
         ? await Promise.all(
@@ -393,11 +337,20 @@ const TeacherOnboardingPage: React.FC = () => {
       });
 
       // Reset form
-      setFormData({ first_name: "", last_name: "", email: "", phone: "", date_of_birth: "", address: "", qualification: "", role: "subject_teacher" });
+      setFormData({
+        first_name: "",
+        last_name: "",
+        email: "",
+        phone_number: "",
+        designation: "",
+        department: "",
+        qualification: "",
+        specialization: "",
+        experience_years: 0,
+        role: "subject_teacher"
+      });
       setDocuments({ degree_certificate: null, id_proof: null, experience_letters: [] });
       setSubjects([]);
-      setClasses([]);
-      setExperiences([]);
     } catch (error: any) {
       setMessage({ type: "error", text: error.message || "Failed to onboard teacher" });
     } finally {
@@ -489,9 +442,7 @@ const TeacherOnboardingPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                First Name *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
               <input
                 type="text"
                 required
@@ -501,9 +452,7 @@ const TeacherOnboardingPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Last Name *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
               <input
                 type="text"
                 required
@@ -523,11 +472,51 @@ const TeacherOnboardingPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
               <input
                 type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                value={formData.phone_number}
+                onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Designation</label>
+              <input
+                type="text"
+                value={formData.designation}
+                onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="e.g., Senior Teacher"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+              <input
+                type="text"
+                value={formData.department}
+                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="e.g., Science"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Qualification</label>
+              <input
+                type="text"
+                value={formData.qualification}
+                onChange={(e) => setFormData({ ...formData, qualification: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="e.g., M.Sc. Mathematics"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Total Experience (Years)</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.experience_years}
+                onChange={(e) => setFormData({ ...formData, experience_years: parseInt(e.target.value) || 0 })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
