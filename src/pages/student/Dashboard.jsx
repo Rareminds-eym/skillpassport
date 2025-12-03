@@ -66,7 +66,7 @@ import AchievementsTimeline from "../../components/Students/components/Achieveme
 import RecentUpdatesCard from "../../components/Students/components/RecentUpdatesCard";
 import { useStudentAchievements } from "../../hooks/useStudentAchievements";
 import { useNavigate } from "react-router-dom";
-import { useStudentTraining } from "../../hooks/useStudentTraining";
+import { useStudentLearning } from "../../hooks/useStudentLearning";
 import { useStudentCertificates } from "../../hooks/useStudentCertificates";
 import { useStudentProjects } from "../../hooks/useStudentProjects";
 import AnalyticsView from "../../components/Students/components/AnalyticsView";
@@ -149,11 +149,11 @@ const StudentDashboard = () => {
 
   // Fetch data from separate tables
   const {
-    training: tableTraining,
+    learning: tableTraining, // Renamed from training to learning in hook
     loading: trainingLoading,
     error: trainingError,
     refresh: refreshTraining
-  } = useStudentTraining(studentId, !!studentId && !isViewingOthersProfile);
+  } = useStudentLearning(studentId, !!studentId && !isViewingOthersProfile);
 
   const {
     certificates: tableCertificates,

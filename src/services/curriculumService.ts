@@ -1,7 +1,11 @@
+<<<<<<< HEAD
+import { supabase } from '../lib/supabaseClient';
+=======
 import { supabase } from "@/lib/supabaseClient";
 
 // Export supabase for use in hooks
 export { supabase };
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
 
 export interface AssessmentType {
   id: string;

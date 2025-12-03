@@ -263,7 +263,8 @@
 //   );
 // }
 import React, { useState } from "react";
-import { v4 as uuidv4 } from "uuid"; // For generating UUIDs
+// Using crypto.randomUUID() instead of uuid package
+const uuidv4 = () => crypto.randomUUID();
 
 export default function LibraryModule() {
   const [activeTab, setActiveTab] = useState("dashboard");

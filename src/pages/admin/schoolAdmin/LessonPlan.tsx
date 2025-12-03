@@ -27,6 +27,10 @@ import {
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
 import { FileTextIcon } from "lucide-react";
+<<<<<<< HEAD
+import { useCurriculum } from "../../../hooks/useLessonPlans";
+import type { LessonPlan as LessonPlanType } from "../../../services/lessonPlansService";
+=======
 import { lessonPlanService } from "../../../services/lessonPlanService";
 import { supabase } from "../../../lib/supabaseClient";
 import { 
@@ -40,6 +44,7 @@ import {
   type Chapter as CurriculumChapter,
   type LearningOutcome as CurriculumLearningOutcome
 } from "../../../services/curriculumService";
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
 
 /* ==============================
    TYPES & INTERFACES
@@ -580,8 +585,35 @@ const ViewLessonPlanModal = ({
 };
 
 /* ==============================
+   PROPS INTERFACE
+   ============================== */
+interface LessonPlanProps {
+  initialLessonPlans?: LessonPlanType[];
+  onCreateLessonPlan?: (formData: any, classId: string) => Promise<{ data: any; error: any }>;
+  onUpdateLessonPlan?: (id: string, formData: any, classId: string) => Promise<{ data: any; error: any }>;
+  onDeleteLessonPlan?: (id: string) => Promise<{ error: any }>;
+  subjects?: string[];
+  classes?: any[];
+  schoolId?: string;
+}
+
+/* ==============================
    MAIN COMPONENT
    ============================== */
+<<<<<<< HEAD
+const LessonPlan: React.FC<LessonPlanProps> = ({
+  initialLessonPlans = [],
+  onCreateLessonPlan,
+  onUpdateLessonPlan,
+  onDeleteLessonPlan,
+  subjects: propSubjects,
+  classes: propClasses,
+  schoolId,
+}) => {
+  // Use props or fallback to sample data
+  const subjects = propSubjects || ["Mathematics", "Physics", "Chemistry", "Biology", "English", "History"];
+  const classes = propClasses?.map(c => c.grade || c) || ["9", "10", "11", "12"];
+=======
 const LessonPlan: React.FC = () => {
   // State for dynamic data
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -591,12 +623,43 @@ const LessonPlan: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [currentAcademicYear, setCurrentAcademicYear] = useState<string>("");
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
 
   // Load initial data
   useEffect(() => {
     loadInitialData();
   }, []);
 
+<<<<<<< HEAD
+  // Convert backend data to UI format
+  const convertToUIFormat = (backendPlans: LessonPlanType[]): LessonPlan[] => {
+    return backendPlans.map(plan => ({
+      id: plan.id,
+      title: plan.title,
+      subject: plan.subject,
+      class: plan.class_name,
+      date: plan.date,
+      chapterId: plan.chapter_id || "",
+      chapterName: plan.chapter_name || "",
+      duration: plan.duration ? `${plan.duration} minutes` : "",
+      selectedLearningOutcomes: plan.selected_learning_outcomes || [],
+      learningObjectives: plan.learning_objectives,
+      teachingMethodology: plan.teaching_methodology || "",
+      requiredMaterials: plan.required_materials || "",
+      resourceFiles: plan.resource_files || [],
+      resourceLinks: plan.resource_links || [],
+      evaluationCriteria: plan.evaluation_criteria || "",
+      evaluationItems: plan.evaluation_items || [],
+      homework: plan.homework,
+      differentiationNotes: plan.differentiation_notes,
+    }));
+  };
+
+  // State
+  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>(
+    initialLessonPlans ? convertToUIFormat(initialLessonPlans) : []
+  );
+=======
   const loadInitialData = async () => {
     try {
       setLoading(true);
@@ -692,6 +755,7 @@ const LessonPlan: React.FC = () => {
       console.error("Error loading curriculum:", error);
     }
   };
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
 
   const [showEditor, setShowEditor] = useState(false);
   const [editingPlan, setEditingPlan] = useState<LessonPlan | null>(null);
@@ -736,6 +800,24 @@ const LessonPlan: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  // Use curriculum hook for backend data
+  const { chapters, learningOutcomes, loadChapters, loadLearningOutcomes } = 
+    useCurriculum(formData.subject, formData.class);
+
+  // Load chapters when subject and class are selected
+  useEffect(() => {
+    if (formData.subject && formData.class && chapters.length > 0) {
+      // Chapters are automatically loaded by the hook
+    }
+  }, [formData.subject, formData.class, chapters]);
+
+  // Load learning outcomes when chapter is selected
+  useEffect(() => {
+    if (formData.chapterId) {
+      loadLearningOutcomes(formData.chapterId);
+    }
+  }, [formData.chapterId, loadLearningOutcomes]);
+
   // Filter lesson plans
   const filteredPlans = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -765,6 +847,10 @@ const LessonPlan: React.FC = () => {
     }, {} as Record<string, number>),
   };
 
+<<<<<<< HEAD
+  // Get available chapters from curriculum hook
+  const availableChapters = chapters;
+=======
   // Get available curriculums based on selected subject and class
   const availableCurriculums = useMemo(() => {
     if (!formData.subject || !formData.class) return [];
@@ -778,19 +864,15 @@ const LessonPlan: React.FC = () => {
     if (availableCurriculums.length === 0) return [];
     return availableCurriculums[0].chapters;
   }, [availableCurriculums]);
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
 
   // Get learning outcomes for selected chapter
-  const availableLearningOutcomes = useMemo(() => {
-    if (!formData.chapterId || availableCurriculums.length === 0) return [];
-    return availableCurriculums[0].learningOutcomes.filter(
-      (lo) => lo.chapterId === formData.chapterId
-    );
-  }, [formData.chapterId, availableCurriculums]);
+  const availableLearningOutcomes = learningOutcomes;
 
   // Get selected chapter details
   const selectedChapter = useMemo(() => {
     if (!formData.chapterId) return null;
-    return availableChapters.find((ch) => ch.id === formData.chapterId);
+    return availableChapters.find((ch: any) => ch.id === formData.chapterId);
   }, [formData.chapterId, availableChapters]);
 
   // Auto-fill duration when chapter is selected
@@ -945,8 +1027,13 @@ const LessonPlan: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+<<<<<<< HEAD
+  // Handle submit
+  const handleSubmit = async () => {
+=======
   // Handle submit with status parameter
   const handleSubmit = async (status: 'draft' | 'approved' = 'draft') => {
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
     if (!validateForm()) {
       return;
     }
@@ -954,6 +1041,95 @@ const LessonPlan: React.FC = () => {
     setSubmitting(true);
 
     try {
+<<<<<<< HEAD
+      // Find class ID
+      const classObj = propClasses?.find((c: any) => c.grade === formData.class || c === formData.class);
+      const classId = classObj?.id || "";
+
+      if (!classId) {
+        alert("Class not found. Please select a valid class.");
+        setSubmitting(false);
+        return;
+      }
+
+      const submitData = {
+        ...formData,
+        selectedLearningOutcomes,
+        resourceFiles,
+        resourceLinks,
+        evaluationItems,
+      };
+
+      if (editingPlan) {
+        // Update existing lesson plan
+        if (onUpdateLessonPlan) {
+          const { data, error } = await onUpdateLessonPlan(editingPlan.id, submitData, classId);
+          if (error) {
+            alert("Error updating lesson plan: " + error);
+            setSubmitting(false);
+            return;
+          }
+          if (data) {
+            const converted = convertToUIFormat([data])[0];
+            setLessonPlans((prev) =>
+              prev.map((p) => (p.id === editingPlan.id ? converted : p))
+            );
+          }
+        } else {
+          // Fallback to local state update
+          const chapter = selectedChapter;
+          const duration = chapter?.estimatedDuration
+            ? `${chapter.estimatedDuration} ${chapter.durationUnit}`
+            : undefined;
+          setLessonPlans((prev) =>
+            prev.map((p) =>
+              p.id === editingPlan.id
+                ? {
+                    ...p,
+                    ...formData,
+                    chapterName: chapter?.name || "",
+                    duration,
+                    selectedLearningOutcomes,
+                    resourceFiles,
+                    resourceLinks,
+                    evaluationItems,
+                  }
+                : p
+            )
+          );
+        }
+      } else {
+        // Create new lesson plan
+        if (onCreateLessonPlan) {
+          const { data, error } = await onCreateLessonPlan(submitData, classId);
+          if (error) {
+            alert("Error creating lesson plan: " + error);
+            setSubmitting(false);
+            return;
+          }
+          if (data) {
+            const converted = convertToUIFormat([data])[0];
+            setLessonPlans([converted, ...lessonPlans]);
+          }
+        } else {
+          // Fallback to local state update
+          const chapter = selectedChapter;
+          const duration = chapter?.estimatedDuration
+            ? `${chapter.estimatedDuration} ${chapter.durationUnit}`
+            : undefined;
+          const newPlan: LessonPlan = {
+            id: Date.now().toString(),
+            ...formData,
+            chapterName: chapter?.name || "",
+            duration,
+            selectedLearningOutcomes,
+            resourceFiles,
+            resourceLinks,
+            evaluationItems,
+          };
+          setLessonPlans([newPlan, ...lessonPlans]);
+        }
+=======
       // Get the current educator's ID
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -1079,13 +1255,19 @@ const LessonPlan: React.FC = () => {
           differentiationNotes: created.differentiation_notes || "",
         };
         setLessonPlans([newPlan, ...lessonPlans]);
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
       }
 
       resetForm();
       setShowEditor(false);
+<<<<<<< HEAD
+    } catch (error: any) {
+      alert("Error: " + error.message);
+=======
     } catch (error) {
       console.error("Error saving lesson plan:", error);
       alert("Failed to save lesson plan. Please try again.");
+>>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
     } finally {
       setSubmitting(false);
     }
