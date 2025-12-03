@@ -38,16 +38,19 @@ const Courses = () => {
       setLoading(true);
 
       // Fetch courses with status Active or Upcoming (students shouldn't see Drafts)
+      // Also exclude deleted courses
       let query = supabase
         .from('courses')
         .select('*')
         .in('status', ['Active', 'Upcoming'])
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       const { data, error } = await query;
 
       if (error) throw error;
 
+      console.log('📚 Fetched courses for students:', data?.length || 0);
       setCourses(data || []);
     } catch (error) {
       console.error('Error fetching courses:', error);

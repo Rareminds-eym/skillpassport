@@ -143,7 +143,7 @@ export const getActiveSubscription = async () => {
     if (data && !error) {
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('entity_type, role')
+        .select('role')
         .eq('id', userId)
         .maybeSingle();
       
@@ -176,7 +176,7 @@ export const getActiveSubscription = async () => {
       if (recentSub && !recentError) {
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('entity_type, role')
+          .select('role')
           .eq('id', userId)
           .maybeSingle();
         

@@ -1,7 +1,16 @@
 export const USER_ROLES = {
-  ADMIN: 'admin',
+  SUPER_ADMIN: 'super_admin',
+  RM_ADMIN: 'rm_admin',
+  RM_MANAGER: 'rm_manager',
+  SCHOOL_ADMIN: 'school_admin',
+  COLLEGE_ADMIN: 'college_admin',
+  UNIVERSITY_ADMIN: 'university_admin',
+  COMPANY_ADMIN: 'company_admin',
+  SCHOOL_EDUCATOR: 'school_educator',
+  COLLEGE_EDUCATOR: 'college_educator',
   RECRUITER: 'recruiter',
-  STUDENT: 'student',
+  SCHOOL_STUDENT: 'school_student',
+  COLLEGE_STUDENT: 'college_student',
 };
 
 export const JOB_TYPES = {

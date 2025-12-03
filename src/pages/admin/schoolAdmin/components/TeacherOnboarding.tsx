@@ -338,7 +338,7 @@ const TeacherOnboardingPage: React.FC = () => {
         .insert({
           id: userId,
           email: formData.email,
-          role: 'educator',
+          role: 'school_educator',
         })
         .select()
         .single();

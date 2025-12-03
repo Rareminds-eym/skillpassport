@@ -81,26 +81,11 @@ const LoginAdmin = () => {
         return;
       }
 
-      // Query the schools table for the entered email
-      const { data: school, error: schoolError } = await supabase
-        .from('schools')
-        .select('*')
-        .eq('email', email.trim())
-        .single();
-
-      if (schoolError || !school) {
-        throw new Error('Invalid email or school not found');
-      }
-
-      // Check if the school is approved
-      if (school.approval_status !== 'approved') {
-        throw new Error(
-          school.approval_status === 'pending'
-            ? 'Your school registration is pending approval. Please contact RareMinds admin.'
-            : school.approval_status === 'rejected'
-            ? `Your school registration was rejected. Reason: ${school.rejection_reason || 'Not specified'}. Please contact RareMinds admin.`
-            : 'Your school account is not approved. Please contact RareMinds admin.'
-        );
+      // Use the loginAdmin service for actual authentication
+      const result = await loginAdmin(email, password);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Login failed');
       }
 
       // Store admin data in context
@@ -129,8 +114,6 @@ const LoginAdmin = () => {
       setIsLoading(false);
     }
   };
-
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">

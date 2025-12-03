@@ -14,15 +14,14 @@ import { supabase } from '../lib/supabaseClient';
  */
 export const createUserRecord = async (userId, userData) => {
   try {
-    const { email, firstName, lastName, role, entity_type } = userData;
+    const { email, firstName, lastName, user_role, role } = userData;
 
     const userRecord = {
       id: userId,
       email: email,
       firstName: firstName || null,
       lastName: lastName || null,
-      role: role || 'student',
-      entity_type: entity_type || 'student',
+      role: role || user_role || 'school_student',
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -76,13 +75,19 @@ export const createStudent = async (studentData, userId) => {
       collegeId
     } = studentData;
 
+    // Normalize studentType - handle both simple types and hyphenated types
+    // e.g., 'college', 'college-student' -> 'college'
+    const normalizedStudentType = studentType?.toLowerCase().replace('-student', '').replace('-educator', '') || 'school';
+    
     // Prepare student record
+    // IMPORTANT: id must match userId due to FK constraint students_id_fkey -> users.id
     const student = {
+      id: userId, // Required: students.id must reference users.id
       user_id: userId,
       name: name,
       email: email,
       contact_number: phone || null, // Use contact_number instead of phone
-      student_type: studentType || 'school',
+      student_type: normalizedStudentType,
       school_id: schoolId || null,
       college_id: collegeId || null,
       profile: {
@@ -148,12 +153,19 @@ export const completeStudentRegistration = async (userId, registrationData) => {
     const lastName = nameParts.slice(1).join(' ') || '';
 
     // Step 1: Create user record
+    // Map studentType to user_role - handle both simple types and hyphenated types
+    // e.g., 'college', 'college-student', 'school', 'school-student', 'university', 'university-student'
+    const normalizedType = studentType?.toLowerCase().replace('-student', '').replace('-educator', '') || 'school';
+    const userRoleMap = {
+      'school': 'school_student',
+      'college': 'college_student',
+      'university': 'college_student' // University students use college_student role
+    };
     const userResult = await createUserRecord(userId, {
       email: email,
       firstName: firstName,
       lastName: lastName,
-      role: 'student',
-      entity_type: studentType || 'student'
+      user_role: userRoleMap[normalizedType] || 'school_student'  // user_role is passed to createUserRecord which maps to 'role' column
     });
 
     if (!userResult.success) {

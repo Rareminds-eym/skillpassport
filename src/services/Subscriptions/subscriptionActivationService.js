@@ -292,7 +292,7 @@ const createSubscriptionRecord = async (data) => {
       subscription_start_date: new Date().toISOString(),
       subscription_end_date: calculateEndDate(plan.duration),
       auto_renew: false,
-      // user_role removed - now fetched from users.entity_type instead
+      // user_role is now fetched from users.user_role column
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };

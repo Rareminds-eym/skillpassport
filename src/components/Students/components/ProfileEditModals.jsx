@@ -5165,10 +5165,23 @@ export const TrainingEditModal = ({ isOpen, onClose, data, onSave }) => {
 
   const statusOptions = ["ongoing", "completed"];
 
+  // Known organizations that don't require assessment
+  const knownOrganizations = [
+    'Coursera', 'Udemy', 'edX', 'LinkedIn Learning', 'Pluralsight',
+    'Udacity', 'Khan Academy', 'FreeCodeCamp', 'Codecademy', 'Skillshare',
+    'DataCamp', 'Treehouse', 'Codecademy', 'Simplilearn', 'Great Learning'
+  ];
+
   const [courses, setCourses] = useState([]);
   const [formCourse, setFormCourse] = useState(emptyCourse);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [showAssessment, setShowAssessment] = useState(false);
+  const [assessmentQuestions, setAssessmentQuestions] = useState([]);
+  const [currentAnswers, setCurrentAnswers] = useState({});
+  const [assessmentScore, setAssessmentScore] = useState(null);
+  const [certificateLevel, setCertificateLevel] = useState('');
+  const [isExternal, setIsExternal] = useState(false);
   const { toast } = useToast();
 
   // Helper function to clamp progress between 0-100

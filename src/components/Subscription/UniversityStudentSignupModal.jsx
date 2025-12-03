@@ -221,8 +221,7 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
         email: formData.email,
         firstName: nameParts[0] || '',
         lastName: nameParts.slice(1).join(' ') || null,
-        role: 'student',
-        entity_type: 'university',
+        role: 'college_student',
         isActive: true
       });
 

@@ -715,9 +715,10 @@ const ClassesPage = () => {
     fetchEducatorInfo()
   }, [])
   
-  // Fetch classes filtered by educator's school
+  // Fetch classes filtered by educator's school and assigned classes
   const { classes, loading, error, stats, upsertClass } = useClasses({ 
-    schoolId: educatorSchool?.id 
+    schoolId: educatorSchool?.id,
+    educatorId: educatorInfo?.id
   })
   
   const [viewMode, setViewMode] = useState("grid")

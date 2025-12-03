@@ -1,4 +1,4 @@
-import React, { useState, useMemo, ChangeEvent, useEffect } from 'react';
+import { useState, useMemo, ChangeEvent, useEffect } from 'react';
 import {
     PlusIcon,
     MagnifyingGlassIcon,
@@ -17,9 +17,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import {
-    createAssignment,
+    createAssignmentsForClasses,
     getAssignmentsByEducator,
-    updateAssignment,
     deleteAssignment,
     addAssignmentAttachment,
     assignToStudents,
@@ -33,7 +32,6 @@ import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 
 // Configuration
 const SKILL_AREAS = ['Creativity', 'Collaboration', 'Critical Thinking', 'Leadership', 'Communication', 'Problem Solving'];
-const CLASSES = ['Class 9A', 'Class 9B', 'Class 10A', 'Class 10B', 'Class 11A', 'Class 12A'];
 
 // Badge Component
 const StatusBadge = ({ status }: { status: string }) => {
@@ -69,9 +67,27 @@ const ProgressBar = ({ current, total, color = 'emerald' }: { current: number; t
 };
 
 // Task Card Component
-const TaskCard = ({ task, onView, onEdit, onAssess, onDelete, onAssignStudents }) => {
+const TaskCard = ({ task, onView, onEdit, onAssess, onDelete, onAssignStudents, assignedClasses }: {
+    task: Task;
+    onView: (task: Task) => void;
+    onEdit: (task: Task) => void;
+    onAssess: (task: Task) => void;
+    onDelete: (task: Task) => void;
+    onAssignStudents: (task: Task) => void;
+    assignedClasses: Array<{ id: string; name: string }>;
+}) => {
     const [showActions, setShowActions] = useState(false);
     const completionRate = task.totalStudents > 0 ? ((task.submissions / task.totalStudents) * 100).toFixed(0) : 0;
+    
+    // Get class names from IDs
+    const getClassNames = () => {
+        return task.assignedTo.map((classId: string) => {
+            const cls = assignedClasses.find((c: { id: string; name: string }) => c.id === classId);
+            return cls ? cls.name : classId;
+        });
+    };
+    
+    const classNames = getClassNames();
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all duration-200 group">
@@ -128,7 +144,7 @@ const TaskCard = ({ task, onView, onEdit, onAssess, onDelete, onAssignStudents }
                     </div>
                     <div className="flex items-center gap-2 text-gray-600">
                         <UsersIcon className="h-4 w-4" />
-                        <span>{task.assignedTo.length} class(es)</span>
+                        <span>{classNames.length > 0 ? classNames.join(', ') : 'No classes'}</span>
                     </div>
                 </div>
 
@@ -158,13 +174,31 @@ const TaskCard = ({ task, onView, onEdit, onAssess, onDelete, onAssignStudents }
     );
 };
 
+// Types
+interface Task {
+    id: string;
+    title: string;
+    description: string;
+    skillTags: string[];
+    status: string;
+    assignedTo: string[];
+    deadline: string;
+    submissions: number;
+    pending: number;
+    averageScore: number;
+    totalStudents: number;
+    totalPoints: number;
+    attachments: string[];
+    rubric: any[];
+}
+
 // Main Component
 const Assessments = () => {
     const { user, isAuthenticated } = useAuth();
     const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
-    const [tasks, setTasks] = useState([]);
+    const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [skillFilter, setSkillFilter] = useState('All');
@@ -172,11 +206,12 @@ const Assessments = () => {
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [showDetailDrawer, setShowDetailDrawer] = useState(false);
     const [showGradingModal, setShowGradingModal] = useState(false);
-    const [selectedTask, setSelectedTask] = useState(null);
-    const [activeTab, setActiveTab] = useState('overview');
-    const [currentEducatorId, setCurrentEducatorId] = useState(null);
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [currentEducatorId, setCurrentEducatorId] = useState<string | null>(null);
     const [showStudentSelectionModal, setShowStudentSelectionModal] = useState(false);
-    const [newlyCreatedAssignmentId, setNewlyCreatedAssignmentId] = useState(null);
+    const [newlyCreatedAssignmentId, setNewlyCreatedAssignmentId] = useState<string | null>(null);
+    const [selectedClassesForAssignment, setSelectedClassesForAssignment] = useState<string[]>([]);
+    const [assignedClasses, setAssignedClasses] = useState<Array<{ id: string; name: string }>>([]);
 
     // New Task Form State - Matching database schema
     const [newTask, setNewTask] = useState({
@@ -193,12 +228,19 @@ const Assessments = () => {
         deadline: '',
         availableFrom: '',
         allowLateSubmissions: true,
-        attachments: [],
+        attachments: [] as string[],
         documentPdf: ''
     });
     const [additionalSkills, setAdditionalSkills] = useState<string[]>([]);
     const [customSkill, setCustomSkill] = useState('');
     const allSkills = useMemo(() => [...SKILL_AREAS, ...additionalSkills], [additionalSkills]);
+
+    // Reset form when modal closes
+    useEffect(() => {
+        if (!showTaskModal && !selectedTask) {
+            resetTaskForm();
+        }
+    }, [showTaskModal]);
 
     // Fetch current educator and their assignments
     useEffect(() => {
@@ -259,13 +301,45 @@ const Assessments = () => {
 
                 setCurrentEducatorId(educatorId);
 
+                // Fetch educator's school_id first
+                const { data: educatorData, error: educatorFetchError } = await supabase
+                    .from('school_educators')
+                    .select('school_id')
+                    .eq('id', educatorId)
+                    .single();
+
+                if (!educatorFetchError && educatorData?.school_id) {
+                    // Fetch all classes from the educator's school
+                    const { data: classesData, error: classesError } = await supabase
+                        .from('school_classes')
+                        .select('id, name, grade, section')
+                        .eq('school_id', educatorData.school_id)
+                        .eq('account_status', 'active')
+                        .order('grade', { ascending: true })
+                        .order('section', { ascending: true });
+
+                    if (!classesError && classesData) {
+                        setAssignedClasses(classesData.map(cls => ({
+                            id: cls.id,
+                            name: cls.name || `Grade ${cls.grade}${cls.section ? ' - ' + cls.section : ''}`
+                        })));
+                    }
+                }
+
                 // Fetch assignments for this educator
                 const assignments = await getAssignmentsByEducator(educatorId);
 
                 // Transform assignments to match the component's expected format
-                const transformedTasks = await Promise.all(assignments.map(async (assignment) => {
+                const transformedTasks = await Promise.all(assignments.map(async (assignment: any) => {
                     // Fetch statistics for each assignment
                     const stats = await getAssignmentStatistics(assignment.assignment_id);
+
+                    // Parse assigned class IDs
+                    const assignedClassIds = assignment.assign_classes ? 
+                        (typeof assignment.assign_classes === 'string' ? 
+                            assignment.assign_classes.split(',').map((c: string) => c.trim()) : 
+                            [assignment.assign_classes]) : 
+                        [];
 
                     return {
                         id: assignment.assignment_id,
@@ -273,14 +347,14 @@ const Assessments = () => {
                         description: assignment.description || '',
                         skillTags: assignment.skill_outcomes || [],
                         status: assignment.is_deleted ? 'Closed' : 'Active',
-                        assignedTo: assignment.assign_classes ? assignment.assign_classes.split(',').map(c => c.trim()) : [],
+                        assignedTo: assignedClassIds,
                         deadline: assignment.due_date,
                         submissions: stats.submitted + stats.graded,
                         pending: stats.submitted,
                         averageScore: stats.averageGrade,
                         totalStudents: stats.total,
                         totalPoints: assignment.total_points,
-                        attachments: assignment.assignment_attachments?.map(a => a.file_name) || [],
+                        attachments: assignment.assignment_attachments?.map((a: any) => a.file_name) || [],
                         rubric: []
                     };
                 }));
@@ -305,7 +379,7 @@ const Assessments = () => {
                 task.description.toLowerCase().includes(searchQuery.toLowerCase());
             const matchesStatus = statusFilter === 'All' || task.status === statusFilter;
             const matchesSkill = skillFilter === 'All' || task.skillTags.includes(skillFilter);
-            const matchesClass = classFilter === 'All' || task.assignedTo.some(c => c === classFilter);
+            const matchesClass = classFilter === 'All' || task.assignedTo.some(c => c === classFilter || task.assignedTo.includes(classFilter));
 
             return matchesSearch && matchesStatus && matchesSkill && matchesClass;
         });
@@ -338,8 +412,12 @@ const Assessments = () => {
                 return;
             }
 
-            // Create assignment in database
-            const assignmentData = {
+            if (newTask.assignedTo.length === 0) {
+                alert('Please select at least one class to assign the task.');
+                return;
+            }
+
+            const baseAssignmentData = {
                 title: newTask.title,
                 description: newTask.description,
                 instructions: newTask.instructions || newTask.description,
@@ -350,49 +428,97 @@ const Assessments = () => {
                 total_points: newTask.totalPoints,
                 assignment_type: newTask.assignmentType,
                 skill_outcomes: newTask.skillTags,
-                assign_classes: newTask.assignedTo.join(', '),
                 document_pdf: newTask.documentPdf || null,
                 due_date: newTask.deadline,
                 available_from: newTask.availableFrom || new Date().toISOString(),
                 allow_late_submission: newTask.allowLateSubmissions
             };
 
-            const createdAssignment = await createAssignment(assignmentData);
+            if (selectedTask) {
+                // Update existing assignment - update school_class_id as well
+                const updateData = {
+                    ...baseAssignmentData,
+                    assign_classes: newTask.assignedTo[0],
+                    school_class_id: newTask.assignedTo[0]
+                };
 
-            // Add attachments if any
-            for (const attachment of newTask.attachments) {
-                await addAssignmentAttachment(createdAssignment.assignment_id, {
-                    file_name: attachment,
-                    file_type: 'application/pdf',
-                    file_size: 0,
-                    file_url: ''
-                });
+                const { error } = await supabase
+                    .from('assignments')
+                    .update(updateData)
+                    .eq('assignment_id', selectedTask.id);
+
+                if (error) {
+                    throw error;
+                }
+
+                // Update the task in the UI
+                const stats = await getAssignmentStatistics(selectedTask.id);
+                const updatedTask: Task = {
+                    id: selectedTask.id,
+                    title: baseAssignmentData.title,
+                    description: baseAssignmentData.description || '',
+                    skillTags: baseAssignmentData.skill_outcomes || [],
+                    status: newTask.status,
+                    assignedTo: [newTask.assignedTo[0]],
+                    deadline: baseAssignmentData.due_date,
+                    submissions: stats.submitted + stats.graded,
+                    pending: stats.submitted,
+                    averageScore: stats.averageGrade,
+                    totalStudents: stats.total,
+                    totalPoints: baseAssignmentData.total_points,
+                    attachments: newTask.attachments,
+                    rubric: []
+                };
+
+                setTasks(tasks.map(t => t.id === selectedTask.id ? updatedTask : t));
+                setShowTaskModal(false);
+                setSelectedTask(null);
+                resetTaskForm();
+                return;
+            } else {
+                // Create new assignments - one row per selected class
+                const createdAssignments = await createAssignmentsForClasses(baseAssignmentData, newTask.assignedTo);
+
+                // Add attachments to each created assignment
+                for (const assignment of createdAssignments) {
+                    for (const attachment of newTask.attachments) {
+                        await addAssignmentAttachment(assignment.assignment_id, {
+                            file_name: attachment,
+                            file_type: 'application/pdf',
+                            file_size: 0,
+                            file_url: ''
+                        });
+                    }
+                }
+
+                // Transform to UI format - create one UI task per assignment
+                const newUiTasks: Task[] = createdAssignments.map((assignment: any) => ({
+                    id: assignment.assignment_id,
+                    title: assignment.title,
+                    description: assignment.description || '',
+                    skillTags: assignment.skill_outcomes || [],
+                    status: newTask.status,
+                    assignedTo: [assignment.school_class_id],
+                    deadline: assignment.due_date,
+                    submissions: 0,
+                    pending: 0,
+                    averageScore: 0,
+                    totalStudents: 0,
+                    totalPoints: assignment.total_points,
+                    attachments: newTask.attachments,
+                    rubric: []
+                }));
+
+                setTasks([...tasks, ...newUiTasks]);
+                setShowTaskModal(false);
+
+                // Open student selection modal for the first created assignment
+                if (createdAssignments.length > 0) {
+                    setNewlyCreatedAssignmentId(createdAssignments[0].assignment_id);
+                    setSelectedClassesForAssignment([createdAssignments[0].school_class_id]);
+                    setShowStudentSelectionModal(true);
+                }
             }
-
-            // Transform to UI format
-            const uiTask = {
-                id: createdAssignment.assignment_id,
-                title: createdAssignment.title,
-                description: createdAssignment.description || '',
-                skillTags: createdAssignment.skill_outcomes || [],
-                status: newTask.status,
-                assignedTo: newTask.assignedTo,
-                deadline: createdAssignment.due_date,
-                submissions: 0,
-                pending: 0,
-                averageScore: 0,
-                totalStudents: 0,
-                totalPoints: createdAssignment.total_points,
-                attachments: newTask.attachments,
-                rubric: newTask.rubric
-            };
-
-            setTasks([...tasks, uiTask]);
-            setShowTaskModal(false);
-
-            // Open student selection modal after creating assignment
-            setNewlyCreatedAssignmentId(createdAssignment.assignment_id);
-            setShowStudentSelectionModal(true);
         } catch (err) {
             console.error('Error creating assignment:', err);
             alert('Failed to create assignment. Please try again.');
@@ -490,6 +616,7 @@ const Assessments = () => {
 
             setShowStudentSelectionModal(false);
             setNewlyCreatedAssignmentId(null);
+            setSelectedClassesForAssignment([]);
             resetTaskForm();
         } catch (err) {
             console.error('Error assigning students:', err);
@@ -500,6 +627,7 @@ const Assessments = () => {
     const handleStudentSelectionClose = () => {
         setShowStudentSelectionModal(false);
         setNewlyCreatedAssignmentId(null);
+        setSelectedClassesForAssignment([]);
         resetTaskForm();
     };
 
@@ -583,8 +711,8 @@ const Assessments = () => {
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     >
                         <option value="All">All Classes</option>
-                        {CLASSES.map((cls: string) => (
-                            <option key={cls} value={cls}>{cls}</option>
+                        {assignedClasses.map((cls) => (
+                            <option key={cls.id} value={cls.id}>{cls.name}</option>
                         ))}
                     </select>
 
@@ -689,13 +817,51 @@ const Assessments = () => {
                         <TaskCard
                             key={task.id}
                             task={task}
+                            assignedClasses={assignedClasses}
                             onView={(task) => {
                                 setSelectedTask(task);
                                 setShowDetailDrawer(true);
                             }}
-                            onEdit={(task) => {
-                                setSelectedTask(task);
-                                setShowTaskModal(true);
+                            onEdit={async (task) => {
+                                // Fetch full assignment details from database first
+                                try {
+                                    const { data: assignment, error } = await supabase
+                                        .from('assignments')
+                                        .select('*')
+                                        .eq('assignment_id', task.id)
+                                        .single();
+
+                                    if (!error && assignment) {
+                                        // Populate form with full assignment data
+                                        setNewTask({
+                                            title: assignment.title,
+                                            description: assignment.description || '',
+                                            instructions: assignment.instructions || assignment.description || '',
+                                            courseName: assignment.course_name || '',
+                                            courseCode: assignment.course_code || '',
+                                            totalPoints: assignment.total_points || 100,
+                                            assignmentType: assignment.assignment_type || 'project',
+                                            status: assignment.is_deleted ? 'Closed' : 'Active',
+                                            skillTags: assignment.skill_outcomes || [],
+                                            assignedTo: assignment.assign_classes ? [assignment.assign_classes] : [],
+                                            deadline: assignment.due_date ? assignment.due_date.replace('Z', '').slice(0, 16) : '',
+                                            availableFrom: assignment.available_from ? assignment.available_from.replace('Z', '').slice(0, 16) : '',
+                                            allowLateSubmissions: assignment.allow_late_submission ?? true,
+                                            attachments: [],
+                                            documentPdf: assignment.document_pdf || ''
+                                        });
+                                        
+                                        // Set selected task and open modal after data is populated
+                                        setSelectedTask(task);
+                                        setShowTaskModal(true);
+                                    } else {
+                                        console.error('Error fetching assignment:', error);
+                                        alert('Failed to load assignment details');
+                                    }
+                                } catch (err) {
+                                    console.error('Error fetching assignment details:', err);
+                                    alert('Failed to load assignment details');
+                                }
                             }}
                             onAssess={(task) => {
                                 setSelectedTask(task);
@@ -703,6 +869,7 @@ const Assessments = () => {
                             }}
                             onAssignStudents={(task) => {
                                 setNewlyCreatedAssignmentId(task.id);
+                                setSelectedClassesForAssignment(task.assignedTo);
                                 setShowStudentSelectionModal(true);
                             }}
                             onDelete={async (task) => {
@@ -920,19 +1087,25 @@ const Assessments = () => {
                             {/* Assignment */}
                             <div>
                                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Assign to Classes</h3>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {CLASSES.map((cls: string) => (
-                                        <label key={cls} className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={newTask.assignedTo.includes(cls)}
-                                                onChange={() => handleClassToggle(cls)}
-                                                className="rounded text-emerald-600 focus:ring-emerald-500"
-                                            />
-                                            <span className="text-sm text-gray-700">{cls}</span>
-                                        </label>
-                                    ))}
-                                </div>
+                                {assignedClasses.length === 0 ? (
+                                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-center">
+                                        <p className="text-sm text-amber-700">No classes assigned to you yet. Please contact your school admin.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {assignedClasses.map((cls) => (
+                                            <label key={cls.id} className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={newTask.assignedTo.includes(cls.id)}
+                                                    onChange={() => handleClassToggle(cls.id)}
+                                                    className="rounded text-emerald-600 focus:ring-emerald-500"
+                                                />
+                                                <span className="text-sm text-gray-700">{cls.name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             <div>
@@ -978,7 +1151,7 @@ const Assessments = () => {
                                     disabled={!newTask.title || !newTask.courseName || !newTask.deadline || newTask.skillTags.length === 0 || newTask.assignedTo.length === 0}
                                     className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                                 >
-                                    {newTask.status === 'Active' ? 'Publish Assignment' : 'Save as Draft'}
+                                    {selectedTask ? 'Update Assignment' : (newTask.status === 'Active' ? 'Publish Assignment' : 'Save as Draft')}
                                 </button>
                             </div>
                         </div>
@@ -1025,11 +1198,15 @@ const Assessments = () => {
                                 <div>
                                     <h3 className="text-sm font-semibold text-gray-900 mb-2">Assigned Classes</h3>
                                     <div className="flex flex-wrap gap-2">
-                                        {selectedTask.assignedTo.map((cls: string) => (
-                                            <span key={cls} className="px-3 py-1 bg-blue-50 text-blue-700 text-sm rounded-lg border border-blue-200">
-                                                {cls}
-                                            </span>
-                                        ))}
+                                        {selectedTask.assignedTo.map((classId: string) => {
+                                            const cls = assignedClasses.find(c => c.id === classId);
+                                            const className = cls ? cls.name : classId;
+                                            return (
+                                                <span key={classId} className="px-3 py-1 bg-blue-50 text-blue-700 text-sm rounded-lg border border-blue-200">
+                                                    {className}
+                                                </span>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
@@ -1133,6 +1310,7 @@ const Assessments = () => {
                     onAssign={handleStudentsAssigned}
                     assignmentId={newlyCreatedAssignmentId}
                     schoolId={educatorSchool?.id}
+                    classIds={selectedClassesForAssignment}
                 />
             )}
 

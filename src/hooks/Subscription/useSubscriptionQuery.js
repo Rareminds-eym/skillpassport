@@ -72,9 +72,8 @@ const formatSubscriptionData = (data) => {
     razorpaySubscriptionId: data.razorpay_subscription_id,
     cancelledAt: data.cancelled_at,
     cancellationReason: data.cancellation_reason,
-    // user_role column removed from database - using entity_type from users table instead
-    entityType: data.users?.entity_type || null,
-    userTableRole: data.users?.role || null
+    // role column uses user_role enum type with values like school_admin, college_student, etc.
+    userRole: data.users?.role || null
   };
 };
 

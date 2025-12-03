@@ -566,16 +566,24 @@ const Analytics = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100 p-6">
       {/* Header */}
       <div className="mb-8 bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl shadow-md">
-            <TrendingUp className="w-8 h-8 text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl shadow-md">
+              <TrendingUp className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Analytics Dashboard
+              </h1>
+              <p className="text-gray-600 mt-1 text-sm">Track and analyze your job application performance</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Analytics Dashboard
-            </h1>
-            <p className="text-gray-600 mt-1 text-sm">Track and analyze your job application performance</p>
-          </div>
+          <button
+            onClick={() => window.history.back()}
+            className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors flex items-center gap-2"
+          >
+            ← Back to Dashboard
+          </button>
         </div>
       </div>
 

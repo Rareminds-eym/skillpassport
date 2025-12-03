@@ -218,12 +218,14 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
         setLoading(true);
 
         try {
-            // Determine entity_type and institution IDs based on entityType
+            // Determine user_role and institution IDs based on entityType
+            // Convert empty strings to null to avoid UUID validation errors
             const isCollege = entityType === 'college';
+            const selectedInstitutionId = formData.schoolId?.trim() || null;
             const institutionData = {
-                entity_type: isCollege ? 'college' : 'school',
-                schoolId: isCollege ? null : formData.schoolId,
-                collegeId: isCollege ? formData.schoolId : null
+                user_role: isCollege ? 'college_educator' : 'school_educator',  // Maps to 'role' column in DB
+                schoolId: isCollege ? null : selectedInstitutionId,
+                collegeId: isCollege ? selectedInstitutionId : null
             };
 
             // Step 1: Create auth user with role 'educator'
@@ -251,8 +253,7 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                 email: formData.email,
                 firstName: formData.firstName,
                 lastName: formData.lastName,
-                role: 'educator',
-                entity_type: institutionData.entity_type
+                user_role: institutionData.user_role
             });
 
             if (!userRecordResult.success) {
@@ -269,7 +270,7 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                 phone: formData.phone,
                 schoolId: institutionData.schoolId,
                 collegeId: institutionData.collegeId,
-                entity_type: institutionData.entity_type
+                user_role: institutionData.user_role
             });
 
             if (!profileResult.success) {
@@ -284,11 +285,9 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                 name: `${formData.firstName} ${formData.lastName}`,
                 email: formData.email,
                 phone: formData.phone,
-                role: 'educator',
-                schoolRole: 'Educator',
+                user_role: institutionData.user_role,
                 schoolId: institutionData.schoolId,
                 collegeId: institutionData.collegeId,
-                entity_type: institutionData.entity_type,
                 isNewUser: true
             };
 
@@ -501,7 +500,8 @@ export default function EducatorSignupModal({ isOpen, onClose, selectedPlan, onS
                                 {/* Institution Selection */}
                                 {/* <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        {entityType === 'college' ? 'Select Your College' : 'Select Your School'} *
+                                        {entityType === 'college' ? 'Select Your College' : 'Select Your School'} {entityType !== 'college' && '*'}
+                                        {entityType === 'college' && <span className="text-gray-500 text-xs ml-1">(Optional)</span>}
                                     </label>
                                     <div className="relative">
                                         <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
