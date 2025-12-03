@@ -224,7 +224,7 @@ const AttendanceTracking = lazy(() =>
 
 
 const CurriculumBuilder = lazy(() =>
-  import("../pages/admin/schoolAdmin/CurriculumBuilder")
+  import("../pages/admin/schoolAdmin/CurriculumBuilderWrapper")
 );
 const SchoolAdminCourses = lazy(() => import("../pages/admin/schoolAdmin/Courses"));
 const LessonPlan = lazy(() => import("../pages/admin/schoolAdmin/LessonPlan"));
