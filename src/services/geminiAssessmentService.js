@@ -10,173 +10,47 @@ const getGeminiApiUrl = (model = 'gemini-1.5-flash-latest') =>
 /**
  * Validate that all required fields are present in the response
  * @param {Object} results - Parsed results from Gemini
- * @returns {Object} - { isValid: boolean, missingFields: string[], fixedResults: Object }
+ * @returns {Object} - { isValid: boolean, missingFields: string[] }
  */
-const validateAndFixResults = (results) => {
+const validateResults = (results) => {
   const missingFields = [];
-  const fixedResults = { ...results };
 
-  // Validate and fix RIASEC
-  if (!fixedResults.riasec || !fixedResults.riasec.topThree || fixedResults.riasec.topThree.length === 0) {
-    missingFields.push('riasec.topThree');
-    fixedResults.riasec = fixedResults.riasec || {};
-    fixedResults.riasec.topThree = fixedResults.riasec.topThree || ['I', 'E', 'S'];
-    fixedResults.riasec.interpretation = fixedResults.riasec.interpretation || 'Based on your responses, you show interest in investigative and social activities.';
-  }
-
-  // Validate and fix Big Five
-  if (!fixedResults.bigFive) {
-    missingFields.push('bigFive');
-    fixedResults.bigFive = { O: 3, C: 3, E: 3, A: 3, N: 3, workStyleSummary: 'Balanced personality profile.' };
-  } else {
-    ['O', 'C', 'E', 'A', 'N'].forEach(trait => {
-      if (typeof fixedResults.bigFive[trait] === 'undefined') {
-        fixedResults.bigFive[trait] = 3;
-      }
-    });
-    fixedResults.bigFive.workStyleSummary = fixedResults.bigFive.workStyleSummary || 'Balanced work style with adaptable approach.';
-  }
-
-  // Validate and fix Work Values
-  if (!fixedResults.workValues || !fixedResults.workValues.topThree || fixedResults.workValues.topThree.length === 0) {
-    missingFields.push('workValues.topThree');
-    fixedResults.workValues = fixedResults.workValues || {};
-    fixedResults.workValues.topThree = fixedResults.workValues.topThree || [
-      { value: 'Growth', score: 4 },
-      { value: 'Impact', score: 4 },
-      { value: 'Security', score: 3 }
-    ];
-    fixedResults.workValues.motivationSummary = fixedResults.workValues.motivationSummary || 'Motivated by growth opportunities and meaningful work.';
-  }
-
-  // Validate and fix Employability
-  if (!fixedResults.employability) {
-    missingFields.push('employability');
-    fixedResults.employability = {
-      strengthAreas: ['Communication', 'Teamwork'],
-      improvementAreas: ['Leadership', 'Problem Solving']
-    };
-  } else {
-    fixedResults.employability.strengthAreas = fixedResults.employability.strengthAreas || ['Communication', 'Adaptability'];
-    fixedResults.employability.improvementAreas = fixedResults.employability.improvementAreas || ['Leadership'];
-  }
-
-  // Validate and fix Knowledge
-  if (!fixedResults.knowledge) {
-    missingFields.push('knowledge');
-    fixedResults.knowledge = {
-      score: 70,
-      strongTopics: ['Core Concepts'],
-      weakTopics: ['Advanced Topics']
-    };
-  } else {
-    fixedResults.knowledge.score = fixedResults.knowledge.score ?? 70;
-    fixedResults.knowledge.strongTopics = fixedResults.knowledge.strongTopics || ['General Knowledge'];
-    fixedResults.knowledge.weakTopics = fixedResults.knowledge.weakTopics || [];
-  }
-
-  // Validate and fix Career Fit
-  if (!fixedResults.careerFit || !fixedResults.careerFit.clusters || fixedResults.careerFit.clusters.length === 0) {
-    missingFields.push('careerFit.clusters');
-    fixedResults.careerFit = fixedResults.careerFit || {};
-    fixedResults.careerFit.clusters = fixedResults.careerFit.clusters || [];
-    fixedResults.careerFit.specificOptions = fixedResults.careerFit.specificOptions || {
-      highFit: ['Analyst', 'Developer'],
-      mediumFit: ['Consultant'],
-      exploreLater: ['Manager']
-    };
-  }
-
-  // Fix each cluster to ensure roles and domains are present
-  if (fixedResults.careerFit.clusters) {
-    fixedResults.careerFit.clusters = fixedResults.careerFit.clusters.map((cluster, idx) => ({
-      ...cluster,
-      title: cluster.title || `Career Path ${idx + 1}`,
-      fit: cluster.fit || 'Medium',
-      matchScore: cluster.matchScore ?? 75,
-      evidence: cluster.evidence || {
-        interest: 'Based on your interest profile',
-        aptitude: 'Aligned with your strengths',
-        personality: 'Matches your work style'
-      },
-      roles: {
-        entry: cluster.roles?.entry?.length > 0 ? cluster.roles.entry : ['Junior Analyst', 'Associate'],
-        mid: cluster.roles?.mid?.length > 0 ? cluster.roles.mid : ['Senior Analyst', 'Team Lead']
-      },
-      domains: cluster.domains?.length > 0 ? cluster.domains : ['Technology', 'Business']
-    }));
-  }
-
-  // Validate and fix Skill Gap
-  if (!fixedResults.skillGap) {
-    missingFields.push('skillGap');
-    fixedResults.skillGap = {
-      currentStrengths: ['Analytical Thinking', 'Communication'],
-      priorityA: [{ skill: 'Technical Skills', currentLevel: 2, targetLevel: 4, whyNeeded: 'Essential for career growth', howToBuild: 'Online courses and practice projects' }],
-      priorityB: [{ skill: 'Leadership' }],
-      learningTracks: [{ track: 'Technical Track', suggestedIf: 'You want to specialize', topics: 'Core technologies' }],
-      recommendedTrack: 'Technical Track'
-    };
-  } else {
-    fixedResults.skillGap.currentStrengths = fixedResults.skillGap.currentStrengths || ['Problem Solving'];
-    fixedResults.skillGap.priorityA = fixedResults.skillGap.priorityA || [];
-    fixedResults.skillGap.priorityB = fixedResults.skillGap.priorityB || [];
-    fixedResults.skillGap.learningTracks = fixedResults.skillGap.learningTracks || [];
-    fixedResults.skillGap.recommendedTrack = fixedResults.skillGap.recommendedTrack || 'General Development';
-  }
-
-  // Validate and fix Roadmap
-  if (!fixedResults.roadmap) {
-    missingFields.push('roadmap');
-    fixedResults.roadmap = {
-      projects: [{ title: 'Portfolio Project', purpose: 'Demonstrate skills', output: 'GitHub repository' }],
-      internship: {
-        types: ['Industry Internship'],
-        timeline: 'Next 6 months',
-        preparation: { resume: 'Update with projects', portfolio: 'Build online presence', interview: 'Practice common questions' }
-      },
-      exposure: {
-        activities: ['Join tech communities', 'Attend workshops'],
-        certifications: ['Industry certification']
-      }
-    };
-  } else {
-    fixedResults.roadmap.projects = fixedResults.roadmap.projects || [];
-    fixedResults.roadmap.internship = fixedResults.roadmap.internship || { types: [], timeline: 'TBD', preparation: {} };
-    fixedResults.roadmap.internship.types = fixedResults.roadmap.internship.types || ['Internship'];
-    fixedResults.roadmap.internship.preparation = fixedResults.roadmap.internship.preparation || {};
-    fixedResults.roadmap.exposure = fixedResults.roadmap.exposure || { activities: [], certifications: [] };
-  }
-
-  // Validate and fix Final Note
-  if (!fixedResults.finalNote) {
-    missingFields.push('finalNote');
-    fixedResults.finalNote = {
-      advantage: 'Your unique combination of skills and interests',
-      growthFocus: 'Continue developing technical and soft skills',
-      nextReview: 'End of next semester'
-    };
-  }
-
-  // Validate overall summary
-  fixedResults.overallSummary = fixedResults.overallSummary || 'Based on your assessment, you show potential in multiple career paths. Focus on building your strengths while addressing skill gaps.';
-
-  // Validate profile snapshot
-  if (!fixedResults.profileSnapshot) {
-    fixedResults.profileSnapshot = {
-      keyPatterns: {
-        enjoyment: 'You enjoy analytical and creative work',
-        strength: 'Strong in problem-solving',
-        workStyle: 'Adaptable and collaborative',
-        motivation: 'Driven by growth and impact'
-      }
-    };
-  }
+  // Check RIASEC
+  if (!results.riasec?.topThree?.length) missingFields.push('riasec.topThree');
+  
+  // Check Big Five
+  if (!results.bigFive || typeof results.bigFive.O === 'undefined') missingFields.push('bigFive');
+  
+  // Check Work Values
+  if (!results.workValues?.topThree?.length) missingFields.push('workValues.topThree');
+  
+  // Check Employability
+  if (!results.employability?.strengthAreas?.length) missingFields.push('employability');
+  
+  // Check Knowledge
+  if (!results.knowledge || typeof results.knowledge.score === 'undefined') missingFields.push('knowledge');
+  
+  // Check Career Fit
+  if (!results.careerFit?.clusters?.length) missingFields.push('careerFit.clusters');
+  
+  // Check Skill Gap
+  if (!results.skillGap?.priorityA?.length) missingFields.push('skillGap');
+  
+  // Check Roadmap
+  if (!results.roadmap?.projects?.length) missingFields.push('roadmap');
+  
+  // Check Final Note
+  if (!results.finalNote?.advantage) missingFields.push('finalNote');
+  
+  // Check Profile Snapshot
+  if (!results.profileSnapshot?.aptitudeStrengths?.length) missingFields.push('profileSnapshot.aptitudeStrengths');
+  
+  // Check Overall Summary
+  if (!results.overallSummary) missingFields.push('overallSummary');
 
   return {
     isValid: missingFields.length === 0,
-    missingFields,
-    fixedResults
+    missingFields
   };
 };
 
@@ -221,10 +95,10 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
             parts: [{ text: prompt }]
           }],
           generationConfig: {
-            // Low temperature for consistent, deterministic outputs
-            temperature: 0.2,
-            topK: 20,
-            topP: 0.8,
+            // Very low temperature for maximum consistency
+            temperature: 0.1,
+            topK: 10,
+            topP: 0.7,
             maxOutputTokens: 8192,
           }
         })
@@ -263,14 +137,14 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
     try {
       const parsedResults = JSON.parse(jsonStr);
       
-      // Validate and fix any missing fields
-      const { isValid, missingFields, fixedResults } = validateAndFixResults(parsedResults);
+      // Validate the response (no fallback data)
+      const { isValid, missingFields } = validateResults(parsedResults);
       
       if (!isValid) {
-        console.warn('Gemini response had missing fields, auto-fixed:', missingFields);
+        console.warn('Gemini response has missing fields:', missingFields);
       }
       
-      return fixedResults;
+      return parsedResults;
     } catch (parseError) {
       throw new Error('Failed to parse AI response. Please try again.');
     }
@@ -628,6 +502,15 @@ CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL OF THESE:
   * Highest RIASEC score determines primary career cluster
   * Second highest determines secondary cluster
   * Third highest determines exploratory cluster
+
+## APTITUDE STRENGTHS - INTERPRETATION RULES (MANDATORY):
+- aptitudeStrengths should reflect the student's TOP 2 demonstrated strengths based on ALL assessment data
+- Analyze the knowledge test performance, employability skills, and RIASEC interests holistically
+- Choose strengths that are MOST EVIDENT from the data (e.g., high scores in specific areas)
+- For percentiles: Use the actual score percentages from the relevant sections
+- Be SPECIFIC - use concrete skill names like "Analytical Reasoning", "Technical Problem Solving", "Communication", "Logical Thinking", etc.
+- The strengths should align with the student's stream and career direction
+- IMPORTANT: Base your interpretation on the HIGHEST scoring areas in the assessment data
   * Match scores should be calculated as: (sum of relevant trait scores / max possible) * 100
 
 ## SCORING RULES:
