@@ -15,7 +15,8 @@ import {
   Play,
   ChevronLeft,
   ChevronRight,
-  TrendingUp
+  TrendingUp,
+  ArrowDownAZ
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { motion } from 'framer-motion';
@@ -29,7 +30,6 @@ const Courses = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'Active', 'Upcoming'
-  const [skillFilter, setSkillFilter] = useState('all'); // 'all' or specific skill category
   const [sortBy, setSortBy] = useState('created_at'); // 'created_at', 'title', 'enrollment_count'
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -96,18 +96,7 @@ const Courses = () => {
   // Reset to page 1 when search or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatus, skillFilter, sortBy]);
-
-  // Get unique skill categories from all courses
-  const availableSkills = React.useMemo(() => {
-    const skillsSet = new Set();
-    courses.forEach(course => {
-      if (course.skills_covered && Array.isArray(course.skills_covered)) {
-        course.skills_covered.forEach(skill => skillsSet.add(skill));
-      }
-    });
-    return Array.from(skillsSet).sort();
-  }, [courses]);
+  }, [searchTerm, filterStatus, sortBy]);
 
   // Filter and search courses
   const filteredCourses = React.useMemo(() => {
@@ -118,12 +107,7 @@ const Courses = () => {
 
       const matchesStatus = filterStatus === 'all' || course.status === filterStatus;
 
-      const matchesSkill = skillFilter === 'all' ||
-                          (course.skills_covered &&
-                           Array.isArray(course.skills_covered) &&
-                           course.skills_covered.includes(skillFilter));
-
-      return matchesSearch && matchesStatus && matchesSkill;
+      return matchesSearch && matchesStatus;
     });
 
     // Apply sorting
@@ -141,7 +125,7 @@ const Courses = () => {
     });
 
     return filtered;
-  }, [courses, searchTerm, filterStatus, skillFilter, sortBy]);
+  }, [courses, searchTerm, filterStatus, sortBy]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredCourses.length / coursesPerPage);
@@ -277,7 +261,7 @@ const Courses = () => {
                         }`} />
                       </div>
                       <div className="flex-1">
-                        <h1 className={`font-bold text-lg ${
+                        <h1 className={`font-bold text-2xl ${
                           activeTab === 'courses' ? 'text-indigo-600' : 'text-gray-900'
                         }`}>
                           Courses
@@ -357,28 +341,19 @@ const Courses = () => {
                 <option value="Upcoming">Upcoming</option>
               </select>
 
-              {/* Skill Category Filter */}
-              <select
-                value={skillFilter}
-                onChange={(e) => setSkillFilter(e.target.value)}
-                className="h-12 px-4 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm flex-1 lg:flex-none lg:min-w-[180px]"
-              >
-                <option value="all">All Skills</option>
-                {availableSkills.map(skill => (
-                  <option key={skill} value={skill}>{skill}</option>
-                ))}
-              </select>
-
               {/* Sort By Filter */}
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="h-12 px-4 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm flex-1 lg:flex-none lg:min-w-[150px]"
-              >
-                <option value="created_at">Newest First</option>
-                <option value="title">Name (A-Z)</option>
-                <option value="enrollment_count">Most Popular</option>
-              </select>
+              <div className="relative flex-1 lg:flex-none lg:min-w-[150px]">
+                <ArrowDownAZ className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="h-12 pl-10 pr-4 w-full bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                >
+                  <option value="created_at">Newest First</option>
+                  <option value="title">Name (A-Z)</option>
+                  <option value="enrollment_count">Most Popular</option>
+                </select>
+              </div>
 
               {/* View Mode Toggle */}
               <div className="flex border border-gray-300 rounded-lg overflow-hidden h-12 bg-white shadow-sm">
@@ -397,11 +372,10 @@ const Courses = () => {
               </div>
 
               {/* Clear Filters Button */}
-              {(filterStatus !== 'all' || skillFilter !== 'all' || searchTerm !== '' || sortBy !== 'created_at') && (
+              {(filterStatus !== 'all' || searchTerm !== '' || sortBy !== 'created_at') && (
                 <button
                   onClick={() => {
                     setFilterStatus('all');
-                    setSkillFilter('all');
                     setSearchTerm('');
                     setSortBy('created_at');
                   }}
