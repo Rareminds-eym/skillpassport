@@ -4,7 +4,7 @@
  */
 
 // Gemini API configuration - try multiple models for compatibility
-const getGeminiApiUrl = (model = 'gemini-1.5-flash-latest') => 
+const getGeminiApiUrl = (model = 'gemini-1.5-flash-latest') =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 /**
@@ -16,20 +16,20 @@ const getGeminiApiUrl = (model = 'gemini-1.5-flash-latest') =>
  */
 export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  
+
   if (!apiKey) {
     throw new Error('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your .env file.');
   }
 
   // Prepare the assessment data for Gemini
   const assessmentData = prepareAssessmentData(answers, stream, questionBanks);
-  
+
   const prompt = buildAnalysisPrompt(assessmentData);
 
   // Try different model variants for compatibility (updated Dec 2024)
   const models = [
     'gemini-2.0-flash',
-    'gemini-1.5-flash', 
+    'gemini-1.5-flash',
     'gemini-1.5-pro',
     'gemini-1.0-pro'
   ];
@@ -60,7 +60,7 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
         console.log(`Gemini API success with model: ${model}`);
         break;
       }
-      
+
       // Get error details from response
       const errorData = await response.json().catch(() => ({}));
       lastError = errorData.error?.message || `Model ${model} returned ${response.status}`;
@@ -81,9 +81,9 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
   }
 
   // Parse the JSON response from Gemini
-  const jsonMatch = textContent.match(/```json\n?([\s\S]*?)\n?```/) || 
-                    textContent.match(/\{[\s\S]*\}/);
-  
+  const jsonMatch = textContent.match(/```json\n?([\s\S]*?)\n?```/) ||
+    textContent.match(/\{[\s\S]*\}/);
+
   if (jsonMatch) {
     const jsonStr = jsonMatch[1] || jsonMatch[0];
     try {
@@ -101,7 +101,7 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
  */
 const prepareAssessmentData = (answers, stream, questionBanks) => {
   const { riasecQuestions, bigFiveQuestions, workValuesQuestions, employabilityQuestions, streamKnowledgeQuestions } = questionBanks;
-  
+
   // Extract RIASEC answers
   const riasecAnswers = {};
   Object.entries(answers).forEach(([key, value]) => {
@@ -145,8 +145,8 @@ const prepareAssessmentData = (answers, stream, questionBanks) => {
       const questionId = key.replace('employability_', '');
       const question = employabilityQuestions.find(q => q.id === questionId);
       if (question) {
-        employabilityAnswers[questionId] = { 
-          question: question.text, 
+        employabilityAnswers[questionId] = {
+          question: question.text,
           answer: value,
           options: question.options || null
         };
@@ -287,20 +287,108 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
     "weakTopics": ["<topic>", "<topic>"],
     "recommendation": "<1-2 sentence study recommendation>"
   },
-  "careerRecommendations": {
-    "primaryCluster": {
-      "title": "<career cluster name>",
-      "description": "<brief description>",
-      "matchScore": <percentage 0-100>
+  "careerFit": {
+    "clusters": [
+      {
+        "title": "<Cluster Name>",
+        "fit": "<High/Medium/Explore>",
+        "matchScore": <percentage 0-100>,
+        "reason": "<Why this fits: evidence from Interest, Aptitude, Personality>",
+        "roles": {
+          "entry": ["<role 1>", "<role 2>"],
+          "mid": ["<role 1>", "<role 2>"]
+        },
+        "domains": ["<domain 1>", "<domain 2>"]
+      },
+      {
+        "title": "<Cluster Name>",
+        "fit": "<High/Medium/Explore>",
+        "matchScore": <percentage 0-100>,
+        "reason": "<Why this fits>",
+        "roles": { "entry": [], "mid": [] },
+        "domains": []
+      },
+      {
+        "title": "<Cluster Name>",
+        "fit": "<High/Medium/Explore>",
+        "matchScore": <percentage 0-100>,
+        "reason": "<Why this fits>",
+        "roles": { "entry": [], "mid": [] },
+        "domains": []
+      }
+    ],
+    "specificOptions": {
+      "highFit": ["<role 1>", "<role 2>", "<role 3>"],
+      "mediumFit": ["<role 1>", "<role 2>", "<role 3>"],
+      "exploreLater": ["<role 1>", "<role 2>"]
+    }
+  },
+  "skillGap": {
+    "currentStrengths": ["<skill 1>", "<skill 2>", "<skill 3>"],
+    "priorityA": [
+      {
+        "skill": "<Skill Name>",
+        "currentLevel": <number 1-5>,
+        "targetLevel": <number 1-5>,
+        "whyNeeded": "<Reason linked to careers>",
+        "howToBuild": "<Actionable step>"
+      },
+      {
+        "skill": "<Skill Name>",
+        "currentLevel": <number 1-5>,
+        "targetLevel": <number 1-5>,
+        "whyNeeded": "<Reason>",
+        "howToBuild": "<Actionable step>"
+      }
+    ],
+    "priorityB": [
+      { "skill": "<Skill Name>" },
+      { "skill": "<Skill Name>" }
+    ],
+    "learningTracks": [
+      {
+        "track": "<Track Name>",
+        "suggestedIf": "<Condition>",
+        "topics": "<Core topics/tools>"
+      },
+      {
+        "track": "<Track Name>",
+        "suggestedIf": "<Condition>",
+        "topics": "<Core topics/tools>"
+      }
+    ],
+    "recommendedTrack": "<One specific track name>"
+  },
+  "roadmap": {
+    "projects": [
+      {
+        "title": "<Project Title>",
+        "purpose": "<Purpose>",
+        "output": "<Output/Portfolio Proof>"
+      },
+      {
+        "title": "<Project Title>",
+        "purpose": "<Purpose>",
+        "output": "<Output/Portfolio Proof>"
+      }
+    ],
+    "internship": {
+      "types": ["<type 1>", "<type 2>"],
+      "timeline": "<Target timeline>",
+      "preparation": {
+        "resume": "<Focus area>",
+        "portfolio": "<Focus area>",
+        "interview": "<Focus area>"
+      }
     },
-    "secondaryCluster": {
-      "title": "<career cluster name>",
-      "description": "<brief description>",
-      "matchScore": <percentage 0-100>
-    },
-    "suggestedRoles": ["<role 1>", "<role 2>", "<role 3>", "<role 4>", "<role 5>"],
-    "skillsToFocus": ["<skill 1>", "<skill 2>", "<skill 3>"],
-    "personalizedAdvice": "<3-4 sentence personalized career advice based on all assessment data>"
+    "exposure": {
+      "activities": ["<activity 1>", "<activity 2>"],
+      "certifications": ["<cert 1>", "<cert 2>"]
+    }
+  },
+  "finalNote": {
+    "advantage": "<Biggest advantage>",
+    "growthFocus": "<Top growth focus>"
   },
   "overallSummary": "<4-5 sentence comprehensive summary of the student's profile, strengths, and career potential>"
 }
@@ -331,7 +419,7 @@ export const calculateKnowledgeWithGemini = async (answers, questions) => {
     if (key.startsWith('knowledge_')) {
       const questionId = key.replace('knowledge_', '');
       const question = questions.find(q => q.id === questionId);
-      
+
       if (question) {
         total++;
         if (value === question.correct) {

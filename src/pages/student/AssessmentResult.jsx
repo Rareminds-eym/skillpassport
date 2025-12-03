@@ -17,7 +17,11 @@ import {
     Download,
     Share2,
     AlertCircle,
-    RefreshCw
+    RefreshCw,
+    FileText,
+    Map,
+    GraduationCap,
+    Layout
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/Students/components/ui/card';
 import { Badge } from '../../components/Students/components/ui/badge';
@@ -63,30 +67,22 @@ const AssessmentResult = () => {
         if (geminiResultsJson) {
             try {
                 const geminiResults = JSON.parse(geminiResultsJson);
-
-                // Use Gemini-analyzed results
-                setResults({
-                    riasec: geminiResults.riasec,
-                    bigFive: geminiResults.bigFive,
-                    workValues: geminiResults.workValues,
-                    employability: geminiResults.employability,
-                    knowledge: geminiResults.knowledge,
-                    clusters: [
-                        geminiResults.careerRecommendations.primaryCluster,
-                        geminiResults.careerRecommendations.secondaryCluster
-                    ],
-                    careerRecommendations: geminiResults.careerRecommendations,
-                    overallSummary: geminiResults.overallSummary
-                });
-                setLoading(false);
-                return;
+                // Check if results have the new structure (e.g. careerFit instead of careerRecommendations)
+                if (geminiResults.careerFit) {
+                    setResults(geminiResults);
+                    setLoading(false);
+                    return;
+                }
+                // If old structure, we might need to re-analyze or adapt. 
+                // For now, let's re-analyze to get the new detailed report.
+                console.log('Old result format detected, re-analyzing...');
             } catch (e) {
                 console.error('Error parsing Gemini results:', e);
             }
         }
 
-        // Try to get Gemini analysis if not available
-        if (!geminiResultsJson && stream) {
+        // Try to get Gemini analysis if not available or old format
+        if (stream) {
             try {
                 const answers = JSON.parse(answersJson);
                 const questionBanks = {
@@ -98,23 +94,10 @@ const AssessmentResult = () => {
                 };
 
                 const geminiResults = await analyzeAssessmentWithGemini(answers, stream, questionBanks);
-                
+
                 if (geminiResults) {
                     localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
-
-                    setResults({
-                        riasec: geminiResults.riasec,
-                        bigFive: geminiResults.bigFive,
-                        workValues: geminiResults.workValues,
-                        employability: geminiResults.employability,
-                        knowledge: geminiResults.knowledge,
-                        clusters: [
-                            geminiResults.careerRecommendations.primaryCluster,
-                            geminiResults.careerRecommendations.secondaryCluster
-                        ],
-                        careerRecommendations: geminiResults.careerRecommendations,
-                        overallSummary: geminiResults.overallSummary
-                    });
+                    setResults(geminiResults);
                     setLoading(false);
                     return;
                 } else {
@@ -149,7 +132,8 @@ const AssessmentResult = () => {
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
                     <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4 mx-auto"></div>
-                    <p className="text-gray-600">Analyzing your results with AI...</p>
+                    <p className="text-gray-600">Generating your comprehensive 4-page report...</p>
+                    <p className="text-sm text-gray-400 mt-2">This may take a moment as AI analyzes your profile in depth.</p>
                 </div>
             </div>
         );
@@ -196,31 +180,9 @@ const AssessmentResult = () => {
         );
     }
 
-    if (!results) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <p className="text-gray-600">No results available.</p>
-                    <Button
-                        onClick={() => navigate('/student/assessment/test')}
-                        className="mt-4"
-                    >
-                        Take Assessment
-                    </Button>
-                </div>
-            </div>
-        );
-    }
+    if (!results) return null;
 
-    const { riasec, bigFive, workValues, employability, knowledge, clusters } = results;
-
-    const traitNames = {
-        O: 'Openness',
-        C: 'Conscientiousness',
-        E: 'Extraversion',
-        A: 'Agreeableness',
-        N: 'Neuroticism'
-    };
+    const { riasec, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote } = results;
 
     const riasecNames = {
         R: 'Realistic',
@@ -231,448 +193,415 @@ const AssessmentResult = () => {
         C: 'Conventional'
     };
 
+    const traitNames = {
+        O: 'Openness',
+        C: 'Conscientiousness',
+        E: 'Extraversion',
+        A: 'Agreeableness',
+        N: 'Neuroticism'
+    };
+
     return (
-        <div className="max-w-7xl mx-auto space-y-8 pb-12 animate-fade-in-up">
-            {/* Header Section */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-10 -mb-10 blur-2xl"></div>
-
-                <div className="relative z-10">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                        <div>
-                            <div className="flex items-center gap-2 mb-2">
-                                <CheckCircle className="w-8 h-8 text-green-300" />
-                                <h1 className="text-3xl font-bold">Assessment Complete!</h1>
-                            </div>
-                            <p className="text-blue-100 text-lg">Your personalized career profiling report is ready.</p>
-                        </div>
-                        <div className="flex gap-3">
-                            <Button variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-white/30">
-                                <Download className="w-4 h-4 mr-2" />
-                                Download PDF
-                            </Button>
-                            <Button variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-white/30">
-                                <Share2 className="w-4 h-4 mr-2" />
-                                Share
-                            </Button>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/20">
-                            <div className="text-xs text-blue-200 uppercase tracking-wider mb-1">RIASEC Code</div>
-                            <div className="font-bold text-2xl">{riasec.code}</div>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/20">
-                            <div className="text-xs text-blue-200 uppercase tracking-wider mb-1">Top Career Cluster</div>
-                            <div className="font-semibold text-sm">{clusters[0]?.title || 'Exploratory'}</div>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/20">
-                            <div className="text-xs text-blue-200 uppercase tracking-wider mb-1">Knowledge Score</div>
-                            <div className="font-bold text-2xl">{knowledge.score}%</div>
-                        </div>
-                        <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/20">
-                            <div className="text-xs text-blue-200 uppercase tracking-wider mb-1">Employability</div>
-                            <div className="font-bold text-2xl">{Math.round(employability.sjtScore)}%</div>
-                        </div>
-                    </div>
+        <div className="min-h-screen bg-gray-100 py-8 px-4 print:bg-white print:p-0">
+            {/* Action Bar - Hidden in Print */}
+            <div className="max-w-5xl mx-auto mb-6 flex justify-between items-center print:hidden">
+                <Button variant="outline" onClick={() => navigate('/student/dashboard')}>
+                    Back to Dashboard
+                </Button>
+                <div className="flex gap-3">
+                    <Button onClick={() => window.print()} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Report PDF
+                    </Button>
                 </div>
             </div>
 
-            {/* AI-Powered Insights Section */}
-            {results.careerRecommendations && (
-                <section>
-                    <div className="flex items-center gap-2 mb-6">
-                        <Zap className="w-6 h-6 text-amber-500" />
-                        <h2 className="text-2xl font-bold text-gray-800">AI-Powered Career Insights</h2>
-                        <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white ml-2">
-                            Powered by Gemini AI
-                        </Badge>
+            {/* Report Container */}
+            <div className="max-w-5xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden print:shadow-none print:rounded-none">
+
+                {/* Page 1: Student Profile Snapshot */}
+                <div className="p-12 min-h-[1100px] relative print:break-after-page">
+                    <div className="border-b-2 border-indigo-600 pb-6 mb-8 flex justify-between items-end">
+                        <div>
+                            <h1 className="text-4xl font-bold text-gray-900 mb-2">CAREER PROFILING & SKILL REPORT</h1>
+                            <p className="text-xl text-gray-600">4th Semester Assessment</p>
+                        </div>
+                        <div className="text-right text-sm text-gray-500">
+                            <p>Date: {new Date().toLocaleDateString()}</p>
+                            <p>Generated by SkillPassport AI</p>
+                        </div>
                     </div>
 
-                    <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-pink-50 border-l-4 border-l-purple-500">
-                        <CardContent className="pt-6">
-                            {/* Overall Summary */}
-                            <div className="mb-6">
-                                <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
-                                    <Brain className="w-5 h-5 text-purple-600" />
-                                    Your Profile Summary
+                    <div className="mb-10">
+                        <h2 className="text-2xl font-bold text-indigo-700 mb-6 border-l-4 border-indigo-500 pl-4">1.1 Summary of Key Findings</h2>
+
+                        <div className="grid grid-cols-2 gap-8 mb-8">
+                            {/* RIASEC */}
+                            <div className="bg-blue-50 p-6 rounded-xl">
+                                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                    <Compass className="w-5 h-5 text-blue-600" />
+                                    Top Interest Themes (RIASEC)
                                 </h3>
-                                <p className="text-gray-700 leading-relaxed bg-white/60 p-4 rounded-xl">
-                                    {results.overallSummary}
-                                </p>
+                                <div className="space-y-2">
+                                    {riasec.topThree.map((code, idx) => (
+                                        <div key={code} className="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm">
+                                            <span className="font-semibold text-gray-700">{code} - {riasecNames[code]}</span>
+                                            <Badge className="bg-blue-100 text-blue-700">{riasec.scores[code]} pts</Badge>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
-                            {/* Career Recommendations */}
-                            {results.careerRecommendations && (
-                                <>
-                                    <div className="mb-6">
-                                        <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
-                                            <Briefcase className="w-5 h-5 text-purple-600" />
-                                            Recommended Career Roles
-                                        </h3>
-                                        <div className="flex flex-wrap gap-2">
-                                            {results.careerRecommendations.suggestedRoles?.map((role, idx) => (
-                                                <Badge key={idx} variant="outline" className="bg-white/80 text-purple-700 border-purple-200 px-3 py-1">
-                                                    {role}
-                                                </Badge>
-                                            ))}
-                                        </div>
+                            {/* Aptitude/Knowledge */}
+                            <div className="bg-green-50 p-6 rounded-xl">
+                                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                    <Brain className="w-5 h-5 text-green-600" />
+                                    Knowledge & Aptitude
+                                </h3>
+                                <div className="mb-4">
+                                    <div className="flex justify-between mb-1">
+                                        <span className="text-sm font-medium">Stream Knowledge</span>
+                                        <span className="text-sm font-bold">{knowledge.score}%</span>
                                     </div>
-
-                                    <div className="mb-6">
-                                        <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
-                                            <TrendingUp className="w-5 h-5 text-purple-600" />
-                                            Skills to Focus On
-                                        </h3>
-                                        <div className="flex flex-wrap gap-2">
-                                            {results.careerRecommendations.skillsToFocus?.map((skill, idx) => (
-                                                <Badge key={idx} className="bg-green-100 text-green-700 px-3 py-1">
-                                                    {skill}
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-white/60 p-4 rounded-xl">
-                                        <h3 className="font-bold text-lg text-gray-800 mb-2 flex items-center gap-2">
-                                            <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-                                            Personalized Advice
-                                        </h3>
-                                        <p className="text-gray-700 leading-relaxed">
-                                            {results.careerRecommendations.personalizedAdvice}
-                                        </p>
-                                    </div>
-                                </>
-                            )}
-
-                            {/* RIASEC Interpretation */}
-                            {riasec.interpretation && (
-                                <div className="mt-6 p-4 bg-blue-50/80 rounded-xl border border-blue-100">
-                                    <h4 className="font-semibold text-blue-900 mb-2">Career Interest Interpretation</h4>
-                                    <p className="text-sm text-blue-800">{riasec.interpretation}</p>
+                                    <Progress value={knowledge.score} className="h-2" />
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </section>
-            )}
-
-            {/* Career Interest Profile (RIASEC) */}
-            <section>
-                <div className="flex items-center gap-2 mb-6">
-                    <Compass className="w-6 h-6 text-indigo-600" />
-                    <h2 className="text-2xl font-bold text-gray-800">Career Interest Profile (RIASEC)</h2>
-                </div>
-
-                <Card className="border-none shadow-md">
-                    <CardHeader>
-                        <CardTitle>Your Holland Code: {riasec.code}</CardTitle>
-                        <CardDescription>Based on your top three interest areas</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {Object.entries(riasec.scores).map(([type, score]) => {
-                                const isTop3 = riasec.topThree.includes(type);
-                                // Calculate max possible score (assuming 5 questions per type, max 5 points each = 25)
-                                const maxScore = riasec.maxScore || 25;
-                                const displayScore = typeof score === 'number' ? Math.round(score) : score;
-                                return (
-                                    <div key={type}>
-                                        <div className="flex justify-between items-center mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-semibold text-gray-800">{type} - {riasecNames[type]}</span>
-                                                {isTop3 && <Badge className="bg-green-100 text-green-700">Top 3</Badge>}
-                                            </div>
-                                            <span className="text-sm font-medium text-gray-600">{displayScore} / {maxScore}</span>
-                                        </div>
-                                        <Progress
-                                            value={(score / maxScore) * 100}
-                                            className="h-3"
-                                            indicatorClassName={isTop3 ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gray-400'}
-                                        />
-                                    </div>
-                                );
-                            })}
+                                <div className="space-y-1">
+                                    <p className="text-sm text-gray-600"><span className="font-semibold">Strong Topics:</span> {knowledge.strongTopics.join(', ')}</p>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                            <h4 className="font-semibold text-blue-900 mb-2">What this means:</h4>
-                            <p className="text-sm text-blue-800">
-                                Your top interests are <strong>{riasec.topThree.map(t => riasecNames[t]).join(', ')}</strong>.
-                                This combination suggests you would thrive in roles that blend {riasec.topThree[0] === 'I' ? 'analytical thinking' : riasec.topThree[0] === 'A' ? 'creativity' : riasec.topThree[0] === 'S' ? 'helping others' : riasec.topThree[0] === 'E' ? 'leadership' : riasec.topThree[0] === 'C' ? 'organization' : 'hands-on work'} with complementary skills.
-                            </p>
+                        <div className="grid grid-cols-2 gap-8 mb-8">
+                            {/* Personality */}
+                            <div className="bg-purple-50 p-6 rounded-xl">
+                                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                    <Zap className="w-5 h-5 text-purple-600" />
+                                    Personality Highlights
+                                </h3>
+                                <div className="space-y-2">
+                                    {['O', 'C', 'E', 'A', 'N'].map(trait => (
+                                        <div key={trait} className="flex justify-between text-sm">
+                                            <span className="text-gray-600">{traitNames[trait]}</span>
+                                            <span className="font-medium text-gray-800">{getSkillLevel(bigFive[trait]).level}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Values */}
+                            <div className="bg-amber-50 p-6 rounded-xl">
+                                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                    <Heart className="w-5 h-5 text-amber-600" />
+                                    Top Work Values
+                                </h3>
+                                <ul className="space-y-2">
+                                    {workValues.topThree.map((val, idx) => (
+                                        <li key={idx} className="flex items-center gap-2">
+                                            <span className="w-6 h-6 rounded-full bg-amber-200 text-amber-800 flex items-center justify-center text-xs font-bold">{idx + 1}</span>
+                                            <span className="font-medium text-gray-700">{val.value}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
                         </div>
-                    </CardContent>
-                </Card>
-            </section>
 
-            {/* Best-Fit Career Clusters */}
-            <section>
-                <div className="flex items-center gap-2 mb-6">
-                    <Target className="w-6 h-6 text-indigo-600" />
-                    <h2 className="text-2xl font-bold text-gray-800">Best-Fit Career Clusters</h2>
-                </div>
+                        <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                            <h3 className="font-bold text-gray-800 mb-2">Overall Career Direction</h3>
+                            <p className="text-gray-700 italic text-lg leading-relaxed">"{results.overallSummary}"</p>
+                        </div>
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {clusters.slice(0, 2).map((cluster, idx) => (
-                        <Card key={idx} className={`border-t-4 border-t-green-500 shadow-md ${idx === 0 ? 'ring-2 ring-green-500/20' : ''}`}>
-                            <CardHeader>
-                                <div className="flex justify-between items-start mb-2">
-                                    <Badge className="bg-green-100 text-green-700">
-                                        {idx === 0 ? 'Top Match' : 'Strong Fit'}
-                                    </Badge>
+                    <div>
+                        <h2 className="text-2xl font-bold text-indigo-700 mb-4 border-l-4 border-indigo-500 pl-4">1.2 Interpretation (What this means for you)</h2>
+                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                            <p className="text-gray-700 mb-4">{riasec.interpretation}</p>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span className="font-semibold text-gray-900 block mb-1">Work Style:</span>
+                                    <p className="text-gray-600">{bigFive.workStyleSummary}</p>
                                 </div>
-                                <CardTitle className="text-lg">{cluster.title}</CardTitle>
-                                <CardDescription>{cluster.description}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                                    <span>Match Score: {idx === 0 ? '95%' : '85%'}</span>
+                                <div>
+                                    <span className="font-semibold text-gray-900 block mb-1">Motivation:</span>
+                                    <p className="text-gray-600">{workValues.motivationSummary}</p>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            </section>
-
-            {/* Personality Profile (Big Five) */}
-            <section>
-                <div className="flex items-center gap-2 mb-6">
-                    <Brain className="w-6 h-6 text-indigo-600" />
-                    <h2 className="text-2xl font-bold text-gray-800">Personality Profile</h2>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <Card className="border-none shadow-md">
-                    <CardHeader>
-                        <CardTitle>Big Five Personality Traits</CardTitle>
-                        <CardDescription>Understanding your work style and preferences</CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                {/* Page 2: Career Fit Results */}
+                <div className="p-12 min-h-[1100px] relative print:break-after-page bg-gray-50/30">
+                    <div className="border-b border-gray-200 pb-4 mb-8">
+                        <h2 className="text-3xl font-bold text-gray-900">Page 2 — Career Fit Results</h2>
+                    </div>
+
+                    <div className="mb-10">
+                        <h2 className="text-2xl font-bold text-indigo-700 mb-6 border-l-4 border-indigo-500 pl-4">2.1 Best-Fit Career Clusters</h2>
+                        <p className="text-gray-600 mb-6">We recommend clusters (broad areas) instead of a single job, so you have options.</p>
+
                         <div className="space-y-6">
-                            {['O', 'C', 'E', 'A', 'N'].map((trait) => {
-                                const score = bigFive[trait] || 0;
-                                const level = getSkillLevel(score);
-                                return (
-                                    <div key={trait} className="space-y-2">
-                                        <div className="flex justify-between items-center">
-                                            <span className="font-semibold text-gray-800">{traitNames[trait]}</span>
-                                            <Badge variant="outline" className={`bg-${level.color}-50 text-${level.color}-700 border-${level.color}-200`}>
-                                                {level.level}
-                                            </Badge>
+                            {careerFit.clusters.map((cluster, idx) => (
+                                <div key={idx} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <h3 className="text-xl font-bold text-gray-800">{cluster.title}</h3>
+                                            <p className="text-sm text-gray-500">{cluster.domains.join(' • ')}</p>
                                         </div>
-                                        <Progress value={(score / 5) * 100} className="h-2" />
-                                        <p className="text-sm text-gray-600 italic">
-                                            {getTraitInterpretation(trait, score)}
-                                        </p>
+                                        <Badge className={`
+                                            ${cluster.fit === 'High' ? 'bg-green-100 text-green-700' :
+                                                cluster.fit === 'Medium' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-orange-100 text-orange-700'}
+                                        `}>
+                                            {cluster.fit} Fit ({cluster.matchScore}%)
+                                        </Badge>
                                     </div>
-                                );
-                            })}
-                        </div>
-                        {bigFive.workStyleSummary && (
-                            <div className="mt-6 p-4 bg-purple-50 rounded-xl border border-purple-100">
-                                <h4 className="font-semibold text-purple-900 mb-2">Work Style Summary</h4>
-                                <p className="text-sm text-purple-800">{bigFive.workStyleSummary}</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </section>
 
-            {/* Work Values */}
-            <section>
-                <div className="flex items-center gap-2 mb-6">
-                    <Heart className="w-6 h-6 text-indigo-600" />
-                    <h2 className="text-2xl font-bold text-gray-800">Work Values & Motivators</h2>
-                </div>
+                                    <div className="mb-4">
+                                        <h4 className="text-sm font-bold text-gray-700 mb-1">Why this fits you:</h4>
+                                        <p className="text-sm text-gray-600">{cluster.reason}</p>
+                                    </div>
 
-                <Card className="border-none shadow-md">
-                    <CardHeader>
-                        <CardTitle>What Drives Your Career Satisfaction</CardTitle>
-                        <CardDescription>Your top 3 career motivators</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {workValues.topThree.map((item, idx) => (
-                                <div key={idx} className="p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold">
-                                            {idx + 1}
+                                    <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                                        <div>
+                                            <span className="text-xs font-bold text-gray-500 uppercase">Entry Level Roles</span>
+                                            <ul className="list-disc list-inside text-sm text-gray-700 mt-1">
+                                                {cluster.roles.entry.map((role, rIdx) => <li key={rIdx}>{role}</li>)}
+                                            </ul>
                                         </div>
-                                        <h4 className="font-bold text-gray-800">{item.value}</h4>
+                                        <div>
+                                            <span className="text-xs font-bold text-gray-500 uppercase">Mid-Career Roles</span>
+                                            <ul className="list-disc list-inside text-sm text-gray-700 mt-1">
+                                                {cluster.roles.mid.map((role, rIdx) => <li key={rIdx}>{role}</li>)}
+                                            </ul>
+                                        </div>
                                     </div>
-                                    <Progress value={(item.score / 5) * 100} className="h-2 mb-2" />
-                                    <p className="text-xs text-gray-600">{(item.score).toFixed(1)} / 5.0</p>
                                 </div>
                             ))}
                         </div>
-                    </CardContent>
-                </Card>
-            </section>
+                    </div>
 
-            {/* Employability Skills */}
-            <section>
-                <div className="flex items-center gap-2 mb-6">
-                    <TrendingUp className="w-6 h-6 text-indigo-600" />
-                    <h2 className="text-2xl font-bold text-gray-800">employability Skills Assessment</h2>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card className="border-none shadow-md">
-                        <CardHeader>
-                            <CardTitle>Skill Readiness</CardTitle>
-                            <CardDescription>Your current proficiency levels</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-3">
-                                {Object.entries(employability.skillScores).map(([skill, score]) => {
-                                    const level = getSkillLevel(score);
-                                    return (
-                                        <div key={skill}>
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className="text-sm font-medium text-gray-700">{skill}</span>
-                                                <span className="text-xs text-gray-500">{score.toFixed(1)}/5</span>
-                                            </div>
-                                            <Progress value={(score / 5) * 100} className="h-2" />
-                                        </div>
-                                    );
-                                })}
+                    <div>
+                        <h2 className="text-2xl font-bold text-indigo-700 mb-6 border-l-4 border-indigo-500 pl-4">2.2 Specific Career Options (Ranked)</h2>
+                        <div className="grid grid-cols-3 gap-6">
+                            <div className="bg-green-50 p-5 rounded-xl border border-green-100">
+                                <h3 className="font-bold text-green-800 mb-3 flex items-center gap-2">
+                                    <Star className="w-4 h-4" /> High Fit
+                                </h3>
+                                <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 font-medium">
+                                    {careerFit.specificOptions.highFit.map((role, idx) => (
+                                        <li key={idx}>{role}</li>
+                                    ))}
+                                </ol>
                             </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-none shadow-md bg-gradient-to-br from-green-50 to-emerald-50">
-                        <CardHeader>
-                            <CardTitle>Situational Judgement Score</CardTitle>
-                            <CardDescription>Decision-making in workplace scenarios</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-center">
-                                <div className="w-32 h-32 mx-auto mb-4 relative">
-                                    <svg className="transform -rotate-90 w-32 h-32">
-                                        <circle
-                                            cx="64"
-                                            cy="64"
-                                            r="56"
-                                            stroke="#e5e7eb"
-                                            strokeWidth="8"
-                                            fill="none"
-                                        />
-                                        <circle
-                                            cx="64"
-                                            cy="64"
-                                            r="56"
-                                            stroke="#10b981"
-                                            strokeWidth="8"
-                                            fill="none"
-                                            strokeDasharray={`${2 * Math.PI * 56}`}
-                                            strokeDashoffset={`${2 * Math.PI * 56 * (1 - employability.sjtScore / 100)}`}
-                                            strokeLinecap="round"
-                                        />
-                                    </svg>
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <span className="text-3xl font-bold text-gray-800">{Math.round(employability.sjtScore)}%</span>
-                                    </div>
-                                </div>
-                                <p className="text-sm text-gray-600">
-                                    {employability.sjtScore >= 80 ? 'Excellent decision-making skills' :
-                                        employability.sjtScore >= 60 ? 'Good workplace judgement' :
-                                            'Room for improvement in scenario handling'}
-                                </p>
+                            <div className="bg-blue-50 p-5 rounded-xl border border-blue-100">
+                                <h3 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
+                                    <TrendingUp className="w-4 h-4" /> Medium Fit
+                                </h3>
+                                <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
+                                    {careerFit.specificOptions.mediumFit.map((role, idx) => (
+                                        <li key={idx}>{role}</li>
+                                    ))}
+                                </ol>
                             </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </section>
-
-            {/* Stream Knowledge */}
-            <section>
-                <div className="flex items-center gap-2 mb-6">
-                    <Code className="w-6 h-6 text-indigo-600" />
-                    <h2 className="text-2xl font-bold text-gray-800">Stream Knowledge Assessment</h2>
-                </div>
-
-                <Card className="border-none shadow-md">
-                    <CardContent className="pt-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 className="text-2xl font-bold text-gray-800">{knowledge.score}%</h3>
-                                <p className="text-gray-600">Overall Score</p>
-                            </div>
-                            <div className="text-right">
-                                <Badge className={knowledge.score >= 70 ? 'bg-green-100 text-green-700' : knowledge.score >= 50 ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}>
-                                    {knowledge.score >= 70 ? 'Strong' : knowledge.score >= 50 ? 'Good' : 'Needs Improvement'}
-                                </Badge>
+                            <div className="bg-orange-50 p-5 rounded-xl border border-orange-100">
+                                <h3 className="font-bold text-orange-800 mb-3 flex items-center gap-2">
+                                    <Compass className="w-4 h-4" /> Explore Later
+                                </h3>
+                                <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
+                                    {careerFit.specificOptions.exploreLater.map((role, idx) => (
+                                        <li key={idx}>{role}</li>
+                                    ))}
+                                </ol>
                             </div>
                         </div>
-                        <Progress value={knowledge.score} className="h-4 mb-4" />
-                        <p className="text-sm text-gray-600">
-                            You demonstrated {knowledge.score >= 70 ? 'strong' : knowledge.score >= 50 ? 'good' : 'foundational'} understanding of core concepts in your field.
-                            {knowledge.score < 70 && ' Consider reviewing areas where you scored lower to strengthen your knowledge base.'}
-                        </p>
-                    </CardContent>
-                </Card>
-            </section>
-
-            {/* Next Steps */}
-            <section>
-                <div className="flex items-center gap-2 mb-6">
-                    <BookOpen className="w-6 h-6 text-indigo-600" />
-                    <h2 className="text-2xl font-bold text-gray-800">Recommended Next Steps</h2>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card className="border-none shadow-md hover:shadow-lg transition-shadow">
-                        <CardContent className="pt-6">
-                            <Briefcase className="w-12 h-12 text-purple-600 mb-4" />
-                            <h3 className="font-bold text-lg mb-2">Explore Career Paths</h3>
-                            <p className="text-sm text-gray-600 mb-4">
-                                Research roles in {clusters[0]?.title} and related fields that match your {riasec.code} profile.
-                            </p>
-                            <Button variant="outline" className="w-full">View Opportunities</Button>
-                        </CardContent>
-                    </Card>
+                {/* Page 3: Skill Gap & Development Plan */}
+                <div className="p-12 min-h-[1100px] relative print:break-after-page">
+                    <div className="border-b border-gray-200 pb-4 mb-8">
+                        <h2 className="text-3xl font-bold text-gray-900">Page 3 — Skill Gap & Development Plan</h2>
+                    </div>
 
-                    <Card className="border-none shadow-md hover:shadow-lg transition-shadow">
-                        <CardContent className="pt-6">
-                            <Layers className="w-12 h-12 text-blue-600 mb-4" />
-                            <h3 className="font-bold text-lg mb-2">Build Skills</h3>
-                            <p className="text-sm text-gray-600 mb-4">
-                                Focus on developing areas where you scored lower to become more well-rounded.
-                            </p>
-                            <Button variant="outline" className="w-full">Browse Courses</Button>
-                        </CardContent>
-                    </Card>
+                    <div className="mb-10">
+                        <h2 className="text-2xl font-bold text-indigo-700 mb-6 border-l-4 border-indigo-500 pl-4">3.1 Current Strength Skills</h2>
+                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6">
+                            <h3 className="font-bold text-gray-800 mb-3">Technical / Domain Strengths</h3>
+                            <div className="flex flex-wrap gap-2 mb-6">
+                                {skillGap.currentStrengths.map((skill, idx) => (
+                                    <Badge key={idx} className="bg-green-100 text-green-700 px-3 py-1 text-sm">{skill}</Badge>
+                                ))}
+                            </div>
 
-                    <Card className="border-none shadow-md hover:shadow-lg transition-shadow">
-                        <CardContent className="pt-6">
-                            <Award className="w-12 h-12 text-amber-600 mb-4" />
-                            <h3 className="font-bold text-lg mb-2">Connect with Mentors</h3>
-                            <p className="text-sm text-gray-600 mb-4">
-                                Speak with professionals in your target fields for guidance and insights.
-                            </p>
-                            <Button variant="outline" className="w-full">Find Mentors</Button>
-                        </CardContent>
-                    </Card>
+                            <h3 className="font-bold text-gray-800 mb-3">Employability Strengths</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                {employability.strengthAreas.map((skill, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
+                                        <CheckCircle className="w-4 h-4 text-green-500" />
+                                        {skill}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mb-10">
+                        <h2 className="text-2xl font-bold text-indigo-700 mb-6 border-l-4 border-indigo-500 pl-4">3.2 Skill Gaps (Priority-based)</h2>
+
+                        <div className="space-y-6">
+                            {/* Priority A */}
+                            <div className="bg-red-50 p-6 rounded-xl border border-red-100">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <AlertCircle className="w-5 h-5 text-red-600" />
+                                    <h3 className="text-lg font-bold text-red-800">Priority A — Must build in next 6 months</h3>
+                                </div>
+                                <div className="space-y-4">
+                                    {skillGap.priorityA.map((item, idx) => (
+                                        <div key={idx} className="bg-white p-4 rounded-lg shadow-sm">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <h4 className="font-bold text-gray-800">{item.skill}</h4>
+                                                <div className="text-xs text-gray-500">Target: {item.targetLevel}/5</div>
+                                            </div>
+                                            <p className="text-sm text-gray-600 mb-1"><span className="font-semibold">Why:</span> {item.whyNeeded}</p>
+                                            <p className="text-sm text-indigo-600"><span className="font-semibold text-gray-700">Action:</span> {item.howToBuild}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Priority B */}
+                            <div className="bg-orange-50 p-6 rounded-xl border border-orange-100">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Target className="w-5 h-5 text-orange-600" />
+                                    <h3 className="text-lg font-bold text-orange-800">Priority B — Build in next 6–12 months</h3>
+                                </div>
+                                <div className="flex flex-wrap gap-3">
+                                    {skillGap.priorityB.map((item, idx) => (
+                                        <div key={idx} className="bg-white px-4 py-2 rounded-lg shadow-sm border border-orange-100 text-gray-700 font-medium">
+                                            {item.skill}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h2 className="text-2xl font-bold text-indigo-700 mb-6 border-l-4 border-indigo-500 pl-4">3.3 Recommended Learning Tracks</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {skillGap.learningTracks.map((track, idx) => (
+                                <div key={idx} className={`p-6 rounded-xl border-2 ${track.track === skillGap.recommendedTrack ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white'}`}>
+                                    {track.track === skillGap.recommendedTrack && <Badge className="mb-2 bg-indigo-600">Recommended</Badge>}
+                                    <h3 className="font-bold text-lg text-gray-800 mb-2">{track.track}</h3>
+                                    <p className="text-sm text-gray-600 mb-3"><span className="font-semibold">Best if:</span> {track.suggestedIf}</p>
+                                    <div className="text-sm text-gray-700 bg-white/50 p-3 rounded-lg">
+                                        <span className="font-semibold block mb-1">Core Topics:</span>
+                                        {track.topics}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
-            </section>
 
-            {/* Action Buttons */}
-            <div className="flex justify-center gap-4 pt-8">
-                <Button
-                    onClick={() => navigate('/student/dashboard')}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
-                >
-                    Back to Dashboard
-                </Button>
-                <Button
-                    onClick={() => navigate('/student/assessment/test')}
-                    variant="outline"
-                >
-                    Retake Assessment
-                </Button>
+                {/* Page 4: 6–12 Month Action Roadmap */}
+                <div className="p-12 min-h-[1100px] relative bg-gray-50/30">
+                    <div className="border-b border-gray-200 pb-4 mb-8">
+                        <h2 className="text-3xl font-bold text-gray-900">Page 4 — 6–12 Month Action Roadmap</h2>
+                    </div>
+
+                    <div className="mb-10">
+                        <h2 className="text-2xl font-bold text-indigo-700 mb-6 border-l-4 border-indigo-500 pl-4">4.1 Projects / Portfolio</h2>
+                        <div className="grid grid-cols-1 gap-6">
+                            {roadmap.projects.map((project, idx) => (
+                                <div key={idx} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex gap-4">
+                                    <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                                        <Layers className="w-6 h-6 text-indigo-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-lg text-gray-800 mb-1">{project.title}</h3>
+                                        <p className="text-sm text-gray-600 mb-2">{project.purpose}</p>
+                                        <div className="inline-block bg-gray-100 px-3 py-1 rounded text-xs font-medium text-gray-700">
+                                            Output: {project.output}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-8 mb-10">
+                        <div>
+                            <h2 className="text-2xl font-bold text-indigo-700 mb-6 border-l-4 border-indigo-500 pl-4">4.2 Internship Pathway</h2>
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-full">
+                                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                    <Briefcase className="w-5 h-5 text-indigo-600" />
+                                    Target Profile
+                                </h3>
+                                <div className="space-y-3 mb-6">
+                                    {roadmap.internship.types.map((type, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
+                                            <CheckCircle className="w-4 h-4 text-green-500" />
+                                            {type}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="bg-indigo-50 p-4 rounded-lg">
+                                    <h4 className="font-bold text-sm text-indigo-800 mb-2">Preparation Focus</h4>
+                                    <ul className="space-y-2 text-sm text-indigo-700">
+                                        <li><span className="font-semibold">Resume:</span> {roadmap.internship.preparation.resume}</li>
+                                        <li><span className="font-semibold">Portfolio:</span> {roadmap.internship.preparation.portfolio}</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h2 className="text-2xl font-bold text-indigo-700 mb-6 border-l-4 border-indigo-500 pl-4">4.3 Campus & Exposure</h2>
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-full">
+                                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                    <GraduationCap className="w-5 h-5 text-indigo-600" />
+                                    Recommended Activities
+                                </h3>
+                                <ul className="space-y-3 mb-6">
+                                    {roadmap.exposure.activities.map((activity, idx) => (
+                                        <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0"></span>
+                                            {activity}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
+                                    <Award className="w-5 h-5 text-indigo-600" />
+                                    Certifications
+                                </h3>
+                                <ul className="space-y-2">
+                                    {roadmap.exposure.certifications.map((cert, idx) => (
+                                        <li key={idx} className="text-sm text-gray-600 italic">{cert}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-8 text-white">
+                        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                            <Zap className="w-6 h-6 text-yellow-300" />
+                            Final Counselor Note
+                        </h2>
+                        <div className="grid grid-cols-2 gap-8">
+                            <div>
+                                <h3 className="font-bold text-indigo-100 mb-2 uppercase text-sm tracking-wider">Your Biggest Advantage</h3>
+                                <p className="text-lg font-medium">{finalNote.advantage}</p>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-indigo-100 mb-2 uppercase text-sm tracking-wider">Top Growth Focus</h3>
+                                <p className="text-lg font-medium">{finalNote.growthFocus}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     );
