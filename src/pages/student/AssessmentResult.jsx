@@ -217,10 +217,10 @@ const AssessmentResult = () => {
             </div>
 
             {/* Report Container */}
-            <div className="max-w-5xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden print:shadow-none print:rounded-none">
+            <div className="max-w-5xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden print:shadow-none print:rounded-none print:overflow-visible">
 
                 {/* Page 1: Student Profile Snapshot */}
-                <div className="p-12 min-h-[1100px] relative print:break-after-page">
+                <div className="p-12 min-h-[1100px] relative print:break-after-page print:min-h-0 print:h-auto print:p-8">
                     <div className="border-b-2 border-indigo-600 pb-6 mb-8">
                         <div className="flex justify-between items-start mb-4">
                             <div>
@@ -261,7 +261,7 @@ const AssessmentResult = () => {
                     </div>
 
                     <div className="mb-8">
-                        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-200 pb-2">Page 1 — Student Profile Snapshot</h2>
+                        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-200 pb-2">Student Profile Snapshot</h2>
                         <h3 className="text-lg font-bold text-indigo-700 mb-4">1.1 Summary of Key Findings</h3>
 
                         <div className="grid grid-cols-2 gap-8 mb-8">
@@ -357,15 +357,15 @@ const AssessmentResult = () => {
                 </div>
 
                 {/* Page 2: Career Fit Results */}
-                <div className="p-12 min-h-[1100px] relative print:break-after-page bg-gray-50/30">
+                <div className="p-12 min-h-[1100px] relative print:break-after-page bg-gray-50/30 print:bg-white print:min-h-0 print:h-auto print:p-8">
                     <div className="mb-8">
-                        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-200 pb-2">Page 2 — Career Fit Results</h2>
+                        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-200 pb-2">Career Fit Results</h2>
                         <h3 className="text-lg font-bold text-indigo-700 mb-2">2.1 Best-Fit Career Clusters (Top 3–5)</h3>
                         <p className="text-sm text-gray-500 italic mb-6">We recommend clusters (broad areas) instead of a single job, so you have options.</p>
 
                         <div className="space-y-8">
                             {careerFit.clusters.map((cluster, idx) => (
-                                <div key={idx} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 relative overflow-hidden">
+                                <div key={idx} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 relative overflow-hidden print:break-inside-avoid">
                                     <div className={`absolute top-0 left-0 w-1 h-full ${idx === 0 ? 'bg-green-500' : idx === 1 ? 'bg-blue-500' : 'bg-orange-500'}`}></div>
                                     <div className="flex justify-between items-start mb-4 pl-2">
                                         <div>
@@ -440,9 +440,9 @@ const AssessmentResult = () => {
                 </div>
 
                 {/* Page 3: Skill Gap & Development Plan */}
-                <div className="p-12 min-h-[1100px] relative print:break-after-page">
+                <div className="p-12 min-h-[1100px] relative print:break-after-page print:min-h-0 print:h-auto print:p-8">
                     <div className="mb-8">
-                        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-200 pb-2">Page 3 — Skill Gap & Development Plan</h2>
+                        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-200 pb-2">Skill Gap & Development Plan</h2>
 
                         <h3 className="text-lg font-bold text-indigo-700 mb-4">3.1 Current Strength Skills</h3>
                         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-8">
@@ -484,7 +484,7 @@ const AssessmentResult = () => {
                                 <h4 className="font-bold text-red-800 mb-4 text-lg border-b border-red-200 pb-2">Priority A — Must build in next 6 months</h4>
                                 <div className="space-y-6">
                                     {skillGap.priorityA.map((item, idx) => (
-                                        <div key={idx} className="bg-white p-4 rounded-lg shadow-sm">
+                                        <div key={idx} className="bg-white p-4 rounded-lg shadow-sm print:break-inside-avoid">
                                             <div className="flex justify-between items-center mb-2">
                                                 <span className="font-bold text-gray-800 text-lg">{idx + 1}. {item.skill}</span>
                                                 <div className="text-xs bg-gray-100 px-2 py-1 rounded">
@@ -540,14 +540,14 @@ const AssessmentResult = () => {
                 </div>
 
                 {/* Page 4: 6–12 Month Action Roadmap */}
-                <div className="p-12 min-h-[1100px] relative bg-gray-50/30">
+                <div className="p-12 min-h-[1100px] relative bg-gray-50/30 print:bg-white print:min-h-0 print:h-auto print:p-8">
                     <div className="mb-8">
-                        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-200 pb-2">Page 4 — 6–12 Month Action Roadmap</h2>
+                        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b border-gray-200 pb-2">6–12 Month Action Roadmap</h2>
 
                         <h3 className="text-lg font-bold text-indigo-700 mb-4">4.1 Projects / Portfolio (stream-specific)</h3>
                         <div className="space-y-6 mb-8">
                             {roadmap.projects.map((project, idx) => (
-                                <div key={idx} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                                <div key={idx} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm print:break-inside-avoid">
                                     <h4 className="font-bold text-gray-800 mb-3 border-b border-gray-100 pb-1">Project {idx + 1}:</h4>
                                     <div className="space-y-2 text-sm">
                                         <div className="flex gap-2">
