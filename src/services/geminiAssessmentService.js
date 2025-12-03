@@ -388,28 +388,34 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
         "domains": ["<domain 1>", "<domain 2>"]
       },
       {
-        "title": "<Cluster Name>",
-        "fit": "<High/Medium/Explore>",
-        "matchScore": <percentage 0-100>,
+        "title": "<Cluster 2 Name - REQUIRED>",
+        "fit": "Medium",
+        "matchScore": <percentage 70-85>,
         "evidence": {
-            "interest": "<Interest evidence>",
-            "aptitude": "<Aptitude evidence>",
-            "personality": "<Personality/values evidence>"
+            "interest": "<Interest evidence - REQUIRED>",
+            "aptitude": "<Aptitude evidence - REQUIRED>",
+            "personality": "<Personality evidence - REQUIRED>"
         },
-        "roles": { "entry": [], "mid": [] },
-        "domains": []
+        "roles": {
+          "entry": ["<entry role 1 - REQUIRED>", "<entry role 2 - REQUIRED>"],
+          "mid": ["<mid role 1 - REQUIRED>", "<mid role 2 - REQUIRED>"]
+        },
+        "domains": ["<domain 1 - REQUIRED>", "<domain 2 - REQUIRED>"]
       },
       {
-        "title": "<Cluster Name>",
-        "fit": "<High/Medium/Explore>",
-        "matchScore": <percentage 0-100>,
+        "title": "<Cluster 3 Name - REQUIRED>",
+        "fit": "Explore",
+        "matchScore": <percentage 60-75>,
         "evidence": {
-            "interest": "<Interest evidence>",
-            "aptitude": "<Aptitude evidence>",
-            "personality": "<Personality/values evidence>"
+            "interest": "<Interest evidence - REQUIRED>",
+            "aptitude": "<Aptitude evidence - REQUIRED>",
+            "personality": "<Personality evidence - REQUIRED>"
         },
-        "roles": { "entry": [], "mid": [] },
-        "domains": []
+        "roles": {
+          "entry": ["<entry role 1 - REQUIRED>", "<entry role 2 - REQUIRED>"],
+          "mid": ["<mid role 1 - REQUIRED>", "<mid role 2 - REQUIRED>"]
+        },
+        "domains": ["<domain 1 - REQUIRED>", "<domain 2 - REQUIRED>"]
       }
     ],
     "specificOptions": {
@@ -525,17 +531,20 @@ CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL OF THESE:
 
 ## DATA COMPLETENESS (MANDATORY):
 
-5. CAREER CLUSTERS - THIS IS MANDATORY:
+5. CAREER CLUSTERS - THIS IS ABSOLUTELY MANDATORY FOR ALL 3 CLUSTERS:
    - You MUST provide exactly 3 career clusters
-   - EVERY cluster MUST have ALL of these fields filled with real data:
-     * title: A specific career cluster name (e.g., "Software Development", "Data Analytics", "Business Consulting")
+   - EVERY SINGLE CLUSTER (cluster 1, 2, AND 3) MUST have ALL fields filled:
+     * title: A specific career cluster name
      * fit: "High" for cluster 1, "Medium" for cluster 2, "Explore" for cluster 3
-     * matchScore: Calculate based on relevant RIASEC + Big Five scores (cluster 1: 80-95%, cluster 2: 70-85%, cluster 3: 60-75%)
-     * evidence: Object with interest, aptitude, and personality explanations
-     * roles.entry: Array with AT LEAST 2 entry-level job titles
-     * roles.mid: Array with AT LEAST 2 mid-level job titles
-     * domains: Array with AT LEAST 2 related industry domains
-   - DO NOT leave any roles or domains arrays empty!
+     * matchScore: cluster 1: 80-95%, cluster 2: 70-85%, cluster 3: 60-75%
+     * evidence.interest: Specific interest-based reason (NOT empty)
+     * evidence.aptitude: Specific aptitude-based reason (NOT empty)
+     * evidence.personality: Specific personality-based reason (NOT empty)
+     * roles.entry: MUST have 2+ entry-level job titles (e.g., ["Junior Developer", "Associate Analyst"])
+     * roles.mid: MUST have 2+ mid-level job titles (e.g., ["Senior Developer", "Team Lead"])
+     * domains: MUST have 2+ industry domains (e.g., ["Technology", "Finance", "Healthcare"])
+   - CRITICAL: NO EMPTY ARRAYS! Every cluster needs roles.entry, roles.mid, and domains filled!
+   - If you leave any roles or domains empty, the report will be incomplete!
 
 6. SKILL GAP - MANDATORY:
    - priorityA: Must have at least 2 skills with all fields (skill, currentLevel, targetLevel, whyNeeded, howToBuild)
