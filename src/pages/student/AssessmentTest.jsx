@@ -45,6 +45,8 @@ const AssessmentTest = () => {
     const [error, setError] = useState(null);
     const [showSectionIntro, setShowSectionIntro] = useState(true);
     const [showSectionComplete, setShowSectionComplete] = useState(false);
+    const [elapsedTime, setElapsedTime] = useState(0); // Elapsed time for non-timed sections
+    const [sectionTimings, setSectionTimings] = useState({}); // Track time spent on each section
 
     // Define assessment sections
     const sections = [
@@ -179,6 +181,23 @@ const AssessmentTest = () => {
         }
     }, [timeRemaining, currentSection?.isTimed]);
 
+    // Elapsed time timer for non-timed sections
+    useEffect(() => {
+        // Only run elapsed timer for non-timed sections when not showing intro/complete screens
+        if (!currentSection?.isTimed && !showSectionIntro && !showSectionComplete && !isSubmitting) {
+            const timer = setInterval(() => {
+                setElapsedTime(prev => prev + 1);
+            }, 1000);
+
+            return () => clearInterval(timer);
+        }
+    }, [currentSection?.isTimed, showSectionIntro, showSectionComplete, isSubmitting]);
+
+    // Reset elapsed time when section changes
+    useEffect(() => {
+        setElapsedTime(0);
+    }, [currentSectionIndex]);
+
     const handleStreamSelect = (streamId) => {
         setStudentStream(streamId);
         setShowStreamSelection(false);
@@ -212,6 +231,19 @@ const AssessmentTest = () => {
     };
 
     const handleNextSection = () => {
+        // Save timing for current section before moving
+        const currentSectionId = currentSection?.id;
+        if (currentSectionId) {
+            const timeSpent = currentSection.isTimed 
+                ? (currentSection.timeLimit - (timeRemaining || 0)) // For timed section, calculate used time
+                : elapsedTime; // For non-timed sections, use elapsed time
+            
+            setSectionTimings(prev => ({
+                ...prev,
+                [currentSectionId]: timeSpent
+            }));
+        }
+
         setShowSectionComplete(false);
         if (currentSectionIndex < sections.length - 1) {
             setCurrentSectionIndex(prev => prev + 1);
@@ -237,16 +269,23 @@ const AssessmentTest = () => {
         setIsSubmitting(true);
         setError(null);
 
+        // Capture final section timing (knowledge section)
+        const finalTimings = { ...sectionTimings };
+        const currentSectionId = currentSection?.id;
+        if (currentSectionId && !finalTimings[currentSectionId]) {
+            const timeSpent = currentSection.isTimed 
+                ? (currentSection.timeLimit - (timeRemaining || 0))
+                : elapsedTime;
+            finalTimings[currentSectionId] = timeSpent;
+        }
+
         try {
-            // Save answers to localStorage first
+            // Save answers and timings to localStorage
             localStorage.setItem('assessment_answers', JSON.stringify(answers));
             localStorage.setItem('assessment_stream', studentStream);
+            localStorage.setItem('assessment_section_timings', JSON.stringify(finalTimings));
             // Clear any previous results
             localStorage.removeItem('assessment_gemini_results');
-            // We keep the answers in LS until successful submission/result generation, 
-            // but maybe we should clear them AFTER success? 
-            // For now, let's leave them so if they go back they don't lose everything immediately.
-            // But we should probably clear them on successful result page load.
 
             // Prepare question banks for Gemini analysis
             const questionBanks = {
@@ -261,7 +300,8 @@ const AssessmentTest = () => {
             const geminiResults = await analyzeAssessmentWithGemini(
                 answers,
                 studentStream,
-                questionBanks
+                questionBanks,
+                finalTimings // Pass section timings to Gemini
             );
 
             if (geminiResults) {
@@ -286,6 +326,17 @@ const AssessmentTest = () => {
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    // Format elapsed time with hours if needed
+    const formatElapsedTime = (seconds) => {
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        if (hrs > 0) {
+            return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
@@ -479,10 +530,21 @@ const AssessmentTest = () => {
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     transition={{ delay: 0.5, duration: 0.3 }}
-                                    className="text-gray-600 mb-6 max-w-md leading-relaxed text-lg"
+                                    className="text-gray-600 mb-4 max-w-md leading-relaxed text-lg"
                                 >
                                     Great job! You've finished this section.
                                 </motion.p>
+                                {!currentSection.isTimed && elapsedTime > 0 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: 0.55, duration: 0.3 }}
+                                        className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full mb-4 border border-emerald-200"
+                                    >
+                                        <Clock className="w-4 h-4" />
+                                        <span className="text-sm font-medium">Completed in {formatElapsedTime(elapsedTime)}</span>
+                                    </motion.div>
+                                )}
                                 {currentSectionIndex < sections.length - 1 && (
                                     <motion.p
                                         initial={{ opacity: 0 }}
@@ -664,10 +726,15 @@ const AssessmentTest = () => {
                                             <span>Question {currentQuestionIndex + 1} / {currentSection.questions.length}</span>
                                         </div>
 
-                                        {currentSection.isTimed && timeRemaining !== null && (
+                                        {currentSection.isTimed && timeRemaining !== null ? (
                                             <div className="flex items-center gap-3 text-sm font-semibold text-orange-600">
                                                 <Clock className="w-4 h-4" />
-                                                <span>Time: {formatTime(timeRemaining)}</span>
+                                                <span>Time Left: {formatTime(timeRemaining)}</span>
+                                            </div>
+                                        ) : !currentSection.isTimed && (
+                                            <div className="flex items-center gap-3 text-sm font-medium text-emerald-600">
+                                                <Clock className="w-4 h-4" />
+                                                <span>Time: {formatElapsedTime(elapsedTime)}</span>
                                             </div>
                                         )}
                                     </div>

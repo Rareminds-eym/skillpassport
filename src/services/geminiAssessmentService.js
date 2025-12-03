@@ -48,6 +48,11 @@ const validateResults = (results) => {
   // Check Overall Summary
   if (!results.overallSummary) missingFields.push('overallSummary');
 
+  // Check Timing Analysis (optional but log if missing)
+  if (!results.timingAnalysis?.overallPace) {
+    console.log('Note: timingAnalysis not included in response');
+  }
+
   return {
     isValid: missingFields.length === 0,
     missingFields
@@ -59,9 +64,10 @@ const validateResults = (results) => {
  * @param {Object} answers - All answers from the assessment
  * @param {string} stream - Student's selected stream (cs, bca, bba, dm, animation)
  * @param {Object} questionBanks - All question banks for reference
+ * @param {Object} sectionTimings - Time spent on each section in seconds
  * @returns {Promise<Object>} - AI-analyzed results
  */
-export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks) => {
+export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks, sectionTimings = {}) => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -69,7 +75,7 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
   }
 
   // Prepare the assessment data for Gemini
-  const assessmentData = prepareAssessmentData(answers, stream, questionBanks);
+  const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings);
 
   const prompt = buildAnalysisPrompt(assessmentData);
 
@@ -154,9 +160,21 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
 };
 
 /**
+ * Format seconds to readable time string
+ */
+const formatTimeForPrompt = (seconds) => {
+  if (!seconds || seconds <= 0) return 'Not recorded';
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins === 0) return `${secs} seconds`;
+  if (secs === 0) return `${mins} minute${mins > 1 ? 's' : ''}`;
+  return `${mins} minute${mins > 1 ? 's' : ''} ${secs} second${secs > 1 ? 's' : ''}`;
+};
+
+/**
  * Prepare assessment data for analysis
  */
-const prepareAssessmentData = (answers, stream, questionBanks) => {
+const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}) => {
   const { riasecQuestions, bigFiveQuestions, workValuesQuestions, employabilityQuestions, streamKnowledgeQuestions } = questionBanks;
 
   // Extract RIASEC answers
@@ -230,6 +248,43 @@ const prepareAssessmentData = (answers, stream, questionBanks) => {
     }
   });
 
+  // Calculate timing metrics
+  const timingData = {
+    riasec: {
+      seconds: sectionTimings.riasec || 0,
+      formatted: formatTimeForPrompt(sectionTimings.riasec),
+      questionsCount: riasecQuestions.length,
+      avgSecondsPerQuestion: sectionTimings.riasec ? Math.round(sectionTimings.riasec / riasecQuestions.length) : 0
+    },
+    bigfive: {
+      seconds: sectionTimings.bigfive || 0,
+      formatted: formatTimeForPrompt(sectionTimings.bigfive),
+      questionsCount: bigFiveQuestions.length,
+      avgSecondsPerQuestion: sectionTimings.bigfive ? Math.round(sectionTimings.bigfive / bigFiveQuestions.length) : 0
+    },
+    values: {
+      seconds: sectionTimings.values || 0,
+      formatted: formatTimeForPrompt(sectionTimings.values),
+      questionsCount: workValuesQuestions.length,
+      avgSecondsPerQuestion: sectionTimings.values ? Math.round(sectionTimings.values / workValuesQuestions.length) : 0
+    },
+    employability: {
+      seconds: sectionTimings.employability || 0,
+      formatted: formatTimeForPrompt(sectionTimings.employability),
+      questionsCount: employabilityQuestions.length,
+      avgSecondsPerQuestion: sectionTimings.employability ? Math.round(sectionTimings.employability / employabilityQuestions.length) : 0
+    },
+    knowledge: {
+      seconds: sectionTimings.knowledge || 0,
+      formatted: formatTimeForPrompt(sectionTimings.knowledge),
+      questionsCount: streamQuestions.length,
+      avgSecondsPerQuestion: sectionTimings.knowledge && streamQuestions.length ? Math.round(sectionTimings.knowledge / streamQuestions.length) : 0,
+      timeLimit: 30 * 60 // 30 minutes
+    },
+    totalTime: Object.values(sectionTimings).reduce((sum, t) => sum + (t || 0), 0)
+  };
+  timingData.totalFormatted = formatTimeForPrompt(timingData.totalTime);
+
   return {
     stream,
     riasecAnswers,
@@ -237,7 +292,8 @@ const prepareAssessmentData = (answers, stream, questionBanks) => {
     workValuesAnswers,
     employabilityAnswers,
     knowledgeAnswers,
-    totalKnowledgeQuestions: streamQuestions.length
+    totalKnowledgeQuestions: streamQuestions.length,
+    sectionTimings: timingData
   };
 };
 
@@ -286,6 +342,21 @@ ${JSON.stringify(assessmentData.employabilityAnswers, null, 2)}
 ## Stream Knowledge Test Results:
 ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 Total Questions: ${assessmentData.totalKnowledgeQuestions}
+
+## SECTION TIMING DATA (Time spent by student on each section):
+- RIASEC (Career Interests): ${assessmentData.sectionTimings?.riasec?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.riasec?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.riasec?.avgSecondsPerQuestion || 0}s per question)
+- Big Five (Personality): ${assessmentData.sectionTimings?.bigfive?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.bigfive?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.bigfive?.avgSecondsPerQuestion || 0}s per question)
+- Work Values: ${assessmentData.sectionTimings?.values?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.values?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.values?.avgSecondsPerQuestion || 0}s per question)
+- Employability Skills: ${assessmentData.sectionTimings?.employability?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.employability?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.employability?.avgSecondsPerQuestion || 0}s per question)
+- Knowledge Test: ${assessmentData.sectionTimings?.knowledge?.formatted || 'Not recorded'} of 30 minutes allowed (${assessmentData.sectionTimings?.knowledge?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.knowledge?.avgSecondsPerQuestion || 0}s per question)
+- TOTAL ASSESSMENT TIME: ${assessmentData.sectionTimings?.totalFormatted || 'Not recorded'}
+
+## TIMING ANALYSIS GUIDELINES:
+- Fast responses (< 3 seconds/question) may indicate impulsive answering or high confidence
+- Moderate responses (3-8 seconds/question) indicate thoughtful consideration
+- Slow responses (> 10 seconds/question) may indicate careful deliberation or uncertainty
+- Use timing patterns to inform your assessment of the student's decision-making style and confidence level
+- Include timing insights in the personality and employability analysis where relevant
 
 ---
 
@@ -492,7 +563,20 @@ Analyze all responses and return ONLY a valid JSON object with this exact struct
     "growthFocus": "<Top growth focus>",
     "nextReview": "<Suggested review time, e.g. End of 5th Sem>"
   },
-  "overallSummary": "<4-5 sentence comprehensive summary of the student's profile, strengths, and career potential>"
+  "timingAnalysis": {
+    "overallPace": "<Fast/Moderate/Deliberate - based on average time per question across all sections>",
+    "decisionStyle": "<Intuitive/Balanced/Analytical - inferred from timing patterns>",
+    "confidenceIndicator": "<High/Medium/Low - based on response speed consistency>",
+    "sectionInsights": {
+      "riasec": "<Brief insight about their pace in interests section>",
+      "personality": "<Brief insight about their pace in personality section>",
+      "values": "<Brief insight about their pace in values section>",
+      "employability": "<Brief insight about their pace in employability section>",
+      "knowledge": "<Brief insight about their pace and time management in knowledge test>"
+    },
+    "recommendation": "<1-2 sentence recommendation based on timing patterns, e.g., 'Consider taking more time for self-reflection' or 'Good balance of speed and thoughtfulness'>"
+  },
+  "overallSummary": "<4-5 sentence comprehensive summary of the student's profile, strengths, and career potential. Include a brief mention of their assessment-taking style based on timing.>"
 }
 \`\`\`
 

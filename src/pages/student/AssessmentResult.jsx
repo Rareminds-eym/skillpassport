@@ -25,7 +25,8 @@ import {
     Trophy,
     Calendar,
     FileCheck,
-    Layers
+    Layers,
+    Clock
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
 import { Badge } from '../../components/Students/components/ui/badge';
@@ -104,7 +105,7 @@ const printStyles = `
 const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
     if (!results) return null;
     
-    const { riasec, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote } = results;
+    const { riasec, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote, timingAnalysis } = results;
     
     return (
         <div className="print-view" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', lineHeight: '1.5', color: '#000', padding: '0' }}>
@@ -292,6 +293,17 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                 <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>4.3 Activities & Certifications</h3>
                 <p><strong>Activities:</strong> {roadmap?.exposure?.activities?.join(', ') || 'N/A'}</p>
                 <p><strong>Certifications:</strong> {roadmap?.exposure?.certifications?.join(', ') || 'N/A'}</p>
+
+                {/* Timing Analysis for Print */}
+                {timingAnalysis && (
+                    <div style={{ backgroundColor: '#f8fafc', padding: '15px', marginTop: '20px', border: '1px solid #e2e8f0' }}>
+                        <h3 style={{ fontSize: '12px', fontWeight: 'bold', margin: '0 0 10px 0' }}>Assessment Timing Analysis</h3>
+                        <p><strong>Overall Pace:</strong> {timingAnalysis.overallPace || 'Moderate'} | <strong>Decision Style:</strong> {timingAnalysis.decisionStyle || 'Balanced'} | <strong>Confidence:</strong> {timingAnalysis.confidenceIndicator || 'Medium'}</p>
+                        {timingAnalysis.recommendation && (
+                            <p style={{ marginTop: '8px', fontStyle: 'italic' }}><strong>Recommendation:</strong> {timingAnalysis.recommendation}</p>
+                        )}
+                    </div>
+                )}
 
                 <div style={{ backgroundColor: '#f0f4ff', padding: '15px', marginTop: '20px', border: '1px solid #c7d2fe' }}>
                     <h3 style={{ fontSize: '12px', fontWeight: 'bold', margin: '0 0 10px 0' }}>Final Counselor Note</h3>
@@ -592,7 +604,7 @@ const AssessmentResult = () => {
 
     if (!results) return null;
 
-    const { riasec, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote, profileSnapshot } = results;
+    const { riasec, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote, profileSnapshot, timingAnalysis } = results;
 
     // Validate if all required data sections are present
     const validateResults = () => {
@@ -1456,6 +1468,86 @@ const AssessmentResult = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Timing Analysis Section */}
+                        {timingAnalysis && (
+                            <div className="bg-gradient-to-br from-slate-50 to-gray-100 rounded-2xl p-6 border border-slate-200 mb-8">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="w-10 h-10 rounded-xl bg-slate-600 flex items-center justify-center">
+                                        <Clock className="w-5 h-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-800">Assessment Timing Analysis</h3>
+                                        <p className="text-sm text-gray-500">Insights from your response patterns</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid md:grid-cols-3 gap-4 mb-6">
+                                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Overall Pace</p>
+                                        <p className="text-lg font-bold text-slate-800">{timingAnalysis.overallPace || 'Moderate'}</p>
+                                    </div>
+                                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Decision Style</p>
+                                        <p className="text-lg font-bold text-slate-800">{timingAnalysis.decisionStyle || 'Balanced'}</p>
+                                    </div>
+                                    <div className="bg-white rounded-xl p-4 border border-slate-200">
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Confidence Level</p>
+                                        <p className="text-lg font-bold text-slate-800">{timingAnalysis.confidenceIndicator || 'Medium'}</p>
+                                    </div>
+                                </div>
+
+                                {timingAnalysis.sectionInsights && (
+                                    <div className="bg-white rounded-xl p-4 border border-slate-200 mb-4">
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Section-wise Insights</p>
+                                        <div className="grid md:grid-cols-2 gap-3 text-sm">
+                                            {timingAnalysis.sectionInsights.riasec && (
+                                                <div className="flex items-start gap-2">
+                                                    <Heart className="w-4 h-4 text-rose-500 mt-0.5 shrink-0" />
+                                                    <span className="text-gray-600"><span className="font-medium text-gray-700">Interests:</span> {timingAnalysis.sectionInsights.riasec}</span>
+                                                </div>
+                                            )}
+                                            {timingAnalysis.sectionInsights.personality && (
+                                                <div className="flex items-start gap-2">
+                                                    <Brain className="w-4 h-4 text-purple-500 mt-0.5 shrink-0" />
+                                                    <span className="text-gray-600"><span className="font-medium text-gray-700">Personality:</span> {timingAnalysis.sectionInsights.personality}</span>
+                                                </div>
+                                            )}
+                                            {timingAnalysis.sectionInsights.values && (
+                                                <div className="flex items-start gap-2">
+                                                    <Target className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
+                                                    <span className="text-gray-600"><span className="font-medium text-gray-700">Values:</span> {timingAnalysis.sectionInsights.values}</span>
+                                                </div>
+                                            )}
+                                            {timingAnalysis.sectionInsights.employability && (
+                                                <div className="flex items-start gap-2">
+                                                    <TrendingUp className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                                                    <span className="text-gray-600"><span className="font-medium text-gray-700">Employability:</span> {timingAnalysis.sectionInsights.employability}</span>
+                                                </div>
+                                            )}
+                                            {timingAnalysis.sectionInsights.knowledge && (
+                                                <div className="flex items-start gap-2 md:col-span-2">
+                                                    <BookOpen className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                                                    <span className="text-gray-600"><span className="font-medium text-gray-700">Knowledge Test:</span> {timingAnalysis.sectionInsights.knowledge}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {timingAnalysis.recommendation && (
+                                    <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                                        <div className="flex items-start gap-3">
+                                            <Lightbulb className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                                            <div>
+                                                <p className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">Recommendation</p>
+                                                <p className="text-amber-800 text-sm">{timingAnalysis.recommendation}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Final Counselor Note */}
                         <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl p-8 text-white relative overflow-hidden">
