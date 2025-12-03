@@ -17,9 +17,10 @@ import { Course } from '../../../types/educator/course';
 interface CourseCardProps {
   course: Course;
   onView: (course: Course) => void;
-  onEdit: (course: Course) => void;
-  onArchive: (course: Course) => void;
+  onEdit?: (course: Course) => void;
+  onArchive?: (course: Course) => void;
   onViewAnalytics: (course: Course) => void;
+  onAssignEducator?: (course: Course) => void;
 }
 
 const StatusBadge = ({ status }: { status: string }) => {
@@ -41,7 +42,8 @@ const CourseCard: React.FC<CourseCardProps> = ({
   onView,
   onEdit,
   onArchive,
-  onViewAnalytics
+  onViewAnalytics,
+  onAssignEducator
 }) => {
   const [showActions, setShowActions] = useState(false);
   const skillCoverage = course.totalSkills > 0
@@ -153,24 +155,37 @@ const CourseCard: React.FC<CourseCardProps> = ({
               >
                 <EyeIcon className="h-4 w-4" /> View Course
               </button>
-              <button
-                onClick={() => { onEdit(course); setShowActions(false); }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-              >
-                <PencilIcon className="h-4 w-4" /> Edit Course
-              </button>
+              {onEdit && (
+                <button
+                  onClick={() => { onEdit(course); setShowActions(false); }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <PencilIcon className="h-4 w-4" /> Edit Course
+                </button>
+              )}
+              {onAssignEducator && (
+                <button
+                  onClick={() => { onAssignEducator(course); setShowActions(false); }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <UsersIcon className="h-4 w-4" /> Assign Educator
+                </button>
+              )}
               <button
                 onClick={() => { onViewAnalytics(course); setShowActions(false); }}
                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
                 <ChartBarIcon className="h-4 w-4" /> View Analytics
               </button>
-              <button
-                onClick={() => { onArchive(course); setShowActions(false); }}
-                className="w-full text-left px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 flex items-center gap-2"
-              >
-                <ArchiveBoxIcon className="h-4 w-4" /> {course.status === 'Archived' ? 'Unarchive' : 'Archive'}
-              </button>
+              {onArchive && (
+                <button
+                  onClick={() => { onArchive(course); setShowActions(false); }}
+                  className="w-full text-left px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 flex items-center gap-2"
+                >
+                  <ArchiveBoxIcon className="h-4 w-4" /> {course.status === 'Archived' ? 'Unarchive' : 'Archive'}
+                </button>
+              )}
+            
             </div>
           )}
         </div>
@@ -230,9 +245,15 @@ const CourseCard: React.FC<CourseCardProps> = ({
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <AcademicCapIcon className="h-4 w-4" />
-          <span>{course.linkedClasses.length} class(es)</span>
+        <div className="flex items-center gap-4 text-xs text-gray-600">
+          <div className="flex items-center gap-1">
+            <BookOpenIcon className="h-4 w-4" />
+            <span>{course.modules?.length || 0} module(s)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <AcademicCapIcon className="h-4 w-4" />
+            <span>{course.linkedClasses.length} class(es)</span>
+          </div>
         </div>
         {course.evidencePending > 0 && (
           <div className="flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded-full border border-amber-200">

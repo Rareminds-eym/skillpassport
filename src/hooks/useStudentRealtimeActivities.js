@@ -279,6 +279,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
       
       console.log(`✅ [useStudentRealtimeActivities] Returning ${combined.length} combined activities`);
       console.log('📋 Final combined activities:', combined);
+
       return combined;
     },
     enabled: !!studentEmail && !isResolvingStudent, // Only run if email is provided and not resolving

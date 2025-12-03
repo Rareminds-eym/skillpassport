@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   XMarkIcon,
   DocumentIcon,
@@ -12,13 +12,27 @@ import {
 } from '@heroicons/react/24/outline';
 import { Resource, FileUpload } from '../../../types/educator/course';
 
+// Extend FileUpload type locally to include serverProgress
+interface ExtendedFileUpload extends FileUpload {
+  uploadedData?: {
+    key: string;
+    url: string;
+    size: number;
+    type: string;
+    name: string;
+  };
+}
+
 interface ResourceUploadComponentProps {
   onResourcesAdded: (resources: Resource[]) => void;
   onClose: () => void;
   existingResources?: Resource[];
+  courseId: string;
+  lessonId: string;
 }
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+const UPLOAD_TIMEOUT = 600000; // 10 minutes in milliseconds
 const ALLOWED_FILE_TYPES = {
   pdf: ['.pdf'],
   document: ['.doc', '.docx', '.ppt', '.pptx', '.txt'],
@@ -26,19 +40,51 @@ const ALLOWED_FILE_TYPES = {
   image: ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp']
 };
 
+// For Netlify Functions, use relative path. For local dev, use localhost
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.MODE === 'production' ? '' : 'http://localhost:3001');
+
 const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
   onResourcesAdded,
   onClose,
-  existingResources = []
+  existingResources = [],
+  courseId,
+  lessonId
 }) => {
   const [uploadMode, setUploadMode] = useState<'file' | 'link'>('file');
-  const [fileUploads, setFileUploads] = useState<FileUpload[]>([]);
+  const [fileUploads, setFileUploads] = useState<ExtendedFileUpload[]>([]);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkName, setLinkName] = useState('');
   const [linkType, setLinkType] = useState<'link' | 'youtube' | 'drive'>('link');
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Log component initialization
+  useEffect(() => {
+    console.log('=== ResourceUploadComponent Initialized ===');
+    console.log('API_BASE_URL:', API_BASE_URL);
+    console.log('CourseId:', courseId);
+    console.log('LessonId:', lessonId);
+    console.log('Existing Resources:', existingResources);
+    console.log('Number of existing resources:', existingResources.length);
+    console.log('Environment variables:', {
+      VITE_API_URL: import.meta.env.VITE_API_URL,
+      MODE: import.meta.env.MODE,
+      DEV: import.meta.env.DEV
+    });
+
+    // CRITICAL: Check for missing IDs
+    if (!courseId || courseId === 'undefined') {
+      console.error('❌ CRITICAL: courseId is missing or undefined!');
+      setError('Configuration error: Missing course ID. Please refresh the page and try again.');
+    }
+    if (!lessonId || lessonId === 'undefined') {
+      console.error('❌ CRITICAL: lessonId is missing or undefined!');
+      setError('Configuration error: Missing lesson ID. Please refresh the page and try again.');
+    }
+  }, [courseId, lessonId, existingResources]);
 
   const getFileType = (fileName: string): Resource['type'] => {
     const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
@@ -80,41 +126,195 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
     if (!allAllowedTypes.includes(ext)) {
       return 'File type not supported';
     }
+
+    // Warn user about large files
+    if (file.size > 100 * 1024 * 1024) { // 100MB
+      console.warn('Large file selected:', file.name, (file.size / 1024 / 1024).toFixed(2), 'MB');
+    }
+
     return null;
   };
 
-  const simulateUpload = (fileUpload: FileUpload, index: number) => {
-    // Simulate upload progress
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 30;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-        setFileUploads(prev =>
-          prev.map((fu, i) =>
-            i === index
-              ? { ...fu, progress: 100, status: 'completed' }
-              : fu
-          )
-        );
-      } else {
-        setFileUploads(prev =>
-          prev.map((fu, i) =>
-            i === index
-              ? { ...fu, progress, status: 'uploading' }
-              : fu
-          )
-        );
+  const uploadToR2 = async (file: File, index: number) => {
+    try {
+      console.log('=== Upload Starting (Direct-to-R2) ===');
+      console.log('API_BASE_URL:', API_BASE_URL);
+      console.log('File:', file.name, 'Size:', file.size, 'Type:', file.type);
+      console.log('CourseId:', courseId, 'LessonId:', lessonId);
+
+      // Warn user about large file uploads
+      if (file.size > 100 * 1024 * 1024) {
+        console.warn('Large file detected:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+        console.warn('Upload may take several minutes depending on your internet connection');
       }
-    }, 500);
+
+      // CRITICAL: Validate courseId and lessonId are defined
+      if (!courseId || courseId === 'undefined') {
+        const errorMsg = 'Cannot upload: courseId is missing or undefined';
+        console.error('❌', errorMsg);
+        setFileUploads(prev =>
+          prev.map((fu, i) =>
+            i === index ? { ...fu, status: 'error', error: errorMsg } : fu
+          )
+        );
+        return;
+      }
+
+      if (!lessonId || lessonId === 'undefined') {
+        const errorMsg = 'Cannot upload: lessonId is missing or undefined';
+        console.error('❌', errorMsg);
+        setFileUploads(prev =>
+          prev.map((fu, i) =>
+            i === index ? { ...fu, status: 'error', error: errorMsg } : fu
+          )
+        );
+        return;
+      }
+
+      setFileUploads(prev =>
+        prev.map((fu, i) =>
+          i === index ? { ...fu, status: 'uploading', progress: 0 } : fu
+        )
+      );
+
+      // STEP 1: Request presigned URL
+      console.log('Step 1: Requesting presigned URL...');
+      const presignedResponse = await fetch(`${API_BASE_URL}/api/upload/presigned`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          fileSize: file.size,
+          courseId,
+          lessonId,
+        }),
+      });
+
+      if (!presignedResponse.ok) {
+        const errorData = await presignedResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to get upload URL (${presignedResponse.status})`);
+      }
+
+      const { data: presignedData } = await presignedResponse.json();
+      const { uploadUrl, fileKey } = presignedData;
+      console.log('Presigned URL received, fileKey:', fileKey);
+
+      // STEP 2: Upload directly to R2
+      console.log('Step 2: Uploading to R2...');
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const progress = (e.loaded / e.total) * 100;
+            console.log(`Upload progress: ${progress.toFixed(2)}%`);
+            setFileUploads(prev =>
+              prev.map((fu, i) =>
+                i === index ? { ...fu, progress } : fu
+              )
+            );
+          }
+        });
+
+        // Handle completion
+        xhr.addEventListener('load', () => {
+          console.log('=== R2 Upload Complete ===');
+          console.log('Status:', xhr.status);
+
+          if (xhr.status === 200) {
+            resolve();
+          } else {
+            reject(new Error(`Upload to R2 failed (Status: ${xhr.status})`));
+          }
+        });
+
+        // Handle errors
+        xhr.addEventListener('error', () => {
+          console.error('=== R2 Upload Error ===');
+          reject(new Error('Network error during R2 upload'));
+        });
+
+        // Handle timeout
+        xhr.addEventListener('timeout', () => {
+          console.error('=== R2 Upload Timeout ===');
+          const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+          reject(new Error(`Upload timed out for ${file.name} (${fileSizeMB}MB)`));
+        });
+
+        // Upload to R2
+        xhr.open('PUT', uploadUrl);
+        xhr.setRequestHeader('Content-Type', file.type);
+        xhr.timeout = UPLOAD_TIMEOUT;
+        xhr.send(file);
+      });
+
+      // STEP 3: Confirm upload
+      console.log('Step 3: Confirming upload...');
+      const confirmResponse = await fetch(`${API_BASE_URL}/api/upload/confirm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileKey,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+        }),
+      });
+
+      if (!confirmResponse.ok) {
+        const errorData = await confirmResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to confirm upload (${confirmResponse.status})`);
+      }
+
+      const { data: uploadedData } = await confirmResponse.json();
+      console.log('Upload confirmed:', uploadedData);
+
+      setFileUploads(prev =>
+        prev.map((fu, i) =>
+          i === index
+            ? {
+              ...fu,
+              status: 'completed',
+              progress: 100,
+              uploadedData
+            }
+            : fu
+        )
+      );
+    } catch (error) {
+      console.error('=== Upload Exception ===');
+      console.error('Error:', error);
+
+      let errorMessage = 'Upload failed: ' + (error as Error).message;
+
+      // Provide more specific error messages
+      if (errorMessage.includes('Network error')) {
+        errorMessage = 'Network connection failed - check your internet connection';
+      } else if (errorMessage.includes('timed out')) {
+        errorMessage = (error as Error).message;
+      }
+
+      setFileUploads(prev =>
+        prev.map((fu, i) =>
+          i === index
+            ? { ...fu, status: 'error', error: errorMessage }
+            : fu
+        )
+      );
+    }
   };
 
   const handleFileSelect = (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
     setError('');
-    const newUploads: FileUpload[] = [];
+    const newUploads: ExtendedFileUpload[] = [];
 
     Array.from(files).forEach(file => {
       const validationError = validateFile(file);
@@ -126,18 +326,14 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       newUploads.push({
         file,
         progress: 0,
-        status: 'pending'
+        status: 'pending' // Files stay pending until user clicks "Add Files"
       });
     });
 
     if (newUploads.length > 0) {
-      const startIndex = fileUploads.length;
       setFileUploads([...fileUploads, ...newUploads]);
-
-      // Start simulated uploads
-      newUploads.forEach((upload, index) => {
-        simulateUpload(upload, startIndex + index);
-      });
+      // NOTE: Upload is now deferred until handleSaveFiles is called
+      // This prevents orphaned files in storage when user cancels
     }
   };
 
@@ -161,7 +357,22 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
     }
   };
 
-  const removeFileUpload = (index: number) => {
+  const removeFileUpload = async (index: number) => {
+    const upload = fileUploads[index];
+
+    // If file was already uploaded to R2, delete it from storage
+    if (upload.status === 'completed' && upload.uploadedData?.key) {
+      try {
+        await fetch(`${API_BASE_URL}/api/file/${upload.uploadedData.key}`, {
+          method: 'DELETE',
+        });
+        console.log('Deleted file from R2:', upload.uploadedData.key);
+      } catch (error) {
+        console.error('Delete error:', error);
+      }
+    }
+    // For pending files, just remove from list (no cleanup needed)
+
     setFileUploads(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -205,25 +416,79 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
     onClose();
   };
 
-  const handleSaveFiles = () => {
-    const completedUploads = fileUploads.filter(fu => fu.status === 'completed');
+  const handleSaveFiles = async () => {
+    console.log('=== handleSaveFiles called ===');
+    console.log('File uploads:', fileUploads);
 
-    if (completedUploads.length === 0) {
-      setError('Please wait for uploads to complete');
+    const pendingUploads = fileUploads.filter(fu => fu.status === 'pending');
+    const alreadyCompleted = fileUploads.filter(fu => fu.status === 'completed');
+    
+    console.log('Pending uploads:', pendingUploads.length);
+    console.log('Already completed:', alreadyCompleted.length);
+
+    if (pendingUploads.length === 0 && alreadyCompleted.length === 0) {
+      setError('Please select files to upload');
       return;
     }
 
-    const newResources: Resource[] = completedUploads.map(fu => ({
-      id: `resource-${Date.now()}-${Math.random()}`,
-      name: fu.file.name,
-      type: getFileType(fu.file.name),
-      url: URL.createObjectURL(fu.file), // In production, this would be the uploaded file URL
-      size: formatFileSize(fu.file.size)
-    }));
+    setIsUploading(true);
+    setError('');
 
-    onResourcesAdded(newResources);
-    onClose();
+    // Upload all pending files
+    const uploadPromises = pendingUploads.map((upload) => {
+      const actualIndex = fileUploads.findIndex(fu => fu.file === upload.file);
+      return uploadToR2(upload.file, actualIndex);
+    });
+
+    try {
+      // Wait for all uploads to complete
+      await Promise.all(uploadPromises);
+      
+      // Small delay to ensure state is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Get the updated state with completed uploads
+      // We need to read from the latest state
+    } catch (error) {
+      console.error('Upload error:', error);
+      setError('Some files failed to upload. Please try again.');
+      setIsUploading(false);
+      return;
+    }
   };
+
+  // Effect to handle completion after uploads finish
+  React.useEffect(() => {
+    if (!isUploading) return;
+    
+    const completedUploads = fileUploads.filter(fu => fu.status === 'completed');
+    const pendingUploads = fileUploads.filter(fu => fu.status === 'pending');
+    const uploadingUploads = fileUploads.filter(fu => fu.status === 'uploading');
+    const errorUploads = fileUploads.filter(fu => fu.status === 'error');
+    
+    // Still uploading
+    if (uploadingUploads.length > 0 || pendingUploads.length > 0) return;
+    
+    // All done (either completed or errored)
+    if (completedUploads.length > 0) {
+      const newResources: Resource[] = completedUploads.map(fu => ({
+        id: fu.uploadedData?.key || `resource-${Date.now()}-${Math.random()}`,
+        name: fu.file.name,
+        type: getFileType(fu.file.name),
+        url: fu.uploadedData?.url || '',
+        size: formatFileSize(fu.file.size)
+      }));
+
+      console.log('New resources to be added:', newResources);
+      onResourcesAdded(newResources);
+      console.log('✓ Resources sent to parent, closing modal');
+      setIsUploading(false);
+      onClose();
+    } else if (errorUploads.length > 0) {
+      setError('All uploads failed. Please try again.');
+      setIsUploading(false);
+    }
+  }, [fileUploads, isUploading]);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
@@ -233,7 +498,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
           <h2 className="text-xl font-bold text-gray-900">Add Resources</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={isUploading}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <XMarkIcon className="h-6 w-6 text-gray-400" />
           </button>
@@ -244,22 +510,20 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setUploadMode('file')}
-              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                uploadMode === 'file'
-                  ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-500'
-                  : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:border-gray-300'
-              }`}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${uploadMode === 'file'
+                ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-500'
+                : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:border-gray-300'
+                }`}
             >
               <CloudArrowUpIcon className="h-5 w-5 inline mr-2" />
               Upload Files
             </button>
             <button
               onClick={() => setUploadMode('link')}
-              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                uploadMode === 'link'
-                  ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-500'
-                  : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:border-gray-300'
-              }`}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${uploadMode === 'link'
+                ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-500'
+                : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:border-gray-300'
+                }`}
             >
               <LinkIcon className="h-5 w-5 inline mr-2" />
               Add Link
@@ -284,11 +548,10 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
-                  dragActive
-                    ? 'border-indigo-500 bg-indigo-50'
-                    : 'border-gray-300 hover:border-indigo-400'
-                }`}
+                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${dragActive
+                  ? 'border-indigo-500 bg-indigo-50'
+                  : 'border-gray-300 hover:border-indigo-400'
+                  }`}
               >
                 <CloudArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-sm font-medium text-gray-900 mb-1">
@@ -314,14 +577,23 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                 <p className="text-xs text-gray-500 mt-4">
                   Supported: PDF, DOC, DOCX, PPT, PPTX, MP4, Images (Max {formatFileSize(MAX_FILE_SIZE)})
                 </p>
+                <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-xs text-yellow-700">
+                    <strong>Note:</strong> Large files (over 100MB) may take several minutes to upload.
+                    Please be patient and maintain a stable internet connection.
+                  </p>
+                </div>
               </div>
 
               {/* Upload List */}
               {fileUploads.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-gray-900">Uploading Files</h3>
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    {isUploading ? 'Uploading Files...' : 'Selected Files'}
+                  </h3>
                   {fileUploads.map((upload, index) => {
                     const Icon = getFileIcon(getFileType(upload.file.name));
+
                     return (
                       <div
                         key={index}
@@ -336,10 +608,21 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                               </p>
                               <p className="text-xs text-gray-500">
                                 {formatFileSize(upload.file.size)}
+                                {upload.status === 'error' && upload.error && (
+                                  <span className="text-red-600 ml-2">• {upload.error}</span>
+                                )}
                               </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            {upload.status === 'pending' && (
+                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">Ready</span>
+                            )}
+                            {upload.status === 'uploading' && (
+                              <span className="text-xs text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded">
+                                {Math.round(upload.progress)}%
+                              </span>
+                            )}
                             {upload.status === 'completed' && (
                               <CheckCircleIcon className="h-5 w-5 text-emerald-600" />
                             )}
@@ -348,14 +631,15 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                             )}
                             <button
                               onClick={() => removeFileUpload(index)}
-                              className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              disabled={upload.status === 'uploading'}
+                              className="p-1 hover:bg-gray-200 rounded transition-colors disabled:opacity-50"
                             >
                               <TrashIcon className="h-4 w-4 text-gray-600" />
                             </button>
                           </div>
                         </div>
-                        {upload.status !== 'completed' && (
-                          <div className="w-full bg-gray-200 rounded-full h-2">
+                        {upload.status === 'uploading' && (
+                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                             <div
                               className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
                               style={{ width: `${upload.progress}%` }}
@@ -377,33 +661,30 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => setLinkType('link')}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
-                      linkType === 'link'
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
-                    }`}
+                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${linkType === 'link'
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
+                      }`}
                   >
                     <LinkIcon className="h-5 w-5 mx-auto mb-1" />
                     URL Link
                   </button>
                   <button
                     onClick={() => setLinkType('youtube')}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
-                      linkType === 'youtube'
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
-                    }`}
+                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${linkType === 'youtube'
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
+                      }`}
                   >
                     <VideoCameraIcon className="h-5 w-5 mx-auto mb-1" />
                     YouTube
                   </button>
                   <button
                     onClick={() => setLinkType('drive')}
-                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
-                      linkType === 'drive'
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
-                    }`}
+                    className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${linkType === 'drive'
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
+                      }`}
                   >
                     <CloudArrowUpIcon className="h-5 w-5 mx-auto mb-1" />
                     Google Drive
@@ -437,8 +718,8 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                     linkType === 'youtube'
                       ? 'https://youtube.com/watch?v=...'
                       : linkType === 'drive'
-                      ? 'https://drive.google.com/...'
-                      : 'https://example.com/resource'
+                        ? 'https://drive.google.com/...'
+                        : 'https://example.com/resource'
                   }
                 />
               </div>
@@ -464,20 +745,26 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
         <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={isUploading}
+            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={uploadMode === 'file' ? handleSaveFiles : handleAddLink}
             disabled={
-              uploadMode === 'file'
-                ? fileUploads.filter(fu => fu.status === 'completed').length === 0
-                : !linkUrl.trim()
+              isUploading ||
+              (uploadMode === 'file'
+                ? fileUploads.length === 0
+                : !linkUrl.trim())
             }
             className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
-            {uploadMode === 'file' ? 'Add Files' : 'Add Link'}
+            {isUploading 
+              ? 'Uploading...' 
+              : uploadMode === 'file' 
+                ? `Upload & Add ${fileUploads.length > 0 ? `(${fileUploads.length})` : ''}` 
+                : 'Add Link'}
           </button>
         </div>
       </div>

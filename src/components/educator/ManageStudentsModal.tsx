@@ -15,12 +15,13 @@ interface Props {
   onClose: () => void
   classItem: EducatorClass | null
   onStudentsUpdated: (updatedClass: EducatorClass) => void
+  schoolId?: string | null
 }
 
 type AddMode = "select" | "csv"
 type CSVStudent = { name: string; email: string; progress?: number }
 
-const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onStudentsUpdated }) => {
+const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onStudentsUpdated, schoolId }) => {
   const [loading, setLoading] = useState(false)
   const [loadingDirectory, setLoadingDirectory] = useState(false)
   const [directory, setDirectory] = useState<StudentDirectoryEntry[]>([])
@@ -37,14 +38,17 @@ const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onSt
     setCsvStudents([])
     setCsvError("")
     setDirectorySearch("")
-    if (!directory.length) {
+    if (!directory.length && schoolId) {
       loadDirectory()
     }
-  }, [isOpen])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, schoolId])
 
   const loadDirectory = async () => {
+    if (!schoolId) return
+    
     setLoadingDirectory(true)
-    const { data, error } = await fetchStudentDirectory()
+    const { data, error } = await fetchStudentDirectory(schoolId)
     if (error || !data) {
       toast.error(error || "Unable to load students")
     } else {
@@ -307,7 +311,7 @@ const ManageStudentsModal: React.FC<Props> = ({ isOpen, onClose, classItem, onSt
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Choose Students</label>
                       <input
-                        value={directorySearch}
+                        value={directorySearch || ""}
                         onChange={(e) => setDirectorySearch(e.target.value)}
                         type="text"
                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2"

@@ -17,6 +17,9 @@ import {
   ExclamationTriangleIcon,
   RocketLaunchIcon,
   ArchiveBoxIcon,
+  DocumentDuplicateIcon,
+  ArrowUpIcon,
+  ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
 
@@ -26,15 +29,24 @@ import SearchBar from "../../../components/common/SearchBar";
 interface Chapter {
   id: string;
   name: string;
+  code?: string; // Chapter Code/Number
   description: string;
   order: number;
+  estimatedDuration?: number; // Duration in hours
+  durationUnit?: "hours" | "weeks"; // Unit for duration
+}
+
+interface AssessmentMapping {
+  assessmentType: string;
+  weightage?: number; // Weightage percentage for this assessment type
 }
 
 interface LearningOutcome {
   id: string;
   chapterId: string;
   outcome: string;
-  assessmentType?: string; // Assessment type mapping
+  assessmentMappings: AssessmentMapping[]; // Multiple assessment type mappings
+  bloomLevel?: string; // Bloom's Taxonomy level
 }
 
 interface AssessmentType {
@@ -47,6 +59,7 @@ interface Curriculum {
   id: string;
   subject: string;
   class: string;
+  academicYear: string; // Academic Year
   chapters: Chapter[];
   learningOutcomes: LearningOutcome[];
   assessmentTypes: AssessmentType[];
@@ -163,23 +176,35 @@ const AddChapterModal = ({
   editChapter?: Chapter | null;
 }) => {
   const [name, setName] = useState("");
+  const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
+  const [estimatedDuration, setEstimatedDuration] = useState("");
+  const [durationUnit, setDurationUnit] = useState<"hours" | "weeks">("hours");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (editChapter) {
       setName(editChapter.name);
+      setCode(editChapter.code || "");
       setDescription(editChapter.description);
+      setEstimatedDuration(editChapter.estimatedDuration?.toString() || "");
+      setDurationUnit(editChapter.durationUnit || "hours");
     } else {
       setName("");
+      setCode("");
       setDescription("");
+      setEstimatedDuration("");
+      setDurationUnit("hours");
     }
   }, [editChapter, isOpen]);
 
   const resetForm = () => {
     setName("");
+    setCode("");
     setDescription("");
+    setEstimatedDuration("");
+    setDurationUnit("hours");
     setError(null);
   };
 
@@ -201,8 +226,11 @@ const AddChapterModal = ({
       onCreated({
         id: editChapter?.id || Date.now().toString(),
         name: name.trim(),
+        code: code.trim() || undefined,
         description: description.trim(),
         order: editChapter?.order || 0,
+        estimatedDuration: estimatedDuration ? parseInt(estimatedDuration) : undefined,
+        durationUnit: estimatedDuration ? durationUnit : undefined,
       });
       setSubmitting(false);
       handleClose();
@@ -230,19 +258,59 @@ const AddChapterModal = ({
       )}
 
       <div className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Chapter Name <span className="text-red-500">*</span>
-          </label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={`w-full rounded-lg border ${
-              error ? "border-red-300" : "border-gray-300"
-            } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors`}
-            placeholder="e.g., Introduction to Algebra"
-          />
-          <p className="mt-1 text-xs text-gray-500">Minimum 3 characters</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Chapter Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={`w-full rounded-lg border ${
+                error ? "border-red-300" : "border-gray-300"
+              } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors`}
+              placeholder="e.g., Introduction to Algebra"
+            />
+            <p className="mt-1 text-xs text-gray-500">Minimum 3 characters</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Chapter Code/Number
+            </label>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+              placeholder="e.g., CH-01 or 1.1"
+            />
+            <p className="mt-1 text-xs text-gray-500">Optional identifier</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Estimated Duration
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={estimatedDuration}
+                onChange={(e) => setEstimatedDuration(e.target.value)}
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                placeholder="e.g., 8"
+                min="1"
+              />
+              <select
+                value={durationUnit}
+                onChange={(e) => setDurationUnit(e.target.value as "hours" | "weeks")}
+                className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+              >
+                <option value="hours">Hours</option>
+                <option value="weeks">Weeks</option>
+              </select>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">Optional teaching time</p>
+          </div>
         </div>
 
         <div>
@@ -307,9 +375,21 @@ const AddLearningOutcomeModal = ({
   editOutcome?: LearningOutcome | null;
   assessmentTypes: AssessmentType[];
 }) => {
+  const bloomLevels = [
+    "Remember",
+    "Understand",
+    "Apply",
+    "Analyze",
+    "Evaluate",
+    "Create",
+  ];
+
   const [chapterId, setChapterId] = useState("");
   const [outcome, setOutcome] = useState("");
-  const [assessmentType, setAssessmentType] = useState("");
+  const [bloomLevel, setBloomLevel] = useState("");
+  const [assessmentMappings, setAssessmentMappings] = useState<AssessmentMapping[]>([]);
+  const [currentAssessmentType, setCurrentAssessmentType] = useState("");
+  const [currentWeightage, setCurrentWeightage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -317,24 +397,58 @@ const AddLearningOutcomeModal = ({
     if (editOutcome) {
       setChapterId(editOutcome.chapterId);
       setOutcome(editOutcome.outcome);
-      setAssessmentType(editOutcome.assessmentType || "");
+      setBloomLevel(editOutcome.bloomLevel || "");
+      setAssessmentMappings(editOutcome.assessmentMappings || []);
     } else {
       setChapterId("");
       setOutcome("");
-      setAssessmentType("");
+      setBloomLevel("");
+      setAssessmentMappings([]);
     }
+    setCurrentAssessmentType("");
+    setCurrentWeightage("");
   }, [editOutcome, isOpen]);
 
   const resetForm = () => {
     setChapterId("");
     setOutcome("");
-    setAssessmentType("");
+    setBloomLevel("");
+    setAssessmentMappings([]);
+    setCurrentAssessmentType("");
+    setCurrentWeightage("");
     setError(null);
   };
 
   const handleClose = () => {
     resetForm();
     onClose();
+  };
+
+  const handleAddAssessmentMapping = () => {
+    if (!currentAssessmentType) {
+      setError("Please select an assessment type");
+      return;
+    }
+
+    // Check if already added
+    if (assessmentMappings.some(m => m.assessmentType === currentAssessmentType)) {
+      setError("This assessment type is already added");
+      return;
+    }
+
+    const newMapping: AssessmentMapping = {
+      assessmentType: currentAssessmentType,
+      weightage: currentWeightage ? parseFloat(currentWeightage) : undefined,
+    };
+
+    setAssessmentMappings([...assessmentMappings, newMapping]);
+    setCurrentAssessmentType("");
+    setCurrentWeightage("");
+    setError(null);
+  };
+
+  const handleRemoveAssessmentMapping = (assessmentType: string) => {
+    setAssessmentMappings(assessmentMappings.filter(m => m.assessmentType !== assessmentType));
   };
 
   const handleSubmit = () => {
@@ -346,6 +460,10 @@ const AddLearningOutcomeModal = ({
       setError("Learning Outcome required.");
       return;
     }
+    if (assessmentMappings.length === 0) {
+      setError("Please add at least one assessment type mapping");
+      return;
+    }
 
     setError(null);
     setSubmitting(true);
@@ -355,7 +473,8 @@ const AddLearningOutcomeModal = ({
         id: editOutcome?.id || Date.now().toString(),
         chapterId,
         outcome: outcome.trim(),
-        assessmentType: assessmentType || undefined,
+        assessmentMappings,
+        bloomLevel: bloomLevel || undefined,
       });
       setSubmitting(false);
       handleClose();
@@ -420,23 +539,126 @@ const AddLearningOutcomeModal = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Assessment Type Mapping
+            Bloom's Taxonomy Level
           </label>
           <select
-            value={assessmentType}
-            onChange={(e) => setAssessmentType(e.target.value)}
+            value={bloomLevel}
+            onChange={(e) => setBloomLevel(e.target.value)}
             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
           >
-            <option value="">Select Assessment Type (Optional)</option>
-            {assessmentTypes.map((type) => (
-              <option key={type.id} value={type.name}>
-                {type.name}
+            <option value="">Select Bloom's Level (Optional)</option>
+            {bloomLevels.map((level) => (
+              <option key={level} value={level}>
+                {level}
               </option>
             ))}
           </select>
           <p className="mt-1 text-xs text-gray-500">
-            Map this learning outcome to an assessment type
+            Cognitive complexity level for this outcome
           </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Assessment Type Mappings <span className="text-red-500">*</span>
+          </label>
+          <p className="text-xs text-gray-500 mb-3">
+            Map this learning outcome to one or more assessment types
+          </p>
+
+          {/* Add Assessment Mapping */}
+          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 mb-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Assessment Type
+                </label>
+                <select
+                  value={currentAssessmentType}
+                  onChange={(e) => setCurrentAssessmentType(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                >
+                  <option value="">Select Type</option>
+                  {assessmentTypes.map((type) => (
+                    <option key={type.id} value={type.name}>
+                      {type.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Weightage % (Optional)
+                </label>
+                <input
+                  type="number"
+                  value={currentWeightage}
+                  onChange={(e) => setCurrentWeightage(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                  placeholder="e.g., 20"
+                  min="0"
+                  max="100"
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddAssessmentMapping}
+              className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium inline-flex items-center justify-center gap-2"
+            >
+              <PlusCircleIcon className="h-4 w-4" />
+              Add Assessment Mapping
+            </button>
+          </div>
+
+          {/* Display Added Mappings */}
+          {assessmentMappings.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-gray-600 mb-2">
+                Added Mappings ({assessmentMappings.length}):
+              </p>
+              {assessmentMappings.map((mapping, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-3 bg-indigo-50 border border-indigo-200 rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center justify-center w-6 h-6 bg-indigo-600 text-white rounded-full text-xs font-bold">
+                      {idx + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {mapping.assessmentType}
+                      </p>
+                      {mapping.weightage && (
+                        <p className="text-xs text-gray-600">
+                          Weightage: {mapping.weightage}%
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAssessmentMapping(mapping.assessmentType)}
+                    className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                    title="Remove mapping"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {assessmentMappings.length === 0 && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800">
+                ⚠️ Please add at least one assessment type mapping
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -542,55 +764,25 @@ const ChapterCard = ({
   );
 };
 
-/* ==============================
-   LEARNING OUTCOME CARD
-   ============================== */
-const OutcomeCard = ({
-  outcome,
-  onEdit,
-  onDelete,
-}: {
-  outcome: LearningOutcome;
-  onEdit: () => void;
-  onDelete: () => void;
-}) => {
-  return (
-    <div className="group relative rounded-lg border border-gray-200 bg-gray-50 p-4 transition-all hover:border-gray-300 hover:bg-white">
-      <div className="flex items-start justify-between gap-3">
-        <p className="flex-1 text-sm text-gray-800 leading-relaxed">
-          {outcome.outcome}
-        </p>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {outcome.assessmentType && (
-            <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
-              {outcome.assessmentType}
-            </span>
-          )}
-          <button
-            onClick={onEdit}
-            className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-            title="Edit Outcome"
-          >
-            <PencilSquareIcon className="h-4 w-4" />
-          </button>
-          <button
-            onClick={onDelete}
-            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-            title="Delete Outcome"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+
 
 /* ==============================
-   MAIN CURRICULUM BUILDER COMPONENT
+   COPY CURRICULUM MODAL
    ============================== */
-const CurriculumBuilder: React.FC = () => {
-  // Sample data
+const CopyCurriculumModal = ({
+  isOpen,
+  onClose,
+  onCopy,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onCopy: (sourceClass: string, sourceSubject: string) => void;
+}) => {
+  const [sourceClass, setSourceClass] = useState("");
+  const [sourceSubject, setSourceSubject] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const classes = ["9", "10", "11", "12"];
   const subjects = [
     "Mathematics",
     "Physics",
@@ -602,10 +794,303 @@ const CurriculumBuilder: React.FC = () => {
     "Economics",
   ];
 
-  const classes = ["9", "10", "11", "12"];
+  const handleCopy = () => {
+    if (!sourceClass || !sourceSubject) {
+      alert("Please select both class and subject");
+      return;
+    }
 
-  // Assessment Types (as per requirements)
-  const assessmentTypes: AssessmentType[] = [
+    setSubmitting(true);
+    setTimeout(() => {
+      onCopy(sourceClass, sourceSubject);
+      setSubmitting(false);
+      onClose();
+      alert(`Curriculum copied from Class ${sourceClass} - ${sourceSubject}`);
+    }, 800);
+  };
+
+  return (
+    <ModalWrapper
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Copy Curriculum Template"
+      subtitle="Copy chapters and learning outcomes from another curriculum"
+    >
+      <div className="space-y-5">
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800">
+            This will copy all chapters and learning outcomes from the selected curriculum as a template. You can then modify them as needed.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Source Class <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={sourceClass}
+            onChange={(e) => setSourceClass(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+          >
+            <option value="">Select Class</option>
+            {classes.map((cls) => (
+              <option key={cls} value={cls}>
+                Class {cls}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Source Subject <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={sourceSubject}
+            onChange={(e) => setSourceSubject(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+          >
+            <option value="">Select Subject</option>
+            {subjects.map((subject) => (
+              <option key={subject} value={subject}>
+                {subject}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="mt-8 flex justify-end gap-3">
+        <button
+          onClick={onClose}
+          disabled={submitting}
+          className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleCopy}
+          disabled={submitting}
+          className="rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+        >
+          {submitting ? (
+            <>
+              <ArrowPathIcon className="h-4 w-4 animate-spin" />
+              Copying...
+            </>
+          ) : (
+            <>
+              <DocumentDuplicateIcon className="h-4 w-4" />
+              Copy Curriculum
+            </>
+          )}
+        </button>
+      </div>
+    </ModalWrapper>
+  );
+};
+
+/* ==============================
+   EXPORT CURRICULUM MODAL
+   ============================== */
+const ExportCurriculumModal = ({
+  isOpen,
+  onClose,
+  onExport,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onExport: (format: "pdf" | "excel") => void;
+}) => {
+  const [selectedFormat, setSelectedFormat] = useState<"pdf" | "excel">("pdf");
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = () => {
+    setExporting(true);
+    setTimeout(() => {
+      onExport(selectedFormat);
+      setExporting(false);
+      onClose();
+      alert(`Curriculum exported as ${selectedFormat.toUpperCase()}`);
+    }, 1000);
+  };
+
+  return (
+    <ModalWrapper
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Export Curriculum"
+      subtitle="Download curriculum in your preferred format"
+    >
+      <div className="space-y-5">
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={() => setSelectedFormat("pdf")}
+            className={`p-6 rounded-xl border-2 transition-all ${
+              selectedFormat === "pdf"
+                ? "border-indigo-500 bg-indigo-50"
+                : "border-gray-200 hover:border-gray-300"
+            }`}
+          >
+            <div className="flex flex-col items-center gap-3">
+              <div
+                className={`p-3 rounded-lg ${
+                  selectedFormat === "pdf"
+                    ? "bg-indigo-100 text-indigo-600"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+              >
+                <DocumentCheckIcon className="h-8 w-8" />
+              </div>
+              <div className="text-center">
+                <h3 className="font-semibold text-gray-900">PDF</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Formatted document
+                </p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setSelectedFormat("excel")}
+            className={`p-6 rounded-xl border-2 transition-all ${
+              selectedFormat === "excel"
+                ? "border-green-500 bg-green-50"
+                : "border-gray-200 hover:border-gray-300"
+            }`}
+          >
+            <div className="flex flex-col items-center gap-3">
+              <div
+                className={`p-3 rounded-lg ${
+                  selectedFormat === "excel"
+                    ? "bg-green-100 text-green-600"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+              >
+                <ArrowDownTrayIcon className="h-8 w-8" />
+              </div>
+              <div className="text-center">
+                <h3 className="font-semibold text-gray-900">Excel</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Spreadsheet format
+                </p>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <h4 className="text-sm font-semibold text-gray-900 mb-2">
+            Export will include:
+          </h4>
+          <ul className="text-sm text-gray-700 space-y-1">
+            <li>✓ All chapters with descriptions</li>
+            <li>✓ Learning outcomes per chapter</li>
+            <li>✓ Assessment type mappings</li>
+            <li>✓ Bloom's taxonomy levels</li>
+            <li>✓ Duration estimates</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="mt-8 flex justify-end gap-3">
+        <button
+          onClick={onClose}
+          disabled={exporting}
+          className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+        >
+          {exporting ? (
+            <>
+              <ArrowPathIcon className="h-4 w-4 animate-spin" />
+              Exporting...
+            </>
+          ) : (
+            <>
+              <ArrowDownTrayIcon className="h-4 w-4" />
+              Export as {selectedFormat.toUpperCase()}
+            </>
+          )}
+        </button>
+      </div>
+    </ModalWrapper>
+  );
+};
+
+/* ==============================
+   MAIN CURRICULUM BUILDER COMPONENT
+   ============================== */
+interface CurriculumBuilderProps {
+  // Optional props for wrapper integration
+  selectedSubject?: string;
+  setSelectedSubject?: (value: string) => void;
+  selectedClass?: string;
+  setSelectedClass?: (value: string) => void;
+  selectedAcademicYear?: string;
+  setSelectedAcademicYear?: (value: string) => void;
+  // Configuration data
+  subjects?: string[];
+  classes?: string[];
+  academicYears?: string[];
+  // Data
+  curriculumId?: string | null;
+  chapters?: Chapter[];
+  learningOutcomes?: LearningOutcome[];
+  assessmentTypes?: AssessmentType[];
+  status?: "draft" | "pending_approval" | "approved" | "rejected";
+  rejectionReason?: string;
+  loading?: boolean;
+  saveStatus?: "idle" | "saving" | "saved";
+  searchQuery?: string;
+  setSearchQuery?: (value: string) => void;
+  // Handlers
+  onAddChapter?: (chapter: Chapter) => Promise<void>;
+  onDeleteChapter?: (id: string) => Promise<void>;
+  onAddOutcome?: (outcome: LearningOutcome) => Promise<void>;
+  onDeleteOutcome?: (id: string) => Promise<void>;
+  onSubmitForApproval?: () => Promise<void>;
+  onApprove?: () => Promise<void>;
+  onReject?: () => Promise<void>;
+}
+
+const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
+  // Configuration data - use props or fallback to hardcoded defaults
+  const subjects = props.subjects ?? [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "English",
+    "History",
+    "Computer Science",
+    "Economics",
+  ];
+
+  const classes = props.classes ?? ["9", "10", "11", "12"];
+  
+  const academicYears = props.academicYears ?? [
+    "2024-2025",
+    "2025-2026",
+    "2026-2027",
+  ];
+
+  const bloomLevels = [
+    "Remember",
+    "Understand",
+    "Apply",
+    "Analyze",
+    "Evaluate",
+    "Create",
+  ];
+
+  // Assessment Types (as per requirements) - use props or default
+  const defaultAssessmentTypes: AssessmentType[] = [
     { id: "1", name: "Written Test", description: "Traditional written examination" },
     { id: "2", name: "Practical Exam", description: "Hands-on practical assessment" },
     { id: "3", name: "Project", description: "Project-based evaluation" },
@@ -615,23 +1100,45 @@ const CurriculumBuilder: React.FC = () => {
     { id: "7", name: "Lab Work", description: "Laboratory work evaluation" },
     { id: "8", name: "Class Participation", description: "Active participation in class" },
   ];
+  const assessmentTypes = props.assessmentTypes ?? defaultAssessmentTypes;
 
-  // State
-  const [selectedSubject, setSelectedSubject] = useState("");
-  const [selectedClass, setSelectedClass] = useState("");
-  const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [learningOutcomes, setLearningOutcomes] = useState<LearningOutcome[]>(
-    []
-  );
-  const [status, setStatus] = useState<"draft" | "pending_approval" | "approved" | "rejected">("draft");
-  const [searchQuery, setSearchQuery] = useState("");
+  // State - use props if provided, otherwise use local state
+  const [localSelectedSubject, localSetSelectedSubject] = useState("");
+  const [localSelectedClass, localSetSelectedClass] = useState("");
+  const [localSelectedAcademicYear, localSetSelectedAcademicYear] = useState("");
+  const [localChapters, localSetChapters] = useState<Chapter[]>([]);
+  const [localLearningOutcomes, localSetLearningOutcomes] = useState<LearningOutcome[]>([]);
+  const [localStatus, localSetStatus] = useState<"draft" | "pending_approval" | "approved" | "rejected">("draft");
+  const [localSearchQuery, localSetSearchQuery] = useState("");
+  const [localSaveStatus, localSetSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [localRejectionReason, localSetRejectionReason] = useState<string | undefined>();
+  
+  // Use props or local state
+  const selectedSubject = props.selectedSubject ?? localSelectedSubject;
+  const setSelectedSubject = props.setSelectedSubject ?? localSetSelectedSubject;
+  const selectedClass = props.selectedClass ?? localSelectedClass;
+  const setSelectedClass = props.setSelectedClass ?? localSetSelectedClass;
+  const selectedAcademicYear = props.selectedAcademicYear ?? localSelectedAcademicYear;
+  const setSelectedAcademicYear = props.setSelectedAcademicYear ?? localSetSelectedAcademicYear;
+  const chapters = props.chapters ?? localChapters;
+  const setChapters = localSetChapters;
+  const learningOutcomes = props.learningOutcomes ?? localLearningOutcomes;
+  const setLearningOutcomes = localSetLearningOutcomes;
+  const status = props.status ?? localStatus;
+  const setStatus = localSetStatus;
+  const searchQuery = props.searchQuery ?? localSearchQuery;
+  const setSearchQuery = props.setSearchQuery ?? localSetSearchQuery;
+  const saveStatus = props.saveStatus ?? localSaveStatus;
+  const setSaveStatus = localSetSaveStatus;
+  const rejectionReason = props.rejectionReason ?? localRejectionReason;
+  const setRejectionReason = localSetRejectionReason;
+  const loading = props.loading ?? false;
+  
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
-    "idle"
-  );
   const [createdBy] = useState("current_teacher_id"); // TODO: Get from auth context
   const [approvedBy, setApprovedBy] = useState<string | undefined>();
-  const [rejectionReason, setRejectionReason] = useState<string | undefined>();
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Modal states
   const [showAddChapterModal, setShowAddChapterModal] = useState(false);
@@ -688,6 +1195,9 @@ const CurriculumBuilder: React.FC = () => {
   const validateCurriculum = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    if (!selectedAcademicYear) {
+      newErrors.academicYear = "Academic Year is mandatory";
+    }
     if (!selectedSubject) {
       newErrors.subject = "Subject is mandatory";
     }
@@ -706,19 +1216,26 @@ const CurriculumBuilder: React.FC = () => {
   };
 
   // Chapter handlers
-  const handleAddChapter = (chapter: Chapter) => {
-    if (editingChapter) {
-      setChapters((prev) =>
-        prev.map((ch) => (ch.id === chapter.id ? chapter : ch))
-      );
+  const handleAddChapter = async (chapter: Chapter) => {
+    if (props.onAddChapter) {
+      await props.onAddChapter(chapter);
+      setShowAddChapterModal(false);
       setEditingChapter(null);
     } else {
-      setChapters((prev) => [
-        ...prev,
-        { ...chapter, order: prev.length + 1 },
-      ]);
+      // Fallback to local state
+      if (editingChapter) {
+        setChapters((prev) =>
+          prev.map((ch) => (ch.id === chapter.id ? chapter : ch))
+        );
+        setEditingChapter(null);
+      } else {
+        setChapters((prev) => [
+          ...prev,
+          { ...chapter, order: prev.length + 1 },
+        ]);
+      }
+      setShowAddChapterModal(false);
     }
-    setShowAddChapterModal(false);
   };
 
   const handleEditChapter = (chapter: Chapter) => {
@@ -726,25 +1243,38 @@ const CurriculumBuilder: React.FC = () => {
     setShowAddChapterModal(true);
   };
 
-  const handleDeleteChapter = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this chapter?")) {
-      setChapters((prev) => prev.filter((ch) => ch.id !== id));
-      setLearningOutcomes((prev) => prev.filter((lo) => lo.chapterId !== id));
+  const handleDeleteChapter = async (id: string) => {
+    if (props.onDeleteChapter) {
+      await props.onDeleteChapter(id);
+    } else {
+      // Fallback to local state
+      if (window.confirm("Are you sure you want to delete this chapter?")) {
+        setChapters((prev) => prev.filter((ch) => ch.id !== id));
+        setLearningOutcomes((prev) => prev.filter((lo) => lo.chapterId !== id));
+      }
     }
   };
 
   // Learning outcome handlers
-  const handleAddOutcome = (outcome: LearningOutcome) => {
-    if (editingOutcome) {
-      setLearningOutcomes((prev) =>
-        prev.map((lo) => (lo.id === outcome.id ? outcome : lo))
-      );
+  const handleAddOutcome = async (outcome: LearningOutcome) => {
+    if (props.onAddOutcome) {
+      await props.onAddOutcome(outcome);
+      setShowAddOutcomeModal(false);
       setEditingOutcome(null);
+      setSelectedChapterForOutcome(null);
     } else {
-      setLearningOutcomes((prev) => [...prev, outcome]);
+      // Fallback to local state
+      if (editingOutcome) {
+        setLearningOutcomes((prev) =>
+          prev.map((lo) => (lo.id === outcome.id ? outcome : lo))
+        );
+        setEditingOutcome(null);
+      } else {
+        setLearningOutcomes((prev) => [...prev, outcome]);
+      }
+      setShowAddOutcomeModal(false);
+      setSelectedChapterForOutcome(null);
     }
-    setShowAddOutcomeModal(false);
-    setSelectedChapterForOutcome(null);
   };
 
   const handleEditOutcome = (outcome: LearningOutcome) => {
@@ -752,9 +1282,14 @@ const CurriculumBuilder: React.FC = () => {
     setShowAddOutcomeModal(true);
   };
 
-  const handleDeleteOutcome = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this outcome?")) {
-      setLearningOutcomes((prev) => prev.filter((lo) => lo.id !== id));
+  const handleDeleteOutcome = async (id: string) => {
+    if (props.onDeleteOutcome) {
+      await props.onDeleteOutcome(id);
+    } else {
+      // Fallback to local state
+      if (window.confirm("Are you sure you want to delete this outcome?")) {
+        setLearningOutcomes((prev) => prev.filter((lo) => lo.id !== id));
+      }
     }
   };
 
@@ -764,41 +1299,56 @@ const CurriculumBuilder: React.FC = () => {
   };
 
   // Submit for approval handler
-  const handleSubmitForApproval = () => {
-    if (!validateCurriculum()) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
+  const handleSubmitForApproval = async () => {
+    if (props.onSubmitForApproval) {
+      await props.onSubmitForApproval();
+    } else {
+      // Fallback to local state
+      if (!validateCurriculum()) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
 
-    if (
-      window.confirm(
-        "Are you sure you want to submit this curriculum for Academic Coordinator approval?"
-      )
-    ) {
-      setStatus("pending_approval");
-      setHasUnsavedChanges(false);
-      alert("Curriculum submitted for approval! The Academic Coordinator will review it.");
+      if (
+        window.confirm(
+          "Are you sure you want to submit this curriculum for Academic Coordinator approval?"
+        )
+      ) {
+        setStatus("pending_approval");
+        setHasUnsavedChanges(false);
+        alert("Curriculum submitted for approval! The Academic Coordinator will review it.");
+      }
     }
   };
 
   // Approve handler (for Academic Coordinator only)
-  const handleApprove = () => {
-    if (window.confirm("Approve this curriculum?")) {
-      setStatus("approved");
-      setApprovedBy("academic_coordinator_id"); // TODO: Get from auth context
-      setHasUnsavedChanges(false);
-      alert("Curriculum approved successfully!");
+  const handleApprove = async () => {
+    if (props.onApprove) {
+      await props.onApprove();
+    } else {
+      // Fallback to local state
+      if (window.confirm("Approve this curriculum?")) {
+        setStatus("approved");
+        setApprovedBy("academic_coordinator_id"); // TODO: Get from auth context
+        setHasUnsavedChanges(false);
+        alert("Curriculum approved successfully!");
+      }
     }
   };
 
   // Reject handler (for Academic Coordinator only)
-  const handleReject = () => {
-    const reason = prompt("Please provide a reason for rejection:");
-    if (reason) {
-      setStatus("rejected");
-      setRejectionReason(reason);
-      setHasUnsavedChanges(false);
-      alert("Curriculum rejected. Teacher will be notified.");
+  const handleReject = async () => {
+    if (props.onReject) {
+      await props.onReject();
+    } else {
+      // Fallback to local state
+      const reason = prompt("Please provide a reason for rejection:");
+      if (reason) {
+        setStatus("rejected");
+        setRejectionReason(reason);
+        setHasUnsavedChanges(false);
+        alert("Curriculum rejected. Teacher will be notified.");
+      }
     }
   };
 
@@ -810,6 +1360,19 @@ const CurriculumBuilder: React.FC = () => {
       setHasUnsavedChanges(false);
       setTimeout(() => setSaveStatus("idle"), 2000);
     }, 800);
+  };
+
+  // Copy curriculum handler
+  const handleCopyCurriculum = (sourceClass: string, sourceSubject: string) => {
+    // TODO: Fetch curriculum from source and copy
+    // For now, just show a success message
+    console.log(`Copying from Class ${sourceClass} - ${sourceSubject}`);
+  };
+
+  // Export curriculum handler
+  const handleExportCurriculum = (format: "pdf" | "excel") => {
+    // TODO: Implement actual export logic
+    console.log(`Exporting as ${format}`);
   };
 
   // Stats
@@ -871,6 +1434,23 @@ const CurriculumBuilder: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowCopyModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+              title="Copy from another curriculum"
+            >
+              <DocumentDuplicateIcon className="h-4 w-4" />
+              Copy Template
+            </button>
+            <button
+              onClick={() => setShowExportModal(true)}
+              disabled={chapters.length === 0}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
+              title="Export curriculum"
+            >
+              <ArrowUpIcon className="h-4 w-4" />
+              Export
+            </button>
             {status === "approved" && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
                 <CheckCircleIcon className="h-4 w-4" />
@@ -935,6 +1515,27 @@ const CurriculumBuilder: React.FC = () => {
         <aside className="w-full lg:w-80 space-y-5 flex-shrink-0">
           {/* Subject & Class Selection */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Academic Year <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedAcademicYear}
+                onChange={(e) => setSelectedAcademicYear(e.target.value)}
+                disabled={status === "approved" || status === "pending_approval"}
+                className={`w-full rounded-lg border ${
+                  errors.academicYear ? "border-red-300" : "border-gray-300"
+                } px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
+              >
+                <option value="">Select Academic Year</option>
+                {academicYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Subject <span className="text-red-500">*</span>
@@ -1288,17 +1889,42 @@ const CurriculumBuilder: React.FC = () => {
                                     <span className="flex-shrink-0 flex items-center justify-center h-6 w-6 rounded-md bg-gray-100 text-gray-600 text-xs font-semibold">
                                       {outcomeIdx + 1}
                                     </span>
-                                    <div className="flex-1 min-w-0">
+                                    <div className="flex-1 min-w-0 space-y-2">
                                       <p className="text-sm text-gray-800 leading-relaxed">
                                         {outcome.outcome}
                                       </p>
+                                      
+                                      {/* Display Bloom's Level */}
+                                      {outcome.bloomLevel && (
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs text-gray-500">Bloom's Level:</span>
+                                          <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                                            {outcome.bloomLevel}
+                                          </span>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Display Assessment Mappings */}
+                                      {outcome.assessmentMappings && outcome.assessmentMappings.length > 0 && (
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span className="text-xs text-gray-500">Assessments:</span>
+                                          {outcome.assessmentMappings.map((mapping, mapIdx) => (
+                                            <span
+                                              key={mapIdx}
+                                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium"
+                                            >
+                                              {mapping.assessmentType}
+                                              {mapping.weightage && (
+                                                <span className="text-indigo-900 font-semibold">
+                                                  {mapping.weightage}%
+                                                </span>
+                                              )}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
-                                      {outcome.assessmentType && (
-                                        <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
-                                          {outcome.assessmentType}
-                                        </span>
-                                      )}
                                       {status !== "approved" && status !== "pending_approval" && (
                                         <>
                                           <button
@@ -1412,6 +2038,18 @@ const CurriculumBuilder: React.FC = () => {
         chapters={chapters}
         editOutcome={editingOutcome}
         assessmentTypes={assessmentTypes}
+      />
+
+      <CopyCurriculumModal
+        isOpen={showCopyModal}
+        onClose={() => setShowCopyModal(false)}
+        onCopy={handleCopyCurriculum}
+      />
+
+      <ExportCurriculumModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExport={handleExportCurriculum}
       />
     </div>
   );

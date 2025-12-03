@@ -12,6 +12,7 @@ import {
   TableCellsIcon,
 } from '@heroicons/react/24/outline';
 import { useStudents } from '../../hooks/useStudents';
+import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 import { useSearch } from '../../context/SearchContext';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/educator/Pagination';
@@ -197,10 +198,12 @@ const DigitalPortfolioPage = () => {
     maxScore: 100
   });
 
-  const { students, loading, error, totalItems } = useStudents({
-    search: searchQuery,
-    page: currentPage,
-    limit: itemsPerPage,
+  // Get educator's school information
+  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
+
+  // Fetch students filtered by educator's school
+  const { students, loading, error } = useStudents({ 
+    schoolId: educatorSchool?.id 
   });
 
   // Reset to page 1 when filters or search change
@@ -598,7 +601,7 @@ const DigitalPortfolioPage = () => {
 
           {/* Content Area */}
           <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
-            {loading ? (
+            {(loading || schoolLoading) ? (
               <div className="flex justify-center items-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
               </div>
@@ -613,8 +616,15 @@ const DigitalPortfolioPage = () => {
                 <p className="text-sm text-gray-500 mb-4">
                   {searchQuery || activeFilterCount > 0
                     ? 'No portfolios match your current filters'
-                    : 'No student portfolios available'}
+                    : educatorSchool 
+                      ? `No student portfolios available in ${educatorSchool.name}`
+                      : 'No student portfolios available'}
                 </p>
+                {educatorSchool && (
+                  <p className="text-xs text-gray-400 mb-4">
+                    Portfolios are filtered by your assigned school.
+                  </p>
+                )}
                 {activeFilterCount > 0 && (
                   <button
                     onClick={handleClearFilters}

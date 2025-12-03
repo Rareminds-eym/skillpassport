@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, ChevronDown } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { supabase } from '../lib/supabaseClient';
@@ -9,7 +9,6 @@ gsap.registerPlugin(ScrollTrigger);
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showLoginDropdown, setShowLoginDropdown] = useState(false);
   const [authUser, setAuthUser] = useState(null);
   const location = useLocation();
   const headerRef = useRef(null);
@@ -295,56 +294,14 @@ const Header = () => {
                 Sign Up
               </Link>
 
-              {/* Login Dropdown */}
-              <div 
+              {/* Login Button */}
+              <Link 
+                to="/login"
                 ref={loginBtnRef}
-                className="relative"
-                onMouseEnter={() => setShowLoginDropdown(true)}
-                onMouseLeave={() => setShowLoginDropdown(false)}
+                className="px-5 py-2.5 text-sm font-extrabold text-white border-2 border-red-300 bg-gradient-to-r from-red-500 to-red-400 shadow-lg shadow-red-200 rounded-full hover:bg-red-600 hover:from-red-600 hover:to-red-500 transition-all duration-200 hover:shadow-md"
               >
-                <button
-                  className="flex items-center space-x-1 px-5 py-2.5 text-sm font-extrabold text-white border-2 border-red-300 bg-gradient-to-r from-red-500  to-red-400 shadow-lg shadow-red-200 rounded-full hover:bg-red-100 transition-all duration-200 hover:shadow-md"
-                >
-                  <span>Login</span>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-                
-                {showLoginDropdown && (
-                  <div className="absolute top-full left-0 pt-2 w-52 z-50">
-                    <div className="bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden">
-                      <Link
-                        to="/login/recruiter"
-                        className="block px-5 py-3.5 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
-                      >
-                        Login as Recruiter
-                      </Link>
-                      <div className="h-px bg-gray-100"></div>
-                      <Link
-                        to="/login/student"
-                        className="block px-5 py-3.5 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
-                      >
-                        Login as Student
-                      </Link>
-                      <div className="h-px bg-gray-100"></div>
-                      <Link
-                        to="/login/educator"
-                        className="block px-5 py-3.5 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
-                      >
-                        Login as Educator
-                      </Link>
-
-                      <div className="h-px bg-gray-100"></div>
-                      <Link
-                        to="/login/admin"
-                        className="block px-5 py-3.5 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
-                      >
-                        Login as Admin
-                      </Link>
-                    </div>
-                    
-                  </div>
-                )}
-              </div>
+                Login
+              </Link>
 
             </div>
           )}
@@ -404,37 +361,13 @@ const Header = () => {
                   </div>
 
                   <div>
-                    <div className="text-xs font-bold text-gray-400 uppercase px-2 tracking-wider">Login</div>
-                    <div className="mt-2 space-y-2">
-                      <Link
-                        to="/login/recruiter"
-                        onClick={closeMobileMenuWithAnimation}
-                        className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
-                      >
-                        Login as Recruiter
-                      </Link>
-                      <Link
-                        to="/login/student"
-                        onClick={closeMobileMenuWithAnimation}
-                        className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
-                      >
-                        Login as Student
-                      </Link>
-                      <Link
-                        to="/login/educator"
-                        onClick={closeMobileMenuWithAnimation}
-                        className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
-                      >
-                        Login as Educator
-                      </Link>
-                      <Link
-                        to="/login/admin"
-                        onClick={closeMobileMenuWithAnimation}
-                        className="block w-full px-4 py-3 text-sm font-semibold text-center text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-all duration-200"
-                      >
-                        Login as Admin
-                      </Link>
-                    </div>
+                    <Link
+                      to="/login"
+                      onClick={closeMobileMenuWithAnimation}
+                      className="block w-full px-4 py-3 text-sm font-semibold text-center text-white bg-gradient-to-r from-red-500 to-red-400 rounded-lg hover:from-red-600 hover:to-red-500 transition-all duration-200 shadow-lg"
+                    >
+                      Login
+                    </Link>
                   </div>
                 </div>
               </div>

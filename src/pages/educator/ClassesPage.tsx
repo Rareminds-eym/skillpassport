@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   FunnelIcon,
@@ -19,8 +19,10 @@ import {
 } from "@heroicons/react/24/outline"
 import SearchBar from "../../components/common/SearchBar"
 import { useClasses } from "../../hooks/useClasses"
+import { useEducatorSchool } from "../../hooks/useEducatorSchool"
 import ManageStudentsModal from "../../components/educator/ManageStudentsModal"
 import { createClass, EducatorClass, updateClass } from "../../services/classService"
+import { supabase } from "../../lib/supabaseClient"
 import toast from "react-hot-toast"
 import Pagination from "../../components/educator/Pagination"
 
@@ -391,18 +393,20 @@ const AddEditClassModal = ({
   isOpen,
   onClose,
   onSaved,
-  editingClass
+  editingClass,
+  educatorSchool,
+  educatorInfo
 }: {
   isOpen: boolean
   onClose: () => void
   onSaved: (savedClass: EducatorClass) => void
   editingClass?: EducatorClass | null
+  educatorSchool: { id: string; name: string } | null
+  educatorInfo: { id: string; name: string; email: string } | null
 }) => {
   const [name, setName] = useState("")
   const [grade, setGrade] = useState("")
   const [section, setSection] = useState("")
-  const [educator, setEducator] = useState("")
-  const [educatorEmail, setEducatorEmail] = useState("")
   const [academicYear, setAcademicYear] = useState("")
   const [maxStudents, setMaxStudents] = useState("40")
   const [status, setStatus] = useState("Active")
@@ -416,8 +420,6 @@ const AddEditClassModal = ({
       setName(editingClass.name)
       setGrade(editingClass.course)
       setSection(editingClass.department)
-      setEducator(editingClass.educator)
-      setEducatorEmail(editingClass.educatorEmail)
       setAcademicYear(editingClass.year)
       setMaxStudents(String(editingClass.total_students))
       setStatus(editingClass.status)
@@ -426,8 +428,6 @@ const AddEditClassModal = ({
       setName("")
       setGrade("")
       setSection("")
-      setEducator("")
-      setEducatorEmail("")
       setAcademicYear("")
       setMaxStudents("40")
       setStatus("Active")
@@ -440,8 +440,15 @@ const AddEditClassModal = ({
   if (!isOpen) return null
 
   const handleSubmit = async () => {
-    if (!name.trim() || !grade.trim() || !educator.trim() || !educatorEmail.trim() || !section.trim() || !academicYear.trim() || !maxStudents.trim()) {
+    // Validate required fields
+    if (!name.trim() || !grade.trim() || !section.trim() || !academicYear.trim() || !maxStudents.trim()) {
       setError("Fill in all required fields")
+      return
+    }
+
+    // Validate educator info is available
+    if (!educatorInfo || !educatorSchool) {
+      setError("Educator or school information not available")
       return
     }
 
@@ -460,14 +467,16 @@ const AddEditClassModal = ({
         grade: grade.trim(),
         section: section.trim(),
         academicYear: academicYear.trim(),
-        educator: educator.trim(),
-        educatorEmail: educatorEmail.trim(),
         maxStudents: maxStudentsNum,
         status: status as "Active" | "Completed" | "Upcoming",
         skillAreas: skillInput
           .split(",")
           .map((value) => value.trim())
-          .filter(Boolean)
+          .filter(Boolean),
+        schoolId: educatorSchool.id,
+        educatorId: educatorInfo.id,
+        educatorName: educatorInfo.name,
+        educatorEmail: educatorInfo.email
       }
 
       let result
@@ -518,101 +527,88 @@ const AddEditClassModal = ({
             </div>
           )}
 
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Class Name</label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                type="text"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Science A"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Grade</label>
-              <input
-                value={grade}
-                onChange={(e) => setGrade(e.target.value)}
-                type="text"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="10"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Section</label>
-              <input
-                value={section}
-                onChange={(e) => setSection(e.target.value)}
-                type="text"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="A"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Academic Year</label>
-              <input
-                value={academicYear}
-                onChange={(e) => setAcademicYear(e.target.value)}
-                type="text"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="2024-2025"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Max Students</label>
-              <input
-                value={maxStudents}
-                onChange={(e) => setMaxStudents(e.target.value)}
-                type="number"
-                min="1"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="40"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Status</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                {statusOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-gray-700">Educator Name</label>
-              <input
-                value={educator}
-                onChange={(e) => setEducator(e.target.value)}
-                type="text"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Mr. John Smith"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-gray-700">Educator Email</label>
-              <input
-                value={educatorEmail}
-                onChange={(e) => setEducatorEmail(e.target.value)}
-                type="email"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="john.smith@school.edu"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-gray-700">Skill Areas (comma separated)</label>
-              <input
-                value={skillInput}
-                onChange={(e) => setSkillInput(e.target.value)}
-                type="text"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Math, Science, Critical Thinking"
-              />
+          <div className="mt-6 space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Class Name *</label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  type="text"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Science A"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Grade *</label>
+                <input
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  type="text"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="10"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Section *</label>
+                <input
+                  value={section}
+                  onChange={(e) => setSection(e.target.value)}
+                  type="text"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="A"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Academic Year *</label>
+                <input
+                  value={academicYear}
+                  onChange={(e) => setAcademicYear(e.target.value)}
+                  type="text"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="2024-2025"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Max Students *</label>
+                <input
+                  value={maxStudents}
+                  onChange={(e) => setMaxStudents(e.target.value)}
+                  type="number"
+                  min="1"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="40"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Status</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {statusOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-xs font-medium text-gray-700">Skill Areas (comma separated)</label>
+                <input
+                  value={skillInput}
+                  onChange={(e) => setSkillInput(e.target.value)}
+                  type="text"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Math, Science, Critical Thinking"
+                />
+              </div>
             </div>
           </div>
 
@@ -671,7 +667,60 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
 
 const ClassesPage = () => {
   const navigate = useNavigate()
-  const { classes, loading, error, stats, upsertClass } = useClasses()
+  
+  // Get educator's school information
+  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool()
+  
+  // Get educator information from localStorage or context
+  const [educatorInfo, setEducatorInfo] = useState<{ id: string; name: string; email: string } | null>(null)
+  
+  useEffect(() => {
+    const fetchEducatorInfo = async () => {
+      try {
+        const storedUser = localStorage.getItem('user')
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser)
+          if (parsedUser.educator_id && parsedUser.full_name && parsedUser.email) {
+            setEducatorInfo({
+              id: parsedUser.educator_id,
+              name: parsedUser.full_name,
+              email: parsedUser.email
+            })
+            return
+          }
+        }
+
+        // Fallback: fetch from Supabase
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: educatorData } = await supabase
+            .from('school_educators')
+            .select('id, first_name, last_name, email')
+            .eq('user_id', user.id)
+            .single()
+
+          if (educatorData) {
+            setEducatorInfo({
+              id: educatorData.id,
+              name: `${educatorData.first_name || ''} ${educatorData.last_name || ''}`.trim() || educatorData.email,
+              email: educatorData.email
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching educator info:', err)
+      }
+    }
+
+    fetchEducatorInfo()
+  }, [])
+  
+  // Fetch classes filtered by educator's school and assigned classes
+  const { classes, loading, error, stats, upsertClass } = useClasses({ 
+    schoolId: educatorSchool?.id,
+    educatorId: educatorInfo?.id
+  })
+  
   const [viewMode, setViewMode] = useState("grid")
   const [showFilters, setShowFilters] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -873,7 +922,7 @@ const ClassesPage = () => {
     filters.skillAreas.length +
     filters.performanceBands.length
 
-  const isEmpty = !loading && paginatedClasses.length === 0 && !error && !searchQuery && totalFilters === 0
+  const isEmpty = !loading && !schoolLoading && paginatedClasses.length === 0 && !error && !searchQuery && totalFilters === 0
 
   return (
     <div className="flex  overflow-y-auto mb-4 flex-col h-screen">
@@ -1094,18 +1143,18 @@ const ClassesPage = () => {
           </div>
 
           <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
-            {loading && (
+            {(loading || schoolLoading) && (
               <div className="flex items-center justify-center py-10 text-sm text-gray-500 space-x-2">
                 <ArrowPathIcon className="h-5 w-5 animate-spin" />
                 <span>Loading classes...</span>
               </div>
             )}
-            {error && (
+            {!loading && !schoolLoading && error && (
               <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-md p-4">{error}</div>
             )}
-            {isEmpty && <EmptyState onCreate={() => setShowAddClassModal(true)} />}
+            {!loading && !schoolLoading && isEmpty && <EmptyState onCreate={() => setShowAddClassModal(true)} />}
 
-            {!loading && !isEmpty && viewMode === "grid" && paginatedClasses.length > 0 && (
+            {!loading && !schoolLoading && !isEmpty && viewMode === "grid" && paginatedClasses.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {paginatedClasses.map((classItem) => (
                   <div key={classItem.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -1175,7 +1224,7 @@ const ClassesPage = () => {
               </div>
             )}
 
-            {!loading && !isEmpty && viewMode === "table" && paginatedClasses.length > 0 && (
+            {!loading && !schoolLoading && !isEmpty && viewMode === "table" && paginatedClasses.length > 0 && (
               <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -1241,7 +1290,7 @@ const ClassesPage = () => {
               </div>
             )}
 
-            {!loading && paginatedClasses.length === 0 && !isEmpty && (
+            {!loading && !schoolLoading && paginatedClasses.length === 0 && !isEmpty && (
               <div className="text-center py-10 text-sm text-gray-500">
                 No classes match your current filters. Try adjusting filters or clearing them.
                 <div className="mt-3">
@@ -1277,12 +1326,15 @@ const ClassesPage = () => {
           setEditingClass(null)
         }}
         editingClass={editingClass}
+        educatorSchool={educatorSchool}
+        educatorInfo={educatorInfo}
       />
 
       <ManageStudentsModal
         isOpen={!!manageStudentsClass}
         onClose={() => setManageStudentsClass(null)}
         classItem={manageStudentsClass}
+        schoolId={educatorSchool?.id}
         onStudentsUpdated={(updated) => {
           upsertClass(updated)
           setManageStudentsClass(updated)

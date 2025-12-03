@@ -142,14 +142,14 @@ export const validateTeacherOnboarding = (data: {
     errors.subjects = subjectsResult.error!;
   }
   
-  // Validate degree certificate
-  const degreeResult = validateDocument(data.degree_certificate, true);
+  // Validate degree certificate (temporarily optional)
+  const degreeResult = validateDocument(data.degree_certificate, false);
   if (!degreeResult.isValid) {
     errors.degree_certificate = degreeResult.error!;
   }
   
-  // Validate ID proof
-  const idProofResult = validateDocument(data.id_proof, true);
+  // Validate ID proof (temporarily optional)
+  const idProofResult = validateDocument(data.id_proof, false);
   if (!idProofResult.isValid) {
     errors.id_proof = idProofResult.error!;
   }

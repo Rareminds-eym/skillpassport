@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import {
   GraduationCap,
@@ -9,9 +9,55 @@ import {
   BookOpen,
 } from "lucide-react";
 import KPICard from "../../../components/admin/KPICard";
+import KPIDashboard from "../../../components/admin/KPIDashboard";
 import { BanknotesIcon, BuildingOfficeIcon, MapPinIcon } from "@heroicons/react/24/outline";
+import { useAuth } from "../../../context/AuthContext";
+import { supabase } from "../../../lib/supabaseClient";
 
 const SchoolDashboard: React.FC = () => {
+  const { user } = useAuth();
+  const [schoolId, setSchoolId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const getSchoolId = async () => {
+      if (!user) return;
+
+      // Try to get school_id from user object first
+      if (user.school_id) {
+        console.log('School ID from user:', user.school_id);
+        setSchoolId(user.school_id);
+        return;
+      }
+
+      // Fetch school_id from school_educators table using user_id
+      try {
+        const { data, error } = await supabase
+          .from('school_educators')
+          .select('school_id')
+          .eq('user_id', user.id)
+          .maybeSingle(); // Use maybeSingle() instead of single() to handle 0 rows gracefully
+
+        if (error) {
+          console.error('Error fetching school_id:', error);
+          // Set schoolId to undefined so dashboard shows data without school filter
+          setSchoolId(undefined);
+        } else if (data?.school_id) {
+          console.log('School ID from database:', data.school_id);
+          setSchoolId(data.school_id);
+        } else {
+          console.warn('No school_id found for user - showing all data');
+          // Set schoolId to undefined so dashboard shows data without school filter
+          setSchoolId(undefined);
+        }
+      } catch (err) {
+        console.error('Failed to fetch school_id:', err);
+        setSchoolId(undefined);
+      }
+    };
+
+    getSchoolId();
+  }, [user]);
+  
   // ===== KPI Cards Based on School Programs Data =====
   const kpiData = [
     {
@@ -188,8 +234,11 @@ const SchoolDashboard: React.FC = () => {
         </p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+      {/* KPI Cards - Real-time Data from Database */}
+      <KPIDashboard schoolId={schoolId} />
+      
+      {/* Additional Static KPI Cards (School Programs) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mt-6">
         {kpiData.map((kpi, index) => (
           <KPICard key={index} {...kpi} />
         ))}

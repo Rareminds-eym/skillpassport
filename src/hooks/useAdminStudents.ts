@@ -29,6 +29,25 @@ interface StudentRow {
   university_main?: string
   imported_at?: string
   contact_dial_code?: string
+  // School-specific fields
+  school_id?: string
+  grade?: string
+  section?: string
+  roll_number?: string
+  admission_number?: string
+  bloodGroup?: string
+  guardianName?: string
+  guardianPhone?: string
+  guardianEmail?: string
+  guardianRelation?: string
+  address?: string
+  city?: string
+  state?: string
+  country?: string
+  pincode?: string
+  approval_status?: string
+  student_type?: string
+  student_id?: string
   // Joined tables
   skills?: any[]
   projects?: any[]
@@ -89,6 +108,31 @@ export interface UICandidate {
   interests?: string[]
   assessments?: any[]
   universityId?: string
+  // School-specific fields
+  school_id?: string
+  grade?: string
+  section?: string
+  roll_number?: string
+  admission_number?: string
+  bloodGroup?: string
+  guardianName?: string
+  guardianPhone?: string
+  guardianEmail?: string
+  guardianRelation?: string
+  address?: string
+  city?: string
+  state?: string
+  country?: string
+  pincode?: string
+  approval_status?: string
+  student_type?: string
+  student_id?: string
+  college_school_name?: string
+  age?: number
+  gender?: string
+  district_name?: string
+  university?: string
+  contactNumber?: string
 }
 
 function safeParseProfile(input: unknown): StudentProfile | null {
@@ -134,8 +178,10 @@ function mapToUICandidate(row: StudentRow): UICandidate {
   const dept = row.branch_field || row.course_name || profile.branch_field || profile.course
   const location = row.district_name || profile.district_name
 
-  // Class is the course name or branch field
-  const classValue = row.course_name || row.branch_field || profile.course || profile.branch_field || 'N/A'
+  // Class is grade-section for school students, or course name for university students
+  const classValue = row.grade && row.section 
+    ? `${row.grade}-${row.section}` 
+    : row.course_name || row.branch_field || profile.course || profile.branch_field || 'N/A'
 
   // Subjects from skills or branch field
   const skillsText = profile.skill || row.branch_field || row.course_name || ''
@@ -194,10 +240,9 @@ function mapToUICandidate(row: StudentRow): UICandidate {
 
   const assessments = rawAssessments
 
-  // Generate a mock score and status for now
-  const score = Math.floor(Math.random() * 30) + 70 // Random score 70-100
-  const statuses = ['pending', 'approved', 'waitlisted']
-  const admission_status = statuses[Math.floor(Math.random() * statuses.length)]
+  // Use actual database fields instead of mock data
+  const score = 0 // No score for school students
+  const admission_status = (row as any).approval_status || 'approved' // Use actual approval_status from DB
 
   return {
     id: row.id,
@@ -205,6 +250,7 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     email,
     phone,
     contact_number: row.contact_number,
+    contactNumber: row.contact_number,
     college,
     dept,
     class: classValue,
@@ -223,11 +269,8 @@ function mapToUICandidate(row: StudentRow): UICandidate {
       email: row.email || profile.email,
       contact_number: row.contact_number || profile.contact_number,
       university: college,
-      education: education.length > 0 ? education : profile.education || [{
-        degree: dept,
-        level: classValue,
-        cgpa: (Math.random() * 3 + 7).toFixed(2), // Random CGPA 7-10
-      }],
+      // Only include education for university students (those with education data)
+      education: education.length > 0 ? education : profile.education || [],
       technicalSkills: rawSkills.filter(skill => skill.type === 'technical'),
       softSkills: rawSkills.filter(skill => skill.type === 'soft'),
     },
@@ -240,6 +283,30 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     trainings,
     assessments,
     universityId: row.universityId,
+    // Pass through all school-specific fields
+    school_id: row.school_id,
+    grade: row.grade,
+    section: row.section,
+    roll_number: row.roll_number,
+    admission_number: row.admission_number,
+    bloodGroup: row.bloodGroup,
+    guardianName: row.guardianName,
+    guardianPhone: row.guardianPhone,
+    guardianEmail: row.guardianEmail,
+    guardianRelation: row.guardianRelation,
+    address: row.address,
+    city: row.city,
+    state: row.state,
+    country: row.country,
+    pincode: row.pincode,
+    approval_status: (row as any).approval_status,
+    student_type: row.student_type,
+    student_id: row.student_id,
+    college_school_name: row.college_school_name,
+    age: row.age,
+    gender: (row as any).gender,
+    district_name: row.district_name,
+    university: row.university,
   }
 }
 
@@ -254,10 +321,62 @@ export function useStudents() {
       setLoading(true)
       setError(null)
       try {
-        console.log('Fetching students from Supabase...');
+        console.log('🚀 [UPDATED CODE v3.0] Fetching students with school filtering...');
+        
+        // Get current user's school_id
+        let schoolId: string | null = null;
+        
+        // First, check if user is logged in via AuthContext (for school admins)
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const userData = JSON.parse(storedUser);
+            console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
+            
+            if (userData.role === 'school_admin' && userData.schoolId) {
+              schoolId = userData.schoolId;
+              console.log('✅ School admin detected, using schoolId from localStorage:', schoolId);
+            }
+          } catch (e) {
+            console.error('Error parsing stored user:', e);
+          }
+        }
+        
+        // If not found in localStorage, try Supabase Auth (for educators/teachers)
+        if (!schoolId) {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user) {
+            console.log('🔍 Checking Supabase auth user:', user.email);
+            
+            // Check school_educators table
+            const { data: educator } = await supabase
+              .from('school_educators')
+              .select('school_id')
+              .eq('user_id', user.id)
+              .single();
+            
+            if (educator?.school_id) {
+              schoolId = educator.school_id;
+              console.log('✅ Found school_id in school_educators:', schoolId);
+            } else {
+              // Check schools table by email
+              const { data: school } = await supabase
+                .from('schools')
+                .select('id')
+                .eq('email', user.email)
+                .single();
+              
+              schoolId = school?.id || null;
+              if (schoolId) {
+                console.log('✅ Found school_id in schools table:', schoolId);
+              }
+            }
+          }
+        }
         
         // Try full query first
-        let result = await supabase
+        let query = supabase
           .from('students')
           .select(`*,
             skills!skills_student_id_fkey(id,name,type,level,description,verified,enabled,approval_status,created_at,updated_at),
@@ -269,14 +388,31 @@ export function useStudents() {
           .order('updatedAt', { ascending: false })
           .limit(500);
         
+        // Filter by school_id if user is a school admin
+        if (schoolId) {
+          console.log('✅ Filtering students by school_id:', schoolId);
+          query = query.eq('school_id', schoolId);
+        } else {
+          console.warn('⚠️ No school_id found - will fetch ALL students');
+        }
+        
+        let result = await query;
+        
         // If full query fails, try simpler query
         if (result.error) {
           console.warn('Full query failed, trying simple query:', result.error);
-          result = await supabase
+          let simpleQuery = supabase
             .from('students')
             .select('*')
             .order('updatedAt', { ascending: false })
             .limit(500);
+          
+          // Filter by school_id if user is a school admin
+          if (schoolId) {
+            simpleQuery = simpleQuery.eq('school_id', schoolId);
+          }
+          
+          result = await simpleQuery;
         }
         
         if (result.error) {
@@ -286,7 +422,7 @@ export function useStudents() {
         
         if (!isMounted) return;
         
-        console.log(`Fetched ${result.data?.length || 0} students`);
+        console.log(`✅ Fetched ${result.data?.length || 0} students for school_id: ${schoolId || 'ALL'}`);
         
         // Log sample data to verify related tables are loaded
         if (result.data && result.data.length > 0) {

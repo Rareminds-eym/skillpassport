@@ -30,6 +30,114 @@ const calculateEndDate = (duration) => {
 
 
 /**
+ * Check if subscription already exists for payment ID
+ * @param {string} paymentId - Razorpay payment ID
+ * @returns {Promise<Object>} Lookup result with subscription data if found
+ */
+export const getSubscriptionByPaymentId = async (paymentId) => {
+  try {
+    if (!paymentId) {
+      return {
+        success: false,
+        exists: false,
+        data: null,
+        error: 'Payment ID is required'
+      };
+    }
+
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('razorpay_payment_id', paymentId)
+      .single();
+
+    if (error) {
+      // If no subscription found, that's okay
+      if (error.code === 'PGRST116') {
+        return {
+          success: true,
+          exists: false,
+          data: null,
+          error: null
+        };
+      }
+
+      console.error('❌ Error checking subscription:', error);
+      return {
+        success: false,
+        exists: false,
+        data: null,
+        error: error.message
+      };
+    }
+
+    return {
+      success: true,
+      exists: true,
+      data,
+      error: null
+    };
+  } catch (error) {
+    console.error('❌ Error in getSubscriptionByPaymentId:', error);
+    return {
+      success: false,
+      exists: false,
+      data: null,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Validate and normalize activation data
+ * @param {Object} activationData - Raw activation data
+ * @param {Object} authUser - Authenticated user object
+ * @returns {Object} Validated and normalized data
+ */
+const validateActivationData = (activationData, authUser) => {
+  const {
+    plan,
+    userDetails,
+    paymentData,
+    transactionDetails
+  } = activationData;
+
+  // Validate and provide fallbacks for plan
+  const validatedPlan = {
+    name: plan?.name || 'Standard Plan',
+    price: plan?.price || 0,
+    duration: plan?.duration || 'month',
+    studentType: plan?.studentType
+  };
+
+  // Validate and provide fallbacks for user details
+  const validatedUserDetails = {
+    name: userDetails?.name || 
+          transactionDetails?.user_name || 
+          authUser?.user_metadata?.full_name || 
+          authUser?.email || 
+          'User',
+    email: userDetails?.email || 
+           transactionDetails?.user_email || 
+           authUser?.email || 
+           '',
+    phone: userDetails?.phone || 
+           authUser?.user_metadata?.phone || 
+           null,
+    studentType: userDetails?.studentType || 
+                 plan?.studentType || 
+                 'student'
+  };
+
+  return {
+    plan: validatedPlan,
+    userDetails: validatedUserDetails,
+    paymentData,
+    transactionDetails
+  };
+};
+
+/**
  * Activate subscription after successful payment
  * @param {Object} activationData - Subscription activation data
  * @returns {Promise<Object>} Activation result
@@ -43,6 +151,25 @@ export const activateSubscription = async (activationData) => {
   } = activationData;
 
   try {
+    // Check if subscription already exists for this payment
+    if (paymentData?.razorpay_payment_id) {
+      const existingSubscription = await getSubscriptionByPaymentId(
+        paymentData.razorpay_payment_id
+      );
+
+      if (existingSubscription.exists) {
+        console.log('✅ Subscription already exists, returning existing data');
+        return {
+          success: true,
+          data: {
+            subscriptionId: existingSubscription.data.id,
+            subscription: existingSubscription.data,
+            alreadyExists: true
+          }
+        };
+      }
+    }
+
     // Try to get authenticated user, but allow activation without session
     // (user_id will come from payment verification result)
     const authResult = await checkAuthentication();
@@ -62,16 +189,22 @@ export const activateSubscription = async (activationData) => {
       };
     }
 
+    // Validate and normalize activation data
+    const validatedData = validateActivationData(
+      activationData,
+      authResult.user
+    );
+
     // Start transaction-like operation
     let subscriptionId = null;
     let transactionId = null;
 
     try {
-      // Step 1: Create subscription record
+      // Step 1: Create subscription record with validated data
       const subscriptionResult = await createSubscriptionRecord({
         userId,
-        plan,
-        userDetails,
+        plan: validatedData.plan,
+        userDetails: validatedData.userDetails,
         paymentData
       });
 
@@ -86,7 +219,7 @@ export const activateSubscription = async (activationData) => {
         subscription_id: subscriptionId,
         razorpay_payment_id: paymentData.razorpay_payment_id,
         razorpay_order_id: paymentData.razorpay_order_id,
-        amount: parseFloat(plan.price),
+        amount: parseFloat(validatedData.plan.price),
         currency: 'INR',
         status: 'success',
         payment_method: transactionDetails?.payment_method || 'card',
@@ -159,7 +292,7 @@ const createSubscriptionRecord = async (data) => {
       subscription_start_date: new Date().toISOString(),
       subscription_end_date: calculateEndDate(plan.duration),
       auto_renew: false,
-      // user_role removed - now fetched from users.entity_type instead
+      // user_role is now fetched from users.user_role column
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };

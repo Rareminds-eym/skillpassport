@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   PlusIcon,
   BookOpenIcon,
@@ -16,14 +17,20 @@ import CourseFilters from '../../components/educator/courses/CourseFilters';
 import CreateCourseModal from '../../components/educator/courses/CreateCourseModal';
 import CourseDetailDrawer from '../../components/educator/courses/CourseDetailDrawer';
 
-import { supabase } from '../../lib/supabaseClient';
 import {
   getCoursesByEducator,
   createCourse,
   updateCourse
 } from '../../services/educator/coursesService';
+import toast from 'react-hot-toast';
+// @ts-ignore - AuthContext is a .jsx file
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
+import { View } from 'lucide-react';
 
 const Courses: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
 
   /** ─────────────────────────────────────────────
    *  STATE
@@ -49,10 +56,99 @@ const Courses: React.FC = () => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
+  // Track if educator is affiliated with an institution
+  const [isAffiliated, setIsAffiliated] = useState<boolean>(false);
+  const [affiliationInfo, setAffiliationInfo] = useState<{
+    type: 'school' | 'college' | 'university' | null;
+    name: string | null;
+  }>({ type: null, name: null });
+
   /** ─────────────────────────────────────────────
    *  CONSTANTS
    * ───────────────────────────────────────────── */
   const tabFilters = ['All Courses', 'Active', 'Upcoming', 'Archived'];
+
+  /** ─────────────────────────────────────────────
+   *  CHECK EDUCATOR AFFILIATION
+   * ───────────────────────────────────────────── */
+  const checkEducatorAffiliation = async (educatorId: string) => {
+    try {
+      console.log('🔍 Checking affiliation for educator:', educatorId);
+      
+      // Check if educator is part of a school
+      const { data: schoolEducator, error: schoolError } = await supabase
+        .from('school_educators')
+        .select('school_id, schools(name)')
+        .eq('user_id', educatorId)
+        .maybeSingle();
+
+      console.log('School check result:', { schoolEducator, schoolError });
+
+      if (!schoolError && schoolEducator) {
+        console.log('✅ Educator is affiliated with school:', (schoolEducator as any).schools?.name);
+        return {
+          isAffiliated: true,
+          info: {
+            type: 'school' as const,
+            name: (schoolEducator as any).schools?.name || 'School'
+          }
+        };
+      }
+
+      // Check if educator is part of a college
+      const { data: collegeEducator, error: collegeError } = await supabase
+        .from('college_educators')
+        .select('college_id, colleges(name)')
+        .eq('user_id', educatorId)
+        .maybeSingle();
+
+      console.log('College check result:', { collegeEducator, collegeError });
+
+      if (!collegeError && collegeEducator) {
+        console.log('✅ Educator is affiliated with college:', (collegeEducator as any).colleges?.name);
+        return {
+          isAffiliated: true,
+          info: {
+            type: 'college' as const,
+            name: (collegeEducator as any).colleges?.name || 'College'
+          }
+        };
+      }
+
+      // Check if educator is part of a university
+      const { data: universityEducator, error: universityError } = await supabase
+        .from('university_educators')
+        .select('university_id, universities(name)')
+        .eq('user_id', educatorId)
+        .maybeSingle();
+
+      console.log('University check result:', { universityEducator, universityError });
+
+      if (!universityError && universityEducator) {
+        console.log('✅ Educator is affiliated with university:', (universityEducator as any).universities?.name);
+        return {
+          isAffiliated: true,
+          info: {
+            type: 'university' as const,
+            name: (universityEducator as any).universities?.name || 'University'
+          }
+        };
+      }
+
+      // Not affiliated with any institution
+      console.log('✅ Educator is independent (not affiliated)');
+      return {
+        isAffiliated: false,
+        info: { type: null, name: null }
+      };
+    } catch (error) {
+      console.error('❌ Error checking educator affiliation:', error);
+      return {
+        isAffiliated: false,
+        info: { type: null, name: null }
+      };
+    }
+  };
 
   /** ─────────────────────────────────────────────
    *  LOAD EDUCATOR + COURSES
@@ -64,59 +160,53 @@ const Courses: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Get session
-        console.log('📡 Fetching session...');
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        
-        console.log('Session data:', sessionData);
-        console.log('Session error:', sessionError);
-        
-        if (sessionError) {
-          console.error('❌ Session error:', sessionError);
-          setError('Authentication error: ' + sessionError.message);
-          setLoading(false);
-          return;
-        }
-        
-        if (!sessionData.session) {
-          console.log('❌ No active session');
+        // Check AuthContext first
+        if (!isAuthenticated || !user) {
+          console.log('❌ No authenticated user in AuthContext');
           setError('Please log in to view courses');
           setLoading(false);
           return;
         }
 
-        const user = sessionData.session.user;
-        console.log('✅ User authenticated:', user.id);
+        console.log('✅ User authenticated from AuthContext:', user.id);
         console.log('User email:', user.email);
-        console.log('Full user object:', user);
+        console.log('User role:', user.role);
 
         setEducatorId(user.id);
         console.log('✅ Educator ID set:', user.id);
 
-        // Get educator profile
-        console.log('📡 Fetching educator profile...');
-        const { data: educatorProfile, error: profileError } = await supabase
-          .from('school_educators')
-          .select('first_name, last_name')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        console.log('Educator profile:', educatorProfile);
-        console.log('Profile error:', profileError);
-
-        const fullName =
-          educatorProfile?.first_name && educatorProfile?.last_name
-            ? `${educatorProfile.first_name} ${educatorProfile.last_name}`
-            : educatorProfile?.first_name || user.email?.split('@')[0] || 'Educator';
-
+        // Use full_name from AuthContext if available
+        const fullName = user.full_name || user.email?.split('@')[0] || 'Educator';
         setEducatorName(fullName);
         console.log('✅ Educator name set:', fullName);
+
+        // Check if educator is affiliated with any institution
+        console.log('📡 Checking educator affiliation...');
+        const affiliation = await checkEducatorAffiliation(user.id);
+        setIsAffiliated(affiliation.isAffiliated);
+        setAffiliationInfo(affiliation.info);
+        
+        if (affiliation.isAffiliated) {
+          console.log(`✅ Educator is affiliated with ${affiliation.info.type}: ${affiliation.info.name}`);
+        } else {
+          console.log('✅ Educator is independent (not affiliated)');
+        }
 
         // Load courses
         console.log('📡 Fetching courses for educator:', user.id);
         const coursesData = await getCoursesByEducator(user.id);
         console.log('✅ Courses loaded:', coursesData.length, 'courses');
-        console.log('Courses:', coursesData);
+        
+        // Debug: Log module counts for each course
+        coursesData.forEach((course, index) => {
+          console.log(`📚 Course ${index + 1}: "${course.title}" has ${course.modules?.length || 0} modules`);
+          if (course.modules && course.modules.length > 0) {
+            course.modules.forEach((mod, modIndex) => {
+              console.log(`   └─ Module ${modIndex + 1}: "${mod.title}" has ${mod.lessons?.length || 0} lessons`);
+            });
+          }
+        });
+        
         setCourses(coursesData);
 
       } catch (err: any) {
@@ -135,7 +225,7 @@ const Courses: React.FC = () => {
     };
 
     loadEducatorAndCourses();
-  }, []);
+  }, [user, isAuthenticated]);
 
   /** ─────────────────────────────────────────────
    *  FILTER + SORT
@@ -259,6 +349,7 @@ const Courses: React.FC = () => {
       setCourses([...courses, newCourse]);
       setShowCreateModal(false);
       console.log('✅ Modal closed, courses updated');
+      toast.success('Course created successfully!');
 
     } catch (err: any) {
       console.error('❌ Error creating course:', err);
@@ -361,9 +452,7 @@ const Courses: React.FC = () => {
   };
 
   const handleViewAnalytics = (course: Course) => {
-    console.log('Viewing analytics for course:', course);
-    setSelectedCourse(course);
-    setShowDetailDrawer(true);
+    navigate(`/educator/courses/${course.id}/analytics`);
   };
 
   const handleClearFilters = () => {
@@ -429,29 +518,58 @@ const Courses: React.FC = () => {
         </div>
       )}
 
+      {isAffiliated && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AcademicCapIcon className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h4 className="text-sm font-medium text-blue-900">
+                Affiliated Educator
+              </h4>
+              <p className="text-sm text-blue-700 mt-1">
+                You are affiliated with <strong>{affiliationInfo.name}</strong>. 
+                You can view courses allocated to you, but cannot create or modify courses. 
+                Please contact your institution administrator to request course access or changes.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Courses</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Manage courses, curriculum, and skill alignment
-            {educatorName && <span className="ml-2 text-indigo-600">• {educatorName}</span>}
+            {isAffiliated ? (
+              <>
+                View courses allocated by {affiliationInfo.name}
+                {educatorName && <span className="ml-2 text-indigo-600">• {educatorName}</span>}
+              </>
+            ) : (
+              <>
+                Manage courses, curriculum, and skill alignment
+                {educatorName && <span className="ml-2 text-indigo-600">• {educatorName}</span>}
+              </>
+            )}
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            console.log('Create Course button clicked');
-            console.log('Current educatorId:', educatorId);
-            console.log('Current educatorName:', educatorName);
-            setEditingCourse(null);
-            setShowCreateModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm"
-        >
-          <PlusIcon className="h-5 w-5" />
-          Create Course
-        </button>
+        {!isAffiliated && (
+          <button
+            onClick={() => {
+              console.log('Create Course button clicked');
+              console.log('Current educatorId:', educatorId);
+              console.log('Current educatorName:', educatorName);
+              setEditingCourse(null);
+              setShowCreateModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm"
+          >
+            <PlusIcon className="h-5 w-5" />
+            Create Course
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -562,10 +680,12 @@ const Courses: React.FC = () => {
           <p className="text-gray-600 mb-4">
             {searchQuery || statusFilter !== 'All' || skillFilter !== 'All' || classFilter !== 'All'
               ? 'Try adjusting your filters'
+              : isAffiliated
+              ? `No courses have been allocated to you by ${affiliationInfo.name} yet`
               : 'Create your first course to get started'}
           </p>
 
-          {!(searchQuery || statusFilter !== 'All' || skillFilter !== 'All' || classFilter !== 'All') && (
+          {!isAffiliated && !(searchQuery || statusFilter !== 'All' || skillFilter !== 'All' || classFilter !== 'All') && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
@@ -584,8 +704,8 @@ const Courses: React.FC = () => {
               key={course.id}
               course={course}
               onView={handleViewCourse}
-              onEdit={handleEditCourse}
-              onArchive={handleArchiveCourse}
+              onEdit={isAffiliated ? undefined : handleEditCourse}
+              onArchive={isAffiliated ? undefined : handleArchiveCourse}
               onViewAnalytics={handleViewAnalytics}
             />
           ))}

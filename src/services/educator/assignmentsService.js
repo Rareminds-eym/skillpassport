@@ -7,6 +7,26 @@ import { supabase } from '../../lib/supabaseClient';
  */
 
 /**
+ * Get class IDs assigned to an educator
+ * @param {string} educatorId - The UUID of the educator
+ * @returns {Promise<Array>} Array of class IDs
+ */
+export const getEducatorAssignedClassIds = async (educatorId) => {
+  try {
+    const { data, error } = await supabase
+      .from('school_educator_class_assignments')
+      .select('class_id')
+      .eq('educator_id', educatorId);
+
+    if (error) throw error;
+    return (data || []).map(ac => ac.class_id);
+  } catch (error) {
+    console.error('Error fetching educator assigned classes:', error);
+    throw error;
+  }
+};
+
+/**
  * Create a new assignment
  * @param {Object} assignmentData - Assignment data
  * @returns {Promise<Object>} Created assignment
@@ -28,6 +48,7 @@ export const createAssignment = async (assignmentData) => {
           assignment_type: assignmentData.assignment_type,
           skill_outcomes: assignmentData.skill_outcomes,
           assign_classes: assignmentData.assign_classes,
+          school_class_id: assignmentData.school_class_id || null,
           document_pdf: assignmentData.document_pdf,
           due_date: assignmentData.due_date,
           available_from: assignmentData.available_from,
@@ -46,17 +67,59 @@ export const createAssignment = async (assignmentData) => {
 };
 
 /**
+ * Create multiple assignments for multiple classes
+ * @param {Object} baseAssignmentData - Base assignment data
+ * @param {Array<string>} classIds - Array of class UUIDs
+ * @returns {Promise<Array>} Created assignments
+ */
+export const createAssignmentsForClasses = async (baseAssignmentData, classIds) => {
+  try {
+    const assignmentsToInsert = classIds.map(classId => ({
+      title: baseAssignmentData.title,
+      description: baseAssignmentData.description,
+      instructions: baseAssignmentData.instructions,
+      course_name: baseAssignmentData.course_name,
+      course_code: baseAssignmentData.course_code,
+      educator_id: baseAssignmentData.educator_id,
+      educator_name: baseAssignmentData.educator_name,
+      total_points: baseAssignmentData.total_points || 100,
+      assignment_type: baseAssignmentData.assignment_type,
+      skill_outcomes: baseAssignmentData.skill_outcomes,
+      assign_classes: classId,
+      school_class_id: classId,
+      document_pdf: baseAssignmentData.document_pdf,
+      due_date: baseAssignmentData.due_date,
+      available_from: baseAssignmentData.available_from,
+      allow_late_submission: baseAssignmentData.allow_late_submission ?? true
+    }));
+
+    const { data, error } = await supabase
+      .from('assignments')
+      .insert(assignmentsToInsert)
+      .select();
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error creating assignments for classes:', error);
+    throw error;
+  }
+};
+
+/**
  * Get all assignments created by an educator
  * @param {string} educatorId - The UUID of the educator
  * @returns {Promise<Array>} Array of assignments
  */
 export const getAssignmentsByEducator = async (educatorId) => {
   try {
+    // Fetch all assignments created by this educator
     const { data, error } = await supabase
       .from('assignments')
       .select(`
         *,
-        assignment_attachments (*)
+        assignment_attachments (*),
+        school_classes (id, name, grade, section)
       `)
       .eq('educator_id', educatorId)
       .eq('is_deleted', false)

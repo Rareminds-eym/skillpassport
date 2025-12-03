@@ -34,7 +34,7 @@ const Header: React.FC<HeaderProps> = ({
   const handleLogout = () => {
     setShowProfileMenu(false);
     logout?.(); // optional: clear auth context
-    navigate("/login/admin");
+    navigate("/login");
   };
 
   // Fallbacks

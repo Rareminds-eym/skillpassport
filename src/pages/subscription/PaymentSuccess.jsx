@@ -1,47 +1,85 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Download, ArrowRight, Mail, MailCheck, Loader2 } from 'lucide-react';
+import {
+  Download,
+  ArrowRight,
+  MailCheck,
+  Loader2,
+  Check,
+  Sparkles,
+  Calendar,
+  CreditCard,
+  Clock,
+} from 'lucide-react';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
 import { activateSubscription } from '../../services/Subscriptions/subscriptionActivationService';
+import { downloadReceipt } from '../../services/Subscriptions/pdfReceiptGenerator';
 import useAuth from '../../hooks/useAuth';
-import { SuccessHeader, ReceiptCard } from '../../components/Subscription';
+import toast from 'react-hot-toast';
+
+// Receipt Card with clean design
+const ReceiptCard = ({ header, children }) => {
+  return (
+    <div className="relative pt-10">
+      {/* Green checkmark circle - overlapping */}
+      <div className="absolute left-1/2 -translate-x-1/2 -top-0 z-20">
+        <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-100">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#10B981] to-[#059669] flex items-center justify-center shadow-inner">
+            <Check className="w-8 h-8 text-white" strokeWidth={3} />
+          </div>
+        </div>
+      </div>
+
+      {/* Card container */}
+      <div className="relative bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+        {/* Header section */}
+        <div className="pt-14 pb-6 px-6 text-center bg-gradient-to-b from-gray-50 to-white">
+          {header}
+        </div>
+
+        {/* Dashed divider */}
+        <div className="mx-5 border-t-2 border-dashed border-gray-200" />
+
+        {/* Content section */}
+        <div className="px-5 pt-5 pb-6">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 function PaymentSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  
-  const [activationStatus, setActivationStatus] = useState('pending'); // 'pending' | 'activating' | 'activated' | 'failed'
+
+  const [activationStatus, setActivationStatus] = useState('pending');
   const [subscriptionData, setSubscriptionData] = useState(null);
-  const [emailStatus, setEmailStatus] = useState('sending'); // 'sending' | 'sent' | 'failed'
+  const [emailStatus, setEmailStatus] = useState('sending');
   const [showConfetti, setShowConfetti] = useState(false);
 
-  // Verify payment from URL parameters
   const {
     status: verificationStatus,
     transactionDetails,
     error: verificationError,
     paymentParams,
-    retry
+    retry,
   } = usePaymentVerificationFromURL(searchParams, true);
 
-  // Get plan details from localStorage (set during payment initiation)
   const planDetails = useMemo(() => {
     try {
       const stored = localStorage.getItem('payment_plan_details');
       return stored ? JSON.parse(stored) : null;
-    } catch (error) {
-      console.error('Error parsing plan details:', error);
+    } catch {
       return null;
     }
   }, []);
 
-  // Activate subscription when verification succeeds
   useEffect(() => {
-    const activateSubscriptionOnSuccess = async () => {
+    const activate = async () => {
       if (verificationStatus === 'success' && transactionDetails && activationStatus === 'pending') {
         setActivationStatus('activating');
-
         try {
           const result = await activateSubscription({
             plan: planDetails,
@@ -49,289 +87,253 @@ function PaymentSuccess() {
               name: transactionDetails?.user_name || user?.user_metadata?.full_name || user?.email || 'User',
               email: transactionDetails?.user_email || user?.email || '',
               phone: user?.user_metadata?.phone || null,
-              studentType: planDetails?.studentType || 'student'
+              studentType: planDetails?.studentType || 'student',
             },
             paymentData: {
               razorpay_payment_id: paymentParams.razorpay_payment_id,
-              razorpay_order_id: paymentParams.razorpay_order_id
+              razorpay_order_id: paymentParams.razorpay_order_id,
             },
-            transactionDetails
+            transactionDetails,
           });
 
           if (result.success) {
             setActivationStatus('activated');
             setSubscriptionData(result.data.subscription);
-            setShowConfetti(true);
-            
-            // Clear plan details from localStorage
-            localStorage.removeItem('payment_plan_details');
-
-            // Simulate email sending (replace with actual email service)
-            setTimeout(() => {
+            if (!result.data.alreadyExists) {
+              setShowConfetti(true);
+              setTimeout(() => setShowConfetti(false), 4000);
+              localStorage.removeItem('payment_plan_details');
+              setTimeout(() => setEmailStatus('sent'), 2000);
+            } else {
               setEmailStatus('sent');
-            }, 2000);
-
-            // Hide confetti after 3 seconds
-            setTimeout(() => {
-              setShowConfetti(false);
-            }, 3000);
+            }
           } else {
             setActivationStatus('failed');
-            console.error('Subscription activation failed:', result.error);
           }
-        } catch (error) {
+        } catch {
           setActivationStatus('failed');
-          console.error('Error activating subscription:', error);
         }
       }
     };
-
-    activateSubscriptionOnSuccess();
+    activate();
   }, [verificationStatus, transactionDetails, activationStatus, paymentParams, planDetails, user]);
 
-  // Redirect if no payment parameters
   useEffect(() => {
     if (!paymentParams.razorpay_payment_id && verificationStatus !== 'loading') {
       navigate('/subscription/plans', { replace: true });
     }
   }, [paymentParams, verificationStatus, navigate]);
 
-  // Redirect to login if not authenticated after verification attempts
   useEffect(() => {
     if (verificationError?.code === 'NO_SESSION') {
-      // Give a moment for auth to load before redirecting
       const timer = setTimeout(() => {
-        if (!user) {
-          const currentUrl = window.location.href;
-          navigate(`/auth/login?redirect=${encodeURIComponent(currentUrl)}`, { replace: true });
-        }
+        if (!user) navigate(`/auth/login?redirect=${encodeURIComponent(window.location.href)}`, { replace: true });
       }, 2000);
-      
       return () => clearTimeout(timer);
     }
   }, [verificationError, user, navigate]);
 
-  const handleResendEmail = async () => {
-    setEmailStatus('sending');
-    // TODO: Implement email resend logic
-    setTimeout(() => {
-      setEmailStatus('sent');
-    }, 1500);
+  const handleDownloadReceipt = async () => {
+    try {
+      const receiptData = {
+        transaction: {
+          payment_id: paymentParams.razorpay_payment_id || 'N/A',
+          order_id: paymentParams.razorpay_order_id || 'N/A',
+          amount: planDetails?.price || transactionDetails?.amount || 0,
+          currency: 'INR',
+          payment_method: transactionDetails?.payment_method || 'Card',
+          payment_timestamp: formatDate(new Date()),
+          status: 'Success',
+        },
+        subscription: subscriptionData
+          ? {
+              plan_type: subscriptionData.plan_type,
+              billing_cycle: subscriptionData.billing_cycle,
+              subscription_start_date: formatDate(subscriptionData.subscription_start_date),
+              subscription_end_date: formatDate(subscriptionData.subscription_end_date),
+            }
+          : null,
+        user: {
+          name: transactionDetails?.user_name || user?.user_metadata?.full_name || 'User',
+          email: transactionDetails?.user_email || user?.email || '',
+          phone: user?.user_metadata?.phone || null,
+        },
+        company: { name: 'RareMinds', address: 'Your Company Address', taxId: 'TAX123456789' },
+        generatedAt: new Date().toLocaleString(),
+      };
+      const filename = `Receipt-${paymentParams.razorpay_payment_id?.slice(-8) || 'payment'}-${new Date().toISOString().split('T')[0]}.pdf`;
+      await downloadReceipt(receiptData, filename);
+      toast.success('Receipt downloaded!');
+    } catch {
+      toast.error('Failed to download receipt');
+    }
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const formatAmount = (a) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(a);
+
+  const getDashboardUrl = () => {
+    const role = user?.user_metadata?.role || user?.raw_user_meta_data?.role;
+    return { educator: '/educator/dashboard', recruiter: '/recruiter/dashboard', admin: '/admin/dashboard' }[role] || '/student/dashboard';
   };
 
-  const formatAmount = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
-
-  // Loading state
+  // Loading
   if (verificationStatus === 'loading' || activationStatus === 'activating') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4" role="status" aria-live="polite">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-16 w-16 text-blue-600 animate-spin mx-auto mb-4" aria-hidden="true" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {verificationStatus === 'loading' ? 'Verifying your payment...' : 'Activating your subscription...'}
-          </h2>
-          <p className="text-gray-600">This usually takes a few seconds</p>
-          <span className="sr-only">
-            {verificationStatus === 'loading' ? 'Verifying payment, please wait' : 'Activating subscription, please wait'}
-          </span>
+          <div className="w-12 h-12 mx-auto mb-4 border-3 border-gray-200 border-t-[#2663EB] rounded-full animate-spin" />
+          <p className="text-gray-600 font-medium">{verificationStatus === 'loading' ? 'Verifying...' : 'Activating...'}</p>
         </div>
       </div>
     );
   }
 
-  // Verification error state
+  // Error
   if (verificationStatus === 'error' || verificationStatus === 'failure') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-sm w-full bg-white rounded-2xl shadow-lg p-6 text-center">
+          <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Verification Failed</h2>
-          <p className="text-gray-600 mb-6">
-            {verificationError?.message || 'We couldn\'t verify your payment. Please try again.'}
-          </p>
-          <div className="space-y-3">
-            <button
-              onClick={retry}
-              className="w-full py-3 px-6 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-            >
-              Retry Verification
-            </button>
-            <button
-              onClick={() => navigate('/subscription/plans')}
-              className="w-full py-3 px-6 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-            >
-              Back to Plans
-            </button>
-          </div>
+          <h2 className="text-lg font-bold text-gray-900 mb-1">Verification Failed</h2>
+          <p className="text-sm text-gray-500 mb-5">{verificationError?.message || 'Please try again'}</p>
+          <button onClick={retry} className="w-full py-2.5 bg-[#2663EB] text-white rounded-lg font-medium text-sm hover:bg-[#1D4ED8]">
+            Retry
+          </button>
         </div>
       </div>
     );
   }
 
-  // Success state
+  // Success
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden" role="main">
-      {/* Confetti effect */}
+    <div className="min-h-screen bg-white py-8 px-4">
+      {/* Confetti */}
       {showConfetti && (
-        <div className="fixed inset-0 pointer-events-none z-50" aria-hidden="true">
-          <div className="confetti-animation">
-            {[...Array(50)].map((_, i) => (
-              <div
-                key={i}
-                className="confetti-piece"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 3}s`,
-                  backgroundColor: ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B'][Math.floor(Math.random() * 4)]
-                }}
-              />
-            ))}
-          </div>
+        <div className="fixed inset-0 pointer-events-none z-50">
+          {[...Array(40)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 rounded-sm"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: '-10px',
+                animation: `fall ${2 + Math.random() * 2}s ease-out forwards`,
+                animationDelay: `${Math.random() * 2}s`,
+                backgroundColor: ['#2663EB', '#3B82F6', '#60A5FA'][Math.floor(Math.random() * 3)],
+              }}
+            />
+          ))}
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto">
-        {/* Success Header */}
-        <div className="mb-6">
-          <SuccessHeader 
-            title="Payment Success!" 
-            subtitle="Your payment has been successfully done"
-          />
-        </div>
-
-        {/* Receipt Card */}
+      <div className="max-w-sm mx-auto space-y-5">
+        {/* Combined Receipt Card with dark header */}
         <ReceiptCard
-          totalAmount={formatAmount(planDetails?.price || transactionDetails?.amount || 0)}
-          transactionDetails={{
-            referenceNumber: paymentParams.razorpay_payment_id || 'N/A',
-            paymentTime: formatDate(new Date()),
-            paymentMethod: transactionDetails?.payment_method || 'Card',
-            senderName: transactionDetails?.user_name || user?.user_metadata?.full_name || user?.email || 'User'
-          }}
+          header={
+            <>
+              <h1 className="text-xl font-medium text-gray-900 mb-3">Payment Success!</h1>
+              <p className="text-3xl font-bold text-gray-900">
+                {formatAmount(planDetails?.price || transactionDetails?.amount || 0)}
+              </p>
+            </>
+          }
         >
-          {/* Subscription Details */}
-          {subscriptionData && (
-            <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Subscription Details</h2>
-              <dl className="space-y-3">
-                <div className="flex justify-between">
-                  <dt className="text-sm text-gray-600">Plan</dt>
-                  <dd className="text-sm font-medium text-gray-900">{subscriptionData.plan_type}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-sm text-gray-600">Duration</dt>
-                  <dd className="text-sm font-medium text-gray-900">{subscriptionData.billing_cycle}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-sm text-gray-600">Start Date</dt>
-                  <dd className="text-sm font-medium text-gray-900">
-                    {formatDate(subscriptionData.subscription_start_date)}
-                  </dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-sm text-gray-600">End Date</dt>
-                  <dd className="text-sm font-medium text-gray-900">
-                    {formatDate(subscriptionData.subscription_end_date)}
-                  </dd>
-                </div>
-              </dl>
+          {/* Transaction Receipt Section */}
+          <div className="flex items-center gap-2 mb-4">
+            <CreditCard className="w-4 h-4 text-[#2663EB]" />
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Transaction Receipt</span>
+          </div>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Reference</span>
+              <span className="font-mono font-medium text-gray-900">{paymentParams.razorpay_payment_id?.slice(-10) || 'N/A'}</span>
             </div>
-          )}
-
-          {/* Email Confirmation Status */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-3">
-              {emailStatus === 'sending' ? (
-                <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-              ) : emailStatus === 'sent' ? (
-                <MailCheck className="w-5 h-5 text-green-600" />
-              ) : (
-                <Mail className="w-5 h-5 text-gray-400" />
-              )}
-              <div>
-                <p className="text-sm font-medium text-gray-900">
-                  {emailStatus === 'sending' ? 'Sending confirmation email...' : 
-                   emailStatus === 'sent' ? 'Confirmation email sent' : 
-                   'Email not sent'}
-                </p>
-                <p className="text-xs text-gray-600">{user?.email}</p>
-              </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Method</span>
+              <span className="font-medium text-gray-900">{transactionDetails?.payment_method || 'Card'}</span>
             </div>
-            {emailStatus === 'failed' && (
-              <button
-                onClick={handleResendEmail}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Resend
-              </button>
-            )}
+            <div className="flex justify-between">
+              <span className="text-gray-500">Date</span>
+              <span className="font-medium text-gray-900">{formatDate(new Date())}</span>
+            </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-3" role="navigation" aria-label="Post-payment actions">
-              <button
-                onClick={() => navigate('/student/dashboard')}
-                className="w-full py-3 px-6 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                aria-label="Go to your dashboard"
-              >
-                Go to Dashboard
-                <ArrowRight className="w-5 h-5" aria-hidden="true" />
-              </button>
-              <button
-                onClick={() => navigate('/subscription/manage')}
-                className="w-full py-3 px-6 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                aria-label="Manage your subscription"
-              >
-                Manage Subscription
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="w-full py-3 px-6 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                aria-label="Download payment receipt"
-              >
-                <Download className="w-5 h-5" aria-hidden="true" />
-                Download Receipt
-              </button>
-            </div>
+          {/* Subscription Section */}
+          {subscriptionData && (
+            <>
+              <div className="my-5 border-t border-dashed border-gray-200" />
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="w-4 h-4 text-[#2663EB]" />
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Subscription</span>
+              </div>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Plan</span>
+                  <span className="font-semibold text-[#2663EB]">{subscriptionData.plan_type || planDetails?.name || 'Premium'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Cycle</span>
+                  <span className="font-medium text-gray-900">{subscriptionData.billing_cycle || planDetails?.duration || 'Monthly'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />Valid Until</span>
+                  <span className="font-medium text-gray-900">{formatDate(subscriptionData.subscription_end_date)}</span>
+                </div>
+              </div>
+            </>
+          )}
         </ReceiptCard>
 
-        {/* Help Text */}
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <p>Need help? <a href="/contact" className="text-blue-600 hover:text-blue-700 font-medium">Contact Support</a></p>
+        {/* Email Status */}
+        <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-sm border border-gray-100">
+          {emailStatus === 'sending' ? (
+            <Loader2 className="w-5 h-5 text-[#2663EB] animate-spin" />
+          ) : (
+            <MailCheck className="w-5 h-5 text-emerald-500" />
+          )}
+          <span className="text-sm text-gray-600">
+            {emailStatus === 'sending' ? 'Sending confirmation...' : 'Confirmation sent'}
+          </span>
         </div>
+
+        {/* Actions */}
+        <div className="space-y-2.5 pt-2">
+          <button
+            onClick={() => navigate(getDashboardUrl())}
+            className="w-full py-3 bg-[#2663EB] text-white rounded-xl font-semibold hover:bg-[#1D4ED8] transition-colors flex items-center justify-center gap-2"
+          >
+            Go to Dashboard <ArrowRight className="w-4 h-4" />
+          </button>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              onClick={() => navigate('/subscription/manage')}
+              className="py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50"
+            >
+              Manage
+            </button>
+            <button
+              onClick={handleDownloadReceipt}
+              className="py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 flex items-center justify-center gap-1.5"
+            >
+              <Download className="w-4 h-4" /> Receipt
+            </button>
+          </div>
+        </div>
+
+        {/* Help */}
+        <p className="text-center text-xs text-gray-400 pt-2">
+          Need help? <a href="/contact" className="text-[#2663EB] font-medium">Contact Support</a>
+        </p>
       </div>
 
-      <style jsx>{`
-        @keyframes confetti-fall {
-          to {
-            transform: translateY(100vh) rotate(360deg);
-          }
-        }
-
-        .confetti-piece {
-          position: absolute;
-          width: 10px;
-          height: 10px;
-          top: -10px;
-          animation: confetti-fall 3s linear forwards;
+      <style>{`
+        @keyframes fall {
+          to { transform: translateY(100vh) rotate(360deg); opacity: 0; }
         }
       `}</style>
     </div>

@@ -2,11 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-// import { Button } from '@/components/ui/button';
-// import { Input } from '@/components/ui/input';
-// import { Label } from '@/components/ui/label';
-// import { Checkbox } from '@/components/ui/checkbox';
-// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { loginAdmin } from '../../services/adminAuthService';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { Label } from '../../components/Students/components/ui/label';
@@ -22,42 +18,92 @@ const LoginAdmin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // ===== Dummy credential-based role mapping =====
-  const credentials = {
-    'school@admin.com': { name: 'School Admin', role: 'school_admin' },
-    'college@admin.com': { name: 'College Admin', role: 'college_admin' },
-    'university@admin.com': { name: 'University Admin', role: 'university_admin' },
-  };
-
-  // ===== Dashboard path mapping =====
-  const dashboardRoutes = {
-    school_admin: '/school-admin/dashboard',
-    college_admin: '/college-admin/dashboard',
-    university_admin: '/university-admin/dashboard',
-  };
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Simulated login logic
-      const user = credentials[email];
-
-      if (!user || password.trim() === '') {
-        throw new Error('Invalid email or password');
+      // Validate inputs
+      if (!email || !password.trim()) {
+        throw new Error('Please enter both email and password');
       }
 
-      // Call context login
-      login({ name: user.name, email, role: user.role });
+      // DEMO CREDENTIALS - Hardcoded for testing
+      const DEMO_CREDENTIALS = {
+        'university@admin.com': {
+          id: 'university-001',
+          name: 'University',
+          email: 'university@admin.com',
+          role: 'university_admin',
+          schoolId: 'university-001',
+          schoolName: 'University',
+          schoolCode: 'UNI',
+        },
+        'college@admin.com': {
+          id: 'college-001',
+          name: 'College',
+          email: 'college@admin.com',
+          role: 'college_admin',
+          schoolId: 'college-001',
+          schoolName: 'College',
+          schoolCode: 'COL',
+        },
+        'school@admin.com': {
+          id: 'school-001',
+          name: 'School',
+          email: 'school@admin.com',
+          role: 'school_admin',
+          schoolId: 'school-001',
+          schoolName: 'School',
+          schoolCode: 'SCH',
+        },
+      };
+
+      // Check if it's a demo credential
+      if (DEMO_CREDENTIALS[email.trim().toLowerCase()]) {
+        const demoUser = DEMO_CREDENTIALS[email.trim().toLowerCase()];
+        
+        login(demoUser);
+
+        toast({
+          title: 'Login Successful',
+          description: `Welcome back, ${demoUser.name}!`,
+        });
+
+        // Route based on role
+        const dashboardRoutes = {
+          'university_admin': '/university-admin/dashboard',
+          'college_admin': '/college-admin/dashboard',
+          'school_admin': '/school-admin/dashboard',
+        };
+        
+        navigate(dashboardRoutes[demoUser.role] || '/school-admin/dashboard');
+        return;
+      }
+
+      // Use the loginAdmin service for actual authentication
+      const result = await loginAdmin(email, password);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Login failed');
+      }
+
+      // Store admin data in context
+      login(result.admin);
 
       toast({
         title: 'Login Successful',
-        description: `Welcome back, ${user.name}!`,
+        description: `Welcome back, ${result.admin.name}!`,
       });
 
-      // Redirect based on role
-      navigate(dashboardRoutes[user.role] || '/admin/dashboard');
+      // Redirect based on admin role
+      if (result.admin.role === 'college_admin') {
+        navigate('/college-admin/dashboard');
+      } else if (result.admin.role === 'university_admin') {
+        navigate('/university-admin/dashboard');
+      } else {
+        navigate('/school-admin/dashboard');
+      }
     } catch (error) {
       toast({
         title: 'Login Failed',
@@ -68,12 +114,6 @@ const LoginAdmin = () => {
       setIsLoading(false);
     }
   };
-
-  const demoCredentials = [
-    { role: 'School Admin', email: 'school@admin.com', password: 'school123' },
-    { role: 'College Admin', email: 'college@admin.com', password: 'college123' },
-    { role: 'University Admin', email: 'university@admin.com', password: 'university123' },
-  ];
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
@@ -156,32 +196,15 @@ const LoginAdmin = () => {
           </CardContent>
         </Card>
 
-        {/* Demo Credentials */}
-        {/* <Card className="bg-slate-50 border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-gray-700">
-              Demo Login Credentials
-            </CardTitle>
-            <CardDescription className="text-xs text-gray-500">
-              Use these to explore different admin dashboards
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {demoCredentials.map((cred, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between text-xs p-2 bg-white rounded-lg border hover:bg-slate-100 transition"
-              >
-                <span className="font-medium">{cred.role}</span>
-                <div className="flex gap-2 text-gray-500">
-                  <code>{cred.email}</code>
-                  <span>•</span>
-                  <code>{cred.password}</code>
-                </div>
-              </div>
-            ))}
+        {/* Info Card */}
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="pt-4">
+            <p className="text-sm text-blue-800">
+              <strong>Note:</strong> Only schools with approved status can login. 
+              If your registration is pending or rejected, please contact RareMinds admin.
+            </p>
           </CardContent>
-        </Card> */}
+        </Card>
       </div>
     </div>
   );

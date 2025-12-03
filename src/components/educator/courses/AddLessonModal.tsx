@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import {
-  XMarkIcon,
-  PlusIcon
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { Lesson, Resource } from '../../../types/educator/course';
-import ResourceUploadComponent from './ResourceUploadComponent';
 
 interface AddLessonModalProps {
   isOpen: boolean;
@@ -20,14 +18,34 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
   editingLesson
 }) => {
   const [lessonData, setLessonData] = useState<Partial<Lesson>>({
-    title: editingLesson?.title || '',
-    description: editingLesson?.description || '',
-    content: editingLesson?.content || '',
-    duration: editingLesson?.duration || '',
-    resources: editingLesson?.resources || []
+    title: '',
+    description: '',
+    content: '',
+    duration: '',
+    resources: []
   });
-  const [showResourceUpload, setShowResourceUpload] = useState(false);
   const [isFormatting, setIsFormatting] = useState(false);
+
+  // Update state when editingLesson changes
+  React.useEffect(() => {
+    if (editingLesson) {
+      setLessonData({
+        title: editingLesson.title || '',
+        description: editingLesson.description || '',
+        content: editingLesson.content || '',
+        duration: editingLesson.duration || '',
+        resources: editingLesson.resources || []
+      });
+    } else {
+      setLessonData({
+        title: '',
+        description: '',
+        content: '',
+        duration: '',
+        resources: []
+      });
+    }
+  }, [editingLesson, isOpen]);
 
   if (!isOpen) return null;
 
@@ -56,20 +74,6 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
       duration: '',
       resources: []
     });
-  };
-
-  const handleResourcesAdded = (newResources: Resource[]) => {
-    setLessonData(prev => ({
-      ...prev,
-      resources: [...(prev.resources || []), ...newResources]
-    }));
-  };
-
-  const removeResource = (resourceId: string) => {
-    setLessonData(prev => ({
-      ...prev,
-      resources: prev.resources?.filter(r => r.id !== resourceId)
-    }));
   };
 
   // Simple text formatting functions
@@ -251,19 +255,12 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
               </p>
             </div>
 
-            {/* Resources */}
+            {/* Resources - Note about adding after lesson creation */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <label className="block text-sm font-medium text-gray-700">
                   Lesson Resources
                 </label>
-                <button
-                  onClick={() => setShowResourceUpload(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                  Add Resources
-                </button>
               </div>
 
               {lessonData.resources && lessonData.resources.length > 0 ? (
@@ -271,32 +268,29 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
                   {lessonData.resources.map((resource) => (
                     <div
                       key={resource.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
                     >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        {getResourceIcon(resource.type)}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {resource.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {resource.type.toUpperCase()}
-                            {resource.size && ` • ${resource.size}`}
-                          </p>
-                        </div>
+                      {getResourceIcon(resource.type)}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {resource.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {resource.type.toUpperCase()}
+                          {resource.size && ` • ${resource.size}`}
+                        </p>
                       </div>
-                      <button
-                        onClick={() => removeResource(resource.id)}
-                        className="p-1 hover:bg-gray-200 rounded transition-colors"
-                      >
-                        <XMarkIcon className="h-4 w-4 text-gray-600" />
-                      </button>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="p-6 border-2 border-dashed border-gray-300 rounded-lg text-center">
-                  <p className="text-sm text-gray-500">No resources added yet</p>
+                  <p className="text-sm text-gray-500">
+                    {editingLesson
+                      ? 'No resources added yet. Use the course view to add resources to this lesson.'
+                      : 'Resources can be added after creating the lesson from the course modules view.'
+                    }
+                  </p>
                 </div>
               )}
             </div>
@@ -320,15 +314,6 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Resource Upload Modal */}
-      {showResourceUpload && (
-        <ResourceUploadComponent
-          onResourcesAdded={handleResourcesAdded}
-          onClose={() => setShowResourceUpload(false)}
-          existingResources={lessonData.resources}
-        />
-      )}
     </>
   );
 };

@@ -63,28 +63,29 @@ const Header = ({ activeTab, setActiveTab }) => {
       skills: "🎯",
       training: "📚",
       experience: "💼",
+      courses: "📚",
       "digital-portfolio": "🎨",
       opportunities: "🚀",
-      applications: "📝",
       "career-ai": "✨",
       assignments: "📋",
       messages: "💬",
-      analytics: "📊",
+      clubs: "🎭",
     };
     return icons[tabId] || "📄";
   };
 
   const tabs = [
-    { id: "skills", label: "Skills" },
-    { id: "training", label: "Training" },
-    { id: "experience", label: "Experience" },
+    // { id: "skills", label: "Skills" },
+    { id: "training", label: "My Learning" },
+    // { id: "experience", label: "Experience" },
+    { id: "courses", label: "Courses", },
     { id: "digital-portfolio", label: "Digital Portfolio" },
     { id: "opportunities", label: "Opportunities" },
-    { id: "applications", label: "Applications" },
     { id: "career-ai", label: "Career AI", icon: "✨" },
-    { id: "assignments", label: "Assignments" },
+    { id: "assignments", label: "My Class" },
+    {id: "clubs", label: "Co-Curriculars"},
     { id: "messages", label: "Messages" },
-    { id: "analytics", label: "Analytics" },
+    // Analytics removed - now integrated in Dashboard with tabs
   ];
 
   return (
@@ -130,6 +131,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/my-training");
                   } else if (tab.id === "experience") {
                     navigate("/student/my-experience");
+                  } else if (tab.id === "courses") {
+                    navigate("/student/courses");
                   } else if (tab.id === "digital-portfolio") {
                     navigate("/student/digital-portfolio");
                   } else if (tab.id === "opportunities") {
@@ -138,12 +141,12 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
+                  } else if (tab.id === "clubs") {
+                    navigate("/student/clubs");
                   } else if (tab.id === "career-ai") {
                     navigate("/student/career-ai");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
-                  } else if (tab.id === "analytics") {
-                    navigate("/student/analytics");
                   }
                 }}
                 className={`relative py-2 px-1 lg:px-1.5 xl:px-2 text-xs lg:text-xs xl:text-sm font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === tab.id ? "font-semibold" : ""
@@ -191,6 +194,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/my-training");
                   } else if (tab.id === "experience") {
                     navigate("/student/my-experience");
+                  } else if (tab.id === "courses") {
+                    navigate("/student/courses");
                   } else if (tab.id === "digital-portfolio") {
                     navigate("/student/digital-portfolio");
                   } else if (tab.id === "opportunities") {
@@ -199,12 +204,12 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
+                  } else if (tab.id === "clubs") {
+                    navigate("/student/clubs");
                   } else if (tab.id === "career-ai") {
                     navigate("/student/career-ai");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
-                  } else if (tab.id === "analytics") {
-                    navigate("/student/analytics");
                   }
                 }}
                 className={`relative py-2 px-3 text-xs font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none whitespace-nowrap flex-shrink-0 ${activeTab === tab.id ? "font-semibold" : ""
@@ -291,7 +296,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                 className="text-red-600"
                 onClick={() => {
                   logout();
-                  navigate("/login/student");
+                  navigate("/login");
                 }}
               >
                 <LogOut className="w-4 h-4 mr-2" />
@@ -334,6 +339,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/my-training");
                   } else if (tab.id === "experience") {
                     navigate("/student/my-experience");
+                  } else if (tab.id === "courses") {
+                    navigate("/student/courses");
                   } else if (tab.id === "digital-portfolio") {
                     navigate("/student/digital-portfolio");
                   } else if (tab.id === "opportunities") {
@@ -342,10 +349,10 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
+                   } else if (tab.id === "clubs") {
+                    navigate("/student/clubs");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
-                  } else if (tab.id === "analytics") {
-                    navigate("/student/analytics");
                   }
                   setMobileMenuOpen(false);
                 }}

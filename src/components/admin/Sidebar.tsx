@@ -75,8 +75,13 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               icon: UserGroupIcon,
             },
             {
+              name: "Class Management",
+              path: "/school-admin/classes/management",
+              icon: AcademicCapIcon,
+            },
+            {
               name: "Attendance & Reports",
-              path: "/school-admin/students/attendance",
+              path: "/school-admin/students/attendance-reports",
               icon: ChartBarIcon,
             },
           ],
@@ -106,6 +111,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           title: "Academic Management",
           key: "academics",
           items: [
+            {
+              name: "Courses",
+              path: "/school-admin/academics/courses",
+              icon: AcademicCapIcon,
+            },
             {
               name: "Curriculum Builder",
               path: "/school-admin/academics/curriculum",
@@ -177,6 +187,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             {
               name: "Skill Badges",
               path: "/school-admin/skills/badges",
+              icon: ChartPieIcon,
+            },
+            {
+              name: "Reports",
+              path: "/school-admin/skills/reports",
               icon: ChartPieIcon,
             },
           ],
