@@ -181,6 +181,9 @@ const StudentDataAdmission = lazy(() =>
 const AdminEducatorManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/EducatorManagement")
 );
+const FacultyManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/FacultyManagement")
+);
 const ExaminationManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/ExaminationManagement")
 );
@@ -407,7 +410,7 @@ const AppRoutes = () => {
           {/* Department Management */}
           <Route path="departments/management" element={<DepartmentManagement />} />
           <Route path="departments/mapping" element={<CourseMapping />} />
-          <Route path="departments/educators" element={<AdminEducatorManagement />} />
+          <Route path="departments/educators" element={<FacultyManagement />} />
           
           {/* Student Lifecycle Management */}
           <Route path="students/data-management" element={<StudentDataAdmission />} />
