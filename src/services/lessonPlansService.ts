@@ -16,6 +16,7 @@ export interface LessonPlanFormData {
   evaluationItems: EvaluationCriteria[];
   homework?: string;
   differentiationNotes?: string;
+  status?: 'draft' | 'approved';
 }
 
 export interface ResourceFile {
@@ -108,19 +109,24 @@ export async function getLessonPlans(): Promise<{ data: LessonPlan[] | null; err
       .from("lesson_plans")
       .select(`
         *,
-        school_classes!inner(academic_year)
+        school_classes(academic_year)
       `)
       .eq("educator_id", educatorId)
       .order("date", { ascending: false });
 
+    if (error) {
+      console.error("Error fetching lesson plans:", error);
+      return { data: null, error };
+    }
+
     // Flatten the data to include academic_year at the top level
     const flattenedData = data?.map(plan => ({
       ...plan,
-      academic_year: (plan as any).school_classes?.academic_year,
+      academic_year: (plan as any).school_classes?.academic_year || null,
       school_classes: undefined, // Remove nested object
     }));
 
-    return { data: flattenedData as LessonPlan[], error };
+    return { data: flattenedData as LessonPlan[], error: null };
   } catch (error) {
     console.error("Error fetching lesson plans:", error);
     return { data: null, error };
@@ -150,7 +156,7 @@ export async function getLessonPlan(id: string): Promise<{ data: LessonPlan | nu
  */
 export async function createLessonPlan(
   formData: LessonPlanFormData,
-  classId: string
+  classId: string | null
 ): Promise<{ data: LessonPlan | null; error: any }> {
   try {
     const educatorId = await getCurrentEducatorId();
@@ -171,7 +177,7 @@ export async function createLessonPlan(
       .from("lesson_plans")
       .insert({
         educator_id: educatorId,
-        class_id: classId,
+        class_id: classId || null,
         title: formData.title,
         subject: formData.subject,
         class_name: formData.class,
@@ -189,7 +195,7 @@ export async function createLessonPlan(
         evaluation_items: formData.evaluationItems,
         homework: formData.homework || null,
         differentiation_notes: formData.differentiationNotes || null,
-        status: "draft",
+        status: formData.status || "draft",
         activities: [],
         resources: [],
       })
@@ -209,7 +215,7 @@ export async function createLessonPlan(
 export async function updateLessonPlan(
   id: string,
   formData: LessonPlanFormData,
-  classId: string
+  classId: string | null
 ): Promise<{ data: LessonPlan | null; error: any }> {
   try {
     // Get chapter details for duration
@@ -224,7 +230,7 @@ export async function updateLessonPlan(
     const { data, error } = await supabase
       .from("lesson_plans")
       .update({
-        class_id: classId,
+        class_id: classId || null,
         title: formData.title,
         subject: formData.subject,
         class_name: formData.class,
@@ -241,6 +247,7 @@ export async function updateLessonPlan(
         evaluation_items: formData.evaluationItems,
         homework: formData.homework || null,
         differentiation_notes: formData.differentiationNotes || null,
+        status: formData.status || "draft",
       })
       .eq("id", id)
       .select()
