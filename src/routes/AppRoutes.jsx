@@ -179,6 +179,24 @@ const StudentDataAdmission = lazy(() =>
 const AdminEducatorManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/EducatorManagement")
 );
+const ExaminationManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/ExaminationManagement")
+);
+const PlacementManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/PlacementManagement")
+);
+const SkillDevelopment = lazy(() =>
+  import("../pages/admin/collegeAdmin/SkillDevelopment")
+);
+const EventManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/EventManagement")
+);
+const FinanceManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/FinanceManagement")
+);
+const ReportsAnalytics = lazy(() =>
+  import("../pages/admin/collegeAdmin/ReportsAnalytics")
+);
 
 // Future: Add SchoolAdmin and UniversityAdmin dashboards here
 const SchoolAdminDashboard = lazy(() =>
@@ -221,7 +239,36 @@ const AICounselling = lazy(() =>
 const AttendanceTracking = lazy(() =>
   import("../pages/admin/collegeAdmin/Attendancetracking")
 );
-
+const GraduationEligibility = lazy(() =>
+  import("../pages/admin/collegeAdmin/GraduationEligibility")
+);
+const CircularsManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/CircularsManagement")
+);
+const CollegeUserManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/UserManagement")
+);
+const CollegeCurriculumBuilder = lazy(() =>
+  import("../pages/admin/collegeAdmin/CurriculumBuilder")
+);
+const LessonPlanManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/LessonPlanManagement")
+);
+const MentorAllocation = lazy(() =>
+  import("../pages/admin/collegeAdmin/MentorAllocation")
+);
+const TranscriptGeneration = lazy(() =>
+  import("../pages/admin/collegeAdmin/TranscriptGeneration")
+);
+const AcademicCalendar = lazy(() =>
+  import("../pages/admin/collegeAdmin/AcademicCalendar")
+);
+const PerformanceMonitoring = lazy(() =>
+  import("../pages/admin/collegeAdmin/PerformanceMonitoring")
+);
+const CollegeSettings = lazy(() =>
+  import("../pages/admin/collegeAdmin/Settings")
+);
 
 const CurriculumBuilder = lazy(() =>
   import("../pages/admin/schoolAdmin/CurriculumBuilderWrapper")
@@ -354,22 +401,55 @@ const AppRoutes = () => {
           }
         >
           <Route path="dashboard" element={<CollegeDashboard />} />
-          <Route
-            path="departments/management"
-            element={<DepartmentManagement />}
-          />
+          
+          {/* Department Management */}
+          <Route path="departments/management" element={<DepartmentManagement />} />
           <Route path="departments/mapping" element={<CourseMapping />} />
-          <Route
-            path="students/data-management"
-            element={<StudentDataAdmission />}
-          />
           <Route path="departments/educators" element={<AdminEducatorManagement />} />
-          <Route
-            path=""
-            element={<Navigate to="/college-admin/dashboard" replace />}
-          />
+          
+          {/* Student Lifecycle Management */}
+          <Route path="students/data-management" element={<StudentDataAdmission />} />
           <Route path="students/attendance" element={<AttendanceTracking />} />
-
+          <Route path="students/performance" element={<PerformanceMonitoring />} />
+          <Route path="students/graduation" element={<GraduationEligibility />} />
+          
+          {/* Academic Management */}
+          <Route path="academics/curriculum" element={<CollegeCurriculumBuilder />} />
+          <Route path="academics/lesson-plans" element={<LessonPlanManagement />} />
+          <Route path="academics/calendar" element={<AcademicCalendar />} />
+          
+          {/* Examination Management */}
+          <Route path="examinations" element={<ExaminationManagement />} />
+          <Route path="examinations/transcripts" element={<TranscriptGeneration />} />
+          
+          {/* Training & Skill Development */}
+          <Route path="skill-development" element={<SkillDevelopment />} />
+          
+          {/* Placement Management */}
+          <Route path="placements" element={<PlacementManagement />} />
+          
+          {/* Mentor Allocation */}
+          <Route path="mentors" element={<MentorAllocation />} />
+          
+          {/* Communication */}
+          <Route path="circulars" element={<CircularsManagement />} />
+          
+          {/* Events */}
+          <Route path="events" element={<EventManagement />} />
+          
+          {/* Finance & Accounts */}
+          <Route path="finance" element={<FinanceManagement />} />
+          
+          {/* Reports & Analytics */}
+          <Route path="reports" element={<ReportsAnalytics />} />
+          
+          {/* User Management */}
+          <Route path="users" element={<CollegeUserManagement />} />
+          
+          {/* Settings */}
+          <Route path="settings" element={<CollegeSettings />} />
+          
+          <Route path="" element={<Navigate to="/college-admin/dashboard" replace />} />
         </Route>
 
         <Route
