@@ -69,7 +69,7 @@ const Header = ({ activeTab, setActiveTab }) => {
       "career-ai": "✨",
       assignments: "📋",
       messages: "💬",
-      analytics: "📊",
+      clubs: "🎭",
     };
     return icons[tabId] || "📄";
   };
@@ -82,11 +82,10 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: "digital-portfolio", label: "Digital Portfolio" },
     { id: "opportunities", label: "Opportunities" },
     { id: "career-ai", label: "Career AI", icon: "✨" },
-    { id: "assignments", label: "Assignments" },
-    { id: "clubs", label: "Co-Curriculars" },
+    { id: "assignments", label: "My Class" },
+    {id: "clubs", label: "Co-Curriculars"},
     { id: "messages", label: "Messages" },
-    { id: "analytics", label: "Analytics" },
-    { id: "assessment-report", label: "Assessment", icon: "📋" },
+    // Analytics removed - now integrated in Dashboard with tabs
   ];
 
   return (
@@ -129,7 +128,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   } else if (tab.id === "skills") {
                     navigate("/student/my-skills");
                   } else if (tab.id === "training") {
-                    navigate("/student/my-training");
+                    navigate("/student/my-learning");
                   } else if (tab.id === "experience") {
                     navigate("/student/my-experience");
                   } else if (tab.id === "courses") {
@@ -148,10 +147,6 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/career-ai");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
-                  } else if (tab.id === "analytics") {
-                    navigate("/student/analytics");
-                  } else if (tab.id === "assessment-report") {
-                    navigate("/student/assessment/test");
                   }
                 }}
                 className={`relative py-2 px-1 lg:px-1.5 xl:px-2 text-xs lg:text-xs xl:text-sm font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === tab.id ? "font-semibold" : ""
@@ -196,7 +191,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   } else if (tab.id === "skills") {
                     navigate("/student/my-skills");
                   } else if (tab.id === "training") {
-                    navigate("/student/my-training");
+                    navigate("/student/my-learning");
                   } else if (tab.id === "experience") {
                     navigate("/student/my-experience");
                   } else if (tab.id === "courses") {
@@ -215,10 +210,6 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/career-ai");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
-                  } else if (tab.id === "analytics") {
-                    navigate("/student/analytics");
-                  } else if (tab.id === "assessment-report") {
-                    navigate("/student/assessment/test");
                   }
                 }}
                 className={`relative py-2 px-3 text-xs font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none whitespace-nowrap flex-shrink-0 ${activeTab === tab.id ? "font-semibold" : ""
@@ -305,7 +296,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                 className="text-red-600"
                 onClick={() => {
                   logout();
-                  navigate("/login/student");
+                  navigate("/login");
                 }}
               >
                 <LogOut className="w-4 h-4 mr-2" />
@@ -345,7 +336,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   } else if (tab.id === "skills") {
                     navigate("/student/my-skills");
                   } else if (tab.id === "training") {
-                    navigate("/student/my-training");
+                    navigate("/student/my-learning");
                   } else if (tab.id === "experience") {
                     navigate("/student/my-experience");
                   } else if (tab.id === "courses") {
@@ -362,10 +353,6 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/clubs");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
-                  } else if (tab.id === "analytics") {
-                    navigate("/student/analytics");
-                  } else if (tab.id === "assessment-report") {
-                    navigate("/student/assessment/test");
                   }
                   setMobileMenuOpen(false);
                 }}
@@ -559,3 +546,4 @@ const Header = ({ activeTab, setActiveTab }) => {
 };
 
 export default Header;
+

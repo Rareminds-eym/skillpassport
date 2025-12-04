@@ -10,11 +10,17 @@ import {
   Clock,
   X,
   Briefcase,
-  FileText
+  FileText,
+  Sparkles,
+  RefreshCw,
+  TrendingUp,
+  Target,
+  Building2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useOpportunities } from '../../hooks/useOpportunities';
+import { useAIRecommendations } from '../../hooks/useAIRecommendations';
 import AppliedJobsService from '../../services/appliedJobsService';
 import SavedJobsService from '../../services/savedJobsService';
 import SearchHistoryService from '../../services/searchHistoryService';
@@ -84,6 +90,23 @@ const Opportunities = () => {
   const { opportunities, loading, error } = useOpportunities({ 
     fetchOnMount: true,
     activeOnly: true 
+  });
+
+  // AI-powered job recommendations
+  const {
+    recommendations,
+    loading: recommendationsLoading,
+    error: recommendationsError,
+    refreshRecommendations,
+    cached,
+    fallback,
+    trackView,
+    trackApply: trackAIApply,
+  } = useAIRecommendations({
+    studentId,
+    enabled: !!studentId,
+    autoFetch: true,
+    limit: 5
   });
 
   useMessageNotifications({
@@ -288,38 +311,39 @@ const Opportunities = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-8">
-        <div className="flex gap-6">
-          {/* Left Sidebar */}
-          <div className="w-64 flex-shrink-0">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden sticky top-20">
+        {/* Tab Switcher */}
+        <div className="mb-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-1.5">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setActiveTab('my-jobs')}
-                className={`w-full px-6 py-4 text-left font-medium transition-all flex items-center gap-3 ${
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
                   activeTab === 'my-jobs'
-                    ? 'bg-slate-700 text-white'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
+                    : 'bg-transparent text-gray-600 hover:bg-gray-50'
                 }`}
               >
                 <Briefcase className="w-5 h-5" />
-                My Jobs
+                <span>My Jobs</span>
               </button>
               <button
                 onClick={() => setActiveTab('my-applications')}
-                className={`w-full px-6 py-4 text-left font-medium transition-all flex items-center gap-3 border-t border-gray-200 ${
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
                   activeTab === 'my-applications'
-                    ? 'bg-slate-700 text-white'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
+                    : 'bg-transparent text-gray-600 hover:bg-gray-50'
                 }`}
               >
                 <FileText className="w-5 h-5" />
-                My Applications
+                <span>My Applications</span>
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Main Content Area */}
-          <div className="flex-1">
-            {activeTab === 'my-jobs' && (
+        {/* Main Content Area */}
+        <div>
+          {activeTab === 'my-jobs' && (
               <MyJobsContent
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
@@ -342,6 +366,14 @@ const Opportunities = () => {
                 currentPage={currentPage}
                 setCurrentPage={setCurrentPage}
                 opportunitiesPerPage={opportunitiesPerPage}
+                recommendations={recommendations}
+                recommendationsLoading={recommendationsLoading}
+                recommendationsError={recommendationsError}
+                refreshRecommendations={refreshRecommendations}
+                cached={cached}
+                fallback={fallback}
+                trackView={trackView}
+                studentId={studentId}
               />
             )}
 
@@ -361,7 +393,6 @@ const Opportunities = () => {
                 queryClient={queryClient}
               />
             )}
-          </div>
         </div>
       </div>
     </div>
@@ -390,7 +421,15 @@ const MyJobsContent = ({
   setAdvancedFilters,
   currentPage,
   setCurrentPage,
-  opportunitiesPerPage
+  opportunitiesPerPage,
+  recommendations,
+  recommendationsLoading,
+  recommendationsError,
+  refreshRecommendations,
+  cached,
+  fallback,
+  trackView,
+  studentId
 }) => {
   const totalPages = Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
   const paginatedOpportunities = React.useMemo(() => {
@@ -398,8 +437,157 @@ const MyJobsContent = ({
     return opportunities.slice(startIndex, startIndex + opportunitiesPerPage);
   }, [opportunities, currentPage, opportunitiesPerPage]);
 
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🔍 AI Recommendations Debug:', {
+      recommendations,
+      recommendationsLength: recommendations?.length,
+      recommendationsLoading,
+      recommendationsError,
+      cached,
+      fallback
+    });
+  }, [recommendations, recommendationsLoading, recommendationsError, cached, fallback]);
+
   return (
     <>
+      {/* AI Recommendations Section - Always show if loading or has data */}
+      {(recommendationsLoading || (recommendations && recommendations.length > 0)) && (
+        <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl shadow-sm p-6 mb-6 border border-indigo-100">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  AI-Powered Recommendations
+                  {cached && (
+                    <span className="text-xs font-normal text-gray-500 bg-white px-2 py-0.5 rounded-full">
+                      Cached
+                    </span>
+                  )}
+                  {fallback && (
+                    <span className="text-xs font-normal text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                      Popular Jobs
+                    </span>
+                  )}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {fallback 
+                    ? 'Trending opportunities based on popularity'
+                    : 'Personalized matches based on your profile and skills'
+                  }
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={refreshRecommendations}
+              disabled={recommendationsLoading}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-white rounded-lg transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${recommendationsLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+
+          {recommendationsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              <p className="ml-3 text-sm text-gray-600">Finding best matches...</p>
+            </div>
+          ) : recommendationsError ? (
+            <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+              <p className="text-sm text-red-700">⚠️ {recommendationsError}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+              {recommendations.slice(0, 5).map((rec, idx) => (
+                <div
+                  key={rec.id || idx}
+                  onClick={() => {
+                    trackView(rec.id);
+                    setSelectedOpportunity(rec);
+                  }}
+                  className="bg-white rounded-lg p-4 border border-indigo-100 hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group"
+                >
+                  {/* Match Score */}
+                  {rec.similarity && (
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full">
+                        <Target className="w-3 h-3" />
+                        {Math.round(rec.similarity * 100)}% Match
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Job Title */}
+                  <h4 className="font-bold text-gray-900 text-sm mb-2 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                    {rec.job_title || rec.title}
+                  </h4>
+
+                  {/* Company */}
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-2">
+                    <Building2 className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">{rec.company_name || rec.company}</span>
+                  </div>
+
+                  {/* Details */}
+                  <div className="space-y-1 text-xs text-gray-500">
+                    {rec.location && (
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{rec.location}</span>
+                      </div>
+                    )}
+                    {rec.employment_type && (
+                      <div className="flex items-center gap-1.5">
+                        <Briefcase className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{rec.employment_type}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Applied/Saved Status */}
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    {appliedJobs.has(rec.id) ? (
+                      <span className="text-xs text-green-600 font-medium">✓ Applied</span>
+                    ) : savedJobs.has(rec.id) ? (
+                      <span className="text-xs text-blue-600 font-medium">★ Saved</span>
+                    ) : (
+                      <span className="text-xs text-indigo-600 font-medium group-hover:underline">
+                        View Details →
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Debug Info - Remove after testing */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <p className="text-sm text-blue-800">
+          <strong>Debug Info:</strong><br/>
+          Student ID: {studentId || 'Not available'}<br/>
+          Loading: {recommendationsLoading ? 'Yes' : 'No'}<br/>
+          Error: {recommendationsError || 'None'}<br/>
+          Recommendations Count: {recommendations?.length || 0}<br/>
+          Cached: {cached ? 'Yes' : 'No'}<br/>
+          Fallback: {fallback ? 'Yes' : 'No'}
+        </p>
+        {recommendations && recommendations.length > 0 && (
+          <details className="mt-2">
+            <summary className="cursor-pointer text-sm font-semibold">View Raw Data</summary>
+            <pre className="mt-2 text-xs bg-white p-2 rounded overflow-auto max-h-40">
+              {JSON.stringify(recommendations, null, 2)}
+            </pre>
+          </details>
+        )}
+      </div>
+
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
         <div className="flex gap-4 mb-6">

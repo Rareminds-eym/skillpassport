@@ -32,6 +32,7 @@ interface ResourceUploadComponentProps {
 }
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+const UPLOAD_TIMEOUT = 600000; // 10 minutes in milliseconds
 const ALLOWED_FILE_TYPES = {
   pdf: ['.pdf'],
   document: ['.doc', '.docx', '.ppt', '.pptx', '.txt'],

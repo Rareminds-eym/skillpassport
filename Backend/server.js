@@ -57,6 +57,99 @@ const generateFileKey = (originalName, courseId, lessonId) => {
   return `courses/${courseId}/lessons/${lessonId}/${timestamp}-${randomString}${extension}`;
 };
 
+// Get presigned URL for upload
+app.post('/api/upload/presigned', async (req, res) => {
+  try {
+    console.log('=== Presigned URL Request ===');
+    console.log('Body:', req.body);
+
+    const { filename, contentType, fileSize, courseId, lessonId } = req.body;
+
+    if (!filename || !contentType || !courseId || !lessonId) {
+      console.error('ERROR: Missing required fields');
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['filename', 'contentType', 'courseId', 'lessonId']
+      });
+    }
+
+    console.log('Generating file key...');
+    const fileKey = generateFileKey(filename, courseId, lessonId);
+    console.log('File key:', fileKey);
+
+    // Generate presigned URL for upload (valid for 1 hour)
+    console.log('Generating presigned URL for upload...');
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileKey,
+      ContentType: contentType,
+      Metadata: {
+        originalName: filename,
+        courseId: courseId,
+        lessonId: lessonId,
+      },
+    });
+
+    const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+    console.log('✓ Presigned upload URL generated');
+
+    const response = {
+      success: true,
+      data: {
+        uploadUrl,
+        fileKey,
+      },
+    };
+    console.log('Sending response:', response);
+    res.json(response);
+  } catch (error) {
+    console.error('=== Presigned URL Error ===');
+    console.error('Error:', error);
+    console.error('Error message:', error.message);
+    res.status(500).json({ error: 'Failed to generate presigned URL', message: error.message });
+  }
+});
+
+// Confirm upload and get presigned URL for access
+app.post('/api/upload/confirm', async (req, res) => {
+  try {
+    console.log('=== Confirm Upload Request ===');
+    console.log('Body:', req.body);
+
+    const { fileKey, fileName, fileSize, fileType } = req.body;
+
+    if (!fileKey) {
+      console.error('ERROR: Missing fileKey');
+      return res.status(400).json({ error: 'Missing fileKey' });
+    }
+
+    console.log('Generating presigned URL for access...');
+    const getCommand = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileKey,
+    });
+    const url = await getSignedUrl(r2Client, getCommand, { expiresIn: 604800 }); // 7 days
+    console.log('✓ Presigned access URL generated');
+
+    const response = {
+      success: true,
+      data: {
+        key: fileKey,
+        url: url,
+        name: fileName,
+        size: fileSize,
+        type: fileType,
+      },
+    };
+    console.log('Sending response:', response);
+    res.json(response);
+  } catch (error) {
+    console.error('=== Confirm Upload Error ===');
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Failed to confirm upload', message: error.message });
+  }
+});
+
 // Upload file to R2
 app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {

@@ -59,6 +59,10 @@ const LoginStudent = lazy(() => import("../pages/auth/LoginStudent"));
 const LoginRecruiter = lazy(() => import("../pages/auth/LoginRecruiter"));
 const LoginAdmin = lazy(() => import("../pages/auth/LoginAdmin"));
 const Register = lazy(() => import("../pages/auth/components/SignIn/Register"));
+const UnifiedLogin = lazy(() => import("../pages/auth/UnifiedLogin"));
+const UnifiedForgotPassword = lazy(() => import("../pages/auth/UnifiedForgotPassword"));
+const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
+const DebugRoles = lazy(() => import("../pages/auth/DebugRoles"));
 const SignupRecruiter = lazy(() =>
   import("../pages/auth/components/SignIn/recruitment/SignupRecruiter")
 );
@@ -102,7 +106,7 @@ const ProjectHiringWithNav = lazy(() => import("../pages/recruiter/ProjectHiring
 const StudentDashboard = lazy(() => import("../pages/student/Dashboard"));
 const Profile = lazy(() => import("../pages/student/Profile"));
 const MySkills = lazy(() => import("../pages/student/MySkills"));
-const MyTraining = lazy(() => import("../pages/student/MyTraining"));
+const MyLearning = lazy(() => import("../pages/student/MyLearning"));
 const MyExperience = lazy(() => import("../pages/student/MyExperience"));
 const Courses = lazy(() => import("../pages/student/Courses"));
 const CoursePlayer = lazy(() => import("../pages/student/CoursePlayer"));
@@ -114,7 +118,8 @@ const BrowseJobs = lazy(() => import("../pages/student/BrowseJobs"));
 const Messages = lazy(() => import("../pages/student/Messages"));
 const StudentAnalytics = lazy(() => import("../pages/student/Analytics"));
 const Assignments = lazy(() => import("../pages/student/Assignments"));
-const Clubs = lazy(() => import("../pages/student/Clubs"))
+const MyClass = lazy(() => import("../pages/student/MyClass"));
+const Clubs = lazy(() => import ("../pages/student/Clubs"))
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
 const CareerAI = lazy(() => import("../features/career-assistant/components/CareerAssistant"));
@@ -176,6 +181,24 @@ const StudentDataAdmission = lazy(() =>
 const AdminEducatorManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/EducatorManagement")
 );
+const ExaminationManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/ExaminationManagement")
+);
+const PlacementManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/PlacementManagement")
+);
+const SkillDevelopment = lazy(() =>
+  import("../pages/admin/collegeAdmin/SkillDevelopment")
+);
+const EventManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/EventManagement")
+);
+const FinanceManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/FinanceManagement")
+);
+const ReportsAnalytics = lazy(() =>
+  import("../pages/admin/collegeAdmin/ReportsAnalytics")
+);
 
 // Future: Add SchoolAdmin and UniversityAdmin dashboards here
 const SchoolAdminDashboard = lazy(() =>
@@ -218,13 +241,42 @@ const AICounselling = lazy(() =>
 const AttendanceTracking = lazy(() =>
   import("../pages/admin/collegeAdmin/Attendancetracking")
 );
-
+const GraduationEligibility = lazy(() =>
+  import("../pages/admin/collegeAdmin/GraduationEligibility")
+);
+const CircularsManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/CircularsManagement")
+);
+const CollegeUserManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/UserManagement")
+);
+const CollegeCurriculumBuilder = lazy(() =>
+  import("../pages/admin/collegeAdmin/CurriculumBuilder")
+);
+const LessonPlanManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/LessonPlanManagement")
+);
+const MentorAllocation = lazy(() =>
+  import("../pages/admin/collegeAdmin/MentorAllocation")
+);
+const TranscriptGeneration = lazy(() =>
+  import("../pages/admin/collegeAdmin/TranscriptGeneration")
+);
+const AcademicCalendar = lazy(() =>
+  import("../pages/admin/collegeAdmin/AcademicCalendar")
+);
+const PerformanceMonitoring = lazy(() =>
+  import("../pages/admin/collegeAdmin/PerformanceMonitoring")
+);
+const CollegeSettings = lazy(() =>
+  import("../pages/admin/collegeAdmin/Settings")
+);
 
 const CurriculumBuilder = lazy(() =>
-  import("../pages/admin/schoolAdmin/CurriculumBuilder")
+  import("../pages/admin/schoolAdmin/CurriculumBuilderWrapper")
 );
 const SchoolAdminCourses = lazy(() => import("../pages/admin/schoolAdmin/Courses"));
-const LessonPlan = lazy(() => import("../pages/admin/schoolAdmin/LessonPlan"));
+const LessonPlan = lazy(() => import("../pages/admin/schoolAdmin/LessonPlanWrapper"));
 const ExamsAssessments = lazy(() =>
   import("../pages/admin/schoolAdmin/ExamsAssessments")
 );
@@ -272,11 +324,21 @@ const AppRoutes = () => {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/login/student" element={<LoginStudent />} />
-          <Route path="/login/recruiter" element={<LoginRecruiter />} />
+          
+          {/* Unified Login */}
+          <Route path="/login" element={<UnifiedLogin />} />
+          <Route path="/forgot-password" element={<UnifiedForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/debug-roles" element={<DebugRoles />} />
+          
+          {/* Deprecated login routes - redirect to unified login */}
+          <Route path="/login/student" element={<Navigate to="/login" replace />} />
+          <Route path="/login/recruiter" element={<Navigate to="/login" replace />} />
+          <Route path="/login/admin" element={<Navigate to="/login" replace />} />
+          <Route path="/login/educator" element={<Navigate to="/login" replace />} />
+          
+          {/* Registration routes */}
           <Route path="/register/recruitment" element={<Register />} />
-          <Route path="/login/admin" element={<LoginAdmin />} />
-          <Route path="/login/educator" element={<EducatorLogin />} />
           <Route path="/register" element={<Register />} />
           <Route path="/register/:type" element={<Register />} />
           <Route
@@ -341,22 +403,55 @@ const AppRoutes = () => {
           }
         >
           <Route path="dashboard" element={<CollegeDashboard />} />
-          <Route
-            path="departments/management"
-            element={<DepartmentManagement />}
-          />
+          
+          {/* Department Management */}
+          <Route path="departments/management" element={<DepartmentManagement />} />
           <Route path="departments/mapping" element={<CourseMapping />} />
-          <Route
-            path="students/data-management"
-            element={<StudentDataAdmission />}
-          />
           <Route path="departments/educators" element={<AdminEducatorManagement />} />
-          <Route
-            path=""
-            element={<Navigate to="/college-admin/dashboard" replace />}
-          />
+          
+          {/* Student Lifecycle Management */}
+          <Route path="students/data-management" element={<StudentDataAdmission />} />
           <Route path="students/attendance" element={<AttendanceTracking />} />
-
+          <Route path="students/performance" element={<PerformanceMonitoring />} />
+          <Route path="students/graduation" element={<GraduationEligibility />} />
+          
+          {/* Academic Management */}
+          <Route path="academics/curriculum" element={<CollegeCurriculumBuilder />} />
+          <Route path="academics/lesson-plans" element={<LessonPlanManagement />} />
+          <Route path="academics/calendar" element={<AcademicCalendar />} />
+          
+          {/* Examination Management */}
+          <Route path="examinations" element={<ExaminationManagement />} />
+          <Route path="examinations/transcripts" element={<TranscriptGeneration />} />
+          
+          {/* Training & Skill Development */}
+          <Route path="skill-development" element={<SkillDevelopment />} />
+          
+          {/* Placement Management */}
+          <Route path="placements" element={<PlacementManagement />} />
+          
+          {/* Mentor Allocation */}
+          <Route path="mentors" element={<MentorAllocation />} />
+          
+          {/* Communication */}
+          <Route path="circulars" element={<CircularsManagement />} />
+          
+          {/* Events */}
+          <Route path="events" element={<EventManagement />} />
+          
+          {/* Finance & Accounts */}
+          <Route path="finance" element={<FinanceManagement />} />
+          
+          {/* Reports & Analytics */}
+          <Route path="reports" element={<ReportsAnalytics />} />
+          
+          {/* User Management */}
+          <Route path="users" element={<CollegeUserManagement />} />
+          
+          {/* Settings */}
+          <Route path="settings" element={<CollegeSettings />} />
+          
+          <Route path="" element={<Navigate to="/college-admin/dashboard" replace />} />
         </Route>
 
         <Route
@@ -467,7 +562,8 @@ const AppRoutes = () => {
           <Route path="profile" element={<Profile />} />
           <Route path="profile/:email" element={<Profile />} />
           <Route path="my-skills" element={<MySkills />} />
-          <Route path="my-training" element={<MyTraining />} />
+          <Route path="my-learning" element={<MyLearning />} />
+          <Route path="my-training" element={<MyLearning />} /> {/* Redirect old route */}
           <Route path="my-experience" element={<MyExperience />} />
           <Route path="courses" element={<Courses />} />
           <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
@@ -480,7 +576,8 @@ const AppRoutes = () => {
           <Route path="career-ai" element={<CareerAI />} />
           <Route path="settings" element={<Settings />} />
           <Route path="analytics" element={<StudentAnalytics />} />
-          <Route path="assignments" element={<Assignments />} />
+          <Route path="my-class" element={<MyClass />} />
+          <Route path="assignments" element={<Navigate to="/student/my-class" replace />} />
           <Route path="clubs" element={<Clubs />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />

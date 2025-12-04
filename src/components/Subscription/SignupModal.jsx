@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { signUpWithRole } from '../../services/authService';
 import { supabase } from '../../lib/supabaseClient';
 import { getModalContent, parseStudentType } from '../../utils/getEntityContent';
-import { completeStudentRegistration, getAllColleges } from '../../services/studentService';
+import { completeStudentRegistration, getAllColleges, getAllSchools } from '../../services/studentService';
 
 // Cache for email checks to avoid repeated queries
 const emailCheckCache = new Map();
@@ -24,7 +24,8 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
     phone: '',
     password: '',
     confirmPassword: '',
-    collegeId: '' // For college students
+    collegeId: '', // For college students
+    schoolId: '' // For school students
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -35,6 +36,8 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
   const [existingUserInfo, setExistingUserInfo] = useState(null);
   const [colleges, setColleges] = useState([]);
   const [loadingColleges, setLoadingColleges] = useState(false);
+  const [schools, setSchools] = useState([]);
+  const [loadingSchools, setLoadingSchools] = useState(false);
   const navigate = useNavigate();
 
   // Load colleges if student type is college
@@ -59,6 +62,30 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
     };
 
     loadColleges();
+  }, [studentType, isOpen]);
+
+  // Load schools if student type is school
+  useEffect(() => {
+    const loadSchools = async () => {
+      // Parse studentType to get entity (handles both "school" and "school-student")
+      const { entity } = parseStudentType(studentType);
+      
+      if (entity === 'school' && isOpen) {
+        console.log('🔍 Loading schools for student type:', studentType, '→ entity:', entity);
+        setLoadingSchools(true);
+        const result = await getAllSchools();
+        console.log('📊 School fetch result:', result);
+        if (result.success) {
+          console.log('✅ Schools loaded:', result.data?.length || 0, 'schools');
+          setSchools(result.data || []);
+        } else {
+          console.error('❌ Failed to load schools:', result.error);
+        }
+        setLoadingSchools(false);
+      }
+    };
+
+    loadSchools();
   }, [studentType, isOpen]);
 
   // Check if email already exists in the database
@@ -245,7 +272,7 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
         email: formData.email,
         phone: formData.phone,
         studentType: studentType, // 'school', 'college', or 'university'
-        schoolId: null, // Can be selected later or in extended form
+        schoolId: formData.schoolId || null, // Selected school for school students
         collegeId: formData.collegeId || null // Selected college for college students
       });
 
@@ -266,6 +293,8 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
         phone: formData.phone,
         role: 'student',
         studentType: studentType,
+        schoolId: formData.schoolId || null,
+        collegeId: formData.collegeId || null,
         isNewUser: true,
         studentRecord: registrationResult.data?.student || null
       };
@@ -504,6 +533,59 @@ export default function SignupModal({ isOpen, onClose, selectedPlan, studentType
                     {!loadingColleges && colleges.length > 0 && (
                       <p className="mt-1 text-xs text-gray-500">
                         💡 Linking your college helps us personalize your experience
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* School Selection (only for school students) */}
+                {parseStudentType(studentType).entity === 'school' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Select Your School <span className="text-gray-500 text-xs">(Optional)</span>
+                    </label>
+                    <div className="relative">
+                      <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
+                      <select
+                        name="schoolId"
+                        value={formData.schoolId}
+                        onChange={handleInputChange}
+                        disabled={loadingSchools}
+                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                          backgroundPosition: 'right 0.5rem center',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundSize: '1.5em 1.5em'
+                        }}
+                      >
+                        <option value="">Choose your school</option>
+                        {schools.length > 0 ? (
+                          schools.map((school) => (
+                            <option key={school.id} value={school.id}>
+                              {school.name}{school.city ? ` - ${school.city}` : ''}{school.state ? `, ${school.state}` : ''}
+                            </option>
+                          ))
+                        ) : (
+                          !loadingSchools && <option value="" disabled>No schools available</option>
+                        )}
+                      </select>
+                    </div>
+                    {loadingSchools && (
+                      <p className="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                        Loading schools...
+                      </p>
+                    )}
+                    {!loadingSchools && schools.length === 0 && (
+                      <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        No schools found. You can add this later in your profile.
+                      </p>
+                    )}
+                    {!loadingSchools && schools.length > 0 && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        💡 Linking your school helps us personalize your experience
                       </p>
                     )}
                   </div>

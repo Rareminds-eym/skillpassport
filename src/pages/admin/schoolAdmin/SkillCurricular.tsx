@@ -9,124 +9,30 @@ import {
     X,
     ChevronDown,
     FileDown,
+    Edit,
+    Trash2,
 } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
+import * as clubsService from "../../../services/clubsService";
+import * as competitionsService from "../../../services/competitionsService";
+import * as XLSX from 'xlsx';
 
-// Load clubs from localStorage or use defaults
-const loadClubsFromStorage = () => {
-    const stored = localStorage.getItem("skillpassport_clubs");
-    if (stored) {
-        try {
-            return JSON.parse(stored);
-        } catch (e) {
-            console.error("Failed to parse clubs from localStorage", e);
-        }
-    }
-    return [
-        {
-            club_id: "c1",
-            name: "Robotics Club",
-            category: "robotics",
-            description: "Build and program robots. Participate in competitions and workshops.",
-            members: ["s1", "s2", "s3"],
-            capacity: 30,
-            upcomingCompetitions: ["comp1"],
-            meetingDay: "Monday & Thursday",
-            meetingTime: "4:00 PM - 6:00 PM",
-            location: "Lab 101",
-            mentor: "Dr. Sarah Johnson",
-            avgAttendance: 85,
-            upcomingActivities: [
-                { title: "Robot Assembly Workshop", date: "2025-12-01" },
-                { title: "State Competition Prep", date: "2025-12-10" },
-            ],
-        },
-        {
-            club_id: "c2",
-            name: "Literature Circle",
-            category: "literature",
-            description: "Book discussions, creative writing and contests.",
-            members: ["s2"],
-            capacity: 20,
-            upcomingCompetitions: [],
-            meetingDay: "Wednesday",
-            meetingTime: "3:30 PM - 5:00 PM",
-            location: "Library Room 2",
-            mentor: "Prof. Emily Watson",
-            avgAttendance: 92,
-            upcomingActivities: [
-                { title: "Book Discussion: 1984", date: "2025-11-28" },
-                { title: "Poetry Writing Workshop", date: "2025-12-05" },
-            ],
-        },
-        {
-            club_id: "c3",
-            name: "Coding Club",
-            category: "science",
-            description: "Learn programming and participate in hackathons.",
-            members: [],
-            capacity: 50,
-            upcomingCompetitions: ["comp2"],
-            meetingDay: "Tuesday & Friday",
-            meetingTime: "3:00 PM - 5:00 PM",
-            location: "Computer Lab A",
-            mentor: "Mr. David Chen",
-            avgAttendance: 78,
-            upcomingActivities: [
-                { title: "Hackathon Preparation", date: "2025-12-02" },
-                { title: "Web Development Workshop", date: "2025-12-08" },
-            ],
-        },
-        {
-            club_id: "c4",
-            name: "Football Team",
-            category: "sports",
-            description: "Practice daily, play interschool matches.",
-            members: ["s1", "s4", "s5"],
-            capacity: 25,
-            upcomingCompetitions: [],
-            meetingDay: "Monday, Wednesday, Friday",
-            meetingTime: "5:00 PM - 7:00 PM",
-            location: "Main Field",
-            mentor: "Coach Mike Thompson",
-            avgAttendance: 95,
-            upcomingActivities: [
-                { title: "Practice Match vs St. Mary's", date: "2025-11-30" },
-                { title: "Championship Semi-Finals", date: "2025-12-15" },
-            ],
-        },
-    ];
-};
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
-// Load competitions from localStorage or use defaults
-const loadCompetitionsFromStorage = () => {
-    const stored = localStorage.getItem("skillpassport_competitions");
-    if (stored) {
-        try {
-            return JSON.parse(stored);
-        } catch (e) {
-            console.error("Failed to parse competitions from localStorage", e);
-        }
-    }
-    return [
-        {
-            comp_id: "comp1",
-            name: "State Robotics Challenge",
-            level: "district",
-            date: "2026-01-15",
-            participatingClubs: ["c1"],
-            results: [],
-        },
-        {
-            comp_id: "comp2",
-            name: "Inter-school Hackathon",
-            level: "interschool",
-            date: "2025-12-05",
-            participatingClubs: ["c3"],
-            results: [],
-        },
-    ];
-};
+// Helper function to get school_id from logged-in user
+async function getSchoolId() {
+    const userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) return null;
+    
+    const { data } = await supabase
+        .from('schools')
+        .select('id')
+        .eq('email', userEmail)
+        .maybeSingle();
+    
+    return data?.school_id || null;
+}
 
 const categories = [
     { id: "all", label: "All" },
@@ -138,11 +44,13 @@ const categories = [
 ];
 
 function formatDate(d) {
+    if (!d) return 'TBD';
     try {
         const dd = new Date(d);
-        return dd.toLocaleDateString();
+        if (isNaN(dd.getTime())) return 'TBD';
+        return dd.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     } catch (e) {
-        return d;
+        return 'TBD';
     }
 }
 
@@ -189,7 +97,7 @@ function exportTableAsPrint(htmlString, title = "Report") {
     setTimeout(() => w.print(), 500);
 }
 
-function ClubCard({ club, isJoined, onJoin, onLeave, onOpenDetails }) {
+function ClubCard({ club, isJoined, onJoin, onLeave, onOpenDetails, onEdit, onDelete }) {
     const memberCount = club.members?.length ?? 0;
     const full = memberCount >= club.capacity;
 
@@ -223,30 +131,49 @@ function ClubCard({ club, isJoined, onJoin, onLeave, onOpenDetails }) {
                 ) : null}
             </div>
 
-            <div className="mt-4 flex items-center justify-between gap-3">
-                <button
-                    onClick={() => onOpenDetails(club)}
-                    className="text-sm px-3 py-1 border rounded-md bg-white text-slate-700 hover:shadow-sm"
-                >
-                    View
-                </button>
+            <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                    <button
+                        onClick={() => onOpenDetails(club)}
+                        className="text-sm px-3 py-1 border rounded-md bg-white text-slate-700 hover:shadow-sm"
+                    >
+                        View
+                    </button>
 
-                {!isJoined ? (
+                    {!isJoined ? (
+                        <button
+                            disabled={full}
+                            onClick={() => onJoin(club)}
+                            className={`flex items-center gap-2 text-sm px-3 py-1 rounded-md ${full ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
+                        >
+                            <Plus size={14} /> Join
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => onLeave(club)}
+                            className="flex items-center gap-2 text-sm px-3 py-1 rounded-md bg-red-50 text-red-600 border border-red-100"
+                        >
+                            <X size={14} /> Leave
+                        </button>
+                    )}
+                </div>
+                
+                <div className="flex items-center gap-2">
                     <button
-                        disabled={full}
-                        onClick={() => onJoin(club)}
-                        className={`flex items-center gap-2 text-sm px-3 py-1 rounded-md ${full ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
+                        onClick={() => onEdit(club)}
+                        className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-1 border rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100"
                     >
-                        <Plus size={14} /> Join
+                        <Edit size={14} />
+                        Edit
                     </button>
-                ) : (
                     <button
-                        onClick={() => onLeave(club)}
-                        className="flex items-center gap-2 text-sm px-3 py-1 rounded-md bg-red-50 text-red-600 border border-red-100"
+                        onClick={() => onDelete(club)}
+                        className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-1 border rounded-md bg-red-50 text-red-700 hover:bg-red-100"
                     >
-                        <X size={14} /> Leave
+                        <Trash2 size={14} />
+                        Delete
                     </button>
-                )}
+                </div>
             </div>
         </div>
     );
@@ -273,18 +200,31 @@ function Modal({ open, onClose, title, children }) {
 export default function ClubsActivitiesPage() {
     const currentStudent = useMemo(() => ({ id: "s_new", name: "You" }), []);
 
-    const [clubs, setClubs] = useState(loadClubsFromStorage);
-    const [competitions, setCompetitions] = useState(loadCompetitionsFromStorage);
+    const [clubs, setClubs] = useState([]);
+    const [competitions, setCompetitions] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    // Save clubs to localStorage whenever they change
+    // Fetch clubs and competitions from Supabase on mount
     useEffect(() => {
-        localStorage.setItem("skillpassport_clubs", JSON.stringify(clubs));
-    }, [clubs]);
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const [clubsData, competitionsData] = await Promise.all([
+                    clubsService.fetchClubs(),
+                    competitionsService.fetchCompetitions()
+                ]);
+                setClubs(clubsData);
+                setCompetitions(competitionsData);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                setNotice({ type: "error", text: "Failed to load data. Please refresh the page." });
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    // Save competitions to localStorage whenever they change
-    useEffect(() => {
-        localStorage.setItem("skillpassport_competitions", JSON.stringify(competitions));
-    }, [competitions]);
+        fetchData();
+    }, []);
 
     const [q, setQ] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
@@ -297,85 +237,142 @@ export default function ClubsActivitiesPage() {
     const [registerCompModal, setRegisterCompModal] = useState(null);
     const [addClubModal, setAddClubModal] = useState(false);
     const [addCompModal, setAddCompModal] = useState(false);
+    const [editClubModal, setEditClubModal] = useState(null);
+    const [editClubForm, setEditClubForm] = useState({
+        name: "",
+        category: "arts",
+        description: "",
+        capacity: 30,
+        meeting_day: null,
+        meeting_time: null,
+        location: "",
+        mentor_name: ""
+    });
     const [studentDrawer, setStudentDrawer] = useState({ open: false, club: null });
     const [allStudents, setAllStudents] = useState([]);
     const [loadingStudents, setLoadingStudents] = useState(true);
     const [studentSearchQuery, setStudentSearchQuery] = useState("");
+    const [attendanceModal, setAttendanceModal] = useState({ open: false, club: null });
+    const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+    const [attendanceTopic, setAttendanceTopic] = useState("");
+    const [attendanceRecords, setAttendanceRecords] = useState({});
+    const [currentPage, setCurrentPage] = useState(1);
 
-    // Fetch real students from Supabase
+    // Fetch real students from Supabase (only from the same school)
     useEffect(() => {
         const fetchStudents = async () => {
             try {
                 setLoadingStudents(true);
                 
-                // Try to get logged-in user's email
+                // Get logged-in user's email
                 const userEmail = localStorage.getItem('userEmail');
+                console.log('🔍 [SkillCurricular] Fetching students for user:', userEmail);
                 
-                // First, try to fetch students filtered by school if we have user email
-                if (userEmail) {
-                    // Try to get the school_id for the logged-in admin
-                    const { data: adminData } = await supabase
+                if (!userEmail) {
+                    console.warn('❌ [SkillCurricular] No user email found in localStorage');
+                    setAllStudents([]);
+                    setLoadingStudents(false);
+                    return;
+                }
+                
+                // Try multiple approaches to get school_id
+                let schoolId = null;
+                
+                // 1. Check localStorage for school admin
+                const storedUser = localStorage.getItem('user');
+                if (storedUser) {
+                    try {
+                        const userData = JSON.parse(storedUser);
+                        if (userData.role === 'school_admin' && userData.schoolId) {
+                            schoolId = userData.schoolId;
+                            console.log('✅ [SkillCurricular] Found school_id from localStorage:', schoolId);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing stored user:', e);
+                    }
+                }
+                
+                // 2. Check school_educators table
+                if (!schoolId) {
+                    const { data: educatorData, error: educatorError } = await supabase
                         .from('school_educators')
                         .select('school_id')
                         .eq('email', userEmail)
                         .maybeSingle();
 
-                    if (adminData?.school_id) {
-                        // Fetch students from this school only
-                        const { data, error } = await supabase
-                            .from('students')
-                            .select('id, email, profile, name, grade, section, roll_number')
-                            .eq('school_id', adminData.school_id)
-                            .order('email');
+                    if (educatorError) {
+                        console.error('❌ [SkillCurricular] Error fetching educator data:', educatorError);
+                    } else if (educatorData?.school_id) {
+                        schoolId = educatorData.school_id;
+                        console.log('✅ [SkillCurricular] Found school_id from school_educators:', schoolId);
+                    }
+                }
+                
+                // 3. Check schools table (for principal/admin)
+                if (!schoolId) {
+                    const { data: schoolData, error: schoolError } = await supabase
+                        .from('schools')
+                        .select('id')
+                        .eq('email', userEmail)
+                        .maybeSingle();
 
-                        if (!error && data && data.length > 0) {
-                            const mappedStudents = data.map(student => ({
-                                id: student.email,
-                                email: student.email,
-                                name: student.name || student.profile?.name || student.email,
-                                grade: student.grade || student.profile?.grade || student.profile?.class || 'N/A',
-                                section: student.section || student.profile?.section || '',
-                                rollNumber: student.roll_number || student.profile?.rollNumber || ''
-                            }));
-                            setAllStudents(mappedStudents);
-                            setLoadingStudents(false);
-                            return;
-                        }
+                    if (schoolError) {
+                        console.error('❌ [SkillCurricular] Error fetching school data:', schoolError);
+                    } else if (schoolData?.id) {
+                        schoolId = schoolData.id;
+                        console.log('✅ [SkillCurricular] Found school_id from schools table:', schoolId);
                     }
                 }
 
-                // Fallback: Fetch all students if school-specific fetch didn't work
+                if (!schoolId) {
+                    console.warn('❌ [SkillCurricular] No school_id found for user:', userEmail);
+                    setAllStudents([]);
+                    setLoadingStudents(false);
+                    return;
+                }
+
+                console.log('📡 [SkillCurricular] Fetching students for school_id:', schoolId);
+
+                // Fetch students from this school only
                 const { data, error } = await supabase
                     .from('students')
-                    .select('id, email, profile, name, grade')
-                    .order('email');
+                    .select('id, email, profile, name, grade, section, roll_number, school_id')
+                    .eq('school_id', schoolId)
+                    .eq('is_deleted', false)
+                    .order('name');
 
                 if (error) {
-                    console.error('Error fetching students:', error);
-                    // Use fallback dummy data
-                    setAllStudents([
-                        { id: "student1@example.com", name: "Alice Johnson", grade: "10A", email: "student1@example.com" },
-                        { id: "student2@example.com", name: "Bob Smith", grade: "11B", email: "student2@example.com" },
-                        { id: "student3@example.com", name: "Charlie Brown", grade: "10C", email: "student3@example.com" },
-                    ]);
-                } else if (data) {
-                    // Map students to the format we need (using email as ID)
-                    const mappedStudents = data.map(student => ({
-                        id: student.email,
-                        email: student.email,
-                        name: student.name || student.profile?.name || student.email,
-                        grade: student.grade || student.profile?.grade || student.profile?.class || 'N/A'
-                    }));
-                    setAllStudents(mappedStudents);
+                    console.error('❌ [SkillCurricular] Error fetching students:', error);
+                    setAllStudents([]);
+                    setLoadingStudents(false);
+                    return;
                 }
+
+                if (!data || data.length === 0) {
+                    console.log('⚠️ [SkillCurricular] No students found for school_id:', schoolId);
+                    setAllStudents([]);
+                    setLoadingStudents(false);
+                    return;
+                }
+
+                // Map students to the format we need (using email as ID)
+                const mappedStudents = data.map(student => ({
+                    id: student.email,
+                    email: student.email,
+                    name: student.name || student.profile?.name || student.email,
+                    grade: student.grade || student.profile?.grade || student.profile?.class || 'N/A',
+                    section: student.section || student.profile?.section || '',
+                    rollNumber: student.roll_number || student.profile?.rollNumber || '',
+                    school_id: student.school_id
+                }));
+                
+                console.log(`✅ [SkillCurricular] Loaded ${mappedStudents.length} students from school ${schoolId}`);
+                console.log('📋 [SkillCurricular] Sample student:', mappedStudents[0]);
+                setAllStudents(mappedStudents);
+                
             } catch (err) {
-                console.error('Error loading students:', err);
-                // Use fallback dummy data on error
-                setAllStudents([
-                    { id: "student1@example.com", name: "Alice Johnson", grade: "10A", email: "student1@example.com" },
-                    { id: "student2@example.com", name: "Bob Smith", grade: "11B", email: "student2@example.com" },
-                    { id: "student3@example.com", name: "Charlie Brown", grade: "10C", email: "student3@example.com" },
-                ]);
+                console.error('❌ [SkillCurricular] Error loading students:', err);
+                setAllStudents([]);
             } finally {
                 setLoadingStudents(false);
             }
@@ -387,6 +384,9 @@ export default function ClubsActivitiesPage() {
         name: "",
         level: "district",
         date: "",
+        description: "",
+        category: "",
+        status: "upcoming",
         results: [],
         participatingClubs: []
     });
@@ -395,15 +395,32 @@ export default function ClubsActivitiesPage() {
         name: "",
         category: "arts",
         description: "",
-        capacity: 30
+        capacity: 30,
+        meeting_day: null,
+        meeting_time: null,
+        location: "",
+        mentor_name: ""
     });
     const [registrationForm, setRegistrationForm] = useState({
-        studentName: "",
-        studentId: "",
-        grade: "",
+        studentEmail: "",
         teamMembers: "",
-        notes: ""
+        notes: "",
+        status: "upcoming"
     });
+    
+    const [editCompModal, setEditCompModal] = useState(null);
+    const [editCompForm, setEditCompForm] = useState({
+        name: "",
+        level: "district",
+        date: "",
+        description: "",
+        category: "",
+        status: "upcoming",
+        participatingClubs: []
+    });
+    const [competitionRegistrations, setCompetitionRegistrations] = useState([]);
+    const [loadingRegistrations, setLoadingRegistrations] = useState(false);
+    const [editingRegistration, setEditingRegistration] = useState(null);
 
     const joinedClubIds = useMemo(() => {
         return new Set(clubs.filter((c) => c.members.includes(currentStudent.id)).map((c) => c.club_id));
@@ -418,26 +435,98 @@ export default function ClubsActivitiesPage() {
         });
     }, [clubs, q, categoryFilter, showMine, currentStudent]);
 
-    const enrollStudent = (club) => {
-    setStudentDrawer({ open: true, club: club });
-};
+    const ITEMS_PER_PAGE = 6;
+    const totalPages = Math.ceil(filteredClubs.length / ITEMS_PER_PAGE);
+    const paginatedClubs = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredClubs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    }, [filteredClubs, currentPage]);
 
-    const leaveClub = (club) => {
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [q, categoryFilter, showMine]);
+
+    const enrollStudent = (club) => {
+        setStudentDrawer({ open: true, club: club });
+    };
+
+    const leaveClub = async (club) => {
         if (!club.members.includes(currentStudent.id)) {
             setNotice({ type: "warning", text: "You are not a member of this club." });
             return;
         }
 
-        const updated = clubs.map((c) => (c.club_id === club.club_id ? { ...c, members: c.members.filter((m) => m !== currentStudent.id) } : c));
-        setClubs(updated);
-        setNotice({ type: "info", text: `Left ${club.name}` });
+        try {
+            await clubsService.removeStudent(club.club_id, currentStudent.id);
+            
+            const updated = clubs.map((c) => (c.club_id === club.club_id ? { ...c, members: c.members.filter((m) => m !== currentStudent.id) } : c));
+            setClubs(updated);
+            setNotice({ type: "info", text: `Left ${club.name}` });
+        } catch (error) {
+            console.error('Error leaving club:', error);
+            setNotice({ type: "error", text: "Failed to leave club. Please try again." });
+        }
     };
 
     const openDetails = (club) => {
         setSelectedClub(club);
         setDetailsOpen(true);
     };
-   const handleStudentEnroll = (studentId, club) => {
+
+    const openAttendanceModal = (club) => {
+        setAttendanceModal({ open: true, club });
+        setAttendanceDate(new Date().toISOString().split('T')[0]);
+        setAttendanceTopic("");
+        // Initialize attendance records for all club members
+        const records = {};
+        club.members.forEach(memberId => {
+            records[memberId] = 'present'; // Default to present
+        });
+        setAttendanceRecords(records);
+    };
+
+    const handleAttendanceStatusChange = (studentId, status) => {
+        setAttendanceRecords(prev => ({
+            ...prev,
+            [studentId]: status
+        }));
+    };
+
+    const handleSaveAttendance = async () => {
+        if (!attendanceTopic.trim()) {
+            setNotice({ type: "error", text: "Please enter a session topic" });
+            return;
+        }
+
+        try {
+            const attendanceRecordsArray = Object.entries(attendanceRecords).map(([studentEmail, status]) => ({
+                student_email: studentEmail,
+                status: status
+            }));
+
+            await clubsService.markAttendance(
+                attendanceModal.club?.club_id,
+                attendanceDate,
+                attendanceTopic,
+                attendanceRecordsArray
+            );
+
+            const presentCount = Object.values(attendanceRecords).filter(status => status === 'present' || status === 'late').length;
+            const totalCount = Object.keys(attendanceRecords).length;
+
+            setNotice({ 
+                type: "success", 
+                text: `Attendance saved for ${attendanceModal.club?.name}! ${presentCount}/${totalCount} present` 
+            });
+            
+            setAttendanceModal({ open: false, club: null });
+            setAttendanceRecords({});
+        } catch (error) {
+            console.error('Error saving attendance:', error);
+            setNotice({ type: "error", text: "Failed to save attendance. Please try again." });
+        }
+    };
+   const handleStudentEnroll = async (studentId, club) => {
     if (club.members.includes(studentId)) {
         setNotice({ type: "warning", text: "Student is already enrolled in this club." });
         return;
@@ -448,82 +537,223 @@ export default function ClubsActivitiesPage() {
         return;
     }
 
-    const updated = clubs.map((c) => 
-        c.club_id === club.club_id 
-            ? { ...c, members: [...c.members, studentId] } 
-            : c
-    );
-    setClubs(updated);
-    setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) });
-    setNotice({ type: "success", text: `Student enrolled in ${club.name}` });
+    try {
+        await clubsService.enrollStudent(club.club_id, studentId);
+        
+        const updated = clubs.map((c) => 
+            c.club_id === club.club_id 
+                ? { ...c, members: [...c.members, studentId] } 
+                : c
+        );
+        setClubs(updated);
+        setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) });
+        setNotice({ type: "success", text: `Student enrolled in ${club.name}` });
+    } catch (error) {
+        console.error('Error enrolling student:', error);
+        setNotice({ type: "error", text: "Failed to enroll student. Please try again." });
+    }
 };
 
-const handleStudentLeave = (studentId, club) => {
+const handleStudentLeave = async (studentId, club) => {
     if (!club.members.includes(studentId)) {
         setNotice({ type: "warning", text: "Student is not a member of this club." });
         return;
     }
 
-    const updated = clubs.map((c) => 
-        c.club_id === club.club_id 
-            ? { ...c, members: c.members.filter((m) => m !== studentId) } 
-            : c
-    );
-    setClubs(updated);
-    setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) });
-    setNotice({ type: "info", text: `Student removed from ${club.name}` });
+    try {
+        await clubsService.removeStudent(club.club_id, studentId);
+        
+        const updated = clubs.map((c) => 
+            c.club_id === club.club_id 
+                ? { ...c, members: c.members.filter((m) => m !== studentId) } 
+                : c
+        );
+        setClubs(updated);
+        setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) });
+        setNotice({ type: "info", text: `Student removed from ${club.name}` });
+    } catch (error) {
+        console.error('Error removing student:', error);
+        setNotice({ type: "error", text: "Failed to remove student. Please try again." });
+    }
 };
 
-    const buildClubParticipationRows = () => {
-        return clubs.map((c) => ({
-            "Club Name": c.name,
-            "Student Count": c.members.length,
-            "Average attendance": "--",
-            "Top performers": "--",
-            "Participation score": Math.round((c.members.length / c.capacity) * 100),
-        }));
+    const buildClubParticipationRows = async () => {
+        try {
+            // Fetch from Supabase using the club_participation_report view
+            const { data, error } = await supabase
+                .from('club_participation_report')
+                .select('*');
+            
+            if (error) {
+                console.error('Error fetching club report:', error);
+                // Fallback to localStorage data
+                return clubs.map((c) => ({
+                    "Club Name": c.name,
+                    "Student Count": c.members.length,
+                    "Average attendance": c.avgAttendance ? c.avgAttendance + '%' : '--',
+                    "Top performers": '--',
+                    "Participation score": Math.round((c.members.length / c.capacity) * 100) + '%',
+                }));
+            }
+            
+            return data.map(row => ({
+                "Club Name": row.club_name,
+                "Student Count": row.student_count,
+                "Average attendance": row.avg_attendance ? row.avg_attendance + '%' : '--',
+                "Top performers": row.top_performers || 'N/A',
+                "Participation score": row.participation_score ? row.participation_score + '%' : '--'
+            }));
+        } catch (err) {
+            console.error('Error building club report:', err);
+            // Fallback to localStorage data
+            return clubs.map((c) => ({
+                "Club Name": c.name,
+                "Student Count": c.members.length,
+                "Average attendance": c.avgAttendance ? c.avgAttendance + '%' : '--',
+                "Top performers": '--',
+                "Participation score": Math.round((c.members.length / c.capacity) * 100) + '%',
+            }));
+        }
     };
 
-    const buildCompetitionPerformanceRows = () => {
-        return competitions.map((t) => ({
-            "Competition Name": t.name,
-            Level: t.level,
-            "Student Results": t.results?.length ? JSON.stringify(t.results) : "--",
-            Awards: "--",
-        }));
+    const buildCompetitionPerformanceRows = async () => {
+        try {
+            // Fetch from Supabase using the competition_performance_report view
+            const { data, error } = await supabase
+                .from('competition_performance_report')
+                .select('*');
+            
+            if (error) {
+                console.error('Error fetching competition report:', error);
+                // Fallback to localStorage data
+                return competitions.map((t) => ({
+                    "Competition Name": t.name,
+                    "Level": t.level,
+                    "Student Results": t.results?.length ? JSON.stringify(t.results) : '--',
+                    "Awards": '--',
+                }));
+            }
+            
+            return data.map(row => ({
+                "Competition Name": row.competition_name,
+                "Level": row.level,
+                "Date": row.competition_date,
+                "Total Participants": row.total_participants || 0,
+                "Student Results": row.student_results || '--',
+                "Awards": row.awards_won || '--',
+                "Average Score": row.avg_score || '--'
+            }));
+        } catch (err) {
+            console.error('Error building competition report:', err);
+            // Fallback to localStorage data
+            return competitions.map((t) => ({
+                "Competition Name": t.name,
+                "Level": t.level,
+                "Student Results": t.results?.length ? JSON.stringify(t.results) : '--',
+                "Awards": '--',
+            }));
+        }
     };
 
-    const exportClubsCSV = () => {
-        const rows = buildClubParticipationRows();
-        downloadCSV("club_participation.tsv", rows);
+    const exportClubsCSV = async () => {
+        const rows = await buildClubParticipationRows();
+        if (rows && rows.length > 0) {
+            downloadCSV("club_participation.tsv", rows);
+        } else {
+            setNotice({ type: "error", text: "No data available to export" });
+        }
         setShowExportMenu(false);
     };
 
-    const exportCompetitionsCSV = () => {
-        const rows = buildCompetitionPerformanceRows();
-        downloadCSV("competition_performance.tsv", rows);
+    const exportCompetitionsCSV = async () => {
+        const rows = await buildCompetitionPerformanceRows();
+        if (rows && rows.length > 0) {
+            downloadCSV("competition_performance.tsv", rows);
+        } else {
+            setNotice({ type: "error", text: "No data available to export" });
+        }
         setShowExportMenu(false);
     };
 
-    const exportClubsPDF = () => {
-        const rows = buildClubParticipationRows();
-        const html = `<table><thead><tr>${Object.keys(rows[0]).map((k) => `<th>${k}</th>`).join("")}</tr></thead><tbody>${rows
-            .map((r) => `<tr>${Object.keys(r).map((k) => `<td>${r[k]}</td>`).join("")}</tr>`)
-            .join("")}</tbody></table>`;
-        exportTableAsPrint(html, "Club Participation Report");
+    const exportClubsPDF = async () => {
+        const rows = await buildClubParticipationRows();
+        if (rows && rows.length > 0) {
+            const html = `<table><thead><tr>${Object.keys(rows[0]).map((k) => `<th>${k}</th>`).join("")}</tr></thead><tbody>${rows
+                .map((r) => `<tr>${Object.keys(r).map((k) => `<td>${r[k]}</td>`).join("")}</tr>`)
+                .join("")}</tbody></table>`;
+            exportTableAsPrint(html, "Club Participation Report");
+        } else {
+            setNotice({ type: "error", text: "No data available to export" });
+        }
         setShowExportMenu(false);
     };
 
-    const exportCompetitionsPDF = () => {
-        const rows = buildCompetitionPerformanceRows();
-        const html = `<table><thead><tr>${Object.keys(rows[0]).map((k) => `<th>${k}</th>`).join("")}</tr></thead><tbody>${rows
-            .map((r) => `<tr>${Object.keys(r).map((k) => `<td>${r[k]}</td>`).join("")}</tr>`)
-            .join("")}</tbody></table>`;
-        exportTableAsPrint(html, "Competition Performance Report");
+    const exportCompetitionsPDF = async () => {
+        const rows = await buildCompetitionPerformanceRows();
+        if (rows && rows.length > 0) {
+            const html = `<table><thead><tr>${Object.keys(rows[0]).map((k) => `<th>${k}</th>`).join("")}</tr></thead><tbody>${rows
+                .map((r) => `<tr>${Object.keys(r).map((k) => `<td>${r[k]}</td>`).join("")}</tr>`)
+                .join("")}</tbody></table>`;
+            exportTableAsPrint(html, "Competition Performance Report");
+        } else {
+            setNotice({ type: "error", text: "No data available to export" });
+        }
         setShowExportMenu(false);
     };
 
-    const handleAddClub = () => {
+    const exportClubsExcel = async () => {
+        const rows = await buildClubParticipationRows();
+        if (rows && rows.length > 0) {
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Club Participation");
+            
+            // Auto-size columns
+            const maxWidth = rows.reduce((w, r) => {
+                return Object.keys(r).reduce((acc, key) => {
+                    const value = r[key]?.toString() || '';
+                    acc[key] = Math.max(acc[key] || 10, value.length);
+                    return acc;
+                }, w);
+            }, {});
+            
+            worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: Math.min(maxWidth[key] + 2, 50) }));
+            
+            XLSX.writeFile(workbook, "club_participation_report.xlsx");
+            setNotice({ type: "success", text: "Excel file downloaded successfully!" });
+        } else {
+            setNotice({ type: "error", text: "No data available to export" });
+        }
+        setShowExportMenu(false);
+    };
+
+    const exportCompetitionsExcel = async () => {
+        const rows = await buildCompetitionPerformanceRows();
+        if (rows && rows.length > 0) {
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Competition Performance");
+            
+            // Auto-size columns
+            const maxWidth = rows.reduce((w, r) => {
+                return Object.keys(r).reduce((acc, key) => {
+                    const value = r[key]?.toString() || '';
+                    acc[key] = Math.max(acc[key] || 10, value.length);
+                    return acc;
+                }, w);
+            }, {});
+            
+            worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: Math.min(maxWidth[key] + 2, 50) }));
+            
+            XLSX.writeFile(workbook, "competition_performance_report.xlsx");
+            setNotice({ type: "success", text: "Excel file downloaded successfully!" });
+        } else {
+            setNotice({ type: "error", text: "No data available to export" });
+        }
+        setShowExportMenu(false);
+    };
+
+    const handleAddClub = async () => {
         if (!newClubForm.name.trim()) {
             setNotice({ type: "error", text: "Club name is required" });
             return;
@@ -539,42 +769,233 @@ const handleStudentLeave = (studentId, club) => {
             return;
         }
 
-        const newClub = {
-            club_id: `c${Date.now()}`,
-            name: newClubForm.name,
-            category: newClubForm.category,
-            description: newClubForm.description,
-            capacity: parseInt(newClubForm.capacity),
-            members: [],
-            upcomingCompetitions: [],
-            meetingDay: "TBD",
-            meetingTime: "TBD",
-            location: "TBD",
-            mentor: "TBD",
-            avgAttendance: 0,
-            upcomingActivities: []
-        };
+        try {
+            const createdClub = await clubsService.createClub({
+                name: newClubForm.name,
+                category: newClubForm.category,
+                description: newClubForm.description,
+                capacity: parseInt(newClubForm.capacity),
+                meeting_day: newClubForm.meeting_day || null,
+                meeting_time: newClubForm.meeting_time || null,
+                location: newClubForm.location || null,
+                mentor_name: newClubForm.mentor_name || null
+            });
 
-        setClubs([...clubs, newClub]);
-        setNotice({ type: "success", text: `${newClub.name} has been created successfully!` });
-        setAddClubModal(false);
-        setNewClubForm({ name: "", category: "arts", description: "", capacity: 30 });
+            setClubs([...clubs, createdClub]);
+            setNotice({ type: "success", text: `${createdClub.name} has been created successfully!` });
+            setAddClubModal(false);
+            setNewClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "", mentor_name: "" });
+        } catch (error) {
+            console.error('Error creating club:', error);
+            setNotice({ type: "error", text: "Failed to create club. Please try again." });
+        }
     };
 
-    const handleRegisterCompetition = () => {
-        if (!registrationForm.studentName.trim() || !registrationForm.studentId.trim() || !registrationForm.grade.trim()) {
-            setNotice({ type: "error", text: "Please fill all required fields" });
+    const handleEditClub = (club) => {
+        setEditClubForm({
+            name: club.name,
+            category: club.category,
+            description: club.description,
+            capacity: club.capacity,
+            meeting_day: club.meeting_day || "",
+            meeting_time: club.meeting_time || "",
+            location: club.location || "",
+            mentor_name: club.mentor_name || ""
+        });
+        setEditClubModal(club);
+    };
+
+    const handleUpdateClub = async () => {
+        if (!editClubForm.name.trim()) {
+            setNotice({ type: "error", text: "Club name is required" });
             return;
         }
 
-        setNotice({
-            type: "success",
-            text: `Successfully registered for ${registerCompModal?.name}!`
-        });
-        setRegisterCompModal(null);
-        setRegistrationForm({ studentName: "", studentId: "", grade: "", teamMembers: "", notes: "" });
+        if (!editClubForm.description.trim()) {
+            setNotice({ type: "error", text: "Club description is required" });
+            return;
+        }
+
+        if (editClubForm.capacity < 1) {
+            setNotice({ type: "error", text: "Capacity must be at least 1" });
+            return;
+        }
+
+        try {
+            await clubsService.updateClub(editClubModal.club_id, {
+                name: editClubForm.name,
+                category: editClubForm.category,
+                description: editClubForm.description,
+                capacity: parseInt(editClubForm.capacity),
+                meeting_day: editClubForm.meeting_day || null,
+                meeting_time: editClubForm.meeting_time || null,
+                location: editClubForm.location || null,
+                mentor_name: editClubForm.mentor_name || null
+            });
+
+            const updatedClubs = clubs.map(c => 
+                c.club_id === editClubModal.club_id 
+                    ? { ...c, ...editClubForm, capacity: parseInt(editClubForm.capacity) }
+                    : c
+            );
+            setClubs(updatedClubs);
+            
+            setNotice({ type: "success", text: `${editClubForm.name} has been updated successfully!` });
+            setEditClubModal(null);
+            setEditClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "", mentor_name: "" });
+        } catch (error) {
+            console.error('Error updating club:', error);
+            setNotice({ type: "error", text: "Failed to update club. Please try again." });
+        }
     };
-    const handleAddCompetition = () => {
+
+    const handleDeleteClub = async (club) => {
+        if (!confirm(`Are you sure you want to delete "${club.name}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await clubsService.deleteClub(club.club_id);
+            
+            const updatedClubs = clubs.filter(c => c.club_id !== club.club_id);
+            setClubs(updatedClubs);
+            
+            setNotice({ type: "success", text: `${club.name} has been deleted successfully!` });
+        } catch (error) {
+            console.error('Error deleting club:', error);
+            setNotice({ type: "error", text: "Failed to delete club. Please try again." });
+        }
+    };
+
+    // Load registrations when modal opens
+    useEffect(() => {
+        if (registerCompModal) {
+            loadCompetitionRegistrations(registerCompModal.comp_id);
+        }
+    }, [registerCompModal]);
+
+    // Load registrations when viewing competition details
+    useEffect(() => {
+        if (viewComp) {
+            loadCompetitionRegistrations(viewComp.comp_id);
+        }
+    }, [viewComp]);
+
+    const loadCompetitionRegistrations = async (compId) => {
+        try {
+            setLoadingRegistrations(true);
+            const registrations = await competitionsService.getCompetitionRegistrations(compId);
+            setCompetitionRegistrations(registrations);
+        } catch (error) {
+            console.error('Error loading registrations:', error);
+        } finally {
+            setLoadingRegistrations(false);
+        }
+    };
+
+    const handleRegisterCompetition = async () => {
+        if (!registrationForm.studentEmail) {
+            setNotice({ type: "error", text: "Please select a student" });
+            return;
+        }
+
+        // Get student details from allStudents
+        const student = allStudents.find(s => s.email === registrationForm.studentEmail);
+        if (!student) {
+            setNotice({ type: "error", text: "Student not found" });
+            return;
+        }
+
+        try {
+            if (editingRegistration) {
+                // Update existing registration
+                await competitionsService.updateCompetitionRegistration(
+                    editingRegistration.registration_id,
+                    {
+                        teamMembers: registrationForm.teamMembers,
+                        notes: registrationForm.notes
+                    }
+                );
+                setNotice({
+                    type: "success",
+                    text: `Registration updated successfully!`
+                });
+            } else {
+                // Create new registration
+                await competitionsService.registerForCompetition(
+                    registerCompModal?.comp_id,
+                    registrationForm.studentEmail,
+                    {
+                        studentName: student.name,
+                        studentId: student.email,
+                        grade: student.grade,
+                        teamMembers: registrationForm.teamMembers,
+                        notes: registrationForm.notes
+                    }
+                );
+                setNotice({
+                    type: "success",
+                    text: `${student.name} registered for ${registerCompModal?.name}!`
+                });
+            }
+
+            // Update competition status if changed
+            if (registrationForm.status && registrationForm.status !== registerCompModal?.status) {
+                await competitionsService.updateCompetition(registerCompModal.comp_id, {
+                    status: registrationForm.status
+                });
+                
+                // Update local state
+                const updatedCompetitions = competitions.map(c => 
+                    c.comp_id === registerCompModal.comp_id 
+                        ? { ...c, status: registrationForm.status }
+                        : c
+                );
+                setCompetitions(updatedCompetitions);
+            }
+
+            // Reload registrations
+            await loadCompetitionRegistrations(registerCompModal.comp_id);
+            
+            // Reset form
+            setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+            setEditingRegistration(null);
+        } catch (error) {
+            console.error('Error registering for competition:', error);
+            setNotice({ type: "error", text: error.message || "Failed to register. Please try again." });
+        }
+    };
+
+    const handleEditRegistration = (registration) => {
+        setEditingRegistration(registration);
+        setRegistrationForm({
+            studentEmail: registration.student_email,
+            teamMembers: registration.team_members?.members?.join(', ') || '',
+            notes: registration.notes || '',
+            status: registration.status || 'upcoming'
+        });
+    };
+
+    const handleDeleteRegistration = async (registrationId) => {
+        if (!confirm('Are you sure you want to delete this registration?')) {
+            return;
+        }
+
+        try {
+            await competitionsService.deleteCompetitionRegistration(registrationId);
+            setNotice({ type: "success", text: "Registration deleted successfully" });
+            await loadCompetitionRegistrations(registerCompModal.comp_id);
+        } catch (error) {
+            console.error('Error deleting registration:', error);
+            setNotice({ type: "error", text: "Failed to delete registration" });
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditingRegistration(null);
+        setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+    };
+    const handleAddCompetition = async () => {
         if (!newCompForm.name.trim()) {
             setNotice({ type: "error", text: "Competition name is required" });
             return;
@@ -585,26 +1006,111 @@ const handleStudentLeave = (studentId, club) => {
             return;
         }
 
-        const newCompetition = {
-            comp_id: `comp${competitions.length + 1}`,
-            name: newCompForm.name,
-            level: newCompForm.level,
-            date: newCompForm.date,
-            participatingClubs: newCompForm.participatingClubs,
-            results: []
-        };
+        try {
+            const createdCompetition = await competitionsService.createCompetition({
+                name: newCompForm.name,
+                level: newCompForm.level,
+                date: newCompForm.date,
+                description: newCompForm.description,
+                category: newCompForm.category,
+                status: newCompForm.status,
+                participatingClubs: newCompForm.participatingClubs
+            });
 
-        setCompetitions([...competitions, newCompetition]);
+            setCompetitions([...competitions, createdCompetition]);
 
-        // Reset UI
-        setNotice({ type: "success", text: `${newCompetition.name} added successfully!` });
-        setAddCompModal(false);
-        setNewCompForm({
-            name: "",
-            level: "district",
-            date: "",
-            participatingClubs: []
+            setNotice({ type: "success", text: `${createdCompetition.name} added successfully!` });
+            setAddCompModal(false);
+            setNewCompForm({
+                name: "",
+                level: "district",
+                date: "",
+                description: "",
+                category: "",
+                status: "upcoming",
+                participatingClubs: []
+            });
+        } catch (error) {
+            console.error('Error creating competition:', error);
+            setNotice({ type: "error", text: "Failed to create competition. Please try again." });
+        }
+    };
+
+    const handleEditCompetition = (comp) => {
+        setEditCompForm({
+            name: comp.name,
+            level: comp.level,
+            date: comp.competition_date || comp.date,
+            description: comp.description || "",
+            category: comp.category || "",
+            status: comp.status || "upcoming",
+            participatingClubs: comp.participatingClubs || []
         });
+        setEditCompModal(comp);
+    };
+
+    const handleUpdateCompetition = async () => {
+        if (!editCompForm.name.trim()) {
+            setNotice({ type: "error", text: "Competition name is required" });
+            return;
+        }
+
+        if (!editCompForm.date) {
+            setNotice({ type: "error", text: "Competition date is required" });
+            return;
+        }
+
+        try {
+            await competitionsService.updateCompetition(editCompModal.comp_id, {
+                name: editCompForm.name,
+                level: editCompForm.level,
+                date: editCompForm.date,
+                description: editCompForm.description,
+                category: editCompForm.category,
+                status: editCompForm.status,
+                participatingClubs: editCompForm.participatingClubs
+            });
+
+            const updatedCompetitions = competitions.map(c => 
+                c.comp_id === editCompModal.comp_id 
+                    ? { ...c, ...editCompForm, competition_date: editCompForm.date }
+                    : c
+            );
+            setCompetitions(updatedCompetitions);
+            
+            setNotice({ type: "success", text: `${editCompForm.name} has been updated successfully!` });
+            setEditCompModal(null);
+            setEditCompForm({
+                name: "",
+                level: "district",
+                date: "",
+                description: "",
+                category: "",
+                status: "upcoming",
+                participatingClubs: []
+            });
+        } catch (error) {
+            console.error('Error updating competition:', error);
+            setNotice({ type: "error", text: "Failed to update competition. Please try again." });
+        }
+    };
+
+    const handleDeleteCompetition = async (comp) => {
+        if (!confirm(`Are you sure you want to delete "${comp.name}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await competitionsService.deleteCompetition(comp.comp_id);
+            
+            const updatedCompetitions = competitions.filter(c => c.comp_id !== comp.comp_id);
+            setCompetitions(updatedCompetitions);
+            
+            setNotice({ type: "success", text: `${comp.name} has been deleted successfully!` });
+        } catch (error) {
+            console.error('Error deleting competition:', error);
+            setNotice({ type: "error", text: "Failed to delete competition. Please try again." });
+        }
     };
 
     return (
@@ -635,13 +1141,19 @@ const handleStudentLeave = (studentId, club) => {
                                             onClick={exportClubsCSV}
                                             className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
                                         >
-                                            Export Clubs (CSV)
+                                            📄 Export Clubs (CSV)
+                                        </button>
+                                        <button
+                                            onClick={exportClubsExcel}
+                                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                                        >
+                                            📊 Export Clubs (Excel)
                                         </button>
                                         <button
                                             onClick={exportClubsPDF}
                                             className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
                                         >
-                                            Export Clubs (PDF)
+                                            📑 Export Clubs (PDF)
                                         </button>
 
                                         <div className="border-t my-1"></div>
@@ -651,13 +1163,19 @@ const handleStudentLeave = (studentId, club) => {
                                             onClick={exportCompetitionsCSV}
                                             className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
                                         >
-                                            Export Competitions (CSV)
+                                            📄 Export Competitions (CSV)
+                                        </button>
+                                        <button
+                                            onClick={exportCompetitionsExcel}
+                                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                                        >
+                                            📊 Export Competitions (Excel)
                                         </button>
                                         <button
                                             onClick={exportCompetitionsPDF}
                                             className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
                                         >
-                                            Export Competitions (PDF)
+                                            📑 Export Competitions (PDF)
                                         </button>
                                     </div>
                                 </div>
@@ -720,18 +1238,44 @@ const handleStudentLeave = (studentId, club) => {
                     {filteredClubs.length === 0 ? (
                         <div className="p-6 bg-white rounded-2xl text-center">No clubs found</div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {filteredClubs.map((club) => (
-                                <ClubCard
-                                    key={club.club_id}
-                                    club={club}
-                                    isJoined={joinedClubIds.has(club.club_id)}
-                                    onJoin={enrollStudent}
-                                    onLeave={leaveClub}
-                                    onOpenDetails={openDetails}
-                                />
-                            ))}
-                        </div>
+                        <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {paginatedClubs.map((club) => (
+                                    <ClubCard
+                                        key={club.club_id}
+                                        club={club}
+                                        isJoined={joinedClubIds.has(club.club_id)}
+                                        onJoin={enrollStudent}
+                                        onLeave={leaveClub}
+                                        onOpenDetails={openDetails}
+                                        onEdit={handleEditClub}
+                                        onDelete={handleDeleteClub}
+                                    />
+                                ))}
+                            </div>
+
+                            <div className="mt-6 flex items-center justify-between">
+                                <button
+                                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                >
+                                    ← Previous
+                                </button>
+                                
+                                <span className="text-sm text-slate-600">
+                                    Page {currentPage} of {totalPages} ({filteredClubs.length} total clubs)
+                                </span>
+                                
+                                <button
+                                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                >
+                                    Next →
+                                </button>
+                            </div>
+                        </>
                     )}
                 </section>
 
@@ -754,28 +1298,60 @@ const handleStudentLeave = (studentId, club) => {
                                 <div className="flex items-start justify-between">
                                     <div>
                                         <h3 className="font-semibold">{comp.name}</h3>
-                                        <div className="text-xs text-slate-500 capitalize">{comp.level} • {formatDate(comp.date)}</div>
+                                        <div className="text-xs text-slate-500 capitalize">{comp.level} • {formatDate(comp.competition_date || comp.date)}</div>
                                     </div>
                                     <div className="text-slate-400">
                                         <Calendar />
                                     </div>
                                 </div>
 
-                                <p className="mt-3 text-sm text-slate-600">Participating: {comp.participatingClubs?.length ?? 0}</p>
+                                <div className="mt-2">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                        comp.status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
+                                        comp.status === 'ongoing' ? 'bg-green-100 text-green-700' :
+                                        comp.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                                        'bg-red-100 text-red-700'
+                                    }`}>
+                                        {comp.status === 'upcoming' ? '🔜 Upcoming' :
+                                         comp.status === 'ongoing' ? '▶️ Ongoing' :
+                                         comp.status === 'completed' ? '✅ Completed' :
+                                         '❌ Cancelled'}
+                                    </span>
+                                </div>
 
-                                <div className="mt-4 flex items-center gap-2">
-                                    <button
-                                        className="text-sm px-3 py-1 rounded-md border hover:bg-slate-100"
-                                        onClick={() => setViewComp(comp)}
-                                    >
-                                        View
-                                    </button>
-                                    <button
-                                        onClick={() => setRegisterCompModal(comp)}
-                                        className="text-sm px-3 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700"
-                                    >
-                                        Register
-                                    </button>
+                                <p className="mt-3 text-sm text-slate-600">Participating Clubs: {comp.participatingClubs?.length ?? 0}</p>
+
+                                <div className="mt-4 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            className="text-sm px-3 py-1 rounded-md border hover:bg-slate-100"
+                                            onClick={() => setViewComp(comp)}
+                                        >
+                                            View
+                                        </button>
+                                        <button
+                                            onClick={() => setRegisterCompModal(comp)}
+                                            className="text-sm px-3 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                                        >
+                                            Register
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleEditCompetition(comp)}
+                                            className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                                        >
+                                            <Edit size={14} />
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteCompetition(comp)}
+                                            className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-1 rounded-md bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+                                        >
+                                            <Trash2 size={14} />
+                                            Delete
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -788,23 +1364,52 @@ const handleStudentLeave = (studentId, club) => {
                             <div className="mb-3 text-sm text-slate-600">Category: {selectedClub.category}</div>
                             <div className="mb-3 text-sm">{selectedClub.description}</div>
 
-                            <div className="mb-3">
-                                <div className="text-xs text-slate-500">Members ({selectedClub.members.length}/{selectedClub.capacity})</div>
+                            <div className="mb-4">
+                                <div className="text-xs text-slate-500 mb-2">Members ({selectedClub.members.length}/{selectedClub.capacity})</div>
                                 <div className="flex gap-2 mt-2 flex-wrap">
-                                    {selectedClub.members.map((m) => (
-                                        <div key={m} className="px-2 py-1 bg-gray-100 rounded-full text-xs">{m}</div>
-                                    ))}
+                                    {selectedClub.members.length > 0 ? (
+                                        selectedClub.members.map((m) => (
+                                            <div key={m} className="px-2 py-1 bg-gray-100 rounded-full text-xs">{m}</div>
+                                        ))
+                                    ) : (
+                                        <div className="text-sm text-slate-500">No members yet</div>
+                                    )}
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-3">
-                                {!selectedClub.members.includes(currentStudent.id) ? (
-                                    <button onClick={() => { enrollStudent(selectedClub); setDetailsOpen(false); }} className="px-4 py-2 bg-blue-600 text-white rounded-md">Join Club</button>
-                                ) : (
-                                    <button onClick={() => { leaveClub(selectedClub); setDetailsOpen(false); }} className="px-4 py-2 bg-red-50 text-red-600 rounded-md border">Leave Club</button>
-                                )}
+                            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                                <div className="text-sm font-medium text-blue-900 mb-2">Meeting Details</div>
+                                <div className="text-xs text-blue-700 space-y-1">
+                                    <div>📅 {selectedClub.meeting_day || 'TBD'}</div>
+                                    <div>🕐 {selectedClub.meeting_time || 'TBD'}</div>
+                                    <div>📍 {selectedClub.location || 'TBD'}</div>
+                                    <div>👨‍🏫 Mentor: {selectedClub.mentor_name || 'TBD'}</div>
+                                </div>
+                            </div>
 
-                                <button onClick={() => setDetailsOpen(false)} className="px-3 py-2 border rounded-md">Close</button>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <button 
+                                    onClick={() => { 
+                                        enrollStudent(selectedClub); 
+                                        setDetailsOpen(false); 
+                                    }} 
+                                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                                >
+                                    Manage Members
+                                </button>
+
+                                <button 
+                                    onClick={() => { 
+                                        openAttendanceModal(selectedClub); 
+                                        setDetailsOpen(false); 
+                                    }} 
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                                    disabled={selectedClub.members.length === 0}
+                                >
+                                    Mark Attendance
+                                </button>
+
+                                <button onClick={() => setDetailsOpen(false)} className="px-3 py-2 border rounded-md text-sm">Close</button>
                             </div>
                         </div>
                     ) : null}
@@ -861,6 +1466,49 @@ const handleStudentLeave = (studentId, club) => {
                             />
                         </div>
 
+                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                            <div className="text-sm font-medium text-blue-900 mb-3">Meeting Details</div>
+                            
+                            <div className="mb-3">
+                                <label className="block text-sm font-medium mb-1">📅 Meeting Day</label>
+                                <select
+                                    value={newClubForm.meeting_day}
+                                    onChange={(e) => setNewClubForm({ ...newClubForm, meeting_day: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">Select a day</option>
+                                    <option value="Monday">Monday</option>
+                                    <option value="Tuesday">Tuesday</option>
+                                    <option value="Wednesday">Wednesday</option>
+                                    <option value="Thursday">Thursday</option>
+                                    <option value="Friday">Friday</option>
+                                    <option value="Saturday">Saturday</option>
+                                    <option value="Sunday">Sunday</option>
+                                </select>
+                            </div>
+
+                            <div className="mb-3">
+                                <label className="block text-sm font-medium mb-1">🕐 Meeting Time</label>
+                                <input
+                                    type="time"
+                                    value={newClubForm.meeting_time}
+                                    onChange={(e) => setNewClubForm({ ...newClubForm, meeting_time: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div className="mb-3">
+                                <label className="block text-sm font-medium mb-1">📍 Location</label>
+                                <input
+                                    type="text"
+                                    value={newClubForm.location}
+                                    onChange={(e) => setNewClubForm({ ...newClubForm, location: e.target.value })}
+                                    placeholder="e.g., Room 101, Auditorium"
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                        </div>
+
                         <div className="flex items-center gap-3 pt-4">
                             <button
                                 onClick={handleAddClub}
@@ -878,83 +1526,119 @@ const handleStudentLeave = (studentId, club) => {
                     </div>
                 </Modal>
 
-                <Modal
-                    open={!!registerCompModal}
-                    onClose={() => setRegisterCompModal(null)}
-                    title={`Register for ${registerCompModal?.name ?? ""}`}
-                >
+                {/* Edit Club Modal */}
+                <Modal open={!!editClubModal} onClose={() => setEditClubModal(null)} title="Edit Club">
                     <div className="space-y-4">
-                        <div className="bg-blue-50 p-3 rounded-md text-sm">
-                            <div className="font-medium">{registerCompModal?.name}</div>
-                            <div className="text-xs text-slate-600 mt-1">
-                                {registerCompModal?.level} • {formatDate(registerCompModal?.date)}
-                            </div>
-                        </div>
-
                         <div>
-                            <label className="block text-sm font-medium mb-1">Student Name *</label>
+                            <label className="block text-sm font-medium mb-1">Club Name *</label>
                             <input
                                 type="text"
-                                value={registrationForm.studentName}
-                                onChange={(e) => setRegistrationForm({ ...registrationForm, studentName: e.target.value })}
-                                placeholder="Enter student name"
+                                value={editClubForm.name}
+                                onChange={(e) => setEditClubForm({ ...editClubForm, name: e.target.value })}
+                                placeholder="Enter club name"
                                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Student ID *</label>
-                            <input
-                                type="text"
-                                value={registrationForm.studentId}
-                                onChange={(e) => setRegistrationForm({ ...registrationForm, studentId: e.target.value })}
-                                placeholder="Enter student ID"
+                            <label className="block text-sm font-medium mb-1">Category *</label>
+                            <select
+                                value={editClubForm.category}
+                                onChange={(e) => setEditClubForm({ ...editClubForm, category: e.target.value })}
                                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+                            >
+                                <option value="arts">Arts</option>
+                                <option value="sports">Sports</option>
+                                <option value="robotics">Robotics</option>
+                                <option value="science">Science</option>
+                                <option value="literature">Literature</option>
+                            </select>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Grade/Class *</label>
-                            <input
-                                type="text"
-                                value={registrationForm.grade}
-                                onChange={(e) => setRegistrationForm({ ...registrationForm, grade: e.target.value })}
-                                placeholder="e.g., Grade 10, Class 12A"
-                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Team Members (if applicable)</label>
-                            <input
-                                type="text"
-                                value={registrationForm.teamMembers}
-                                onChange={(e) => setRegistrationForm({ ...registrationForm, teamMembers: e.target.value })}
-                                placeholder="Comma-separated names"
-                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Additional Notes</label>
+                            <label className="block text-sm font-medium mb-1">Description *</label>
                             <textarea
-                                value={registrationForm.notes}
-                                onChange={(e) => setRegistrationForm({ ...registrationForm, notes: e.target.value })}
-                                placeholder="Any special requirements or notes"
-                                rows={2}
+                                value={editClubForm.description}
+                                onChange={(e) => setEditClubForm({ ...editClubForm, description: e.target.value })}
+                                placeholder="Enter club description"
+                                rows={3}
                                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Capacity *</label>
+                            <input
+                                type="number"
+                                value={editClubForm.capacity}
+                                onChange={(e) => setEditClubForm({ ...editClubForm, capacity: e.target.value })}
+                                min="1"
+                                placeholder="Maximum members"
+                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+
+                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                            <div className="text-sm font-medium text-blue-900 mb-3">Meeting Details</div>
+                            
+                            <div className="mb-3">
+                                <label className="block text-sm font-medium mb-1">📅 Meeting Day</label>
+                                <select
+                                    value={editClubForm.meeting_day}
+                                    onChange={(e) => setEditClubForm({ ...editClubForm, meeting_day: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">Select a day</option>
+                                    <option value="Monday">Monday</option>
+                                    <option value="Tuesday">Tuesday</option>
+                                    <option value="Wednesday">Wednesday</option>
+                                    <option value="Thursday">Thursday</option>
+                                    <option value="Friday">Friday</option>
+                                </select>
+                            </div>
+
+                            <div className="mb-3">
+                                <label className="block text-sm font-medium mb-1">🕐 Meeting Time</label>
+                                <input
+                                    type="time"
+                                    value={editClubForm.meeting_time}
+                                    onChange={(e) => setEditClubForm({ ...editClubForm, meeting_time: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div className="mb-3">
+                                <label className="block text-sm font-medium mb-1">📍 Location</label>
+                                <input
+                                    type="text"
+                                    value={editClubForm.location}
+                                    onChange={(e) => setEditClubForm({ ...editClubForm, location: e.target.value })}
+                                    placeholder="e.g., Room 101, Auditorium"
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1">👨‍🏫 Mentor Name</label>
+                                <input
+                                    type="text"
+                                    value={editClubForm.mentor_name}
+                                    onChange={(e) => setEditClubForm({ ...editClubForm, mentor_name: e.target.value })}
+                                    placeholder="Enter mentor/teacher name"
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
                         </div>
 
                         <div className="flex items-center gap-3 pt-4">
                             <button
-                                onClick={handleRegisterCompetition}
+                                onClick={handleUpdateClub}
                                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                             >
-                                Submit Registration
+                                Update Club
                             </button>
                             <button
-                                onClick={() => setRegisterCompModal(null)}
+                                onClick={() => setEditClubModal(null)}
                                 className="px-4 py-2 border rounded-md hover:bg-gray-50"
                             >
                                 Cancel
@@ -962,6 +1646,285 @@ const handleStudentLeave = (studentId, club) => {
                         </div>
                     </div>
                 </Modal>
+
+                <Modal
+                    open={!!registerCompModal}
+                    onClose={() => {
+                        setRegisterCompModal(null);
+                        setEditingRegistration(null);
+                        setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+                    }}
+                    title={`${editingRegistration ? 'Edit' : 'Register for'} ${registerCompModal?.name ?? ""}`}
+                >
+                    <div className="space-y-4">
+                        <div className="bg-blue-50 p-3 rounded-md text-sm">
+                            <div className="flex items-center justify-between">
+                                <div className="font-medium">{registerCompModal?.name}</div>
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                    registerCompModal?.status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
+                                    registerCompModal?.status === 'ongoing' ? 'bg-green-100 text-green-700' :
+                                    registerCompModal?.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                                    'bg-red-100 text-red-700'
+                                }`}>
+                                    {registerCompModal?.status === 'upcoming' ? '🔜 Upcoming' :
+                                     registerCompModal?.status === 'ongoing' ? '▶️ Ongoing' :
+                                     registerCompModal?.status === 'completed' ? '✅ Completed' :
+                                     '❌ Cancelled'}
+                                </span>
+                            </div>
+                            <div className="text-xs text-slate-600 mt-1">
+                                {registerCompModal?.level} • {formatDate(registerCompModal?.competition_date || registerCompModal?.date)}
+                            </div>
+                        </div>
+
+                        {/* Existing Registrations */}
+                        {!editingRegistration && competitionRegistrations.length > 0 && (
+                            <div className="border rounded-lg p-3 bg-gray-50">
+                                <h4 className="text-sm font-semibold mb-2">Registered Students ({competitionRegistrations.length})</h4>
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {competitionRegistrations.map((reg) => {
+                                        const student = allStudents.find(s => s.email === reg.student_email);
+                                        return (
+                                            <div key={reg.registration_id} className="flex items-center justify-between p-2 bg-white rounded border">
+                                                <div className="flex-1">
+                                                    <div className="font-medium text-sm">{student?.name || reg.student_email}</div>
+                                                    <div className="text-xs text-slate-500">{student?.grade || 'N/A'} • {reg.student_email}</div>
+                                                    {reg.team_members?.members && (
+                                                        <div className="text-xs text-blue-600 mt-1">Team: {reg.team_members.members.join(', ')}</div>
+                                                    )}
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    <button
+                                                        onClick={() => handleEditRegistration(reg)}
+                                                        className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteRegistration(reg.registration_id)}
+                                                        className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Registration Form */}
+                        <div className="border-t pt-4">
+                            <h4 className="text-sm font-semibold mb-3">{editingRegistration ? 'Edit Registration' : 'Add New Registration'}</h4>
+                            
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Student Email *</label>
+                                    <select
+                                        value={registrationForm.studentEmail}
+                                        onChange={(e) => setRegistrationForm({ ...registrationForm, studentEmail: e.target.value })}
+                                        disabled={!!editingRegistration}
+                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                                    >
+                                        <option value="">Select a student</option>
+                                        {allStudents.map((student) => (
+                                            <option key={student.email} value={student.email}>
+                                                {student.name} - {student.grade} ({student.email})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {registrationForm.studentEmail && (() => {
+                                    const selectedStudent = allStudents.find(s => s.email === registrationForm.studentEmail);
+                                    return selectedStudent ? (
+                                        <div className="bg-green-50 p-3 rounded-lg text-sm">
+                                            <div className="font-medium text-green-900">Selected Student:</div>
+                                            <div className="text-green-700 mt-1">
+                                                <div>Name: {selectedStudent.name}</div>
+                                                <div>Grade/Class: {selectedStudent.grade}</div>
+                                                <div>Email: {selectedStudent.email}</div>
+                                            </div>
+                                        </div>
+                                    ) : null;
+                                })()}
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Team Members (if applicable)</label>
+                                    <input
+                                        type="text"
+                                        value={registrationForm.teamMembers}
+                                        onChange={(e) => setRegistrationForm({ ...registrationForm, teamMembers: e.target.value })}
+                                        placeholder="Comma-separated names (e.g., John Doe, Jane Smith)"
+                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <p className="text-xs text-slate-500 mt-1">Leave empty for individual participation</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Competition Status</label>
+                                    <select
+                                        value={registrationForm.status || registerCompModal?.status || 'upcoming'}
+                                        onChange={(e) => setRegistrationForm({ ...registrationForm, status: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="upcoming">🔜 Upcoming</option>
+                                        <option value="ongoing">▶️ Ongoing</option>
+                                        <option value="completed">✅ Completed</option>
+                                        <option value="cancelled">❌ Cancelled</option>
+                                    </select>
+                                    <p className="text-xs text-slate-500 mt-1">Current status of the competition</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Additional Notes</label>
+                                    <textarea
+                                        value={registrationForm.notes}
+                                        onChange={(e) => setRegistrationForm({ ...registrationForm, notes: e.target.value })}
+                                        placeholder="Any special requirements or notes"
+                                        rows={2}
+                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-4 border-t">
+                            <button
+                                onClick={handleRegisterCompetition}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                            >
+                                {editingRegistration ? 'Update Registration' : 'Submit Registration'}
+                            </button>
+                            {editingRegistration && (
+                                <button
+                                    onClick={handleCancelEdit}
+                                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                                >
+                                    Cancel Edit
+                                </button>
+                            )}
+                            <button
+                                onClick={() => {
+                                    setRegisterCompModal(null);
+                                    setEditingRegistration(null);
+                                    setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
+                                }}
+                                className="px-4 py-2 border rounded-md hover:bg-gray-50"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+
+                {/* Edit Competition Modal */}
+                <Modal
+                    open={!!editCompModal}
+                    onClose={() => setEditCompModal(null)}
+                    title="Edit Competition"
+                >
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-sm font-medium">Competition Name *</label>
+                            <input
+                                value={editCompForm.name}
+                                onChange={(e) => setEditCompForm({ ...editCompForm, name: e.target.value })}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
+                                placeholder="Enter Competition Name"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium">Description</label>
+                            <textarea
+                                value={editCompForm.description}
+                                onChange={(e) => setEditCompForm({ ...editCompForm, description: e.target.value })}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
+                                placeholder="Enter competition description"
+                                rows={2}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium">Category</label>
+                            <input
+                                value={editCompForm.category}
+                                onChange={(e) => setEditCompForm({ ...editCompForm, category: e.target.value })}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
+                                placeholder="e.g., Science, Sports, Arts"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium">Level *</label>
+                            <select
+                                value={editCompForm.level}
+                                onChange={(e) => setEditCompForm({ ...editCompForm, level: e.target.value })}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
+                            >
+                                <option value="intraschool">Intra-School</option>
+                                <option value="interschool">Inter-School</option>
+                                <option value="district">District</option>
+                                <option value="state">State</option>
+                                <option value="national">National</option>
+                                <option value="international">International</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium">Date *</label>
+                            <input
+                                type="date"
+                                value={editCompForm.date}
+                                onChange={(e) => setEditCompForm({ ...editCompForm, date: e.target.value })}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium">Participating Clubs</label>
+                            <select
+                                multiple
+                                className="w-full px-3 py-2 rounded-md border mt-1 h-32"
+                                value={editCompForm.participatingClubs}
+                                onChange={(e) =>
+                                    setEditCompForm({
+                                        ...editCompForm,
+                                        participatingClubs: Array.from(
+                                            e.target.selectedOptions,
+                                            (option) => option.value
+                                        ),
+                                    })
+                                }
+                            >
+                                {clubs.map((c) => (
+                                    <option key={c.club_id} value={c.club_id}>
+                                        {c.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-slate-500 mt-1">Hold CTRL (Windows) or CMD (Mac) to select multiple clubs</p>
+                        </div>
+
+                        <div className="flex gap-3 pt-3">
+                            <button
+                                onClick={handleUpdateCompetition}
+                                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-medium"
+                            >
+                                Update Competition
+                            </button>
+                            <button
+                                onClick={() => setEditCompModal(null)}
+                                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+
                 {/* Competition View Modal */}
                 <Modal
                     open={!!viewComp}
@@ -970,30 +1933,81 @@ const handleStudentLeave = (studentId, club) => {
                 >
                     {viewComp && (
                         <div className="space-y-4">
-                            <h2 className="text-xl font-semibold">{viewComp.name}</h2>
-
-                            <p className="text-sm text-slate-600">
-                                Category: <span className="capitalize">{viewComp.category}</span>
-                            </p>
-
-                            <p className="text-sm text-slate-700">{viewComp.description}</p>
-
-                            <div className="grid grid-cols-2 gap-3 text-sm text-slate-700">
-                                <p>Reward: {viewComp.reward}</p>
-                                <p>Skill Level: {viewComp.skill_level}</p>
-                                <p>Team Size: {viewComp.team_size}</p>
-                                <p>Status: {viewComp.status}</p>
+                            <div className="flex items-start justify-between">
+                                <h2 className="text-xl font-semibold">{viewComp.name}</h2>
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                    viewComp.status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
+                                    viewComp.status === 'ongoing' ? 'bg-green-100 text-green-700' :
+                                    viewComp.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                                    'bg-red-100 text-red-700'
+                                }`}>
+                                    {viewComp.status === 'upcoming' ? '🔜 Upcoming' :
+                                     viewComp.status === 'ongoing' ? '▶️ Ongoing' :
+                                     viewComp.status === 'completed' ? '✅ Completed' :
+                                     '❌ Cancelled'}
+                                </span>
                             </div>
 
-                            <button
-                                onClick={() => {
-                                    setRegisterCompModal(viewComp.comp_id);
-                                    setViewComp(null);
-                                }}
-                                className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                            >
-                                Register Now
-                            </button>
+                            {viewComp.category && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-slate-600">Category:</span>
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 capitalize">
+                                        {viewComp.category}
+                                    </span>
+                                </div>
+                            )}
+
+                            {viewComp.description && (
+                                <div className="bg-slate-50 p-3 rounded-lg">
+                                    <p className="text-sm text-slate-700">{viewComp.description}</p>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-blue-50 p-3 rounded-lg">
+                                    <div className="text-xs text-blue-600 font-medium mb-1">Competition Level</div>
+                                    <div className="text-sm font-semibold text-blue-900 capitalize">{viewComp.level}</div>
+                                </div>
+                                
+                                <div className="bg-green-50 p-3 rounded-lg">
+                                    <div className="text-xs text-green-600 font-medium mb-1">Competition Date</div>
+                                    <div className="text-sm font-semibold text-green-900">
+                                        {formatDate(viewComp.competition_date || viewComp.date)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-orange-50 p-3 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-xs text-orange-600 font-medium mb-1">Participating Clubs</div>
+                                        <div className="text-sm font-semibold text-orange-900">
+                                            {viewComp.participatingClubs?.length ?? 0} {viewComp.participatingClubs?.length === 1 ? 'Club' : 'Clubs'}
+                                        </div>
+                                    </div>
+                                    <div className="text-2xl">🏆</div>
+                                </div>
+                            </div>
+
+                            
+
+                            <div className="flex gap-3 pt-4 border-t">
+                                <button
+                                    onClick={() => {
+                                        setRegisterCompModal(viewComp);
+                                        setViewComp(null);
+                                    }}
+                                    className="flex-1 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+                                >
+                                    Register Students
+                                </button>
+                                <button
+                                    onClick={() => setViewComp(null)}
+                                    className="px-6 py-2 border rounded-md hover:bg-gray-50"
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     )}
                 </Modal>
@@ -1003,9 +2017,15 @@ const handleStudentLeave = (studentId, club) => {
                     title="Add New Competition"
                 >
                     <div className="space-y-3">
+                        <div className="bg-green-50 p-3 rounded-lg mb-4 text-sm">
+                            <div className="flex items-center gap-2 text-green-900">
+                                <span className="font-semibold">ℹ️ Note:</span>
+                                <span>This competition will be created for your school only.</span>
+                            </div>
+                        </div>
 
                         <div>
-                            <label className="text-sm font-medium">Competition Name</label>
+                            <label className="text-sm font-medium">Competition Name *</label>
                             <input
                                 value={newCompForm.name}
                                 onChange={(e) => setNewCompForm({ ...newCompForm, name: e.target.value })}
@@ -1015,21 +2035,44 @@ const handleStudentLeave = (studentId, club) => {
                         </div>
 
                         <div>
-                            <label className="text-sm font-medium">Level</label>
+                            <label className="text-sm font-medium">Description</label>
+                            <textarea
+                                value={newCompForm.description}
+                                onChange={(e) => setNewCompForm({ ...newCompForm, description: e.target.value })}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
+                                placeholder="Enter competition description"
+                                rows={2}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium">Category</label>
+                            <input
+                                value={newCompForm.category}
+                                onChange={(e) => setNewCompForm({ ...newCompForm, category: e.target.value })}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
+                                placeholder="e.g., Science, Sports, Arts"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium">Level *</label>
                             <select
                                 value={newCompForm.level}
                                 onChange={(e) => setNewCompForm({ ...newCompForm, level: e.target.value })}
                                 className="w-full px-3 py-2 rounded-md border mt-1"
                             >
+                                <option value="intraschool">Intra-School</option>
+                                <option value="interschool">Inter-School</option>
                                 <option value="district">District</option>
                                 <option value="state">State</option>
                                 <option value="national">National</option>
-                                <option value="interschool">Inter-School</option>
+                                <option value="international">International</option>
                             </select>
                         </div>
 
                         <div>
-                            <label className="text-sm font-medium">Date</label>
+                            <label className="text-sm font-medium">Date *</label>
                             <input
                                 type="date"
                                 value={newCompForm.date}
@@ -1042,7 +2085,7 @@ const handleStudentLeave = (studentId, club) => {
                             <label className="text-sm font-medium">Participating Clubs</label>
                             <select
                                 multiple
-                                className="w-full px-3 py-2 rounded-md border mt-1"
+                                className="w-full px-3 py-2 rounded-md border mt-1 h-32"
                                 value={newCompForm.participatingClubs}
                                 onChange={(e) =>
                                     setNewCompForm({
@@ -1060,17 +2103,216 @@ const handleStudentLeave = (studentId, club) => {
                                     </option>
                                 ))}
                             </select>
-                            <p className="text-xs text-slate-500">Hold CTRL (Windows) or CMD (Mac) to select multiple</p>
+                            <p className="text-xs text-slate-500 mt-1">Hold CTRL (Windows) or CMD (Mac) to select multiple clubs</p>
                         </div>
 
-                        <button
-                            onClick={handleAddCompetition}
-                            className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 mt-3"
-                        >
-                            Create Competition
-                        </button>
+                        <div className="flex gap-3 pt-3">
+                            <button
+                                onClick={handleAddCompetition}
+                                className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 font-medium"
+                            >
+                                Create Competition
+                            </button>
+                            <button
+                                onClick={() => setAddCompModal(false)}
+                                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </Modal>
+                {/* Attendance Marking Modal */}
+                <Modal
+                    open={attendanceModal.open}
+                    onClose={() => {
+                        setAttendanceModal({ open: false, club: null });
+                        setAttendanceRecords({});
+                    }}
+                    title={`Mark Attendance - ${attendanceModal.club?.name ?? ""}`}
+                >
+                    {attendanceModal.club && (
+                        <div className="space-y-4">
+                            {/* Session Details */}
+                            <div className="bg-blue-50 p-4 rounded-lg">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-medium text-blue-900 mb-1">Session Date *</label>
+                                        <input
+                                            type="date"
+                                            value={attendanceDate}
+                                            onChange={(e) => setAttendanceDate(e.target.value)}
+                                            className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-blue-900 mb-1">Total Members</label>
+                                        <div className="px-3 py-2 bg-white border rounded-md text-sm font-semibold">
+                                            {attendanceModal.club.members.length}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="mt-3">
+                                    <label className="block text-xs font-medium text-blue-900 mb-1">Session Topic *</label>
+                                    <input
+                                        type="text"
+                                        value={attendanceTopic}
+                                        onChange={(e) => setAttendanceTopic(e.target.value)}
+                                        placeholder="e.g., Robot Assembly Workshop"
+                                        className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Attendance Summary */}
+                            <div className="grid grid-cols-4 gap-2 text-center">
+                                <div className="bg-green-50 p-2 rounded-lg">
+                                    <div className="text-xs text-green-600 font-medium">Present</div>
+                                    <div className="text-lg font-bold text-green-700">
+                                        {Object.values(attendanceRecords).filter(s => s === 'present').length}
+                                    </div>
+                                </div>
+                                <div className="bg-yellow-50 p-2 rounded-lg">
+                                    <div className="text-xs text-yellow-600 font-medium">Late</div>
+                                    <div className="text-lg font-bold text-yellow-700">
+                                        {Object.values(attendanceRecords).filter(s => s === 'late').length}
+                                    </div>
+                                </div>
+                                <div className="bg-red-50 p-2 rounded-lg">
+                                    <div className="text-xs text-red-600 font-medium">Absent</div>
+                                    <div className="text-lg font-bold text-red-700">
+                                        {Object.values(attendanceRecords).filter(s => s === 'absent').length}
+                                    </div>
+                                </div>
+                                <div className="bg-blue-50 p-2 rounded-lg">
+                                    <div className="text-xs text-blue-600 font-medium">Excused</div>
+                                    <div className="text-lg font-bold text-blue-700">
+                                        {Object.values(attendanceRecords).filter(s => s === 'excused').length}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Student List */}
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <h4 className="text-sm font-semibold text-gray-900">Mark Attendance</h4>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => {
+                                                const records = {};
+                                                attendanceModal.club.members.forEach(m => records[m] = 'present');
+                                                setAttendanceRecords(records);
+                                            }}
+                                            className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                                        >
+                                            All Present
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                const records = {};
+                                                attendanceModal.club.members.forEach(m => records[m] = 'absent');
+                                                setAttendanceRecords(records);
+                                            }}
+                                            className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                                        >
+                                            All Absent
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="max-h-80 overflow-y-auto space-y-2 border rounded-lg p-3 bg-gray-50">
+                                    {attendanceModal.club.members.length > 0 ? (
+                                        attendanceModal.club.members.map((memberId) => {
+                                            const student = allStudents.find(s => s.id === memberId);
+                                            const studentName = student?.name || memberId;
+                                            const studentGrade = student?.grade || 'N/A';
+                                            
+                                            return (
+                                                <div
+                                                    key={memberId}
+                                                    className="flex items-center justify-between p-3 bg-white rounded-lg border hover:shadow-sm"
+                                                >
+                                                    <div className="flex-1">
+                                                        <div className="font-medium text-sm">{studentName}</div>
+                                                        <div className="text-xs text-slate-500">{studentGrade}</div>
+                                                    </div>
+
+                                                    <div className="flex gap-1">
+                                                        <button
+                                                            onClick={() => handleAttendanceStatusChange(memberId, 'present')}
+                                                            className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                                                                attendanceRecords[memberId] === 'present'
+                                                                    ? 'bg-green-600 text-white'
+                                                                    : 'bg-gray-100 text-gray-600 hover:bg-green-100'
+                                                            }`}
+                                                        >
+                                                            Present
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleAttendanceStatusChange(memberId, 'late')}
+                                                            className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                                                                attendanceRecords[memberId] === 'late'
+                                                                    ? 'bg-yellow-600 text-white'
+                                                                    : 'bg-gray-100 text-gray-600 hover:bg-yellow-100'
+                                                            }`}
+                                                        >
+                                                            Late
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleAttendanceStatusChange(memberId, 'absent')}
+                                                            className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                                                                attendanceRecords[memberId] === 'absent'
+                                                                    ? 'bg-red-600 text-white'
+                                                                    : 'bg-gray-100 text-gray-600 hover:bg-red-100'
+                                                            }`}
+                                                        >
+                                                            Absent
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleAttendanceStatusChange(memberId, 'excused')}
+                                                            className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                                                                attendanceRecords[memberId] === 'excused'
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'bg-gray-100 text-gray-600 hover:bg-blue-100'
+                                                            }`}
+                                                        >
+                                                            Excused
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="text-center py-8 text-slate-500">
+                                            No members in this club yet
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-3 pt-4 border-t">
+                                <button
+                                    onClick={handleSaveAttendance}
+                                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+                                >
+                                    Save Attendance
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setAttendanceModal({ open: false, club: null });
+                                        setAttendanceRecords({});
+                                    }}
+                                    className="px-4 py-2 border rounded-md hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </Modal>
+
                 <Modal
     open={studentDrawer.open}
     onClose={() => {

@@ -8,219 +8,303 @@ import {
     Award,
     Clock,
     MapPin,
+    AlertCircle,
+    CheckCircle,
 } from "lucide-react";
-
-// Load clubs from localStorage (synced with educator page)
-const loadClubsFromStorage = () => {
-    const stored = localStorage.getItem("skillpassport_clubs");
-    if (stored) {
-        try {
-            return JSON.parse(stored);
-        } catch (e) {
-            console.error("Failed to parse clubs from localStorage", e);
-        }
-    }
-    // Fallback to default clubs if nothing in storage
-    return [
-        {
-            club_id: "c1",
-            name: "Robotics Club",
-            category: "robotics",
-            members: ["s1", "s2", "s3", "s4", "s5"],
-            capacity: 30,
-            avgAttendance: 85,
-            description: "Build and program robots for competitions",
-            meetingDay: "Monday & Thursday",
-            meetingTime: "4:00 PM - 6:00 PM",
-            location: "Lab 101",
-            mentor: "Dr. Sarah Johnson",
-            upcomingActivities: [
-                { title: "Robot Assembly Workshop", date: "2025-12-01" },
-                { title: "State Competition Prep", date: "2025-12-10" },
-            ],
-        },
-        {
-            club_id: "c2",
-            name: "Literature Circle",
-            category: "literature",
-            members: ["s2", "s6", "s7"],
-            capacity: 20,
-            avgAttendance: 92,
-            description: "Explore classic and contemporary literature",
-            meetingDay: "Wednesday",
-            meetingTime: "3:30 PM - 5:00 PM",
-            location: "Library Room 2",
-            mentor: "Prof. Emily Watson",
-            upcomingActivities: [
-                { title: "Book Discussion: 1984", date: "2025-11-28" },
-                { title: "Poetry Writing Workshop", date: "2025-12-05" },
-            ],
-        },
-        {
-            club_id: "c3",
-            name: "Coding Club",
-            category: "science",
-            members: ["s1", "s3", "s5", "s8", "s9", "s10"],
-            capacity: 50,
-            avgAttendance: 78,
-            description: "Learn programming and software development",
-            meetingDay: "Tuesday & Friday",
-            meetingTime: "3:00 PM - 5:00 PM",
-            location: "Computer Lab A",
-            mentor: "Mr. David Chen",
-            upcomingActivities: [
-                { title: "Hackathon Preparation", date: "2025-12-02" },
-                { title: "Web Development Workshop", date: "2025-12-08" },
-            ],
-        },
-        {
-            club_id: "c4",
-            name: "Football Team",
-            category: "sports",
-            members: ["s1", "s4", "s5", "s11", "s12", "s13", "s14", "s15"],
-            capacity: 25,
-            avgAttendance: 95,
-            description: "Competitive football training and matches",
-            meetingDay: "Monday, Wednesday, Friday",
-            meetingTime: "5:00 PM - 7:00 PM",
-            location: "Main Field",
-            mentor: "Coach Mike Thompson",
-            upcomingActivities: [
-                { title: "Practice Match vs St. Mary's", date: "2025-11-30" },
-                { title: "Championship Semi-Finals", date: "2025-12-15" },
-            ],
-        },
-        {
-            club_id: "c5",
-            name: "Drama Society",
-            category: "arts",
-            members: ["s2", "s7", "s9"],
-            capacity: 25,
-            avgAttendance: 88,
-            description: "Theater performances and acting workshops",
-            meetingDay: "Thursday",
-            meetingTime: "4:00 PM - 6:30 PM",
-            location: "Auditorium",
-            mentor: "Ms. Rachel Green",
-            upcomingActivities: [
-                { title: "Annual Play Rehearsal", date: "2025-12-03" },
-                { title: "Improv Night", date: "2025-12-12" },
-            ],
-        },
-    ];
-};
-
-// Load competitions from localStorage
-const loadCompetitionsFromStorage = () => {
-    const stored = localStorage.getItem("skillpassport_competitions");
-    if (stored) {
-        try {
-            return JSON.parse(stored);
-        } catch (e) {
-            console.error("Failed to parse competitions from localStorage", e);
-        }
-    }
-    return [
-        {
-            comp_id: "comp1",
-            name: "State Robotics Challenge",
-            level: "state",
-            date: "2026-01-15",
-            club_id: "c1",
-            studentResults: [
-                { student_id: "s1", rank: 1, award: "Gold Medal" },
-                { student_id: "s2", rank: 3, award: "Bronze Medal" },
-            ],
-        },
-        {
-            comp_id: "comp2",
-            name: "Inter-school Hackathon",
-            level: "district",
-            date: "2025-12-05",
-            club_id: "c3",
-            studentResults: [
-                { student_id: "s1", rank: 1, award: "Gold Medal" },
-                { student_id: "s3", rank: 4, award: "Certificate" },
-            ],
-        },
-        {
-            comp_id: "comp3",
-            name: "National Football Championship",
-            level: "national",
-            date: "2025-12-20",
-            club_id: "c4",
-            studentResults: [
-                { student_id: "s1", rank: 1, award: "MVP Trophy" },
-            ],
-        },
-    ];
-};
+import { supabase } from "../../lib/supabaseClient";
+import * as clubsService from "../../services/clubsService";
+import * as competitionsService from "../../services/competitionsService";
 
 export default function StudentDashboard() {
     // Get logged-in student's email from localStorage
     const userEmail = localStorage.getItem("userEmail");
     const [currentStudentId] = useState(userEmail); // Use email as student ID
     const [selectedClub, setSelectedClub] = useState(null);
-    const [clubs, setClubs] = useState(loadClubsFromStorage);
-    const [competitions, setCompetitions] = useState(loadCompetitionsFromStorage);
+    const [clubs, setClubs] = useState([]);
+    const [competitions, setCompetitions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [myMemberships, setMyMemberships] = useState([]);
+    const [attendanceData, setAttendanceData] = useState({});
+    const [myAchievementsData, setMyAchievementsData] = useState([]);
+    const [myCertificates, setMyCertificates] = useState([]);
 
-    // Listen for changes in localStorage (when educator updates clubs)
+    // Fetch clubs, competitions, and student's memberships from Supabase
     useEffect(() => {
-        const handleStorageChange = () => {
-            setClubs(loadClubsFromStorage());
-            setCompetitions(loadCompetitionsFromStorage());
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                console.log('🔍 [Student Clubs] Fetching data for student:', userEmail);
+                
+                if (!userEmail) {
+                    console.warn('❌ [Student Clubs] No user email found');
+                    setLoading(false);
+                    return;
+                }
+
+                // Fetch student's clubs using the view that joins memberships with club details
+                const { data: membershipData, error: membershipError } = await supabase
+                    .from('club_memberships_with_students')
+                    .select('*')
+                    .eq('student_email', userEmail)
+                    .eq('status', 'active');
+
+                if (membershipError) {
+                    console.error('❌ [Student Clubs] Error fetching club memberships:', membershipError);
+                } else {
+                    console.log('✅ [Student Clubs] Student is member of', membershipData?.length || 0, 'clubs');
+                    console.log('📋 [Student Clubs] Membership data:', membershipData);
+                }
+
+                // Transform membership data into clubs format
+                const clubsData = (membershipData || []).map(membership => ({
+                    club_id: membership.club_id,
+                    name: membership.club_name,
+                    category: membership.club_category,
+                    description: '', // Not in view, can be added if needed
+                    meeting_day: membership.meeting_day,
+                    meeting_time: membership.meeting_time,
+                    location: membership.location,
+                    mentor_type: membership.mentor_type,
+                    mentor_name: membership.mentor_name,
+                    mentor_email: membership.mentor_email,
+                    mentor_phone: membership.mentor_phone,
+                    is_active: true,
+                    capacity: 0, // Not in view
+                    members: [], // Will be populated below
+                    // Membership specific data
+                    membership_id: membership.membership_id,
+                    enrolled_at: membership.enrolled_at,
+                    total_sessions_attended: membership.total_sessions_attended,
+                    total_sessions_held: membership.total_sessions_held,
+                    attendance_percentage: membership.attendance_percentage,
+                    performance_score: membership.performance_score
+                }));
+
+                // Store memberships for later use
+                setMyMemberships(membershipData || []);
+
+                // Fetch full club details including capacity and member count
+                const clubsWithMembers = await Promise.all(
+                    clubsData.map(async (club) => {
+                        // Get full club details
+                        const { data: clubDetails } = await supabase
+                            .from('clubs')
+                            .select('capacity, description')
+                            .eq('club_id', club.club_id)
+                            .single();
+
+                        // Get member count from the view (RLS-friendly)
+                        const { count: memberCount } = await supabase
+                            .from('club_memberships_with_students')
+                            .select('*', { count: 'exact', head: true })
+                            .eq('club_id', club.club_id)
+                            .eq('status', 'active');
+
+                        console.log(`👥 [Student Clubs] Club "${club.name}" has ${memberCount} members`);
+
+                        return {
+                            ...club,
+                            capacity: clubDetails?.capacity || 30,
+                            description: clubDetails?.description || '',
+                            memberCount: memberCount || 0,
+                            members: [] // Not needed for display, just count
+                        };
+                    })
+                );
+
+                // Get school_id from first membership for competitions
+                const schoolId = membershipData?.[0]?.club_id ? 
+                    await supabase
+                        .from('clubs')
+                        .select('school_id')
+                        .eq('club_id', membershipData[0].club_id)
+                        .single()
+                        .then(res => res.data?.school_id)
+                    : null;
+
+                console.log('🏫 [Student Clubs] School ID:', schoolId);
+
+                // Fetch competitions for the student's school
+                let competitionsData = [];
+                if (schoolId) {
+                    const { data: compsData, error: competitionsError } = await supabase
+                        .from('competitions')
+                        .select('*')
+                        .eq('school_id', schoolId)
+                        .order('competition_date', { ascending: true });
+
+                    if (competitionsError) {
+                        console.error('❌ [Student Clubs] Error fetching competitions:', competitionsError);
+                    } else {
+                        console.log('✅ [Student Clubs] Loaded', compsData?.length || 0, 'competitions');
+                        competitionsData = compsData || [];
+                    }
+                }
+
+                // Fetch attendance data for each membership
+                const attendanceMap = {};
+                if (membershipData && membershipData.length > 0) {
+                    for (const membership of membershipData) {
+                        const { data: attendanceIds } = await supabase
+                            .from('club_attendance')
+                            .select('attendance_id')
+                            .eq('club_id', membership.club_id);
+
+                        if (attendanceIds && attendanceIds.length > 0) {
+                            const { data: attendanceRecords } = await supabase
+                                .from('club_attendance_records')
+                                .select(`
+                                    *,
+                                    club_attendance (
+                                        session_date,
+                                        session_topic
+                                    )
+                                `)
+                                .eq('student_email', userEmail)
+                                .in('attendance_id', attendanceIds.map(a => a.attendance_id));
+
+                            attendanceMap[membership.club_id] = attendanceRecords || [];
+                        }
+                    }
+                }
+                setAttendanceData(attendanceMap);
+
+                // Fetch student's competition results and achievements
+                const { data: resultsData, error: resultsError } = await supabase
+                    .from('competition_results')
+                    .select(`
+                        result_id,
+                        rank,
+                        score,
+                        award,
+                        performance_notes,
+                        competitions (
+                            comp_id,
+                            name,
+                            level,
+                            category,
+                            competition_date,
+                            status
+                        )
+                    `)
+                    .eq('student_email', userEmail)
+                    .order('rank', { ascending: true });
+
+                if (resultsError) {
+                    console.error('❌ [Student Clubs] Error fetching competition results:', resultsError);
+                } else {
+                    console.log('✅ [Student Clubs] Loaded', resultsData?.length || 0, 'competition results');
+                    setMyAchievementsData(resultsData || []);
+                }
+
+                // Fetch student's certificates
+                const { data: certificatesData, error: certificatesError } = await supabase
+                    .from('club_certificates')
+                    .select(`
+                        certificate_id,
+                        title,
+                        description,
+                        certificate_type,
+                        issued_date,
+                        credential_id,
+                        metadata,
+                        competitions (
+                            name,
+                            level,
+                            category
+                        )
+                    `)
+                    .eq('student_email', userEmail)
+                    .order('issued_date', { ascending: false });
+
+                if (certificatesError) {
+                    console.error('❌ [Student Clubs] Error fetching certificates:', certificatesError);
+                } else {
+                    console.log('✅ [Student Clubs] Loaded', certificatesData?.length || 0, 'certificates');
+                    setMyCertificates(certificatesData || []);
+                }
+
+                setClubs(clubsWithMembers);
+                setCompetitions(competitionsData);
+                
+            } catch (error) {
+                console.error('❌ [Student Clubs] Error fetching data:', error);
+            } finally {
+                setLoading(false);
+            }
         };
 
-        // Listen for storage events from other tabs/windows
-        window.addEventListener("storage", handleStorageChange);
+        if (userEmail) {
+            fetchData();
+            
+            // Refresh data every 30 seconds to stay in sync
+            const interval = setInterval(fetchData, 30000);
+            
+            return () => clearInterval(interval);
+        }
+    }, [userEmail]);
 
-        // Also poll for changes every 2 seconds (for same-tab updates)
-        const interval = setInterval(handleStorageChange, 2000);
-
-        return () => {
-            window.removeEventListener("storage", handleStorageChange);
-            clearInterval(interval);
-        };
-    }, []);
-
-    // Get clubs the student is enrolled in
+    // Get clubs the student is enrolled in with enhanced data
     const myClubs = useMemo(() => {
-        return clubs.filter((club) =>
-            club.members.includes(currentStudentId)
-        );
-    }, [clubs, currentStudentId]);
+        // Clubs already contain only the student's enrolled clubs
+        return clubs.map(club => {
+            const attendance = attendanceData[club.club_id] || [];
+            const attendancePercentage = club.attendance_percentage || 0;
+            
+            return {
+                ...club,
+                avgAttendance: Math.round(attendancePercentage),
+                upcomingActivities: [], // Will be populated from activities table if needed
+                meetingDay: club.meeting_day || 'TBD',
+                meetingTime: club.meeting_time || 'TBD',
+            };
+        });
+    }, [clubs, attendanceData]);
 
-    // Get student's competition achievements
-    const myAchievements = useMemo(() => {
-        const achievements = [];
-        competitions.forEach((comp) => {
-            const studentResult = comp.studentResults?.find(
-                (r) => r.student_id === currentStudentId
-            );
-            if (studentResult) {
-                achievements.push({
-                    ...comp,
-                    ...studentResult,
+    // Get student's competition registrations
+    const myCompetitions = useMemo(() => {
+        // Filter competitions where student is registered
+        return competitions.filter(comp => {
+            // This would check competition_registrations table
+            return false; // Placeholder
+        });
+    }, [competitions]);
+
+    // Get upcoming activities from all clubs
+    const upcomingActivities = useMemo(() => {
+        const activities = [];
+        myClubs.forEach(club => {
+            // Add club meetings as activities
+            if (club.meeting_day && club.meeting_time) {
+                activities.push({
+                    title: `${club.name} Meeting`,
+                    clubName: club.name,
+                    date: new Date(), // Would calculate next meeting date
+                    type: 'meeting'
                 });
             }
         });
-        return achievements;
-    }, [competitions, currentStudentId]);
-
-    // Get upcoming activities across all clubs
-    const upcomingActivities = useMemo(() => {
-        const activities = [];
-        myClubs.forEach((club) => {
-            club.upcomingActivities.forEach((activity) => {
-                activities.push({
-                    ...activity,
-                    clubName: club.name,
-                    club_id: club.club_id,
-                });
-            });
-        });
         return activities.sort((a, b) => new Date(a.date) - new Date(b.date));
     }, [myClubs]);
+
+    // Get student achievements from competitions
+    const myAchievements = useMemo(() => {
+        return myAchievementsData
+            .filter(result => result.competitions) // Only include results with competition data
+            .map(result => ({
+                result_id: result.result_id,
+                name: result.competitions.name,
+                rank: result.rank,
+                score: result.score,
+                award: result.award || 'Participant',
+                level: result.competitions.level || 'School',
+                category: result.competitions.category || 'General',
+                date: result.competitions.competition_date,
+                status: result.competitions.status,
+                notes: result.performance_notes
+            }))
+            .sort((a, b) => a.rank - b.rank); // Sort by rank (best first)
+    }, [myAchievementsData]);
 
     const categoryColors = {
         robotics: "bg-blue-100 text-blue-700 border-blue-200",
@@ -292,10 +376,10 @@ export default function StudentDashboard() {
                             <div>
                                 <p className="text-sm text-gray-600 mb-1">Avg Attendance</p>
                                 <p className="text-3xl font-bold text-purple-600">
-                                    {myClubs.length > 0
+                                    {myMemberships.length > 0
                                         ? Math.round(
-                                              myClubs.reduce((sum, c) => sum + c.avgAttendance, 0) /
-                                                  myClubs.length
+                                              myMemberships.reduce((sum, m) => sum + (m.attendance_percentage || 0), 0) /
+                                                  myMemberships.length
                                           )
                                         : 0}
                                     %
@@ -358,20 +442,20 @@ export default function StudentDashboard() {
                                         <div className="grid grid-cols-2 gap-4 mb-4">
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <Calendar size={16} className="text-blue-500" />
-                                                <span>{club.meetingDay}</span>
+                                                <span>{club.meeting_day || 'TBD'}</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <Clock size={16} className="text-green-500" />
-                                                <span>{club.meetingTime}</span>
+                                                <span>{club.meeting_time || 'TBD'}</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <MapPin size={16} className="text-red-500" />
-                                                <span>{club.location}</span>
+                                                <span>{club.location || 'TBD'}</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <Users size={16} className="text-purple-500" />
                                                 <span>
-                                                    {club.members.length}/{club.capacity} members
+                                                    {club.memberCount || 0}/{club.capacity || 30} members
                                                 </span>
                                             </div>
                                         </div>
@@ -380,13 +464,13 @@ export default function StudentDashboard() {
                                             <div className="text-sm">
                                                 <span className="text-gray-600">Mentor: </span>
                                                 <span className="font-semibold text-gray-900">
-                                                    {club.mentor}
+                                                    {club.mentor_name || (club.mentor_type === 'educator' ? 'Educator' : 'School Admin')}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <TrendingUp size={16} className="text-green-500" />
                                                 <span className="text-sm font-semibold text-gray-900">
-                                                    {club.avgAttendance}% attendance
+                                                    {club.avgAttendance || 0}% attendance
                                                 </span>
                                             </div>
                                         </div>
@@ -458,40 +542,162 @@ export default function StudentDashboard() {
                             )}
                         </div>
 
-                        {/* My Achievements */}
-                        <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-gray-100">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Trophy className="text-yellow-600" size={24} />
-                                <h3 className="text-lg font-bold text-gray-900">My Achievements</h3>
+                        {/* My Achievements - Commented out as per user request */}
+                        {/* <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-gray-100">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <Trophy className="text-yellow-600" size={24} />
+                                    <h3 className="text-lg font-bold text-gray-900">My Achievements</h3>
+                                </div>
+                                {myAchievements.length > 0 && (
+                                    <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">
+                                        {myAchievements.length}
+                                    </span>
+                                )}
                             </div>
                             {myAchievements.length === 0 ? (
-                                <p className="text-gray-500 text-sm">
-                                    No achievements yet. Keep participating!
-                                </p>
+                                <div className="text-center py-6">
+                                    <Trophy className="mx-auto text-gray-300 mb-3" size={48} />
+                                    <p className="text-gray-500 text-sm">
+                                        No achievements yet. Keep participating!
+                                    </p>
+                                </div>
                             ) : (
                                 <div className="space-y-3">
-                                    {myAchievements.map((achievement, idx) => (
+                                    {myAchievements.map((achievement) => {
+                                        // Determine medal/award icon and color based on rank
+                                        const getMedalIcon = (rank) => {
+                                            if (rank === 1) return { icon: '🥇', color: 'from-yellow-50 to-yellow-100', border: 'border-yellow-300' };
+                                            if (rank === 2) return { icon: '🥈', color: 'from-gray-50 to-gray-100', border: 'border-gray-300' };
+                                            if (rank === 3) return { icon: '🥉', color: 'from-orange-50 to-orange-100', border: 'border-orange-300' };
+                                            return { icon: '🏆', color: 'from-blue-50 to-blue-100', border: 'border-blue-200' };
+                                        };
+                                        
+                                        const medal = getMedalIcon(achievement.rank);
+                                        
+                                        return (
+                                            <div
+                                                key={achievement.result_id}
+                                                className={`bg-gradient-to-r ${medal.color} rounded-lg p-4 border-2 ${medal.border} hover:shadow-md transition-shadow`}
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <div className="text-3xl flex-shrink-0">
+                                                        {medal.icon}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="font-bold text-gray-900 text-sm">
+                                                            {achievement.name}
+                                                        </p>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className="text-xs font-bold text-gray-700">
+                                                                Rank #{achievement.rank}
+                                                            </span>
+                                                            {achievement.score && (
+                                                                <>
+                                                                    <span className="text-xs text-gray-400">•</span>
+                                                                    <span className="text-xs font-semibold text-green-600">
+                                                                        Score: {achievement.score}
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-gray-600 mt-1">
+                                                            {achievement.award}
+                                                        </p>
+                                                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                                            <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs font-semibold capitalize">
+                                                                {achievement.level}
+                                                            </span>
+                                                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-semibold capitalize">
+                                                                {achievement.category}
+                                                            </span>
+                                                            <span className="text-xs text-gray-500">
+                                                                {new Date(achievement.date).toLocaleDateString('en-US', {
+                                                                    month: 'short',
+                                                                    day: 'numeric',
+                                                                    year: 'numeric'
+                                                                })}
+                                                            </span>
+                                                        </div>
+                                                        {achievement.notes && (
+                                                            <p className="text-xs text-gray-500 mt-2 italic">
+                                                                "{achievement.notes}"
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div> */}
+
+                        {/* My Certificates */}
+                        <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-gray-100">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <Award className="text-indigo-600" size={24} />
+                                    <h3 className="text-lg font-bold text-gray-900">Competitions Certificates</h3>
+                                </div>
+                                {myCertificates.length > 0 && (
+                                    <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-bold">
+                                        {myCertificates.length}
+                                    </span>
+                                )}
+                            </div>
+                            {myCertificates.length === 0 ? (
+                                <div className="text-center py-6">
+                                    <Award className="mx-auto text-gray-300 mb-3" size={48} />
+                                    <p className="text-gray-500 text-sm">
+                                        No certificates yet
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3 max-h-96 overflow-y-auto">
+                                    {myCertificates.map((cert) => (
                                         <div
-                                            key={idx}
-                                            className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-4 border-2 border-yellow-200"
+                                            key={cert.certificate_id}
+                                            className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border-2 border-indigo-200 hover:shadow-md transition-shadow"
                                         >
                                             <div className="flex items-start gap-3">
-                                                <Award className="text-yellow-600 flex-shrink-0" size={20} />
-                                                <div className="flex-1">
-                                                    <p className="font-bold text-gray-900 text-sm">
-                                                        {achievement.name}
+                                                <div className="bg-indigo-100 rounded-full p-2 flex-shrink-0">
+                                                    <Award className="text-indigo-600" size={16} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-gray-900 text-sm truncate">
+                                                        {cert.title}
                                                     </p>
-                                                    <p className="text-xs text-gray-600 mt-1">
-                                                        Rank {achievement.rank} • {achievement.award}
+                                                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                                        {cert.description}
                                                     </p>
-                                                    <div className="flex items-center gap-2 mt-2">
-                                                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
-                                                            {achievement.level}
+                                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                                        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-semibold capitalize">
+                                                            {cert.certificate_type.replace('_', ' ')}
                                                         </span>
                                                         <span className="text-xs text-gray-500">
-                                                            {new Date(achievement.date).toLocaleDateString()}
+                                                            {new Date(cert.issued_date).toLocaleDateString('en-US', {
+                                                                month: 'short',
+                                                                year: 'numeric'
+                                                            })}
                                                         </span>
                                                     </div>
+                                                    {cert.metadata?.rank && (
+                                                        <div className="mt-2 flex items-center gap-2">
+                                                            <span className="text-xs text-gray-600">Rank:</span>
+                                                            <span className="text-xs font-bold text-indigo-600">
+                                                                #{cert.metadata.rank}
+                                                            </span>
+                                                            {cert.metadata?.score && (
+                                                                <>
+                                                                    <span className="text-xs text-gray-400">•</span>
+                                                                    <span className="text-xs font-semibold text-green-600">
+                                                                        {cert.metadata.score}
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
