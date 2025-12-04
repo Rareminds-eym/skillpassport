@@ -29,7 +29,8 @@ import SearchBar from "../../../components/common/SearchBar";
 import { FileTextIcon } from "lucide-react";
 import { useCurriculum } from "../../../hooks/useLessonPlans";
 import type { LessonPlan as LessonPlanType } from "../../../services/lessonPlansService";
-import { getSubjects, getClasses, getAcademicYears } from "../../../services/curriculumService";
+import { getSubjects, getClasses, getAcademicYears, getCurrentAcademicYear } from "../../../services/curriculumService";
+import { supabase } from "../../../lib/supabaseClient";
 
 /* ==============================
    TYPES & INTERFACES
@@ -576,8 +577,8 @@ const ViewLessonPlanModal = ({
    ============================== */
 interface LessonPlanProps {
   initialLessonPlans?: LessonPlanType[];
-  onCreateLessonPlan?: (formData: any, classId: string) => Promise<{ data: any; error: any }>;
-  onUpdateLessonPlan?: (id: string, formData: any, classId: string) => Promise<{ data: any; error: any }>;
+  onCreateLessonPlan?: (formData: any, classId: string | null) => Promise<{ data: any; error: any }>;
+  onUpdateLessonPlan?: (id: string, formData: any, classId: string | null) => Promise<{ data: any; error: any }>;
   onDeleteLessonPlan?: (id: string) => Promise<{ error: any }>;
   subjects?: string[];
   classes?: any[];
@@ -665,15 +666,21 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   useEffect(() => {
     const loadFilterData = async () => {
       try {
-        const [subjectsData, classesData, yearsData] = await Promise.all([
+        const [subjectsData, classesData, yearsData, currentYear] = await Promise.all([
           getSubjects(),
           getClasses(),
           getAcademicYears(),
+          getCurrentAcademicYear(),
         ]);
         
         setSubjects(subjectsData);
         setClasses(classesData);
         setAcademicYears(yearsData);
+        
+        // Set current academic year as default for new lesson plans
+        if (currentYear && !formData.academicYear) {
+          setFormData(prev => ({ ...prev, academicYear: currentYear }));
+        }
       } catch (error) {
         console.error('Error loading filter data:', error);
       }
@@ -933,9 +940,81 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     setSubmitting(true);
 
     try {
-      // Find class ID
-      const classObj = propClasses?.find((c: any) => c.grade === formData.class || c === formData.class);
-      const classId = classObj?.id || "";
+      // Find class ID - need to fetch from school_classes using grade and academic year
+      let classId: string | null = null;
+      
+      if (formData.class && formData.academicYear) {
+        // Get school_id from current user if not provided
+        let currentSchoolId = schoolId;
+        if (!currentSchoolId) {
+          // Fetch school_id from current educator
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: educatorData } = await supabase
+              .from('school_educators')
+              .select('school_id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            currentSchoolId = educatorData?.school_id || null;
+          }
+        }
+        
+        if (currentSchoolId) {
+          // Fetch the actual class ID from school_classes table
+          // Use limit(1) to handle multiple classes with same grade/year
+          const { data: classDataArray, error: classError } = await supabase
+            .from('school_classes')
+            .select('id')
+            .eq('school_id', currentSchoolId)
+            .eq('grade', formData.class)
+            .eq('academic_year', formData.academicYear)
+            .limit(1);
+          
+          if (classError) {
+            console.error('Error fetching class:', classError);
+          }
+          
+          const classData = classDataArray?.[0];
+          classId = classData?.id || null;
+          
+          if (!classId) {
+            console.warn('No class found for:', {
+              school_id: currentSchoolId,
+              grade: formData.class,
+              academic_year: formData.academicYear
+            });
+          }
+        } else {
+          // Last resort: try to find any class with matching grade and academic year
+          console.warn('No school_id found, searching for any matching class');
+          const { data: classDataArray, error: classError } = await supabase
+            .from('school_classes')
+            .select('id, school_id')
+            .eq('grade', formData.class)
+            .eq('academic_year', formData.academicYear)
+            .limit(1);
+          
+          const classData = classDataArray?.[0];
+          
+          if (classError) {
+            console.error('Error fetching class (no school filter):', classError);
+          }
+          
+          if (classData) {
+            classId = classData.id;
+            console.log('Found class:', classData);
+          }
+        }
+      }
+      
+      // Fallback: try to find from propClasses
+      if (!classId && propClasses) {
+        const classObj = propClasses?.find((c: any) => 
+          (c.grade === formData.class || c === formData.class) &&
+          (!formData.academicYear || c.academic_year === formData.academicYear)
+        );
+        classId = classObj?.id || null;
+      }
 
       const submitData = {
         ...formData,
@@ -1036,11 +1115,18 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       await loadCurriculumData(plan.subject, plan.class);
     }
     
+    // If academic year is not set, try to get the current academic year as default
+    let academicYear = plan.academicYear || "";
+    if (!academicYear) {
+      const currentYear = await getCurrentAcademicYear();
+      academicYear = currentYear || "";
+    }
+    
     setFormData({
       title: plan.title,
       subject: plan.subject,
       class: plan.class,
-      academicYear: plan.academicYear || "",
+      academicYear: academicYear,
       date: plan.date,
       chapterId: plan.chapterId || "",
       learningObjectives: plan.learningObjectives,
@@ -1119,8 +1205,13 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
           {!showEditor && (
             <button
-              onClick={() => {
+              onClick={async () => {
                 resetForm();
+                // Set current academic year as default for new lesson plans
+                const currentYear = await getCurrentAcademicYear();
+                if (currentYear) {
+                  setFormData(prev => ({ ...prev, academicYear: currentYear }));
+                }
                 setShowEditor(true);
               }}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 active:scale-95 transition-all"
