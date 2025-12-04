@@ -45,6 +45,7 @@ export interface LessonPlan {
   title: string;
   subject: string;
   class_name: string;
+  academic_year?: string;
   date: string;
   duration: number;
   chapter_id: string;
@@ -105,11 +106,21 @@ export async function getLessonPlans(): Promise<{ data: LessonPlan[] | null; err
 
     const { data, error } = await supabase
       .from("lesson_plans")
-      .select("*")
+      .select(`
+        *,
+        school_classes!inner(academic_year)
+      `)
       .eq("educator_id", educatorId)
       .order("date", { ascending: false });
 
-    return { data, error };
+    // Flatten the data to include academic_year at the top level
+    const flattenedData = data?.map(plan => ({
+      ...plan,
+      academic_year: (plan as any).school_classes?.academic_year,
+      school_classes: undefined, // Remove nested object
+    }));
+
+    return { data: flattenedData as LessonPlan[], error };
   } catch (error) {
     console.error("Error fetching lesson plans:", error);
     return { data: null, error };
@@ -318,7 +329,21 @@ export async function getChapters(curriculumId: string) {
       .eq("curriculum_id", curriculumId)
       .order("order_number", { ascending: true });
 
-    return { data, error };
+    // Transform snake_case to camelCase for frontend compatibility
+    const transformedData = data?.map((chapter: any) => ({
+      id: chapter.id,
+      curriculum_id: chapter.curriculum_id,
+      name: chapter.name,
+      code: chapter.code,
+      description: chapter.description,
+      order: chapter.order_number,
+      estimatedDuration: chapter.estimated_duration,
+      durationUnit: chapter.duration_unit,
+      created_at: chapter.created_at,
+      updated_at: chapter.updated_at,
+    }));
+
+    return { data: transformedData, error };
   } catch (error) {
     console.error("Error fetching chapters:", error);
     return { data: null, error };
@@ -335,7 +360,15 @@ export async function getLearningOutcomes(chapterId: string) {
       .select("*")
       .eq("chapter_id", chapterId);
 
-    return { data, error };
+    // Transform snake_case to camelCase for frontend compatibility
+    const transformedData = data?.map((outcome: any) => ({
+      id: outcome.id,
+      chapterId: outcome.chapter_id,
+      outcome: outcome.outcome,
+      bloomLevel: outcome.bloom_level,
+    }));
+
+    return { data: transformedData, error };
   } catch (error) {
     console.error("Error fetching learning outcomes:", error);
     return { data: null, error };

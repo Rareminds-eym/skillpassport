@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 
+export { supabase};
+
 export interface AssessmentType {
   id: string;
   name: string;

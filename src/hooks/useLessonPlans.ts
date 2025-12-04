@@ -114,13 +114,13 @@ export function useLessonPlans() {
   };
 }
 
-export function useCurriculum(subject: string, className: string) {
+export function useCurriculum(subject: string, className: string, academicYear?: string) {
   const [curriculums, setCurriculums] = useState<any[]>([]);
   const [chapters, setChapters] = useState<any[]>([]);
   const [learningOutcomes, setLearningOutcomes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load curriculums when subject and class change
+  // Load curriculums when subject, class, or academic year change
   useEffect(() => {
     if (subject && className) {
       loadCurriculums();
@@ -129,18 +129,27 @@ export function useCurriculum(subject: string, className: string) {
       setChapters([]);
       setLearningOutcomes([]);
     }
-  }, [subject, className]);
+  }, [subject, className, academicYear]);
 
   const loadCurriculums = async () => {
     setLoading(true);
     try {
       const { data, error } = await getCurriculums(subject, className);
       if (error) throw error;
-      setCurriculums(data || []);
+      
+      // Filter by academic year if provided
+      let filteredData = data || [];
+      if (academicYear) {
+        filteredData = filteredData.filter((c: any) => c.academic_year === academicYear);
+      }
+      
+      setCurriculums(filteredData);
       
       // Auto-load chapters if there's only one curriculum
-      if (data && data.length === 1) {
-        loadChapters(data[0].id);
+      if (filteredData && filteredData.length === 1) {
+        loadChapters(filteredData[0].id);
+      } else if (filteredData && filteredData.length === 0) {
+        setChapters([]);
       }
     } catch (err) {
       console.error("Error loading curriculums:", err);
