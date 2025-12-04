@@ -777,40 +777,324 @@ const CopyCurriculumModal = ({
   isOpen,
   onClose,
   onCopy,
+  currentSubject,
+  currentClass,
+  currentAcademicYear,
+  subjects,
+  classes,
+  academicYears,
+  educatorData,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onCopy: (sourceClass: string, sourceSubject: string) => void;
+  onCopy: (sourceCurriculumId: string, targetSubject: string, targetClass: string, targetAcademicYear: string, overwriteExisting?: boolean) => Promise<void>;
+  currentSubject: string;
+  currentClass: string;
+  currentAcademicYear: string;
+  subjects: string[];
+  classes: string[];
+  academicYears: string[];
+  educatorData: any;
 }) => {
+  const [sourceAcademicYear, setSourceAcademicYear] = useState("");
   const [sourceClass, setSourceClass] = useState("");
   const [sourceSubject, setSourceSubject] = useState("");
+  const [targetAcademicYear, setTargetAcademicYear] = useState(currentAcademicYear);
+  const [targetClass, setTargetClass] = useState(currentClass);
+  const [targetSubject, setTargetSubject] = useState(currentSubject);
+  const [availableCurriculums, setAvailableCurriculums] = useState<any[]>([]);
+  const [selectedCurriculumId, setSelectedCurriculumId] = useState("");
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [curriculumPreview, setCurriculumPreview] = useState<any>(null);
+  const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
+  const [existingCurriculumInfo, setExistingCurriculumInfo] = useState<any>(null);
+  const [availableSourceClasses, setAvailableSourceClasses] = useState<string[]>([]);
+  const [availableTargetClasses, setAvailableTargetClasses] = useState<string[]>([]);
+  const [loadingSourceClasses, setLoadingSourceClasses] = useState(false);
+  const [loadingTargetClasses, setLoadingTargetClasses] = useState(false);
 
-  const classes = ["9", "10", "11", "12"];
-  const subjects = [
-    "Mathematics",
-    "Physics",
-    "Chemistry",
-    "Biology",
-    "English",
-    "History",
-    "Computer Science",
-    "Economics",
-  ];
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setSourceAcademicYear("");
+      setSourceClass("");
+      setSourceSubject("");
+      setTargetAcademicYear(currentAcademicYear);
+      setTargetClass(currentClass);
+      setTargetSubject(currentSubject);
+      setAvailableCurriculums([]);
+      setSelectedCurriculumId("");
+      setError(null);
+      setCurriculumPreview(null);
+      setAvailableSourceClasses([]);
+      setAvailableTargetClasses([]);
+    }
+  }, [isOpen, currentAcademicYear, currentClass, currentSubject]);
 
-  const handleCopy = () => {
-    if (!sourceClass || !sourceSubject) {
-      alert("Please select both class and subject");
+  // Fetch available source classes when source academic year changes
+  useEffect(() => {
+    const fetchSourceClasses = async () => {
+      if (!sourceAcademicYear || !educatorData) {
+        setAvailableSourceClasses([]);
+        return;
+      }
+
+      setLoadingSourceClasses(true);
+      try {
+
+        // Handle different academic year formats
+        const normalizedYear = sourceAcademicYear.replace(/\s+/g, '');
+        
+        const { data: classData, error } = await supabase
+          .from('school_classes')
+          .select('grade, academic_year')
+          .eq('school_id', educatorData.school_id)
+          .order('grade');
+
+        if (error) {
+          console.error('Error fetching source classes:', error);
+          setAvailableSourceClasses([]);
+          return;
+        }
+
+        // Filter by normalized academic year
+        const filteredData = classData?.filter(c => 
+          c.academic_year.replace(/\s+/g, '') === normalizedYear
+        );
+
+        if (!filteredData || filteredData.length === 0) {
+          console.log(`No source classes found for ${sourceAcademicYear}`);
+          setAvailableSourceClasses([]);
+          return;
+        }
+
+        const uniqueGrades = [...new Set(filteredData.map(c => c.grade))]
+          .sort((a, b) => parseInt(a) - parseInt(b));
+        console.log(`Found ${uniqueGrades.length} source classes for ${sourceAcademicYear}:`, uniqueGrades);
+        setAvailableSourceClasses(uniqueGrades);
+      } catch (err) {
+        console.error('Error fetching source classes:', err);
+        setAvailableSourceClasses([]);
+      } finally {
+        setLoadingSourceClasses(false);
+      }
+    };
+
+    fetchSourceClasses();
+  }, [sourceAcademicYear, classes, educatorData]);
+
+  // Fetch available target classes when target academic year changes
+  useEffect(() => {
+    const fetchTargetClasses = async () => {
+      if (!targetAcademicYear || !educatorData) {
+        setAvailableTargetClasses([]);
+        return;
+      }
+
+      setLoadingTargetClasses(true);
+      try {
+
+        // Handle different academic year formats
+        const normalizedYear = targetAcademicYear.replace(/\s+/g, '');
+        
+        const { data: classData, error } = await supabase
+          .from('school_classes')
+          .select('grade, academic_year')
+          .eq('school_id', educatorData.school_id)
+          .order('grade');
+
+        if (error) {
+          console.error('Error fetching target classes:', error);
+          setAvailableTargetClasses([]);
+          return;
+        }
+
+        // Filter by normalized academic year
+        const filteredData = classData?.filter(c => 
+          c.academic_year.replace(/\s+/g, '') === normalizedYear
+        );
+
+        if (!filteredData || filteredData.length === 0) {
+          console.log(`No target classes found for ${targetAcademicYear}`);
+          setAvailableTargetClasses([]);
+          return;
+        }
+
+        const uniqueGrades = [...new Set(filteredData.map(c => c.grade))]
+          .sort((a, b) => parseInt(a) - parseInt(b));
+        console.log(`Found ${uniqueGrades.length} target classes for ${targetAcademicYear}:`, uniqueGrades);
+        setAvailableTargetClasses(uniqueGrades);
+      } catch (err) {
+        console.error('Error fetching target classes:', err);
+        setAvailableTargetClasses([]);
+      } finally {
+        setLoadingTargetClasses(false);
+      }
+    };
+
+    fetchTargetClasses();
+  }, [targetAcademicYear, classes, educatorData]);
+
+  // Fetch available curriculums when source filters change
+  useEffect(() => {
+    const fetchCurriculums = async () => {
+      if (!sourceAcademicYear || !sourceClass || !sourceSubject) {
+        setAvailableCurriculums([]);
+        return;
+      }
+
+      // Wait for educator data to be available
+      if (!educatorData) {
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+
+        // Fetch curriculums matching the source criteria
+        const { data, error: fetchError } = await supabase
+          .from('curriculums')
+          .select(`
+            id,
+            subject,
+            class,
+            academic_year,
+            status,
+            last_modified,
+            curriculum_chapters (
+              id,
+              name,
+              order_number
+            )
+          `)
+          .eq('school_id', educatorData.school_id)
+          .eq('academic_year', sourceAcademicYear)
+          .eq('class', sourceClass)
+          .eq('subject', sourceSubject)
+          .in('status', ['approved', 'draft'])
+          .order('last_modified', { ascending: false });
+
+        if (fetchError) throw fetchError;
+
+        setAvailableCurriculums(data || []);
+        
+        if (data && data.length === 0) {
+          setError(`No curriculum found for Class ${sourceClass} - ${sourceSubject} (${sourceAcademicYear})`);
+        }
+      } catch (err: any) {
+        console.error('Error fetching curriculums:', err);
+        setError(err.message || 'Failed to fetch curriculums');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCurriculums();
+  }, [sourceAcademicYear, sourceClass, sourceSubject, educatorData]);
+
+  // Fetch curriculum preview when selected
+  useEffect(() => {
+    const fetchPreview = async () => {
+      if (!selectedCurriculumId) {
+        setCurriculumPreview(null);
+        return;
+      }
+
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('curriculums')
+          .select(`
+            id,
+            subject,
+            class,
+            academic_year,
+            curriculum_chapters (
+              id,
+              name,
+              description,
+              order_number,
+              curriculum_learning_outcomes (
+                id,
+                outcome
+              )
+            )
+          `)
+          .eq('id', selectedCurriculumId)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        setCurriculumPreview(data);
+      } catch (err: any) {
+        console.error('Error fetching preview:', err);
+      }
+    };
+
+    fetchPreview();
+  }, [selectedCurriculumId]);
+
+  const handleCopy = async (overwrite: boolean = false) => {
+    if (!selectedCurriculumId) {
+      setError("Please select a curriculum to copy");
       return;
     }
 
+    if (!targetAcademicYear || !targetClass || !targetSubject) {
+      setError("Please fill in all target fields");
+      return;
+    }
+
+    // Check if target already exists
+    if (
+      sourceAcademicYear === targetAcademicYear &&
+      sourceClass === targetClass &&
+      sourceSubject === targetSubject
+    ) {
+      setError("Source and target cannot be the same");
+      return;
+    }
+
+    setError(null);
     setSubmitting(true);
-    setTimeout(() => {
-      onCopy(sourceClass, sourceSubject);
-      setSubmitting(false);
+
+    try {
+      await onCopy(selectedCurriculumId, targetSubject, targetClass, targetAcademicYear, overwrite);
+      setShowOverwriteConfirm(false);
+      setExistingCurriculumInfo(null);
       onClose();
-      alert(`Curriculum copied from Class ${sourceClass} - ${sourceSubject}`);
-    }, 800);
+    } catch (err: any) {
+      // Check if it's a curriculum exists error
+      try {
+        const errorData = JSON.parse(err.message);
+        if (errorData.type === 'CURRICULUM_EXISTS') {
+          setExistingCurriculumInfo(errorData);
+          setShowOverwriteConfirm(true);
+          setError(null);
+        } else {
+          setError(err.message || 'Failed to copy curriculum');
+        }
+      } catch {
+        // Not a JSON error, display as is
+        setError(err.message || 'Failed to copy curriculum');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOverwriteConfirm = () => {
+    setShowOverwriteConfirm(false);
+    handleCopy(true);
+  };
+
+  const handleOverwriteCancel = () => {
+    setShowOverwriteConfirm(false);
+    setExistingCurriculumInfo(null);
+    setError(null);
   };
 
   return (
@@ -821,75 +1105,293 @@ const CopyCurriculumModal = ({
       subtitle="Copy chapters and learning outcomes from another curriculum"
     >
       <div className="space-y-5">
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
-            This will copy all chapters and learning outcomes from the selected curriculum as a template. You can then modify them as needed.
-          </p>
-        </div>
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Source Class <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={sourceClass}
-            onChange={(e) => setSourceClass(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
-          >
-            <option value="">Select Class</option>
-            {classes.map((cls) => (
-              <option key={cls} value={cls}>
-                Class {cls}
-              </option>
-            ))}
-          </select>
-        </div>
+        {showOverwriteConfirm && existingCurriculumInfo && (
+          <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
+            <div className="flex items-start gap-3">
+              <ExclamationTriangleIcon className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-amber-900 mb-2">
+                  ⚠️ Curriculum Already Exists
+                </h4>
+                <p className="text-sm text-amber-800 mb-3">
+                  {existingCurriculumInfo.message}
+                </p>
+                <p className="text-sm text-amber-700 mb-3">
+                  <strong>Status:</strong> {existingCurriculumInfo.existingStatus}
+                </p>
+                <p className="text-sm text-amber-800 mb-4">
+                  Do you want to <strong>delete the existing curriculum</strong> and replace it with the copied one? This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleOverwriteCancel}
+                    disabled={submitting}
+                    className="flex-1 px-4 py-2 bg-white border border-amber-300 text-amber-900 rounded-lg hover:bg-amber-50 transition-colors text-sm font-medium disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleOverwriteConfirm}
+                    disabled={submitting}
+                    className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  >
+                    {submitting ? (
+                      <>
+                        <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                        Replacing...
+                      </>
+                    ) : (
+                      <>
+                        <TrashIcon className="h-4 w-4" />
+                        Delete & Replace
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Source Subject <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={sourceSubject}
-            onChange={(e) => setSourceSubject(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
-          >
-            <option value="">Select Subject</option>
-            {subjects.map((subject) => (
-              <option key={subject} value={subject}>
-                {subject}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+        {!showOverwriteConfirm && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              Select a source curriculum to copy from, then specify where to copy it to. All chapters, learning outcomes, and assessment mappings will be copied.
+            </p>
+          </div>
+        )}
 
-      <div className="mt-8 flex justify-end gap-3">
-        <button
-          onClick={onClose}
-          disabled={submitting}
-          className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleCopy}
-          disabled={submitting}
-          className="rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
-        >
-          {submitting ? (
-            <>
-              <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              Copying...
-            </>
-          ) : (
-            <>
-              <DocumentDuplicateIcon className="h-4 w-4" />
-              Copy Curriculum
-            </>
+        {/* SOURCE SECTION */}
+        {!showOverwriteConfirm && (
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">📚 Copy From (Source)</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Academic Year <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={sourceAcademicYear}
+                onChange={(e) => {
+                  setSourceAcademicYear(e.target.value);
+                  setSelectedCurriculumId("");
+                }}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+              >
+                <option value="">Select Year</option>
+                {academicYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Class <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={sourceClass}
+                onChange={(e) => {
+                  setSourceClass(e.target.value);
+                  setSelectedCurriculumId("");
+                }}
+                disabled={!sourceAcademicYear || loadingSourceClasses}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {!sourceAcademicYear 
+                    ? "Select Year first" 
+                    : loadingSourceClasses 
+                    ? "Loading..." 
+                    : availableSourceClasses.length === 0
+                    ? "No classes"
+                    : "Select Class"}
+                </option>
+                {availableSourceClasses.map((cls) => (
+                  <option key={cls} value={cls}>
+                    Class {cls}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Subject <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={sourceSubject}
+                onChange={(e) => {
+                  setSourceSubject(e.target.value);
+                  setSelectedCurriculumId("");
+                }}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+              >
+                <option value="">Select Subject</option>
+                {subjects.map((subject) => (
+                  <option key={subject} value={subject}>
+                    {subject}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Available Curriculums */}
+          {loading && (
+            <div className="flex items-center justify-center py-4">
+              <ArrowPathIcon className="h-5 w-5 animate-spin text-indigo-600" />
+              <span className="ml-2 text-sm text-gray-600">Loading curriculums...</span>
+            </div>
           )}
-        </button>
+
+          {!loading && availableCurriculums.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Select Curriculum <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedCurriculumId}
+                onChange={(e) => setSelectedCurriculumId(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+              >
+                <option value="">Choose a curriculum</option>
+                {availableCurriculums.map((curr) => (
+                  <option key={curr.id} value={curr.id}>
+                    {curr.subject} - Class {curr.class} ({curr.academic_year}) - {curr.curriculum_chapters?.length || 0} chapters - {curr.status}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+        )}
+
+        {/* PREVIEW SECTION */}
+        {!showOverwriteConfirm && curriculumPreview && (
+          <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+            <h4 className="text-xs font-semibold text-gray-900 mb-2">📋 Preview</h4>
+            <div className="space-y-1 text-xs text-gray-700">
+              <p><strong>Chapters:</strong> {curriculumPreview.curriculum_chapters?.length || 0}</p>
+              <p><strong>Total Outcomes:</strong> {
+                curriculumPreview.curriculum_chapters?.reduce((sum: number, ch: any) => 
+                  sum + (ch.curriculum_learning_outcomes?.length || 0), 0
+                ) || 0
+              }</p>
+            </div>
+          </div>
+        )}
+
+        {/* TARGET SECTION */}
+        {!showOverwriteConfirm && (
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">🎯 Copy To (Target)</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Academic Year <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={targetAcademicYear}
+                onChange={(e) => setTargetAcademicYear(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+              >
+                <option value="">Select Year</option>
+                {academicYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Class <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={targetClass}
+                onChange={(e) => setTargetClass(e.target.value)}
+                disabled={!targetAcademicYear || loadingTargetClasses}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {!targetAcademicYear 
+                    ? "Select Year first" 
+                    : loadingTargetClasses 
+                    ? "Loading..." 
+                    : availableTargetClasses.length === 0
+                    ? "No classes"
+                    : "Select Class"}
+                </option>
+                {availableTargetClasses.map((cls) => (
+                  <option key={cls} value={cls}>
+                    Class {cls}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Subject <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={targetSubject}
+                onChange={(e) => setTargetSubject(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+              >
+                <option value="">Select Subject</option>
+                {subjects.map((subject) => (
+                  <option key={subject} value={subject}>
+                    {subject}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+        )}
       </div>
+
+      {!showOverwriteConfirm && (
+        <div className="mt-8 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            disabled={submitting}
+            className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => handleCopy(false)}
+            disabled={submitting || !selectedCurriculumId}
+            className="rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+          >
+            {submitting ? (
+              <>
+                <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                Copying...
+              </>
+            ) : (
+              <>
+                <DocumentDuplicateIcon className="h-4 w-4" />
+                Copy Curriculum
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </ModalWrapper>
   );
 };
@@ -1066,24 +1568,38 @@ interface CurriculumBuilderProps {
 const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
   // Check if current user is school_admin
   const [isSchoolAdmin, setIsSchoolAdmin] = React.useState(false);
+  const [currentUser, setCurrentUser] = React.useState<any>(null);
+  const [educatorData, setEducatorData] = React.useState<any>(null);
 
+  // Fetch user and educator data once on mount
   React.useEffect(() => {
-    const checkUserRole = async () => {
+    const initializeUser = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          setCurrentUser(user);
+          
+          // Check role
           const { data: userData } = await supabase
             .from('users')
             .select('role')
             .eq('id', user.id)
             .single();
           setIsSchoolAdmin(userData?.role === 'school_admin');
+
+          // Get educator data
+          const { data: educator } = await supabase
+            .from('school_educators')
+            .select('id, school_id')
+            .eq('user_id', user.id)
+            .single();
+          setEducatorData(educator);
         }
       } catch (error) {
-        console.error('Error checking user role:', error);
+        console.error('Error initializing user:', error);
       }
     };
-    checkUserRole();
+    initializeUser();
   }, []);
 
   // Configuration data - use props or fallback to hardcoded defaults
@@ -1164,6 +1680,13 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
   const [approvedBy, setApprovedBy] = useState<string | undefined>();
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  
+  // State for available classes based on academic year
+  const [availableClasses, setAvailableClasses] = useState<string[]>([]);
+  const [loadingClasses, setLoadingClasses] = useState(false);
+  
+  // State for outcomes search
+  const [outcomesSearchQuery, setOutcomesSearchQuery] = useState("");
 
   // Modal states
   const [showAddChapterModal, setShowAddChapterModal] = useState(false);
@@ -1185,6 +1708,60 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
       setHasUnsavedChanges(true);
     }
   }, [chapters, learningOutcomes]);
+
+  // Fetch available classes when academic year changes
+  useEffect(() => {
+    const fetchAvailableClasses = async () => {
+      if (!selectedAcademicYear || !educatorData) {
+        setAvailableClasses([]);
+        return;
+      }
+
+      setLoadingClasses(true);
+      try {
+
+        // Fetch distinct classes for the selected academic year
+        // Handle different academic year formats (with/without spaces)
+        const normalizedYear = selectedAcademicYear.replace(/\s+/g, '');
+        
+        const { data: classData, error } = await supabase
+          .from('school_classes')
+          .select('grade, academic_year')
+          .eq('school_id', educatorData.school_id)
+          .order('grade');
+        
+        // Filter by normalized academic year to handle format variations
+        const filteredData = classData?.filter(c => 
+          c.academic_year.replace(/\s+/g, '') === normalizedYear
+        );
+
+        if (error) {
+          console.error('Error fetching classes:', error);
+          setAvailableClasses([]);
+          return;
+        }
+
+        if (filteredData && filteredData.length > 0) {
+          // Extract unique grades and sort numerically
+          const uniqueGrades = [...new Set(filteredData.map(c => c.grade))]
+            .sort((a, b) => parseInt(a) - parseInt(b));
+          console.log(`Found ${uniqueGrades.length} classes for ${selectedAcademicYear}:`, uniqueGrades);
+          setAvailableClasses(uniqueGrades);
+        } else {
+          // No classes found for this academic year, show empty
+          console.log(`No classes found for ${selectedAcademicYear}, showing empty list`);
+          setAvailableClasses([]);
+        }
+      } catch (err) {
+        console.error('Error in fetchAvailableClasses:', err);
+        setAvailableClasses([]);
+      } finally {
+        setLoadingClasses(false);
+      }
+    };
+
+    fetchAvailableClasses();
+  }, [selectedAcademicYear, classes, educatorData]);
 
   // Auto-save effect
   useEffect(() => {
@@ -1215,6 +1792,31 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
         chapter.description.toLowerCase().includes(q)
     );
   }, [chapters, searchQuery]);
+
+  // Filtered learning outcomes based on search
+  const filteredLearningOutcomes = useMemo(() => {
+    const q = outcomesSearchQuery.toLowerCase();
+    if (!q) return learningOutcomes;
+    return learningOutcomes.filter(
+      (outcome) =>
+        outcome.outcome.toLowerCase().includes(q) ||
+        outcome.bloomLevel?.toLowerCase().includes(q) ||
+        outcome.assessmentMappings.some(m => 
+          m.assessmentType.toLowerCase().includes(q)
+        )
+    );
+  }, [learningOutcomes, outcomesSearchQuery]);
+
+  // Filtered chapters that have matching outcomes
+  const chaptersWithFilteredOutcomes = useMemo(() => {
+    if (!outcomesSearchQuery) return chapters;
+    
+    const outcomeChapterIds = new Set(
+      filteredLearningOutcomes.map(o => o.chapterId)
+    );
+    
+    return chapters.filter(ch => outcomeChapterIds.has(ch.id));
+  }, [chapters, filteredLearningOutcomes, outcomesSearchQuery]);
 
   // Validation
   const validateCurriculum = (): boolean => {
@@ -1377,7 +1979,6 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
     }
   };
 
-  // Save draft handler
   const handleSaveDraft = () => {
     setSaveStatus("saving");
     setTimeout(() => {
@@ -1387,10 +1988,149 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
     }, 800);
   };
 
+
   // Copy curriculum handler
-  const handleCopyCurriculum = (sourceClass: string, sourceSubject: string) => {
-    // Implementation pending - will fetch and copy curriculum from source
-    console.log(`Copy feature: Class ${sourceClass} - ${sourceSubject}`);
+  const handleCopyCurriculum = async (
+    sourceCurriculumId: string,
+    targetSubject: string,
+    targetClass: string,
+    targetAcademicYear: string,
+    overwriteExisting: boolean = false
+  ) => {
+    try {
+      if (!educatorData) throw new Error("Educator data not loaded");
+
+      // Check if target curriculum already exists
+      const { data: existingCurriculum } = await supabase
+        .from('curriculums')
+        .select('id, status')
+        .eq('school_id', educatorData.school_id)
+        .eq('subject', targetSubject)
+        .eq('class', targetClass)
+        .eq('academic_year', targetAcademicYear)
+        .maybeSingle();
+
+      if (existingCurriculum) {
+        if (!overwriteExisting) {
+          // Return error with existing curriculum info for modal to handle
+          throw new Error(
+            JSON.stringify({
+              type: 'CURRICULUM_EXISTS',
+              message: `Curriculum already exists for ${targetSubject} - Class ${targetClass} (${targetAcademicYear}).`,
+              existingId: existingCurriculum.id,
+              existingStatus: existingCurriculum.status
+            })
+          );
+        }
+
+        // Delete existing curriculum if overwrite is confirmed
+        const { error: deleteError } = await supabase
+          .from('curriculums')
+          .delete()
+          .eq('id', existingCurriculum.id);
+
+        if (deleteError) throw new Error(`Failed to delete existing curriculum: ${deleteError.message}`);
+      }
+
+      // Use the database function to copy curriculum
+      // Note: created_by should be user.id (not educator.id) because the FK references users table
+      const { data: newCurriculumId, error: copyError } = await supabase
+        .rpc('copy_curriculum_template', {
+          p_source_curriculum_id: sourceCurriculumId,
+          p_target_school_id: educatorData.school_id,
+          p_target_subject: targetSubject,
+          p_target_class: targetClass,
+          p_target_academic_year: targetAcademicYear,
+          p_created_by: educatorData.id
+        });
+
+      if (copyError) throw copyError;
+
+      // Fetch the copied curriculum data
+      const { data: copiedCurriculum, error: fetchError } = await supabase
+        .from('curriculums')
+        .select(`
+          id,
+          subject,
+          class,
+          academic_year,
+          status,
+          curriculum_chapters (
+            id,
+            name,
+            code,
+            description,
+            order_number,
+            estimated_duration,
+            duration_unit,
+            curriculum_learning_outcomes (
+              id,
+              outcome,
+              bloom_level,
+              outcome_assessment_mappings (
+                id,
+                assessment_type_id,
+                weightage,
+                assessment_types (
+                  id,
+                  name
+                )
+              )
+            )
+          )
+        `)
+        .eq('id', newCurriculumId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update local state with copied data
+      setSelectedSubject(copiedCurriculum.subject);
+      setSelectedClass(copiedCurriculum.class);
+      setSelectedAcademicYear(copiedCurriculum.academic_year);
+      setStatus(copiedCurriculum.status);
+
+      // Transform chapters
+      const transformedChapters: Chapter[] = copiedCurriculum.curriculum_chapters.map((ch: any) => ({
+        id: ch.id,
+        name: ch.name,
+        code: ch.code,
+        description: ch.description,
+        order: ch.order_number,
+        estimatedDuration: ch.estimated_duration,
+        durationUnit: ch.duration_unit,
+      }));
+
+      // Transform learning outcomes
+      const transformedOutcomes: LearningOutcome[] = [];
+      copiedCurriculum.curriculum_chapters.forEach((ch: any) => {
+        ch.curriculum_learning_outcomes.forEach((lo: any) => {
+          transformedOutcomes.push({
+            id: lo.id,
+            chapterId: ch.id,
+            outcome: lo.outcome,
+            bloomLevel: lo.bloom_level,
+            assessmentMappings: lo.outcome_assessment_mappings.map((m: any) => ({
+              assessmentType: m.assessment_types.name,
+              weightage: m.weightage,
+            })),
+          });
+        });
+      });
+
+      setChapters(transformedChapters);
+      setLearningOutcomes(transformedOutcomes);
+      setHasUnsavedChanges(false);
+
+      alert(
+        `✅ Curriculum copied successfully!\n\n` +
+        `Copied ${transformedChapters.length} chapters and ${transformedOutcomes.length} learning outcomes.\n\n` +
+        `Target: ${targetSubject} - Class ${targetClass} (${targetAcademicYear})`
+      );
+    } catch (err: any) {
+      console.error('Error copying curriculum:', err);
+      throw new Error(err.message || 'Failed to copy curriculum');
+    }
   };
 
   // Export curriculum handler
@@ -1595,18 +2335,34 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
-                disabled={(status === "approved" && !isSchoolAdmin) || status === "pending_approval"}
+                disabled={(status === "approved" && !isSchoolAdmin) || status === "pending_approval" || !selectedAcademicYear || loadingClasses}
                 className={`w-full rounded-lg border ${
                   errors.class ? "border-red-300" : "border-gray-300"
                 } px-4 py-2.5 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
               >
-                <option value="">Select Class</option>
-                {classes.map((cls) => (
+                <option value="">
+                  {!selectedAcademicYear 
+                    ? "Select Academic Year first" 
+                    : loadingClasses 
+                    ? "Loading classes..." 
+                    : availableClasses.length === 0
+                    ? "No classes available"
+                    : "Select Class"}
+                </option>
+                {availableClasses.map((cls) => (
                   <option key={cls} value={cls}>
                     Class {cls}
                   </option>
                 ))}
               </select>
+              {selectedAcademicYear && (
+                <p className="mt-1 text-xs text-gray-500">
+                  {availableClasses.length > 0 
+                    ? `${availableClasses.length} class${availableClasses.length !== 1 ? 'es' : ''} available for ${selectedAcademicYear}`
+                    : `No classes found for ${selectedAcademicYear}. Please add classes first.`
+                  }
+                </p>
+              )}
             </div>
           </div>
 
@@ -1830,6 +2586,21 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
                   </p>
                 </div>
               </div>
+
+              {learningOutcomes.length > 0 && (
+                <div className="mt-4">
+                  <SearchBar
+                    value={outcomesSearchQuery}
+                    onChange={setOutcomesSearchQuery}
+                    placeholder="Search learning outcomes, Bloom's levels, or assessment types..."
+                  />
+                  {outcomesSearchQuery && (
+                    <p className="mt-2 text-xs text-gray-600">
+                      Found {filteredLearningOutcomes.length} outcome{filteredLearningOutcomes.length !== 1 ? "s" : ""} in {chaptersWithFilteredOutcomes.length} chapter{chaptersWithFilteredOutcomes.length !== 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="p-5">
@@ -1847,8 +2618,8 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
                 </div>
               ) : (
                 <div className="space-y-5">
-                  {chapters.map((chapter, idx) => {
-                    const outcomes = learningOutcomes.filter(
+                  {chaptersWithFilteredOutcomes.map((chapter, idx) => {
+                    const outcomes = filteredLearningOutcomes.filter(
                       (lo) => lo.chapterId === chapter.id
                     );
 
@@ -2079,6 +2850,13 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
         isOpen={showCopyModal}
         onClose={() => setShowCopyModal(false)}
         onCopy={handleCopyCurriculum}
+        currentSubject={selectedSubject}
+        currentClass={selectedClass}
+        currentAcademicYear={selectedAcademicYear}
+        subjects={subjects}
+        classes={classes}
+        academicYears={academicYears}
+        educatorData={educatorData}
       />
 
       <ExportCurriculumModal
