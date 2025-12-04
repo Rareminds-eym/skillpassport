@@ -651,32 +651,54 @@ const StudentDashboard = () => {
     assessment: (
       <Card
         key="assessment"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+        className="h-full bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl border-0 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden group"
       >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
-          <CardTitle className="flex items-center justify-between">
+        {/* Decorative background elements */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-500"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12 transition-transform group-hover:scale-110 duration-500"></div>
+
+        <CardHeader className="px-6 py-5 border-b border-white/10 relative z-10">
+          <CardTitle className="flex items-center justify-between text-white">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <ClipboardList className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-inner">
+                <ClipboardList className="w-5 h-5 text-white" />
               </div>
-              <span className="text-lg font-semibold text-gray-900">
-                Assessment Test
-              </span>
+              <div>
+                <span className="text-lg font-bold tracking-tight">
+                  Assessment Test
+                </span>
+                <p className="text-xs text-indigo-100 font-medium mt-0.5 opacity-90">
+                  Evaluate your potential
+                </p>
+              </div>
             </div>
+            <Badge className="bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur-md">
+              Recommended
+            </Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-4 p-6 space-y-3">
-          <div className="text-center py-4">
-            <p className="text-gray-600 mb-4">
-              Take the assessment test to evaluate your skills and get a personalized report.
+
+        <CardContent className="pt-6 p-6 relative z-10 flex flex-col justify-between h-[calc(100%-88px)]">
+          <div className="space-y-4">
+            <p className="text-indigo-50 text-sm leading-relaxed">
+              Take our comprehensive assessment to discover your strengths and get a personalized career roadmap.
             </p>
-            <Button
-              onClick={() => navigate("/student/assessment/test")}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2 rounded-lg transition-colors"
-            >
-              Take Test
-            </Button>
+
+            <div className="flex items-center gap-4 text-xs text-indigo-100 font-medium">
+              <div className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-md">
+                <Target className="w-3.5 h-3.5" />
+                <span>Skill Analysis</span>
+              </div>
+            </div>
           </div>
+
+          <Button
+            onClick={() => navigate("/student/assessment/test")}
+            className="w-full mt-6 bg-white text-indigo-600 hover:bg-indigo-50 font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
+          >
+            Start Assessment
+            <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
         </CardContent>
       </Card>
     ),
