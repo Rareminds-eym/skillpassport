@@ -1,154 +1,173 @@
-import { Compass, Zap, Heart, Star, Trophy, Rocket } from 'lucide-react';
+import { Compass, Zap, Heart, Star, Trophy, Rocket, Sparkles } from 'lucide-react';
 
-/**
- * Profile Section Detail Component
- * Displays detailed profile information in the modal
- */
 const ProfileSection = ({ results, riasecNames, riasecColors, traitNames, traitColors }) => {
     const { riasec, aptitude, bigFive, workValues } = results;
 
     return (
-        <div className="space-y-6">
-            {/* Key Findings Grid */}
-            <div className="grid md:grid-cols-2 gap-6">
-                {/* RIASEC Card */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center">
-                            <Compass className="w-5 h-5 text-white" />
+        <div className="space-y-10">
+            <div className="grid grid-cols-3 gap-6">
+                {riasec?.topThree?.slice(0, 3).map((code, idx) => (
+                    <div key={code} className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
+                        <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/50 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
+                            <div className="w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-2xl mb-4 shadow-lg" style={{ backgroundColor: riasecColors[code] }}>{code}</div>
+                            <p className="font-bold text-gray-800 text-xl">{riasecNames[code]}</p>
+                            <p className="text-sm text-gray-500 mt-1">#{idx + 1} Interest</p>
                         </div>
-                        <h3 className="font-bold text-gray-800">Top Interest Themes (RIASEC)</h3>
                     </div>
-                    <div className="space-y-3">
-                        {riasec.topThree.map((code, idx) => (
-                            <div key={code} className="flex items-center gap-3 bg-white/70 rounded-xl p-3">
-                                <div
-                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-                                    style={{ backgroundColor: riasecColors[code] }}
-                                >
-                                    {code}
-                                </div>
-                                <div>
-                                    <p className="font-semibold text-gray-800">{riasecNames[code]}</p>
-                                    <p className="text-xs text-gray-500">Code {idx + 1}</p>
-                                </div>
+                ))}
+            </div>
+            <div className="grid lg:grid-cols-2 gap-8">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-[1px]">
+                    <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-8 h-full">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                                <Compass className="w-7 h-7 text-white" />
                             </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Multi-Aptitude Battery Card */}
-                <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl p-6 border border-amber-100">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center">
-                            <Zap className="w-5 h-5 text-white" />
+                            <div>
+                                <h3 className="font-bold text-gray-900 text-lg">Interest Profile</h3>
+                                <p className="text-xs text-gray-500">RIASEC Assessment</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="font-bold text-gray-800">Multi-Aptitude Battery</h3>
-                            <p className="text-xs text-gray-500">DAT/GATB Style Cognitive Assessment</p>
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        {aptitude?.scores ? (
-                            Object.entries(aptitude.scores).map(([domain, data]) => {
-                                const domainInfo = {
-                                    verbal: { name: 'A) Verbal Reasoning', color: 'bg-blue-500' },
-                                    numerical: { name: 'B) Numerical Ability', color: 'bg-green-500' },
-                                    abstract: { name: 'C) Abstract/Logical', color: 'bg-purple-500' },
-                                    spatial: { name: 'D) Spatial/Mechanical', color: 'bg-orange-500' },
-                                    clerical: { name: 'E) Clerical Speed', color: 'bg-pink-500' }
-                                };
-                                const info = domainInfo[domain] || { name: domain, color: 'bg-gray-500' };
-                                const percentage = data.percentage || 0;
+                        <div className="space-y-3">
+                            {riasec?.topThree?.map((code) => {
+                                const score = riasec.scores?.[code] || 0;
+                                const pct = Math.round((score / 25) * 100);
                                 return (
-                                    <div key={domain} className="flex items-center justify-between bg-white/70 rounded-lg px-3 py-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`w-2 h-2 rounded-full ${info.color}`}></div>
-                                            <span className="text-xs font-medium text-gray-700">{info.name}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs text-gray-500">{data.correct}/{data.total}</span>
-                                            <div className="w-12 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                <div
-                                                    className={`h-full rounded-full ${info.color} transition-all duration-500`}
-                                                    style={{ width: `${percentage}%` }}
-                                                />
+                                    <div key={code}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md" style={{ backgroundColor: riasecColors[code] }}>{code}</div>
+                                                <span className="font-semibold text-gray-700">{riasecNames[code]}</span>
                                             </div>
-                                            <span className="text-xs font-semibold text-gray-600 w-8">{percentage}%</span>
+                                            <span className="text-sm font-bold" style={{ color: riasecColors[code] }}>{pct}%</span>
+                                        </div>
+                                        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                                            <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: riasecColors[code] }} />
                                         </div>
                                     </div>
                                 );
-                            })
-                        ) : (
-                            <p className="text-sm text-gray-500 italic">Aptitude data not available</p>
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 p-[1px]">
+                    <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-8 h-full">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                                <Zap className="w-7 h-7 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900 text-xl">Cognitive Abilities</h3>
+                                <p className="text-sm text-gray-500">Multi-Aptitude Battery</p>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            {aptitude?.scores ? Object.entries(aptitude.scores).map(([domain, data]) => {
+                                const configs = { verbal: { n: 'Verbal', i: '📝', c: '#3b82f6' }, numerical: { n: 'Numerical', i: '🔢', c: '#10b981' }, abstract: { n: 'Abstract', i: '🧩', c: '#8b5cf6' }, spatial: { n: 'Spatial', i: '📐', c: '#f59e0b' }, clerical: { n: 'Clerical', i: '⚡', c: '#ec4899' } };
+                                const cfg = configs[domain] || { n: domain, i: '📊', c: '#6b7280' };
+                                return (
+                                    <div key={domain} className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-lg">{cfg.i}</div>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-sm font-medium text-gray-700">{cfg.n}</span>
+                                                <span className="text-xs font-bold" style={{ color: cfg.c }}>{data.correct}/{data.total}</span>
+                                            </div>
+                                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                <div className="h-full rounded-full" style={{ width: `${data.percentage || 0}%`, backgroundColor: cfg.c }} />
+                                            </div>
+                                        </div>
+                                        <span className="text-sm font-bold text-gray-600 w-12 text-right">{data.percentage || 0}%</span>
+                                    </div>
+                                );
+                            }) : <p className="text-gray-500 italic text-center py-4">No aptitude data</p>}
+                        </div>
+                        {aptitude?.topStrengths && (
+                            <div className="mt-6 flex flex-wrap gap-2">
+                                {aptitude.topStrengths.map((s, i) => <span key={i} className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 rounded-full text-xs font-semibold">⭐ {s}</span>)}
+                            </div>
                         )}
                     </div>
-                    {aptitude?.topStrengths && (
-                        <div className="mt-3 pt-3 border-t border-amber-200">
-                            <p className="text-xs font-semibold text-amber-700 mb-1">Top Cognitive Strengths:</p>
-                            <p className="text-sm text-gray-700">{aptitude.topStrengths.join(', ')}</p>
-                        </div>
-                    )}
                 </div>
-
-                {/* Personality Card */}
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-purple-500 flex items-center justify-center">
-                            <Heart className="w-5 h-5 text-white" />
-                        </div>
-                        <h3 className="font-bold text-gray-800">Personality Highlights (Big Five)</h3>
-                    </div>
-                    <div className="space-y-2">
-                        {['O', 'C', 'E', 'A', 'N'].map(trait => {
-                            const score = bigFive[trait] || 0;
-                            const percentage = (score / 5) * 100;
-                            return (
-                                <div key={trait} className="flex items-center justify-between bg-white/70 rounded-lg px-3 py-2">
-                                    <span className="text-sm font-medium text-gray-700">{traitNames[trait]}</span>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full transition-all duration-500"
-                                                style={{ width: `${percentage}%`, backgroundColor: traitColors[trait] }}
-                                            />
-                                        </div>
-                                        <span className="text-xs font-semibold text-gray-600 w-8">{score.toFixed(1)}</span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* Work Values Card */}
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border border-amber-100">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center">
-                            <Star className="w-5 h-5 text-white" />
-                        </div>
-                        <h3 className="font-bold text-gray-800">Top Work Values</h3>
-                    </div>
-                    <div className="space-y-3">
-                        {workValues.topThree.map((val, idx) => (
-                            <div key={idx} className="flex items-center gap-3 bg-white/70 rounded-xl p-3">
-                                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                                    <Trophy className="w-4 h-4 text-amber-600" />
-                                </div>
-                                <span className="font-semibold text-gray-800">{val.value}</span>
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 p-[1px]">
+                    <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-8 h-full">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                                <Heart className="w-7 h-7 text-white" />
                             </div>
-                        ))}
+                            <div>
+                                <h3 className="font-bold text-gray-900 text-xl">Personality Traits</h3>
+                                <p className="text-sm text-gray-500">Big Five Model</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-5 gap-4 mb-8">
+                            {['O', 'C', 'E', 'A', 'N'].map(t => {
+                                const sc = bigFive?.[t] || 0;
+                                const p = (sc / 5) * 100;
+                                return (
+                                    <div key={t} className="text-center">
+                                        <div className="relative w-full aspect-square mb-2">
+                                            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                                                <circle cx="18" cy="18" r="15" fill="none" stroke="#f3f4f6" strokeWidth="3" />
+                                                <circle cx="18" cy="18" r="15" fill="none" stroke={traitColors[t]} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${p * 0.94} 100`} />
+                                            </svg>
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <span className="text-xs font-bold" style={{ color: traitColors[t] }}>{sc.toFixed(1)}</span>
+                                            </div>
+                                        </div>
+                                        <p className="text-[10px] font-semibold text-gray-600">{traitNames[t]}</p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        {bigFive?.workStyleSummary && <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl"><p className="text-sm text-gray-700">{bigFive.workStyleSummary}</p></div>}
+                    </div>
+                </div>
+
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 p-[1px]">
+                    <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-8 h-full">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                                <Star className="w-7 h-7 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900 text-xl">Work Values</h3>
+                                <p className="text-sm text-gray-500">What Motivates You</p>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            {workValues?.topThree?.map((val, idx) => (
+                                <div key={idx} className="flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-50/80 to-teal-50/80 rounded-2xl border border-emerald-100 hover:shadow-md transition-all group">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform">
+                                        <Trophy className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-gray-800">{val.value}</p>
+                                        <p className="text-xs text-gray-500">Priority #{idx + 1}</p>
+                                    </div>
+                                    <div className="px-3 py-1 bg-emerald-500 text-white rounded-full text-xs font-bold">{val.score}/5</div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
-
-            {/* Overall Career Direction */}
-            <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl p-6 text-white">
-                <div className="flex items-center gap-2 mb-3">
-                    <Rocket className="w-5 h-5" />
-                    <h4 className="font-bold text-lg">Overall Career Direction</h4>
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-8">
+                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_30%_50%,white_0%,transparent_50%)]" />
+                <div className="relative flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <Rocket className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <Sparkles className="w-4 h-4 text-yellow-300" />
+                            <h4 className="font-bold text-white text-lg">Your Career Direction</h4>
+                        </div>
+                        <p className="text-white/95 text-lg leading-relaxed">{results.overallSummary}</p>
+                    </div>
                 </div>
-                <p className="text-white/90 leading-relaxed italic">"{results.overallSummary}"</p>
             </div>
         </div>
     );

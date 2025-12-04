@@ -249,60 +249,95 @@ const AssessmentResult = () => {
                     </div>
                 </div>
 
-                {/* Detail Modal */}
+                {/* Detail Modal - Modern Design */}
                 <Dialog open={activeSection !== null} onOpenChange={() => setActiveSection(null)}>
-                    <DialogContent className="max-w-7xl max-h-[95vh] p-0 gap-0 overflow-hidden">
-                        {/* Fixed Header */}
-                        <DialogHeader className="px-8 pt-8 pb-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white sticky top-0 z-10">
-                            <DialogTitle className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-3">
-                                {activeSection === 'profile' && (
-                                    <>
-                                        <Target className="w-8 h-8 text-indigo-600" />
-                                        Student Profile Snapshot
-                                    </>
-                                )}
-                                {activeSection === 'career' && (
-                                    <>
-                                        <Briefcase className="w-8 h-8 text-emerald-600" />
-                                        Career Fit Results
-                                    </>
-                                )}
-                                {activeSection === 'skills' && (
-                                    <>
-                                        <Zap className="w-8 h-8 text-amber-600" />
-                                        Skill Gap & Development Plan
-                                    </>
-                                )}
-                                {activeSection === 'roadmap' && (
-                                    <>
-                                        <Rocket className="w-8 h-8 text-purple-600" />
-                                        6-12 Month Action Roadmap
-                                    </>
-                                )}
-                            </DialogTitle>
-                            <p className="text-gray-500 text-sm mt-2">Detailed assessment insights and recommendations</p>
+                    <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] p-0 gap-0 overflow-hidden border-0 shadow-2xl rounded-3xl">
+                        {/* Gradient Header */}
+                        <DialogHeader className="relative overflow-hidden">
+                            {/* Background gradient based on section */}
+                            <div className={`absolute inset-0 ${
+                                activeSection === 'profile' ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600' :
+                                activeSection === 'career' ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600' :
+                                activeSection === 'skills' ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500' :
+                                'bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600'
+                            }`} />
+                            {/* Decorative circles */}
+                            <div className="absolute top-4 left-4 w-20 h-20 border border-white/20 rounded-full" />
+                            <div className="absolute bottom-4 right-1/4 w-12 h-12 border border-white/15 rounded-full" />
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
+                            
+                            <div className="relative px-8 pt-8 pb-6">
+                                <DialogTitle className="text-3xl font-bold text-white flex items-center gap-4">
+                                    {activeSection === 'profile' && (
+                                        <>
+                                            <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                                <Target className="w-7 h-7 text-white" />
+                                            </div>
+                                            <div>
+                                                <span>Student Profile Snapshot</span>
+                                                <p className="text-white/70 text-sm font-normal mt-1">Your interests, aptitudes & personality</p>
+                                            </div>
+                                        </>
+                                    )}
+                                    {activeSection === 'career' && (
+                                        <>
+                                            <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                                <Briefcase className="w-7 h-7 text-white" />
+                                            </div>
+                                            <div>
+                                                <span>Career Fit Results</span>
+                                                <p className="text-white/70 text-sm font-normal mt-1">Best-matching career paths for you</p>
+                                            </div>
+                                        </>
+                                    )}
+                                    {activeSection === 'skills' && (
+                                        <>
+                                            <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                                <Zap className="w-7 h-7 text-white" />
+                                            </div>
+                                            <div>
+                                                <span>Skill Gap & Development</span>
+                                                <p className="text-white/70 text-sm font-normal mt-1">Skills to build for career success</p>
+                                            </div>
+                                        </>
+                                    )}
+                                    {activeSection === 'roadmap' && (
+                                        <>
+                                            <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                                <Rocket className="w-7 h-7 text-white" />
+                                            </div>
+                                            <div>
+                                                <span>Action Roadmap</span>
+                                                <p className="text-white/70 text-sm font-normal mt-1">Your 6-12 month career plan</p>
+                                            </div>
+                                        </>
+                                    )}
+                                </DialogTitle>
+                            </div>
                         </DialogHeader>
 
-                        {/* Scrollable Content */}
-                        <div className="overflow-y-auto max-h-[calc(95vh-140px)] px-8 py-6">
-                            {activeSection === 'profile' && (
-                                <ProfileSection
-                                    results={results}
-                                    riasecNames={RIASEC_NAMES}
-                                    riasecColors={RIASEC_COLORS}
-                                    traitNames={TRAIT_NAMES}
-                                    traitColors={TRAIT_COLORS}
-                                />
-                            )}
-                            {activeSection === 'career' && careerFit && (
-                                <CareerSection careerFit={careerFit} />
-                            )}
-                            {activeSection === 'skills' && skillGap && employability && (
-                                <SkillsSection skillGap={skillGap} employability={employability} />
-                            )}
-                            {activeSection === 'roadmap' && roadmap && (
-                                <RoadmapSection roadmap={roadmap} />
-                            )}
+                        {/* Scrollable Content with subtle background */}
+                        <div className="overflow-y-auto max-h-[calc(95vh-140px)] bg-gradient-to-b from-gray-50 to-white">
+                            <div className="px-10 py-10">
+                                {activeSection === 'profile' && (
+                                    <ProfileSection
+                                        results={results}
+                                        riasecNames={RIASEC_NAMES}
+                                        riasecColors={RIASEC_COLORS}
+                                        traitNames={TRAIT_NAMES}
+                                        traitColors={TRAIT_COLORS}
+                                    />
+                                )}
+                                {activeSection === 'career' && careerFit && (
+                                    <CareerSection careerFit={careerFit} />
+                                )}
+                                {activeSection === 'skills' && skillGap && employability && (
+                                    <SkillsSection skillGap={skillGap} employability={employability} />
+                                )}
+                                {activeSection === 'roadmap' && roadmap && (
+                                    <RoadmapSection roadmap={roadmap} />
+                                )}
+                            </div>
                         </div>
                     </DialogContent>
                 </Dialog>
