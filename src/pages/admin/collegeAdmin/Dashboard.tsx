@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import {
   Users,
@@ -6,54 +6,110 @@ import {
   GraduationCap,
   Briefcase,
   TrendingUp,
-  Calendar,
   Award,
   ChevronRight,
   Clock,
   BookOpen,
+  FileText,
+  DollarSign,
+  Download,
+  Filter,
+  Bell,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import KPICard from "../../../components/admin/KPICard";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard: React.FC = () => {
-  // ===== KPI Cards (Real Data from RM Programs Excel) =====
+  const navigate = useNavigate();
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  // ===== KPI Cards =====
   const kpiData = [
     {
-      title: "Total Programs",
-      value: "48",
-      change: 89.6,
-      changeLabel: "completion rate",
-      icon: <GraduationCap className="h-6 w-6" />,
+      title: "Total Students",
+      value: "48,793",
+      change: 12.5,
+      changeLabel: "vs last semester",
+      icon: <Users className="h-6 w-6" />,
       color: "blue" as const,
     },
     {
-      title: "Total Learners",
-      value: "48,793",
-      change: 0,
-      changeLabel: "students & faculty",
-      icon: <Users className="h-6 w-6" />,
+      title: "Total Faculty",
+      value: "878",
+      change: 5.2,
+      changeLabel: "active members",
+      icon: <Award className="h-6 w-6" />,
       color: "purple" as const,
     },
     {
-      title: "Faculty Trained",
-      value: "878",
+      title: "Departments",
+      value: "24",
       change: 0,
-      changeLabel: "through FDP programs",
-      icon: <Award className="h-6 w-6" />,
+      changeLabel: "across programs",
+      icon: <Building2 className="h-6 w-6" />,
       color: "green" as const,
     },
     {
-      title: "Colleges Reached",
-      value: "1,658",
-      change: 0,
-      changeLabel: "institutions covered",
-      icon: <Building2 className="h-6 w-6" />,
+      title: "Placement Rate",
+      value: "87.3%",
+      change: 8.4,
+      changeLabel: "this academic year",
+      icon: <Briefcase className="h-6 w-6" />,
       color: "yellow" as const,
+    },
+  ];
+
+  // ===== Quick Actions =====
+  const quickActions = [
+    {
+      title: "Department Management",
+      description: "Manage departments & faculty",
+      icon: Building2,
+      color: "bg-blue-500",
+      route: "/college-admin/departments/management",
+    },
+    {
+      title: "Student Admissions",
+      description: "Process new admissions",
+      icon: Users,
+      color: "bg-purple-500",
+      route: "/college-admin/students/data-management",
+    },
+    {
+      title: "Attendance Tracking",
+      description: "View attendance reports",
+      icon: CheckCircle,
+      color: "bg-green-500",
+      route: "/college-admin/students/attendance",
+    },
+    {
+      title: "Course Mapping",
+      description: "Map courses to programs",
+      icon: BookOpen,
+      color: "bg-orange-500",
+      route: "/college-admin/departments/mapping",
+    },
+    {
+      title: "Exam Management",
+      description: "Schedule & manage exams",
+      icon: FileText,
+      color: "bg-red-500",
+      route: "/college-admin/examinations",
+    },
+    {
+      title: "Placement Dashboard",
+      description: "Track placement activities",
+      icon: Briefcase,
+      color: "bg-indigo-500",
+      route: "/college-admin/placements",
     },
   ];
 
   // ===== Chart Data - Program Growth Trend =====
   const programGrowthTrend = {
-    series: [{ name: "Completed Programs", data: [8, 12, 18, 25, 34, 40, 43] }],
+    series: [{ name: "Student Enrollment", data: [42000, 43500, 45000, 46200, 47000, 47800, 48793] }],
     options: {
       chart: { type: "area", toolbar: { show: false }, height: 250 },
       stroke: { curve: "smooth", width: 3 },
@@ -72,10 +128,10 @@ const Dashboard: React.FC = () => {
     },
   };
 
-  // ===== Top Courses by Learners (Real Data) =====
-  const topCoursesStats = {
+  // ===== Top Departments by Students =====
+  const topDepartmentsStats = {
     series: [
-      { name: "Learners", data: [14290, 5560, 5034, 3881, 3829] },
+      { name: "Students", data: [8500, 7200, 6800, 5900, 5400] },
     ],
     options: {
       chart: { type: "bar", toolbar: { show: false } },
@@ -84,11 +140,11 @@ const Dashboard: React.FC = () => {
       dataLabels: { enabled: false },
       xaxis: {
         categories: [
-          "EV Battery Mgmt",
-          "FSQM",
-          "GMP",
-          "Medical Coding",
-          "MC",
+          "Computer Science",
+          "Mechanical Eng",
+          "Electronics",
+          "Civil Eng",
+          "Business Admin",
         ],
         labels: { style: { colors: "#6b7280" } },
       },
@@ -101,52 +157,77 @@ const Dashboard: React.FC = () => {
       tooltip: { 
         theme: "light",
         y: {
-          formatter: (val: number) => `${val.toLocaleString()} learners`
+          formatter: (val: number) => `${val.toLocaleString()} students`
         }
       },
     },
   };
 
-  // ===== Program Overview (Real Data) =====
-  const programOverview = [
-    { name: "Naan Mudhalvan", programs: 29, learners: 45346, status: "Active" },
-    { name: "TNSDC", programs: 2, learners: 2487, status: "Active" },
-    { name: "Acharya Programs", programs: 9, learners: 674, status: "Active" },
+  // ===== Department Overview =====
+  const departmentOverview = [
+    { name: "Engineering", programs: 12, students: 28500, status: "Active" },
+    { name: "Arts & Science", programs: 8, students: 12300, status: "Active" },
+    { name: "Management", programs: 4, students: 7993, status: "Active" },
   ];
 
-  // ===== Recent Activities (Real Data from Excel) =====
+  // ===== Recent Activities =====
   const recentActivities = [
     {
       id: 1,
-      title: "GMP Program Completed",
-      description: "5,034 students trained in Good Manufacturing Practice",
-      time: "Recently completed",
+      title: "New Admission Batch",
+      description: "234 students admitted for Fall 2025 semester",
+      time: "2 hours ago",
       type: "success",
-      icon: Award,
+      icon: Users,
     },
     {
       id: 2,
-      title: "FSQM Training Finished",
-      description: "5,560 learners completed Food Safety & Quality Management",
-      time: "Recently completed",
-      type: "success",
-      icon: BookOpen,
+      title: "Attendance Alert",
+      description: "45 students below 75% attendance threshold",
+      time: "5 hours ago",
+      type: "warning",
+      icon: AlertCircle,
     },
     {
       id: 3,
-      title: "Medical Coding Program",
-      description: "3,829 students trained across multiple colleges",
-      time: "Recently completed",
-      type: "success",
-      icon: GraduationCap,
+      title: "Exam Schedule Published",
+      description: "Mid-semester exams scheduled for next week",
+      time: "1 day ago",
+      type: "info",
+      icon: FileText,
     },
     {
       id: 4,
-      title: "EV Battery Management",
-      description: "14,290 learners trained in Electric Vehicle technology",
-      time: "Ongoing",
-      type: "info",
+      title: "Placement Drive",
+      description: "TCS campus recruitment completed - 87 offers",
+      time: "2 days ago",
+      type: "success",
       icon: Briefcase,
+    },
+  ];
+
+  // ===== Circulars & Notifications =====
+  const circulars = [
+    {
+      id: 1,
+      title: "Academic Calendar Update",
+      date: "Dec 3, 2025",
+      priority: "high",
+      status: "new",
+    },
+    {
+      id: 2,
+      title: "Faculty Development Program",
+      date: "Dec 2, 2025",
+      priority: "medium",
+      status: "read",
+    },
+    {
+      id: 3,
+      title: "Sports Day Announcement",
+      date: "Dec 1, 2025",
+      priority: "low",
+      status: "read",
     },
   ];
 
@@ -160,17 +241,33 @@ const Dashboard: React.FC = () => {
 
   // ===== Render =====
   return (
-    <div className="space-y-8 p-4 sm:p-6 lg:p-8">
-      {/* Header */}
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      {/* Header with Actions */}
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-          College Dashboard
-        </h1>
-        <p className="text-gray-600 text-sm sm:text-base">
-          Overview of institutional performance and program analytics
-        </p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+              College Dashboard
+            </h1>
+            <p className="text-gray-600 text-sm sm:text-base">
+              Overview of institutional performance and program analytics
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setFilterOpen(!filterOpen)}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            >
+              <Filter className="h-4 w-4" />
+              <span className="text-sm font-medium">Filter</span>
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              <Download className="h-4 w-4" />
+              <span className="text-sm font-medium">Export PDF</span>
+            </button>
+          </div>
+        </div>
       </div>
-
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
@@ -179,43 +276,83 @@ const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* Bottom Quick Stats (Real Data) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+      {/* Quick Actions */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {quickActions.map((action, index) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={index}
+                onClick={() => navigate(action.route)}
+                className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 transition group"
+              >
+                <div className={`${action.color} p-3 rounded-lg text-white group-hover:scale-110 transition`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-800 group-hover:text-blue-600 transition">
+                    {action.title}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {action.description}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Bottom Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
         <div className="bg-blue-600 rounded-2xl p-5 text-white shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm mb-1">Student Programs</p>
-              <p className="text-3xl font-bold">27</p>
+              <p className="text-blue-100 text-sm mb-1">Attendance Today</p>
+              <p className="text-3xl font-bold">92.4%</p>
             </div>
-            <TrendingUp className="h-7 w-7 opacity-90" />
+            <CheckCircle className="h-7 w-7 opacity-90" />
           </div>
           <p className="text-sm mt-3 flex items-center gap-1">
-            47,629 students trained
+            <TrendingUp className="h-4 w-4" /> +2.3% from yesterday
           </p>
         </div>
 
         <div className="bg-purple-600 rounded-2xl p-5 text-white shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm mb-1">Faculty Programs</p>
-              <p className="text-3xl font-bold">15</p>
+              <p className="text-purple-100 text-sm mb-1">Syllabus Progress</p>
+              <p className="text-3xl font-bold">78%</p>
             </div>
-            <Award className="h-7 w-7 opacity-90" />
+            <BookOpen className="h-7 w-7 opacity-90" />
           </div>
-          <p className="text-sm mt-3">878 faculty members trained</p>
+          <p className="text-sm mt-3">On track for semester completion</p>
         </div>
 
         <div className="bg-green-600 rounded-2xl p-5 text-white shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm mb-1">District Coverage</p>
-              <p className="text-3xl font-bold">354</p>
+              <p className="text-green-100 text-sm mb-1">Fee Collection</p>
+              <p className="text-3xl font-bold">₹2.4Cr</p>
             </div>
-            <Building2 className="h-7 w-7 opacity-90" />
+            <DollarSign className="h-7 w-7 opacity-90" />
           </div>
           <p className="text-sm mt-3 flex items-center gap-1">
-            Across Tamil Nadu & Karnataka
+            85% collected this semester
           </p>
+        </div>
+
+        <div className="bg-orange-600 rounded-2xl p-5 text-white shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-100 text-sm mb-1">Skill Courses</p>
+              <p className="text-3xl font-bold">156</p>
+            </div>
+            <Award className="h-7 w-7 opacity-90" />
+          </div>
+          <p className="text-sm mt-3">Active skill development programs</p>
         </div>
       </div>
 
@@ -223,7 +360,7 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm xl:col-span-2">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Program Growth Trend
+            Student Enrollment Trend
           </h2>
           <ReactApexChart
             options={programGrowthTrend.options}
@@ -235,21 +372,21 @@ const Dashboard: React.FC = () => {
 
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Top Courses by Learners
+            Top Departments
           </h2>
           <ReactApexChart
-            options={topCoursesStats.options}
-            series={topCoursesStats.series}
+            options={topDepartmentsStats.options}
+            series={topDepartmentsStats.series}
             type="bar"
             height={300}
           />
         </div>
       </div>
 
-      {/* Redesigned Activities + Program Overview */}
+      {/* Activities + Circulars */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activities */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm backdrop-blur-sm">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <div className="flex justify-between items-center mb-5">
             <h2 className="text-lg font-bold text-gray-900">Recent Activities</h2>
             <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition">
@@ -266,7 +403,7 @@ const Dashboard: React.FC = () => {
                   className="flex items-start gap-4 p-4 rounded-xl border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/40 transition"
                 >
                   <div
-                    className={`p-3 rounded-xl shadow-sm border border-transparent hover:border-indigo-200 ${typeColors[activity.type]} transition`}
+                    className={`p-3 rounded-xl shadow-sm ${typeColors[activity.type]}`}
                   >
                     <Icon className="h-5 w-5" />
                   </div>
@@ -290,37 +427,79 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Program Overview */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm backdrop-blur-sm">
+        {/* Circulars & Notifications */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <div className="flex justify-between items-center mb-5">
-            <h2 className="text-lg font-bold text-gray-900">
-              Program Overview
+            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <Bell className="h-5 w-5 text-indigo-600" />
+              Circulars & Notifications
             </h2>
             <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition">
-              View Details <ChevronRight className="h-4 w-4" />
+              View All <ChevronRight className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="space-y-4">
-            {programOverview.map((prog, i) => (
+          <div className="space-y-3">
+            {circulars.map((circular) => (
               <div
-                key={i}
-                className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 rounded-xl p-4 transition"
+                key={circular.id}
+                className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/40 transition cursor-pointer"
               >
-                <div>
-                  <p className="font-semibold text-gray-800">{prog.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {prog.programs} programs • {prog.learners.toLocaleString()} learners
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${circular.status === 'new' ? 'bg-blue-500' : 'bg-gray-300'}`} />
+                  <div>
+                    <p className={`font-semibold ${circular.status === 'new' ? 'text-gray-900' : 'text-gray-600'}`}>
+                      {circular.title}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{circular.date}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-sm font-semibold text-green-600 bg-green-100 px-3 py-1 rounded-full">
-                    {prog.status}
-                  </span>
-                </div>
+                <span
+                  className={`text-xs font-medium px-2 py-1 rounded-full ${
+                    circular.priority === 'high'
+                      ? 'bg-red-100 text-red-600'
+                      : circular.priority === 'medium'
+                      ? 'bg-yellow-100 text-yellow-600'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {circular.priority}
+                </span>
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Department Overview */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div className="flex justify-between items-center mb-5">
+          <h2 className="text-lg font-bold text-gray-900">
+            Department Overview
+          </h2>
+          <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition">
+            View Details <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {departmentOverview.map((dept, i) => (
+            <div
+              key={i}
+              className="flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 hover:from-indigo-50 hover:to-purple-50 rounded-xl p-5 transition border border-gray-200 hover:border-indigo-200"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <Building2 className="h-8 w-8 text-indigo-600" />
+                <span className="text-sm font-semibold text-green-600 bg-green-100 px-3 py-1 rounded-full">
+                  {dept.status}
+                </span>
+              </div>
+              <p className="font-bold text-gray-800 text-lg mb-1">{dept.name}</p>
+              <p className="text-sm text-gray-600">
+                {dept.programs} programs • {dept.students.toLocaleString()} students
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

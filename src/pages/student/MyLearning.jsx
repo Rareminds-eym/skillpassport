@@ -23,6 +23,7 @@ import {
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useAuth } from "../../context/AuthContext";
 import { TrainingEditModal } from "../../components/Students/components/ProfileEditModals";
+import SelectCourseModal from "../../components/Students/components/SelectCourseModal";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
@@ -33,13 +34,13 @@ import {
   suggestions as mockSuggestions,
 } from "../../components/Students/data/mockData";
 
-const MyTraining = () => {
+const MyLearning = () => {
   const { user } = useAuth();
   const userEmail = user?.email;
-  const { studentData, updateTraining } = useStudentDataByEmail(userEmail, false);
+  const { studentData, updateTraining, refresh } = useStudentDataByEmail(userEmail, false);
 
-  const training = studentData?.training || [];
-  const enabledTraining = training.filter((t) => t && t.enabled !== false);
+  const learning = studentData?.training || []; // Keep as 'training' from backend
+  const enabledLearning = learning.filter((t) => t && t.enabled !== false);
   const suggestions = studentData?.suggestions || mockSuggestions;
 
   // Get student ID for messaging
@@ -87,8 +88,8 @@ const MyTraining = () => {
   // Refs for Recent Updates
   const recentUpdatesRef = useRef(null);
 
-  const handleSaveTraining = async (updatedTraining) => {
-    await updateTraining(updatedTraining);
+  const handleSaveLearning = async (updatedLearning) => {
+    await updateTraining(updatedLearning);
     setActiveModal(null);
   };
 
@@ -102,17 +103,17 @@ const MyTraining = () => {
         {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Training</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Learning</h1>
             <p className="text-gray-600">
               Track your courses, certifications, and professional development
             </p>
           </div>
           <Button
-            onClick={() => setActiveModal("training")}
+            onClick={() => setActiveModal("learning")}
             className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-lg transition-colors shadow-sm w-full sm:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add Training
+            Add Learning
           </Button>
         </div>
 
@@ -173,7 +174,7 @@ const MyTraining = () => {
 
           {/* RIGHT COLUMN */}
           <div className="lg:col-span-2 space-y-8">
-            {enabledTraining.length > 0 ? (
+            {enabledLearning.length > 0 ? (
               <>
                 {/* Stats Summary */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -183,10 +184,10 @@ const MyTraining = () => {
                         <BookOpen className="w-6 h-6 text-blue-600" />
                       </div>
                       <p className="text-3xl font-bold text-blue-600 mb-1">
-                        {enabledTraining.length}
+                        {enabledLearning.length}
                       </p>
                       <p className="text-sm text-gray-600 font-medium">
-                        Total Trainings
+                        Total Learning
                       </p>
                     </CardContent>
                   </Card>
@@ -198,7 +199,7 @@ const MyTraining = () => {
                       </div>
                       <p className="text-3xl font-bold text-green-600 mb-1">
                         {
-                          enabledTraining.filter((t) => t.status === "completed")
+                          enabledLearning.filter((t) => t.status === "completed")
                             .length
                         }
                       </p>
@@ -215,7 +216,7 @@ const MyTraining = () => {
                       </div>
                       <p className="text-3xl font-bold text-amber-600 mb-1">
                         {
-                          enabledTraining.filter((t) => t.status === "ongoing")
+                          enabledLearning.filter((t) => t.status === "ongoing")
                             .length
                         }
                       </p>
@@ -226,9 +227,9 @@ const MyTraining = () => {
                   </Card>
                 </div>
 
-                {/* Training Grid */}
+                {/* Learning Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                  {enabledTraining.map((item, index) => (
+                  {enabledLearning.map((item, index) => (
                     <Card
                       key={index}
                       className="bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-lg transition-all duration-200 shadow-sm overflow-hidden self-start"
@@ -243,17 +244,29 @@ const MyTraining = () => {
                               {item.provider}
                             </p>
                           </div>
-                          <Badge
-                            className={
-                              item.status === "completed"
-                                ? "bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0"
-                                : "bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0"
-                            }
-                          >
-                            {item.status === "completed"
-                              ? "Completed"
-                              : "Ongoing"}
-                          </Badge>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {/* Only show edit button for external courses, not internal platform courses */}
+                            {item.source !== 'internal_course' && (
+                              <button
+                                onClick={() => setActiveModal("edit")}
+                                className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                title="Edit"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                            )}
+                            <Badge
+                              className={
+                                item.status === "completed"
+                                  ? "bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold"
+                                  : "bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold"
+                              }
+                            >
+                              {item.status === "completed"
+                                ? "Completed"
+                                : "Ongoing"}
+                            </Badge>
+                          </div>
                         </CardTitle>
                       </CardHeader>
 
@@ -286,13 +299,12 @@ const MyTraining = () => {
                                 ? item.skills
                                 : item.skills.slice(0, 6)
                               ).map((skill, idx) => (
-                                <Badge
+                                <span
                                   key={idx}
-                                  variant="secondary"
-                                  className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-md font-medium"
+                                  className="inline-flex items-center text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-md font-medium"
                                 >
                                   {skill}
-                                </Badge>
+                                </span>
                               ))}
                             </div>
                             {item.skills.length > 6 && (
@@ -361,18 +373,18 @@ const MyTraining = () => {
                     <BookOpen className="w-10 h-10 text-gray-400" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                    No training records yet
+                    No learning records yet
                   </h3>
                   <p className="text-gray-500 mb-8 max-w-md mx-auto">
                     Start adding your courses and certifications to showcase your
                     learning journey
                   </p>
                   <Button
-                    onClick={() => setActiveModal("training")}
+                    onClick={() => setActiveModal("learning")}
                     className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg transition-colors shadow-sm"
                   >
                     <Plus className="w-5 h-5 mr-2" />
-                    Add Your First Training
+                    Add Your First Learning
                   </Button>
                 </CardContent>
               </Card>
@@ -380,13 +392,23 @@ const MyTraining = () => {
           </div>
         </div>
 
+        {/* Select Course Modal - Shows internal courses + option for external */}
+        <SelectCourseModal
+          isOpen={activeModal === "learning"}
+          onClose={() => setActiveModal(null)}
+          studentId={studentId}
+          onSuccess={() => {
+            refresh(); // Refresh data after adding
+          }}
+        />
+
         {/* Edit Modal */}
-        {activeModal && (
+        {activeModal === "edit" && (
           <TrainingEditModal
-            isOpen={!!activeModal}
+            isOpen={true}
             onClose={() => setActiveModal(null)}
-            onSave={handleSaveTraining}
-            data={training}
+            onSave={handleSaveLearning}
+            data={learning}
           />
         )}
       </div>
@@ -394,4 +416,4 @@ const MyTraining = () => {
   );
 };
 
-export default MyTraining;
+export default MyLearning;

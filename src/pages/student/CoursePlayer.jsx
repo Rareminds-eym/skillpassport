@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
 import { useAuth } from '../../context/AuthContext';
 import { fileService } from '../../services/fileService';
+import { AITutorPanel } from '../../components/ai-tutor';
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
@@ -860,6 +861,19 @@ const CoursePlayer = () => {
           </div>
         </div>
       </div>
+
+      {/* AI Course Tutor Panel */}
+      {courseId && (
+        <AITutorPanel
+          courseId={courseId}
+          courseName={course?.title}
+          lessonContext={{
+            lessonId: currentLesson?.id,
+            lessonTitle: currentLesson?.title,
+            moduleTitle: currentModule?.title
+          }}
+        />
+      )}
     </div>
   );
 };

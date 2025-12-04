@@ -1,25 +1,25 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
 import { BookOpen, Award, Clock, TrendingUp, Plus, ExternalLink } from 'lucide-react';
-import AddTrainingCourseModal from './AddTrainingCourseModal';
+import SelectCourseModal from './SelectCourseModal';
 
-export default function TrainingCoursesSection({ studentId }) {
-  const [trainings, setTrainings] = useState([]);
+export default function LearningCoursesSection({ studentId }) {
+  const [learning, setLearning] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     if (studentId) {
-      fetchTrainings();
+      fetchLearning();
     }
   }, [studentId]);
 
-  const fetchTrainings = async () => {
+  const fetchLearning = async () => {
     try {
       setLoading(true);
       
-      // Fetch trainings with associated certificates
-      const { data: trainingsData, error: trainingsError } = await supabase
+      // Fetch learning records with associated certificates
+      const { data: learningData, error: learningError } = await supabase
         .from('trainings')
         .select(`
           *,
@@ -34,11 +34,11 @@ export default function TrainingCoursesSection({ studentId }) {
         .eq('student_id', studentId)
         .order('created_at', { ascending: false });
 
-      if (trainingsError) throw trainingsError;
+      if (learningError) throw learningError;
 
-      setTrainings(trainingsData || []);
+      setLearning(learningData || []);
     } catch (error) {
-      console.error('Error fetching trainings:', error);
+      console.error('Error fetching learning:', error);
     } finally {
       setLoading(false);
     }
@@ -73,9 +73,9 @@ export default function TrainingCoursesSection({ studentId }) {
     );
   };
 
-  const calculateProgress = (training) => {
-    if (training.total_modules === 0) return 0;
-    return Math.round((training.completed_modules / training.total_modules) * 100);
+  const calculateProgress = (record) => {
+    if (record.total_modules === 0) return 0;
+    return Math.round((record.completed_modules / record.total_modules) * 100);
   };
 
   if (loading) {
@@ -98,7 +98,7 @@ export default function TrainingCoursesSection({ studentId }) {
             <div>
               <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <BookOpen size={24} className="text-indigo-600" />
-                Training Courses
+                Learning Courses
               </h2>
               <p className="text-sm text-gray-600 mt-1">
                 Track your learning journey and certifications
@@ -109,87 +109,87 @@ export default function TrainingCoursesSection({ studentId }) {
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
             >
               <Plus size={20} />
-              Add Training
+              Add Learning
             </button>
           </div>
         </div>
 
         <div className="p-6">
-          {trainings.length === 0 ? (
+          {learning.length === 0 ? (
             <div className="text-center py-12">
               <BookOpen size={48} className="mx-auto text-gray-400 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No training courses yet
+                No learning courses yet
               </h3>
               <p className="text-gray-600 mb-4">
-                Start adding your training courses and certifications to showcase your skills
+                Start adding your learning courses and certifications to showcase your skills
               </p>
               <button
                 onClick={() => setShowAddModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
               >
                 <Plus size={20} />
-                Add Your First Training
+                Add Your First Learning
               </button>
             </div>
           ) : (
             <div className="space-y-4">
-              {trainings.map((training) => {
-                const progress = calculateProgress(training);
-                const certificate = training.certificates?.[0];
+              {learning.map((record) => {
+                const progress = calculateProgress(record);
+                const certificate = record.certificates?.[0];
 
                 return (
                   <div
-                    key={training.id}
+                    key={record.id}
                     className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow"
                   >
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                          {training.title}
+                          {record.title}
                         </h3>
                         <p className="text-sm text-gray-600">
-                          {training.organization}
+                          {record.organization}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(training.status)}`}>
-                          {training.status === 'completed' ? 'Completed' : 'Ongoing'}
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(record.status)}`}>
+                          {record.status === 'completed' ? 'Completed' : 'Ongoing'}
                         </span>
                         {certificate && getLevelBadge(certificate.level)}
                       </div>
                     </div>
 
-                    {training.description && (
+                    {record.description && (
                       <p className="text-sm text-gray-700 mb-3">
-                        {training.description}
+                        {record.description}
                       </p>
                     )}
 
                     <div className="grid grid-cols-3 gap-4 mb-3">
-                      {training.total_modules > 0 && (
+                      {record.total_modules > 0 && (
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <TrendingUp size={16} className="text-indigo-600" />
                           <span>
-                            {training.completed_modules}/{training.total_modules} modules
+                            {record.completed_modules}/{record.total_modules} modules
                           </span>
                         </div>
                       )}
-                      {training.hours_spent > 0 && (
+                      {record.hours_spent > 0 && (
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <Clock size={16} className="text-indigo-600" />
-                          <span>{training.hours_spent} hours</span>
+                          <span>{record.hours_spent} hours</span>
                         </div>
                       )}
-                      {training.start_date && (
+                      {record.start_date && (
                         <div className="text-sm text-gray-600">
-                          {new Date(training.start_date).toLocaleDateString()} - 
-                          {training.end_date ? new Date(training.end_date).toLocaleDateString() : ' Present'}
+                          {new Date(record.start_date).toLocaleDateString()} - 
+                          {record.end_date ? new Date(record.end_date).toLocaleDateString() : ' Present'}
                         </div>
                       )}
                     </div>
 
-                    {training.total_modules > 0 && (
+                    {record.total_modules > 0 && (
                       <div className="mb-3">
                         <div className="flex justify-between text-sm text-gray-600 mb-1">
                           <span>Progress</span>
@@ -231,11 +231,11 @@ export default function TrainingCoursesSection({ studentId }) {
         </div>
       </div>
 
-      <AddTrainingCourseModal
+      <AddLearningCourseModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         studentId={studentId}
-        onSuccess={fetchTrainings}
+        onSuccess={fetchLearning}
       />
     </>
   );

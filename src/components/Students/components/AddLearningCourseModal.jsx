@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
 import { X, Upload, AlertCircle } from 'lucide-react';
 
-export default function AddTrainingCourseModal({ isOpen, onClose, studentId, onSuccess }) {
+export default function AddLearningCourseModal({ isOpen, onClose, studentId, onSuccess }) {
   const [formData, setFormData] = useState({
     title: '',
     organization: '',
@@ -96,16 +96,17 @@ export default function AddTrainingCourseModal({ isOpen, onClose, studentId, onS
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
 
+    // If external organization and no assessment done yet, and skills are provided
+    if (isExternal && !assessmentScore && formData.skills_covered && formData.skills_covered.trim().length > 0) {
+      generateAssessmentQuestions();
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      // If external organization and no assessment done yet
-      if (isExternal && !assessmentScore && formData.certificate_url) {
-        generateAssessmentQuestions();
-        setLoading(false);
-        return;
-      }
 
       // Insert training record
       const { data: training, error: trainingError } = await supabase
@@ -121,7 +122,8 @@ export default function AddTrainingCourseModal({ isOpen, onClose, studentId, onS
           total_modules: parseInt(formData.total_modules) || 0,
           hours_spent: parseInt(formData.hours_spent) || 0,
           description: formData.description,
-          approval_status: 'approved'
+          approval_status: 'approved',
+          source: 'external_course'
         })
         .select()
         .single();
@@ -174,8 +176,8 @@ export default function AddTrainingCourseModal({ isOpen, onClose, studentId, onS
       onClose();
       resetForm();
     } catch (err) {
-      console.error('Error adding training:', err);
-      setError(err.message || 'Failed to add training course');
+      console.error('Error adding learning:', err);
+      setError(err.message || 'Failed to add learning course');
     } finally {
       setLoading(false);
     }
@@ -211,7 +213,10 @@ export default function AddTrainingCourseModal({ isOpen, onClose, studentId, onS
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-indigo-900">Add Training Course</h2>
+          <h2 className="text-2xl font-bold text-indigo-900">Add Learning Course</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Add courses from external platforms (Coursera, Udemy, etc.)
+          </p>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X size={24} />
           </button>
@@ -397,17 +402,17 @@ export default function AddTrainingCourseModal({ isOpen, onClose, studentId, onS
                 </div>
               </div>
 
-              {isExternal && formData.certificate_url && (
+              {isExternal && formData.skills_covered && formData.skills_covered.trim().length > 0 && !assessmentScore && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
                   <div className="flex items-start gap-2">
                     <AlertCircle size={20} className="text-yellow-600 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-yellow-800">
-                        External Certificate Detected
+                        Assessment Required
                       </p>
                       <p className="text-sm text-yellow-700 mt-1">
-                        You'll need to complete a skill assessment to verify your proficiency level.
-                        The certificate level will be assigned based on your assessment score.
+                        Since this is from an external platform, you'll need to complete a skill assessment 
+                        to verify your proficiency. Click "Continue to Assessment" to proceed.
                       </p>
                     </div>
                   </div>
@@ -427,7 +432,11 @@ export default function AddTrainingCourseModal({ isOpen, onClose, studentId, onS
                   disabled={loading}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? 'Saving...' : isExternal && formData.certificate_url && !assessmentScore ? 'Continue to Assessment' : 'Add Training'}
+                  {loading 
+                    ? 'Saving...' 
+                    : (isExternal && formData.skills_covered && formData.skills_covered.trim().length > 0 && !assessmentScore)
+                      ? 'Continue to Assessment' 
+                      : 'Add Learning'}
                 </button>
               </div>
             </>
