@@ -12,11 +12,16 @@ import {
   Filter,
   Grid3x3,
   List,
-  Play
+  Play,
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp,
+  ArrowDownAZ
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { motion } from 'framer-motion';
 import CourseDetailModal from '../../components/student/courses/CourseDetailModal';
+import WeeklyLearningTracker from '../../components/student/WeeklyLearningTracker';
 
 const Courses = () => {
   const navigate = useNavigate();
@@ -25,8 +30,12 @@ const Courses = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'Active', 'Upcoming'
+  const [sortBy, setSortBy] = useState('created_at'); // 'created_at', 'title', 'enrollment_count'
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const coursesPerPage = 6;
+  const [activeTab, setActiveTab] = useState('courses'); // 'courses' or 'progress'
 
   // Fetch courses from Supabase
   useEffect(() => {
@@ -34,6 +43,8 @@ const Courses = () => {
   }, []);
 
   const fetchCourses = async () => {
+    const startTime = Date.now();
+
     try {
       setLoading(true);
 
@@ -52,23 +63,112 @@ const Courses = () => {
 
       console.log('📚 Fetched courses for students:', data?.length || 0);
       setCourses(data || []);
+
+      // Ensure loader displays for at least 5 seconds
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = Math.max(0, 5000 - elapsedTime);
+
+      if (remainingTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+      }
     } catch (error) {
       console.error('Error fetching courses:', error);
+      // Still wait for 5 seconds even on error
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = Math.max(0, 5000 - elapsedTime);
+      if (remainingTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Check if a course is new (posted within last 24 hours)
+  const isNewCourse = (createdAt) => {
+    if (!createdAt) return false;
+    const courseDate = new Date(createdAt);
+    const now = new Date();
+    const hoursDifference = (now - courseDate) / (1000 * 60 * 60);
+    return hoursDifference <= 24;
+  };
+
+  // Reset to page 1 when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, sortBy]);
+
   // Filter and search courses
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.code.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredCourses = React.useMemo(() => {
+    let filtered = courses.filter(course => {
+      const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           course.code.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = filterStatus === 'all' || course.status === filterStatus;
+      const matchesStatus = filterStatus === 'all' || course.status === filterStatus;
 
-    return matchesSearch && matchesStatus;
-  });
+      return matchesSearch && matchesStatus;
+    });
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'title':
+          return a.title.localeCompare(b.title);
+        case 'created_at':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'enrollment_count':
+          return (b.enrollment_count || 0) - (a.enrollment_count || 0);
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [courses, searchTerm, filterStatus, sortBy]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCourses.length / coursesPerPage);
+  const indexOfLastCourse = currentPage * coursesPerPage;
+  const indexOfFirstCourse = indexOfLastCourse - coursesPerPage;
+  const currentCourses = filteredCourses.slice(indexOfFirstCourse, indexOfLastCourse);
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages = [];
+
+    if (totalPages <= 5) {
+      // Show all pages if 5 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first 3 pages
+      pages.push(1, 2, 3);
+
+      // Add ellipsis and last page if there are more pages
+      if (totalPages > 3) {
+        if (currentPage > 4) {
+          pages.push('...');
+        }
+
+        // Show current page if it's beyond page 3 and not the last page
+        if (currentPage > 3 && currentPage < totalPages) {
+          pages.push(currentPage);
+        }
+
+        // Add ellipsis before last page if needed
+        if (currentPage < totalPages - 1) {
+          pages.push('...');
+        }
+
+        // Always show last page
+        pages.push(totalPages);
+      }
+    }
+
+    return pages;
+  };
 
   // Get status badge color
   const getStatusColor = (status) => {
@@ -103,77 +203,194 @@ const Courses = () => {
         onClose={() => setShowDetailModal(false)}
         onStartCourse={handleStartCourse}
       />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 sm:p-6 lg:p-8">
+      <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-              📚 My Courses
-            </h1>
-            <p className="text-gray-600">
-              Explore and enroll in courses to enhance your skills
-            </p>
-          </div>
-
-        {/* Search and Filters */}
-        <Card className="mb-6 shadow-lg border-0">
-          <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Search Bar */}
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search courses by title, code, or description..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-
-              {/* Filters */}
-              <div className="flex gap-2">
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+          {/* Loading State */}
+          {loading && (
+            <div className="flex flex-col items-center justify-center min-h-[80vh]">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                className="text-center"
+              >
+                <div className="relative">
+                  <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600"></div>
+                  <img
+                    src="/assets/HomePage/RMLogo.webp"
+                    alt="RareMinds Logo"
+                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 object-contain"
+                  />
+                </div>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="mt-6"
                 >
-                  <option value="all">All Courses</option>
-                  <option value="Active">Active</option>
-                  <option value="Upcoming">Upcoming</option>
-                </select>
+                  <p className="text-xl font-semibold text-gray-800 mb-2">Loading Courses...</p>
+                  <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
+                    Powered by <span className="font-semibold text-indigo-600">RareMinds</span>
+                  </p>
+                </motion.div>
+              </motion.div>
+            </div>
+          )}
 
-                {/* View Mode Toggle */}
-                <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+          {/* Header with Tabs */}
+          {!loading && (
+            <div className="mb-8">
+              {/* Tab Navigation with Subheadings */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {/* Courses Tab */}
                   <button
-                    onClick={() => setViewMode('grid')}
-                    className={`p-2.5 ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                    onClick={() => setActiveTab('courses')}
+                    className={`relative text-left p-4 rounded-lg transition-all ${
+                      activeTab === 'courses'
+                        ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                        : 'bg-white hover:bg-gray-50'
+                    }`}
                   >
-                    <Grid3x3 className="w-5 h-5" />
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        activeTab === 'courses' ? 'bg-indigo-600' : 'bg-gray-100'
+                      }`}>
+                        <BookOpen className={`w-6 h-6 ${
+                          activeTab === 'courses' ? 'text-white' : 'text-gray-600'
+                        }`} />
+                      </div>
+                      <div className="flex-1">
+                        <h1 className={`font-bold text-2xl ${
+                          activeTab === 'courses' ? 'text-indigo-600' : 'text-gray-900'
+                        }`}>
+                          Courses
+                        </h1>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Explore and enroll in courses to enhance your skills
+                        </p>
+                      </div>
+                    </div>
                   </button>
+
+                  {/* Weekly Learning Progress Tab */}
                   <button
-                    onClick={() => setViewMode('list')}
-                    className={`p-2.5 ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                    onClick={() => setActiveTab('progress')}
+                    className={`relative text-left p-4 rounded-lg transition-all ${
+                      activeTab === 'progress'
+                        ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                        : 'bg-white hover:bg-gray-50'
+                    }`}
                   >
-                    <List className="w-5 h-5" />
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        activeTab === 'progress' ? 'bg-indigo-600' : 'bg-gray-100'
+                      }`}>
+                        <TrendingUp className={`w-6 h-6 ${
+                          activeTab === 'progress' ? 'text-white' : 'text-gray-600'
+                        }`} />
+                      </div>
+                      <div className="flex-1">
+                        <h1 className={`font-bold text-lg ${
+                          activeTab === 'progress' ? 'text-indigo-600' : 'text-gray-900'
+                        }`}>
+                          Weekly Learning Progress
+                        </h1>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Track your learning activity and achievements
+                        </p>
+                      </div>
+                    </div>
                   </button>
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          )}
 
-        {/* Loading State */}
-        {loading && (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-            <p className="mt-4 text-gray-600">Loading courses...</p>
+        {/* Weekly Learning Progress Tab */}
+        {!loading && activeTab === 'progress' && (
+          <WeeklyLearningTracker />
+        )}
+
+        {/* Courses Tab Content */}
+        {/* Search and Filters */}
+        {!loading && activeTab === 'courses' && (
+          <div className="mb-6 flex flex-col lg:flex-row items-center gap-4">
+            {/* Search Bar */}
+            <div className="flex-1 w-full relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search courses by title, code, or description..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-12 pl-10 pr-4 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+              />
+            </div>
+
+            {/* Filters */}
+            <div className="flex gap-2 items-center w-full lg:w-auto flex-wrap">
+              {/* Status Filter */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="h-12 px-4 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm flex-1 lg:flex-none lg:min-w-[150px]"
+              >
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Upcoming">Upcoming</option>
+              </select>
+
+              {/* Sort By Filter */}
+              <div className="relative flex-1 lg:flex-none lg:min-w-[150px]">
+                <ArrowDownAZ className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="h-12 pl-10 pr-4 w-full bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                >
+                  <option value="created_at">Newest First</option>
+                  <option value="title">Name (A-Z)</option>
+                  <option value="enrollment_count">Most Popular</option>
+                </select>
+              </div>
+
+              {/* View Mode Toggle */}
+              <div className="flex border border-gray-300 rounded-lg overflow-hidden h-12 bg-white shadow-sm">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-4 flex items-center justify-center ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  <Grid3x3 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-4 flex items-center justify-center ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  <List className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Clear Filters Button */}
+              {(filterStatus !== 'all' || searchTerm !== '' || sortBy !== 'created_at') && (
+                <button
+                  onClick={() => {
+                    setFilterStatus('all');
+                    setSearchTerm('');
+                    setSortBy('created_at');
+                  }}
+                  className="h-12 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
           </div>
         )}
 
         {/* Empty State */}
-        {!loading && filteredCourses.length === 0 && (
-          <Card className="text-center py-12 shadow-lg border-0">
+        {!loading && activeTab === 'courses' && filteredCourses.length === 0 && (
+          <Card className="text-center py-12 shadow-sm border border-gray-200">
             <CardContent>
               <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-900 mb-2">No courses found</h3>
@@ -185,9 +402,9 @@ const Courses = () => {
         )}
 
         {/* Courses Grid View */}
-        {!loading && viewMode === 'grid' && filteredCourses.length > 0 && (
+        {!loading && activeTab === 'courses' && viewMode === 'grid' && currentCourses.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCourses.map((course) => (
+            {currentCourses.map((course) => (
               <motion.div
                 key={course.course_id}
                 initial={{ opacity: 0, y: 20 }}
@@ -195,10 +412,10 @@ const Courses = () => {
                 transition={{ duration: 0.3 }}
                 whileHover={{ y: -8, transition: { duration: 0.2 } }}
               >
-                <Card className="h-full hover:shadow-xl transition-all duration-200 border-0 overflow-hidden group">
+                <Card className="h-full hover:shadow-lg transition-all duration-200 border border-gray-200 overflow-hidden group">
                   {/* Course Thumbnail */}
                   {course.thumbnail && (
-                    <div className="h-40 overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600">
+                    <div className="h-40 overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative">
                       {(course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
                         <motion.img
                           src={course.thumbnail}
@@ -212,14 +429,33 @@ const Courses = () => {
                           <BookOpen className="h-16 w-16 text-white opacity-90" />
                         </div>
                       )}
+                      {/* NEW Badge */}
+                      {isNewCourse(course.created_at) && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute top-2 left-2"
+                        >
+                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                            NEW
+                          </Badge>
+                        </motion.div>
+                      )}
                     </div>
                   )}
 
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between mb-2">
-                      <Badge className={`${getStatusColor(course.status)} border`}>
-                        {course.status}
-                      </Badge>
+                      <div className="flex gap-2 flex-wrap">
+                        <Badge className={`${getStatusColor(course.status)} border`}>
+                          {course.status}
+                        </Badge>
+                        {!course.thumbnail && isNewCourse(course.created_at) && (
+                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 font-semibold">
+                            NEW
+                          </Badge>
+                        )}
+                      </div>
                       <span className="text-xs font-medium text-gray-500">{course.code}</span>
                     </div>
                     <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
@@ -266,9 +502,9 @@ const Courses = () => {
         )}
 
         {/* Courses List View */}
-        {!loading && viewMode === 'list' && filteredCourses.length > 0 && (
+        {!loading && activeTab === 'courses' && viewMode === 'list' && currentCourses.length > 0 && (
           <div className="space-y-4">
-            {filteredCourses.map((course) => (
+            {currentCourses.map((course) => (
               <motion.div
                 key={course.course_id}
                 initial={{ opacity: 0, x: -20 }}
@@ -280,7 +516,7 @@ const Courses = () => {
                     <div className="flex flex-col lg:flex-row gap-6">
                       {/* Thumbnail */}
                       {course.thumbnail && (
-                        <div className="w-full lg:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600">
+                        <div className="w-full lg:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative">
                           {(course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
                             <img
                               src={course.thumbnail}
@@ -292,6 +528,14 @@ const Courses = () => {
                               <BookOpen className="h-12 w-12 text-white opacity-90" />
                             </div>
                           )}
+                          {/* NEW Badge */}
+                          {isNewCourse(course.created_at) && (
+                            <div className="absolute top-2 left-2">
+                              <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                                NEW
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -299,11 +543,16 @@ const Courses = () => {
                       <div className="flex-1">
                         <div className="flex items-start justify-between mb-2">
                           <div>
-                            <div className="flex items-center gap-3 mb-2">
+                            <div className="flex items-center gap-3 mb-2 flex-wrap">
                               <h3 className="text-xl font-bold text-gray-900">{course.title}</h3>
                               <Badge className={`${getStatusColor(course.status)} border`}>
                                 {course.status}
                               </Badge>
+                              {!course.thumbnail && isNewCourse(course.created_at) && (
+                                <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 font-semibold">
+                                  NEW
+                                </Badge>
+                              )}
                             </div>
                             <p className="text-sm text-gray-500">Course Code: {course.code}</p>
                           </div>
@@ -343,6 +592,69 @@ const Courses = () => {
               </motion.div>
             ))}
           </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && activeTab === 'courses' && filteredCourses.length > 0 && totalPages > 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mt-8 flex justify-center items-center gap-2"
+          >
+            {/* Previous Button */}
+            <Button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={`px-3 py-2 ${
+                currentPage === 1
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200'
+              }`}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+
+            {/* Page Numbers */}
+            <div className="flex gap-2">
+              {getPageNumbers().map((pageNum, index) => (
+                <React.Fragment key={index}>
+                  {pageNum === '...' ? (
+                    <span className="px-3 py-2 text-gray-500">...</span>
+                  ) : (
+                    <Button
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-4 py-2 min-w-[40px] ${
+                        currentPage === pageNum
+                          ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                      }`}
+                    >
+                      {pageNum}
+                    </Button>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+
+            {/* Next Button */}
+            <Button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`px-3 py-2 ${
+                currentPage === totalPages
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200'
+              }`}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+
+            {/* Page Info */}
+            <span className="ml-4 text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+          </motion.div>
         )}
         </div>
       </div>
