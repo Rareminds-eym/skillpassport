@@ -27,24 +27,8 @@ import {
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
 import { FileTextIcon } from "lucide-react";
-<<<<<<< HEAD
 import { useCurriculum } from "../../../hooks/useLessonPlans";
 import type { LessonPlan as LessonPlanType } from "../../../services/lessonPlansService";
-=======
-import { lessonPlanService } from "../../../services/lessonPlanService";
-import { supabase } from "../../../lib/supabaseClient";
-import { 
-  getSubjects, 
-  getClasses, 
-  getCurriculum, 
-  getChapters, 
-  getLearningOutcomes,
-  getCurrentEducatorSchoolId,
-  getCurrentAcademicYear,
-  type Chapter as CurriculumChapter,
-  type LearningOutcome as CurriculumLearningOutcome
-} from "../../../services/curriculumService";
->>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
 
 /* ==============================
    TYPES & INTERFACES
@@ -600,7 +584,6 @@ interface LessonPlanProps {
 /* ==============================
    MAIN COMPONENT
    ============================== */
-<<<<<<< HEAD
 const LessonPlan: React.FC<LessonPlanProps> = ({
   initialLessonPlans = [],
   onCreateLessonPlan,
@@ -613,24 +596,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   // Use props or fallback to sample data
   const subjects = propSubjects || ["Mathematics", "Physics", "Chemistry", "Biology", "English", "History"];
   const classes = propClasses?.map(c => c.grade || c) || ["9", "10", "11", "12"];
-=======
-const LessonPlan: React.FC = () => {
-  // State for dynamic data
-  const [subjects, setSubjects] = useState<string[]>([]);
-  const [classes, setClasses] = useState<string[]>([]);
-  const [curriculums, setCurriculums] = useState<Curriculum[]>([]);
-  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [schoolId, setSchoolId] = useState<string | null>(null);
-  const [currentAcademicYear, setCurrentAcademicYear] = useState<string>("");
->>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
+  const [loading, setLoading] = useState(false);
 
-  // Load initial data
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-<<<<<<< HEAD
   // Convert backend data to UI format
   const convertToUIFormat = (backendPlans: LessonPlanType[]): LessonPlan[] => {
     return backendPlans.map(plan => ({
@@ -652,6 +619,7 @@ const LessonPlan: React.FC = () => {
       evaluationItems: plan.evaluation_items || [],
       homework: plan.homework,
       differentiationNotes: plan.differentiation_notes,
+      status: plan.status,
     }));
   };
 
@@ -659,103 +627,11 @@ const LessonPlan: React.FC = () => {
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>(
     initialLessonPlans ? convertToUIFormat(initialLessonPlans) : []
   );
-=======
-  const loadInitialData = async () => {
-    try {
-      setLoading(true);
-      
-      // Get school ID and academic year
-      const [fetchedSchoolId, fetchedAcademicYear, fetchedSubjects, fetchedClasses] = await Promise.all([
-        getCurrentEducatorSchoolId(),
-        getCurrentAcademicYear(),
-        getSubjects(),
-        getClasses(),
-      ]);
 
-      setSchoolId(fetchedSchoolId);
-      setCurrentAcademicYear(fetchedAcademicYear || "2024-2025");
-      setSubjects(fetchedSubjects);
-      setClasses(fetchedClasses);
-
-      // Load lesson plans if school ID is available
-      if (fetchedSchoolId) {
-        const plans = await lessonPlanService.getLessonPlans(fetchedSchoolId);
-        setLessonPlans(plans.map(plan => ({
-          ...plan,
-          class: plan.class_name, // Map class_name to class for form compatibility
-          chapterId: plan.chapter_id || "", // Map chapter_id to chapterId
-          chapterName: plan.chapter_name || "",
-          duration: plan.duration ? `${plan.duration} minutes` : "",
-          selectedLearningOutcomes: plan.selected_learning_outcomes || [],
-          learningObjectives: plan.learning_objectives || "",
-          teachingMethodology: plan.teaching_methodology || "",
-          requiredMaterials: plan.required_materials || "",
-          resourceFiles: plan.resource_files || [],
-          resourceLinks: plan.resource_links || [],
-          evaluationCriteria: plan.evaluation_criteria || "",
-          evaluationItems: plan.evaluation_items || [],
-          homework: plan.homework || "",
-          differentiationNotes: plan.differentiation_notes || "",
-        })));
-      }
-    } catch (error) {
-      console.error("Error loading initial data:", error);
-    } finally {
-      setLoading(false);
-    }
+  // Placeholder for loadCurriculumData (used by edit/duplicate)
+  const loadCurriculumData = async (_subject: string, _className: string) => {
+    // Curriculum data is loaded via useCurriculum hook
   };
-
-  // Load curriculum when subject and class change
-  const loadCurriculumData = async (subject: string, className: string) => {
-    if (!subject || !className || !currentAcademicYear) return;
-
-    try {
-      const curriculum = await getCurriculum(subject, className, currentAcademicYear);
-      if (!curriculum) return;
-
-      const [chapters, learningOutcomes] = await Promise.all([
-        getChapters(curriculum.id),
-        getLearningOutcomes(curriculum.id),
-      ]);
-
-      // Map to the expected format
-      const mappedCurriculum: Curriculum = {
-        id: curriculum.id,
-        subject: curriculum.subject,
-        class: curriculum.class,
-        academicYear: curriculum.academic_year,
-        chapters: chapters.map(ch => ({
-          id: ch.id,
-          name: ch.name,
-          code: ch.code,
-          description: ch.description,
-          order: ch.order_number,
-          estimatedDuration: ch.estimated_duration,
-          durationUnit: ch.duration_unit,
-        })),
-        learningOutcomes: learningOutcomes.map(lo => ({
-          id: lo.id,
-          chapterId: lo.chapter_id,
-          outcome: lo.outcome,
-          bloomLevel: lo.bloom_level,
-        })),
-      };
-
-      // Update or add curriculum to state
-      setCurriculums(prev => {
-        const existing = prev.findIndex(c => c.id === mappedCurriculum.id);
-        if (existing >= 0) {
-          const updated = [...prev];
-          updated[existing] = mappedCurriculum;
-          return updated;
-        }
-        return [...prev, mappedCurriculum];
-      });
-    } catch (error) {
-      console.error("Error loading curriculum:", error);
-    }
-  };
->>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
 
   const [showEditor, setShowEditor] = useState(false);
   const [editingPlan, setEditingPlan] = useState<LessonPlan | null>(null);
@@ -847,24 +723,8 @@ const LessonPlan: React.FC = () => {
     }, {} as Record<string, number>),
   };
 
-<<<<<<< HEAD
   // Get available chapters from curriculum hook
   const availableChapters = chapters;
-=======
-  // Get available curriculums based on selected subject and class
-  const availableCurriculums = useMemo(() => {
-    if (!formData.subject || !formData.class) return [];
-    return curriculums.filter(
-      (c) => c.subject === formData.subject && c.class === formData.class
-    );
-  }, [formData.subject, formData.class, curriculums]);
-
-  // Get chapters from selected curriculum
-  const availableChapters = useMemo(() => {
-    if (availableCurriculums.length === 0) return [];
-    return availableCurriculums[0].chapters;
-  }, [availableCurriculums]);
->>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
 
   // Get learning outcomes for selected chapter
   const availableLearningOutcomes = learningOutcomes;
@@ -1027,13 +887,8 @@ const LessonPlan: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-<<<<<<< HEAD
-  // Handle submit
-  const handleSubmit = async () => {
-=======
   // Handle submit with status parameter
   const handleSubmit = async (status: 'draft' | 'approved' = 'draft') => {
->>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
     if (!validateForm()) {
       return;
     }
@@ -1041,16 +896,9 @@ const LessonPlan: React.FC = () => {
     setSubmitting(true);
 
     try {
-<<<<<<< HEAD
       // Find class ID
       const classObj = propClasses?.find((c: any) => c.grade === formData.class || c === formData.class);
       const classId = classObj?.id || "";
-
-      if (!classId) {
-        alert("Class not found. Please select a valid class.");
-        setSubmitting(false);
-        return;
-      }
 
       const submitData = {
         ...formData,
@@ -1058,6 +906,7 @@ const LessonPlan: React.FC = () => {
         resourceFiles,
         resourceLinks,
         evaluationItems,
+        status,
       };
 
       if (editingPlan) {
@@ -1093,6 +942,7 @@ const LessonPlan: React.FC = () => {
                     resourceFiles,
                     resourceLinks,
                     evaluationItems,
+                    status,
                   }
                 : p
             )
@@ -1126,148 +976,17 @@ const LessonPlan: React.FC = () => {
             resourceFiles,
             resourceLinks,
             evaluationItems,
+            status,
           };
           setLessonPlans([newPlan, ...lessonPlans]);
         }
-=======
-      // Get the current educator's ID
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        alert("User not authenticated");
-        setSubmitting(false);
-        return;
-      }
-
-      // Get educator_id from school_educators table
-      const { data: educatorData, error: educatorError } = await supabase
-        .from('school_educators')
-        .select('id, school_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (educatorError || !educatorData) {
-        console.error("Educator not found:", educatorError);
-        alert("Educator profile not found. Please contact administrator.");
-        setSubmitting(false);
-        return;
-      }
-
-      // Get class_id from school_classes based on grade and school
-      let classId = null;
-      if (formData.class && educatorData.school_id) {
-        const { data: classData, error: classError } = await supabase
-          .from('school_classes')
-          .select('id, name, grade, section')
-          .eq('school_id', educatorData.school_id)
-          .eq('grade', formData.class)
-          .eq('academic_year', currentAcademicYear)
-          .limit(1);
-        
-        if (classError) {
-          console.error("Error fetching class:", classError);
-        }
-        
-        // Take the first matching class if multiple sections exist
-        if (classData && classData.length > 0) {
-          classId = classData[0].id;
-          console.log("Linked to class:", classData[0].name, "ID:", classId);
-        } else {
-          console.warn("No matching school_class found for grade:", formData.class);
-        }
-      }
-
-      const chapter = selectedChapter;
-      const duration = chapter?.estimatedDuration || 45; // Default 45 minutes
-
-      const lessonPlanData = {
-        educator_id: educatorData.id, // Use the actual educator ID from school_educators
-        class_id: classId, // Link to school_classes
-        title: formData.title,
-        subject: formData.subject,
-        class_name: formData.class,
-        date: formData.date,
-        duration,
-        chapter_id: formData.chapterId || null,
-        chapter_name: chapter?.name || null,
-        selected_learning_outcomes: selectedLearningOutcomes,
-        learning_objectives: formData.learningObjectives,
-        teaching_methodology: formData.teachingMethodology || null,
-        required_materials: formData.requiredMaterials || null,
-        resource_files: resourceFiles,
-        resource_links: resourceLinks,
-        evaluation_criteria: formData.evaluationCriteria || null,
-        evaluation_items: evaluationItems,
-        homework: formData.homework || null,
-        differentiation_notes: formData.differentiationNotes || null,
-        status: status, // Use the status parameter
-        activities: [],
-        resources: [],
-        assessment_methods: null,
-        notes: null,
-        submitted_at: status === 'approved' ? new Date().toISOString() : null,
-        reviewed_by: status === 'approved' ? user.id : null,
-        reviewed_at: status === 'approved' ? new Date().toISOString() : null,
-        review_comments: null,
-      };
-
-      if (editingPlan) {
-        const updated = await lessonPlanService.updateLessonPlan(editingPlan.id, lessonPlanData);
-        setLessonPlans((prev) =>
-          prev.map((p) =>
-            p.id === editingPlan.id
-              ? {
-                  ...updated,
-                  class: updated.class_name, // Map class_name to class
-                  chapterId: updated.chapter_id || "", // Map chapter_id to chapterId
-                  chapterName: updated.chapter_name || "",
-                  duration: updated.duration ? `${updated.duration} minutes` : "",
-                  selectedLearningOutcomes: updated.selected_learning_outcomes || [],
-                  learningObjectives: updated.learning_objectives || "",
-                  teachingMethodology: updated.teaching_methodology || "",
-                  requiredMaterials: updated.required_materials || "",
-                  resourceFiles: updated.resource_files || [],
-                  resourceLinks: updated.resource_links || [],
-                  evaluationCriteria: updated.evaluation_criteria || "",
-                  evaluationItems: updated.evaluation_items || [],
-                  homework: updated.homework || "",
-                  differentiationNotes: updated.differentiation_notes || "",
-                }
-              : p
-          )
-        );
-      } else {
-        const created = await lessonPlanService.createLessonPlan(lessonPlanData);
-        const newPlan: LessonPlan = {
-          ...created,
-          class: created.class_name, // Map class_name to class
-          chapterId: created.chapter_id || "", // Map chapter_id to chapterId
-          chapterName: created.chapter_name || "",
-          duration: created.duration ? `${created.duration} minutes` : "",
-          selectedLearningOutcomes: created.selected_learning_outcomes || [],
-          learningObjectives: created.learning_objectives || "",
-          teachingMethodology: created.teaching_methodology || "",
-          requiredMaterials: created.required_materials || "",
-          resourceFiles: created.resource_files || [],
-          resourceLinks: created.resource_links || [],
-          evaluationCriteria: created.evaluation_criteria || "",
-          evaluationItems: created.evaluation_items || [],
-          homework: created.homework || "",
-          differentiationNotes: created.differentiation_notes || "",
-        };
-        setLessonPlans([newPlan, ...lessonPlans]);
->>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
       }
 
       resetForm();
       setShowEditor(false);
-<<<<<<< HEAD
     } catch (error: any) {
-      alert("Error: " + error.message);
-=======
-    } catch (error) {
       console.error("Error saving lesson plan:", error);
-      alert("Failed to save lesson plan. Please try again.");
->>>>>>> 3fe6fb4c99b79d361a01cf4693905b24ade8886b
+      alert("Error: " + (error.message || "Failed to save lesson plan"));
     } finally {
       setSubmitting(false);
     }
