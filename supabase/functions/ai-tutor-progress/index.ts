@@ -13,7 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // ===== AUTHENTICATION CHECK =====
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error('Missing authorization header');
@@ -23,25 +22,19 @@ serve(async (req) => {
       );
     }
 
-    // ===== ENVIRONMENT VARIABLES CHECK =====
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      console.error('Missing environment variables:', { 
-        hasUrl: !!SUPABASE_URL, 
-        hasAnonKey: !!SUPABASE_ANON_KEY 
-      });
+      console.error('Missing environment variables');
       return new Response(
         JSON.stringify({ error: 'Server configuration error' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Extract token from Authorization header
     const token = authHeader.replace('Bearer ', '');
     
-    // Get service role key for JWT verification (required per Supabase docs)
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!SUPABASE_SERVICE_ROLE_KEY) {
       console.error('Missing SUPABASE_SERVICE_ROLE_KEY');
@@ -51,10 +44,8 @@ serve(async (req) => {
       );
     }
 
-    // Create admin client to verify JWT (official Supabase pattern)
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
-    // Verify the JWT token using admin client
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) {
       console.error('Authentication failed:', authError?.message || 'No user found');
@@ -64,7 +55,6 @@ serve(async (req) => {
       );
     }
     
-    // Create regular client for database operations (respects RLS)
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -73,7 +63,6 @@ serve(async (req) => {
     const studentId = user.id;
 
     if (req.method === 'GET') {
-      // Query progress for a course
       const url = new URL(req.url);
       const courseId = url.searchParams.get('courseId');
 
@@ -84,7 +73,6 @@ serve(async (req) => {
         );
       }
 
-      // Get all progress records for this course
       const { data: progress, error: progressError } = await supabase
         .from('student_course_progress')
         .select('lesson_id, status, last_accessed, completed_at, time_spent_seconds')
@@ -99,20 +87,18 @@ serve(async (req) => {
         );
       }
 
-      // Get total lessons count
       const { data: lessons } = await supabase
         .from('lessons')
         .select('lesson_id, course_modules!inner(course_id)')
         .eq('course_modules.course_id', courseId);
 
       const totalLessons = lessons?.length || 0;
-      const completedLessons = (progress || []).filter(p => p.status === 'completed').length;
+      const completedLessons = (progress || []).filter((p: any) => p.status === 'completed').length;
       const completionPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
-      // Find last accessed lesson
       const lastAccessed = (progress || [])
-        .filter(p => p.last_accessed)
-        .sort((a, b) => new Date(b.last_accessed!).getTime() - new Date(a.last_accessed!).getTime())[0];
+        .filter((p: any) => p.last_accessed)
+        .sort((a: any, b: any) => new Date(b.last_accessed!).getTime() - new Date(a.last_accessed!).getTime())[0];
 
       return new Response(
         JSON.stringify({
@@ -129,7 +115,6 @@ serve(async (req) => {
     }
 
     if (req.method === 'POST') {
-      // Update progress for a lesson
       const { courseId, lessonId, status } = await req.json();
 
       if (!courseId || !lessonId || !status) {
@@ -160,7 +145,6 @@ serve(async (req) => {
         updateData.completed_at = now;
       }
 
-      // Upsert progress record
       const { data: result, error: upsertError } = await supabase
         .from('student_course_progress')
         .upsert(updateData, {
@@ -191,7 +175,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in ai-tutor-progress:', error);
     return new Response(
-      JSON.stringify({ error: error?.message || 'Internal server error' }),
+      JSON.stringify({ error: (error as Error)?.message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
