@@ -82,7 +82,7 @@ const AssessmentTest = () => {
         },
         {
             id: 'bigfive',
-            title: 'Work Style & Personality',
+            title: 'Big Five Personality',
             icon: <BrainCircuit className="w-6 h-6 text-purple-500" />,
             description: "Understand your work style, approach to tasks, and how you interact with others.",
             color: "purple",
@@ -225,10 +225,17 @@ const AssessmentTest = () => {
 
     const handleAnswer = (value) => {
         const questionId = `${currentSection.id}_${currentSection.questions[currentQuestionIndex].id}`;
-        setAnswers(prev => ({
-            ...prev,
-            [questionId]: value
-        }));
+        setAnswers(prev => {
+            // If value is undefined or empty object, remove the answer
+            if (value === undefined || (typeof value === 'object' && Object.keys(value).length === 0)) {
+                const { [questionId]: removed, ...rest } = prev;
+                return rest;
+            }
+            return {
+                ...prev,
+                [questionId]: value
+            };
+        });
     };
 
     const handleNext = () => {
@@ -999,7 +1006,13 @@ const AssessmentTest = () => {
                                                                                     const current = answers[questionId] || {};
                                                                                     // Can't select same option for both
                                                                                     if (current.worst === option) return;
-                                                                                    handleAnswer({ ...current, best: option });
+                                                                                    // Toggle: if already selected as best, deselect it
+                                                                                    if (isBest) {
+                                                                                        const { best, ...rest } = current;
+                                                                                        handleAnswer(Object.keys(rest).length > 0 ? rest : undefined);
+                                                                                    } else {
+                                                                                        handleAnswer({ ...current, best: option });
+                                                                                    }
                                                                                 }}
                                                                                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                                                                                     isBest 
@@ -1016,7 +1029,13 @@ const AssessmentTest = () => {
                                                                                     const current = answers[questionId] || {};
                                                                                     // Can't select same option for both
                                                                                     if (current.best === option) return;
-                                                                                    handleAnswer({ ...current, worst: option });
+                                                                                    // Toggle: if already selected as worst, deselect it
+                                                                                    if (isWorst) {
+                                                                                        const { worst, ...rest } = current;
+                                                                                        handleAnswer(Object.keys(rest).length > 0 ? rest : undefined);
+                                                                                    } else {
+                                                                                        handleAnswer({ ...current, worst: option });
+                                                                                    }
                                                                                 }}
                                                                                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                                                                                     isWorst 

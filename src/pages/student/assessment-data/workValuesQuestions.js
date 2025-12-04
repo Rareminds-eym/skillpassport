@@ -1,4 +1,4 @@
-// Work Values and Career Anchors Inventory
+// Work Values items (24 items; 3 per value)
 // Identifies what drives career satisfaction
 
 export const workValuesQuestions = [
