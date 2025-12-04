@@ -233,7 +233,7 @@ export async function getConversation(conversationId: string): Promise<Conversat
 
 /**
  * Get suggested questions for a lesson
- * Returns empty array if not authenticated (graceful degradation)
+ * Returns default suggestions if not authenticated or on error (graceful degradation)
  */
 export async function getSuggestedQuestions(lessonId: string): Promise<string[]> {
   try {
@@ -244,28 +244,35 @@ export async function getSuggestedQuestions(lessonId: string): Promise<string[]>
       return getDefaultSuggestions();
     }
     
-    if (!session?.access_token) {
-      // Return default suggestions if not authenticated
-      console.log('User not authenticated, returning default suggestions');
-      return getDefaultSuggestions();
+    // Build headers - always include apikey, optionally include auth
+    const headers: Record<string, string> = {
+      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+    };
+    
+    // Only add Authorization if we have a valid session
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
     }
 
     const response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-tutor-suggestions`,
       {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ lessonId }),
       }
     );
 
+    // Handle auth errors gracefully - return defaults instead of throwing
+    if (response.status === 401 || response.status === 403) {
+      console.log('Auth required for suggestions, using defaults');
+      return getDefaultSuggestions();
+    }
+
     if (!response.ok) {
       // Return default suggestions on error
-      console.warn('Failed to fetch suggestions, using defaults');
+      console.warn('Failed to fetch suggestions, using defaults. Status:', response.status);
       return getDefaultSuggestions();
     }
 
