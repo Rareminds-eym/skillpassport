@@ -4,7 +4,7 @@ export { default as AppliedJobs } from './AppliedJobs';
 export { default as BrowseJobs } from './BrowseJobs';
 export { default as Opportunities } from './Opportunities';
 export { default as MySkills } from './MySkills';
-export { default as MyTraining } from './MyTraining';
+export { default as MyLearning } from './MyLearning';
 export { default as MyExperience } from './MyExperience';
 export { default as Assignments } from './Assignments';
 export { default as Settings } from './Settings';

@@ -32,6 +32,14 @@ serve(async (req) => {
   }
 
   try {
+    // ===== AUTHENTICATION CHECK =====
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('Missing authorization header');
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), 
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // ===== ENVIRONMENT VARIABLES CHECK =====
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
@@ -45,35 +53,34 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ===== AUTHENTICATION (OPTIONAL for suggestions) =====
-    // Suggestions can work without auth - we'll use anon key for public lesson data
-    const authHeader = req.headers.get('Authorization');
-    let userId: string | null = null;
+    // Extract token from Authorization header
+    const token = authHeader.replace('Bearer ', '');
     
-    if (authHeader) {
-      const token = authHeader.replace('Bearer ', '');
-      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-      
-      if (SUPABASE_SERVICE_ROLE_KEY && token) {
-        try {
-          const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-          const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-          if (!authError && user) {
-            userId = user.id;
-          }
-        } catch (e) {
-          // Auth failed, continue without user context
-          console.log('Auth verification failed, continuing as anonymous');
-        }
-      }
+    // Get service role key for JWT verification (required per Supabase docs)
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Missing SUPABASE_SERVICE_ROLE_KEY');
+      return new Response(JSON.stringify({ error: 'Server configuration error' }), 
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Create admin client to verify JWT (official Supabase pattern)
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    
+    // Verify the JWT token using admin client
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      console.error('Authentication failed:', authError?.message || 'No user found');
+      return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), 
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     
-    // Create client for database operations (use anon key for public data)
+    // Create regular client for database operations (respects RLS)
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: authHeader ? { Authorization: authHeader } : {} },
+      global: { headers: { Authorization: authHeader } },
     });
 
-    console.log(`AI Tutor suggestions request${userId ? ` from user: ${userId}` : ' (anonymous)'}`);
+    console.log(`AI Tutor suggestions request from user: ${user.id}`);
 
     const { lessonId } = await req.json();
     if (!lessonId) {

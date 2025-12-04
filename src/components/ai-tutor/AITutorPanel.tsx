@@ -297,6 +297,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             </div>
             <div>
               <h3 className="font-semibold text-sm">AI Course Tutor</h3>
+              <p className="text-xs text-violet-200">Powered by Grok</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
