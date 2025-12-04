@@ -67,7 +67,7 @@ import { Toaster } from "react-hot-toast";
 import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
 import RecentUpdatesCard from "../../components/Students/components/RecentUpdatesCard";
 import { useStudentAchievements } from "../../hooks/useStudentAchievements";
-import { useStudentTraining } from "../../hooks/useStudentTraining";
+import { useStudentLearning } from "../../hooks/useStudentLearning";
 import { useStudentCertificates } from "../../hooks/useStudentCertificates";
 import { useStudentProjects } from "../../hooks/useStudentProjects";
 
