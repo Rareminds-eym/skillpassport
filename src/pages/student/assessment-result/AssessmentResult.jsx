@@ -251,7 +251,7 @@ const AssessmentResult = () => {
 
                 {/* Detail Modal - Modern Design */}
                 <Dialog open={activeSection !== null} onOpenChange={() => setActiveSection(null)}>
-                    <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] p-0 gap-0 overflow-hidden border-0 shadow-2xl rounded-3xl">
+                    <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] !p-0 gap-0 overflow-hidden border-0 shadow-2xl rounded-3xl">
                         {/* Gradient Header */}
                         <DialogHeader className="relative overflow-hidden">
                             {/* Background gradient based on section */}
@@ -318,7 +318,7 @@ const AssessmentResult = () => {
 
                         {/* Scrollable Content with subtle background */}
                         <div className="overflow-y-auto max-h-[calc(95vh-140px)] bg-gradient-to-b from-gray-50 to-white">
-                            <div className="px-10 py-10">
+                            <div className="p-6">
                                 {activeSection === 'profile' && (
                                     <ProfileSection
                                         results={results}
