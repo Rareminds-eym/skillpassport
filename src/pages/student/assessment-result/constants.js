@@ -70,11 +70,40 @@ export const PRINT_STYLES = `
         width: 100% !important;
     }
     
-    /* Hide ALL non-print elements */
-    header, footer, nav, aside, .sticky, [class*="sticky"],
-    .Toaster, [class*="floating"], [class*="Floating"],
-    button, .btn, [role="dialog"], [role="menu"] {
+    /* Hide ALL non-print elements - comprehensive list */
+    header, footer, nav, aside,
+    .sticky, [class*="sticky"],
+    .Toaster, [class*="toast"],
+    [class*="floating"], [class*="Floating"], [class*="float"],
+    button:not(.print-button), .btn,
+    [role="dialog"], [role="menu"], [role="tooltip"],
+    .fab, .floating-button, .action-button,
+    [class*="chat"], [class*="Chat"],
+    [class*="widget"], [class*="Widget"],
+    [class*="popup"], [class*="Popup"],
+    [class*="modal"], [class*="Modal"],
+    [class*="overlay"], [class*="Overlay"],
+    iframe, video, audio,
+    .no-print, .print-hidden, .hide-print {
         display: none !important;
+        visibility: hidden !important;
+    }
+    
+    /* Force hide any fixed/absolute positioned elements */
+    body > div:not(.print-view),
+    body > aside,
+    body > section:not(.print-view),
+    #__next > div:not(.print-view),
+    #root > div:not(.print-view) {
+        /* Keep main content but hide overlays */
+    }
+    
+    /* Specifically target fixed position elements */
+    div[style*="position: fixed"],
+    div[style*="position:fixed"],
+    div[class*="fixed"] {
+        display: none !important;
+        position: static !important;
     }
     
     /* Page breaks */
