@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
 import { useAuth } from '../../context/AuthContext';
 import { fileService } from '../../services/fileService';
-import { AITutorPanel } from '../../components/ai-tutor';
+import { AITutorPanel, VideoLearningPanel } from '../../components/ai-tutor';
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
@@ -759,6 +759,7 @@ const CoursePlayer = () => {
                         ) : (
                           <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
                             <video
+                              id="lesson-video-player"
                               src={lessonVideoUrl}
                               className="w-full h-full"
                               controls
@@ -768,6 +769,23 @@ const CoursePlayer = () => {
                               Your browser does not support the video tag.
                             </video>
                           </div>
+                        )}
+                        
+                        {/* AI Video Learning Panel - Summary, Transcript, Chapters */}
+                        {lessonVideoUrl && !lessonVideoUrl.includes('youtube.com') && (
+                          <VideoLearningPanel
+                            videoUrl={lessonVideoUrl}
+                            lessonId={currentLesson?.id}
+                            courseId={courseId}
+                            lessonTitle={currentLesson?.title}
+                            onSeekTo={(time) => {
+                              const video = document.getElementById('lesson-video-player');
+                              if (video) {
+                                video.currentTime = time;
+                                video.play();
+                              }
+                            }}
+                          />
                         )}
                       </div>
                     ) : null}
