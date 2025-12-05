@@ -63,8 +63,7 @@ const HeroSection = ({ approvalStatus = 'pending' }) => {
                     Computer Science
                   </Badge>
                   <Badge className="bg-[#fbe7f7] text-[#c026d3] border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-none">
-                    Class of 2025
-                  </Badge>
+                    Class of 2025                  </Badge>
                 </div>
               </div>
 
