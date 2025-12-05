@@ -669,19 +669,14 @@ const AssessmentTest = () => {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // Initial loading screen - checking for existing attempts
-    if (checkingExistingAttempt || dbLoading) {
+    // Unified loading screen - clean and simple
+    if (checkingExistingAttempt || dbLoading || questionsLoading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-                <Card className="w-full max-w-md border-none shadow-2xl">
-                    <CardContent className="p-8 text-center">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                            <Loader2 className="w-8 h-8 text-white animate-spin" />
-                        </div>
-                        <h2 className="text-xl font-bold text-gray-800 mb-2">Loading Assessment</h2>
-                        <p className="text-gray-600">Checking your progress...</p>
-                    </CardContent>
-                </Card>
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading...</p>
+                </div>
             </div>
         );
     }
@@ -736,23 +731,6 @@ const AssessmentTest = () => {
                                 Start Fresh (Discard Progress)
                             </Button>
                         </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-
-    // Loading screen while questions are being fetched
-    if (questionsLoading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-                <Card className="w-full max-w-md border-none shadow-2xl">
-                    <CardContent className="p-8 text-center">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                            <Loader2 className="w-8 h-8 text-white animate-spin" />
-                        </div>
-                        <h2 className="text-xl font-bold text-gray-800 mb-2">Loading Assessment</h2>
-                        <p className="text-gray-600">Preparing your personalized questions...</p>
                     </CardContent>
                 </Card>
             </div>
