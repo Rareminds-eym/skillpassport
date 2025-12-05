@@ -5,6 +5,21 @@
   <link rel="icon" type="image/webp" href="/RMLogo.webp" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rareminds - Skillpassport</title>
+    
+    <style>
+      /* Hide Zoho widget on student pages */
+      body.hide-zoho-widget #zsiq_float,
+      body.hide-zoho-widget .zsiq_floatmain,
+      body.hide-zoho-widget .zsiq_float,
+      body.hide-zoho-widget div[id^="siqiframe"],
+      body.hide-zoho-widget div[id*="zsalesiq"],
+      body.hide-zoho-widget iframe[id*="siq"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
@@ -13,20 +28,46 @@
     <!-- Zoho SalesIQ Widget -->
     <script>
       document.addEventListener('DOMContentLoaded', function() {
+        // Function to check if current page is student dashboard
+        function isStudentPage() {
+          const path = window.location.pathname;
+          return path.includes('/student');
+        }
+        
+        // Function to toggle body class based on route
+        function updateBodyClass() {
+          if (isStudentPage()) {
+            document.body.classList.add('hide-zoho-widget');
+          } else {
+            document.body.classList.remove('hide-zoho-widget');
+          }
+        }
+        
+        // Initial check
+        updateBodyClass();
+        
+        // Function to hide/show widget based on route
+        function updateWidgetVisibility() {
+          if (window.$zoho && window.$zoho.salesiq && window.$zoho.salesiq.floatwindow) {
+            if (isStudentPage()) {
+              $zoho.salesiq.floatwindow.visible('hide');
+            } else {
+              const urlParams = new URLSearchParams(window.location.search);
+              const openChat = urlParams.get('openChat');
+              
+              if (openChat !== 'false' && openChat !== '0') {
+                $zoho.salesiq.floatwindow.visible('show');
+              }
+            }
+          }
+        }
+        
         window.$zoho = window.$zoho || {};
         $zoho.salesiq = $zoho.salesiq || {widgetcode: "siq85740827d442fdfad727c23eb50d61276e1e478af9841b5169a99498fc35da01", values:{}, ready:function(){
-          const urlParams = new URLSearchParams(window.location.search);
-          const openChat = urlParams.get('openChat');
-          
-          if (openChat === 'false' || openChat === '0') {
-            setTimeout(function() {
-              $zoho.salesiq.floatwindow.visible('hide');
-            }, 1000);
-          } else if (openChat === 'true' || openChat === '1') {
-            setTimeout(function() {
-              $zoho.salesiq.floatwindow.visible('show');
-            }, 1000);
-          }
+          // Initial visibility check
+          setTimeout(function() {
+            updateWidgetVisibility();
+          }, 500);
         }};
         
         var script = document.createElement('script');
@@ -34,6 +75,16 @@
         script.id = 'zsiqscript';
         script.defer = true;
         document.head.appendChild(script);
+        
+        // Monitor route changes (for SPAs)
+        let lastPath = window.location.pathname;
+        setInterval(function() {
+          if (lastPath !== window.location.pathname) {
+            lastPath = window.location.pathname;
+            updateBodyClass();
+            updateWidgetVisibility();
+          }
+        }, 300);
       });
     </script>
 
