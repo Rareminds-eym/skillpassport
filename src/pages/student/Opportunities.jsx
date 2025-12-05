@@ -510,26 +510,13 @@ const MyJobsContent = ({
   refreshRecommendations,
   cached,
   fallback,
-  trackView,
-  studentId
+  trackView
 }) => {
   const totalPages = Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
   const paginatedOpportunities = React.useMemo(() => {
     const startIndex = (currentPage - 1) * opportunitiesPerPage;
     return opportunities.slice(startIndex, startIndex + opportunitiesPerPage);
   }, [opportunities, currentPage, opportunitiesPerPage]);
-
-  // Debug logging
-  React.useEffect(() => {
-    console.log('🔍 AI Recommendations Debug:', {
-      recommendations,
-      recommendationsLength: recommendations?.length,
-      recommendationsLoading,
-      recommendationsError,
-      cached,
-      fallback
-    });
-  }, [recommendations, recommendationsLoading, recommendationsError, cached, fallback]);
 
   return (
     <>
@@ -648,27 +635,6 @@ const MyJobsContent = ({
           )}
         </div>
       )}
-
-      {/* Debug Info - Remove after testing */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <p className="text-sm text-blue-800">
-          <strong>Debug Info:</strong><br/>
-          Student ID: {studentId || 'Not available'}<br/>
-          Loading: {recommendationsLoading ? 'Yes' : 'No'}<br/>
-          Error: {recommendationsError || 'None'}<br/>
-          Recommendations Count: {recommendations?.length || 0}<br/>
-          Cached: {cached ? 'Yes' : 'No'}<br/>
-          Fallback: {fallback ? 'Yes' : 'No'}
-        </p>
-        {recommendations && recommendations.length > 0 && (
-          <details className="mt-2">
-            <summary className="cursor-pointer text-sm font-semibold">View Raw Data</summary>
-            <pre className="mt-2 text-xs bg-white p-2 rounded overflow-auto max-h-40">
-              {JSON.stringify(recommendations, null, 2)}
-            </pre>
-          </details>
-        )}
-      </div>
 
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
