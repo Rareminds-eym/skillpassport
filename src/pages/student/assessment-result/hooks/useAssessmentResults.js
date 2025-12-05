@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../../../lib/supabaseClient';
 import { analyzeAssessmentWithGemini } from '../../../../services/geminiAssessmentService';
 import { riasecQuestions } from '../../assessment-data/riasecQuestions';
@@ -7,11 +7,14 @@ import { bigFiveQuestions } from '../../assessment-data/bigFiveQuestions';
 import { workValuesQuestions } from '../../assessment-data/workValuesQuestions';
 import { employabilityQuestions } from '../../assessment-data/employabilityQuestions';
 import { streamKnowledgeQuestions } from '../../assessment-data/streamKnowledgeQuestions';
+import * as assessmentService from '../../../../services/assessmentService';
 
 /**
  * Custom hook for managing assessment results
+ * Now supports both localStorage (legacy) and database storage
  */
 export const useAssessmentResults = () => {
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -93,6 +96,40 @@ export const useAssessmentResults = () => {
 
         fetchStudentInfo();
 
+        // Check if we have an attemptId in URL params (database mode)
+        const attemptId = searchParams.get('attemptId');
+        
+        if (attemptId) {
+            // Load results from database
+            try {
+                const attempt = await assessmentService.getAttemptWithResults(attemptId);
+                if (attempt?.results?.[0]?.gemini_results) {
+                    setResults(attempt.results[0].gemini_results);
+                    setLoading(false);
+                    return;
+                }
+            } catch (e) {
+                console.error('Error loading results from database:', e);
+            }
+        }
+
+        // Try to load latest result from database for current user
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const latestResult = await assessmentService.getLatestResult(user.id);
+                if (latestResult?.gemini_results) {
+                    console.log('Loaded results from database');
+                    setResults(latestResult.gemini_results);
+                    setLoading(false);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.log('No database results found, checking localStorage');
+        }
+
+        // Fallback to localStorage (legacy mode)
         const answersJson = localStorage.getItem('assessment_answers');
         const geminiResultsJson = localStorage.getItem('assessment_gemini_results');
         const stream = localStorage.getItem('assessment_stream');
@@ -134,6 +171,29 @@ export const useAssessmentResults = () => {
 
                 if (geminiResults) {
                     localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
+                    
+                    // Also try to save to database if user is logged in
+                    try {
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user) {
+                            // Check if there's an in-progress attempt to complete
+                            const inProgressAttempt = await assessmentService.getInProgressAttempt(user.id);
+                            if (inProgressAttempt) {
+                                const sectionTimings = JSON.parse(localStorage.getItem('assessment_section_timings') || '{}');
+                                await assessmentService.completeAttempt(
+                                    inProgressAttempt.id,
+                                    user.id,
+                                    stream,
+                                    geminiResults,
+                                    sectionTimings
+                                );
+                                console.log('Results saved to database');
+                            }
+                        }
+                    } catch (dbError) {
+                        console.log('Could not save to database:', dbError.message);
+                    }
+                    
                     setResults(geminiResults);
                     setLoading(false);
                     return;

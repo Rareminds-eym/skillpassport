@@ -39,18 +39,25 @@ export const TRAIT_COLORS = {
 
 export const PRINT_STYLES = `
 @media print {
-    /* Page setup */
+    /* Page setup - A4: 210mm x 297mm */
     @page {
-        size: A4;
-        margin: 15mm;
+        size: A4 portrait;
+        margin: 12mm 15mm;
     }
     
-    /* Reset body */
+    /* Reset everything */
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+    
     body, html {
         margin: 0 !important;
         padding: 0 !important;
         background: white !important;
         overflow: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
     }
     
     /* Hide web view, show print view */
@@ -60,34 +67,94 @@ export const PRINT_STYLES = `
         position: static !important;
         background: white !important;
         overflow: visible !important;
+        width: 100% !important;
     }
     
-    /* Hide ALL header and footer elements */
-    header, footer, nav, aside {
+    /* Hide ALL non-print elements - comprehensive list */
+    header, footer, nav, aside,
+    .sticky, [class*="sticky"],
+    .Toaster, [class*="toast"],
+    [class*="floating"], [class*="Floating"], [class*="float"],
+    button:not(.print-button), .btn,
+    [role="dialog"], [role="menu"], [role="tooltip"],
+    .fab, .floating-button, .action-button,
+    [class*="chat"], [class*="Chat"],
+    [class*="widget"], [class*="Widget"],
+    [class*="popup"], [class*="Popup"],
+    [class*="modal"], [class*="Modal"],
+    [class*="overlay"], [class*="Overlay"],
+    iframe, video, audio,
+    .no-print, .print-hidden, .hide-print {
         display: none !important;
-        height: 0 !important;
-        max-height: 0 !important;
-        overflow: hidden !important;
-        margin: 0 !important;
-        padding: 0 !important;
+        visibility: hidden !important;
     }
     
-    /* Remove sticky positioning */
-    .sticky, [class*="sticky"] {
+    /* Force hide any fixed/absolute positioned elements */
+    body > div:not(.print-view),
+    body > aside,
+    body > section:not(.print-view),
+    #__next > div:not(.print-view),
+    #root > div:not(.print-view) {
+        /* Keep main content but hide overlays */
+    }
+    
+    /* Specifically target fixed position elements */
+    div[style*="position: fixed"],
+    div[style*="position:fixed"],
+    div[class*="fixed"] {
+        display: none !important;
         position: static !important;
-        display: none !important;
     }
     
-    /* Hide floating buttons and toasters */
-    .Toaster, [class*="floating"], [class*="Floating"] {
-        display: none !important;
-    }
-    
-    /* Ensure content flows across pages */
+    /* Page breaks */
     .print-view > div {
-        page-break-inside: auto;
+        page-break-inside: avoid;
+        page-break-after: always;
+    }
+    .print-view > div:last-child {
+        page-break-after: auto;
+    }
+    
+    /* Ensure backgrounds print */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    /* Table styling for print */
+    table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+        page-break-inside: avoid !important;
+    }
+    
+    th, td {
+        border: 1px solid #e2e8f0 !important;
+    }
+    
+    tr {
+        page-break-inside: avoid !important;
+    }
+    
+    /* Prevent page breaks inside important elements */
+    div[style*="background"], 
+    div[style*="border"],
+    .card, .box, .summary {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+    
+    /* Prevent orphans and widows */
+    p, h1, h2, h3, h4, h5, h6 {
+        orphans: 3;
+        widows: 3;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
     }
 }
+
 @media screen {
     .print-view { display: none !important; }
 }

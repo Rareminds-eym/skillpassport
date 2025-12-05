@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -14,51 +14,236 @@ import {
     TrendingUp,
     Users,
     Code,
-    Zap
+    Zap,
+    Loader2
 } from 'lucide-react';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 import { Label } from '../../components/Students/components/ui/label';
 
-// Import question banks
-import { riasecQuestions } from './assessment-data/riasecQuestions';
+// Import question banks (fallback for offline/legacy mode)
+import { riasecQuestions as fallbackRiasecQuestions } from './assessment-data/riasecQuestions';
 import { getAllAptitudeQuestions, getModuleQuestionIndex, aptitudeModules } from './assessment-data/aptitudeQuestions';
-import { bigFiveQuestions } from './assessment-data/bigFiveQuestions';
-import { workValuesQuestions } from './assessment-data/workValuesQuestions';
-import { employabilityQuestions, getCurrentEmployabilityModule, employabilityModules } from './assessment-data/employabilityQuestions';
-import { streamKnowledgeQuestions } from './assessment-data/streamKnowledgeQuestions';
+import { bigFiveQuestions as fallbackBigFiveQuestions } from './assessment-data/bigFiveQuestions';
+import { workValuesQuestions as fallbackWorkValuesQuestions } from './assessment-data/workValuesQuestions';
+import { employabilityQuestions as fallbackEmployabilityQuestions, getCurrentEmployabilityModule } from './assessment-data/employabilityQuestions';
+import { streamKnowledgeQuestions as fallbackStreamKnowledgeQuestions } from './assessment-data/streamKnowledgeQuestions';
 
 // Import Gemini assessment service
 import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentService';
 
+// Import database services
+import { useAssessment } from '../../hooks/useAssessment';
+import { useAuth } from '../../context/AuthContext';
+import * as assessmentService from '../../services/assessmentService';
+
 const AssessmentTest = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    
+    // Database integration hook
+    const {
+        loading: dbLoading,
+        currentAttempt,
+        startAssessment,
+        saveResponse: saveDbResponse,
+        updateProgress,
+        completeAssessment,
+        checkInProgressAttempt
+    } = useAssessment();
+
+    // State for questions loaded from database
+    const [dbQuestions, setDbQuestions] = useState(null);
+    const [questionsLoading, setQuestionsLoading] = useState(false);
+    const [questionsError, setQuestionsError] = useState(null);
+    const [showResumePrompt, setShowResumePrompt] = useState(false);
+    const [pendingAttempt, setPendingAttempt] = useState(null);
+    const [checkingExistingAttempt, setCheckingExistingAttempt] = useState(true); // Start with checking
 
     // Lazy initialization from localStorage
     const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [answers, setAnswers] = useState({});
     const [studentStream, setStudentStream] = useState(null);
-    const [showStreamSelection, setShowStreamSelection] = useState(true);
+    const [showStreamSelection, setShowStreamSelection] = useState(false); // Start false, set true after check
     const [timeRemaining, setTimeRemaining] = useState(null);
+    const [useDatabase, setUseDatabase] = useState(false); // Track if using database mode
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSaving, setIsSaving] = useState(false); // Track if saving progress
     const [error, setError] = useState(null);
     const [showSectionIntro, setShowSectionIntro] = useState(true);
     const [showSectionComplete, setShowSectionComplete] = useState(false);
     const [elapsedTime, setElapsedTime] = useState(0); // Elapsed time for non-timed sections
     const [sectionTimings, setSectionTimings] = useState({}); // Track time spent on each section
 
-    // Define assessment sections
-    const sections = [
+    // Load questions from database when stream is selected
+    const loadQuestionsFromDatabase = async (streamId) => {
+        setQuestionsLoading(true);
+        setQuestionsError(null);
+        try {
+            const allQuestions = await assessmentService.fetchAllQuestions(streamId);
+            console.log('Questions loaded from database:', allQuestions);
+            setDbQuestions(allQuestions);
+            setUseDatabase(true);
+            return allQuestions;
+        } catch (err) {
+            console.error('Failed to load questions from database:', err);
+            setQuestionsError(err.message);
+            setUseDatabase(false);
+            return null;
+        } finally {
+            setQuestionsLoading(false);
+        }
+    };
+    
+    // Check for in-progress attempt on mount
+    useEffect(() => {
+        const checkExistingAttempt = async () => {
+            // Wait for auth to be ready
+            if (dbLoading) return;
+            
+            setCheckingExistingAttempt(true);
+            
+            try {
+                if (user?.id) {
+                    const existingAttempt = await checkInProgressAttempt();
+                    if (existingAttempt) {
+                        console.log('Found in-progress attempt:', existingAttempt);
+                        // Show resume prompt instead of auto-resuming
+                        setPendingAttempt(existingAttempt);
+                        setShowResumePrompt(true);
+                        setShowStreamSelection(false);
+                    } else {
+                        // No existing attempt, show stream selection
+                        setShowStreamSelection(true);
+                    }
+                } else {
+                    // Not logged in, show stream selection
+                    setShowStreamSelection(true);
+                }
+            } catch (err) {
+                console.error('Error checking for existing attempt:', err);
+                setShowStreamSelection(true);
+            } finally {
+                setCheckingExistingAttempt(false);
+            }
+        };
+        checkExistingAttempt();
+    }, [user?.id, dbLoading, checkInProgressAttempt]);
+
+    // Handle resume assessment
+    const handleResumeAssessment = async () => {
+        if (!pendingAttempt) return;
+        
+        setQuestionsLoading(true);
+        setShowResumePrompt(false);
+        
+        try {
+            setUseDatabase(true);
+            setStudentStream(pendingAttempt.stream_id);
+            
+            // Load questions for this stream
+            await loadQuestionsFromDatabase(pendingAttempt.stream_id);
+            
+            // Restore previous answers
+            if (pendingAttempt.restoredResponses) {
+                console.log('Restoring answers:', Object.keys(pendingAttempt.restoredResponses).length, 'answers');
+                setAnswers(pendingAttempt.restoredResponses);
+            }
+            
+            // Restore progress
+            const sectionIdx = pendingAttempt.current_section_index ?? 0;
+            const questionIdx = pendingAttempt.current_question_index ?? 0;
+            
+            console.log('Resuming at section:', sectionIdx, 'question:', questionIdx);
+            
+            setCurrentSectionIndex(sectionIdx);
+            setCurrentQuestionIndex(questionIdx);
+            
+            // Don't show section intro if resuming - go directly to the question
+            setShowSectionIntro(false);
+            setShowSectionComplete(false);
+            
+            if (pendingAttempt.section_timings) {
+                setSectionTimings(pendingAttempt.section_timings);
+            }
+            
+            // Restore timer for timed sections (aptitude, knowledge)
+            if (pendingAttempt.timer_remaining !== null && pendingAttempt.timer_remaining !== undefined) {
+                console.log('Restoring timer:', pendingAttempt.timer_remaining, 'seconds remaining');
+                setTimeRemaining(pendingAttempt.timer_remaining);
+            }
+            
+            // Restore elapsed time for non-timed sections
+            if (pendingAttempt.elapsed_time !== null && pendingAttempt.elapsed_time !== undefined) {
+                console.log('Restoring elapsed time:', pendingAttempt.elapsed_time, 'seconds');
+                setElapsedTime(pendingAttempt.elapsed_time);
+            }
+        } catch (err) {
+            console.error('Error resuming assessment:', err);
+            setShowStreamSelection(true);
+        } finally {
+            setQuestionsLoading(false);
+        }
+    };
+
+    // Handle start new assessment (abandon previous)
+    const handleStartNewAssessment = async () => {
+        if (pendingAttempt?.id) {
+            try {
+                await assessmentService.abandonAttempt(pendingAttempt.id);
+            } catch (err) {
+                console.error('Error abandoning attempt:', err);
+            }
+        }
+        setPendingAttempt(null);
+        setShowResumePrompt(false);
+        setShowStreamSelection(true);
+    };
+
+    // Transform database questions to match UI format
+    const transformDbQuestion = (dbQ) => ({
+        id: dbQ.id,
+        text: dbQ.question_text,
+        type: dbQ.subtype,           // Used for RIASEC (R,I,A,S,E,C), Big Five (O,C,E,A,N), Values, Employability domains
+        subtype: dbQ.subtype,        // Used for aptitude categorization (verbal, numerical, etc.)
+        moduleTitle: dbQ.module_title,
+        options: dbQ.options,
+        correct: dbQ.correct_answer,
+        partType: dbQ.part_type,     // For employability: 'selfRating' or 'sjt'
+        scenario: dbQ.scenario,
+        bestAnswer: dbQ.best_answer,
+        worstAnswer: dbQ.worst_answer
+    });
+
+    // Get questions for a section - from database or fallback
+    const getQuestionsForSection = (sectionId) => {
+        if (dbQuestions && dbQuestions[sectionId]?.questions) {
+            return dbQuestions[sectionId].questions.map(transformDbQuestion);
+        }
+        // Fallback to hardcoded questions
+        switch (sectionId) {
+            case 'riasec': return fallbackRiasecQuestions;
+            case 'aptitude': return getAllAptitudeQuestions();
+            case 'bigfive': return fallbackBigFiveQuestions;
+            case 'values': return fallbackWorkValuesQuestions;
+            case 'employability': return fallbackEmployabilityQuestions;
+            case 'knowledge': return fallbackStreamKnowledgeQuestions[studentStream] || [];
+            default: return [];
+        }
+    };
+
+    // Define assessment sections with dynamic questions
+    const sections = useMemo(() => [
         {
             id: 'riasec',
             title: 'Career Interests (RIASEC)',
             icon: <Heart className="w-6 h-6 text-rose-500" />,
             description: "Discover what types of work environments and activities appeal to you most.",
             color: "rose",
-            questions: riasecQuestions,
+            questions: getQuestionsForSection('riasec'),
             responseScale: [
                 { value: 1, label: "Strongly Dislike" },
                 { value: 2, label: "Dislike" },
@@ -74,7 +259,7 @@ const AssessmentTest = () => {
             icon: <Zap className="w-6 h-6 text-amber-500" />,
             description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
             color: "amber",
-            questions: getAllAptitudeQuestions(),
+            questions: getQuestionsForSection('aptitude'),
             isTimed: true,
             timeLimit: 10 * 60, // 10 minutes
             isAptitude: true,
@@ -86,7 +271,7 @@ const AssessmentTest = () => {
             icon: <BrainCircuit className="w-6 h-6 text-purple-500" />,
             description: "Understand your work style, approach to tasks, and how you interact with others.",
             color: "purple",
-            questions: bigFiveQuestions,
+            questions: getQuestionsForSection('bigfive'),
             responseScale: [
                 { value: 1, label: "Very Inaccurate" },
                 { value: 2, label: "Moderately Inaccurate" },
@@ -102,7 +287,7 @@ const AssessmentTest = () => {
             icon: <Target className="w-6 h-6 text-indigo-500" />,
             description: "Identify what drives your career satisfaction and choices.",
             color: "indigo",
-            questions: workValuesQuestions,
+            questions: getQuestionsForSection('values'),
             responseScale: [
                 { value: 1, label: "Not Important" },
                 { value: 2, label: "Slightly Important" },
@@ -118,7 +303,7 @@ const AssessmentTest = () => {
             icon: <TrendingUp className="w-6 h-6 text-green-500" />,
             description: "Assess your job-readiness and 21st-century skills.",
             color: "green",
-            questions: employabilityQuestions,
+            questions: getQuestionsForSection('employability'),
             responseScale: [
                 { value: 1, label: "Not Like Me" },
                 { value: 2, label: "Slightly" },
@@ -134,12 +319,12 @@ const AssessmentTest = () => {
             icon: <Code className="w-6 h-6 text-blue-500" />,
             description: "Test your understanding of core concepts in your field.",
             color: "blue",
-            questions: streamKnowledgeQuestions[studentStream] || [],
+            questions: getQuestionsForSection('knowledge'),
             isTimed: true,
             timeLimit: 30 * 60, // 30 minutes in seconds
             instruction: "Choose the best answer for each question."
         }
-    ];
+    ], [dbQuestions, studentStream]);
 
     const streams = [
         { id: 'cs', label: 'B.Sc Computer Science / B.Tech CS/IT' },
@@ -212,10 +397,57 @@ const AssessmentTest = () => {
         setElapsedTime(0);
     }, [currentSectionIndex]);
 
-    const handleStreamSelect = (streamId) => {
+    // Periodically save timer/elapsed time (every 30 seconds)
+    useEffect(() => {
+        if (useDatabase && currentAttempt?.id && !showSectionIntro && !showSectionComplete) {
+            const saveProgress = setInterval(() => {
+                if (currentSection?.isTimed && timeRemaining !== null) {
+                    console.log('Auto-saving timer:', timeRemaining);
+                    updateProgress(currentSectionIndex, currentQuestionIndex, sectionTimings, timeRemaining, null);
+                } else if (!currentSection?.isTimed && elapsedTime > 0) {
+                    console.log('Auto-saving elapsed time:', elapsedTime);
+                    updateProgress(currentSectionIndex, currentQuestionIndex, sectionTimings, null, elapsedTime);
+                }
+            }, 30000); // Save every 30 seconds
+
+            return () => clearInterval(saveProgress);
+        }
+    }, [useDatabase, currentAttempt?.id, currentSection?.isTimed, timeRemaining, elapsedTime, currentSectionIndex, currentQuestionIndex, sectionTimings, updateProgress, showSectionIntro, showSectionComplete]);
+
+    // Save progress when user leaves the page
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            if (useDatabase && currentAttempt?.id) {
+                const timerToSave = currentSection?.isTimed ? timeRemaining : null;
+                const elapsedToSave = !currentSection?.isTimed ? elapsedTime : null;
+                console.log('Saving progress on page unload - timer:', timerToSave, 'elapsed:', elapsedToSave);
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [useDatabase, currentAttempt?.id, currentSection?.isTimed, timeRemaining, elapsedTime, currentSectionIndex, currentQuestionIndex, sectionTimings]);
+
+    const handleStreamSelect = async (streamId) => {
         setStudentStream(streamId);
+        
+        // Load questions from database first
+        await loadQuestionsFromDatabase(streamId);
+        
         setShowStreamSelection(false);
         setShowSectionIntro(true);
+        
+        // Try to create a database attempt if user is logged in
+        if (user?.id) {
+            try {
+                await startAssessment(streamId);
+                setUseDatabase(true);
+                console.log('Assessment attempt created in database');
+            } catch (err) {
+                console.log('Could not create database attempt, using localStorage mode:', err.message);
+                // Still use database for questions even if attempt creation fails
+            }
+        }
     };
 
     const handleStartSection = () => {
@@ -224,7 +456,9 @@ const AssessmentTest = () => {
     };
 
     const handleAnswer = (value) => {
-        const questionId = `${currentSection.id}_${currentSection.questions[currentQuestionIndex].id}`;
+        const question = currentSection.questions[currentQuestionIndex];
+        const questionId = `${currentSection.id}_${question.id}`;
+        
         setAnswers(prev => {
             // If value is undefined or empty object, remove the answer
             if (value === undefined || (typeof value === 'object' && Object.keys(value).length === 0)) {
@@ -236,11 +470,55 @@ const AssessmentTest = () => {
                 [questionId]: value
             };
         });
+        
+        // Save to database if in database mode
+        if (useDatabase && currentAttempt?.id) {
+            // Determine if answer is correct for MCQ questions
+            let isCorrect = null;
+            if (currentSection.id === 'knowledge' || currentSection.id === 'aptitude') {
+                isCorrect = value === question.correct;
+            }
+            saveDbResponse(currentSection.id, question.id, value, isCorrect);
+            
+            // Save current progress position, timer (for timed sections), and elapsed time (for non-timed)
+            const timerToSave = currentSection.isTimed ? timeRemaining : null;
+            const elapsedToSave = !currentSection.isTimed ? elapsedTime : null;
+            updateProgress(currentSectionIndex, currentQuestionIndex, sectionTimings, timerToSave, elapsedToSave);
+        }
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (currentQuestionIndex < currentSection.questions.length - 1) {
-            setCurrentQuestionIndex(prev => prev + 1);
+            const nextQuestionIndex = currentQuestionIndex + 1;
+            
+            // Save progress to database before moving to next question
+            if (useDatabase && currentAttempt?.id) {
+                setIsSaving(true);
+                try {
+                    const timerToSave = currentSection.isTimed ? timeRemaining : null;
+                    const elapsedToSave = !currentSection.isTimed ? elapsedTime : null;
+                    
+                    const result = await updateProgress(
+                        currentSectionIndex, 
+                        nextQuestionIndex, 
+                        sectionTimings, 
+                        timerToSave, 
+                        elapsedToSave
+                    );
+                    
+                    if (!result?.success) {
+                        console.error('Failed to save progress:', result?.error);
+                        // Still proceed but log the error
+                    }
+                } catch (err) {
+                    console.error('Error saving progress:', err);
+                } finally {
+                    setIsSaving(false);
+                }
+            }
+            
+            // Move to next question
+            setCurrentQuestionIndex(nextQuestionIndex);
         } else {
             // Show section complete message before moving to next section
             if (currentSectionIndex < sections.length - 1) {
@@ -259,10 +537,14 @@ const AssessmentTest = () => {
                 ? (currentSection.timeLimit - (timeRemaining || 0)) // For timed section, calculate used time
                 : elapsedTime; // For non-timed sections, use elapsed time
             
-            setSectionTimings(prev => ({
-                ...prev,
-                [currentSectionId]: timeSpent
-            }));
+            setSectionTimings(prev => {
+                const newTimings = { ...prev, [currentSectionId]: timeSpent };
+                // Update progress in database
+                if (useDatabase && currentAttempt?.id) {
+                    updateProgress(currentSectionIndex + 1, 0, newTimings);
+                }
+                return newTimings;
+            });
         }
 
         setShowSectionComplete(false);
@@ -301,7 +583,7 @@ const AssessmentTest = () => {
         }
 
         try {
-            // Save answers and timings to localStorage
+            // Save answers and timings to localStorage (for backward compatibility)
             localStorage.setItem('assessment_answers', JSON.stringify(answers));
             localStorage.setItem('assessment_stream', studentStream);
             localStorage.setItem('assessment_section_timings', JSON.stringify(finalTimings));
@@ -309,13 +591,14 @@ const AssessmentTest = () => {
             localStorage.removeItem('assessment_gemini_results');
 
             // Prepare question banks for Gemini analysis
+            // Use database questions if available, otherwise fallback to hardcoded
             const questionBanks = {
-                riasecQuestions,
-                aptitudeQuestions: getAllAptitudeQuestions(),
-                bigFiveQuestions,
-                workValuesQuestions,
-                employabilityQuestions,
-                streamKnowledgeQuestions
+                riasecQuestions: getQuestionsForSection('riasec'),
+                aptitudeQuestions: getQuestionsForSection('aptitude'),
+                bigFiveQuestions: getQuestionsForSection('bigfive'),
+                workValuesQuestions: getQuestionsForSection('values'),
+                employabilityQuestions: getQuestionsForSection('employability'),
+                streamKnowledgeQuestions: { [studentStream]: getQuestionsForSection('knowledge') }
             };
 
             // Analyze with Gemini AI - this is required, no fallback
@@ -327,10 +610,24 @@ const AssessmentTest = () => {
             );
 
             if (geminiResults) {
-                // Save AI-analyzed results
+                // Save AI-analyzed results to localStorage (backward compatibility)
                 localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
                 console.log('Gemini analysis complete:', geminiResults);
-                navigate('/student/assessment/result');
+                
+                // Save results to database if in database mode
+                if (useDatabase && currentAttempt?.id) {
+                    try {
+                        const dbResults = await completeAssessment(geminiResults, finalTimings);
+                        console.log('Results saved to database:', dbResults);
+                        // Navigate with attemptId for database retrieval
+                        navigate(`/student/assessment/result?attemptId=${currentAttempt.id}`);
+                    } catch (dbErr) {
+                        console.error('Failed to save to database, results still in localStorage:', dbErr);
+                        navigate('/student/assessment/result');
+                    }
+                } else {
+                    navigate('/student/assessment/result');
+                }
             } else {
                 throw new Error('AI analysis returned no results. Please check your API key configuration.');
             }
@@ -372,7 +669,96 @@ const AssessmentTest = () => {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // Stream Selection Screen
+    // Initial loading screen - checking for existing attempts
+    if (checkingExistingAttempt || dbLoading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+                <Card className="w-full max-w-md border-none shadow-2xl">
+                    <CardContent className="p-8 text-center">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <Loader2 className="w-8 h-8 text-white animate-spin" />
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800 mb-2">Loading Assessment</h2>
+                        <p className="text-gray-600">Checking your progress...</p>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    // Resume Prompt Screen - shown when user has an in-progress assessment
+    if (showResumePrompt && pendingAttempt) {
+        const streamLabel = streams.find(s => s.id === pendingAttempt.stream_id)?.label || pendingAttempt.stream_id;
+        const answeredCount = Object.keys(pendingAttempt.restoredResponses || {}).length;
+        
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+                <Card className="w-full max-w-lg border-none shadow-2xl">
+                    <CardContent className="p-8">
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                                <Clock className="w-8 h-8 text-white" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-800 mb-2">Continue Your Assessment?</h2>
+                            <p className="text-gray-600">You have an incomplete assessment</p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-500">Stream:</span>
+                                <span className="font-medium text-gray-800">{streamLabel}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-500">Questions Answered:</span>
+                                <span className="font-medium text-gray-800">{answeredCount}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-500">Started:</span>
+                                <span className="font-medium text-gray-800">
+                                    {new Date(pendingAttempt.started_at).toLocaleDateString()}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <Button
+                                onClick={handleResumeAssessment}
+                                className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white py-6 text-lg shadow-lg"
+                            >
+                                <CheckCircle2 className="w-5 h-5 mr-2" />
+                                Continue Assessment
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handleStartNewAssessment}
+                                className="w-full py-4 text-gray-600 hover:text-red-600 hover:border-red-200"
+                            >
+                                Start Fresh (Discard Progress)
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    // Loading screen while questions are being fetched
+    if (questionsLoading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+                <Card className="w-full max-w-md border-none shadow-2xl">
+                    <CardContent className="p-8 text-center">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <Loader2 className="w-8 h-8 text-white animate-spin" />
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800 mb-2">Loading Assessment</h2>
+                        <p className="text-gray-600">Preparing your personalized questions...</p>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
     if (showStreamSelection) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
@@ -385,6 +771,15 @@ const AssessmentTest = () => {
                             <h1 className="text-3xl font-bold text-gray-800 mb-2">Career Assessment</h1>
                             <p className="text-gray-600">Let's personalize your assessment based on your stream</p>
                         </div>
+
+                        {questionsError && (
+                            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p className="text-sm text-amber-700">
+                                    <AlertCircle className="w-4 h-4 inline mr-1" />
+                                    Using offline questions. Some features may be limited.
+                                </p>
+                            </div>
+                        )}
 
                         <div className="space-y-3">
                             <Label className="text-sm font-semibold text-gray-700">Select Your Stream/Course</Label>
@@ -411,7 +806,7 @@ const AssessmentTest = () => {
                                 <div className="text-sm text-blue-700">
                                     <p className="font-semibold mb-1">What to expect:</p>
                                     <ul className="space-y-1 text-sm">
-                                        <li>• 5 assessment sections covering interests, personality, values, skills, and knowledge</li>
+                                        <li>• 6 assessment sections covering interests, personality, values, skills, and knowledge</li>
                                         <li>• Approximately 45-60 minutes to complete</li>
                                         <li>• Your responses are private and used only for career guidance</li>
                                     </ul>
@@ -1116,18 +1511,26 @@ const AssessmentTest = () => {
 
                                             <Button
                                                 onClick={handleNext}
-                                                disabled={!isCurrentAnswered}
-                                                className={`bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 py-6 rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 font-bold tracking-wide ${!isCurrentAnswered ? 'opacity-50 cursor-not-allowed grayscale shadow-none' : ''
+                                                disabled={!isCurrentAnswered || isSaving}
+                                                className={`bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 py-6 rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 font-bold tracking-wide ${(!isCurrentAnswered || isSaving) ? 'opacity-50 cursor-not-allowed grayscale shadow-none' : ''
                                                     }`}
                                             >
-                                                {currentSectionIndex === sections.length - 1 && currentQuestionIndex === currentSection.questions.length - 1
-                                                    ? 'Submit Assessment'
-                                                    : 'Next Question'
-                                                }
-                                                {currentSectionIndex === sections.length - 1 && currentQuestionIndex === currentSection.questions.length - 1
-                                                    ? <CheckCircle2 className="w-5 h-5 ml-2" />
-                                                    : <ChevronRight className="w-5 h-5 ml-2" />
-                                                }
+                                                {isSaving ? (
+                                                    <>
+                                                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                                        Saving...
+                                                    </>
+                                                ) : currentSectionIndex === sections.length - 1 && currentQuestionIndex === currentSection.questions.length - 1 ? (
+                                                    <>
+                                                        Submit Assessment
+                                                        <CheckCircle2 className="w-5 h-5 ml-2" />
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        Next Question
+                                                        <ChevronRight className="w-5 h-5 ml-2" />
+                                                    </>
+                                                )}
                                             </Button>
                                         </div>
                                     )}

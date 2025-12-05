@@ -1,239 +1,528 @@
 /**
  * Print View Component
- * Simple document format for PDF generation
+ * Professional PDF layout optimized for A4 (210mm x 297mm)
+ * Margins: 15mm, Content area: ~180mm x 267mm
  */
 const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
     if (!results) return null;
 
-    const { riasec, aptitude, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote, timingAnalysis } = results;
+    const { riasec, aptitude, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote } = results;
+
+    // Helper to get score color
+    const getScoreStyle = (pct) => {
+        if (pct >= 70) return { bg: '#dcfce7', color: '#166534', border: '#86efac' };
+        if (pct >= 40) return { bg: '#fef9c3', color: '#854d0e', border: '#fde047' };
+        return { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' };
+    };
+
+    const styles = {
+        page: {
+            fontFamily: 'Arial, Helvetica, sans-serif',
+            fontSize: '10px',
+            lineHeight: '1.4',
+            color: '#1f2937',
+            pageBreakAfter: 'always',
+            padding: '0',
+        },
+        lastPage: {
+            fontFamily: 'Arial, Helvetica, sans-serif',
+            fontSize: '10px',
+            lineHeight: '1.4',
+            color: '#1f2937',
+            padding: '0',
+        },
+        header: {
+            background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+            color: 'white',
+            padding: '20px 25px',
+            marginBottom: '20px',
+        },
+        headerTitle: {
+            fontSize: '22px',
+            fontWeight: 'bold',
+            margin: '0 0 4px 0',
+        },
+        headerSubtitle: {
+            fontSize: '11px',
+            color: '#94a3b8',
+            margin: '0',
+        },
+        infoGrid: {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '10px',
+            marginBottom: '20px',
+        },
+        infoBox: {
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '6px',
+            padding: '10px 12px',
+        },
+        infoLabel: {
+            fontSize: '9px',
+            color: '#64748b',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            margin: '0 0 2px 0',
+        },
+        infoValue: {
+            fontSize: '11px',
+            fontWeight: '600',
+            color: '#1e293b',
+            margin: '0',
+        },
+        sectionTitle: {
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#1e293b',
+            borderBottom: '2px solid #4f46e5',
+            paddingBottom: '6px',
+            marginTop: '20px',
+            marginBottom: '12px',
+        },
+        subTitle: {
+            fontSize: '11px',
+            fontWeight: 'bold',
+            color: '#374151',
+            marginTop: '14px',
+            marginBottom: '8px',
+        },
+        table: {
+            width: '100%',
+            borderCollapse: 'collapse',
+            marginBottom: '12px',
+            fontSize: '10px',
+        },
+        th: {
+            background: '#f1f5f9',
+            padding: '8px 10px',
+            border: '1px solid #e2e8f0',
+            textAlign: 'left',
+            fontWeight: '600',
+            color: '#475569',
+        },
+        td: {
+            padding: '8px 10px',
+            border: '1px solid #e2e8f0',
+            verticalAlign: 'top',
+        },
+        card: {
+            border: '1px solid #e2e8f0',
+            borderRadius: '6px',
+            padding: '12px',
+            marginBottom: '10px',
+            background: '#fafafa',
+            pageBreakInside: 'avoid',
+            breakInside: 'avoid',
+        },
+        badge: {
+            display: 'inline-block',
+            padding: '3px 8px',
+            borderRadius: '4px',
+            fontSize: '9px',
+            fontWeight: '600',
+        },
+        summaryBox: {
+            background: '#f0f9ff',
+            border: '1px solid #bae6fd',
+            borderRadius: '6px',
+            padding: '12px 15px',
+            marginTop: '15px',
+            pageBreakInside: 'avoid',
+            breakInside: 'avoid',
+        },
+        finalBox: {
+            background: '#1e293b',
+            color: 'white',
+            borderRadius: '6px',
+            padding: '15px 20px',
+            marginTop: '20px',
+            pageBreakInside: 'avoid',
+            breakInside: 'avoid',
+        },
+        progressBar: {
+            height: '6px',
+            background: '#e5e7eb',
+            borderRadius: '3px',
+            overflow: 'hidden',
+            marginTop: '4px',
+        },
+        twoCol: {
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '15px',
+        },
+    };
 
     return (
-        <div className="print-view" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', lineHeight: '1.5', color: '#000', padding: '0' }}>
-            {/* Page 1: Profile */}
-            <div style={{ pageBreakAfter: 'always' }}>
-                <div style={{ borderBottom: '3px solid #4338ca', paddingBottom: '10px', marginBottom: '20px' }}>
-                    <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0' }}>Career Profiling & Skill Development Report</h1>
-                    <p style={{ color: '#666', margin: '5px 0 0 0' }}>4th Semester Analysis | Generated by SkillPassport AI</p>
+        <div className="print-view">
+            {/* PAGE 1: Profile Overview */}
+            <div style={styles.page}>
+                {/* Header with Branding */}
+                <div style={styles.header}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
+                            <img src="/assets/HomePage/RMLogo.webp" alt="Rareminds" style={{width: '50px', height: '50px', objectFit: 'contain'}} />
+                            <div>
+                                <h1 style={styles.headerTitle}>Career Profiling & Skill Development Report</h1>
+                                <p style={styles.headerSubtitle}>4th Semester Analysis • Powered by SkillPassport AI</p>
+                            </div>
+                        </div>
+                        <div style={{textAlign: 'right'}}>
+                            <p style={{margin: '0', fontSize: '12px', fontWeight: 'bold', color: 'white'}}>RAREMINDS</p>
+                            <p style={{margin: '0', fontSize: '9px', color: '#94a3b8'}}>SkillPassport Platform</p>
+                        </div>
+                    </div>
                 </div>
 
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-                    <tbody>
-                        <tr>
-                            <td style={{ padding: '5px 10px', border: '1px solid #ddd', fontWeight: 'bold', width: '25%' }}>Student Name</td>
-                            <td style={{ padding: '5px 10px', border: '1px solid #ddd' }}>{studentInfo.name}</td>
-                            <td style={{ padding: '5px 10px', border: '1px solid #ddd', fontWeight: 'bold', width: '25%' }}>Register No.</td>
-                            <td style={{ padding: '5px 10px', border: '1px solid #ddd' }}>{studentInfo.regNo}</td>
-                        </tr>
-                        <tr>
-                            <td style={{ padding: '5px 10px', border: '1px solid #ddd', fontWeight: 'bold' }}>Programme</td>
-                            <td style={{ padding: '5px 10px', border: '1px solid #ddd' }}>{studentInfo.stream}</td>
-                            <td style={{ padding: '5px 10px', border: '1px solid #ddd', fontWeight: 'bold' }}>College</td>
-                            <td style={{ padding: '5px 10px', border: '1px solid #ddd' }}>{studentInfo.college}</td>
-                        </tr>
-                        <tr>
-                            <td style={{ padding: '5px 10px', border: '1px solid #ddd', fontWeight: 'bold' }}>Assessment Date</td>
-                            <td style={{ padding: '5px 10px', border: '1px solid #ddd' }}>{new Date().toLocaleDateString()}</td>
-                            <td style={{ padding: '5px 10px', border: '1px solid #ddd', fontWeight: 'bold' }}>Assessor</td>
-                            <td style={{ padding: '5px 10px', border: '1px solid #ddd' }}>SkillPassport AI</td>
-                        </tr>
-                    </tbody>
-                </table>
+                {/* Student Info Grid */}
+                <div style={styles.infoGrid}>
+                    <div style={styles.infoBox}>
+                        <p style={styles.infoLabel}>Student Name</p>
+                        <p style={styles.infoValue}>{studentInfo.name}</p>
+                    </div>
+                    <div style={styles.infoBox}>
+                        <p style={styles.infoLabel}>Register No.</p>
+                        <p style={styles.infoValue}>{studentInfo.regNo}</p>
+                    </div>
+                    <div style={styles.infoBox}>
+                        <p style={styles.infoLabel}>Programme</p>
+                        <p style={styles.infoValue}>{studentInfo.stream}</p>
+                    </div>
+                    <div style={styles.infoBox}>
+                        <p style={styles.infoLabel}>College</p>
+                        <p style={styles.infoValue}>{studentInfo.college}</p>
+                    </div>
+                    <div style={styles.infoBox}>
+                        <p style={styles.infoLabel}>Assessment Date</p>
+                        <p style={styles.infoValue}>{new Date().toLocaleDateString()}</p>
+                    </div>
+                    <div style={styles.infoBox}>
+                        <p style={styles.infoLabel}>Assessor</p>
+                        <p style={styles.infoValue}>SkillPassport AI</p>
+                    </div>
+                </div>
 
-                <h2 style={{ fontSize: '14px', fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: '5px', marginTop: '20px' }}>1. Student Profile Snapshot</h2>
+                {/* Section 1: Profile Snapshot */}
+                <h2 style={styles.sectionTitle}>1. Student Profile Snapshot</h2>
 
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>1.1 Top Interest Themes (RIASEC)</h3>
-                <ul style={{ marginLeft: '20px' }}>
-                    {riasec?.topThree?.map((code, idx) => (
-                        <li key={code}><strong>Code {idx + 1}:</strong> {riasecNames[code]} ({code})</li>
-                    ))}
-                </ul>
-                <p><em>{riasec?.interpretation}</em></p>
-
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>1.2 Multi-Aptitude Battery Results</h3>
-                {aptitude?.scores && (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px' }}>
-                        <thead>
-                            <tr style={{ backgroundColor: '#f5f5f5' }}>
-                                <th style={{ padding: '5px', border: '1px solid #ddd', textAlign: 'left' }}>Domain</th>
-                                <th style={{ padding: '5px', border: '1px solid #ddd', textAlign: 'center' }}>Score</th>
-                                <th style={{ padding: '5px', border: '1px solid #ddd', textAlign: 'center' }}>Percentage</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {Object.entries(aptitude.scores).map(([domain, data]) => (
-                                <tr key={domain}>
-                                    <td style={{ padding: '5px', border: '1px solid #ddd', textTransform: 'capitalize' }}>{domain}</td>
-                                    <td style={{ padding: '5px', border: '1px solid #ddd', textAlign: 'center' }}>{data.correct}/{data.total}</td>
-                                    <td style={{ padding: '5px', border: '1px solid #ddd', textAlign: 'center' }}>{data.percentage}%</td>
+                <div style={styles.twoCol}>
+                    {/* RIASEC Interests */}
+                    <div>
+                        <h3 style={styles.subTitle}>Interest Profile (RIASEC)</h3>
+                        <table style={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th style={styles.th}>Rank</th>
+                                    <th style={styles.th}>Interest Type</th>
+                                    <th style={{...styles.th, textAlign: 'center'}}>Score</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-                <p><strong>Top Strengths:</strong> {aptitude?.topStrengths?.join(', ') || 'N/A'}</p>
-                <p><em>{aptitude?.cognitiveProfile}</em></p>
+                            </thead>
+                            <tbody>
+                                {riasec?.topThree?.map((code, idx) => {
+                                    const score = riasec.scores?.[code] || 0;
+                                    const maxScore = riasec.maxScore || 20;
+                                    const pct = Math.round((score / maxScore) * 100);
+                                    const scoreStyle = getScoreStyle(pct);
+                                    return (
+                                        <tr key={code}>
+                                            <td style={styles.td}>#{idx + 1}</td>
+                                            <td style={styles.td}><strong>{riasecNames[code]}</strong> ({code})</td>
+                                            <td style={{...styles.td, textAlign: 'center'}}>
+                                                <span style={{...styles.badge, background: scoreStyle.bg, color: scoreStyle.color}}>{score}/{maxScore}</span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                        <p style={{fontSize: '9px', color: '#6b7280', fontStyle: 'italic', margin: '0'}}>{riasec?.interpretation}</p>
+                    </div>
 
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>1.3 Personality Highlights (Big Five)</h3>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px' }}>
-                    <thead>
-                        <tr style={{ backgroundColor: '#f5f5f5' }}>
-                            <th style={{ padding: '5px', border: '1px solid #ddd', textAlign: 'left' }}>Trait</th>
-                            <th style={{ padding: '5px', border: '1px solid #ddd', textAlign: 'center' }}>Score (0-5)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {['O', 'C', 'E', 'A', 'N'].map(trait => (
-                            <tr key={trait}>
-                                <td style={{ padding: '5px', border: '1px solid #ddd' }}>{traitNames[trait]}</td>
-                                <td style={{ padding: '5px', border: '1px solid #ddd', textAlign: 'center' }}>{bigFive?.[trait]?.toFixed(1) || '-'}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                <p><em>{bigFive?.workStyleSummary}</em></p>
+                    {/* Aptitude Scores */}
+                    <div>
+                        <h3 style={styles.subTitle}>Cognitive Abilities</h3>
+                        <table style={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th style={styles.th}>Domain</th>
+                                    <th style={{...styles.th, textAlign: 'center'}}>Score</th>
+                                    <th style={{...styles.th, textAlign: 'center'}}>%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {aptitude?.scores && Object.entries(aptitude.scores).map(([domain, data]) => {
+                                    const pct = data.percentage || 0;
+                                    const scoreStyle = getScoreStyle(pct);
+                                    return (
+                                        <tr key={domain}>
+                                            <td style={{...styles.td, textTransform: 'capitalize'}}>{domain}</td>
+                                            <td style={{...styles.td, textAlign: 'center'}}>{data.correct}/{data.total}</td>
+                                            <td style={{...styles.td, textAlign: 'center'}}>
+                                                <span style={{...styles.badge, background: scoreStyle.bg, color: scoreStyle.color}}>{pct}%</span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                        <p style={{fontSize: '9px', margin: '4px 0 0 0'}}><strong>Strengths:</strong> {aptitude?.topStrengths?.join(', ')}</p>
+                    </div>
+                </div>
 
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>1.4 Top Work Values</h3>
-                <ol style={{ marginLeft: '20px' }}>
-                    {workValues?.topThree?.map((val, idx) => (
-                        <li key={idx}>{val.value} (Score: {val.score})</li>
-                    ))}
-                </ol>
-                <p><em>{workValues?.motivationSummary}</em></p>
+                <div style={{...styles.twoCol, marginTop: '15px'}}>
+                    {/* Personality */}
+                    <div>
+                        <h3 style={styles.subTitle}>Personality Traits (Big Five)</h3>
+                        <table style={styles.table}>
+                            <tbody>
+                                {['O', 'C', 'E', 'A', 'N'].map(trait => {
+                                    const score = bigFive?.[trait] || 0;
+                                    const pct = (score / 5) * 100;
+                                    const scoreStyle = getScoreStyle(pct);
+                                    return (
+                                        <tr key={trait}>
+                                            <td style={{...styles.td, width: '50%'}}>{traitNames[trait]}</td>
+                                            <td style={{...styles.td, width: '25%'}}>
+                                                <div style={styles.progressBar}>
+                                                    <div style={{height: '100%', width: `${pct}%`, background: scoreStyle.border, borderRadius: '3px'}}></div>
+                                                </div>
+                                            </td>
+                                            <td style={{...styles.td, textAlign: 'center', width: '25%'}}>
+                                                <span style={{...styles.badge, background: scoreStyle.bg, color: scoreStyle.color}}>{score.toFixed(1)}/5</span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                        <p style={{fontSize: '9px', color: '#6b7280', fontStyle: 'italic', margin: '0'}}>{bigFive?.workStyleSummary}</p>
+                    </div>
 
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>1.5 Knowledge Assessment</h3>
-                <p><strong>Score:</strong> {knowledge?.score}% | <strong>Correct:</strong> {knowledge?.correctCount}/{knowledge?.totalQuestions}</p>
-                <p><strong>Strong Topics:</strong> {knowledge?.strongTopics?.join(', ') || 'N/A'}</p>
+                    {/* Work Values & Knowledge */}
+                    <div>
+                        <h3 style={styles.subTitle}>Top Work Values</h3>
+                        {workValues?.topThree?.map((val, idx) => {
+                            const pct = (val.score / 5) * 100;
+                            const scoreStyle = getScoreStyle(pct);
+                            return (
+                                <div key={idx} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f1f5f9'}}>
+                                    <span>#{idx + 1} {val.value}</span>
+                                    <span style={{...styles.badge, background: scoreStyle.bg, color: scoreStyle.color}}>{val.score}/5</span>
+                                </div>
+                            );
+                        })}
 
-                <div style={{ backgroundColor: '#f0f4ff', padding: '10px', marginTop: '15px', border: '1px solid #c7d2fe' }}>
-                    <strong>Overall Summary:</strong>
-                    <p style={{ margin: '5px 0 0 0' }}>{results.overallSummary}</p>
+                        <h3 style={{...styles.subTitle, marginTop: '12px'}}>Knowledge Assessment</h3>
+                        <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
+                            <span style={{...styles.badge, background: getScoreStyle(knowledge?.score || 0).bg, color: getScoreStyle(knowledge?.score || 0).color, fontSize: '12px', padding: '6px 12px'}}>
+                                {knowledge?.score || 0}%
+                            </span>
+                            <span style={{fontSize: '10px', color: '#6b7280'}}>{knowledge?.correctCount}/{knowledge?.totalQuestions} correct</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Overall Summary */}
+                <div style={styles.summaryBox}>
+                    <p style={{margin: '0', fontSize: '10px'}}><strong>Overall Summary:</strong> {results.overallSummary}</p>
                 </div>
             </div>
 
-            {/* Page 2: Career Fit */}
-            <div style={{ pageBreakAfter: 'always' }}>
-                <h2 style={{ fontSize: '14px', fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: '5px' }}>2. Career Fit Results</h2>
+            {/* PAGE 2: Career Fit */}
+            <div style={styles.page}>
+                {/* Page Header */}
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0'}}>
+                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {studentInfo.name}</span>
+                    <span style={{fontSize: '9px', color: '#4f46e5', fontWeight: '600'}}>Rareminds SkillPassport</span>
+                </div>
+                <h2 style={styles.sectionTitle}>2. Career Fit Analysis</h2>
 
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>2.1 Best-Fit Career Clusters</h3>
-                {careerFit?.clusters?.map((cluster, idx) => (
-                    <div key={idx} style={{ border: '1px solid #ddd', padding: '10px', marginBottom: '10px' }}>
-                        <h4 style={{ margin: '0 0 5px 0' }}>Cluster {idx + 1}: {cluster.title} ({cluster.matchScore}% Match)</h4>
-                        <p><strong>Fit Level:</strong> {cluster.fit}</p>
-                        {cluster.evidence && (
-                            <>
-                                <p><strong>Interest Evidence:</strong> {cluster.evidence.interest}</p>
-                                <p><strong>Aptitude Evidence:</strong> {cluster.evidence.aptitude}</p>
-                                <p><strong>Personality Evidence:</strong> {cluster.evidence.personality}</p>
-                            </>
-                        )}
-                        <p><strong>Entry Roles:</strong> {cluster.roles?.entry?.join(', ') || 'N/A'}</p>
-                        <p><strong>Mid Roles:</strong> {cluster.roles?.mid?.join(', ') || 'N/A'}</p>
-                        <p><strong>Domains:</strong> {cluster.domains?.join(', ') || 'N/A'}</p>
-                    </div>
-                ))}
+                {careerFit?.clusters?.map((cluster, idx) => {
+                    const scoreStyle = getScoreStyle(cluster.matchScore || 0);
+                    return (
+                        <div key={idx} style={{...styles.card, borderLeft: `4px solid ${scoreStyle.border}`}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px'}}>
+                                <div>
+                                    <h4 style={{margin: '0 0 4px 0', fontSize: '12px', fontWeight: 'bold'}}>{cluster.title}</h4>
+                                    <span style={{...styles.badge, background: scoreStyle.bg, color: scoreStyle.color}}>{cluster.fit} Fit • {cluster.matchScore}% Match</span>
+                                </div>
+                            </div>
+                            {cluster.evidence && (
+                                <div style={{fontSize: '9px', color: '#4b5563', marginBottom: '8px'}}>
+                                    <p style={{margin: '2px 0'}}><strong>Interest:</strong> {cluster.evidence.interest}</p>
+                                    <p style={{margin: '2px 0'}}><strong>Aptitude:</strong> {cluster.evidence.aptitude}</p>
+                                    <p style={{margin: '2px 0'}}><strong>Personality:</strong> {cluster.evidence.personality}</p>
+                                </div>
+                            )}
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '9px'}}>
+                                <div>
+                                    <strong>Entry Roles:</strong> {cluster.roles?.entry?.join(', ') || 'N/A'}
+                                </div>
+                                <div>
+                                    <strong>Mid Roles:</strong> {cluster.roles?.mid?.join(', ') || 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
 
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>2.2 Specific Career Options</h3>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <h3 style={styles.subTitle}>Career Options by Fit Level</h3>
+                <table style={styles.table}>
                     <thead>
-                        <tr style={{ backgroundColor: '#f5f5f5' }}>
-                            <th style={{ padding: '5px', border: '1px solid #ddd' }}>High Fit</th>
-                            <th style={{ padding: '5px', border: '1px solid #ddd' }}>Medium Fit</th>
-                            <th style={{ padding: '5px', border: '1px solid #ddd' }}>Explore Later</th>
+                        <tr>
+                            <th style={{...styles.th, background: '#dcfce7', color: '#166534'}}>High Fit</th>
+                            <th style={{...styles.th, background: '#fef9c3', color: '#854d0e'}}>Medium Fit</th>
+                            <th style={{...styles.th, background: '#fee2e2', color: '#991b1b'}}>Explore Later</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td style={{ padding: '5px', border: '1px solid #ddd', verticalAlign: 'top' }}>
-                                <ol style={{ margin: '0', paddingLeft: '20px' }}>
-                                    {careerFit?.specificOptions?.highFit?.map((r, i) => <li key={i}>{r}</li>)}
-                                </ol>
+                            <td style={{...styles.td, verticalAlign: 'top'}}>
+                                {careerFit?.specificOptions?.highFit?.map((r, i) => <div key={i} style={{padding: '2px 0'}}>• {r}</div>)}
                             </td>
-                            <td style={{ padding: '5px', border: '1px solid #ddd', verticalAlign: 'top' }}>
-                                <ol style={{ margin: '0', paddingLeft: '20px' }}>
-                                    {careerFit?.specificOptions?.mediumFit?.map((r, i) => <li key={i}>{r}</li>)}
-                                </ol>
+                            <td style={{...styles.td, verticalAlign: 'top'}}>
+                                {careerFit?.specificOptions?.mediumFit?.map((r, i) => <div key={i} style={{padding: '2px 0'}}>• {r}</div>)}
                             </td>
-                            <td style={{ padding: '5px', border: '1px solid #ddd', verticalAlign: 'top' }}>
-                                <ol style={{ margin: '0', paddingLeft: '20px' }}>
-                                    {careerFit?.specificOptions?.exploreLater?.map((r, i) => <li key={i}>{r}</li>)}
-                                </ol>
+                            <td style={{...styles.td, verticalAlign: 'top'}}>
+                                {careerFit?.specificOptions?.exploreLater?.map((r, i) => <div key={i} style={{padding: '2px 0'}}>• {r}</div>)}
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            {/* Page 3: Skill Gap */}
-            <div style={{ pageBreakAfter: 'always' }}>
-                <h2 style={{ fontSize: '14px', fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: '5px' }}>3. Skill Gap & Development Plan</h2>
+            {/* PAGE 3: Skills & Development */}
+            <div style={styles.page}>
+                {/* Page Header */}
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0'}}>
+                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {studentInfo.name}</span>
+                    <span style={{fontSize: '9px', color: '#4f46e5', fontWeight: '600'}}>Rareminds SkillPassport</span>
+                </div>
+                <h2 style={styles.sectionTitle}>3. Skill Gap & Development Plan</h2>
 
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>3.1 Current Strengths</h3>
-                <ul style={{ marginLeft: '20px' }}>
-                    {skillGap?.currentStrengths?.map((s, i) => <li key={i}>{s}</li>)}
-                </ul>
-
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>3.2 Employability Skills</h3>
-                <p><strong>Strengths:</strong> {employability?.strengthAreas?.join(', ') || 'N/A'}</p>
-                <p><strong>Areas to Improve:</strong> {employability?.improvementAreas?.join(', ') || 'N/A'}</p>
-
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>3.3 Priority A Skills (Build in 6 months)</h3>
-                {skillGap?.priorityA?.map((item, idx) => (
-                    <div key={idx} style={{ border: '1px solid #ddd', padding: '8px', marginBottom: '8px' }}>
-                        <p><strong>{idx + 1}. {item.skill}</strong> (Current: {item.currentLevel}/5 → Target: {item.targetLevel}/5)</p>
-                        <p><strong>Why:</strong> {item.whyNeeded}</p>
-                        <p><strong>How:</strong> {item.howToBuild}</p>
+                <div style={styles.twoCol}>
+                    <div>
+                        <h3 style={styles.subTitle}>Current Strengths</h3>
+                        <div style={styles.card}>
+                            {skillGap?.currentStrengths?.map((s, i) => (
+                                <div key={i} style={{padding: '4px 0', borderBottom: i < skillGap.currentStrengths.length - 1 ? '1px solid #f1f5f9' : 'none'}}>
+                                    <span style={{color: '#166534'}}>✓</span> {s}
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                ))}
+                    <div>
+                        <h3 style={styles.subTitle}>Employability Assessment</h3>
+                        <div style={styles.card}>
+                            <p style={{margin: '0 0 6px 0', fontSize: '9px'}}><strong style={{color: '#166534'}}>Strong Areas:</strong> {employability?.strengthAreas?.join(', ')}</p>
+                            <p style={{margin: '0', fontSize: '9px'}}><strong style={{color: '#dc2626'}}>Improve:</strong> {employability?.improvementAreas?.join(', ') || 'None identified'}</p>
+                        </div>
+                    </div>
+                </div>
 
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>3.4 Priority B Skills (Build in 6-12 months)</h3>
-                <ul style={{ marginLeft: '20px' }}>
-                    {skillGap?.priorityB?.map((item, idx) => <li key={idx}>{item.skill}</li>)}
-                </ul>
+                <h3 style={styles.subTitle}>Priority A Skills (Build in 6 months)</h3>
+                {skillGap?.priorityA?.map((item, idx) => {
+                    const currentPct = (item.currentLevel / 5) * 100;
+                    const targetPct = (item.targetLevel / 5) * 100;
+                    return (
+                        <div key={idx} style={{...styles.card, padding: '10px'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px'}}>
+                                <strong style={{fontSize: '11px'}}>{idx + 1}. {item.skill}</strong>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                    <span style={{...styles.badge, background: getScoreStyle(currentPct).bg, color: getScoreStyle(currentPct).color}}>{item.currentLevel}/5</span>
+                                    <span style={{fontSize: '10px'}}>→</span>
+                                    <span style={{...styles.badge, background: '#dcfce7', color: '#166534'}}>{item.targetLevel}/5</span>
+                                </div>
+                            </div>
+                            <p style={{margin: '4px 0', fontSize: '9px'}}><strong>Why:</strong> {item.whyNeeded}</p>
+                            <p style={{margin: '0', fontSize: '9px'}}><strong>How:</strong> {item.howToBuild}</p>
+                        </div>
+                    );
+                })}
 
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>3.5 Recommended Learning Track</h3>
-                <p><strong>{skillGap?.recommendedTrack}</strong></p>
+                <h3 style={styles.subTitle}>Priority B Skills (6-12 months)</h3>
+                <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
+                    {skillGap?.priorityB?.map((item, idx) => (
+                        <span key={idx} style={{...styles.badge, background: '#fef9c3', color: '#854d0e'}}>{item.skill}</span>
+                    ))}
+                </div>
+
+                <div style={{...styles.summaryBox, marginTop: '15px'}}>
+                    <p style={{margin: '0'}}><strong>Recommended Learning Track:</strong> {skillGap?.recommendedTrack}</p>
+                </div>
             </div>
 
-            {/* Page 4: Roadmap */}
-            <div>
-                <h2 style={{ fontSize: '14px', fontWeight: 'bold', borderBottom: '1px solid #ccc', paddingBottom: '5px' }}>4. 6-12 Month Action Roadmap</h2>
+            {/* PAGE 4: Roadmap */}
+            <div style={styles.lastPage}>
+                {/* Page Header */}
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0'}}>
+                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {studentInfo.name}</span>
+                    <span style={{fontSize: '9px', color: '#4f46e5', fontWeight: '600'}}>Rareminds SkillPassport</span>
+                </div>
+                <h2 style={styles.sectionTitle}>4. 6-12 Month Action Roadmap</h2>
 
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>4.1 Recommended Projects</h3>
-                {roadmap?.projects?.map((project, idx) => (
-                    <div key={idx} style={{ border: '1px solid #ddd', padding: '8px', marginBottom: '8px' }}>
-                        <p><strong>Project {idx + 1}: {project.title}</strong></p>
-                        <p><strong>Purpose:</strong> {project.purpose}</p>
-                        <p><strong>Output:</strong> {project.output}</p>
+                <h3 style={styles.subTitle}>Portfolio Projects</h3>
+                <div style={styles.twoCol}>
+                    {roadmap?.projects?.map((project, idx) => (
+                        <div key={idx} style={styles.card}>
+                            <h4 style={{margin: '0 0 6px 0', fontSize: '11px', color: '#4f46e5'}}>Project {idx + 1}: {project.title}</h4>
+                            <p style={{margin: '2px 0', fontSize: '9px'}}><strong>Purpose:</strong> {project.purpose}</p>
+                            <p style={{margin: '0', fontSize: '9px'}}><strong>Output:</strong> {project.output}</p>
+                        </div>
+                    ))}
+                </div>
+
+                <div style={styles.twoCol}>
+                    <div>
+                        <h3 style={styles.subTitle}>Internship Pathway</h3>
+                        <div style={styles.card}>
+                            <p style={{margin: '0 0 4px 0', fontSize: '9px'}}><strong>Types:</strong> {roadmap?.internship?.types?.join(', ')}</p>
+                            <p style={{margin: '0 0 4px 0', fontSize: '9px'}}><strong>Timeline:</strong> {roadmap?.internship?.timeline}</p>
+                            <p style={{margin: '0 0 4px 0', fontSize: '9px'}}><strong>Resume:</strong> {roadmap?.internship?.preparation?.resume}</p>
+                            <p style={{margin: '0 0 4px 0', fontSize: '9px'}}><strong>Portfolio:</strong> {roadmap?.internship?.preparation?.portfolio}</p>
+                            <p style={{margin: '0', fontSize: '9px'}}><strong>Interview:</strong> {roadmap?.internship?.preparation?.interview}</p>
+                        </div>
                     </div>
-                ))}
-
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>4.2 Internship Pathway</h3>
-                <p><strong>Types:</strong> {roadmap?.internship?.types?.join(', ') || 'N/A'}</p>
-                <p><strong>Timeline:</strong> {roadmap?.internship?.timeline}</p>
-                <p><strong>Resume Focus:</strong> {roadmap?.internship?.preparation?.resume}</p>
-                <p><strong>Portfolio Focus:</strong> {roadmap?.internship?.preparation?.portfolio}</p>
-                <p><strong>Interview Focus:</strong> {roadmap?.internship?.preparation?.interview}</p>
-
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '15px' }}>4.3 Activities & Certifications</h3>
-                <p><strong>Activities:</strong> {roadmap?.exposure?.activities?.join(', ') || 'N/A'}</p>
-                <p><strong>Certifications:</strong> {roadmap?.exposure?.certifications?.join(', ') || 'N/A'}</p>
-
-                {/* Timing Analysis for Print */}
-                {timingAnalysis && (
-                    <div style={{ backgroundColor: '#f8fafc', padding: '15px', marginTop: '20px', border: '1px solid #e2e8f0' }}>
-                        <h3 style={{ fontSize: '12px', fontWeight: 'bold', margin: '0 0 10px 0' }}>Assessment Timing Analysis</h3>
-                        <p><strong>Overall Pace:</strong> {timingAnalysis.overallPace || 'Moderate'} | <strong>Decision Style:</strong> {timingAnalysis.decisionStyle || 'Balanced'} | <strong>Confidence:</strong> {timingAnalysis.confidenceIndicator || 'Medium'}</p>
-                        {timingAnalysis.recommendation && (
-                            <p style={{ marginTop: '8px', fontStyle: 'italic' }}><strong>Recommendation:</strong> {timingAnalysis.recommendation}</p>
-                        )}
+                    <div>
+                        <h3 style={styles.subTitle}>Activities & Certifications</h3>
+                        <div style={styles.card}>
+                            <p style={{margin: '0 0 6px 0', fontSize: '9px'}}><strong>Join/Lead:</strong></p>
+                            {roadmap?.exposure?.activities?.map((a, i) => (
+                                <div key={i} style={{fontSize: '9px', padding: '2px 0'}}>• {a}</div>
+                            ))}
+                            <p style={{margin: '8px 0 4px 0', fontSize: '9px'}}><strong>Certifications:</strong></p>
+                            {roadmap?.exposure?.certifications?.map((c, i) => (
+                                <div key={i} style={{fontSize: '9px', padding: '2px 0'}}>• {c}</div>
+                            ))}
+                        </div>
                     </div>
-                )}
+                </div>
 
-                <div style={{ backgroundColor: '#f0f4ff', padding: '15px', marginTop: '20px', border: '1px solid #c7d2fe' }}>
-                    <h3 style={{ fontSize: '12px', fontWeight: 'bold', margin: '0 0 10px 0' }}>Final Counselor Note</h3>
-                    <p><strong>Your Biggest Advantage:</strong> {finalNote?.advantage}</p>
-                    <p><strong>Top Growth Focus:</strong> {finalNote?.growthFocus}</p>
-                    <p><strong>Next Review:</strong> {finalNote?.nextReview || 'End of 5th Semester'}</p>
+                {/* Final Note */}
+                <div style={styles.finalBox}>
+                    <h3 style={{margin: '0 0 10px 0', fontSize: '12px', color: '#fbbf24'}}>Final Counselor Note</h3>
+                    <p style={{margin: '0 0 6px 0', fontSize: '10px'}}><strong style={{color: '#86efac'}}>Your Biggest Advantage:</strong> {finalNote?.advantage}</p>
+                    <p style={{margin: '0 0 6px 0', fontSize: '10px'}}><strong style={{color: '#fde047'}}>Top Growth Focus:</strong> {finalNote?.growthFocus}</p>
+                    <p style={{margin: '0', fontSize: '10px'}}><strong style={{color: '#93c5fd'}}>Next Review:</strong> {finalNote?.nextReview || 'End of 5th Semester'}</p>
+                </div>
+
+                {/* Footer with Branding */}
+                <div style={{marginTop: '20px', paddingTop: '15px', borderTop: '2px solid #4f46e5'}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                            <img src="/assets/HomePage/RMLogo.webp" alt="Rareminds" style={{width: '32px', height: '32px', objectFit: 'contain'}} />
+                            <div>
+                                <p style={{margin: '0', fontSize: '11px', fontWeight: 'bold', color: '#1e293b'}}>RAREMINDS</p>
+                                <p style={{margin: '0', fontSize: '8px', color: '#6b7280'}}>SkillPassport • AI-Powered Career Assessment</p>
+                            </div>
+                        </div>
+                        <div style={{textAlign: 'right'}}>
+                            <p style={{margin: '0', fontSize: '8px', color: '#6b7280'}}>Report Generated: {new Date().toLocaleDateString()}</p>
+                            <p style={{margin: '0', fontSize: '8px', color: '#9ca3af'}}>Confidential • For Student Use Only</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
