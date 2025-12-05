@@ -15,6 +15,7 @@ interface SchoolClass {
   name: string;
   grade: string;
   section: string;
+  room_no?: string;
 }
 
 interface Subject {
@@ -42,6 +43,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [rooms, setRooms] = useState<string[]>([]);
   const [timetableId, setTimetableId] = useState<string>("");
   const [allSlots, setAllSlots] = useState<TimetableSlot[]>([]);
   const [draggedSlot, setDraggedSlot] = useState<TimetableSlot | null>(null);
@@ -159,17 +161,36 @@ const TimetableBuilderEnhanced: React.FC = () => {
     if (data) setTeachers(data);
   };
 
-  const loadClasses = async () => {
+  // const loadClasses = async () => {
+  //   const schoolId = await getSchoolId();
+  //   if (!schoolId) {
+  //     console.error('No school_id found for classes');
+  //     return;
+  //   }
+
+  //   // Load classes
+  //   const { data } = await supabase
+  //     .from("school_classes")
+  //     .select("id, name, grade, section")
+  //     .eq("school_id", schoolId)
+  //     .eq("account_status", "active")
+  //     .order("grade")
+  //     .order("section");
+    
+  //   console.log('Loaded classes:', data);
+  //   if (data) setClasses(data);
+  // };
+const loadClasses = async () => {
     const schoolId = await getSchoolId();
     if (!schoolId) {
       console.error('No school_id found for classes');
       return;
     }
 
-    // Load classes
+    // Load classes with room_number
     const { data } = await supabase
       .from("school_classes")
-      .select("id, name, grade, section")
+      .select("id, name, grade, section, room_no")
       .eq("school_id", schoolId)
       .eq("account_status", "active")
       .order("grade")
@@ -178,7 +199,6 @@ const TimetableBuilderEnhanced: React.FC = () => {
     console.log('Loaded classes:', data);
     if (data) setClasses(data);
   };
-
   const loadOrCreateTimetable = async () => {
     const schoolId = await getSchoolId();
     if (!schoolId) {
@@ -253,6 +273,32 @@ useEffect(() => {
   loadSubjects(); // Add this line
   loadOrCreateTimetable();
 }, []);
+
+const loadRooms = () => {
+  // Extract unique room numbers from classes that are already loaded
+  const uniqueRooms = [...new Set(
+    classes
+      .map(c => c.room_no)
+      .filter(room => room && room.trim() !== '')
+  )].sort();
+  
+  console.log('Loaded rooms:', uniqueRooms);
+  setRooms(uniqueRooms as string[]);
+};
+
+useEffect(() => {
+  loadTeachers();
+  loadClasses();
+  loadSubjects();
+  loadOrCreateTimetable();
+}, []);
+
+// Load rooms AFTER classes are loaded
+useEffect(() => {
+  if (classes.length > 0) {
+    loadRooms();
+  }
+}, [classes]);
 const loadAllSlots = async () => {
     const { data, error } = await supabase
       .from("timetable_slots")
@@ -432,13 +478,15 @@ const loadAllSlots = async () => {
       alert("Please select a Teacher and Class from the dropdowns above first.");
       return;
     }
-    
+    // Get room number from selected class
+  const selectedClass = classes.find(c => c.id === newSlot.class_id);
+  const defaultRoom = selectedClass?.room_no || "";
     setSelectedCell({ day, period });
     // Keep teacher_id and class_id, only reset subject and room
     setNewSlot({
       ...newSlot,
       subject_name: "",
-      room_number: "",
+      room_number: defaultRoom,
     });
     setShowAddModal(true);
   };
@@ -448,7 +496,26 @@ const loadAllSlots = async () => {
       alert("Please fill all required fields");
       return;
     }
+    // Get the selected class's default room
+  const selectedClass = classes.find(c => c.id === newSlot.class_id);
+  const classDefaultRoom = selectedClass?.room_no;
 
+  // Validate room number if class has a default room
+  if (classDefaultRoom && newSlot.room_number && newSlot.room_number !== classDefaultRoom) {
+    const confirmDifferentRoom = confirm(
+      `Warning: The selected room "${newSlot.room_number}" is different from the class's default room "${classDefaultRoom}".\n\nDo you want to continue anyway?`
+    );
+    
+    if (!confirmDifferentRoom) {
+      return;
+    }
+  }
+
+  // Check if room number is provided when class has default room
+  if (classDefaultRoom && !newSlot.room_number) {
+    alert(`Please select a room number. The default room for this class is: ${classDefaultRoom}`);
+    return;
+  }
     setLoading(true);
     try {
       const [startTime, endTime] = timeSlots[selectedCell.period - 1].split("-");
@@ -1196,13 +1263,29 @@ const loadAllSlots = async () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Room Number
                 </label>
-                <input
-                  type="text"
-                  value={editSlot.room_number}
-                  onChange={(e) => setEditSlot({ ...editSlot, room_number: e.target.value })}
-                  placeholder="e.g., R101"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
+                <select
+    value={editSlot.room_number}
+    onChange={(e) => setEditSlot({ ...editSlot, room_number: e.target.value })}
+    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+  >
+    <option value="">-- Select Room --</option>
+    {rooms.map((room) => (
+      <option key={room} value={room}>
+        {room}
+      </option>
+    ))}
+  </select>
+  {rooms.length === 0 ? (
+    <p className="text-xs text-gray-500 mt-1">
+      No rooms found. Please add room numbers to classes first.
+    </p>
+  ) : (
+    <p className="text-xs text-gray-500 mt-1">
+      {classes.find(c => c.id === editSlot.class_id)?.room_no 
+        ? `Default room for this class: ${classes.find(c => c.id === editSlot.class_id)?.room_no}`
+        : "No default room set for this class"}
+    </p>
+  )}
               </div>
             </div>
 
@@ -1281,18 +1364,34 @@ const loadAllSlots = async () => {
     </p>
   )}
 </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Room Number
-                </label>
-                <input
-                  type="text"
-                  value={newSlot.room_number}
-                  onChange={(e) => setNewSlot({ ...newSlot, room_number: e.target.value })}
-                  placeholder="e.g., R101"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
+             <div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Room Number
+  </label>
+  <select
+    value={newSlot.room_number}
+    onChange={(e) => setNewSlot({ ...newSlot, room_number: e.target.value })}
+    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+  >
+    <option value="">-- Select Room --</option>
+    {rooms.map((room) => (
+      <option key={room} value={room}>
+        {room}
+      </option>
+    ))}
+  </select>
+  {rooms.length === 0 ? (
+    <p className="text-xs text-gray-500 mt-1">
+      No rooms found. Please add room numbers to classes first.
+    </p>
+  ) : (
+    <p className="text-xs text-gray-500 mt-1">
+      {classes.find(c => c.id === newSlot.class_id)?.room_no 
+        ? `Default room for this class: ${classes.find(c => c.id === newSlot.class_id)?.room_no}`
+        : "No default room set for this class"}
+    </p>
+  )}
+</div>
             </div>
 
             <div className="flex gap-3 mt-6">

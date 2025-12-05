@@ -83,7 +83,7 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: "opportunities", label: "Opportunities" },
     { id: "career-ai", label: "Career AI", icon: "✨" },
     { id: "assignments", label: "My Class" },
-    {id: "clubs", label: "Co-Curriculars"},
+    // {id: "clubs", label: "Co-Curriculars"},
     { id: "messages", label: "Messages" },
     // Analytics removed - now integrated in Dashboard with tabs
   ];
@@ -141,8 +141,9 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
-                  } else if (tab.id === "clubs") {
-                    navigate("/student/clubs");
+                  // } 
+                  // else if (tab.id === "clubs") {
+                  //   navigate("/student/clubs");
                   } else if (tab.id === "career-ai") {
                     navigate("/student/career-ai");
                   } else if (tab.id === "messages") {
@@ -204,8 +205,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
-                  } else if (tab.id === "clubs") {
-                    navigate("/student/clubs");
+                  // } else if (tab.id === "clubs") {
+                  //   navigate("/student/clubs");
                   } else if (tab.id === "career-ai") {
                     navigate("/student/career-ai");
                   } else if (tab.id === "messages") {
@@ -349,8 +350,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
-                  } else if (tab.id === "clubs") {
-                    navigate("/student/clubs");
+                  // } else if (tab.id === "clubs") {
+                  //   navigate("/student/clubs");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
                   }
