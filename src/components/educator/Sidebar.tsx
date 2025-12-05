@@ -64,6 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { name: "Students", path: "/educator/students", icon: UserGroupIcon },
         { name: "Classes", path: "/educator/classes", icon: AcademicCapIcon },
+        {name: "TimeTable", path: "/educator/my-timetable", icon: AcademicCapIcon },
         { name: "Courses", path: "/educator/courses", icon: BookOpenIcon },
       ],
     },

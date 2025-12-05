@@ -2,6 +2,7 @@
 
 export interface TimetableSlot {
   id?: string;
+  educator_id: string;
   teacher_id: string;
   day_of_week: number;
   period_number: number;
@@ -80,6 +81,7 @@ export const validateMaxConsecutivePeriods = (
 
 /**
  * Rule 3: No teacher double-booking (same teacher, same time)
+ * This also prevents duplicate constraint violations in the database
  */
 export const validateTeacherAvailability = (
   slots: TimetableSlot[],
@@ -87,7 +89,7 @@ export const validateTeacherAvailability = (
 ): ValidationConflict | null => {
   const conflict = slots.find(
     s => s.id !== newSlot.id &&
-         s.teacher_id === newSlot.teacher_id &&
+         s.educator_id === newSlot.educator_id &&
          s.day_of_week === newSlot.day_of_week &&
          s.period_number === newSlot.period_number
   );
@@ -95,7 +97,7 @@ export const validateTeacherAvailability = (
   if (conflict) {
     return {
       type: 'teacher_double_booking',
-      message: `Teacher is already assigned to ${conflict.class_name} (${conflict.subject_name}) at this time.`,
+      message: `This teacher is already assigned to ${conflict.class_name} (${conflict.subject_name}) at this time slot. Please choose a different time or teacher.`,
       severity: 'error',
       affectedSlots: [conflict.id].filter(Boolean) as string[]
     };
