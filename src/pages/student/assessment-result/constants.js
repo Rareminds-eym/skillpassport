@@ -125,10 +125,23 @@ export const PRINT_STYLES = `
     table {
         border-collapse: collapse !important;
         width: 100% !important;
+        page-break-inside: avoid !important;
     }
     
     th, td {
         border: 1px solid #e2e8f0 !important;
+    }
+    
+    tr {
+        page-break-inside: avoid !important;
+    }
+    
+    /* Prevent page breaks inside important elements */
+    div[style*="background"], 
+    div[style*="border"],
+    .card, .box, .summary {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
     
     /* Prevent orphans and widows */

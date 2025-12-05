@@ -113,6 +113,8 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
             padding: '12px',
             marginBottom: '10px',
             background: '#fafafa',
+            pageBreakInside: 'avoid',
+            breakInside: 'avoid',
         },
         badge: {
             display: 'inline-block',
@@ -127,6 +129,8 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
             borderRadius: '6px',
             padding: '12px 15px',
             marginTop: '15px',
+            pageBreakInside: 'avoid',
+            breakInside: 'avoid',
         },
         finalBox: {
             background: '#1e293b',
@@ -134,6 +138,8 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
             borderRadius: '6px',
             padding: '15px 20px',
             marginTop: '20px',
+            pageBreakInside: 'avoid',
+            breakInside: 'avoid',
         },
         progressBar: {
             height: '6px',
