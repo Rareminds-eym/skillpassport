@@ -1,6 +1,14 @@
 import { CheckCircle, ChevronRight, Star, Zap, Target, TrendingUp, BookOpen } from 'lucide-react';
 import { Badge } from '../../../../../components/Students/components/ui/badge';
 
+// Helper function to get color based on skill level (1-5 scale)
+const getSkillLevelColor = (level) => {
+    const pct = (level / 5) * 100;
+    if (pct >= 70) return { bg: 'bg-green-500', text: 'text-green-600', light: 'bg-green-100' };
+    if (pct >= 40) return { bg: 'bg-yellow-500', text: 'text-yellow-600', light: 'bg-yellow-100' };
+    return { bg: 'bg-red-500', text: 'text-red-600', light: 'bg-red-100' };
+};
+
 const SkillsSection = ({ skillGap, employability }) => {
     return (
         <div className="space-y-8">

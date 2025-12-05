@@ -2,21 +2,21 @@ import { CheckCircle, TrendingUp, Briefcase, Target, Award } from 'lucide-react'
 import { Badge } from '../../../../../components/Students/components/ui/badge';
 import ProgressRing from '../ProgressRing';
 
+// Helper function to get color based on match score (red < 40, yellow 40-70, green > 70)
+const getMatchColor = (score) => {
+    if (score >= 70) return { gradient: 'from-green-500 to-emerald-600', bg: 'from-green-50 to-emerald-50', border: 'border-green-200', text: 'text-green-600', ring: '#22c55e' };
+    if (score >= 40) return { gradient: 'from-yellow-500 to-amber-600', bg: 'from-yellow-50 to-amber-50', border: 'border-yellow-200', text: 'text-yellow-600', ring: '#eab308' };
+    return { gradient: 'from-red-500 to-rose-600', bg: 'from-red-50 to-rose-50', border: 'border-red-200', text: 'text-red-600', ring: '#ef4444' };
+};
+
 const CareerSection = ({ careerFit }) => {
-    const clusterStyles = [
-        { gradient: 'from-emerald-500 to-teal-600', bg: 'from-emerald-50 to-teal-50', border: 'border-emerald-200', text: 'text-emerald-600', ring: '#10b981' },
-        { gradient: 'from-blue-500 to-indigo-600', bg: 'from-blue-50 to-indigo-50', border: 'border-blue-200', text: 'text-blue-600', ring: '#3b82f6' },
-        { gradient: 'from-amber-500 to-orange-600', bg: 'from-amber-50 to-orange-50', border: 'border-amber-200', text: 'text-amber-600', ring: '#f59e0b' },
-        { gradient: 'from-purple-500 to-pink-600', bg: 'from-purple-50 to-pink-50', border: 'border-purple-200', text: 'text-purple-600', ring: '#8b5cf6' },
-        { gradient: 'from-rose-500 to-red-600', bg: 'from-rose-50 to-red-50', border: 'border-rose-200', text: 'text-rose-600', ring: '#f43f5e' }
-    ];
 
     return (
         <div className="space-y-8">
             {/* Career Clusters */}
             <div className="space-y-6">
                 {careerFit.clusters.map((cluster, idx) => {
-                    const style = clusterStyles[idx % 5];
+                    const style = getMatchColor(cluster.matchScore || 0);
                     return (
                         <div key={idx} className="relative group">
                             <div className={`absolute inset-0 bg-gradient-to-r ${style.gradient} rounded-3xl blur-xl opacity-10 group-hover:opacity-20 transition-opacity`} />

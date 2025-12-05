@@ -1,7 +1,26 @@
-import { Compass, Zap, Heart, Star, Trophy, Rocket, Sparkles } from 'lucide-react';
+import { Compass, Zap, Heart, Star, Trophy, Rocket, Sparkles, FileText, Calculator, Puzzle, Ruler, Bolt, BarChart3, Award } from 'lucide-react';
+
+// Helper function to get color based on percentage (red < 40, yellow 40-70, green > 70)
+const getScoreColor = (percentage) => {
+    if (percentage >= 70) return { bg: 'bg-green-500', text: 'text-green-600', light: 'bg-green-100', border: 'border-green-200' };
+    if (percentage >= 40) return { bg: 'bg-yellow-500', text: 'text-yellow-600', light: 'bg-yellow-100', border: 'border-yellow-200' };
+    return { bg: 'bg-red-500', text: 'text-red-600', light: 'bg-red-100', border: 'border-red-200' };
+};
 
 const ProfileSection = ({ results, riasecNames, riasecColors, traitNames, traitColors }) => {
     const { riasec, aptitude, bigFive, workValues } = results;
+
+    // Debug logging for aptitude data
+    console.log('=== ProfileSection Debug ===');
+    console.log('Full results:', results);
+    console.log('Aptitude object:', aptitude);
+    console.log('Aptitude scores:', aptitude?.scores);
+    if (aptitude?.scores) {
+        console.log('Aptitude scores entries:', Object.entries(aptitude.scores));
+        Object.entries(aptitude.scores).forEach(([domain, data]) => {
+            console.log(`Domain: ${domain}`, data, typeof data);
+        });
+    }
 
     return (
         <div className="space-y-6">
@@ -33,17 +52,18 @@ const ProfileSection = ({ results, riasecNames, riasecColors, traitNames, traitC
                             {riasec?.topThree?.map((code) => {
                                 const score = riasec.scores?.[code] || 0;
                                 const pct = Math.round((score / 25) * 100);
+                                const scoreColor = getScoreColor(pct);
                                 return (
                                     <div key={code}>
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md" style={{ backgroundColor: riasecColors[code] }}>{code}</div>
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-md ${scoreColor.bg}`}>{code}</div>
                                                 <span className="font-semibold text-gray-700">{riasecNames[code]}</span>
                                             </div>
-                                            <span className="text-sm font-bold" style={{ color: riasecColors[code] }}>{pct}%</span>
+                                            <span className={`text-sm font-bold px-2 py-0.5 rounded ${scoreColor.light} ${scoreColor.text}`}>{pct}%</span>
                                         </div>
                                         <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                                            <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: riasecColors[code] }} />
+                                            <div className={`h-full rounded-full ${scoreColor.bg}`} style={{ width: `${pct}%` }} />
                                         </div>
                                     </div>
                                 );
@@ -65,28 +85,48 @@ const ProfileSection = ({ results, riasecNames, riasecColors, traitNames, traitC
                         </div>
                         <div className="space-y-3">
                             {aptitude?.scores ? Object.entries(aptitude.scores).map(([domain, data]) => {
-                                const configs = { verbal: { n: 'Verbal', i: '📝', c: '#3b82f6' }, numerical: { n: 'Numerical', i: '🔢', c: '#10b981' }, abstract: { n: 'Abstract', i: '🧩', c: '#8b5cf6' }, spatial: { n: 'Spatial', i: '📐', c: '#f59e0b' }, clerical: { n: 'Clerical', i: '⚡', c: '#ec4899' } };
-                                const cfg = configs[domain] || { n: domain, i: '📊', c: '#6b7280' };
+                                const configs = { 
+                                    verbal: { n: 'Verbal Reasoning', Icon: FileText }, 
+                                    numerical: { n: 'Numerical Ability', Icon: Calculator }, 
+                                    abstract: { n: 'Abstract Reasoning', Icon: Puzzle }, 
+                                    spatial: { n: 'Spatial Reasoning', Icon: Ruler }, 
+                                    clerical: { n: 'Clerical Speed', Icon: Bolt } 
+                                };
+                                const cfg = configs[domain.toLowerCase()] || { n: domain, Icon: BarChart3 };
+                                // Handle both object format {correct, total, percentage} and direct number format
+                                const correct = typeof data === 'object' ? (data.correct || 0) : 0;
+                                const total = typeof data === 'object' ? (data.total || 1) : 1;
+                                const pct = typeof data === 'object' 
+                                    ? (data.percentage || Math.round((correct / total) * 100)) 
+                                    : (typeof data === 'number' ? data : 0);
+                                const scoreColor = getScoreColor(pct);
+                                const IconComponent = cfg.Icon;
                                 return (
-                                    <div key={domain} className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-lg">{cfg.i}</div>
-                                        <div className="flex-1">
+                                    <div key={domain} className="flex items-center gap-3">
+                                        <div className={`w-9 h-9 rounded-lg ${scoreColor.light} flex items-center justify-center shrink-0`}>
+                                            <IconComponent className={`w-4 h-4 ${scoreColor.text}`} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
                                             <div className="flex justify-between items-center mb-1">
-                                                <span className="text-sm font-medium text-gray-700">{cfg.n}</span>
-                                                <span className="text-xs font-bold" style={{ color: cfg.c }}>{data.correct}/{data.total}</span>
+                                                <span className="text-sm font-medium text-gray-700 truncate">{cfg.n}</span>
+                                                <span className={`text-xs font-bold ${scoreColor.text} ml-2`}>{correct}/{total}</span>
                                             </div>
                                             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                                <div className="h-full rounded-full" style={{ width: `${data.percentage || 0}%`, backgroundColor: cfg.c }} />
+                                                <div className={`h-full rounded-full ${scoreColor.bg}`} style={{ width: `${pct}%` }} />
                                             </div>
                                         </div>
-                                        <span className="text-sm font-bold text-gray-600 w-12 text-right">{data.percentage || 0}%</span>
+                                        <span className={`text-sm font-bold px-2 py-0.5 rounded ${scoreColor.light} ${scoreColor.text} shrink-0`}>{pct}%</span>
                                     </div>
                                 );
-                            }) : <p className="text-gray-500 italic text-center py-4">No aptitude data</p>}
+                            }) : <p className="text-gray-500 italic text-center py-4">No aptitude data available</p>}
                         </div>
                         {aptitude?.topStrengths && (
                             <div className="mt-6 flex flex-wrap gap-2">
-                                {aptitude.topStrengths.map((s, i) => <span key={i} className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 rounded-full text-xs font-semibold">⭐ {s}</span>)}
+                                {aptitude.topStrengths.map((s, i) => (
+                                    <span key={i} className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 rounded-full text-xs font-semibold flex items-center gap-1">
+                                        <Award className="w-3 h-3" /> {s}
+                                    </span>
+                                ))}
                             </div>
                         )}
                     </div>
@@ -106,15 +146,17 @@ const ProfileSection = ({ results, riasecNames, riasecColors, traitNames, traitC
                             {['O', 'C', 'E', 'A', 'N'].map(t => {
                                 const sc = bigFive?.[t] || 0;
                                 const p = (sc / 5) * 100;
+                                const scoreColor = getScoreColor(p);
+                                const strokeColor = p >= 70 ? '#22c55e' : p >= 40 ? '#eab308' : '#ef4444';
                                 return (
                                     <div key={t} className="text-center">
                                         <div className="relative w-full aspect-square mb-2">
                                             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                                                 <circle cx="18" cy="18" r="15" fill="none" stroke="#f3f4f6" strokeWidth="3" />
-                                                <circle cx="18" cy="18" r="15" fill="none" stroke={traitColors[t]} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${p * 0.94} 100`} />
+                                                <circle cx="18" cy="18" r="15" fill="none" stroke={strokeColor} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${p * 0.94} 100`} />
                                             </svg>
                                             <div className="absolute inset-0 flex items-center justify-center">
-                                                <span className="text-xs font-bold" style={{ color: traitColors[t] }}>{sc.toFixed(1)}</span>
+                                                <span className={`text-xs font-bold ${scoreColor.text}`}>{sc.toFixed(1)}</span>
                                             </div>
                                         </div>
                                         <p className="text-[10px] font-semibold text-gray-600">{traitNames[t]}</p>
