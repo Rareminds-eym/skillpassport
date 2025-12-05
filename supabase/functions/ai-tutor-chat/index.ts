@@ -34,6 +34,13 @@ interface ResourceContext {
   content: string | null;
 }
 
+interface VideoSummaryContext {
+  summary: string;
+  keyPoints: string[];
+  topics: string[];
+  transcript: string;
+}
+
 interface ProgressContext {
   completedLessons: string[];
   currentLessonStatus: string | null;
@@ -51,6 +58,7 @@ interface CourseContext {
   studentProgress: ProgressContext;
   allModules: ModuleContext[];
   allLessons: { title: string; lessons: { title: string; lessonId: string }[] }[];
+  videoSummary: VideoSummaryContext | null;
 }
 
 interface ChatRequest {
@@ -167,6 +175,26 @@ async function buildCourseContext(
   const totalLessons = (lessons || []).length;
   const completionPercentage = totalLessons > 0 ? Math.round((completedLessons.length / totalLessons) * 100) : 0;
 
+  // Fetch video summary if available for current lesson
+  let videoSummary: VideoSummaryContext | null = null;
+  if (lessonId) {
+    const { data: videoData } = await supabase
+      .from('video_summaries')
+      .select('summary, key_points, topics, transcript')
+      .eq('lesson_id', lessonId)
+      .eq('processing_status', 'completed')
+      .single();
+
+    if (videoData) {
+      videoSummary = {
+        summary: videoData.summary || '',
+        keyPoints: videoData.key_points || [],
+        topics: videoData.topics || [],
+        transcript: videoData.transcript || ''
+      };
+    }
+  }
+
   return {
     courseTitle: course.title,
     courseDescription: course.description || '',
@@ -176,7 +204,8 @@ async function buildCourseContext(
     availableResources,
     studentProgress: { completedLessons, currentLessonStatus: currentLessonProgress?.status || null, totalLessons, completionPercentage },
     allModules,
-    allLessons
+    allLessons,
+    videoSummary
   };
 }
 
@@ -226,6 +255,24 @@ ${context.currentLesson.content || 'No content available'}
         }
       }
     }
+  }
+
+  // Add video summary context if available
+  if (context.videoSummary) {
+    prompt += `
+## Video Content Summary
+**AI-Generated Summary:**
+${context.videoSummary.summary}
+
+**Key Points from Video:**
+${context.videoSummary.keyPoints.map(p => `- ${p}`).join('\n')}
+
+**Topics Covered:**
+${context.videoSummary.topics.join(', ')}
+
+**Video Transcript (for reference):**
+${context.videoSummary.transcript.slice(0, 10000)}${context.videoSummary.transcript.length > 10000 ? '\n... [transcript truncated]' : ''}
+`;
   }
 
   prompt += `
@@ -636,14 +683,24 @@ serve(async (req) => {
       }
     }
 
-    const supabase = user 
+    // Create service role client for admin operations (bypasses RLS)
+    const supabaseAdmin = SUPABASE_SERVICE_ROLE_KEY 
+      ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+      : null;
+    
+    // Create user-authenticated client for RLS-protected operations
+    const supabaseUser = user && authHeader
       ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          global: { headers: { Authorization: authHeader! } },
+          global: { headers: { Authorization: authHeader } },
         })
-      : createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY);
+      : null;
+    
+    // Use user client for reads (respects RLS), admin for writes if available
+    const supabase = supabaseUser || createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const studentId = user?.id || null;
     const { conversationId, courseId, lessonId, message }: ChatRequest = await req.json();
+    console.log(`Processing request - studentId: ${studentId}, conversationId: ${conversationId || 'new'}, courseId: ${courseId}`);
 
     if (!courseId || !message) {
       return new Response(JSON.stringify({ error: 'Missing required fields: courseId and message' }), 
@@ -763,41 +820,94 @@ serve(async (req) => {
 
           const updatedMessages = [...existingMessages, userMessage, assistantMessage];
 
+          // Save conversation to database
+          // Priority: 1) Admin client (service role - bypasses RLS), 2) User client (with auth header)
           if (studentId) {
-            if (currentConversationId) {
-              await supabase.from('tutor_conversations').update({
-                messages: updatedMessages,
-                updated_at: new Date().toISOString()
-              }).eq('id', currentConversationId);
+            // Determine which client to use for database operations
+            // supabaseAdmin uses service role key (bypasses RLS)
+            // supabaseUser uses anon key + user's auth header (respects RLS)
+            const dbClient = supabaseAdmin || supabaseUser;
+            const clientType = supabaseAdmin ? 'admin (service role)' : 'user (authenticated)';
+            
+            console.log(`[DB Save] Using ${clientType} client for student ${studentId}`);
+            console.log(`[DB Save] supabaseAdmin available: ${!!supabaseAdmin}, supabaseUser available: ${!!supabaseUser}`);
+            
+            if (!dbClient) {
+              console.error('[DB Save] ERROR: No database client available for saving conversation');
+              console.error('[DB Save] SUPABASE_SERVICE_ROLE_KEY set:', !!SUPABASE_SERVICE_ROLE_KEY);
+              console.error('[DB Save] authHeader present:', !!authHeader);
             } else {
-              let title = message.slice(0, 50);
-              try {
-                const titleResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                  method: 'POST',
-                  headers: { 'Authorization': `Bearer ${openRouterKey}`, 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    model: 'openai/gpt-4o-mini',
-                    messages: [{ role: 'user', content: generateConversationTitlePrompt(message, courseContext.courseTitle) }],
-                    max_tokens: 60,
-                    temperature: 0.5
-                  })
-                });
-                if (titleResponse.ok) {
-                  const titleData = await titleResponse.json();
-                  title = titleData.choices?.[0]?.message?.content?.trim() || title;
+              if (currentConversationId) {
+                // Update existing conversation
+                console.log(`[DB Save] Updating existing conversation ${currentConversationId}`);
+                const { error: updateError } = await dbClient.from('tutor_conversations').update({
+                  messages: updatedMessages,
+                  updated_at: new Date().toISOString()
+                }).eq('id', currentConversationId).eq('student_id', studentId);
+                
+                if (updateError) {
+                  console.error('[DB Save] Error updating conversation:', JSON.stringify(updateError));
+                  console.error('[DB Save] Update error code:', updateError.code);
+                  console.error('[DB Save] Update error message:', updateError.message);
+                } else {
+                  console.log(`[DB Save] SUCCESS: Updated conversation ${currentConversationId} with ${updatedMessages.length} messages`);
                 }
-              } catch { /* use default */ }
+              } else {
+                // Create new conversation
+                let title = message.slice(0, 50);
+                try {
+                  const titleResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${openRouterKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      model: 'openai/gpt-4o-mini',
+                      messages: [{ role: 'user', content: generateConversationTitlePrompt(message, courseContext.courseTitle) }],
+                      max_tokens: 60,
+                      temperature: 0.5
+                    })
+                  });
+                  if (titleResponse.ok) {
+                    const titleData = await titleResponse.json();
+                    title = titleData.choices?.[0]?.message?.content?.trim() || title;
+                  }
+                } catch { /* use default */ }
 
-              const { data: newConv } = await supabase.from('tutor_conversations').insert({
-                student_id: studentId,
-                course_id: courseId,
-                lesson_id: lessonId || null,
-                title: title.slice(0, 255),
-                messages: updatedMessages
-              }).select('id').single();
+                console.log(`[DB Save] Creating new conversation for student ${studentId}, course ${courseId}, lesson ${lessonId || 'none'}`);
+                console.log(`[DB Save] Title: ${title.slice(0, 50)}`);
+                
+                const insertData = {
+                  student_id: studentId,
+                  course_id: courseId,
+                  lesson_id: lessonId || null,
+                  title: title.slice(0, 255),
+                  messages: updatedMessages
+                };
+                console.log(`[DB Save] Insert data:`, JSON.stringify({ ...insertData, messages: `[${updatedMessages.length} messages]` }));
+                
+                const { data: newConv, error: insertError } = await dbClient.from('tutor_conversations').insert(insertData).select('id').single();
 
-              if (newConv) currentConversationId = newConv.id;
+                if (insertError) {
+                  console.error('[DB Save] ERROR creating conversation:', JSON.stringify(insertError));
+                  console.error('[DB Save] Insert error code:', insertError.code);
+                  console.error('[DB Save] Insert error message:', insertError.message);
+                  console.error('[DB Save] Insert error hint:', insertError.hint || 'none');
+                  console.error('[DB Save] Insert error details:', insertError.details || 'none');
+                  
+                  // If RLS error with user client, log additional info
+                  if (insertError.code === '42501' || insertError.message?.includes('policy')) {
+                    console.error('[DB Save] RLS POLICY ERROR - This usually means:');
+                    console.error('[DB Save] 1. Service role key is not set in edge function secrets');
+                    console.error('[DB Save] 2. User auth token is not being properly passed');
+                    console.error('[DB Save] 3. student_id does not match auth.uid()');
+                  }
+                } else if (newConv) {
+                  currentConversationId = newConv.id;
+                  console.log(`[DB Save] SUCCESS: Created new conversation: ${currentConversationId}`);
+                }
+              }
             }
+          } else {
+            console.log('[DB Save] No studentId available, conversation not saved (user not authenticated)');
           }
 
           controller.enqueue(encoder.encode(`event: done\ndata: ${JSON.stringify({
