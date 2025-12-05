@@ -4,9 +4,44 @@
  * Margins: 15mm, Content area: ~180mm x 267mm
  */
 const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
-    if (!results) return null;
+    if (!results) {
+        return (
+            <div className="print-view">
+                <div style={{ padding: '20px', textAlign: 'center' }}>
+                    <p>No results available for printing.</p>
+                </div>
+            </div>
+        );
+    }
 
     const { riasec, aptitude, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote } = results;
+    
+    // Default student info if not provided
+    const safeStudentInfo = {
+        name: studentInfo?.name || '—',
+        regNo: studentInfo?.regNo || '—',
+        college: studentInfo?.college || '—',
+        stream: studentInfo?.stream || '—'
+    };
+    
+    // Default RIASEC names if not provided
+    const safeRiasecNames = riasecNames || {
+        R: 'Realistic',
+        I: 'Investigative',
+        A: 'Artistic',
+        S: 'Social',
+        E: 'Enterprising',
+        C: 'Conventional'
+    };
+    
+    // Default trait names if not provided
+    const safeTraitNames = traitNames || {
+        O: 'Openness',
+        C: 'Conscientiousness',
+        E: 'Extraversion',
+        A: 'Agreeableness',
+        N: 'Neuroticism'
+    };
 
     // Helper to get score color
     const getScoreStyle = (pct) => {
@@ -156,7 +191,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
     };
 
     return (
-        <div className="print-view">
+        <div className="print-view" style={{ background: 'white' }}>
             {/* PAGE 1: Profile Overview */}
             <div style={styles.page}>
                 {/* Header with Branding */}
@@ -180,19 +215,19 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                 <div style={styles.infoGrid}>
                     <div style={styles.infoBox}>
                         <p style={styles.infoLabel}>Student Name</p>
-                        <p style={styles.infoValue}>{studentInfo.name}</p>
+                        <p style={styles.infoValue}>{safeStudentInfo.name}</p>
                     </div>
                     <div style={styles.infoBox}>
                         <p style={styles.infoLabel}>Register No.</p>
-                        <p style={styles.infoValue}>{studentInfo.regNo}</p>
+                        <p style={styles.infoValue}>{safeStudentInfo.regNo}</p>
                     </div>
                     <div style={styles.infoBox}>
                         <p style={styles.infoLabel}>Programme</p>
-                        <p style={styles.infoValue}>{studentInfo.stream}</p>
+                        <p style={styles.infoValue}>{safeStudentInfo.stream}</p>
                     </div>
                     <div style={styles.infoBox}>
                         <p style={styles.infoLabel}>College</p>
-                        <p style={styles.infoValue}>{studentInfo.college}</p>
+                        <p style={styles.infoValue}>{safeStudentInfo.college}</p>
                     </div>
                     <div style={styles.infoBox}>
                         <p style={styles.infoLabel}>Assessment Date</p>
@@ -228,7 +263,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                                     return (
                                         <tr key={code}>
                                             <td style={styles.td}>#{idx + 1}</td>
-                                            <td style={styles.td}><strong>{riasecNames[code]}</strong> ({code})</td>
+                                            <td style={styles.td}><strong>{safeRiasecNames[code]}</strong> ({code})</td>
                                             <td style={{...styles.td, textAlign: 'center'}}>
                                                 <span style={{...styles.badge, background: scoreStyle.bg, color: scoreStyle.color}}>{score}/{maxScore}</span>
                                             </td>
@@ -283,7 +318,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                                     const scoreStyle = getScoreStyle(pct);
                                     return (
                                         <tr key={trait}>
-                                            <td style={{...styles.td, width: '50%'}}>{traitNames[trait]}</td>
+                                            <td style={{...styles.td, width: '50%'}}>{safeTraitNames[trait]}</td>
                                             <td style={{...styles.td, width: '25%'}}>
                                                 <div style={styles.progressBar}>
                                                     <div style={{height: '100%', width: `${pct}%`, background: scoreStyle.border, borderRadius: '3px'}}></div>
@@ -334,7 +369,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
             <div style={styles.page}>
                 {/* Page Header */}
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0'}}>
-                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {studentInfo.name}</span>
+                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {safeStudentInfo.name}</span>
                     <span style={{fontSize: '9px', color: '#4f46e5', fontWeight: '600'}}>Rareminds SkillPassport</span>
                 </div>
                 <h2 style={styles.sectionTitle}>2. Career Fit Analysis</h2>
@@ -397,7 +432,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
             <div style={styles.page}>
                 {/* Page Header */}
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0'}}>
-                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {studentInfo.name}</span>
+                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {safeStudentInfo.name}</span>
                     <span style={{fontSize: '9px', color: '#4f46e5', fontWeight: '600'}}>Rareminds SkillPassport</span>
                 </div>
                 <h2 style={styles.sectionTitle}>3. Skill Gap & Development Plan</h2>
@@ -458,7 +493,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
             <div style={styles.lastPage}>
                 {/* Page Header */}
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0'}}>
-                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {studentInfo.name}</span>
+                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {safeStudentInfo.name}</span>
                     <span style={{fontSize: '9px', color: '#4f46e5', fontWeight: '600'}}>Rareminds SkillPassport</span>
                 </div>
                 <h2 style={styles.sectionTitle}>4. 6-12 Month Action Roadmap</h2>

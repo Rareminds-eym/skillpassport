@@ -38,6 +38,21 @@ export const TRAIT_COLORS = {
 };
 
 export const PRINT_STYLES = `
+/* Screen styles - hide print view visually but keep in DOM for JS access */
+@media screen {
+    .print-view { 
+        position: absolute !important;
+        left: -9999px !important;
+        top: -9999px !important;
+        width: 210mm !important;
+        height: auto !important;
+        overflow: visible !important;
+        visibility: visible !important;
+        display: block !important;
+    }
+}
+
+/* Print styles */
 @media print {
     /* Page setup - A4: 210mm x 297mm */
     @page {
@@ -60,14 +75,50 @@ export const PRINT_STYLES = `
         color-adjust: exact !important;
     }
     
-    /* Hide web view, show print view */
-    .web-view { display: none !important; }
+    /* Hide web view completely */
+    .web-view { 
+        display: none !important; 
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        position: absolute !important;
+        left: -9999px !important;
+    }
+    
+    /* Show print view */
     .print-view { 
         display: block !important;
+        visibility: visible !important;
         position: static !important;
         background: white !important;
         overflow: visible !important;
         width: 100% !important;
+        height: auto !important;
+        opacity: 1 !important;
+        transform: none !important;
+        left: 0 !important;
+        top: 0 !important;
+    }
+    
+    /* Ensure print-view content is visible */
+    .print-view * {
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    
+    /* Ensure print-view divs are visible */
+    .print-view > div {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    
+    /* Ensure root containers are visible */
+    #root, #__next, body > div {
+        display: block !important;
+        visibility: visible !important;
+        overflow: visible !important;
+        height: auto !important;
     }
     
     /* Hide ALL non-print elements - comprehensive list */
@@ -87,15 +138,6 @@ export const PRINT_STYLES = `
     .no-print, .print-hidden, .hide-print {
         display: none !important;
         visibility: hidden !important;
-    }
-    
-    /* Force hide any fixed/absolute positioned elements */
-    body > div:not(.print-view),
-    body > aside,
-    body > section:not(.print-view),
-    #__next > div:not(.print-view),
-    #root > div:not(.print-view) {
-        /* Keep main content but hide overlays */
     }
     
     /* Specifically target fixed position elements */
@@ -153,9 +195,5 @@ export const PRINT_STYLES = `
     h1, h2, h3, h4, h5, h6 {
         page-break-after: avoid;
     }
-}
-
-@media screen {
-    .print-view { display: none !important; }
 }
 `;

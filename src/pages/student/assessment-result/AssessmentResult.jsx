@@ -52,6 +52,63 @@ const AssessmentResult = () => {
         navigate
     } = useAssessmentResults();
 
+    // Custom print function that opens print view in new window
+    const handlePrint = () => {
+        const printContent = document.querySelector('.print-view');
+        if (!printContent) {
+            console.error('Print view not found');
+            window.print();
+            return;
+        }
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            // Fallback to regular print if popup blocked
+            window.print();
+            return;
+        }
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Career Assessment Report</title>
+                <style>
+                    @page {
+                        size: A4 portrait;
+                        margin: 12mm 15mm;
+                    }
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        font-family: Arial, Helvetica, sans-serif;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    * {
+                        box-sizing: border-box;
+                    }
+                    img {
+                        max-width: 100%;
+                    }
+                </style>
+            </head>
+            <body>
+                ${printContent.innerHTML}
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        
+        // Wait for content to load then print
+        printWindow.onload = () => {
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 250);
+        };
+    };
+
     // Loading state
     if (loading) {
         return <LoadingState />;
@@ -78,7 +135,7 @@ const AssessmentResult = () => {
     return (
         <>
             {/* Inject print styles */}
-            <style>{PRINT_STYLES}</style>
+            <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
 
             {/* Print View - Simple document format for PDF */}
             <PrintView
@@ -121,7 +178,7 @@ const AssessmentResult = () => {
                                 )}
                             </Button>
                             <Button
-                                onClick={() => window.print()}
+                                onClick={handlePrint}
                                 className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg shadow-indigo-200"
                             >
                                 <Download className="w-4 h-4 mr-2" />
