@@ -11,9 +11,37 @@ import { dirname, join } from 'path';
 // Load environment variables from parent directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-dotenv.config({ path: join(__dirname, '..', '.env') });
+const envPath = join(__dirname, '..', '.env');
+console.log('Loading .env from:', envPath);
+dotenv.config({ path: envPath });
+
+// Import streak system components
+import { initializeStreakScheduler } from './schedulers/streakReminderScheduler.js';
+import { testConnection } from './services/supabaseClient.js';
+import { testEmailConnection } from './services/emailService.js';
+import streakRoutes from './routes/streakRoutes.js';
 
 const app = express();
+// Serve Chrome DevTools .well-known file
+app.use('/.well-known', express.static('.well-known'));
+
+// Content Security Policy (CSP)
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    [
+      "default-src 'none'",
+      "connect-src 'self' http://localhost:3001 http://localhost:5173",
+      "img-src 'self' data:",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self'",
+      "media-src 'self'",
+      "object-src 'none'",
+    ].join("; ")
+  );
+  next();
+});
 
 // Configure CORS to allow all origins
 app.use(cors());
@@ -359,7 +387,72 @@ app.get('/api/files/:courseId/:lessonId', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Streak management routes
+app.use('/api/streaks', streakRoutes);
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    services: {
+      fileUpload: true,
+      streakSystem: process.env.ENABLE_STREAK_SCHEDULER !== 'false',
+    },
+  });
 });
+
+const PORT = process.env.PORT || 3001;
+
+// Initialize server
+async function startServer() {
+  try {
+    console.log('\n╔═══════════════════════════════════════════════╗');
+    console.log('║      Skill Passport Backend Server           ║');
+    console.log('╚═══════════════════════════════════════════════╝\n');
+
+    // Test connections
+    console.log('🔌 Testing connections...\n');
+
+    const supabaseConnected = await testConnection();
+    const emailConnected = await testEmailConnection();
+
+    if (!supabaseConnected) {
+      console.warn('⚠️  Warning: Supabase connection failed. Streak system will not work properly.');
+    }
+
+    if (!emailConnected) {
+      console.warn('⚠️  Warning: Email connection failed. Reminder emails will not be sent.');
+    }
+
+    console.log('');
+
+    // Initialize streak scheduler
+    if (process.env.ENABLE_STREAK_SCHEDULER !== 'false') {
+      initializeStreakScheduler();
+    } else {
+      console.log('⚠️  Streak Scheduler is disabled\n');
+    }
+
+    // Start listening
+    app.listen(PORT, () => {
+      console.log('╔═══════════════════════════════════════════════╗');
+      console.log(`║  ✅ Server running on port ${PORT}              ║`);
+      console.log('╚═══════════════════════════════════════════════╝\n');
+
+      console.log('📋 Available Services:');
+      console.log(`   📁 File Upload API: http://localhost:${PORT}/api/upload`);
+      console.log(`   🔥 Streak API: http://localhost:${PORT}/api/streaks`);
+      console.log(`   💚 Health Check: http://localhost:${PORT}/api/health`);
+      console.log('\n');
+    });
+
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Start the server
+startServer();
