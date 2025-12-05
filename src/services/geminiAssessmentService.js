@@ -147,6 +147,16 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
     try {
       const parsedResults = JSON.parse(jsonStr);
       
+      // Debug logging for aptitude data
+      console.log('=== Gemini Response Debug ===');
+      console.log('Parsed aptitude:', parsedResults.aptitude);
+      console.log('Aptitude scores:', parsedResults.aptitude?.scores);
+      if (parsedResults.aptitude?.scores) {
+        Object.entries(parsedResults.aptitude.scores).forEach(([domain, data]) => {
+          console.log(`Aptitude ${domain}:`, data);
+        });
+      }
+      
       // Validate the response (no fallback data)
       const { isValid, missingFields } = validateResults(parsedResults);
       
@@ -156,6 +166,8 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
       
       return parsedResults;
     } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Raw JSON string:', jsonStr.substring(0, 500));
       throw new Error('Failed to parse AI response. Please try again.');
     }
   }

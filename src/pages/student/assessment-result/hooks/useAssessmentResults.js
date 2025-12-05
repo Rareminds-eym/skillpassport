@@ -105,6 +105,9 @@ export const useAssessmentResults = () => {
         if (geminiResultsJson) {
             try {
                 const geminiResults = JSON.parse(geminiResultsJson);
+                console.log('=== useAssessmentResults Debug (from cache) ===');
+                console.log('Cached results aptitude:', geminiResults.aptitude);
+                console.log('Cached results aptitude.scores:', geminiResults.aptitude?.scores);
                 if (geminiResults.careerFit) {
                     setResults(geminiResults);
                     setLoading(false);
