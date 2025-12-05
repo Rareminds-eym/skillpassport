@@ -119,14 +119,13 @@ export const useAssessmentResults = () => {
             if (user) {
                 const latestResult = await assessmentService.getLatestResult(user.id);
                 if (latestResult?.gemini_results) {
-                    console.log('Loaded results from database');
                     setResults(latestResult.gemini_results);
                     setLoading(false);
                     return;
                 }
             }
         } catch (e) {
-            console.log('No database results found, checking localStorage');
+            // No database results found, checking localStorage
         }
 
         // Fallback to localStorage (legacy mode)
@@ -142,15 +141,12 @@ export const useAssessmentResults = () => {
         if (geminiResultsJson) {
             try {
                 const geminiResults = JSON.parse(geminiResultsJson);
-                console.log('=== useAssessmentResults Debug (from cache) ===');
-                console.log('Cached results aptitude:', geminiResults.aptitude);
-                console.log('Cached results aptitude.scores:', geminiResults.aptitude?.scores);
                 if (geminiResults.careerFit) {
                     setResults(geminiResults);
                     setLoading(false);
                     return;
                 }
-                console.log('Old result format detected, re-analyzing...');
+                // Old result format detected, re-analyzing...
             } catch (e) {
                 console.error('Error parsing Gemini results:', e);
             }
@@ -187,11 +183,10 @@ export const useAssessmentResults = () => {
                                     geminiResults,
                                     sectionTimings
                                 );
-                                console.log('Results saved to database');
                             }
                         }
                     } catch (dbError) {
-                        console.log('Could not save to database:', dbError.message);
+                        // Could not save to database, results still in localStorage
                     }
                     
                     setResults(geminiResults);

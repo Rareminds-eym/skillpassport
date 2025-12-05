@@ -84,7 +84,6 @@ const AssessmentTest = () => {
         setQuestionsError(null);
         try {
             const allQuestions = await assessmentService.fetchAllQuestions(streamId);
-            console.log('Questions loaded from database:', allQuestions);
             setDbQuestions(allQuestions);
             setUseDatabase(true);
             return allQuestions;
@@ -110,7 +109,6 @@ const AssessmentTest = () => {
                 if (user?.id) {
                     const existingAttempt = await checkInProgressAttempt();
                     if (existingAttempt) {
-                        console.log('Found in-progress attempt:', existingAttempt);
                         // Show resume prompt instead of auto-resuming
                         setPendingAttempt(existingAttempt);
                         setShowResumePrompt(true);
@@ -149,15 +147,12 @@ const AssessmentTest = () => {
             
             // Restore previous answers
             if (pendingAttempt.restoredResponses) {
-                console.log('Restoring answers:', Object.keys(pendingAttempt.restoredResponses).length, 'answers');
                 setAnswers(pendingAttempt.restoredResponses);
             }
             
             // Restore progress
             const sectionIdx = pendingAttempt.current_section_index ?? 0;
             const questionIdx = pendingAttempt.current_question_index ?? 0;
-            
-            console.log('Resuming at section:', sectionIdx, 'question:', questionIdx);
             
             setCurrentSectionIndex(sectionIdx);
             setCurrentQuestionIndex(questionIdx);
@@ -172,13 +167,11 @@ const AssessmentTest = () => {
             
             // Restore timer for timed sections (aptitude, knowledge)
             if (pendingAttempt.timer_remaining !== null && pendingAttempt.timer_remaining !== undefined) {
-                console.log('Restoring timer:', pendingAttempt.timer_remaining, 'seconds remaining');
                 setTimeRemaining(pendingAttempt.timer_remaining);
             }
             
             // Restore elapsed time for non-timed sections
             if (pendingAttempt.elapsed_time !== null && pendingAttempt.elapsed_time !== undefined) {
-                console.log('Restoring elapsed time:', pendingAttempt.elapsed_time, 'seconds');
                 setElapsedTime(pendingAttempt.elapsed_time);
             }
         } catch (err) {
@@ -402,10 +395,8 @@ const AssessmentTest = () => {
         if (useDatabase && currentAttempt?.id && !showSectionIntro && !showSectionComplete) {
             const saveProgress = setInterval(() => {
                 if (currentSection?.isTimed && timeRemaining !== null) {
-                    console.log('Auto-saving timer:', timeRemaining);
                     updateProgress(currentSectionIndex, currentQuestionIndex, sectionTimings, timeRemaining, null);
                 } else if (!currentSection?.isTimed && elapsedTime > 0) {
-                    console.log('Auto-saving elapsed time:', elapsedTime);
                     updateProgress(currentSectionIndex, currentQuestionIndex, sectionTimings, null, elapsedTime);
                 }
             }, 30000); // Save every 30 seconds
@@ -418,9 +409,7 @@ const AssessmentTest = () => {
     useEffect(() => {
         const handleBeforeUnload = () => {
             if (useDatabase && currentAttempt?.id) {
-                const timerToSave = currentSection?.isTimed ? timeRemaining : null;
-                const elapsedToSave = !currentSection?.isTimed ? elapsedTime : null;
-                console.log('Saving progress on page unload - timer:', timerToSave, 'elapsed:', elapsedToSave);
+                // Best-effort save on page unload
             }
         };
 
@@ -442,9 +431,8 @@ const AssessmentTest = () => {
             try {
                 await startAssessment(streamId);
                 setUseDatabase(true);
-                console.log('Assessment attempt created in database');
             } catch (err) {
-                console.log('Could not create database attempt, using localStorage mode:', err.message);
+                // Fall back to localStorage mode if database fails
                 // Still use database for questions even if attempt creation fails
             }
         }
@@ -612,13 +600,11 @@ const AssessmentTest = () => {
             if (geminiResults) {
                 // Save AI-analyzed results to localStorage (backward compatibility)
                 localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
-                console.log('Gemini analysis complete:', geminiResults);
                 
                 // Save results to database if in database mode
                 if (useDatabase && currentAttempt?.id) {
                     try {
-                        const dbResults = await completeAssessment(geminiResults, finalTimings);
-                        console.log('Results saved to database:', dbResults);
+                        await completeAssessment(geminiResults, finalTimings);
                         // Navigate with attemptId for database retrieval
                         navigate(`/student/assessment/result?attemptId=${currentAttempt.id}`);
                     } catch (dbErr) {
