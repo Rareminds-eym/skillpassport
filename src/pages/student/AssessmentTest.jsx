@@ -60,6 +60,8 @@ const AssessmentTest = () => {
     const [showResumePrompt, setShowResumePrompt] = useState(false);
     const [pendingAttempt, setPendingAttempt] = useState(null);
     const [checkingExistingAttempt, setCheckingExistingAttempt] = useState(true); // Start with checking
+    const [initialCheckDone, setInitialCheckDone] = useState(false); // Prevent re-checking after initial load
+    const [assessmentStarted, setAssessmentStarted] = useState(false); // Track if user has started an assessment
 
     // Lazy initialization from localStorage
     const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
@@ -98,10 +100,13 @@ const AssessmentTest = () => {
         }
     };
     
-    // Check for in-progress attempt on mount
+    // Check for in-progress attempt on mount (only once)
     useEffect(() => {
+        // Only run once on mount, and not if user has already started an assessment
+        if (initialCheckDone || assessmentStarted) return;
+        
         const checkExistingAttempt = async () => {
-            // Wait for auth to be ready
+            // Wait for auth hook to be ready
             if (dbLoading) return;
             
             setCheckingExistingAttempt(true);
@@ -111,10 +116,28 @@ const AssessmentTest = () => {
                     const existingAttempt = await checkInProgressAttempt();
                     if (existingAttempt) {
                         console.log('Found in-progress attempt:', existingAttempt);
-                        // Show resume prompt instead of auto-resuming
-                        setPendingAttempt(existingAttempt);
-                        setShowResumePrompt(true);
-                        setShowStreamSelection(false);
+                        
+                        // Check if user has actually answered any questions
+                        const answeredCount = Object.keys(existingAttempt.restoredResponses || {}).length;
+                        const hasProgress = existingAttempt.current_section_index > 0 || 
+                                           existingAttempt.current_question_index > 0 ||
+                                           answeredCount > 0;
+                        
+                        if (hasProgress) {
+                            // Show resume prompt only if there's actual progress
+                            setPendingAttempt(existingAttempt);
+                            setShowResumePrompt(true);
+                            setShowStreamSelection(false);
+                        } else {
+                            // No real progress - abandon the empty attempt and start fresh
+                            console.log('Empty attempt found, abandoning and starting fresh');
+                            try {
+                                await assessmentService.abandonAttempt(existingAttempt.id);
+                            } catch (err) {
+                                console.error('Error abandoning empty attempt:', err);
+                            }
+                            setShowStreamSelection(true);
+                        }
                     } else {
                         // No existing attempt, show stream selection
                         setShowStreamSelection(true);
@@ -128,15 +151,18 @@ const AssessmentTest = () => {
                 setShowStreamSelection(true);
             } finally {
                 setCheckingExistingAttempt(false);
+                setInitialCheckDone(true);
             }
         };
         checkExistingAttempt();
-    }, [user?.id, dbLoading, checkInProgressAttempt]);
+    }, [user?.id, dbLoading, checkInProgressAttempt, initialCheckDone, assessmentStarted]);
 
     // Handle resume assessment
     const handleResumeAssessment = async () => {
         if (!pendingAttempt) return;
         
+        // Mark that user has started an assessment to prevent re-checking
+        setAssessmentStarted(true);
         setQuestionsLoading(true);
         setShowResumePrompt(false);
         
@@ -162,8 +188,10 @@ const AssessmentTest = () => {
             setCurrentSectionIndex(sectionIdx);
             setCurrentQuestionIndex(questionIdx);
             
-            // Don't show section intro if resuming - go directly to the question
-            setShowSectionIntro(false);
+            // Show section intro if at the start of a section (question 0)
+            // This ensures users see the section instructions when resuming
+            const shouldShowIntro = questionIdx === 0;
+            setShowSectionIntro(shouldShowIntro);
             setShowSectionComplete(false);
             
             if (pendingAttempt.section_timings) {
@@ -429,12 +457,14 @@ const AssessmentTest = () => {
     }, [useDatabase, currentAttempt?.id, currentSection?.isTimed, timeRemaining, elapsedTime, currentSectionIndex, currentQuestionIndex, sectionTimings]);
 
     const handleStreamSelect = async (streamId) => {
+        // Mark that user has started an assessment to prevent re-checking
+        setAssessmentStarted(true);
         setStudentStream(streamId);
+        setShowStreamSelection(false);
         
         // Load questions from database first
         await loadQuestionsFromDatabase(streamId);
         
-        setShowStreamSelection(false);
         setShowSectionIntro(true);
         
         // Try to create a database attempt if user is logged in
@@ -670,7 +700,9 @@ const AssessmentTest = () => {
     };
 
     // Unified loading screen - clean and simple
-    if (checkingExistingAttempt || dbLoading || questionsLoading) {
+    // Only show loading for initial check and questions loading, not for dbLoading during assessment
+    const showLoading = checkingExistingAttempt || questionsLoading || (!assessmentStarted && dbLoading);
+    if (showLoading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
