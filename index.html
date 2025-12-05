@@ -25,50 +25,39 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- Zoho SalesIQ Widget -->
+    <!-- Zoho SalesIQ Widget - Only on Home Page -->
     <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        // Function to check if current page is student dashboard
-        function isStudentPage() {
+      (function() {
+        // Function to check if on home page
+        function isHomePage() {
           const path = window.location.pathname;
-          return path.includes('/student');
+          return path === '/' || path === '';
         }
         
-        // Function to toggle body class based on route
-        function updateBodyClass() {
-          if (isStudentPage()) {
-            document.body.classList.add('hide-zoho-widget');
-          } else {
-            document.body.classList.remove('hide-zoho-widget');
-          }
-        }
-        
-        // Initial check
-        updateBodyClass();
-        
-        // Function to hide/show widget based on route
+        // Function to update widget visibility
         function updateWidgetVisibility() {
           if (window.$zoho && window.$zoho.salesiq && window.$zoho.salesiq.floatwindow) {
-            if (isStudentPage()) {
-              $zoho.salesiq.floatwindow.visible('hide');
+            if (isHomePage()) {
+              $zoho.salesiq.floatwindow.visible('show');
+              document.body.classList.remove('hide-zoho-widget');
             } else {
-              const urlParams = new URLSearchParams(window.location.search);
-              const openChat = urlParams.get('openChat');
-              
-              if (openChat !== 'false' && openChat !== '0') {
-                $zoho.salesiq.floatwindow.visible('show');
-              }
+              $zoho.salesiq.floatwindow.visible('hide');
+              document.body.classList.add('hide-zoho-widget');
             }
           }
         }
         
+        // Load the widget
         window.$zoho = window.$zoho || {};
-        $zoho.salesiq = $zoho.salesiq || {widgetcode: "siq85740827d442fdfad727c23eb50d61276e1e478af9841b5169a99498fc35da01", values:{}, ready:function(){
-          // Initial visibility check
-          setTimeout(function() {
-            updateWidgetVisibility();
-          }, 500);
-        }};
+        $zoho.salesiq = $zoho.salesiq || {
+          widgetcode: "siq85740827d442fdfad727c23eb50d61276e1e478af9841b5169a99498fc35da01", 
+          values:{}, 
+          ready:function(){
+            console.log('Zoho CRM widget loaded');
+            // Initial visibility check
+            setTimeout(updateWidgetVisibility, 500);
+          }
+        };
         
         var script = document.createElement('script');
         script.src = 'https://salesiq.zohopublic.in/widget?wc=siq85740827d442fdfad727c23eb50d61276e1e478af9841b5169a99498fc35da01';
@@ -76,16 +65,18 @@
         script.defer = true;
         document.head.appendChild(script);
         
-        // Monitor route changes (for SPAs)
+        // Monitor route changes for SPA
         let lastPath = window.location.pathname;
         setInterval(function() {
           if (lastPath !== window.location.pathname) {
             lastPath = window.location.pathname;
-            updateBodyClass();
             updateWidgetVisibility();
           }
         }, 300);
-      });
+        
+        // Also listen to popstate for back/forward navigation
+        window.addEventListener('popstate', updateWidgetVisibility);
+      })();
     </script>
 
   </body>

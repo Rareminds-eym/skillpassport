@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { X, Upload, AlertCircle } from 'lucide-react';
+import { X, Upload, AlertCircle, CheckCircle, XCircle, Loader } from 'lucide-react';
 
 export default function AddLearningCourseModal({ isOpen, onClose, studentId, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -26,6 +26,14 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
   const [certificateLevel, setCertificateLevel] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [verificationResult, setVerificationResult] = useState(null);
+  const [showInitialVerification, setShowInitialVerification] = useState(true);
+  const [initialVerificationData, setInitialVerificationData] = useState({
+    courseName: '',
+    provider: '',
+    certificateUrl: ''
+  });
 
   // Known organizations that don't require assessment
   const knownOrganizations = [
@@ -33,20 +41,114 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
     'Udacity', 'Khan Academy', 'FreeCodeCamp', 'Codecademy'
   ];
 
+  // AI Certificate Verification
+  const verifyCertificateWithAI = async () => {
+    setVerifying(true);
+    setError('');
+    
+    try {
+      const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY || import.meta.env.OPENAI_API_KEY;
+      
+      if (!apiKey) {
+        throw new Error('AI API key not configured. Please add OPENAI_API_KEY to your .env file');
+      }
+
+      const prompt = `You are a certificate verification assistant. Analyze the following certificate/training details and determine if it appears legitimate and valuable.
+
+Certificate Details:
+- Course Name: ${formData.title}
+- Provider: ${formData.provider || 'Not specified'}
+- Organization: ${formData.organization || 'Not specified'}
+- Certificate URL: ${formData.certificate_url || 'Not provided'}
+- Skills Covered: ${formData.skills_covered || 'Not specified'}
+- Duration: ${formData.start_date} to ${formData.end_date || 'Ongoing'}
+- Modules: ${formData.completed_modules}/${formData.total_modules}
+- Hours Spent: ${formData.hours_spent}
+
+Please analyze:
+1. Is this a legitimate/recognized training provider?
+2. Does the course content match the skills claimed?
+3. Is the certificate URL format valid (if provided)?
+4. Are the completion metrics reasonable?
+5. Overall credibility score (0-100)
+
+Respond in JSON format:
+{
+  "isLegitimate": true/false,
+  "credibilityScore": 0-100,
+  "providerRecognition": "well-known/recognized/unknown/suspicious",
+  "concerns": ["list any red flags"],
+  "recommendations": ["suggestions for improvement"],
+  "summary": "brief assessment"
+}`;
+
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': window.location.origin,
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.0-flash-exp:free',
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.3,
+          max_tokens: 1000
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI verification failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const aiResponse = data.choices[0].message.content;
+      
+      // Parse JSON response
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('Invalid AI response format');
+      }
+      
+      const verification = JSON.parse(jsonMatch[0]);
+      setVerificationResult(verification);
+      
+      return verification;
+    } catch (err) {
+      console.error('AI verification error:', err);
+      setError(`Verification failed: ${err.message}`);
+      return null;
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
     // Check if organization is external
-    if (name === 'organization' || name === 'provider') {
+    if (name === 'organization' || name === 'provider' || name === 'skills_covered') {
       const org = name === 'organization' ? value : formData.organization;
       const provider = name === 'provider' ? value : formData.provider;
+      const skills = name === 'skills_covered' ? value : formData.skills_covered;
       const orgToCheck = org || provider;
       
-      const isKnown = knownOrganizations.some(known => 
-        orgToCheck.toLowerCase().includes(known.toLowerCase())
-      );
-      setIsExternal(!isKnown && orgToCheck.length > 0);
+      // If skills are provided, check if organization is external
+      if (skills && skills.trim().length > 0) {
+        const isKnown = knownOrganizations.some(known => 
+          orgToCheck.toLowerCase().includes(known.toLowerCase())
+        );
+        // Set external if organization is not known OR if no organization is provided
+        setIsExternal(!isKnown);
+      } else {
+        setIsExternal(false);
+      }
     }
   };
 
@@ -98,9 +200,15 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
     e.preventDefault();
     setError('');
 
-    // If external organization and no assessment done yet, and skills are provided
+    // FIRST: Check if assessment is required for external courses with skills
     if (isExternal && !assessmentScore && formData.skills_covered && formData.skills_covered.trim().length > 0) {
       generateAssessmentQuestions();
+      return;
+    }
+
+    // SECOND: After assessment, check if verification is done
+    if (isExternal && !verificationResult && formData.skills_covered && formData.skills_covered.trim().length > 0) {
+      setError('Please verify the certificate with AI before adding it to your profile.');
       return;
     }
 
@@ -205,6 +313,8 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
     setAssessmentScore(null);
     setCertificateLevel('');
     setError('');
+    setVerifying(false);
+    setVerificationResult(null);
   };
 
   if (!isOpen) return null;
@@ -402,17 +512,108 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
                 </div>
               </div>
 
+              {/* AI Verification Result */}
+              {verificationResult && (
+                <div className={`border-2 rounded-lg p-4 ${
+                  verificationResult.isLegitimate 
+                    ? 'bg-green-50 border-green-300' 
+                    : 'bg-red-50 border-red-300'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    {verificationResult.isLegitimate ? (
+                      <CheckCircle size={24} className="text-green-600 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <XCircle size={24} className="text-red-600 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1">
+                      <h4 className={`font-semibold mb-2 ${
+                        verificationResult.isLegitimate ? 'text-green-900' : 'text-red-900'
+                      }`}>
+                        AI Verification: {verificationResult.isLegitimate ? 'Verified' : 'Needs Review'}
+                      </h4>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Credibility Score:</span>
+                          <span className={`font-bold ${
+                            verificationResult.credibilityScore >= 70 
+                              ? 'text-green-700' 
+                              : verificationResult.credibilityScore >= 50 
+                                ? 'text-yellow-700' 
+                                : 'text-red-700'
+                          }`}>
+                            {verificationResult.credibilityScore}/100
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Provider Recognition:</span>
+                          <span className="capitalize">{verificationResult.providerRecognition}</span>
+                        </div>
+                        
+                        <p className="mt-2 text-gray-700">{verificationResult.summary}</p>
+                        
+                        {verificationResult.concerns && verificationResult.concerns.length > 0 && (
+                          <div className="mt-3">
+                            <p className="font-medium text-red-800 mb-1">Concerns:</p>
+                            <ul className="list-disc list-inside space-y-1 text-red-700">
+                              {verificationResult.concerns.map((concern, idx) => (
+                                <li key={idx}>{concern}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {verificationResult.recommendations && verificationResult.recommendations.length > 0 && (
+                          <div className="mt-3">
+                            <p className="font-medium text-blue-800 mb-1">Recommendations:</p>
+                            <ul className="list-disc list-inside space-y-1 text-blue-700">
+                              {verificationResult.recommendations.map((rec, idx) => (
+                                <li key={idx}>{rec}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {isExternal && formData.skills_covered && formData.skills_covered.trim().length > 0 && !assessmentScore && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                <div className="bg-blue-50 border-2 border-blue-300 rounded-md p-4">
                   <div className="flex items-start gap-2">
-                    <AlertCircle size={20} className="text-yellow-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-yellow-800">
-                        Assessment Required
+                    <AlertCircle size={24} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-blue-900">
+                        📝 Assessment Required
                       </p>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        Since this is from an external platform, you'll need to complete a skill assessment 
-                        to verify your proficiency. Click "Continue to Assessment" to proceed.
+                      <p className="text-sm text-blue-800 mt-1 font-medium">
+                        Since this is from an external platform, you must complete a skill assessment 
+                        before adding this course to your profile.
+                      </p>
+                      <p className="text-xs text-blue-700 mt-2">
+                        Click "Continue to Assessment" button below to proceed.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isExternal && formData.skills_covered && formData.skills_covered.trim().length > 0 && assessmentScore !== null && !verificationResult && (
+                <div className="bg-yellow-50 border-2 border-yellow-300 rounded-md p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle size={24} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-yellow-900">
+                        ⚠️ Verification Required
+                      </p>
+                      <p className="text-sm text-yellow-800 mt-1 font-medium">
+                        Great! Assessment completed. Now verify the certificate 
+                        with AI before adding it to your profile. This ensures legitimacy and value.
+                      </p>
+                      <p className="text-xs text-yellow-700 mt-2">
+                        Click "Verify Certificate" button below to proceed.
                       </p>
                     </div>
                   </div>
@@ -427,17 +628,41 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading 
-                    ? 'Saving...' 
-                    : (isExternal && formData.skills_covered && formData.skills_covered.trim().length > 0 && !assessmentScore)
-                      ? 'Continue to Assessment' 
-                      : 'Add Learning'}
-                </button>
+                
+                {/* Step 1: Assessment required first for external courses with skills */}
+                {isExternal && formData.skills_covered && formData.skills_covered.trim().length > 0 && !assessmentScore ? (
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Take Assessment
+                  </button>
+                ) : /* Step 2: After assessment, verification required */ 
+                isExternal && formData.skills_covered && formData.skills_covered.trim().length > 0 && assessmentScore !== null && !verificationResult ? (
+                  <button
+                    type="button"
+                    onClick={verifyCertificateWithAI}
+                    disabled={verifying}
+                    className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {verifying ? (
+                      <>
+                        <Loader size={16} className="animate-spin" />
+                        Verifying...
+                      </>
+                    ) : (
+                      'Verify Certificate'
+                    )}
+                  </button>
+                ) : /* Step 3: After both assessment and verification, allow save */ (
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Saving...' : 'Add Learning'}
+                  </button>
+                )}
               </div>
             </>
           ) : (
