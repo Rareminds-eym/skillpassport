@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabaseClient';
  */
 export const fetchSections = async () => {
   const { data, error } = await supabase
-    .from('assessment_sections')
+    .from('personal_assessment_sections')
     .select('*')
     .eq('is_active', true)
     .order('order_number');
@@ -24,7 +24,7 @@ export const fetchSections = async () => {
  */
 export const fetchStreams = async () => {
   const { data, error } = await supabase
-    .from('assessment_streams')
+    .from('personal_assessment_streams')
     .select('*')
     .eq('is_active', true);
 
@@ -39,7 +39,7 @@ export const fetchStreams = async () => {
  */
 export const fetchQuestionsBySection = async (sectionId, streamId = null) => {
   let query = supabase
-    .from('assessment_questions')
+    .from('personal_assessment_questions')
     .select('*')
     .eq('section_id', sectionId)
     .eq('is_active', true)
@@ -87,7 +87,7 @@ export const fetchAllQuestions = async (streamId) => {
  */
 export const createAttempt = async (studentId, streamId) => {
   const { data, error } = await supabase
-    .from('assessment_attempts')
+    .from('personal_assessment_attempts')
     .insert({
       student_id: studentId,
       stream_id: streamId,
@@ -125,7 +125,7 @@ export const updateAttemptProgress = async (attemptId, progress) => {
   }
   
   const { data, error } = await supabase
-    .from('assessment_attempts')
+    .from('personal_assessment_attempts')
     .update(updateData)
     .eq('id', attemptId)
     .select()
@@ -144,7 +144,7 @@ export const updateAttemptProgress = async (attemptId, progress) => {
  */
 export const saveResponse = async (attemptId, questionId, responseValue, isCorrect = null) => {
   const { data, error } = await supabase
-    .from('assessment_responses')
+    .from('personal_assessment_responses')
     .upsert({
       attempt_id: attemptId,
       question_id: questionId,
@@ -167,10 +167,10 @@ export const saveResponse = async (attemptId, questionId, responseValue, isCorre
  */
 export const getAttemptResponses = async (attemptId) => {
   const { data, error } = await supabase
-    .from('assessment_responses')
+    .from('personal_assessment_responses')
     .select(`
       *,
-      question:assessment_questions(*)
+      question:personal_assessment_questions(*)
     `)
     .eq('attempt_id', attemptId);
 
@@ -189,7 +189,7 @@ export const getAttemptResponses = async (attemptId) => {
 export const completeAttempt = async (attemptId, studentId, streamId, geminiResults, sectionTimings) => {
   // Update attempt status
   const { error: attemptError } = await supabase
-    .from('assessment_attempts')
+    .from('personal_assessment_attempts')
     .update({
       status: 'completed',
       completed_at: new Date().toISOString(),
@@ -201,7 +201,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, geminiResu
 
   // Save results
   const { data: results, error: resultsError } = await supabase
-    .from('assessment_results')
+    .from('personal_assessment_results')
     .insert({
       attempt_id: attemptId,
       student_id: studentId,
@@ -238,11 +238,11 @@ export const completeAttempt = async (attemptId, studentId, streamId, geminiResu
  */
 export const getStudentAttempts = async (studentId) => {
   const { data, error } = await supabase
-    .from('assessment_attempts')
+    .from('personal_assessment_attempts')
     .select(`
       *,
-      stream:assessment_streams(*),
-      results:assessment_results(*)
+      stream:personal_assessment_streams(*),
+      results:personal_assessment_results(*)
     `)
     .eq('student_id', studentId)
     .order('created_at', { ascending: false });
@@ -257,14 +257,14 @@ export const getStudentAttempts = async (studentId) => {
  */
 export const getAttemptWithResults = async (attemptId) => {
   const { data, error } = await supabase
-    .from('assessment_attempts')
+    .from('personal_assessment_attempts')
     .select(`
       *,
-      stream:assessment_streams(*),
-      results:assessment_results(*),
-      responses:assessment_responses(
+      stream:personal_assessment_streams(*),
+      results:personal_assessment_results(*),
+      responses:personal_assessment_responses(
         *,
-        question:assessment_questions(*)
+        question:personal_assessment_questions(*)
       )
     `)
     .eq('id', attemptId)
@@ -280,7 +280,7 @@ export const getAttemptWithResults = async (attemptId) => {
  */
 export const getLatestResult = async (studentId) => {
   const { data, error } = await supabase
-    .from('assessment_results')
+    .from('personal_assessment_results')
     .select('*')
     .eq('student_id', studentId)
     .order('created_at', { ascending: false })
@@ -297,13 +297,13 @@ export const getLatestResult = async (studentId) => {
  */
 export const getInProgressAttempt = async (studentId) => {
   const { data, error } = await supabase
-    .from('assessment_attempts')
+    .from('personal_assessment_attempts')
     .select(`
       *,
-      stream:assessment_streams(*),
-      responses:assessment_responses(
+      stream:personal_assessment_streams(*),
+      responses:personal_assessment_responses(
         *,
-        question:assessment_questions(*)
+        question:personal_assessment_questions(*)
       )
     `)
     .eq('student_id', studentId)
@@ -322,7 +322,7 @@ export const getInProgressAttempt = async (studentId) => {
  */
 export const abandonAttempt = async (attemptId) => {
   const { error } = await supabase
-    .from('assessment_attempts')
+    .from('personal_assessment_attempts')
     .update({
       status: 'abandoned',
       updated_at: new Date().toISOString()
