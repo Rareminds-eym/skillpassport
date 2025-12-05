@@ -39,18 +39,25 @@ export const TRAIT_COLORS = {
 
 export const PRINT_STYLES = `
 @media print {
-    /* Page setup */
+    /* Page setup - A4: 210mm x 297mm */
     @page {
-        size: A4;
-        margin: 15mm;
+        size: A4 portrait;
+        margin: 12mm 15mm;
     }
     
-    /* Reset body */
+    /* Reset everything */
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+    
     body, html {
         margin: 0 !important;
         padding: 0 !important;
         background: white !important;
         overflow: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
     }
     
     /* Hide web view, show print view */
@@ -60,34 +67,52 @@ export const PRINT_STYLES = `
         position: static !important;
         background: white !important;
         overflow: visible !important;
+        width: 100% !important;
     }
     
-    /* Hide ALL header and footer elements */
-    header, footer, nav, aside {
-        display: none !important;
-        height: 0 !important;
-        max-height: 0 !important;
-        overflow: hidden !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    
-    /* Remove sticky positioning */
-    .sticky, [class*="sticky"] {
-        position: static !important;
+    /* Hide ALL non-print elements */
+    header, footer, nav, aside, .sticky, [class*="sticky"],
+    .Toaster, [class*="floating"], [class*="Floating"],
+    button, .btn, [role="dialog"], [role="menu"] {
         display: none !important;
     }
     
-    /* Hide floating buttons and toasters */
-    .Toaster, [class*="floating"], [class*="Floating"] {
-        display: none !important;
-    }
-    
-    /* Ensure content flows across pages */
+    /* Page breaks */
     .print-view > div {
-        page-break-inside: auto;
+        page-break-inside: avoid;
+        page-break-after: always;
+    }
+    .print-view > div:last-child {
+        page-break-after: auto;
+    }
+    
+    /* Ensure backgrounds print */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    /* Table styling for print */
+    table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+    }
+    
+    th, td {
+        border: 1px solid #e2e8f0 !important;
+    }
+    
+    /* Prevent orphans and widows */
+    p, h1, h2, h3, h4, h5, h6 {
+        orphans: 3;
+        widows: 3;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
     }
 }
+
 @media screen {
     .print-view { display: none !important; }
 }
