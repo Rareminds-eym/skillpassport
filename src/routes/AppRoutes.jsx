@@ -106,7 +106,7 @@ const ProjectHiringWithNav = lazy(() => import("../pages/recruiter/ProjectHiring
 const StudentDashboard = lazy(() => import("../pages/student/Dashboard"));
 const Profile = lazy(() => import("../pages/student/Profile"));
 const MySkills = lazy(() => import("../pages/student/MySkills"));
-const MyTraining = lazy(() => import("../pages/student/MyTraining"));
+const MyLearning = lazy(() => import("../pages/student/MyLearning"));
 const MyExperience = lazy(() => import("../pages/student/MyExperience"));
 const Courses = lazy(() => import("../pages/student/Courses"));
 const CoursePlayer = lazy(() => import("../pages/student/CoursePlayer"));
@@ -128,6 +128,8 @@ const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")
 );
 const Settings = lazy(() => import("../pages/student/Settings"));
+const AssessmentTest = lazy(() => import("../pages/student/AssessmentTest"));
+const AssessmentResult = lazy(() => import("../pages/student/AssessmentResult"));
 
 // Educator pages
 const EducatorDashboard = lazy(() => import("../pages/educator/Dashboard"));
@@ -145,7 +147,7 @@ const EducatorManagement = lazy(() => import("../pages/educator/EducatorManageme
 const EducatorCommunication = lazy(() =>
   import("../pages/educator/Communication")
 );
-const SkillCurriculars = lazy (() => import("../pages/educator/SkillCurricular"))
+const SkillCurriculars = lazy(() => import("../pages/educator/SkillCurricular"))
 const EducatorAnalytics = lazy(() => import("../pages/educator/Analytics"));
 const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
 const EducatorReports = lazy(() => import("../pages/educator/Reports"));
@@ -179,6 +181,27 @@ const StudentDataAdmission = lazy(() =>
 );
 const AdminEducatorManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/EducatorManagement")
+);
+const FacultyManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/FacultyManagement")
+);
+const ExaminationManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/ExaminationManagement")
+);
+const PlacementManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/PlacementManagement")
+);
+const SkillDevelopment = lazy(() =>
+  import("../pages/admin/collegeAdmin/SkillDevelopment")
+);
+const EventManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/EventManagement")
+);
+const FinanceManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/FinanceManagement")
+);
+const ReportsAnalytics = lazy(() =>
+  import("../pages/admin/collegeAdmin/ReportsAnalytics")
 );
 
 // Future: Add SchoolAdmin and UniversityAdmin dashboards here
@@ -222,13 +245,42 @@ const AICounselling = lazy(() =>
 const AttendanceTracking = lazy(() =>
   import("../pages/admin/collegeAdmin/Attendancetracking")
 );
-
+const GraduationEligibility = lazy(() =>
+  import("../pages/admin/collegeAdmin/GraduationEligibility")
+);
+const CircularsManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/CircularsManagement")
+);
+const CollegeUserManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/UserManagement")
+);
+const CollegeCurriculumBuilder = lazy(() =>
+  import("../pages/admin/collegeAdmin/CurriculumBuilder")
+);
+const LessonPlanManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/LessonPlanManagement")
+);
+const MentorAllocation = lazy(() =>
+  import("../pages/admin/collegeAdmin/MentorAllocation")
+);
+const TranscriptGeneration = lazy(() =>
+  import("../pages/admin/collegeAdmin/TranscriptGeneration")
+);
+const AcademicCalendar = lazy(() =>
+  import("../pages/admin/collegeAdmin/AcademicCalendar")
+);
+const PerformanceMonitoring = lazy(() =>
+  import("../pages/admin/collegeAdmin/PerformanceMonitoring")
+);
+const CollegeSettings = lazy(() =>
+  import("../pages/admin/collegeAdmin/Settings")
+);
 
 const CurriculumBuilder = lazy(() =>
   import("../pages/admin/schoolAdmin/CurriculumBuilderWrapper")
 );
 const SchoolAdminCourses = lazy(() => import("../pages/admin/schoolAdmin/Courses"));
-const LessonPlan = lazy(() => import("../pages/admin/schoolAdmin/LessonPlan"));
+const LessonPlan = lazy(() => import("../pages/admin/schoolAdmin/LessonPlanWrapper"));
 const ExamsAssessments = lazy(() =>
   import("../pages/admin/schoolAdmin/ExamsAssessments")
 );
@@ -247,15 +299,15 @@ const CircularsFeedback = lazy(() =>
 const SkillCurricular = lazy(() =>
   import("../pages/admin/schoolAdmin/SkillCurricular")
 );
-const SkillBadges = lazy(() =>  
-import("../pages/admin/schoolAdmin/SkillBadges")
+const SkillBadges = lazy(() =>
+  import("../pages/admin/schoolAdmin/SkillBadges")
 );
-const Reports = lazy(() =>  
-import("../pages/admin/schoolAdmin/Reports")
+const Reports = lazy(() =>
+  import("../pages/admin/schoolAdmin/Reports")
 );
 // Finance & infrastructure buddy
 const FinanceInfrastructure = lazy(() => import("../pages/admin/schoolAdmin/FeeStructureSetup"))
-const Library  = lazy(() => import("../pages/admin/schoolAdmin/Library"))
+const Library = lazy(() => import("../pages/admin/schoolAdmin/Library"))
 const AttendanceReports = lazy(() =>
   import("../pages/admin/schoolAdmin/AttendanceReports")
 );
@@ -355,22 +407,55 @@ const AppRoutes = () => {
           }
         >
           <Route path="dashboard" element={<CollegeDashboard />} />
-          <Route
-            path="departments/management"
-            element={<DepartmentManagement />}
-          />
+          
+          {/* Department Management */}
+          <Route path="departments/management" element={<DepartmentManagement />} />
           <Route path="departments/mapping" element={<CourseMapping />} />
-          <Route
-            path="students/data-management"
-            element={<StudentDataAdmission />}
-          />
-          <Route path="departments/educators" element={<AdminEducatorManagement />} />
-          <Route
-            path=""
-            element={<Navigate to="/college-admin/dashboard" replace />}
-          />
+          <Route path="departments/educators" element={<FacultyManagement />} />
+          
+          {/* Student Lifecycle Management */}
+          <Route path="students/data-management" element={<StudentDataAdmission />} />
           <Route path="students/attendance" element={<AttendanceTracking />} />
-
+          <Route path="students/performance" element={<PerformanceMonitoring />} />
+          <Route path="students/graduation" element={<GraduationEligibility />} />
+          
+          {/* Academic Management */}
+          <Route path="academics/curriculum" element={<CollegeCurriculumBuilder />} />
+          <Route path="academics/lesson-plans" element={<LessonPlanManagement />} />
+          <Route path="academics/calendar" element={<AcademicCalendar />} />
+          
+          {/* Examination Management */}
+          <Route path="examinations" element={<ExaminationManagement />} />
+          <Route path="examinations/transcripts" element={<TranscriptGeneration />} />
+          
+          {/* Training & Skill Development */}
+          <Route path="skill-development" element={<SkillDevelopment />} />
+          
+          {/* Placement Management */}
+          <Route path="placements" element={<PlacementManagement />} />
+          
+          {/* Mentor Allocation */}
+          <Route path="mentors" element={<MentorAllocation />} />
+          
+          {/* Communication */}
+          <Route path="circulars" element={<CircularsManagement />} />
+          
+          {/* Events */}
+          <Route path="events" element={<EventManagement />} />
+          
+          {/* Finance & Accounts */}
+          <Route path="finance" element={<FinanceManagement />} />
+          
+          {/* Reports & Analytics */}
+          <Route path="reports" element={<ReportsAnalytics />} />
+          
+          {/* User Management */}
+          <Route path="users" element={<CollegeUserManagement />} />
+          
+          {/* Settings */}
+          <Route path="settings" element={<CollegeSettings />} />
+          
+          <Route path="" element={<Navigate to="/college-admin/dashboard" replace />} />
         </Route>
 
         <Route
@@ -481,7 +566,8 @@ const AppRoutes = () => {
           <Route path="profile" element={<Profile />} />
           <Route path="profile/:email" element={<Profile />} />
           <Route path="my-skills" element={<MySkills />} />
-          <Route path="my-training" element={<MyTraining />} />
+          <Route path="my-learning" element={<MyLearning />} />
+          <Route path="my-training" element={<MyLearning />} /> {/* Redirect old route */}
           <Route path="my-experience" element={<MyExperience />} />
           <Route path="courses" element={<Courses />} />
           <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
@@ -499,6 +585,9 @@ const AppRoutes = () => {
           <Route path="clubs" element={<Clubs />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
+          <Route path="assessment-report" element={<AssessmentTest />} /> {/* Keep old path for backward compat if needed, or redirect */}
+          <Route path="assessment/test" element={<AssessmentTest />} />
+          <Route path="assessment/result" element={<AssessmentResult />} />
 
           {/* Digital Portfolio routes with required providers */}
           <Route

@@ -13,7 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // ===== AUTHENTICATION CHECK =====
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error('Missing authorization header');
@@ -23,25 +22,19 @@ serve(async (req) => {
       );
     }
 
-    // ===== ENVIRONMENT VARIABLES CHECK =====
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      console.error('Missing environment variables:', { 
-        hasUrl: !!SUPABASE_URL, 
-        hasAnonKey: !!SUPABASE_ANON_KEY 
-      });
+      console.error('Missing environment variables');
       return new Response(
         JSON.stringify({ error: 'Server configuration error' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Extract token from Authorization header
     const token = authHeader.replace('Bearer ', '');
     
-    // Get service role key for JWT verification (required per Supabase docs)
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!SUPABASE_SERVICE_ROLE_KEY) {
       console.error('Missing SUPABASE_SERVICE_ROLE_KEY');
@@ -51,10 +44,8 @@ serve(async (req) => {
       );
     }
 
-    // Create admin client to verify JWT (official Supabase pattern)
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
-    // Verify the JWT token using admin client
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) {
       console.error('Authentication failed:', authError?.message || 'No user found');
@@ -64,7 +55,6 @@ serve(async (req) => {
       );
     }
     
-    // Create regular client for database operations (respects RLS)
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -80,7 +70,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate rating
     if (rating !== 1 && rating !== -1) {
       return new Response(
         JSON.stringify({ error: 'Invalid rating. Must be 1 (thumbs up) or -1 (thumbs down)' }),
@@ -88,7 +77,6 @@ serve(async (req) => {
       );
     }
 
-    // Verify conversation belongs to user
     const { data: conversation, error: convError } = await supabase
       .from('tutor_conversations')
       .select('id')
@@ -103,7 +91,6 @@ serve(async (req) => {
       );
     }
 
-    // Check if feedback already exists for this message
     const { data: existingFeedback } = await supabase
       .from('tutor_feedback')
       .select('id')
@@ -112,7 +99,6 @@ serve(async (req) => {
       .single();
 
     if (existingFeedback) {
-      // Update existing feedback
       const { error: updateError } = await supabase
         .from('tutor_feedback')
         .update({
@@ -135,7 +121,6 @@ serve(async (req) => {
       );
     }
 
-    // Insert new feedback
     const { error: insertError } = await supabase
       .from('tutor_feedback')
       .insert({
@@ -161,7 +146,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in ai-tutor-feedback:', error);
     return new Response(
-      JSON.stringify({ error: error?.message || 'Internal server error' }),
+      JSON.stringify({ error: (error as Error)?.message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

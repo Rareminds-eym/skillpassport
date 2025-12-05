@@ -27,19 +27,10 @@ import {
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
 import { FileTextIcon } from "lucide-react";
-import { lessonPlanService } from "../../../services/lessonPlanService";
+import { useCurriculum } from "../../../hooks/useLessonPlans";
+import type { LessonPlan as LessonPlanType } from "../../../services/lessonPlansService";
+import { getSubjects, getClasses, getAcademicYears, getCurrentAcademicYear } from "../../../services/curriculumService";
 import { supabase } from "../../../lib/supabaseClient";
-import { 
-  getSubjects, 
-  getClasses, 
-  getCurriculum, 
-  getChapters, 
-  getLearningOutcomes,
-  getCurrentEducatorSchoolId,
-  getCurrentAcademicYear,
-  type Chapter as CurriculumChapter,
-  type LearningOutcome as CurriculumLearningOutcome
-} from "../../../services/curriculumService";
 
 /* ==============================
    TYPES & INTERFACES
@@ -96,6 +87,7 @@ interface LessonPlan {
   title: string;
   subject: string;
   class: string;
+  academicYear?: string; // Academic year from school_classes
   date: string;
   chapterId: string; // Link to curriculum chapter
   chapterName: string; // Display name
@@ -110,6 +102,7 @@ interface LessonPlan {
   evaluationItems: EvaluationCriteria[];
   homework?: string; // Homework/Follow-up (optional)
   differentiationNotes?: string; // Differentiation notes (optional)
+  status?: string; // Status of the lesson plan (draft, approved, etc.)
 }
 
 /* ==============================
@@ -580,117 +573,70 @@ const ViewLessonPlanModal = ({
 };
 
 /* ==============================
+   PROPS INTERFACE
+   ============================== */
+interface LessonPlanProps {
+  initialLessonPlans?: LessonPlanType[];
+  onCreateLessonPlan?: (formData: any, classId: string | null) => Promise<{ data: any; error: any }>;
+  onUpdateLessonPlan?: (id: string, formData: any, classId: string | null) => Promise<{ data: any; error: any }>;
+  onDeleteLessonPlan?: (id: string) => Promise<{ error: any }>;
+  subjects?: string[];
+  classes?: any[];
+  schoolId?: string;
+}
+
+/* ==============================
    MAIN COMPONENT
    ============================== */
-const LessonPlan: React.FC = () => {
-  // State for dynamic data
-  const [subjects, setSubjects] = useState<string[]>([]);
-  const [classes, setClasses] = useState<string[]>([]);
-  const [curriculums, setCurriculums] = useState<Curriculum[]>([]);
-  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [schoolId, setSchoolId] = useState<string | null>(null);
-  const [currentAcademicYear, setCurrentAcademicYear] = useState<string>("");
+const LessonPlan: React.FC<LessonPlanProps> = ({
+  initialLessonPlans = [],
+  onCreateLessonPlan,
+  onUpdateLessonPlan,
+  onDeleteLessonPlan,
+  subjects: propSubjects,
+  classes: propClasses,
+  schoolId,
+}) => {
+  // State for dynamic data from database
+  const [subjects, setSubjects] = useState<string[]>(propSubjects || []);
+  const [classes, setClasses] = useState<string[]>(propClasses?.map(c => c.grade || c) || []);
+  const [academicYears, setAcademicYears] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Load initial data
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  const loadInitialData = async () => {
-    try {
-      setLoading(true);
-      
-      // Get school ID and academic year
-      const [fetchedSchoolId, fetchedAcademicYear, fetchedSubjects, fetchedClasses] = await Promise.all([
-        getCurrentEducatorSchoolId(),
-        getCurrentAcademicYear(),
-        getSubjects(),
-        getClasses(),
-      ]);
-
-      setSchoolId(fetchedSchoolId);
-      setCurrentAcademicYear(fetchedAcademicYear || "2024-2025");
-      setSubjects(fetchedSubjects);
-      setClasses(fetchedClasses);
-
-      // Load lesson plans if school ID is available
-      if (fetchedSchoolId) {
-        const plans = await lessonPlanService.getLessonPlans(fetchedSchoolId);
-        setLessonPlans(plans.map(plan => ({
-          ...plan,
-          class: plan.class_name, // Map class_name to class for form compatibility
-          chapterId: plan.chapter_id || "", // Map chapter_id to chapterId
-          chapterName: plan.chapter_name || "",
-          duration: plan.duration ? `${plan.duration} minutes` : "",
-          selectedLearningOutcomes: plan.selected_learning_outcomes || [],
-          learningObjectives: plan.learning_objectives || "",
-          teachingMethodology: plan.teaching_methodology || "",
-          requiredMaterials: plan.required_materials || "",
-          resourceFiles: plan.resource_files || [],
-          resourceLinks: plan.resource_links || [],
-          evaluationCriteria: plan.evaluation_criteria || "",
-          evaluationItems: plan.evaluation_items || [],
-          homework: plan.homework || "",
-          differentiationNotes: plan.differentiation_notes || "",
-        })));
-      }
-    } catch (error) {
-      console.error("Error loading initial data:", error);
-    } finally {
-      setLoading(false);
-    }
+  // Convert backend data to UI format
+  const convertToUIFormat = (backendPlans: LessonPlanType[]): LessonPlan[] => {
+    return backendPlans.map(plan => ({
+      id: plan.id,
+      title: plan.title,
+      subject: plan.subject,
+      class: plan.class_name,
+      academicYear: plan.academic_year,
+      date: plan.date,
+      chapterId: plan.chapter_id || "",
+      chapterName: plan.chapter_name || "",
+      duration: plan.duration ? `${plan.duration} minutes` : "",
+      selectedLearningOutcomes: plan.selected_learning_outcomes || [],
+      learningObjectives: plan.learning_objectives,
+      teachingMethodology: plan.teaching_methodology || "",
+      requiredMaterials: plan.required_materials || "",
+      resourceFiles: plan.resource_files || [],
+      resourceLinks: plan.resource_links || [],
+      evaluationCriteria: plan.evaluation_criteria || "",
+      evaluationItems: plan.evaluation_items || [],
+      homework: plan.homework,
+      differentiationNotes: plan.differentiation_notes,
+      status: plan.status,
+    }));
   };
 
-  // Load curriculum when subject and class change
-  const loadCurriculumData = async (subject: string, className: string) => {
-    if (!subject || !className || !currentAcademicYear) return;
+  // State
+  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>(
+    initialLessonPlans ? convertToUIFormat(initialLessonPlans) : []
+  );
 
-    try {
-      const curriculum = await getCurriculum(subject, className, currentAcademicYear);
-      if (!curriculum) return;
-
-      const [chapters, learningOutcomes] = await Promise.all([
-        getChapters(curriculum.id),
-        getLearningOutcomes(curriculum.id),
-      ]);
-
-      // Map to the expected format
-      const mappedCurriculum: Curriculum = {
-        id: curriculum.id,
-        subject: curriculum.subject,
-        class: curriculum.class,
-        academicYear: curriculum.academic_year,
-        chapters: chapters.map(ch => ({
-          id: ch.id,
-          name: ch.name,
-          code: ch.code,
-          description: ch.description,
-          order: ch.order_number,
-          estimatedDuration: ch.estimated_duration,
-          durationUnit: ch.duration_unit,
-        })),
-        learningOutcomes: learningOutcomes.map(lo => ({
-          id: lo.id,
-          chapterId: lo.chapter_id,
-          outcome: lo.outcome,
-          bloomLevel: lo.bloom_level,
-        })),
-      };
-
-      // Update or add curriculum to state
-      setCurriculums(prev => {
-        const existing = prev.findIndex(c => c.id === mappedCurriculum.id);
-        if (existing >= 0) {
-          const updated = [...prev];
-          updated[existing] = mappedCurriculum;
-          return updated;
-        }
-        return [...prev, mappedCurriculum];
-      });
-    } catch (error) {
-      console.error("Error loading curriculum:", error);
-    }
+  // Placeholder for loadCurriculumData (used by edit/duplicate)
+  const loadCurriculumData = async (_subject: string, _className: string) => {
+    // Curriculum data is loaded via useCurriculum hook
   };
 
   const [showEditor, setShowEditor] = useState(false);
@@ -698,11 +644,14 @@ const LessonPlan: React.FC = () => {
   const [viewingPlan, setViewingPlan] = useState<LessonPlan | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState<string>("");
+  const [gradeFilter, setGradeFilter] = useState<string>("");
+  const [academicYearFilter, setAcademicYearFilter] = useState<string>("");
 
   const [formData, setFormData] = useState({
     title: "",
     subject: "",
     class: "",
+    academicYear: "",
     date: "",
     chapterId: "",
     learningObjectives: "",
@@ -713,12 +662,39 @@ const LessonPlan: React.FC = () => {
     differentiationNotes: "",
   });
 
-  // Load curriculum when subject or class changes
+  // Load subjects, classes, and academic years from database
   useEffect(() => {
-    if (formData.subject && formData.class) {
+    const loadFilterData = async () => {
+      try {
+        const [subjectsData, classesData, yearsData, currentYear] = await Promise.all([
+          getSubjects(),
+          getClasses(),
+          getAcademicYears(),
+          getCurrentAcademicYear(),
+        ]);
+        
+        setSubjects(subjectsData);
+        setClasses(classesData);
+        setAcademicYears(yearsData);
+        
+        // Set current academic year as default for new lesson plans
+        if (currentYear && !formData.academicYear) {
+          setFormData(prev => ({ ...prev, academicYear: currentYear }));
+        }
+      } catch (error) {
+        console.error('Error loading filter data:', error);
+      }
+    };
+
+    loadFilterData();
+  }, []);
+
+  // Load curriculum when subject, class, or academic year changes
+  useEffect(() => {
+    if (formData.subject && formData.class && formData.academicYear) {
       loadCurriculumData(formData.subject, formData.class);
     }
-  }, [formData.subject, formData.class]);
+  }, [formData.subject, formData.class, formData.academicYear]);
 
   const [selectedLearningOutcomes, setSelectedLearningOutcomes] = useState<string[]>([]);
 
@@ -736,6 +712,24 @@ const LessonPlan: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  // Use curriculum hook for backend data
+  const { chapters, learningOutcomes, loadChapters, loadLearningOutcomes } = 
+    useCurriculum(formData.subject, formData.class, formData.academicYear);
+
+  // Load chapters when subject and class are selected
+  useEffect(() => {
+    if (formData.subject && formData.class && chapters.length > 0) {
+      // Chapters are automatically loaded by the hook
+    }
+  }, [formData.subject, formData.class, chapters]);
+
+  // Load learning outcomes when chapter is selected
+  useEffect(() => {
+    if (formData.chapterId) {
+      loadLearningOutcomes(formData.chapterId);
+    }
+  }, [formData.chapterId, loadLearningOutcomes]);
+
   // Filter lesson plans
   const filteredPlans = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -746,9 +740,13 @@ const LessonPlan: React.FC = () => {
         plan.subject.toLowerCase().includes(q);
       const matchesSubject =
         subjectFilter === "" || plan.subject === subjectFilter;
-      return matchesSearch && matchesSubject;
+      const matchesGrade =
+        gradeFilter === "" || plan.class === gradeFilter;
+      const matchesAcademicYear =
+        academicYearFilter === "" || plan.academicYear === academicYearFilter;
+      return matchesSearch && matchesSubject && matchesGrade && matchesAcademicYear;
     });
-  }, [lessonPlans, searchQuery, subjectFilter]);
+  }, [lessonPlans, searchQuery, subjectFilter, gradeFilter, academicYearFilter]);
 
   // Stats
   const stats = {
@@ -765,32 +763,16 @@ const LessonPlan: React.FC = () => {
     }, {} as Record<string, number>),
   };
 
-  // Get available curriculums based on selected subject and class
-  const availableCurriculums = useMemo(() => {
-    if (!formData.subject || !formData.class) return [];
-    return curriculums.filter(
-      (c) => c.subject === formData.subject && c.class === formData.class
-    );
-  }, [formData.subject, formData.class, curriculums]);
-
-  // Get chapters from selected curriculum
-  const availableChapters = useMemo(() => {
-    if (availableCurriculums.length === 0) return [];
-    return availableCurriculums[0].chapters;
-  }, [availableCurriculums]);
+  // Get available chapters from curriculum hook
+  const availableChapters = chapters;
 
   // Get learning outcomes for selected chapter
-  const availableLearningOutcomes = useMemo(() => {
-    if (!formData.chapterId || availableCurriculums.length === 0) return [];
-    return availableCurriculums[0].learningOutcomes.filter(
-      (lo) => lo.chapterId === formData.chapterId
-    );
-  }, [formData.chapterId, availableCurriculums]);
+  const availableLearningOutcomes = learningOutcomes;
 
   // Get selected chapter details
   const selectedChapter = useMemo(() => {
     if (!formData.chapterId) return null;
-    return availableChapters.find((ch) => ch.id === formData.chapterId);
+    return availableChapters.find((ch: any) => ch.id === formData.chapterId);
   }, [formData.chapterId, availableChapters]);
 
   // Auto-fill duration when chapter is selected
@@ -806,6 +788,7 @@ const LessonPlan: React.FC = () => {
       title: "",
       subject: "",
       class: "",
+      academicYear: "",
       date: "",
       chapterId: "",
       learningObjectives: "",
@@ -915,6 +898,9 @@ const LessonPlan: React.FC = () => {
     if (!formData.class) {
       newErrors.class = "Please select a class";
     }
+    if (!formData.academicYear) {
+      newErrors.academicYear = "Please select an academic year";
+    }
     if (!formData.date) {
       newErrors.date = "Please select a date for the lesson";
     }
@@ -954,138 +940,169 @@ const LessonPlan: React.FC = () => {
     setSubmitting(true);
 
     try {
-      // Get the current educator's ID
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        alert("User not authenticated");
-        setSubmitting(false);
-        return;
-      }
-
-      // Get educator_id from school_educators table
-      const { data: educatorData, error: educatorError } = await supabase
-        .from('school_educators')
-        .select('id, school_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (educatorError || !educatorData) {
-        console.error("Educator not found:", educatorError);
-        alert("Educator profile not found. Please contact administrator.");
-        setSubmitting(false);
-        return;
-      }
-
-      // Get class_id from school_classes based on grade and school
-      let classId = null;
-      if (formData.class && educatorData.school_id) {
-        const { data: classData, error: classError } = await supabase
-          .from('school_classes')
-          .select('id, name, grade, section')
-          .eq('school_id', educatorData.school_id)
-          .eq('grade', formData.class)
-          .eq('academic_year', currentAcademicYear)
-          .limit(1);
-        
-        if (classError) {
-          console.error("Error fetching class:", classError);
+      // Find class ID - need to fetch from school_classes using grade and academic year
+      let classId: string | null = null;
+      
+      if (formData.class && formData.academicYear) {
+        // Get school_id from current user if not provided
+        let currentSchoolId = schoolId;
+        if (!currentSchoolId) {
+          // Fetch school_id from current educator
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: educatorData } = await supabase
+              .from('school_educators')
+              .select('school_id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            currentSchoolId = educatorData?.school_id || null;
+          }
         }
         
-        // Take the first matching class if multiple sections exist
-        if (classData && classData.length > 0) {
-          classId = classData[0].id;
-          console.log("Linked to class:", classData[0].name, "ID:", classId);
+        if (currentSchoolId) {
+          // Fetch the actual class ID from school_classes table
+          // Use limit(1) to handle multiple classes with same grade/year
+          const { data: classDataArray, error: classError } = await supabase
+            .from('school_classes')
+            .select('id')
+            .eq('school_id', currentSchoolId)
+            .eq('grade', formData.class)
+            .eq('academic_year', formData.academicYear)
+            .limit(1);
+          
+          if (classError) {
+            console.error('Error fetching class:', classError);
+          }
+          
+          const classData = classDataArray?.[0];
+          classId = classData?.id || null;
+          
+          if (!classId) {
+            console.warn('No class found for:', {
+              school_id: currentSchoolId,
+              grade: formData.class,
+              academic_year: formData.academicYear
+            });
+          }
         } else {
-          console.warn("No matching school_class found for grade:", formData.class);
+          // Last resort: try to find any class with matching grade and academic year
+          console.warn('No school_id found, searching for any matching class');
+          const { data: classDataArray, error: classError } = await supabase
+            .from('school_classes')
+            .select('id, school_id')
+            .eq('grade', formData.class)
+            .eq('academic_year', formData.academicYear)
+            .limit(1);
+          
+          const classData = classDataArray?.[0];
+          
+          if (classError) {
+            console.error('Error fetching class (no school filter):', classError);
+          }
+          
+          if (classData) {
+            classId = classData.id;
+            console.log('Found class:', classData);
+          }
         }
       }
+      
+      // Fallback: try to find from propClasses
+      if (!classId && propClasses) {
+        const classObj = propClasses?.find((c: any) => 
+          (c.grade === formData.class || c === formData.class) &&
+          (!formData.academicYear || c.academic_year === formData.academicYear)
+        );
+        classId = classObj?.id || null;
+      }
 
-      const chapter = selectedChapter;
-      const duration = chapter?.estimatedDuration || 45; // Default 45 minutes
-
-      const lessonPlanData = {
-        educator_id: educatorData.id, // Use the actual educator ID from school_educators
-        class_id: classId, // Link to school_classes
-        title: formData.title,
-        subject: formData.subject,
-        class_name: formData.class,
-        date: formData.date,
-        duration,
-        chapter_id: formData.chapterId || null,
-        chapter_name: chapter?.name || null,
-        selected_learning_outcomes: selectedLearningOutcomes,
-        learning_objectives: formData.learningObjectives,
-        teaching_methodology: formData.teachingMethodology || null,
-        required_materials: formData.requiredMaterials || null,
-        resource_files: resourceFiles,
-        resource_links: resourceLinks,
-        evaluation_criteria: formData.evaluationCriteria || null,
-        evaluation_items: evaluationItems,
-        homework: formData.homework || null,
-        differentiation_notes: formData.differentiationNotes || null,
-        status: status, // Use the status parameter
-        activities: [],
-        resources: [],
-        assessment_methods: null,
-        notes: null,
-        submitted_at: status === 'approved' ? new Date().toISOString() : null,
-        reviewed_by: status === 'approved' ? user.id : null,
-        reviewed_at: status === 'approved' ? new Date().toISOString() : null,
-        review_comments: null,
+      const submitData = {
+        ...formData,
+        selectedLearningOutcomes,
+        resourceFiles,
+        resourceLinks,
+        evaluationItems,
+        status,
       };
 
       if (editingPlan) {
-        const updated = await lessonPlanService.updateLessonPlan(editingPlan.id, lessonPlanData);
-        setLessonPlans((prev) =>
-          prev.map((p) =>
-            p.id === editingPlan.id
-              ? {
-                  ...updated,
-                  class: updated.class_name, // Map class_name to class
-                  chapterId: updated.chapter_id || "", // Map chapter_id to chapterId
-                  chapterName: updated.chapter_name || "",
-                  duration: updated.duration ? `${updated.duration} minutes` : "",
-                  selectedLearningOutcomes: updated.selected_learning_outcomes || [],
-                  learningObjectives: updated.learning_objectives || "",
-                  teachingMethodology: updated.teaching_methodology || "",
-                  requiredMaterials: updated.required_materials || "",
-                  resourceFiles: updated.resource_files || [],
-                  resourceLinks: updated.resource_links || [],
-                  evaluationCriteria: updated.evaluation_criteria || "",
-                  evaluationItems: updated.evaluation_items || [],
-                  homework: updated.homework || "",
-                  differentiationNotes: updated.differentiation_notes || "",
-                }
-              : p
-          )
-        );
+        // Update existing lesson plan
+        if (onUpdateLessonPlan) {
+          const { data, error } = await onUpdateLessonPlan(editingPlan.id, submitData, classId);
+          if (error) {
+            alert("Error updating lesson plan: " + error);
+            setSubmitting(false);
+            return;
+          }
+          if (data) {
+            const converted = convertToUIFormat([data])[0];
+            setLessonPlans((prev) =>
+              prev.map((p) => (p.id === editingPlan.id ? converted : p))
+            );
+          }
+        } else {
+          // Fallback to local state update
+          const chapter = selectedChapter;
+          const duration = chapter?.estimatedDuration
+            ? `${chapter.estimatedDuration} ${chapter.durationUnit}`
+            : undefined;
+          setLessonPlans((prev) =>
+            prev.map((p) =>
+              p.id === editingPlan.id
+                ? {
+                    ...p,
+                    ...formData,
+                    chapterName: chapter?.name || "",
+                    duration,
+                    selectedLearningOutcomes,
+                    resourceFiles,
+                    resourceLinks,
+                    evaluationItems,
+                    status,
+                  }
+                : p
+            )
+          );
+        }
       } else {
-        const created = await lessonPlanService.createLessonPlan(lessonPlanData);
-        const newPlan: LessonPlan = {
-          ...created,
-          class: created.class_name, // Map class_name to class
-          chapterId: created.chapter_id || "", // Map chapter_id to chapterId
-          chapterName: created.chapter_name || "",
-          duration: created.duration ? `${created.duration} minutes` : "",
-          selectedLearningOutcomes: created.selected_learning_outcomes || [],
-          learningObjectives: created.learning_objectives || "",
-          teachingMethodology: created.teaching_methodology || "",
-          requiredMaterials: created.required_materials || "",
-          resourceFiles: created.resource_files || [],
-          resourceLinks: created.resource_links || [],
-          evaluationCriteria: created.evaluation_criteria || "",
-          evaluationItems: created.evaluation_items || [],
-          homework: created.homework || "",
-          differentiationNotes: created.differentiation_notes || "",
-        };
-        setLessonPlans([newPlan, ...lessonPlans]);
+        // Create new lesson plan
+        if (onCreateLessonPlan) {
+          const { data, error } = await onCreateLessonPlan(submitData, classId);
+          if (error) {
+            alert("Error creating lesson plan: " + error);
+            setSubmitting(false);
+            return;
+          }
+          if (data) {
+            const converted = convertToUIFormat([data])[0];
+            setLessonPlans([converted, ...lessonPlans]);
+          }
+        } else {
+          // Fallback to local state update
+          const chapter = selectedChapter;
+          const duration = chapter?.estimatedDuration
+            ? `${chapter.estimatedDuration} ${chapter.durationUnit}`
+            : undefined;
+          const newPlan: LessonPlan = {
+            id: Date.now().toString(),
+            ...formData,
+            chapterName: chapter?.name || "",
+            duration,
+            selectedLearningOutcomes,
+            resourceFiles,
+            resourceLinks,
+            evaluationItems,
+            status,
+          };
+          setLessonPlans([newPlan, ...lessonPlans]);
+        }
       }
 
       resetForm();
       setShowEditor(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving lesson plan:", error);
-      alert("Failed to save lesson plan. Please try again.");
+      alert("Error: " + (error.message || "Failed to save lesson plan"));
     } finally {
       setSubmitting(false);
     }
@@ -1098,10 +1115,18 @@ const LessonPlan: React.FC = () => {
       await loadCurriculumData(plan.subject, plan.class);
     }
     
+    // If academic year is not set, try to get the current academic year as default
+    let academicYear = plan.academicYear || "";
+    if (!academicYear) {
+      const currentYear = await getCurrentAcademicYear();
+      academicYear = currentYear || "";
+    }
+    
     setFormData({
       title: plan.title,
       subject: plan.subject,
       class: plan.class,
+      academicYear: academicYear,
       date: plan.date,
       chapterId: plan.chapterId || "",
       learningObjectives: plan.learningObjectives,
@@ -1130,6 +1155,7 @@ const LessonPlan: React.FC = () => {
       title: `${plan.title} (Copy)`,
       subject: plan.subject,
       class: plan.class,
+      academicYear: plan.academicYear || "",
       date: "",
       chapterId: plan.chapterId || "",
       learningObjectives: plan.learningObjectives,
@@ -1179,8 +1205,13 @@ const LessonPlan: React.FC = () => {
 
           {!showEditor && (
             <button
-              onClick={() => {
+              onClick={async () => {
                 resetForm();
+                // Set current academic year as default for new lesson plans
+                const currentYear = await getCurrentAcademicYear();
+                if (currentYear) {
+                  setFormData(prev => ({ ...prev, academicYear: currentYear }));
+                }
                 setShowEditor(true);
               }}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 active:scale-95 transition-all"
@@ -1227,7 +1258,7 @@ const LessonPlan: React.FC = () => {
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
                 <select
                   value={subjectFilter}
                   onChange={(e) => setSubjectFilter(e.target.value)}
@@ -1241,10 +1272,35 @@ const LessonPlan: React.FC = () => {
                   ))}
                 </select>
 
+                <select
+                  value={gradeFilter}
+                  onChange={(e) => setGradeFilter(e.target.value)}
+                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                >
+                  <option value="">All Grades</option>
+                  {classes.map((grade) => (
+                    <option key={grade} value={grade}>
+                      Grade {grade}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={academicYearFilter}
+                  onChange={(e) => setAcademicYearFilter(e.target.value)}
+                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                >
+                  <option value="">All Academic Years</option>
+                  {academicYears.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {(searchQuery || subjectFilter) && (
+            {(searchQuery || subjectFilter || gradeFilter || academicYearFilter) && (
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
                 <p className="text-sm text-gray-600">
                   Showing <span className="font-semibold text-gray-900">{filteredPlans.length}</span> of{" "}
@@ -1254,6 +1310,8 @@ const LessonPlan: React.FC = () => {
                   onClick={() => {
                     setSearchQuery("");
                     setSubjectFilter("");
+                    setGradeFilter("");
+                    setAcademicYearFilter("");
                   }}
                   className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
                 >
@@ -1424,6 +1482,30 @@ const LessonPlan: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Academic Year <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.academicYear}
+                      onChange={(e) => {
+                        setFormData({ ...formData, academicYear: e.target.value, chapterId: "" });
+                        setSelectedLearningOutcomes([]); // Reset when academic year changes
+                      }}
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                    >
+                      <option value="">Select Academic Year</option>
+                      {academicYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Required to load correct curriculum
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Chapter <span className="text-red-500">*</span>
                     </label>
                     <select
@@ -1432,14 +1514,14 @@ const LessonPlan: React.FC = () => {
                         setFormData({ ...formData, chapterId: e.target.value });
                         setSelectedLearningOutcomes([]); // Reset learning outcomes when chapter changes
                       }}
-                      disabled={!formData.subject || !formData.class}
+                      disabled={!formData.subject || !formData.class || !formData.academicYear}
                       className={`w-full px-4 py-2.5 rounded-lg border ${
                         errors.chapterId ? "border-red-300" : "border-gray-300"
                       } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
                     >
                       <option value="">
-                        {!formData.subject || !formData.class
-                          ? "Select subject and class first"
+                        {!formData.subject || !formData.class || !formData.academicYear
+                          ? "Select subject, class, and academic year first"
                           : "Select Chapter from Curriculum"}
                       </option>
                       {availableChapters.map((chapter) => (

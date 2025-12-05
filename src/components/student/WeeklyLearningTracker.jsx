@@ -224,8 +224,7 @@ const WeeklyLearningTracker = () => {
       const { data: enrollments, error: enrollError } = await supabase
         .from('course_enrollments')
         .select('*')
-        .eq('student_id', user.id)
-        .eq('status', 'active');
+        .eq('student_id', user.id);
 
       if (enrollError) throw enrollError;
 

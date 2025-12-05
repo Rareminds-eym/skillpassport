@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { 
-  Search, 
+import {
+  Search,
   ChevronDown,
   Grid3x3,
   List,
@@ -17,6 +17,7 @@ import {
   Target,
   Building2
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useOpportunities } from '../../hooks/useOpportunities';
@@ -28,6 +29,7 @@ import OpportunityCard from '../../components/Students/components/OpportunityCar
 import OpportunityListItem from '../../components/Students/components/OpportunityListItem';
 import OpportunityPreview from '../../components/Students/components/OpportunityPreview';
 import AdvancedFilters from '../../components/Students/components/AdvancedFilters';
+import RecommendedJobs from '../../components/Students/components/RecommendedJobs';
 import {
   Pagination,
   PaginationContent,
@@ -86,28 +88,31 @@ const Opportunities = () => {
   const [showPipelineStatus, setShowPipelineStatus] = useState({});
   const [messagingApplicationId, setMessagingApplicationId] = useState(null);
 
-  // Fetch opportunities
-  const { opportunities, loading, error } = useOpportunities({ 
+  // Fetch opportunities with loader timing
+  const [isLoading, setIsLoading] = useState(true);
+  const { opportunities, loading: dataLoading, error } = useOpportunities({
     fetchOnMount: true,
-    activeOnly: true 
+    activeOnly: true
   });
 
-  // AI-powered job recommendations
-  const {
-    recommendations,
-    loading: recommendationsLoading,
-    error: recommendationsError,
-    refreshRecommendations,
-    cached,
-    fallback,
-    trackView,
-    trackApply: trackAIApply,
-  } = useAIRecommendations({
-    studentId,
-    enabled: !!studentId,
-    autoFetch: true,
-    limit: 5
-  });
+  // Ensure loader displays for at least 5 seconds
+  useEffect(() => {
+    const startTime = Date.now();
+
+    const checkLoading = async () => {
+      if (!dataLoading) {
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, 5000 - elapsedTime);
+
+        if (remainingTime > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
+        setIsLoading(false);
+      }
+    };
+
+    checkLoading();
+  }, [dataLoading]);
 
   useMessageNotifications({
     userId: studentId,
@@ -311,70 +316,147 @@ const Opportunities = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-8">
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center min-h-[80vh]">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="text-center"
+            >
+              <div className="relative">
+                <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600"></div>
+                <img
+                  src="/assets/HomePage/RMLogo.webp"
+                  alt="RareMinds Logo"
+                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 object-contain"
+                />
+              </div>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="mt-6"
+              >
+                <p className="text-xl font-semibold text-gray-800 mb-2">Loading Opportunities...</p>
+                <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
+                  Powered by <span className="font-semibold text-indigo-600">RareMinds</span>
+                </p>
+              </motion.div>
+            </motion.div>
+          </div>
+        )}
+
         {/* Tab Switcher */}
-        <div className="mb-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-1.5">
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setActiveTab('my-jobs')}
-                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                  activeTab === 'my-jobs'
-                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
-                    : 'bg-transparent text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Briefcase className="w-5 h-5" />
-                <span>My Jobs</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('my-applications')}
-                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                  activeTab === 'my-applications'
-                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
-                    : 'bg-transparent text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <FileText className="w-5 h-5" />
-                <span>My Applications</span>
-              </button>
+        {!isLoading && (
+          <div className="mb-8">
+            {/* Tab Navigation with Subheadings */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {/* My Jobs Tab */}
+                <button
+                  onClick={() => setActiveTab('my-jobs')}
+                  className={`relative text-left p-4 rounded-lg transition-all ${
+                    activeTab === 'my-jobs'
+                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                      : 'bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      activeTab === 'my-jobs' ? 'bg-indigo-600' : 'bg-gray-100'
+                    }`}>
+                      <Briefcase className={`w-6 h-6 ${
+                        activeTab === 'my-jobs' ? 'text-white' : 'text-gray-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h1 className={`font-bold text-2xl ${
+                        activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-900'
+                      }`}>
+                        My Jobs
+                      </h1>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Discover and apply to exciting career opportunities
+                      </p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* My Applications Tab */}
+                <button
+                  onClick={() => setActiveTab('my-applications')}
+                  className={`relative text-left p-4 rounded-lg transition-all ${
+                    activeTab === 'my-applications'
+                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                      : 'bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      activeTab === 'my-applications' ? 'bg-indigo-600' : 'bg-gray-100'
+                    }`}>
+                      <FileText className={`w-6 h-6 ${
+                        activeTab === 'my-applications' ? 'text-white' : 'text-gray-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h1 className={`font-bold text-lg ${
+                        activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-900'
+                      }`}>
+                        My Applications
+                      </h1>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Track your application status and progress
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Main Content Area */}
-        <div>
-          {activeTab === 'my-jobs' && (
-              <MyJobsContent
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                sortBy={sortBy}
-                setSortBy={setSortBy}
-                viewMode={viewMode}
-                setViewMode={setViewMode}
-                opportunities={filteredAndSortedOpportunities}
-                loading={loading}
-                error={error}
-                selectedOpportunity={selectedOpportunity}
-                setSelectedOpportunity={setSelectedOpportunity}
-                appliedJobs={appliedJobs}
-                savedJobs={savedJobs}
-                handleToggleSave={handleToggleSave}
-                handleApply={handleApply}
-                isApplying={isApplying}
-                advancedFilters={advancedFilters}
-                setAdvancedFilters={setAdvancedFilters}
-                currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
-                opportunitiesPerPage={opportunitiesPerPage}
-                recommendations={recommendations}
-                recommendationsLoading={recommendationsLoading}
-                recommendationsError={recommendationsError}
-                refreshRecommendations={refreshRecommendations}
-                cached={cached}
-                fallback={fallback}
-                trackView={trackView}
-                studentId={studentId}
-              />
+        {!isLoading && (
+          <div>
+            {activeTab === 'my-jobs' && (
+              <>
+                {/* AI Recommended Jobs */}
+                <RecommendedJobs
+                  studentProfile={{ ...studentData, profile: studentData }}
+                  opportunities={opportunities}
+                  onSelectJob={setSelectedOpportunity}
+                  appliedJobs={appliedJobs}
+                  savedJobs={savedJobs}
+                  onToggleSave={handleToggleSave}
+                  onApply={handleApply}
+                />
+
+                <MyJobsContent
+                  searchTerm={searchTerm}
+                  setSearchTerm={setSearchTerm}
+                  sortBy={sortBy}
+                  setSortBy={setSortBy}
+                  viewMode={viewMode}
+                  setViewMode={setViewMode}
+                  opportunities={filteredAndSortedOpportunities}
+                  error={error}
+                  selectedOpportunity={selectedOpportunity}
+                  setSelectedOpportunity={setSelectedOpportunity}
+                  appliedJobs={appliedJobs}
+                  savedJobs={savedJobs}
+                  handleToggleSave={handleToggleSave}
+                  handleApply={handleApply}
+                  isApplying={isApplying}
+                  advancedFilters={advancedFilters}
+                  setAdvancedFilters={setAdvancedFilters}
+                  currentPage={currentPage}
+                  setCurrentPage={setCurrentPage}
+                  opportunitiesPerPage={opportunitiesPerPage}
+                />
+              </>
             )}
 
             {activeTab === 'my-applications' && (
@@ -393,7 +475,8 @@ const Opportunities = () => {
                 queryClient={queryClient}
               />
             )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -408,7 +491,6 @@ const MyJobsContent = ({
   viewMode,
   setViewMode,
   opportunities,
-  loading,
   error,
   selectedOpportunity,
   setSelectedOpportunity,
@@ -651,11 +733,7 @@ const MyJobsContent = ({
       </div>
 
       {/* Opportunities Grid/List */}
-      {loading ? (
-        <div className="flex justify-center items-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      ) : error ? (
+      {error ? (
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <p className="text-red-600 font-medium">Failed to load opportunities</p>
         </div>

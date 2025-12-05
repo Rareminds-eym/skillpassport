@@ -1,7 +1,6 @@
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from '@/lib/supabaseClient';
 
-// Export supabase for use in hooks
-export { supabase };
+export { supabase};
 
 export interface AssessmentType {
   id: string;
