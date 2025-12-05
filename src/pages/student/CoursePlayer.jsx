@@ -159,6 +159,25 @@ const CoursePlayer = () => {
 
       if (error) {
         console.error('Error marking lesson complete:', error);
+        return;
+      }
+
+      // Update student streak after completing lesson
+      try {
+        const response = await fetch(`http://localhost:3001/api/streaks/${user.id}/complete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const streakData = await response.json();
+          console.log('✅ Streak updated:', streakData);
+        }
+      } catch (streakError) {
+        // Don't block lesson completion if streak update fails
+        console.error('Error updating streak:', streakError);
       }
     } catch (error) {
       console.error('Error in markLessonCompleted:', error);
