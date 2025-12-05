@@ -159,6 +159,7 @@ const EducatorDigitalPortfolio = lazy(() =>
 );
 const EducatorAI = lazy(() => import("../pages/educator/EducatorAI"));
 const CourseAnalytics = lazy(() => import("../pages/educator/CourseAnalytics"));
+const MarkAttendance = lazy(() => import("../pages/educator/MarkAttendance"));
 
 // Teacher pages (for teachers using the system)
 const LessonPlanCreate = lazy(() => import("../pages/teacher/LessonPlanCreate"));
@@ -755,6 +756,7 @@ const AppRoutes = () => {
           <Route path="lesson-plans" element={<LessonPlansList />} />
           <Route path="lesson-plans/create" element={<LessonPlanCreate />} />
           <Route path="my-timetable" element={<MyTimetable />} />
+          <Route path="mark-attendance" element={<MarkAttendance />} />
           <Route path="clubs" element={<SkillCurriculars />} />
           <Route
             path=""

@@ -23,6 +23,8 @@ import {
   ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
+import { exportCurriculum } from "@/services/curriculumExportService";
+import toast from "react-hot-toast";
 
 /* ==============================
    TYPES & INTERFACES
@@ -1406,19 +1408,21 @@ const ExportCurriculumModal = ({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onExport: (format: "pdf" | "excel") => void;
+  onExport: (format: "pdf" | "excel") => Promise<void>;
 }) => {
   const [selectedFormat, setSelectedFormat] = useState<"pdf" | "excel">("pdf");
   const [exporting, setExporting] = useState(false);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     setExporting(true);
-    setTimeout(() => {
-      onExport(selectedFormat);
-      setExporting(false);
+    try {
+      await onExport(selectedFormat);
       onClose();
-      alert(`Curriculum exported as ${selectedFormat.toUpperCase()}`);
-    }, 1000);
+    } catch (error) {
+      console.error('Export failed:', error);
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -2122,10 +2126,12 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
       setLearningOutcomes(transformedOutcomes);
       setHasUnsavedChanges(false);
 
-      alert(
-        `✅ Curriculum copied successfully!\n\n` +
-        `Copied ${transformedChapters.length} chapters and ${transformedOutcomes.length} learning outcomes.\n\n` +
-        `Target: ${targetSubject} - Class ${targetClass} (${targetAcademicYear})`
+      toast.success(
+        `Curriculum copied successfully! ${transformedChapters.length} chapters and ${transformedOutcomes.length} learning outcomes copied to ${targetSubject} - Class ${targetClass} (${targetAcademicYear})`,
+        {
+          duration: 5000,
+          icon: '✅',
+        }
       );
     } catch (err: any) {
       console.error('Error copying curriculum:', err);
@@ -2134,9 +2140,62 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
   };
 
   // Export curriculum handler
-  const handleExportCurriculum = (format: "pdf" | "excel") => {
-    // Implementation pending - will export curriculum to PDF/Excel
-    console.log(`Export feature: ${format.toUpperCase()}`);
+  const handleExportCurriculum = async (format: "pdf" | "excel") => {
+    try {
+      // Validate that we have data to export
+      if (!selectedSubject || !selectedClass || !selectedAcademicYear) {
+        toast.error('Please select Subject, Class, and Academic Year before exporting.');
+        return;
+      }
+
+      if (chapters.length === 0) {
+        toast.error('No chapters to export. Please add chapters first.');
+        return;
+      }
+
+      // Show loading toast
+      const loadingToast = toast.loading(`Generating ${format.toUpperCase()} file...`);
+
+      // Fetch school name if available
+      let schoolName = '';
+      if (educatorData?.school_id) {
+        const { data: schoolData } = await supabase
+          .from('schools')
+          .select('name')
+          .eq('id', educatorData.school_id)
+          .single();
+        
+        if (schoolData) {
+          schoolName = schoolData.name;
+        }
+      }
+
+      // Prepare export data
+      const exportData = {
+        subject: selectedSubject,
+        class: selectedClass,
+        academicYear: selectedAcademicYear,
+        chapters: chapters,
+        learningOutcomes: learningOutcomes,
+        status: status,
+        schoolName: schoolName || undefined,
+      };
+
+      // Call export service
+      exportCurriculum(format, exportData);
+
+      // Dismiss loading and show success
+      toast.dismiss(loadingToast);
+      toast.success(`Curriculum exported successfully as ${format.toUpperCase()}!`, {
+        duration: 4000,
+        icon: '📥',
+      });
+    } catch (error: any) {
+      console.error('Export error:', error);
+      toast.error(`Failed to export curriculum: ${error.message || 'Unknown error'}`, {
+        duration: 5000,
+      });
+    }
   };
 
   // Stats
@@ -2491,7 +2550,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
                 <button
                   onClick={() => {
                     if (!selectedAcademicYear || !selectedSubject || !selectedClass) {
-                      alert('Please select Academic Year, Subject, and Class first before adding chapters.');
+                      toast.error('Please select Academic Year, Subject, and Class first before adding chapters.');
                       return;
                     }
                     setEditingChapter(null);
@@ -2536,7 +2595,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
                     <button
                       onClick={() => {
                         if (!selectedAcademicYear || !selectedSubject || !selectedClass) {
-                          alert('Please select Academic Year, Subject, and Class first before adding chapters.');
+                          toast.error('Please select Academic Year, Subject, and Class first before adding chapters.');
                           return;
                         }
                         setEditingChapter(null);

@@ -15,7 +15,8 @@ import {
   ChatBubbleLeftRightIcon,
   FolderIcon,
   BookOpenIcon,
-  SparklesIcon
+  SparklesIcon,
+  ClipboardDocumentCheckIcon
   // Icons from Heroicons
 } from "@heroicons/react/24/outline";
 
@@ -64,7 +65,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { name: "Students", path: "/educator/students", icon: UserGroupIcon },
         { name: "Classes", path: "/educator/classes", icon: AcademicCapIcon },
-        {name: "TimeTable", path: "/educator/my-timetable", icon: AcademicCapIcon },
+        { name: "TimeTable", path: "/educator/my-timetable", icon: AcademicCapIcon },
+        { name: "Mark Attendance", path: "/educator/mark-attendance", icon: ClipboardDocumentCheckIcon },
         { name: "Courses", path: "/educator/courses", icon: BookOpenIcon },
       ],
     },
