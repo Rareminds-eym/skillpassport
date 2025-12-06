@@ -242,7 +242,7 @@ export default function StudentDashboard() {
             
             return () => clearInterval(interval);
         }
-    }, [userEmail]);
+}, [userEmail]);
 
     // Get clubs the student is enrolled in with enhanced data
     const myClubs = useMemo(() => {
