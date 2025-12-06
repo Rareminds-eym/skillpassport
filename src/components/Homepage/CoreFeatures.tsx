@@ -164,7 +164,7 @@ const CoreFeatures: React.FC = () => {
 </svg>
 
             <div className="relative bg-gradient-to-tr bg-[#D4AF37] rounded-[55px] h-[85px] lg:h-[85px] md:h-[80px] top-4 lg:top-4 md:top-3 sm:top-4 flex items-center justify-center shadow-md card-hover">
-              <div className="text-center text-white font-semibold">
+              <div className="text-center text-black font-semibold">
                 <div className="text-[22px] lg:text-[22px] md:text-[21px] leading-none -mt-2 gap-1">Skill Ecosystem</div>
                 <div className="text-[22px] lg:text-[22px] md:text-[21px]  leading-none">Stakeholders</div>
               </div>
