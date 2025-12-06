@@ -28,7 +28,7 @@ const ProfileSection = ({ results, riasecNames }) => {
                         <div key={code} className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm hover:shadow-md transition-all">
                             <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-xl mb-3 ${scoreColor.bg}`}>{code}</div>
                             <p className="font-bold text-gray-800">{riasecNames[code]}</p>
-                            <p className="text-xs text-gray-500">#{idx + 1} Interest • {score}/{maxScore}</p>
+                            <p className="text-sm text-gray-500">#{idx + 1} Interest • {score}/{maxScore}</p>
                         </div>
                     );
                 })}
@@ -43,7 +43,7 @@ const ProfileSection = ({ results, riasecNames }) => {
                         </div>
                         <div>
                             <h3 className="font-bold text-gray-900">Interest Profile</h3>
-                            <p className="text-xs text-gray-500">Career Interest Assessment</p>
+                            <p className="text-sm text-gray-500">Career Interest Assessment</p>
                         </div>
                     </div>
                     <div className="space-y-3">
@@ -57,9 +57,9 @@ const ProfileSection = ({ results, riasecNames }) => {
                                     <div className="flex items-center justify-between mb-1">
                                         <div className="flex items-center gap-2">
                                             <span className={`w-7 h-7 rounded flex items-center justify-center text-white font-bold text-sm ${scoreColor.bg}`}>{code}</span>
-                                            <span className="text-sm font-medium text-gray-700">{riasecNames[code]}</span>
+                                            <span className="text-base font-medium text-gray-700">{riasecNames[code]}</span>
                                         </div>
-                                        <span className={`text-sm font-bold px-2 py-0.5 rounded ${scoreColor.light} ${scoreColor.text}`}>{score}/{maxScore}</span>
+                                        <span className={`text-base font-bold px-2 py-0.5 rounded ${scoreColor.light} ${scoreColor.text}`}>{score}/{maxScore}</span>
                                     </div>
                                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                                         <div className={`h-full rounded-full ${scoreColor.bg}`} style={{ width: `${pct}%` }} />
@@ -78,23 +78,23 @@ const ProfileSection = ({ results, riasecNames }) => {
                         </div>
                         <div>
                             <h3 className="font-bold text-gray-900">Cognitive Abilities</h3>
-                            <p className="text-xs text-gray-500">Multi-Aptitude Battery</p>
+                            <p className="text-sm text-gray-500">Multi-Aptitude Battery</p>
                         </div>
                     </div>
                     <div className="space-y-3">
                         {aptitude?.scores ? Object.entries(aptitude.scores).map(([domain, data]) => {
-                            const configs = { 
-                                verbal: { n: 'Verbal Reasoning', Icon: FileText }, 
-                                numerical: { n: 'Numerical Ability', Icon: Calculator }, 
-                                abstract: { n: 'Abstract Reasoning', Icon: Puzzle }, 
-                                spatial: { n: 'Spatial Reasoning', Icon: Ruler }, 
-                                clerical: { n: 'Clerical Speed', Icon: Bolt } 
+                            const configs = {
+                                verbal: { n: 'Verbal Reasoning', Icon: FileText },
+                                numerical: { n: 'Numerical Ability', Icon: Calculator },
+                                abstract: { n: 'Abstract Reasoning', Icon: Puzzle },
+                                spatial: { n: 'Spatial Reasoning', Icon: Ruler },
+                                clerical: { n: 'Clerical Speed', Icon: Bolt }
                             };
                             const cfg = configs[domain.toLowerCase()] || { n: domain, Icon: BarChart3 };
                             const correct = typeof data === 'object' ? (data.correct || 0) : 0;
                             const total = typeof data === 'object' ? (data.total || 1) : 1;
-                            const pct = typeof data === 'object' 
-                                ? (data.percentage || Math.round((correct / total) * 100)) 
+                            const pct = typeof data === 'object'
+                                ? (data.percentage || Math.round((correct / total) * 100))
                                 : (typeof data === 'number' ? data : 0);
                             const scoreColor = getScoreColor(pct);
                             const IconComponent = cfg.Icon;
@@ -105,14 +105,14 @@ const ProfileSection = ({ results, riasecNames }) => {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-center mb-1">
-                                            <span className="text-sm font-medium text-gray-700 truncate">{cfg.n}</span>
-                                            <span className={`text-xs font-bold ${scoreColor.text} ml-2`}>{correct}/{total}</span>
+                                            <span className="text-base font-medium text-gray-700 truncate">{cfg.n}</span>
+                                            <span className={`text-sm font-bold ${scoreColor.text} ml-2`}>{correct}/{total}</span>
                                         </div>
                                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                                             <div className={`h-full rounded-full ${scoreColor.bg}`} style={{ width: `${pct}%` }} />
                                         </div>
                                     </div>
-                                    <span className={`text-sm font-bold px-2 py-0.5 rounded ${scoreColor.light} ${scoreColor.text} shrink-0`}>{pct}%</span>
+                                    <span className={`text-base font-bold px-2 py-0.5 rounded ${scoreColor.light} ${scoreColor.text} shrink-0`}>{pct}%</span>
                                 </div>
                             );
                         }) : <p className="text-gray-500 italic text-center py-4">No aptitude data available</p>}
@@ -120,7 +120,7 @@ const ProfileSection = ({ results, riasecNames }) => {
                     {aptitude?.topStrengths && (
                         <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
                             {aptitude.topStrengths.map((s, i) => (
-                                <span key={i} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold flex items-center gap-1">
+                                <span key={i} className="px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-sm font-semibold flex items-center gap-1">
                                     <Award className="w-3 h-3" /> {s}
                                 </span>
                             ))}
@@ -136,7 +136,7 @@ const ProfileSection = ({ results, riasecNames }) => {
                         </div>
                         <div>
                             <h3 className="font-bold text-gray-900">Personality Traits</h3>
-                            <p className="text-xs text-gray-500">Big Five Model</p>
+                            <p className="text-sm text-gray-500">Big Five Model</p>
                         </div>
                     </div>
                     <div className="grid grid-cols-5 gap-3 mb-4">
@@ -158,10 +158,10 @@ const ProfileSection = ({ results, riasecNames }) => {
                                             <circle cx="18" cy="18" r="15" fill="none" stroke={scoreColor.stroke} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${p * 0.94} 100`} />
                                         </svg>
                                         <div className="absolute inset-0 flex items-center justify-center">
-                                            <span className={`text-xs font-bold ${scoreColor.text}`}>{sc.toFixed(1)}</span>
+                                            <span className={`text-sm font-bold ${scoreColor.text}`}>{sc.toFixed(1)}</span>
                                         </div>
                                     </div>
-                                    <p className="text-[10px] font-semibold text-gray-600">{name}</p>
+                                    <p className="text-xs font-semibold text-gray-600">{name}</p>
                                 </div>
                             );
                         })}
@@ -181,7 +181,7 @@ const ProfileSection = ({ results, riasecNames }) => {
                         </div>
                         <div>
                             <h3 className="font-bold text-gray-900">Work Values</h3>
-                            <p className="text-xs text-gray-500">What Motivates You</p>
+                            <p className="text-sm text-gray-500">What Motivates You</p>
                         </div>
                     </div>
                     <div className="space-y-3">
@@ -195,9 +195,9 @@ const ProfileSection = ({ results, riasecNames }) => {
                                     </div>
                                     <div className="flex-1">
                                         <p className="font-semibold text-gray-800">{val.value}</p>
-                                        <p className="text-xs text-gray-500">Priority #{idx + 1}</p>
+                                        <p className="text-sm text-gray-500">Priority #{idx + 1}</p>
                                     </div>
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${scoreColor.light} ${scoreColor.text}`}>{val.score}/5</span>
+                                    <span className={`px-2 py-1 rounded text-sm font-bold ${scoreColor.light} ${scoreColor.text}`}>{val.score}/5</span>
                                 </div>
                             );
                         })}

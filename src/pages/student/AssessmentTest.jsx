@@ -1173,14 +1173,14 @@ const AssessmentTest = () => {
                                         <div className={`w-12 h-12 rounded-xl bg-${currentSection.color}-100 flex items-center justify-center mb-4 shadow-sm`}>
                                             {currentSection.icon}
                                         </div>
-                                        <h2 className="text-xl font-bold text-gray-800 mb-2">{currentSection.title}</h2>
-                                        <p className="text-sm text-gray-500 leading-relaxed mb-4">{currentSection.description}</p>
+                                        <h2 className="text-2xl font-bold text-gray-800 mb-2">{currentSection.title}</h2>
+                                        <p className="text-base text-gray-500 leading-relaxed mb-4">{currentSection.description}</p>
 
                                         {/* Module indicator for Aptitude section */}
                                         {currentSection.id === 'aptitude' && currentQuestion?.moduleTitle && (
                                             <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mb-4">
-                                                <p className="text-xs font-bold text-amber-800 mb-1">{currentQuestion.moduleTitle}</p>
-                                                <p className="text-xs text-amber-600">
+                                                <p className="text-sm font-bold text-amber-800 mb-1">{currentQuestion.moduleTitle}</p>
+                                                <p className="text-sm text-amber-600">
                                                     {(() => {
                                                         const moduleInfo = getModuleQuestionIndex(currentQuestionIndex);
                                                         return `Question ${moduleInfo.moduleIndex} of ${moduleInfo.moduleTotal} in this module`;
@@ -1203,7 +1203,7 @@ const AssessmentTest = () => {
                                                         pink: 'bg-pink-500'
                                                     };
                                                     return (
-                                                        <div key={mod.id} className={`flex items-center gap-2 text-xs px-2 py-1 rounded ${isCurrentModule ? 'bg-amber-100 font-semibold' : 'opacity-60'}`}>
+                                                        <div key={mod.id} className={`flex items-center gap-2 text-sm px-2 py-1 rounded ${isCurrentModule ? 'bg-amber-100 font-semibold' : 'opacity-60'}`}>
                                                             <div className={`w-2 h-2 rounded-full ${moduleColors[mod.color]}`}></div>
                                                             <span className="truncate">{mod.title}</span>
                                                         </div>
@@ -1219,9 +1219,9 @@ const AssessmentTest = () => {
                                                     const moduleInfo = getCurrentEmployabilityModule(currentQuestionIndex);
                                                     return (
                                                         <>
-                                                            <p className="text-xs font-bold text-green-800 mb-1">{moduleInfo.partTitle}</p>
-                                                            <p className="text-xs text-green-700 font-medium">{moduleInfo.domain}</p>
-                                                            <p className="text-xs text-green-600">
+                                                            <p className="text-sm font-bold text-green-800 mb-1">{moduleInfo.partTitle}</p>
+                                                            <p className="text-sm text-green-700 font-medium">{moduleInfo.domain}</p>
+                                                            <p className="text-sm text-green-600">
                                                                 Question {moduleInfo.questionInDomain} of {moduleInfo.domainTotal}
                                                             </p>
                                                         </>
@@ -1240,7 +1240,7 @@ const AssessmentTest = () => {
 
                                                     return (
                                                         <>
-                                                            <div className={`text-xs font-semibold px-2 py-1 ${moduleInfo.part === 'A' ? 'text-green-700' : 'text-gray-400'}`}>
+                                                            <div className={`text-sm font-semibold px-2 py-1 ${moduleInfo.part === 'A' ? 'text-green-700' : 'text-gray-400'}`}>
                                                                 Part A: Self-Rating
                                                             </div>
                                                             {partADomains.map((domain, idx) => {
@@ -1252,7 +1252,7 @@ const AssessmentTest = () => {
                                                                     </div>
                                                                 );
                                                             })}
-                                                            <div className={`text-xs font-semibold px-2 py-1 mt-1 ${moduleInfo.part === 'B' ? 'text-rose-700' : 'text-gray-400'}`}>
+                                                            <div className={`text-sm font-semibold px-2 py-1 mt-1 ${moduleInfo.part === 'B' ? 'text-rose-700' : 'text-gray-400'}`}>
                                                                 Part B: SJT Scenarios
                                                             </div>
                                                         </>
@@ -1262,11 +1262,11 @@ const AssessmentTest = () => {
                                         )}
 
                                         <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100 mb-4">
-                                            <p className="text-xs font-medium text-indigo-700">{currentSection.instruction}</p>
+                                            <p className="text-sm font-medium text-indigo-700">{currentSection.instruction}</p>
                                         </div>
 
                                         {/* Section type indicator */}
-                                        <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${currentSection.id === 'knowledge' || currentSection.id === 'aptitude'
+                                        <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${currentSection.id === 'knowledge' || currentSection.id === 'aptitude'
                                             ? 'bg-blue-50 text-blue-600 border border-blue-100'
                                             : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
                                             }`}>
@@ -1368,7 +1368,7 @@ const AssessmentTest = () => {
                                                     <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 block">
                                                         Question {currentQuestionIndex + 1} / {currentSection.questions.length}
                                                     </span>
-                                                    <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">
+                                                    <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug">
                                                         {currentQuestion.text}
                                                     </h3>
                                                 </div>
@@ -1401,7 +1401,7 @@ const AssessmentTest = () => {
                                                                             <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-600 shrink-0">
                                                                                 {optionLabel}
                                                                             </span>
-                                                                            <p className="flex-1 text-gray-700 font-medium">{option}</p>
+                                                                            <p className="flex-1 text-gray-700 font-medium text-lg">{option}</p>
                                                                         </div>
                                                                         <div className="flex gap-2 mt-3 ml-9">
                                                                             <button
@@ -1469,7 +1469,7 @@ const AssessmentTest = () => {
                                                                         : 'border-gray-200'
                                                                         }`}>
                                                                     <RadioGroupItem value={option.value.toString()} id={`opt-${option.value}`} className="text-indigo-600" />
-                                                                    <Label htmlFor={`opt-${option.value}`} className="flex-1 cursor-pointer font-medium text-gray-700">
+                                                                    <Label htmlFor={`opt-${option.value}`} className="flex-1 cursor-pointer font-medium text-gray-700 text-lg">
                                                                         {option.label}
                                                                     </Label>
                                                                 </div>
@@ -1491,7 +1491,7 @@ const AssessmentTest = () => {
                                                                         : 'border-gray-200'
                                                                         }`}>
                                                                     <RadioGroupItem value={option} id={`opt-${idx}`} className="text-indigo-600" />
-                                                                    <Label htmlFor={`opt-${idx}`} className="flex-1 cursor-pointer font-medium text-gray-700">
+                                                                    <Label htmlFor={`opt-${idx}`} className="flex-1 cursor-pointer font-medium text-gray-700 text-lg">
                                                                         {option}
                                                                     </Label>
                                                                 </div>
