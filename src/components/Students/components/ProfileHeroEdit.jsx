@@ -720,7 +720,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       {employabilityData.breakdown?.career}% | Bonus:
                       {employabilityData.breakdown?.bonus}
                     </div>
-                  )} */}
+                  )}
                 </div>
               </div>
             </div>
