@@ -1058,7 +1058,7 @@ const AssessmentTest = () => {
                                     transition={{ delay: 0.45, duration: 0.3 }}
                                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 ${currentSection.id === 'knowledge' || currentSection.id === 'aptitude'
                                         ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                        : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                                         }`}
                                 >
                                     {currentSection.id === 'knowledge' ? (
@@ -1393,8 +1393,8 @@ const AssessmentTest = () => {
                                                                     <div
                                                                         key={idx}
                                                                         className={`border rounded-xl p-4 transition-all ${isBest ? 'border-green-500 bg-green-50 ring-1 ring-green-500/30' :
-                                                                                isWorst ? 'border-red-500 bg-red-50 ring-1 ring-red-500/30' :
-                                                                                    'border-gray-200 hover:bg-gray-50'
+                                                                            isWorst ? 'border-red-500 bg-red-50 ring-1 ring-red-500/30' :
+                                                                                'border-gray-200 hover:bg-gray-50'
                                                                             }`}
                                                                     >
                                                                         <div className="flex items-start gap-3">
@@ -1419,8 +1419,8 @@ const AssessmentTest = () => {
                                                                                     }
                                                                                 }}
                                                                                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isBest
-                                                                                        ? 'bg-green-600 text-white shadow-md'
-                                                                                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                                                    ? 'bg-green-600 text-white shadow-md'
+                                                                                    : 'bg-green-100 text-green-700 hover:bg-green-200'
                                                                                     } ${isWorst ? 'opacity-30 cursor-not-allowed' : ''}`}
                                                                                 disabled={isWorst}
                                                                             >
@@ -1441,8 +1441,8 @@ const AssessmentTest = () => {
                                                                                     }
                                                                                 }}
                                                                                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isWorst
-                                                                                        ? 'bg-red-600 text-white shadow-md'
-                                                                                        : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                                                                    ? 'bg-red-600 text-white shadow-md'
+                                                                                    : 'bg-red-100 text-red-700 hover:bg-red-200'
                                                                                     } ${isBest ? 'opacity-30 cursor-not-allowed' : ''}`}
                                                                                 disabled={isBest}
                                                                             >
