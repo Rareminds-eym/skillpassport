@@ -173,17 +173,17 @@ const CoreFeatures: React.FC = () => {
         </div>
 
         {/* === Top Center === */}
-        <div className="absolute top-[3%] left-1/2 -translate-x-1/2">
+        <div className="absolute top-[1%] left-1/2 -translate-x-1/2">
           <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
             w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
             bg-neutral-950  flex items-center justify-center shadow-md">
             <FiCheckCircle className="text-yellow-500 text-3xl" />
           </div>
-          <div className="w-[300px] bg-white border-2 border-black rounded-2xl 
-            p-4 shadow-md text-center card-hover">
-            <h3 className="text-lg font-bold">Skill Validation Engine</h3>
+          <div className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
+            p-4 shadow-md text-center card-hover flex flex-col justify-center">
+            <h3 className="text-lg font-bold">Schools & Universities</h3>
             <p className="text-sm text-gray-600">
-              Authenticates skills via structured assessment data.
+              Integrate skills into curriculum, enable credit pathways, and prepare learners for work.
             </p>
           </div>
         </div>
@@ -199,17 +199,17 @@ const CoreFeatures: React.FC = () => {
         </svg>
 
         {/* === Top Left === */}
-        <div className="absolute top-[25%] left-[9%] lg-top-[25%] md:top-[24%]">
+        <div className="absolute top-[25%] left-[9%] lg-top-[25%] md:top-[21%]">
           <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
             w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
             bg-neutral-950  flex items-center justify-center shadow-md">
             <FiUsers className="text-yellow-500 text-3xl" />
           </div>
-          <div className="w-[300px] bg-white border-2 border-black rounded-2xl 
-            p-4 shadow-md text-center card-hover">
-            <h3 className="text-lg font-bold">Enterprise APIs</h3>
+          <div className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
+            p-4 shadow-md text-center card-hover flex flex-col justify-center">
+            <h3 className="text-lg font-bold">Students & Workforce Talent</h3>
             <p className="text-sm text-gray-600">
-              Integrate and scale across locations and departments.
+             School learners, university students, and professionals building skill portfolios.
             </p>
           </div>
         </div>
@@ -240,17 +240,17 @@ const CoreFeatures: React.FC = () => {
 </svg>
 
         {/* === Top Right === */}
-        <div className="absolute top-[22%] right-[9%] lg:top[22%] md:top-[24%]">
+        <div className="absolute top-[22%] right-[10%] lg:top[22%] md:top-[21%]">
           <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
             w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
             bg-neutral-950  flex items-center justify-center shadow-md">
             <FiTrendingUp className="text-yellow-500 text-3xl" />
           </div>
-          <div className="w-[300px] bg-white border-2 border-black rounded-2xl 
-            p-4 shadow-md text-center card-hover">
-            <h3 className="text-lg font-bold">Digital Badging & Certificates</h3>
+          <div className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
+            p-4 shadow-md text-center card-hover flex flex-col justify-center">
+            <h3 className="text-lg font-bold">Employers & Recruiters</h3>
             <p className="text-sm text-gray-600">
-              Tamper-proof and shareable proof of competence.
+             Companies, HR teams, and recruiters who define hiring needs and validate job-readiness.
             </p>
           </div>
         </div>
@@ -283,17 +283,17 @@ const CoreFeatures: React.FC = () => {
 
 
         {/* === Bottom Left === */}
-        <div className="absolute bottom-[21%] left-[9%] lg:bottom-[21%] md:bottom-[24%]">
+        <div className="absolute bottom-[22%] left-[9%] lg:bottom-[19%] md:bottom-[25%]">
           <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
             w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
              bg-neutral-950  flex items-center justify-center shadow-md">
             <FiShield className="text-yellow-500 text-3xl" />
           </div>
-          <div className="w-[300px] bg-white border-2 border-black rounded-2xl 
-            p-4 shadow-md text-center card-hover">
-            <h3 className="text-lg font-bold">Competency Mapping</h3>
+          <div className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
+            p-4 shadow-md text-center card-hover flex flex-col justify-center">
+            <h3 className="text-lg font-bold">Training & EdTech Providers</h3>
             <p className="text-sm text-gray-600">
-              Align internal frameworks with industry standards.
+              Deliver competency-aligned learning, labs, apprenticeships, and on-the-job skilling.
             </p>
           </div>
         </div>
@@ -327,18 +327,18 @@ const CoreFeatures: React.FC = () => {
 
 
         {/* === Bottom Right === */}
-        <div className="absolute bottom-[22%] right-[9%] lg:bottom-[22%] md:bottom-[25%]">
+        <div className="absolute bottom-[22%] right-[9%] lg:bottom-[20%] md:bottom-[25%]">
           <div className="-mb-2">
             <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
               w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
                bg-neutral-950  flex items-center justify-center shadow-md">
               <FiGitBranch className="text-yellow-500 text-2xl" />
             </div>
-            <div className="w-[300px] bg-white border-2 border-black rounded-2xl 
-              p-4 shadow-md text-center card-hover">
-              <h3 className="text-lg font-bold">Analytics Dashboard</h3>
+            <div className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
+              p-4 shadow-md text-center card-hover flex flex-col justify-center">
+              <h3 className="text-lg font-bold">Assessment & Credentialing Bodies</h3>
               <p className="text-sm text-gray-600">
-                Visualize training ROI and identify skill gaps.
+                Run assessments and issue trusted, portable credentials and digital badges.
               </p>
             </div>
           </div>
