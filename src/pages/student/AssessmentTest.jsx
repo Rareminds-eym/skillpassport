@@ -1354,7 +1354,7 @@ const AssessmentTest = () => {
                                             >
                                                 <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
                                                 <h3 className="text-xl font-bold text-gray-800 mb-2">Analyzing your profile with AI...</h3>
-                                                <p className="text-gray-500">Gemini AI is generating your personalized career roadmap.</p>
+                                                <p className="text-gray-500">Rareminds is generating your personalized career roadmap.</p>
                                             </motion.div>
                                         ) : (
                                             <motion.div
