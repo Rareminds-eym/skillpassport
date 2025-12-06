@@ -355,7 +355,7 @@ const DashboardWithSupabase = ({ studentId }) => {
           {/* Sidebar */}
           <div className="space-y-6">
             
-            {/* Recent Updates */}
+            {/* Recent Updates
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -374,6 +374,7 @@ const DashboardWithSupabase = ({ studentId }) => {
                 ))}
               </CardContent>
             </Card>
+             */}
 
             {/* Suggestions */}
             <Card>
