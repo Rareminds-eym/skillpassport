@@ -43,7 +43,7 @@ const ProfileSection = ({ results, riasecNames }) => {
                         </div>
                         <div>
                             <h3 className="font-bold text-gray-900">Interest Profile</h3>
-                            <p className="text-xs text-gray-500">RIASEC Assessment</p>
+                            <p className="text-xs text-gray-500">Career Interest Assessment</p>
                         </div>
                     </div>
                     <div className="space-y-3">
