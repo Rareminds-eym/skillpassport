@@ -29,6 +29,8 @@ import SearchBar from "../../../components/common/SearchBar";
 import { FileTextIcon } from "lucide-react";
 import { useCurriculum } from "../../../hooks/useLessonPlans";
 import type { LessonPlan as LessonPlanType } from "../../../services/lessonPlansService";
+import { getSubjects, getClasses, getAcademicYears, getCurrentAcademicYear } from "../../../services/curriculumService";
+import { supabase } from "../../../lib/supabaseClient";
 
 /* ==============================
    TYPES & INTERFACES
@@ -85,6 +87,7 @@ interface LessonPlan {
   title: string;
   subject: string;
   class: string;
+  academicYear?: string; // Academic year from school_classes
   date: string;
   chapterId: string; // Link to curriculum chapter
   chapterName: string; // Display name
@@ -99,6 +102,7 @@ interface LessonPlan {
   evaluationItems: EvaluationCriteria[];
   homework?: string; // Homework/Follow-up (optional)
   differentiationNotes?: string; // Differentiation notes (optional)
+  status?: string; // Status of the lesson plan (draft, approved, etc.)
 }
 
 /* ==============================
@@ -573,8 +577,8 @@ const ViewLessonPlanModal = ({
    ============================== */
 interface LessonPlanProps {
   initialLessonPlans?: LessonPlanType[];
-  onCreateLessonPlan?: (formData: any, classId: string) => Promise<{ data: any; error: any }>;
-  onUpdateLessonPlan?: (id: string, formData: any, classId: string) => Promise<{ data: any; error: any }>;
+  onCreateLessonPlan?: (formData: any, classId: string | null) => Promise<{ data: any; error: any }>;
+  onUpdateLessonPlan?: (id: string, formData: any, classId: string | null) => Promise<{ data: any; error: any }>;
   onDeleteLessonPlan?: (id: string) => Promise<{ error: any }>;
   subjects?: string[];
   classes?: any[];
@@ -593,9 +597,10 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   classes: propClasses,
   schoolId,
 }) => {
-  // Use props or fallback to sample data
-  const subjects = propSubjects || ["Mathematics", "Physics", "Chemistry", "Biology", "English", "History"];
-  const classes = propClasses?.map(c => c.grade || c) || ["9", "10", "11", "12"];
+  // State for dynamic data from database
+  const [subjects, setSubjects] = useState<string[]>(propSubjects || []);
+  const [classes, setClasses] = useState<string[]>(propClasses?.map(c => c.grade || c) || []);
+  const [academicYears, setAcademicYears] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Convert backend data to UI format
@@ -605,6 +610,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       title: plan.title,
       subject: plan.subject,
       class: plan.class_name,
+      academicYear: plan.academic_year,
       date: plan.date,
       chapterId: plan.chapter_id || "",
       chapterName: plan.chapter_name || "",
@@ -638,11 +644,14 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   const [viewingPlan, setViewingPlan] = useState<LessonPlan | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState<string>("");
+  const [gradeFilter, setGradeFilter] = useState<string>("");
+  const [academicYearFilter, setAcademicYearFilter] = useState<string>("");
 
   const [formData, setFormData] = useState({
     title: "",
     subject: "",
     class: "",
+    academicYear: "",
     date: "",
     chapterId: "",
     learningObjectives: "",
@@ -653,12 +662,39 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     differentiationNotes: "",
   });
 
-  // Load curriculum when subject or class changes
+  // Load subjects, classes, and academic years from database
   useEffect(() => {
-    if (formData.subject && formData.class) {
+    const loadFilterData = async () => {
+      try {
+        const [subjectsData, classesData, yearsData, currentYear] = await Promise.all([
+          getSubjects(),
+          getClasses(),
+          getAcademicYears(),
+          getCurrentAcademicYear(),
+        ]);
+        
+        setSubjects(subjectsData);
+        setClasses(classesData);
+        setAcademicYears(yearsData);
+        
+        // Set current academic year as default for new lesson plans
+        if (currentYear && !formData.academicYear) {
+          setFormData(prev => ({ ...prev, academicYear: currentYear }));
+        }
+      } catch (error) {
+        console.error('Error loading filter data:', error);
+      }
+    };
+
+    loadFilterData();
+  }, []);
+
+  // Load curriculum when subject, class, or academic year changes
+  useEffect(() => {
+    if (formData.subject && formData.class && formData.academicYear) {
       loadCurriculumData(formData.subject, formData.class);
     }
-  }, [formData.subject, formData.class]);
+  }, [formData.subject, formData.class, formData.academicYear]);
 
   const [selectedLearningOutcomes, setSelectedLearningOutcomes] = useState<string[]>([]);
 
@@ -678,7 +714,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
   // Use curriculum hook for backend data
   const { chapters, learningOutcomes, loadChapters, loadLearningOutcomes } = 
-    useCurriculum(formData.subject, formData.class);
+    useCurriculum(formData.subject, formData.class, formData.academicYear);
 
   // Load chapters when subject and class are selected
   useEffect(() => {
@@ -704,9 +740,13 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         plan.subject.toLowerCase().includes(q);
       const matchesSubject =
         subjectFilter === "" || plan.subject === subjectFilter;
-      return matchesSearch && matchesSubject;
+      const matchesGrade =
+        gradeFilter === "" || plan.class === gradeFilter;
+      const matchesAcademicYear =
+        academicYearFilter === "" || plan.academicYear === academicYearFilter;
+      return matchesSearch && matchesSubject && matchesGrade && matchesAcademicYear;
     });
-  }, [lessonPlans, searchQuery, subjectFilter]);
+  }, [lessonPlans, searchQuery, subjectFilter, gradeFilter, academicYearFilter]);
 
   // Stats
   const stats = {
@@ -748,6 +788,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       title: "",
       subject: "",
       class: "",
+      academicYear: "",
       date: "",
       chapterId: "",
       learningObjectives: "",
@@ -857,6 +898,9 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     if (!formData.class) {
       newErrors.class = "Please select a class";
     }
+    if (!formData.academicYear) {
+      newErrors.academicYear = "Please select an academic year";
+    }
     if (!formData.date) {
       newErrors.date = "Please select a date for the lesson";
     }
@@ -896,9 +940,81 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     setSubmitting(true);
 
     try {
-      // Find class ID
-      const classObj = propClasses?.find((c: any) => c.grade === formData.class || c === formData.class);
-      const classId = classObj?.id || "";
+      // Find class ID - need to fetch from school_classes using grade and academic year
+      let classId: string | null = null;
+      
+      if (formData.class && formData.academicYear) {
+        // Get school_id from current user if not provided
+        let currentSchoolId = schoolId;
+        if (!currentSchoolId) {
+          // Fetch school_id from current educator
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: educatorData } = await supabase
+              .from('school_educators')
+              .select('school_id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            currentSchoolId = educatorData?.school_id || null;
+          }
+        }
+        
+        if (currentSchoolId) {
+          // Fetch the actual class ID from school_classes table
+          // Use limit(1) to handle multiple classes with same grade/year
+          const { data: classDataArray, error: classError } = await supabase
+            .from('school_classes')
+            .select('id')
+            .eq('school_id', currentSchoolId)
+            .eq('grade', formData.class)
+            .eq('academic_year', formData.academicYear)
+            .limit(1);
+          
+          if (classError) {
+            console.error('Error fetching class:', classError);
+          }
+          
+          const classData = classDataArray?.[0];
+          classId = classData?.id || null;
+          
+          if (!classId) {
+            console.warn('No class found for:', {
+              school_id: currentSchoolId,
+              grade: formData.class,
+              academic_year: formData.academicYear
+            });
+          }
+        } else {
+          // Last resort: try to find any class with matching grade and academic year
+          console.warn('No school_id found, searching for any matching class');
+          const { data: classDataArray, error: classError } = await supabase
+            .from('school_classes')
+            .select('id, school_id')
+            .eq('grade', formData.class)
+            .eq('academic_year', formData.academicYear)
+            .limit(1);
+          
+          const classData = classDataArray?.[0];
+          
+          if (classError) {
+            console.error('Error fetching class (no school filter):', classError);
+          }
+          
+          if (classData) {
+            classId = classData.id;
+            console.log('Found class:', classData);
+          }
+        }
+      }
+      
+      // Fallback: try to find from propClasses
+      if (!classId && propClasses) {
+        const classObj = propClasses?.find((c: any) => 
+          (c.grade === formData.class || c === formData.class) &&
+          (!formData.academicYear || c.academic_year === formData.academicYear)
+        );
+        classId = classObj?.id || null;
+      }
 
       const submitData = {
         ...formData,
@@ -999,10 +1115,18 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       await loadCurriculumData(plan.subject, plan.class);
     }
     
+    // If academic year is not set, try to get the current academic year as default
+    let academicYear = plan.academicYear || "";
+    if (!academicYear) {
+      const currentYear = await getCurrentAcademicYear();
+      academicYear = currentYear || "";
+    }
+    
     setFormData({
       title: plan.title,
       subject: plan.subject,
       class: plan.class,
+      academicYear: academicYear,
       date: plan.date,
       chapterId: plan.chapterId || "",
       learningObjectives: plan.learningObjectives,
@@ -1031,6 +1155,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       title: `${plan.title} (Copy)`,
       subject: plan.subject,
       class: plan.class,
+      academicYear: plan.academicYear || "",
       date: "",
       chapterId: plan.chapterId || "",
       learningObjectives: plan.learningObjectives,
@@ -1080,8 +1205,13 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
           {!showEditor && (
             <button
-              onClick={() => {
+              onClick={async () => {
                 resetForm();
+                // Set current academic year as default for new lesson plans
+                const currentYear = await getCurrentAcademicYear();
+                if (currentYear) {
+                  setFormData(prev => ({ ...prev, academicYear: currentYear }));
+                }
                 setShowEditor(true);
               }}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 active:scale-95 transition-all"
@@ -1128,7 +1258,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
                 <select
                   value={subjectFilter}
                   onChange={(e) => setSubjectFilter(e.target.value)}
@@ -1142,10 +1272,35 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                   ))}
                 </select>
 
+                <select
+                  value={gradeFilter}
+                  onChange={(e) => setGradeFilter(e.target.value)}
+                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                >
+                  <option value="">All Grades</option>
+                  {classes.map((grade) => (
+                    <option key={grade} value={grade}>
+                      Grade {grade}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={academicYearFilter}
+                  onChange={(e) => setAcademicYearFilter(e.target.value)}
+                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                >
+                  <option value="">All Academic Years</option>
+                  {academicYears.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {(searchQuery || subjectFilter) && (
+            {(searchQuery || subjectFilter || gradeFilter || academicYearFilter) && (
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
                 <p className="text-sm text-gray-600">
                   Showing <span className="font-semibold text-gray-900">{filteredPlans.length}</span> of{" "}
@@ -1155,6 +1310,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                   onClick={() => {
                     setSearchQuery("");
                     setSubjectFilter("");
+                    setGradeFilter("");
+                    setAcademicYearFilter("");
                   }}
                   className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
                 >
@@ -1325,6 +1482,30 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Academic Year <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.academicYear}
+                      onChange={(e) => {
+                        setFormData({ ...formData, academicYear: e.target.value, chapterId: "" });
+                        setSelectedLearningOutcomes([]); // Reset when academic year changes
+                      }}
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                    >
+                      <option value="">Select Academic Year</option>
+                      {academicYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Required to load correct curriculum
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Chapter <span className="text-red-500">*</span>
                     </label>
                     <select
@@ -1333,14 +1514,14 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                         setFormData({ ...formData, chapterId: e.target.value });
                         setSelectedLearningOutcomes([]); // Reset learning outcomes when chapter changes
                       }}
-                      disabled={!formData.subject || !formData.class}
+                      disabled={!formData.subject || !formData.class || !formData.academicYear}
                       className={`w-full px-4 py-2.5 rounded-lg border ${
                         errors.chapterId ? "border-red-300" : "border-gray-300"
                       } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
                     >
                       <option value="">
-                        {!formData.subject || !formData.class
-                          ? "Select subject and class first"
+                        {!formData.subject || !formData.class || !formData.academicYear
+                          ? "Select subject, class, and academic year first"
                           : "Select Chapter from Curriculum"}
                       </option>
                       {availableChapters.map((chapter) => (

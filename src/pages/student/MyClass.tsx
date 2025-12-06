@@ -13,10 +13,15 @@ import {
   CheckCircle2,
   FileText,
   Target,
-  MapPin
+  MapPin,
+  Trophy,
+  TrendingUp,
+  Activity,
+  Award
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { supabase } from '../../lib/supabaseClient';
 import {
   getStudentClassInfo,
   getClassmates,
@@ -32,7 +37,7 @@ import {
   updateAssignmentStatus
 } from '../../services/assignmentsService';
 
-type TabType = 'overview' | 'assignments' | 'timetable' | 'classmates';
+type TabType = 'overview' | 'assignments' | 'timetable' | 'classmates' | 'curriculars';
 type TimetableViewType = 'week' | 'day';
 
 const DAYS = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -89,6 +94,11 @@ const MyClass: React.FC = () => {
   const [todaySchedule, setTodaySchedule] = useState<TimetableSlot[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [stats, setStats] = useState({ total: 0, todo: 0, inProgress: 0, submitted: 0, graded: 0, averageGrade: 0 });
+  const [clubs, setClubs] = useState<any[]>([]);
+  const [myMemberships, setMyMemberships] = useState<any[]>([]);
+  const [myAchievementsData, setMyAchievementsData] = useState<any[]>([]);
+  const [myCertificates, setMyCertificates] = useState<any[]>([]);
+  const [attendanceData, setAttendanceData] = useState<Record<string, any>>({});
 
   // Fetch all data
   useEffect(() => {
@@ -122,6 +132,114 @@ const MyClass: React.FC = () => {
           setAssignments(assignmentsData);
           setStats(statsData);
         }
+
+        // Fetch clubs data
+        const { data: membershipData } = await supabase
+          .from('club_memberships_with_students')
+          .select('*')
+          .eq('student_email', userEmail)
+          .eq('status', 'active');
+
+        if (membershipData && membershipData.length > 0) {
+          const clubsData = membershipData.map((membership: any) => ({
+            club_id: membership.club_id,
+            name: membership.club_name,
+            category: membership.club_category,
+            description: '',
+            meeting_day: membership.meeting_day,
+            meeting_time: membership.meeting_time,
+            location: membership.location,
+            mentor_type: membership.mentor_type,
+            mentor_name: membership.mentor_name,
+            mentor_email: membership.mentor_email,
+            mentor_phone: membership.mentor_phone,
+            is_active: true,
+            capacity: 0,
+            members: [],
+            membership_id: membership.membership_id,
+            enrolled_at: membership.enrolled_at,
+            total_sessions_attended: membership.total_sessions_attended,
+            total_sessions_held: membership.total_sessions_held,
+            attendance_percentage: membership.attendance_percentage,
+            performance_score: membership.performance_score
+          }));
+
+          const clubsWithMembers = await Promise.all(
+            clubsData.map(async (club: any) => {
+              const { data: clubDetails } = await supabase
+                .from('clubs')
+                .select('capacity, description')
+                .eq('club_id', club.club_id)
+                .single();
+
+              const { count: memberCount } = await supabase
+                .from('club_memberships_with_students')
+                .select('*', { count: 'exact', head: true })
+                .eq('club_id', club.club_id)
+                .eq('status', 'active');
+
+              return {
+                ...club,
+                capacity: clubDetails?.capacity || 30,
+                description: clubDetails?.description || '',
+                memberCount: memberCount || 0,
+                members: []
+              };
+            })
+          );
+
+          setClubs(clubsWithMembers);
+          setMyMemberships(membershipData);
+        }
+
+        // Fetch achievements
+        const { data: resultsData } = await supabase
+          .from('competition_results')
+          .select(`
+            result_id,
+            rank,
+            score,
+            award,
+            performance_notes,
+            competitions (
+              comp_id,
+              name,
+              level,
+              category,
+              competition_date,
+              status
+            )
+          `)
+          .eq('student_email', userEmail)
+          .order('rank', { ascending: true });
+
+        if (resultsData) {
+          setMyAchievementsData(resultsData);
+        }
+
+        // Fetch certificates
+        const { data: certificatesData } = await supabase
+          .from('club_certificates')
+          .select(`
+            certificate_id,
+            title,
+            description,
+            certificate_type,
+            issued_date,
+            credential_id,
+            metadata,
+            competitions (
+              name,
+              level,
+              category
+            )
+          `)
+          .eq('student_email', userEmail)
+          .order('issued_date', { ascending: false });
+
+        if (certificatesData) {
+          setMyCertificates(certificatesData);
+        }
       } catch (error) {
         console.error('Error fetching class data:', error);
       } finally {
@@ -130,7 +248,7 @@ const MyClass: React.FC = () => {
     };
 
     fetchData();
-  }, [studentId, authLoading]);
+  }, [studentId, authLoading, userEmail]);
 
   // Get upcoming assignments (next 5 due)
   const upcomingAssignments = useMemo(() => {
@@ -160,6 +278,65 @@ const MyClass: React.FC = () => {
       const timeSlotHour = parseInt(timeSlot.split(':')[0]);
       return slotStartHour === timeSlotHour;
     });
+  };
+
+  // Get clubs with enhanced data
+  const myClubs = useMemo(() => {
+    return clubs.map(club => {
+      const attendance = attendanceData[club.club_id] || [];
+      const attendancePercentage = club.attendance_percentage || 0;
+      
+      return {
+        ...club,
+        avgAttendance: Math.round(attendancePercentage),
+        upcomingActivities: [],
+        meetingDay: club.meeting_day || 'TBD',
+        meetingTime: club.meeting_time || 'TBD',
+      };
+    });
+  }, [clubs, attendanceData]);
+
+  // Get upcoming activities from all clubs
+  const upcomingActivities = useMemo(() => {
+    const activities: any[] = [];
+    myClubs.forEach(club => {
+      if (club.meeting_day && club.meeting_time) {
+        activities.push({
+          title: `${club.name} Meeting`,
+          clubName: club.name,
+          date: new Date(),
+          type: 'meeting'
+        });
+      }
+    });
+    return activities.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [myClubs]);
+
+  // Get student achievements from competitions
+  const myAchievements = useMemo(() => {
+    return myAchievementsData
+      .filter(result => result.competitions)
+      .map(result => ({
+        result_id: result.result_id,
+        name: result.competitions.name,
+        rank: result.rank,
+        score: result.score,
+        award: result.award || 'Participant',
+        level: result.competitions.level || 'School',
+        category: result.competitions.category || 'General',
+        date: result.competitions.competition_date,
+        status: result.competitions.status,
+        notes: result.performance_notes
+      }))
+      .sort((a, b) => a.rank - b.rank);
+  }, [myAchievementsData]);
+
+  const categoryColors: Record<string, string> = {
+    robotics: "bg-blue-100 text-blue-700 border-blue-200",
+    literature: "bg-purple-100 text-purple-700 border-purple-200",
+    science: "bg-green-100 text-green-700 border-green-200",
+    sports: "bg-red-100 text-red-700 border-red-200",
+    arts: "bg-pink-100 text-pink-700 border-pink-200",
   };
 
 
@@ -288,7 +465,8 @@ const MyClass: React.FC = () => {
                 { id: 'overview', label: 'Overview', icon: Target },
                 { id: 'assignments', label: 'Assigments', icon: ClipboardList },
                 { id: 'timetable', label: 'Timetable', icon: Calendar },
-                { id: 'classmates', label: 'Classmates', icon: Users }
+                { id: 'classmates', label: 'Classmates', icon: Users },
+                {id: 'curriculars', label: 'Co-Curriculars', icon: GraduationCap}
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -696,6 +874,273 @@ const MyClass: React.FC = () => {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Co-Curriculars Tab */}
+            {activeTab === 'curriculars' && (
+              <div className="space-y-6">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-blue-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">My Clubs</p>
+                        <p className="text-3xl font-bold text-blue-600">{myClubs.length}</p>
+                      </div>
+                      <div className="bg-blue-100 rounded-full p-3">
+                        <Users className="text-blue-600" size={28} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-green-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Upcoming Events</p>
+                        <p className="text-3xl font-bold text-green-600">{upcomingActivities.length}</p>
+                      </div>
+                      <div className="bg-green-100 rounded-full p-3">
+                        <Calendar className="text-green-600" size={28} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-yellow-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Achievements</p>
+                        <p className="text-3xl font-bold text-yellow-600">{myAchievements.length}</p>
+                      </div>
+                      <div className="bg-yellow-100 rounded-full p-3">
+                        <Trophy className="text-yellow-600" size={28} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-purple-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Avg Attendance</p>
+                        <p className="text-3xl font-bold text-purple-600">
+                          {myMemberships.length > 0
+                            ? Math.round(
+                                myMemberships.reduce((sum, m) => sum + (m.attendance_percentage || 0), 0) /
+                                  myMemberships.length
+                              )
+                            : 0}
+                          %
+                        </p>
+                      </div>
+                      <div className="bg-purple-100 rounded-full p-3">
+                        <TrendingUp className="text-purple-600" size={28} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Main Content */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* My Clubs Section */}
+                  <div className="lg:col-span-2">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-semibold text-gray-900">My Clubs</h3>
+                      <div className="bg-gray-100 rounded-full p-2">
+                        <Activity className="text-gray-400" size={24} />
+                      </div>
+                    </div>
+
+                    {myClubs.length === 0 ? (
+                      <div className="bg-white rounded-xl p-12 text-center shadow-lg">
+                        <Users className="mx-auto text-gray-300 mb-4" size={64} />
+                        <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                          No Clubs Yet
+                        </h3>
+                        <p className="text-gray-500">
+                          You haven't joined any clubs. Explore available clubs to get started!
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {myClubs.map((club) => (
+                          <div
+                            key={club.club_id}
+                            className="bg-white rounded-xl p-6 shadow-lg border-2 border-gray-100 hover:border-blue-300 transition-all"
+                          >
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <h3 className="text-xl font-bold text-gray-900">
+                                    {club.name}
+                                  </h3>
+                                  <span
+                                    className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                                      categoryColors[club.category?.toLowerCase()] || "bg-gray-100 text-gray-700 border-gray-200"
+                                    }`}
+                                  >
+                                    {club.category}
+                                  </span>
+                                </div>
+                                <p className="text-gray-600 text-sm mb-3">
+                                  {club.description}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <Calendar size={16} className="text-blue-500" />
+                                <span>{club.meeting_day || 'TBD'}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <Clock size={16} className="text-green-500" />
+                                <span>{club.meeting_time || 'TBD'}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <MapPin size={16} className="text-red-500" />
+                                <span>{club.location || 'TBD'}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <Users size={16} className="text-purple-500" />
+                                <span>
+                                  {club.memberCount || 0}/{club.capacity || 30} members
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                              <div className="text-sm">
+                                <span className="text-gray-600">Mentor: </span>
+                                <span className="font-semibold text-gray-900">
+                                  {club.mentor_name || (club.mentor_type === 'educator' ? 'Educator' : 'School Admin')}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <TrendingUp size={16} className="text-green-500" />
+                                <span className="text-sm font-semibold text-gray-900">
+                                  {club.avgAttendance || 0}% attendance
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sidebar */}
+                  {/* Upcoming Activities */}
+                  <div className="space-y-6">
+                    
+                    <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-gray-100">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Calendar className="text-green-600" size={24} />
+                        <h3 className="text-lg font-bold text-gray-900">
+                          Upcoming Activities
+                        </h3>
+                      </div>
+                      {upcomingActivities.length === 0 ? (
+                        <p className="text-gray-500 text-sm">No upcoming activities</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {upcomingActivities.slice(0, 5).map((activity, idx) => (
+                            <div
+                              key={idx}
+                              className="border-l-4 border-blue-500 pl-3 py-2 bg-blue-50 rounded-r"
+                            >
+                              <p className="font-semibold text-gray-900 text-sm">
+                                {activity.title}
+                              </p>
+                              <p className="text-xs text-gray-600 mt-1">
+                                {activity.clubName}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {new Date(activity.date).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Certificates */}
+                    <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-gray-100">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Award className="text-indigo-600" size={24} />
+                          <h3 className="text-lg font-bold text-gray-900">Certificates</h3>
+                        </div>
+                        {myCertificates.length > 0 && (
+                          <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-bold">
+                            {myCertificates.length}
+                          </span>
+                        )}
+                      </div>
+                      {myCertificates.length === 0 ? (
+                        <div className="text-center py-6">
+                          <Award className="mx-auto text-gray-300 mb-3" size={48} />
+                          <p className="text-gray-500 text-sm">
+                            No certificates yet
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                          {myCertificates.map((cert) => (
+                            <div
+                              key={cert.certificate_id}
+                              className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border-2 border-indigo-200 hover:shadow-md transition-shadow"
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="bg-indigo-100 rounded-full p-2 flex-shrink-0">
+                                  <Award className="text-indigo-600" size={16} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-gray-900 text-sm truncate">
+                                    {cert.title}
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                    {cert.description}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                    <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-semibold capitalize">
+                                      {cert.certificate_type.replace('_', ' ')}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      {new Date(cert.issued_date).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        year: 'numeric'
+                                      })}
+                                    </span>
+                                  </div>
+                                  {cert.metadata?.rank && (
+                                    <div className="mt-2 flex items-center gap-2">
+                                      <span className="text-xs text-gray-600">Rank:</span>
+                                      <span className="text-xs font-bold text-indigo-600">
+                                        #{cert.metadata.rank}
+                                      </span>
+                                      {cert.metadata?.score && (
+                                        <>
+                                          <span className="text-xs text-gray-400">•</span>
+                                          <span className="text-xs font-semibold text-green-600">
+                                            {cert.metadata.score}
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

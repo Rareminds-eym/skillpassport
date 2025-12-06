@@ -128,12 +128,15 @@ const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")
 );
 const Settings = lazy(() => import("../pages/student/Settings"));
+const AssessmentTest = lazy(() => import("../pages/student/AssessmentTest"));
+const AssessmentResult = lazy(() => import("../pages/student/AssessmentResult"));
 
 // Educator pages
 const EducatorDashboard = lazy(() => import("../pages/educator/Dashboard"));
 const EducatorLogin = lazy(() => import("../pages/auth/LoginEducator"));
 const EducatorStudents = lazy(() => import("../pages/educator/StudentsPage"));
 const EducatorClasses = lazy(() => import("../pages/educator/ClassesPage"));
+
 const EducatorCourses = lazy(() => import("../pages/educator/Courses"));
 const EducatorAssessments = lazy(() => import("../pages/educator/Assessments"));
 const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
@@ -144,7 +147,7 @@ const EducatorManagement = lazy(() => import("../pages/educator/EducatorManageme
 const EducatorCommunication = lazy(() =>
   import("../pages/educator/Communication")
 );
-const SkillCurriculars = lazy (() => import("../pages/educator/SkillCurricular"))
+const SkillCurriculars = lazy(() => import("../pages/educator/SkillCurricular"))
 const EducatorAnalytics = lazy(() => import("../pages/educator/Analytics"));
 const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
 const EducatorReports = lazy(() => import("../pages/educator/Reports"));
@@ -156,6 +159,7 @@ const EducatorDigitalPortfolio = lazy(() =>
 );
 const EducatorAI = lazy(() => import("../pages/educator/EducatorAI"));
 const CourseAnalytics = lazy(() => import("../pages/educator/CourseAnalytics"));
+const MarkAttendance = lazy(() => import("../pages/educator/MarkAttendance"));
 
 // Teacher pages (for teachers using the system)
 const LessonPlanCreate = lazy(() => import("../pages/teacher/LessonPlanCreate"));
@@ -178,6 +182,9 @@ const StudentDataAdmission = lazy(() =>
 );
 const AdminEducatorManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/EducatorManagement")
+);
+const FacultyManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/FacultyManagement")
 );
 const ExaminationManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/ExaminationManagement")
@@ -293,15 +300,15 @@ const CircularsFeedback = lazy(() =>
 const SkillCurricular = lazy(() =>
   import("../pages/admin/schoolAdmin/SkillCurricular")
 );
-const SkillBadges = lazy(() =>  
-import("../pages/admin/schoolAdmin/SkillBadges")
+const SkillBadges = lazy(() =>
+  import("../pages/admin/schoolAdmin/SkillBadges")
 );
-const Reports = lazy(() =>  
-import("../pages/admin/schoolAdmin/Reports")
+const Reports = lazy(() =>
+  import("../pages/admin/schoolAdmin/Reports")
 );
 // Finance & infrastructure buddy
 const FinanceInfrastructure = lazy(() => import("../pages/admin/schoolAdmin/FeeStructureSetup"))
-const Library  = lazy(() => import("../pages/admin/schoolAdmin/Library"))
+const Library = lazy(() => import("../pages/admin/schoolAdmin/Library"))
 const AttendanceReports = lazy(() =>
   import("../pages/admin/schoolAdmin/AttendanceReports")
 );
@@ -405,7 +412,7 @@ const AppRoutes = () => {
           {/* Department Management */}
           <Route path="departments/management" element={<DepartmentManagement />} />
           <Route path="departments/mapping" element={<CourseMapping />} />
-          <Route path="departments/educators" element={<AdminEducatorManagement />} />
+          <Route path="departments/educators" element={<FacultyManagement />} />
           
           {/* Student Lifecycle Management */}
           <Route path="students/data-management" element={<StudentDataAdmission />} />
@@ -579,6 +586,9 @@ const AppRoutes = () => {
           <Route path="clubs" element={<Clubs />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
+          <Route path="assessment-report" element={<AssessmentTest />} /> {/* Keep old path for backward compat if needed, or redirect */}
+          <Route path="assessment/test" element={<AssessmentTest />} />
+          <Route path="assessment/result" element={<AssessmentResult />} />
 
           {/* Digital Portfolio routes with required providers */}
           <Route
@@ -746,6 +756,7 @@ const AppRoutes = () => {
           <Route path="lesson-plans" element={<LessonPlansList />} />
           <Route path="lesson-plans/create" element={<LessonPlanCreate />} />
           <Route path="my-timetable" element={<MyTimetable />} />
+          <Route path="mark-attendance" element={<MarkAttendance />} />
           <Route path="clubs" element={<SkillCurriculars />} />
           <Route
             path=""

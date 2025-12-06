@@ -26,7 +26,7 @@ const DialogContent = ({ className, children }) => (
   <div
     role="dialog"
     aria-modal="true"
-    className={cn("relative z-10 w-full max-w-lg rounded-lg border bg-white p-6 shadow-lg", className)}
+    className={cn("relative z-10 w-full rounded-lg border bg-white p-6 shadow-lg", className)}
   >
     {children}
   </div>

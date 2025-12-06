@@ -33,6 +33,7 @@ import {
 import EmployabilityDebugger from "./EmployabilityDebugger";
 import { generateBadges } from "../../../services/badgeService";
 import DigitalBadges from "./DigitalBadges";
+import { supabase } from "../../../lib/supabaseClient";
 
 // ================= REUSABLE DETAIL ITEM =================
 const DetailItem = ({ label, value, highlight }) => (
@@ -73,7 +74,8 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState(null);
 
-
+  // State for institution name
+  const [fetchedInstitutionName, setFetchedInstitutionName] = useState(null);
 
   // Fetch real student data
   const {
@@ -118,13 +120,43 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     }
   }, [realStudentData]);
 
+  // Calculate graduation year for school students
+  const getGraduationYear = () => {
+    if (!realStudentData) return null;
+    
+    // For university/college students, use class_year or expectedGraduationDate
+    if (realStudentData.class_year) {
+      return realStudentData.class_year;
+    }
+    if (realStudentData.expectedGraduationDate) {
+      return new Date(realStudentData.expectedGraduationDate).getFullYear();
+    }
+    
+    // For school students, calculate based on current grade
+    if (realStudentData.school_id && realStudentData.grade) {
+      const currentYear = new Date().getFullYear();
+      const grade = parseInt(realStudentData.grade);
+      
+      // Assuming Grade 10 graduates in current academic year
+      if (grade === 10) return currentYear;
+      if (grade === 9) return currentYear + 1;
+      if (grade === 8) return currentYear + 2;
+      if (grade === 7) return currentYear + 3;
+      if (grade === 6) return currentYear + 4;
+    }
+    
+    return null;
+  };
+
+  const graduationYear = getGraduationYear();
+
   // Use individual columns instead of profile JSONB
   const displayData = realStudentData ? {
     name: realStudentData.name,
     email: realStudentData.email,
     department: realStudentData.branch_field,
     university: realStudentData.university,
-    classYear: realStudentData.class_year || realStudentData.profile?.classYear || "Class of 2025",
+    classYear: graduationYear ? (realStudentData.school_id ? `Graduating ${graduationYear}` : `Class of ${graduationYear}`) : (realStudentData.profile?.classYear || null),
     github_link: realStudentData.github_link,
     portfolio_link: realStudentData.portfolio_link,
     linkedin_link: realStudentData.linkedin_link,
@@ -135,33 +167,122 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     // Fallback to profile JSONB for any missing data
     ...realStudentData.profile
   } : null;
+  // Fetch institution name if not in relationship data
+  useEffect(() => {
+    const fetchInstitutionName = async () => {
+      if (!realStudentData) return;
+      
+      // If school student and no school relationship data
+      if (realStudentData.school_id && !realStudentData.schools?.name) {
+        try {
+          const { data, error } = await supabase
+            .from('schools')
+            .select('name')
+            .eq('id', realStudentData.school_id)
+            .single();
+          
+          if (data && !error) {
+            setFetchedInstitutionName(data.name);
+          }
+        } catch (err) {
+          console.error('Error fetching school name:', err);
+        }
+      }
+      
+      // If college student and no college relationship data
+      if (realStudentData.university_college_id && !realStudentData.university_colleges) {
+        try {
+          const { data, error } = await supabase
+            .from('university_colleges')
+            .select(`
+              name,
+              universities:university_id (
+                name
+              )
+            `)
+            .eq('id', realStudentData.university_college_id)
+            .single();
+          
+          if (data && !error) {
+            const collegeName = data.name;
+            const universityName = data.universities?.name;
+            setFetchedInstitutionName(
+              universityName ? `${collegeName} - ${universityName}` : collegeName
+            );
+          }
+        } catch (err) {
+          console.error('Error fetching college name:', err);
+        }
+      }
+    };
+    
+    fetchInstitutionName();
+  }, [realStudentData]);
 
   // Determine institution from relationships (school_id or university_college_id)
   const institutionName = React.useMemo(() => {
-    if (realStudentData?.school_id && realStudentData?.schools) {
-      return realStudentData.schools.name;
-    } else if (realStudentData?.university_college_id && realStudentData?.university_colleges) {
-      const college = realStudentData.university_colleges;
-      const university = college.universities;
-      // Show both college and university name
-      return university?.name ? `${college.name} - ${university.name}` : college.name;
+    if (!realStudentData) return "Institution";
+    
+    // For school students - check schools relationship first, then fallback to university field
+    if (realStudentData.school_id) {
+      if (realStudentData.schools?.name) {
+        return realStudentData.schools.name;
+      }
+      // Use fetched name if available
+      if (fetchedInstitutionName) {
+        return fetchedInstitutionName;
+      }
+      // Fallback to university field (which might contain school name)
+      if (realStudentData.university) {
+        return realStudentData.university;
+      }
+      if (realStudentData.profile?.university) {
+        return realStudentData.profile.university;
+      }
+      return "School";
     }
-    // Fallback to profile.university if no institutional linkage
-    return displayData?.university || "Institution";
-  }, [realStudentData, displayData]);
+    
+    // For college students - check university_colleges relationship
+    if (realStudentData.university_college_id) {
+      if (realStudentData.university_colleges) {
+        const college = realStudentData.university_colleges;
+        const university = college.universities;
+        return university?.name ? `${college.name} - ${university.name}` : college.name;
+      }
+      // Use fetched name if available
+      if (fetchedInstitutionName) {
+        return fetchedInstitutionName;
+      }
+      // Fallback to university field
+      if (realStudentData.university) {
+        return realStudentData.university;
+      }
+      if (realStudentData.profile?.university) {
+        return realStudentData.profile.university;
+      }
+      return "College";
+    }
+    
+    // For students without school_id or university_college_id
+    return realStudentData.university || realStudentData.profile?.university || "Institution";
+  }, [realStudentData, fetchedInstitutionName]);
 
   // Debug: Log student_id and school fields from database
   React.useEffect(() => {
     if (realStudentData) {
       console.log('🔍 Student ID from database:', realStudentData.student_id);
       console.log('🏫 School ID:', realStudentData.school_id);
+      console.log('🏫 School Data:', realStudentData.schools);
+      console.log('🎓 College ID:', realStudentData.university_college_id);
+      console.log('� College Darta:', realStudentData.university_colleges);
       console.log('📚 Grade:', realStudentData.grade);
-      console.log('📝 Section:', realStudentData.section);
+      console.log('� FSection:', realStudentData.section);
       console.log('🎯 Roll Number:', realStudentData.roll_number);
       console.log('🎓 Admission Number:', realStudentData.admission_number);
+      console.log('🏢 Institution Name:', institutionName);
       console.log('📦 Full realStudentData:', realStudentData);
     }
-  }, [realStudentData]);
+  }, [realStudentData, institutionName]);
 
 
   // Generate QR code value once and keep it constant
@@ -599,7 +720,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       {employabilityData.breakdown?.career}% | Bonus:
                       {employabilityData.breakdown?.bonus}
                     </div>
-                  )}
+                  )} */}
                 </div>
               </div>
             </div>

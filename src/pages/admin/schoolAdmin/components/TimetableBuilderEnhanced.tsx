@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Sparkles, Save, Send, AlertTriangle } from "lucide-react";
+import { Sparkles, Save, Send, AlertTriangle, Edit2, Trash2 } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
 import { validateTimetableSlot, getAllTimetableConflicts, ValidationConflict } from "../../../../utils/timetableValidation";
 
@@ -15,6 +15,13 @@ interface SchoolClass {
   name: string;
   grade: string;
   section: string;
+  room_no?: string;
+}
+
+interface Subject {
+  id: string;
+  name: string;
+  description?: string;
 }
 
 interface TimetableSlot {
@@ -35,6 +42,8 @@ interface TimetableSlot {
 const TimetableBuilderEnhanced: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [rooms, setRooms] = useState<string[]>([]);
   const [timetableId, setTimetableId] = useState<string>("");
   const [allSlots, setAllSlots] = useState<TimetableSlot[]>([]);
   const [draggedSlot, setDraggedSlot] = useState<TimetableSlot | null>(null);
@@ -43,6 +52,8 @@ const TimetableBuilderEnhanced: React.FC = () => {
   const [conflicts, setConflicts] = useState<Map<string, ValidationConflict[]>>(new Map());
   const [showConflicts, setShowConflicts] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingSlot, setEditingSlot] = useState<TimetableSlot | null>(null);
   const [selectedCell, setSelectedCell] = useState<{ day: number; period: number } | null>(null);
   const [newSlot, setNewSlot] = useState({
     teacher_id: "",
@@ -50,6 +61,19 @@ const TimetableBuilderEnhanced: React.FC = () => {
     subject_name: "",
     room_number: "",
   });
+  const [editSlot, setEditSlot] = useState({
+    teacher_id: "",
+    class_id: "",
+    subject_name: "",
+    room_number: "",
+  });
+  
+  // Filter states
+  const [filterTeacher, setFilterTeacher] = useState<string>("");
+  const [filterClass, setFilterClass] = useState<string>("");
+  const [filterDay, setFilterDay] = useState<string>("");
+  const [filterSubject, setFilterSubject] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<string>("");
 
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const periods = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -137,17 +161,36 @@ const TimetableBuilderEnhanced: React.FC = () => {
     if (data) setTeachers(data);
   };
 
-  const loadClasses = async () => {
+  // const loadClasses = async () => {
+  //   const schoolId = await getSchoolId();
+  //   if (!schoolId) {
+  //     console.error('No school_id found for classes');
+  //     return;
+  //   }
+
+  //   // Load classes
+  //   const { data } = await supabase
+  //     .from("school_classes")
+  //     .select("id, name, grade, section")
+  //     .eq("school_id", schoolId)
+  //     .eq("account_status", "active")
+  //     .order("grade")
+  //     .order("section");
+    
+  //   console.log('Loaded classes:', data);
+  //   if (data) setClasses(data);
+  // };
+const loadClasses = async () => {
     const schoolId = await getSchoolId();
     if (!schoolId) {
       console.error('No school_id found for classes');
       return;
     }
 
-    // Load classes
+    // Load classes with room_number
     const { data } = await supabase
       .from("school_classes")
-      .select("id, name, grade, section")
+      .select("id, name, grade, section, room_no")
       .eq("school_id", schoolId)
       .eq("account_status", "active")
       .order("grade")
@@ -156,22 +199,33 @@ const TimetableBuilderEnhanced: React.FC = () => {
     console.log('Loaded classes:', data);
     if (data) setClasses(data);
   };
-
   const loadOrCreateTimetable = async () => {
+    const schoolId = await getSchoolId();
+    if (!schoolId) {
+      console.error('No school_id found for timetable');
+      return;
+    }
+
     const currentYear = new Date().getFullYear();
     const { data: existing } = await supabase
       .from("timetables")
       .select("id, status")
+      .eq("school_id", schoolId)
       .eq("academic_year", `${currentYear}-${currentYear + 1}`)
-      .single();
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (existing) {
+      console.log('Found existing timetable:', existing.id);
       setTimetableId(existing.id);
       setPublishStatus(existing.status);
     } else {
-      const { data: newTimetable } = await supabase
+      console.log('Creating new timetable for school:', schoolId);
+      const { data: newTimetable, error } = await supabase
         .from("timetables")
         .insert({
+          school_id: schoolId,
           academic_year: `${currentYear}-${currentYear + 1}`,
           term: "Term 1",
           start_date: `${currentYear}-06-01`,
@@ -181,25 +235,96 @@ const TimetableBuilderEnhanced: React.FC = () => {
         .select("id")
         .single();
       
-      if (newTimetable) setTimetableId(newTimetable.id);
+      if (error) {
+        console.error('Error creating timetable:', error);
+        return;
+      }
+      
+      if (newTimetable) {
+        console.log('Created new timetable:', newTimetable.id);
+        setTimetableId(newTimetable.id);
+      }
     }
   };
+// Add this function with other load functions
+const loadSubjects = async () => {
+  const schoolId = await getSchoolId();
+  if (!schoolId) {
+    console.error('No school_id found for subjects');
+    return;
+  }
 
-  const loadAllSlots = async () => {
-    const { data } = await supabase
+  const { data } = await supabase
+    .from("curriculum_subjects")
+    .select("id, name, description")
+    .eq("school_id", schoolId)
+    .eq("is_active", true)
+    .order("display_order")
+    .order("name");
+  
+  console.log('Loaded subjects:', data);
+  if (data) setSubjects(data);
+};
+
+// Add loadSubjects to the initial useEffect
+useEffect(() => {
+  loadTeachers();
+  loadClasses();
+  loadSubjects(); // Add this line
+  loadOrCreateTimetable();
+}, []);
+
+const loadRooms = () => {
+  // Extract unique room numbers from classes that are already loaded
+  const uniqueRooms = [...new Set(
+    classes
+      .map(c => c.room_no)
+      .filter(room => room && room.trim() !== '')
+  )].sort();
+  
+  console.log('Loaded rooms:', uniqueRooms);
+  setRooms(uniqueRooms as string[]);
+};
+
+useEffect(() => {
+  loadTeachers();
+  loadClasses();
+  loadSubjects();
+  loadOrCreateTimetable();
+}, []);
+
+// Load rooms AFTER classes are loaded
+useEffect(() => {
+  if (classes.length > 0) {
+    loadRooms();
+  }
+}, [classes]);
+const loadAllSlots = async () => {
+    const { data, error } = await supabase
       .from("timetable_slots")
-      .select("*, school_educators(first_name, last_name), school_classes(name)")
+      .select(`
+        *,
+        school_educators!timetable_slots_educator_id_fkey(first_name, last_name),
+        school_classes!timetable_slots_class_id_fkey(name)
+      `)
       .eq("timetable_id", timetableId)
       .order("day_of_week")
       .order("period_number");
     
+    if (error) {
+      console.error("Error loading slots:", error);
+      return;
+    }
+    
     if (data) {
-      const slotsWithNames = data.map(slot => ({
+      console.log("Raw slots data:", data);
+      const slotsWithNames = data.map((slot: any) => ({
         ...slot,
         teacher_id: slot.educator_id,
         teacher_name: slot.school_educators ? `${slot.school_educators.first_name} ${slot.school_educators.last_name}` : "",
         class_name: slot.school_classes ? slot.school_classes.name : ""
       }));
+      console.log("Processed slots:", slotsWithNames);
       setAllSlots(slotsWithNames);
       
       // Validate all slots and detect conflicts
@@ -353,13 +478,15 @@ const TimetableBuilderEnhanced: React.FC = () => {
       alert("Please select a Teacher and Class from the dropdowns above first.");
       return;
     }
-    
+    // Get room number from selected class
+    const selectedClass = classes.find(c => c.id === newSlot.class_id);
+    const defaultRoom = selectedClass?.room_no || "";
     setSelectedCell({ day, period });
-    // Keep teacher_id and class_id, only reset subject and room
+    // Keep teacher_id and class_id, set default room and reset subject
     setNewSlot({
       ...newSlot,
       subject_name: "",
-      room_number: "",
+      room_number: defaultRoom,
     });
     setShowAddModal(true);
   };
@@ -369,7 +496,26 @@ const TimetableBuilderEnhanced: React.FC = () => {
       alert("Please fill all required fields");
       return;
     }
+    // Get the selected class's default room
+  const selectedClass = classes.find(c => c.id === newSlot.class_id);
+  const classDefaultRoom = selectedClass?.room_no;
 
+  // Validate room number if class has a default room
+  if (classDefaultRoom && newSlot.room_number && newSlot.room_number !== classDefaultRoom) {
+    const confirmDifferentRoom = confirm(
+      `Warning: The selected room "${newSlot.room_number}" is different from the class's default room "${classDefaultRoom}".\n\nDo you want to continue anyway?`
+    );
+    
+    if (!confirmDifferentRoom) {
+      return;
+    }
+  }
+
+  // Check if room number is provided when class has default room
+  if (classDefaultRoom && !newSlot.room_number) {
+    alert(`Please select a room number. The default room for this class is: ${classDefaultRoom}`);
+    return;
+  }
     setLoading(true);
     try {
       const [startTime, endTime] = timeSlots[selectedCell.period - 1].split("-");
@@ -418,6 +564,71 @@ const TimetableBuilderEnhanced: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditSlot = (slot: TimetableSlot) => {
+    setEditingSlot(slot);
+    // Get the default room for the slot's class
+    const selectedClass = classes.find(c => c.id === slot.class_id);
+    const defaultRoom = selectedClass?.room_no || "";
+    
+    setEditSlot({
+      teacher_id: slot.educator_id,
+      class_id: slot.class_id || "",
+      subject_name: slot.subject_name,
+      room_number: slot.room_number || defaultRoom,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateSlot = async () => {
+    if (!editingSlot || !editSlot.teacher_id || !editSlot.class_id || !editSlot.subject_name) {
+      alert("Please fill all required fields");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("timetable_slots")
+        .update({
+          educator_id: editSlot.teacher_id,
+          class_id: editSlot.class_id,
+          subject_name: editSlot.subject_name,
+          room_number: editSlot.room_number || `R${editingSlot.period_number}`,
+        })
+        .eq("id", editingSlot.id);
+
+      if (error) throw error;
+      
+      await loadAllSlots();
+      setShowEditModal(false);
+      setEditingSlot(null);
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter logic
+  const getFilteredSlots = () => {
+    return allSlots.filter(slot => {
+      if (filterTeacher && slot.educator_id !== filterTeacher) return false;
+      if (filterClass && slot.class_id !== filterClass) return false;
+      if (filterDay && slot.day_of_week !== parseInt(filterDay)) return false;
+      if (filterSubject && !slot.subject_name.toLowerCase().includes(filterSubject.toLowerCase())) return false;
+      if (filterStatus) {
+        const slotConflicts = slot.id ? conflicts.get(slot.id) || [] : [];
+        const hasError = slotConflicts.some(c => c.severity === 'error');
+        const hasWarning = slotConflicts.some(c => c.severity === 'warning');
+        
+        if (filterStatus === 'ok' && (hasError || hasWarning)) return false;
+        if (filterStatus === 'warning' && !hasWarning) return false;
+        if (filterStatus === 'error' && !hasError) return false;
+      }
+      return true;
+    });
   };
 
   return (
@@ -488,6 +699,8 @@ const TimetableBuilderEnhanced: React.FC = () => {
         </div>
       )}
 
+      
+
       {/* Actions */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex gap-3">
         <button
@@ -515,7 +728,99 @@ const TimetableBuilderEnhanced: React.FC = () => {
           Publish
         </button>
       </div>
-
+         {/* Filters */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <h3 className="font-semibold text-gray-900 mb-3">Filters</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Teacher</label>
+            <select
+              value={filterTeacher}
+              onChange={(e) => setFilterTeacher(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">All Teachers</option>
+              {teachers.map((teacher) => (
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.first_name} {teacher.last_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Class</label>
+            <select
+              value={filterClass}
+              onChange={(e) => setFilterClass(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">All Classes</option>
+              {classes.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.grade}{cls.section ? `-${cls.section}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Day</label>
+            <select
+              value={filterDay}
+              onChange={(e) => setFilterDay(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">All Days</option>
+              {days.map((day, idx) => (
+                <option key={day} value={idx + 1}>
+                  {day}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+            <select
+              value={filterSubject}
+              onChange={(e) => setFilterSubject(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">All Subjects</option>
+              {subjects.map((subject) => (
+                <option key={subject.id} value={subject.name}>
+                  {subject.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">All Status</option>
+              <option value="ok">✓ OK</option>
+              <option value="warning">⚠ Warning</option>
+              <option value="error">✕ Error</option>
+            </select>
+          </div>
+        </div>
+        {(filterTeacher || filterClass || filterDay || filterSubject || filterStatus) && (
+          <button
+            onClick={() => {
+              setFilterTeacher("");
+              setFilterClass("");
+              setFilterDay("");
+              setFilterSubject("");
+              setFilterStatus("");
+            }}
+            className="mt-3 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+          >
+            Clear All Filters
+          </button>
+        )}
+      </div>
       {/* Teacher Load and Class Selection - Dropdowns */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Teacher Load - Dropdown */}
@@ -626,71 +931,85 @@ const TimetableBuilderEnhanced: React.FC = () => {
                   const slot = getSlotForCell(dayIndex + 1, period);
                   const isFree = !slot;
                   
+                  // Apply filters to determine if slot should be visible
+                  const isFiltered = slot && !getFilteredSlots().some(s => s.id === slot.id);
+                  
                   return (
                     <td
                       key={`${day}-${period}`}
                       className={`border border-gray-200 px-2 py-2 text-sm ${
-                        isFree ? "bg-green-50 cursor-pointer hover:bg-green-100" : "bg-white"
+                        isFree ? "bg-green-50 cursor-pointer hover:bg-green-100" : 
+                        isFiltered ? "bg-gray-100" : "bg-white"
                       }`}
                       onDragOver={handleDragOver}
                       onDrop={() => handleDrop(dayIndex + 1, period)}
                       onClick={() => isFree && handleCellClick(dayIndex + 1, period)}
                     >
                       {slot ? (
-                        (() => {
-                          const slotConflicts = slot.id ? conflicts.get(slot.id) || [] : [];
-                          const hasConflict = slotConflicts.length > 0;
-                          const hasError = slotConflicts.some(c => c.severity === 'error');
-                          
-                          return (
-                            <div
-                              draggable
-                              onDragStart={() => handleDragStart(slot)}
-                              className={`p-2 border rounded cursor-move transition relative group ${
-                                hasError
-                                  ? "bg-red-100 border-red-500 hover:bg-red-200"
-                                  : hasConflict
-                                  ? "bg-yellow-100 border-yellow-500 hover:bg-yellow-200"
-                                  : "bg-indigo-100 border-indigo-300 hover:bg-indigo-200"
-                              }`}
-                              title={hasConflict ? slotConflicts.map(c => c.message).join('\n') : ''}
-                            >
-                              {slot.id && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteSlot(slot.id!);
-                                  }}
-                                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs hover:bg-red-600 transition"
-                                  title="Delete slot"
-                                >
-                                  ×
-                                </button>
-                              )}
-                              {hasError && (
-                                <div className="flex items-center gap-1 mb-1">
-                                  <AlertTriangle className="h-3 w-3 text-red-600" />
-                                  <span className="text-xs text-red-600 font-bold">Conflict!</span>
+                        isFiltered ? (
+                          <div className="p-2 text-center text-xs text-gray-400 italic">
+                            Filtered
+                          </div>
+                        ) : (
+                          (() => {
+                            const slotConflicts = slot.id ? conflicts.get(slot.id) || [] : [];
+                            const hasConflict = slotConflicts.length > 0;
+                            const hasError = slotConflicts.some(c => c.severity === 'error');
+                            
+                            return (
+                              <div
+                                draggable
+                                onDragStart={() => handleDragStart(slot)}
+                                className={`p-2 border rounded cursor-move transition relative group ${
+                                  hasError
+                                    ? "bg-red-100 border-red-500 hover:bg-red-200"
+                                    : hasConflict
+                                    ? "bg-yellow-100 border-yellow-500 hover:bg-yellow-200"
+                                    : "bg-indigo-100 border-indigo-300 hover:bg-indigo-200"
+                                }`}
+                                title={hasConflict ? slotConflicts.map(c => c.message).join('\n') : ''}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditSlot(slot);
+                                }}
+                              >
+                                {slot.id && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteSlot(slot.id!);
+                                    }}
+                                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs hover:bg-red-600 transition z-10"
+                                    title="Delete slot"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                                {hasError && (
+                                  <div className="flex items-center gap-1 mb-1">
+                                    <AlertTriangle className="h-3 w-3 text-red-600" />
+                                    <span className="text-xs text-red-600 font-bold">Conflict!</span>
+                                  </div>
+                                )}
+                                <div className={`font-medium text-xs truncate ${
+                                  hasError ? "text-red-900" : hasConflict ? "text-yellow-900" : "text-indigo-900"
+                                }`}>
+                                  {slot.teacher_name}
                                 </div>
-                              )}
-                              <div className={`font-medium text-xs truncate ${
-                                hasError ? "text-red-900" : hasConflict ? "text-yellow-900" : "text-indigo-900"
-                              }`}>
-                                {slot.teacher_name}
+                                <div className={`text-xs truncate ${
+                                  hasError ? "text-red-700" : hasConflict ? "text-yellow-700" : "text-indigo-700"
+                                }`}>
+                                  {slot.subject_name}
+                                </div>
+                                <div className={`text-xs ${
+                                  hasError ? "text-red-600" : hasConflict ? "text-yellow-600" : "text-indigo-600"
+                                }`}>
+                                  {slot.class_name} • {slot.room_number}
+                                </div>
                               </div>
-                              <div className={`text-xs truncate ${
-                                hasError ? "text-red-700" : hasConflict ? "text-yellow-700" : "text-indigo-700"
-                              }`}>
-                                {slot.subject_name}
-                              </div>
-                              <div className={`text-xs ${
-                                hasError ? "text-red-600" : hasConflict ? "text-yellow-600" : "text-indigo-600"
-                              }`}>
-                                {slot.class_name} • {slot.room_number}
-                              </div>
-                            </div>
-                          );
-                        })()
+                            );
+                          })()
+                        )
                       ) : (
                         <div className="p-2 text-center text-xs text-green-600 font-medium hover:text-green-700">
                           + Add Slot
@@ -703,6 +1022,149 @@ const TimetableBuilderEnhanced: React.FC = () => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Timetable Slots Details Grid */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Timetable Slots Details</h3>
+        
+        {allSlots.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            No slots added yet. Click "+ Add Slot" in the grid above to start building your timetable.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Day</th>
+                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Period</th>
+                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Time</th>
+                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Teacher</th>
+                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Class</th>
+                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Subject</th>
+                  <th className="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-900">Room</th>
+                  <th className="border border-gray-200 px-4 py-3 text-center text-sm font-semibold text-gray-900">Status</th>
+                  <th className="border border-gray-200 px-4 py-3 text-center text-sm font-semibold text-gray-900">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getFilteredSlots()
+                  .sort((a, b) => {
+                    if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
+                    return a.period_number - b.period_number;
+                  })
+                  .map((slot) => {
+                    const slotConflicts = slot.id ? conflicts.get(slot.id) || [] : [];
+                    const hasConflict = slotConflicts.length > 0;
+                    const hasError = slotConflicts.some(c => c.severity === 'error');
+                    
+                    return (
+                      <tr 
+                        key={slot.id} 
+                        className={`hover:bg-gray-50 ${
+                          hasError ? 'bg-red-50' : hasConflict ? 'bg-yellow-50' : ''
+                        }`}
+                      >
+                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
+                          {days[slot.day_of_week - 1]}
+                        </td>
+                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
+                          Period {slot.period_number}
+                        </td>
+                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-600">
+                          {slot.start_time} - {slot.end_time}
+                        </td>
+                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
+                          {slot.teacher_name}
+                        </td>
+                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
+                          {slot.class_name}
+                        </td>
+                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
+                          {slot.subject_name}
+                        </td>
+                        <td className="border border-gray-200 px-4 py-3 text-sm text-gray-600">
+                          {slot.room_number}
+                        </td>
+                        <td className="border border-gray-200 px-4 py-3 text-center">
+                          {hasError ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
+                              <AlertTriangle className="h-3 w-3" />
+                              Error
+                            </span>
+                          ) : hasConflict ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+                              <AlertTriangle className="h-3 w-3" />
+                              Warning
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                              ✓ OK
+                            </span>
+                          )}
+                        </td>
+                        <td className="border border-gray-200 px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEditSlot(slot)}
+                              className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              title="Edit slot"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => slot.id && handleDeleteSlot(slot.id)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete slot"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Summary Stats */}
+        {allSlots.length > 0 && (
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+              <div className="text-2xl font-bold text-indigo-900">{getFilteredSlots().length}</div>
+              <div className="text-sm text-indigo-700">
+                {getFilteredSlots().length === allSlots.length ? 'Total Slots' : `Filtered (${allSlots.length} total)`}
+              </div>
+            </div>
+            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+              <div className="text-2xl font-bold text-green-900">
+                {getFilteredSlots().filter(s => !conflicts.has(s.id || '')).length}
+              </div>
+              <div className="text-sm text-green-700">Valid Slots</div>
+            </div>
+            <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+              <div className="text-2xl font-bold text-yellow-900">
+                {getFilteredSlots().filter(s => {
+                  const slotConflicts = s.id ? conflicts.get(s.id) || [] : [];
+                  return slotConflicts.some(c => c.severity === 'warning' && !slotConflicts.some(c2 => c2.severity === 'error'));
+                }).length}
+              </div>
+              <div className="text-sm text-yellow-700">Warnings</div>
+            </div>
+            <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+              <div className="text-2xl font-bold text-red-900">
+                {getFilteredSlots().filter(s => {
+                  const slotConflicts = s.id ? conflicts.get(s.id) || [] : [];
+                  return slotConflicts.some(c => c.severity === 'error');
+                }).length}
+              </div>
+              <div className="text-sm text-red-700">Errors</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Legend */}
@@ -731,6 +1193,144 @@ const TimetableBuilderEnhanced: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Edit Slot Modal */}
+      {showEditModal && editingSlot && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              Edit Slot - {days[editingSlot.day_of_week - 1]} Period {editingSlot.period_number}
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Time: {editingSlot.start_time} - {editingSlot.end_time}
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Teacher *
+                </label>
+                <select
+                  value={editSlot.teacher_id}
+                  onChange={(e) => setEditSlot({ ...editSlot, teacher_id: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">-- Select Teacher --</option>
+                  {teachers.map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.first_name} {teacher.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Class *
+                </label>
+                <select
+                  value={editSlot.class_id}
+                  onChange={(e) => setEditSlot({ ...editSlot, class_id: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">-- Select Class --</option>
+                  {classes.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.grade}{cls.section ? `-${cls.section}` : ''} ({cls.name})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Subject *
+                </label>
+                <select
+                  value={editSlot.subject_name}
+                  onChange={(e) => setEditSlot({ ...editSlot, subject_name: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">-- Select Subject --</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.id} value={subject.name}>
+                      {subject.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Room Number
+                </label>
+                {(() => {
+                  const selectedClass = classes.find(c => c.id === editSlot.class_id);
+                  const defaultRoom = selectedClass?.room_no;
+                  const hasDefaultRoom = defaultRoom && defaultRoom.trim() !== '';
+                  
+                  return (
+                    <>
+                      <select
+                        value={editSlot.room_number}
+                        onChange={(e) => setEditSlot({ ...editSlot, room_number: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={hasDefaultRoom}
+                      >
+                        <option value="">-- Select Room --</option>
+                        {rooms.map((room) => (
+                          <option 
+                            key={room} 
+                            value={room}
+                            disabled={hasDefaultRoom && room !== defaultRoom}
+                          >
+                            {room}
+                          </option>
+                        ))}
+                      </select>
+                      {hasDefaultRoom ? (
+                        <p className="text-xs text-indigo-600 mt-1 font-medium">
+                          ✓ Default room for this class: {defaultRoom} (locked)
+                        </p>
+                      ) : rooms.length === 0 ? (
+                        <p className="text-xs text-gray-500 mt-1">
+                          No rooms found. Please add room numbers to classes first.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500 mt-1">
+                          No default room set for this class
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingSlot(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateSlot}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 transition"
+              >
+                {loading ? "Updating..." : "Update Slot"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Slot Modal - Only Subject and Room */}
       {showAddModal && selectedCell && (
@@ -761,33 +1361,75 @@ const TimetableBuilderEnhanced: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Subject *
-                </label>
-                <input
-                  type="text"
-                  value={newSlot.subject_name}
-                  onChange={(e) => setNewSlot({ ...newSlot, subject_name: e.target.value })}
-                  placeholder="e.g., Mathematics"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Room Number
-                </label>
-                <input
-                  type="text"
-                  value={newSlot.room_number}
-                  onChange={(e) => setNewSlot({ ...newSlot, room_number: e.target.value })}
-                  placeholder="e.g., R101"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Subject *
+  </label>
+  <select
+    value={newSlot.subject_name}
+    onChange={(e) => setNewSlot({ ...newSlot, subject_name: e.target.value })}
+    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+    required
+    autoFocus
+  >
+    <option value="">-- Select Subject --</option>
+    {subjects.map((subject) => (
+      <option key={subject.id} value={subject.name}>
+        {subject.name}
+      </option>
+    ))}
+  </select>
+  {subjects.length === 0 && (
+    <p className="text-xs text-gray-500 mt-1">
+      No subjects found. Please add subjects in curriculum management first.
+    </p>
+  )}
+</div>
+             <div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Room Number
+  </label>
+  {(() => {
+    const selectedClass = classes.find(c => c.id === newSlot.class_id);
+    const defaultRoom = selectedClass?.room_no;
+    const hasDefaultRoom = defaultRoom && defaultRoom.trim() !== '';
+    
+    return (
+      <>
+        <select
+          value={newSlot.room_number}
+          onChange={(e) => setNewSlot({ ...newSlot, room_number: e.target.value })}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+          disabled={hasDefaultRoom}
+        >
+          <option value="">-- Select Room --</option>
+          {rooms.map((room) => (
+            <option 
+              key={room} 
+              value={room}
+              disabled={hasDefaultRoom && room !== defaultRoom}
+            >
+              {room}
+            </option>
+          ))}
+        </select>
+        {hasDefaultRoom ? (
+          <p className="text-xs text-indigo-600 mt-1 font-medium">
+            ✓ Default room for this class: {defaultRoom} (locked)
+          </p>
+        ) : rooms.length === 0 ? (
+          <p className="text-xs text-gray-500 mt-1">
+            No rooms found. Please add room numbers to classes first.
+          </p>
+        ) : (
+          <p className="text-xs text-gray-500 mt-1">
+            No default room set for this class
+          </p>
+        )}
+      </>
+    );
+  })()}
+</div>
             </div>
 
             <div className="flex gap-3 mt-6">

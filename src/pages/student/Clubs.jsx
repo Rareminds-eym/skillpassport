@@ -242,7 +242,7 @@ export default function StudentDashboard() {
             
             return () => clearInterval(interval);
         }
-    }, [userEmail]);
+}, [userEmail]);
 
     // Get clubs the student is enrolled in with enhanced data
     const myClubs = useMemo(() => {
@@ -343,19 +343,7 @@ export default function StudentDashboard() {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-green-100">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600 mb-1">Upcoming Events</p>
-                                <p className="text-3xl font-bold text-green-600">
-                                    {upcomingActivities.length}
-                                </p>
-                            </div>
-                            <div className="bg-green-100 rounded-full p-3">
-                                <Calendar className="text-green-600" size={28} />
-                            </div>
-                        </div>
-                    </div>
+                   
 
                     <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-yellow-100">
                         <div className="flex items-center justify-between">
@@ -541,98 +529,6 @@ export default function StudentDashboard() {
                                 </div>
                             )}
                         </div>
-
-                        {/* My Achievements - Commented out as per user request */}
-                        {/* <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-gray-100">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                    <Trophy className="text-yellow-600" size={24} />
-                                    <h3 className="text-lg font-bold text-gray-900">My Achievements</h3>
-                                </div>
-                                {myAchievements.length > 0 && (
-                                    <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">
-                                        {myAchievements.length}
-                                    </span>
-                                )}
-                            </div>
-                            {myAchievements.length === 0 ? (
-                                <div className="text-center py-6">
-                                    <Trophy className="mx-auto text-gray-300 mb-3" size={48} />
-                                    <p className="text-gray-500 text-sm">
-                                        No achievements yet. Keep participating!
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {myAchievements.map((achievement) => {
-                                        // Determine medal/award icon and color based on rank
-                                        const getMedalIcon = (rank) => {
-                                            if (rank === 1) return { icon: '🥇', color: 'from-yellow-50 to-yellow-100', border: 'border-yellow-300' };
-                                            if (rank === 2) return { icon: '🥈', color: 'from-gray-50 to-gray-100', border: 'border-gray-300' };
-                                            if (rank === 3) return { icon: '🥉', color: 'from-orange-50 to-orange-100', border: 'border-orange-300' };
-                                            return { icon: '🏆', color: 'from-blue-50 to-blue-100', border: 'border-blue-200' };
-                                        };
-                                        
-                                        const medal = getMedalIcon(achievement.rank);
-                                        
-                                        return (
-                                            <div
-                                                key={achievement.result_id}
-                                                className={`bg-gradient-to-r ${medal.color} rounded-lg p-4 border-2 ${medal.border} hover:shadow-md transition-shadow`}
-                                            >
-                                                <div className="flex items-start gap-3">
-                                                    <div className="text-3xl flex-shrink-0">
-                                                        {medal.icon}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <p className="font-bold text-gray-900 text-sm">
-                                                            {achievement.name}
-                                                        </p>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <span className="text-xs font-bold text-gray-700">
-                                                                Rank #{achievement.rank}
-                                                            </span>
-                                                            {achievement.score && (
-                                                                <>
-                                                                    <span className="text-xs text-gray-400">•</span>
-                                                                    <span className="text-xs font-semibold text-green-600">
-                                                                        Score: {achievement.score}
-                                                                    </span>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                        <p className="text-xs text-gray-600 mt-1">
-                                                            {achievement.award}
-                                                        </p>
-                                                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                                            <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs font-semibold capitalize">
-                                                                {achievement.level}
-                                                            </span>
-                                                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-semibold capitalize">
-                                                                {achievement.category}
-                                                            </span>
-                                                            <span className="text-xs text-gray-500">
-                                                                {new Date(achievement.date).toLocaleDateString('en-US', {
-                                                                    month: 'short',
-                                                                    day: 'numeric',
-                                                                    year: 'numeric'
-                                                                })}
-                                                            </span>
-                                                        </div>
-                                                        {achievement.notes && (
-                                                            <p className="text-xs text-gray-500 mt-2 italic">
-                                                                "{achievement.notes}"
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div> */}
-
                         {/* My Certificates */}
                         <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-gray-100">
                             <div className="flex items-center justify-between mb-4">
