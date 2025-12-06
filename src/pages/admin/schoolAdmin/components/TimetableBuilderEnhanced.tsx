@@ -479,10 +479,10 @@ const loadAllSlots = async () => {
       return;
     }
     // Get room number from selected class
-  const selectedClass = classes.find(c => c.id === newSlot.class_id);
-  const defaultRoom = selectedClass?.room_no || "";
+    const selectedClass = classes.find(c => c.id === newSlot.class_id);
+    const defaultRoom = selectedClass?.room_no || "";
     setSelectedCell({ day, period });
-    // Keep teacher_id and class_id, only reset subject and room
+    // Keep teacher_id and class_id, set default room and reset subject
     setNewSlot({
       ...newSlot,
       subject_name: "",
@@ -568,11 +568,15 @@ const loadAllSlots = async () => {
 
   const handleEditSlot = (slot: TimetableSlot) => {
     setEditingSlot(slot);
+    // Get the default room for the slot's class
+    const selectedClass = classes.find(c => c.id === slot.class_id);
+    const defaultRoom = selectedClass?.room_no || "";
+    
     setEditSlot({
       teacher_id: slot.educator_id,
       class_id: slot.class_id || "",
       subject_name: slot.subject_name,
-      room_number: slot.room_number,
+      room_number: slot.room_number || defaultRoom,
     });
     setShowEditModal(true);
   };
@@ -1263,29 +1267,46 @@ const loadAllSlots = async () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Room Number
                 </label>
-                <select
-    value={editSlot.room_number}
-    onChange={(e) => setEditSlot({ ...editSlot, room_number: e.target.value })}
-    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-  >
-    <option value="">-- Select Room --</option>
-    {rooms.map((room) => (
-      <option key={room} value={room}>
-        {room}
-      </option>
-    ))}
-  </select>
-  {rooms.length === 0 ? (
-    <p className="text-xs text-gray-500 mt-1">
-      No rooms found. Please add room numbers to classes first.
-    </p>
-  ) : (
-    <p className="text-xs text-gray-500 mt-1">
-      {classes.find(c => c.id === editSlot.class_id)?.room_no 
-        ? `Default room for this class: ${classes.find(c => c.id === editSlot.class_id)?.room_no}`
-        : "No default room set for this class"}
-    </p>
-  )}
+                {(() => {
+                  const selectedClass = classes.find(c => c.id === editSlot.class_id);
+                  const defaultRoom = selectedClass?.room_no;
+                  const hasDefaultRoom = defaultRoom && defaultRoom.trim() !== '';
+                  
+                  return (
+                    <>
+                      <select
+                        value={editSlot.room_number}
+                        onChange={(e) => setEditSlot({ ...editSlot, room_number: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={hasDefaultRoom}
+                      >
+                        <option value="">-- Select Room --</option>
+                        {rooms.map((room) => (
+                          <option 
+                            key={room} 
+                            value={room}
+                            disabled={hasDefaultRoom && room !== defaultRoom}
+                          >
+                            {room}
+                          </option>
+                        ))}
+                      </select>
+                      {hasDefaultRoom ? (
+                        <p className="text-xs text-indigo-600 mt-1 font-medium">
+                          ✓ Default room for this class: {defaultRoom} (locked)
+                        </p>
+                      ) : rooms.length === 0 ? (
+                        <p className="text-xs text-gray-500 mt-1">
+                          No rooms found. Please add room numbers to classes first.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500 mt-1">
+                          No default room set for this class
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -1368,29 +1389,46 @@ const loadAllSlots = async () => {
   <label className="block text-sm font-medium text-gray-700 mb-2">
     Room Number
   </label>
-  <select
-    value={newSlot.room_number}
-    onChange={(e) => setNewSlot({ ...newSlot, room_number: e.target.value })}
-    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-  >
-    <option value="">-- Select Room --</option>
-    {rooms.map((room) => (
-      <option key={room} value={room}>
-        {room}
-      </option>
-    ))}
-  </select>
-  {rooms.length === 0 ? (
-    <p className="text-xs text-gray-500 mt-1">
-      No rooms found. Please add room numbers to classes first.
-    </p>
-  ) : (
-    <p className="text-xs text-gray-500 mt-1">
-      {classes.find(c => c.id === newSlot.class_id)?.room_no 
-        ? `Default room for this class: ${classes.find(c => c.id === newSlot.class_id)?.room_no}`
-        : "No default room set for this class"}
-    </p>
-  )}
+  {(() => {
+    const selectedClass = classes.find(c => c.id === newSlot.class_id);
+    const defaultRoom = selectedClass?.room_no;
+    const hasDefaultRoom = defaultRoom && defaultRoom.trim() !== '';
+    
+    return (
+      <>
+        <select
+          value={newSlot.room_number}
+          onChange={(e) => setNewSlot({ ...newSlot, room_number: e.target.value })}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+          disabled={hasDefaultRoom}
+        >
+          <option value="">-- Select Room --</option>
+          {rooms.map((room) => (
+            <option 
+              key={room} 
+              value={room}
+              disabled={hasDefaultRoom && room !== defaultRoom}
+            >
+              {room}
+            </option>
+          ))}
+        </select>
+        {hasDefaultRoom ? (
+          <p className="text-xs text-indigo-600 mt-1 font-medium">
+            ✓ Default room for this class: {defaultRoom} (locked)
+          </p>
+        ) : rooms.length === 0 ? (
+          <p className="text-xs text-gray-500 mt-1">
+            No rooms found. Please add room numbers to classes first.
+          </p>
+        ) : (
+          <p className="text-xs text-gray-500 mt-1">
+            No default room set for this class
+          </p>
+        )}
+      </>
+    );
+  })()}
 </div>
             </div>
 
