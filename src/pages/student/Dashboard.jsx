@@ -2393,7 +2393,7 @@ const StudentDashboard = () => {
             <div className="lg:col-span-1 space-y-6">
               {/* Sticky container for both cards */}
               <div className="sticky top-20 z-30 flex flex-col gap-6">
-                {/* Recent Updates */}
+                {/* Recent Updates 
                 <RecentUpdatesCard
                   ref={recentUpdatesRef}
                   updates={recentUpdates}
@@ -2431,9 +2431,9 @@ const StudentDashboard = () => {
                         return "bg-gray-50 border-gray-200";
                     }
                   }}
-                />
+                />*/}
 
-                {/* Suggested Next Steps - AI Job Matching */}
+                {/* Suggested Next Steps - AI Job Matching 
                 <Card
                   ref={suggestedNextStepsRef}
                   className="bg-white rounded-xl border border-gray-200 shadow-sm"
@@ -2496,7 +2496,7 @@ const StudentDashboard = () => {
                               }
                             }}
                           >
-                            {/* Match Score Badge */}
+                            {/* Match Score Badge 
                             <div className="flex items-start justify-between mb-2">
                               <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 text-xs font-semibold">
                                 {match.match_score}% Match
@@ -2504,7 +2504,7 @@ const StudentDashboard = () => {
                               <ExternalLink className="w-4 h-4 text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
 
-                            {/* Job Title & Company */}
+                            {/* Job Title & Company 
                             <div className="mb-3">
                               <h4 className="text-base font-bold text-gray-900 mb-1 group-hover:text-amber-700 transition-colors">
                                 {match.job_title ||
@@ -2519,7 +2519,7 @@ const StudentDashboard = () => {
                               </div>
                             </div>
 
-                            {/* Job Details */}
+                            {/* Job Details 
                             {match.opportunity && (
                               <div className="flex flex-wrap items-center gap-3 mb-3 text-xs text-gray-600">
                                 {match.opportunity.employment_type && (
@@ -2550,7 +2550,7 @@ const StudentDashboard = () => {
                               </div>
                             )}
 
-                            {/* Match Reason */}
+                            {/* Match Reason *
                             <div className="mb-3 p-3 bg-white/60 rounded-lg border border-amber-100">
                               <p className="text-xs text-gray-700 leading-relaxed">
                                 <span className="font-semibold text-amber-700">
@@ -2560,7 +2560,7 @@ const StudentDashboard = () => {
                               </p>
                             </div>
 
-                            {/* Key Matching Skills */}
+                            {/* Key Matching Skills 
                             {match.key_matching_skills &&
                               match.key_matching_skills.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5 mb-3">
@@ -2578,7 +2578,7 @@ const StudentDashboard = () => {
                                 </div>
                               )}
 
-                            {/* Recommendation */}
+                            {/* Recommendation *
                             {match.recommendation && (
                               <div className="pt-3 border-t border-amber-200/50">
                                 <p className="text-xs text-gray-600 italic">
@@ -2589,7 +2589,7 @@ const StudentDashboard = () => {
                           </div>
                         ))}
 
-                        {/* Refresh Button */}
+                        {/* Refresh Button 
                         <Button
                           variant="outline"
                           size="sm"
@@ -2603,7 +2603,7 @@ const StudentDashboard = () => {
                       </>
                     ) : (
                       <>
-                        {/* Fallback to default suggestions if no AI matches */}
+                        {/* Fallback to default suggestions if no AI matches 
                         {suggestions.map((suggestion, idx) => (
                           <div
                             key={suggestion.id || `suggestion-${idx}`}
@@ -2627,7 +2627,7 @@ const StudentDashboard = () => {
                       </>
                     )}
                   </CardContent>
-                </Card>
+                </Card>*/}
 
                 {/* Student QR Code */}
                 {/* {userEmail && (

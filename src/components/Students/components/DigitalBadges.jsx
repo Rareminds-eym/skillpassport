@@ -23,9 +23,9 @@ const DigitalBadges = ({
           {/* Keep the existing Achievements heading untouched */}
           <div className="flex items-center gap-2 mb-4">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 border border-white/20">
-              <Award className="w-4 h-4 text-yellow-300" />
+              <Award className="w-4 h-4 text-blue-500" />
             </div>
-            <span className="text-white text-sm font-semibold tracking-wide">
+            <span className="text-black text-sm font-semibold tracking-wide">
               Achievements
             </span>
           </div>

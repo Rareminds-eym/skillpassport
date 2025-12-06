@@ -617,10 +617,10 @@ const Dashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* LEFT COLUMN - User Activity & Updates */}
+          {/* LEFT COLUMN - User Activity & Updates 
           <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-20">
             
-            {/* Recent Updates */}
+            {/* Recent Updates 
             <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
                 <CardTitle className="flex items-center gap-2 text-blue-700">
@@ -708,6 +708,7 @@ const Dashboard = () => {
                 )}
               </CardContent>
             </Card>
+            */}
 
             {/* Suggestions */}
             <Card className="border-l-4 border-l-amber-500 shadow-lg hover:shadow-xl transition-shadow">
