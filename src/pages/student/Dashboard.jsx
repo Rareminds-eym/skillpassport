@@ -16,6 +16,7 @@ import {
   Edit,
   Calendar,
   Award,
+  Eye,
   Users,
   Code,
   MessageCircle,
@@ -273,7 +274,7 @@ const StudentDashboard = () => {
     studentId: studentData?.id,
     enabled: !isViewingOthersProfile,
     autoFetch: true,
-    limit: 3
+    limit: 4
   });
 
   // Fetch recent updates data from recruitment tables (student-specific)
@@ -648,53 +649,41 @@ const StudentDashboard = () => {
     //     </CardContent>
     //   </Card>
     // ),
-    assessment: (
+        assessment: (
       <Card
         key="assessment"
-        className="h-full bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl border-0 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden group"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
       >
-        {/* Decorative background elements */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110 duration-500"></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12 transition-transform group-hover:scale-110 duration-500"></div>
-
-        <CardHeader className="px-6 py-5 border-b border-white/10 relative z-10">
-          <CardTitle className="flex items-center justify-between text-white">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-inner">
-                <ClipboardList className="w-5 h-5 text-white" />
+        <CardHeader className="px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <ClipboardList className="w-5 h-5 text-blue-600" />
               </div>
-              <div>
-                <span className="text-lg font-bold tracking-tight">
-                  Assessment Test
-                </span>
-                <p className="text-xs text-indigo-100 font-medium mt-0.5 opacity-90">
-                  Evaluate your potential
-                </p>
-              </div>
-            </div>
-            <Badge className="bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur-md">
-              Recommended
-            </Badge>
-          </CardTitle>
+              <span className="text-lg font-semibold text-gray-900">
+                Assessment Test
+              </span>
+              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
+                Recommended
+              </Badge>
+            </CardTitle>
+          </div>
         </CardHeader>
+        <CardContent className="p-6 space-y-3">
+          <p className="text-gray-700 text-sm leading-relaxed">
+            Take our comprehensive assessment to discover your strengths and get a personalized career roadmap.
+          </p>
 
-        <CardContent className="pt-6 p-6 relative z-10 flex flex-col justify-between h-[calc(100%-88px)]">
-          <div className="space-y-4">
-            <p className="text-indigo-50 text-sm leading-relaxed">
-              Take our comprehensive assessment to discover your strengths and get a personalized career roadmap.
-            </p>
-
-            <div className="flex items-center gap-4 text-xs text-indigo-100 font-medium">
-              <div className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-md">
-                <Target className="w-3.5 h-3.5" />
-                <span>Skill Analysis</span>
-              </div>
+          <div className="flex items-center gap-4 text-xs text-gray-600 font-medium">
+            <div className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-1 rounded-md">
+              <Target className="w-3.5 h-3.5" />
+              <span>Skill Analysis</span>
             </div>
           </div>
 
           <Button
             onClick={() => navigate("/student/assessment/test")}
-            className="w-full mt-6 bg-white text-indigo-600 hover:bg-indigo-50 font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm hover:shadow transition-all mt-4"
           >
             Start Assessment
             <ChevronRight className="w-4 h-4 ml-2" />
@@ -1167,231 +1156,6 @@ const StudentDashboard = () => {
         </CardContent>
       </Card>
     ),
-    // education: (
-    //   <Card
-    //     key="education"
-    //     className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
-    //   >
-    //     <CardHeader className="px-6 py-4 border-b border-gray-100">
-    //       <div className="flex items-center w-full justify-between">
-    //         <CardTitle className="flex items-center gap-3 m-0 p-0">
-    //           <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-    //             <Award className="w-5 h-5 text-blue-600" />
-    //           </div>
-    //           <span className="text-lg font-semibold text-gray-900">
-    //             Education
-    //           </span>
-    //           <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
-    //             {
-    //               userData.education.filter(
-    //                 (education) => education.enabled !== false
-    //               ).length
-    //             }
-    //           </Badge>
-    //         </CardTitle>
-    //         <button
-    //           className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-    //           title="Edit Education"
-    //           onClick={() => setActiveModal("education")}
-    //         >
-    //           <Edit className="w-4 h-4 text-gray-600" />
-    //         </button>
-    //       </div>
-    //     </CardHeader>
-    //     <CardContent className="pt-4 p-6 space-y-3">
-    //       {(showAllEducation
-    //         ? userData.education.filter(
-    //           (education) => education.enabled !== false
-    //         )
-    //         : userData.education
-    //           .filter((education) => education.enabled !== false)
-    //           .slice(0, 2)
-    //       ).map((education, idx) => (
-    //         <div
-    //           key={education.id || `edu-${idx}`}
-    //           className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
-    //         >
-    //           <div className="flex items-center justify-between mb-3">
-    //             <div>
-    //               <h4 className="font-semibold text-gray-900 text-base mb-0.5">
-    //                 {education.degree || "N/A"}
-    //               </h4>
-    //               <p className="text-gray-600 text-sm">
-    //                 {education.university || "N/A"}
-    //               </p>
-    //             </div>
-    //             <Badge
-    //               className={`px-2.5 py-1 text-xs font-medium rounded-md ${education.status === "ongoing"
-    //                 ? "bg-blue-100 text-blue-700"
-    //                 : "bg-green-100 text-green-700"
-    //                 }`}
-    //             >
-    //               {education.status || "N/A"}
-    //             </Badge>
-    //           </div>
-    //           <div className="flex gap-6 text-xs">
-    //             <div key={`edu-level-${education.id}`}>
-    //               <p className="text-gray-500 mb-0.5">Level</p>
-    //               <p className="font-medium text-gray-900">
-    //                 {education.level || "N/A"}
-    //               </p>
-    //             </div>
-    //             <div key={`edu-year-${education.id}`}>
-    //               <p className="text-gray-500 mb-0.5">Year</p>
-    //               <p className="font-medium text-gray-900">
-    //                 {education.yearOfPassing || "N/A"}
-    //               </p>
-    //             </div>
-    //             <div key={`edu-grade-${education.id}`}>
-    //               <p className="text-gray-500 mb-0.5">Grade</p>
-    //               <p className="font-medium text-gray-900">
-    //                 {education.cgpa || "N/A"}
-    //               </p>
-    //             </div>
-    //           </div>
-    //         </div>
-    //       ))}
-    //       {userData.education.filter((education) => education.enabled !== false)
-    //         .length > 2 && (
-    //           <Button
-    //             variant="outline"
-    //             onClick={() => setShowAllEducation((v) => !v)}
-    //             className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-    //           >
-    //             {showAllEducation ? "Show Less" : "View All Qualifications"}
-    //           </Button>
-    //         )}
-    //     </CardContent>
-    //   </Card>
-    // ),
-    // certificates: (
-    //   <Card
-    //     key="certificates"
-    //     className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
-    //   >
-    //     <CardHeader className="px-6 py-4 border-b border-gray-100">
-    //       <div className="flex items-center w-full justify-between">
-    //         <CardTitle className="flex items-center gap-3 m-0 p-0">
-    //           <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-    //             <Medal className="w-5 h-5 text-blue-600" />
-    //           </div>
-    //           <span className="text-lg font-semibold text-gray-900">
-    //             Certificates
-    //           </span>
-    //           <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
-    //             {enabledCertificates.length}
-    //           </Badge>
-    //         </CardTitle>
-    //         <button
-    //           className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-    //           title="Manage Certificates"
-    //           onClick={() => setActiveModal("certificates")}
-    //         >
-    //           <Edit className="w-4 h-4 text-gray-600" />
-    //         </button>
-    //       </div>
-    //     </CardHeader>
-    //     <CardContent className="pt-4 p-6 space-y-3">
-    //       {enabledCertificates.length === 0 ? (
-    //         <div className="text-center py-8">
-    //           <p className="text-slate-500 font-medium">
-    //             No certificates uploaded yet
-    //           </p>
-    //         </div>
-    //       ) : (
-    //         (showAllCertificates
-    //           ? enabledCertificates
-    //           : enabledCertificates.slice(0, 2)
-    //         ).map((cert, idx) => {
-    //           const certificateLink =
-    //             cert.link ||
-    //             cert.url ||
-    //             cert.certificateUrl ||
-    //             cert.credentialUrl ||
-    //             cert.viewUrl;
-    //           const issuedOn =
-    //             cert.year || cert.date || cert.issueDate || cert.issuedOn;
-    //           return (
-    //             <div
-    //               key={cert.id || `certificate-${idx}`}
-    //               className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${cert.enabled ? "" : "opacity-75"
-    //                 }`}
-    //             >
-    //               <div className="flex items-start justify-between gap-3">
-    //                 <div className="space-y-1">
-    //                   <h4 className="font-semibold text-gray-900 text-base">
-    //                     {cert.title ||
-    //                       cert.name ||
-    //                       cert.certificate ||
-    //                       "Certificate"}
-    //                   </h4>
-    //                   <div className="flex items-center justify-between gap-3 mt-2">
-    //                     {(cert.issuer ||
-    //                       cert.organization ||
-    //                       cert.institution) && (
-    //                         <p className="text-sm text-blue-600 font-medium">
-    //                           {cert.issuer ||
-    //                             cert.organization ||
-    //                             cert.institution}
-    //                         </p>
-    //                       )}
-    //                     {issuedOn && (
-    //                       <p className="text-xs text-gray-600">{issuedOn}</p>
-    //                     )}
-    //                   </div>
-    //                   {cert.credentialId && (
-    //                     <div className="text-xs text-gray-500 font-medium">
-    //                       Credential ID: {cert.credentialId}
-    //                     </div>
-    //                   )}
-    //                 </div>
-    //               </div>
-    //               {cert.description && (
-    //                 <TruncatedText text={cert.description} maxLength={120} />
-    //               )}
-
-    //               {(cert.level || cert.category || cert.type) && (
-    //                 <div className="flex flex-wrap gap-2">
-    //                   <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
-    //                     {cert.level || cert.category || cert.type}
-    //                   </span>
-    //                 </div>
-    //               )}
-
-    //               {certificateLink && (
-    //                 <div className="pt-1">
-    //                   <a
-    //                     href={certificateLink}
-    //                     target="_blank"
-    //                     rel="noopener noreferrer"
-    //                   >
-    //                     <Button
-    //                       size="sm"
-    //                       className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors"
-    //                     >
-    //                       View Credential
-    //                     </Button>
-    //                   </a>
-    //                 </div>
-    //               )}
-    //             </div>
-    //           );
-    //         })
-    //       )}
-    //       {enabledCertificates.length > 2 && (
-    //         <Button
-    //           variant="outline"
-    //           onClick={() => setShowAllCertificates((v) => !v)}
-    //           className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-    //         >
-    //           {showAllCertificates
-    //             ? "Show Less"
-    //             : `View All Certificates (${enabledCertificates.length})`}
-    //         </Button>
-    //       )}
-    //     </CardContent>
-    //   </Card>
-    // ),
     education: (
       <Card
         key="education"
@@ -1498,141 +1262,6 @@ const StudentDashboard = () => {
         </CardContent>
       </Card>
     ),
-    // training: (
-    //   <Card
-    //     key="training"
-    //     className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
-    //   >
-    //     <CardHeader className="px-6 py-4 border-b border-gray-100">
-    //       <div className="flex items-center w-full justify-between">
-    //         <CardTitle className="flex items-center gap-3 m-0 p-0">
-    //           <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-    //             <Code className="w-5 h-5 text-blue-600" />
-    //           </div>
-    //           <span className="text-lg font-semibold text-gray-900">
-    //             Training
-    //           </span>
-    //         </CardTitle>
-    //         <button
-    //           className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-    //           title="Edit Training"
-    //           onClick={() => setActiveModal("training")}
-    //         >
-    //           <Edit className="w-4 h-4 text-gray-600" />
-    //         </button>
-    //       </div>
-    //     </CardHeader>
-
-    //     <CardContent className="pt-4 p-6 space-y-4">
-    //       {(showAllTraining
-    //         ? userData.training.filter((t) => t.enabled !== false)
-    //         : userData.training.filter((t) => t.enabled !== false).slice(0, 2)
-    //       ).map((training, idx) => (
-    //         <div
-    //           key={training.id || `training-${training.course}-${idx}`}
-    //           className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all duration-200"
-    //         >
-    //           {/* Header */}
-    //           <div className="flex items-center justify-between mb-2">
-    //             <h4 className="font-semibold text-gray-900 text-base truncate max-w-[75%]">
-    //               {training.course}
-    //             </h4>
-    //             <Badge
-    //               className={`px-2.5 py-1 text-xs font-medium rounded-md ${training.status === "completed"
-    //                 ? "bg-green-100 text-green-700"
-    //                 : "bg-blue-100 text-blue-700"
-    //                 }`}
-    //             >
-    //               {training.status === "completed" ? "Completed" : "Ongoing"}
-    //             </Badge>
-    //           </div>
-
-    //           {/* Meta info */}
-    //           <div className="text-xs text-gray-600 mb-2 space-y-1">
-    //             {training.provider && (
-    //               <div className="flex items-center gap-1.5">
-    //                 <BookOpen className="w-3.5 h-3.5 text-gray-500" />
-    //                 <span>{training.provider}</span>
-    //               </div>
-    //             )}
-    //             {training.duration && (
-    //               <div className="flex items-center gap-1.5">
-    //                 <Calendar className="w-3.5 h-3.5 text-gray-500" />
-    //                 <span>{training.duration}</span>
-    //               </div>
-    //             )}
-    //           </div>
-
-    //           {/* Progress bar */}
-    //           <div className="mt-2">
-    //             <div className="flex justify-between items-center text-xs font-medium text-gray-700 mb-1">
-    //               <span>Progress</span>
-    //               <span className="text-blue-600">{training.progress}%</span>
-    //             </div>
-    //             <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
-    //               <div
-    //                 className="h-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
-    //                 style={{ width: `${training.progress}%` }}
-    //               />
-    //             </div>
-    //           </div>
-
-    //           {/* Skills */}
-    //           {Array.isArray(training.skills) && training.skills.length > 0 && (
-    //             <div className="mt-3">
-    //               <p className="text-xs font-semibold text-gray-700 mb-1">
-    //                 Skills Covered:
-    //               </p>
-    //               <div className="flex flex-wrap gap-2">
-    //                 {(training.showAllSkills
-    //                   ? training.skills
-    //                   : training.skills.slice(0, 4)
-    //                 ).map((skill, i) => (
-    //                   <span
-    //                     key={`skill-${training.id}-${i}`}
-    //                     className="px-2.5 py-1 text-[11px] rounded-md bg-blue-50 text-blue-700 font-medium"
-    //                   >
-    //                     {skill}
-    //                   </span>
-    //                 ))}
-    //               </div>
-    //               {training.skills.length > 4 && (
-    //                 <button
-    //                   onClick={() =>
-    //                     setUserData((prev) => ({
-    //                       ...prev,
-    //                       training: prev.training.map((t) =>
-    //                         t.id === training.id
-    //                           ? { ...t, showAllSkills: !t.showAllSkills }
-    //                           : t
-    //                       ),
-    //                     }))
-    //                   }
-    //                   className="text-xs text-blue-600 hover:text-blue-800 mt-1"
-    //                 >
-    //                   {training.showAllSkills
-    //                     ? "Show Less"
-    //                     : `Show All (${training.skills.length})`}
-    //                 </button>
-    //               )}
-    //             </div>
-    //           )}
-    //         </div>
-    //       ))}
-
-    //       {/* Show More / Less Button */}
-    //       {userData.training.filter((t) => t.enabled !== false).length > 2 && (
-    //         <Button
-    //           variant="outline"
-    //           onClick={() => setShowAllTraining((v) => !v)}
-    //           className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-    //         >
-    //           {showAllTraining ? "Show Less" : "View All Courses"}
-    //         </Button>
-    //       )}
-    //     </CardContent>
-    //   </Card>
-    // ),
     training: (
       <Card
         key="training"
@@ -1657,10 +1286,6 @@ const StudentDashboard = () => {
         </CardHeader>
 
         <CardContent className="pt-4 p-6 space-y-4">
-          {/* {(showAllTraining
-        ? userData.training.filter((t) => t.enabled !== false)
-        : userData.training.filter((t) => t.enabled !== false).slice(0, 2)
-      ).map((training, idx) => { */}
           {(showAllTraining
             ? userData.training.filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved"))
             : userData.training.filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved")).slice(0, 2)
@@ -1792,256 +1417,6 @@ const StudentDashboard = () => {
         </CardContent>
       </Card>
     ),
-
-
-    // experience: (() => {
-    //   // Check if student is from university (not school)
-    //   // Use database fields: school_id/school_class_id indicates school, university_college_id indicates university
-    //   const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
-    //   const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
-
-    //   // Fallback: Check education level if database fields are not available
-    //   const hasHighSchoolOnly = userData.education.length > 0 &&
-    //     userData.education.every(edu =>
-    //       edu.level && edu.level.toLowerCase().includes('high school')
-    //     );
-
-    //   // Debug logging
-    //   console.log('Experience Card Debug:', {
-    //     isSchoolStudent,
-    //     isUniversityStudent,
-    //     hasHighSchoolOnly,
-    //     studentData: studentData ? 'loaded' : 'not loaded',
-    //     school_id: studentData?.school_id,
-    //     school_class_id: studentData?.school_class_id,
-    //     university_college_id: studentData?.university_college_id,
-    //     universityId: studentData?.universityId,
-    //     education: userData.education
-    //   });
-
-    //   // Hide experience card for school students
-    //   if (isSchoolStudent || hasHighSchoolOnly) {
-    //     console.log('Hiding Experience card - student is from school');
-    //     return null;
-    //   }
-
-    //   // Also hide if no university affiliation is found
-    //   if (!isUniversityStudent) {
-    //     console.log('Hiding Experience card - no university affiliation found');
-    //     return null;
-    //   }
-
-    //   return (
-    //     <Card
-    //       key="experience"
-    //       className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
-    //     >
-    //       <CardHeader className="px-6 py-4 border-b border-gray-100">
-    //         <div className="flex items-center w-full justify-between">
-    //           <CardTitle className="flex items-center gap-3 m-0 p-0">
-    //             <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-    //               <Users className="w-5 h-5 text-blue-600" />
-    //             </div>
-    //             <span className="text-lg font-semibold text-gray-900">
-    //               Experience
-    //             </span>
-    //           </CardTitle>
-    //           <button
-    //             className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-    //             title="Edit Experience"
-    //             onClick={() => setActiveModal("experience")}
-    //           >
-    //             <Edit className="w-4 h-4 text-gray-600" />
-    //           </button>
-    //         </div>
-    //       </CardHeader>
-    //       <CardContent className="pt-4 p-6 space-y-3">
-    //         {(showAllExperience
-    //           ? userData.experience.filter((exp) => exp.enabled !== false)
-    //           : userData.experience
-    //             .filter((exp) => exp.enabled !== false)
-    //             .slice(0, 2)
-    //         ).map((exp, idx) => (
-    //           <div
-    //             key={exp.id || `${exp.role}-${exp.organization}-${idx}`}
-    //             className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
-    //           >
-    //             <div className="flex items-center justify-between">
-    //               <div>
-    //                 <p className="font-semibold text-gray-900 text-base mb-1">
-    //                   {exp.role}
-    //                 </p>
-    //                 <p className="text-blue-600 text-sm font-medium mb-1">
-    //                   {exp.organization}
-    //                 </p>
-    //                 <p className="text-xs text-gray-600">{exp.duration}</p>
-    //               </div>
-    //               {exp.verified && (
-    //                 <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1">
-    //                   <CheckCircle className="w-3 h-3" />
-    //                   Verified
-    //                 </Badge>
-    //               )}
-    //             </div>
-    //           </div>
-    //         ))}
-    //         {userData.experience.filter((exp) => exp.enabled !== false).length >
-    //           2 && (
-    //             <Button
-    //               variant="outline"
-    //               onClick={() => setShowAllExperience((v) => !v)}
-    //               className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-    //             >
-    //               {showAllExperience ? "Show Less" : "View All Experience"}
-    //             </Button>
-    //           )}
-    //       </CardContent>
-    //     </Card>
-    //   );
-    // })(),
-    experience: (
-      <Card key="experience" className="h-full border-t-4 border-t-indigo-500 shadow-lg hover:shadow-xl transition-shadow cursor-pointer" onClick={() => navigate('/student/my-experience')}>
-        <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50">
-          <CardTitle className="flex items-center justify-between text-indigo-700">
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              My Experience
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveModal('experience');
-                }}
-                className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 p-1"
-                title="Edit Experience"
-              >
-                <Edit className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 p-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate('/student/my-experience');
-                }}
-              >
-                View All →
-              </Button>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {userData.experience
-            ?.filter(exp =>
-              exp.enabled !== false &&
-              (exp.approval_status === "verified" || exp.approval_status === "approved")
-            )
-            .slice(0, 2)
-            .map((exp, index) => (
-              <div key={index} className="p-4 bg-gradient-to-r from-indigo-50 to-white rounded-lg border-l-4 border-l-indigo-400 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="font-semibold text-sm text-gray-800">{exp.role}</p>
-                    <p className="text-sm text-indigo-600 font-medium">{exp.organization}</p>
-                    <p className="text-xs text-gray-600 mt-1">{exp.duration}</p>
-                  </div>
-                  {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
-                    <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Verified
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            ))}
-        </CardContent>
-      </Card>
-    ),
-    softSkills: (
-      <Card
-        key="softSkills"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
-      >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center w-full justify-between">
-            <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <MessageCircle className="w-5 h-5 text-blue-600" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900">
-                Soft Skills
-              </span>
-            </CardTitle>
-            <button
-              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-              title="Edit Soft Skills"
-              onClick={() => setActiveModal("softSkills")}
-            >
-              <Edit className="w-4 h-4 text-gray-600" />
-            </button>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-4 p-6 space-y-3">
-          {userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-            .length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-slate-500 font-medium">
-                No soft skills have been added or verified.
-              </p>
-            </div>
-          ) : (
-            (showAllSoftSkills
-              ? userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-              : userData.softSkills
-                .filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-                .slice(0, 2)
-            ).map((skill, idx) => (
-              <div
-                key={skill.id || `soft-skill-${idx}`}
-                className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
-              >
-                <div className="flex items-start justify-between">
-                  <div key={`skill-info-${skill.id}`} className="flex-1">
-                    <h4 className="font-semibold text-gray-900 text-base mb-1">
-                      {skill.name}
-                    </h4>
-                    <p className="text-xs text-gray-600 mb-2">
-                      {skill.description}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(
-                          skill.level
-                        )}`}
-                      >
-                        {getSkillLevelText(skill.level)}
-                      </Badge>
-                      <div className="flex gap-0.5">
-                        {renderStars(skill.level)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-          {userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-            .length > 2 && (
-              <Button
-                variant="outline"
-                onClick={() => setShowAllSoftSkills((v) => !v)}
-                className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-              >
-                {showAllSoftSkills ? "Show Less" : "View All Soft Skills"}
-              </Button>
-            )}
-        </CardContent>
-      </Card>
-    ),
     certificates: (
       <Card
         key="certificates"
@@ -2170,189 +1545,205 @@ const StudentDashboard = () => {
         </CardContent>
       </Card>
     ),
+       experience: (
+      <Card
+        key="experience"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+      >
+        <CardHeader className="px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-900">
+                My Experience
+              </span>
+            </CardTitle>
+            <button
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+              title="Edit Experience"
+              onClick={() => setActiveModal("experience")}
+            >
+              <Edit className="w-4 h-4 text-gray-600" />
+            </button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 space-y-3">
+          {userData.experience
+            ?.filter(exp =>
+              exp.enabled !== false &&
+              (exp.approval_status === "verified" || exp.approval_status === "approved")
+            )
+            .slice(0, 2)
+            .map((exp, index) => (
+              <div
+                key={index}
+                className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900 text-base mb-1">
+                      {exp.role}
+                    </p>
+                    <p className="text-blue-600 text-sm font-medium mb-2">
+                      {exp.organization}
+                    </p>
+                    <p className="text-xs text-gray-600">{exp.duration}</p>
+                  </div>
+                  {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
+                    <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Verified
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          
+          {userData.experience?.filter(exp =>
+            exp.enabled !== false &&
+            (exp.approval_status === "verified" || exp.approval_status === "approved")
+          ).length > 2 && (
+            <Button
+              variant="outline"
+              onClick={() => navigate('/student/my-experience')}
+              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+            >
+              View All Experience
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    ),
+    softSkills: (
+      <Card
+        key="softSkills"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+      >
+        <CardHeader className="px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <MessageCircle className="w-5 h-5 text-blue-600" />
+              </div>
+              <span className="text-lg font-semibold text-gray-900">
+                Soft Skills
+              </span>
+            </CardTitle>
+            <button
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+              title="Edit Soft Skills"
+              onClick={() => setActiveModal("softSkills")}
+            >
+              <Edit className="w-4 h-4 text-gray-600" />
+            </button>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4 p-6 space-y-3">
+          {userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
+            .length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-slate-500 font-medium">
+                No soft skills have been added or verified.
+              </p>
+            </div>
+          ) : (
+            (showAllSoftSkills
+              ? userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
+              : userData.softSkills
+                .filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
+                .slice(0, 2)
+            ).map((skill, idx) => (
+              <div
+                key={skill.id || `soft-skill-${idx}`}
+                className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
+              >
+                <div className="flex items-start justify-between">
+                  <div key={`skill-info-${skill.id}`} className="flex-1">
+                    <h4 className="font-semibold text-gray-900 text-base mb-1">
+                      {skill.name}
+                    </h4>
+                    <p className="text-xs text-gray-600 mb-2">
+                      {skill.description}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(
+                          skill.level
+                        )}`}
+                      >
+                        {getSkillLevelText(skill.level)}
+                      </Badge>
+                      <div className="flex gap-0.5">
+                        {renderStars(skill.level)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+          {userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
+            .length > 2 && (
+              <Button
+                variant="outline"
+                onClick={() => setShowAllSoftSkills((v) => !v)}
+                className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+              >
+                {showAllSoftSkills ? "Show Less" : "View All Soft Skills"}
+              </Button>
+            )}
+        </CardContent>
+      </Card>
+    ),
     achievements: (
       <></>
-      // <Card
-      //   key="achievements"
-      //   className="h-full bg-gradient-to-br from-purple-50 via-pink-50 to-amber-50 rounded-xl border-2 border-purple-200 hover:border-purple-400 transition-all duration-200 shadow-lg hover:shadow-xl"
-      // >
-      //   <CardHeader className="px-6 py-4 border-b border-purple-100">
-      //     <div className="flex items-center w-full justify-between">
-      //       <CardTitle className="flex items-center gap-3 m-0 p-0">
-      //         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-md">
-      //           <Trophy className="w-5 h-5 text-white" />
-      //         </div>
-      //         <div>
-      //           <span className="text-lg font-semibold text-gray-900">
-      //             Achievements & Badges
-      //           </span>
-      //           <p className="text-xs text-gray-600 font-normal mt-0.5">
-      //             From separate tables
-      //           </p>
-      //         </div>
-      //       </CardTitle>
-      //     </div>
-      //   </CardHeader>
-      //   <CardContent className="p-6 space-y-4">
-      //     {achievementsLoading ? (
-      //       <div className="flex justify-center items-center py-8">
-      //         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-      //       </div>
-      //     ) : (
-      //       <>
-      //         {/* Badges Preview */}
-      //         {badges.length > 0 && (
-      //           <div className="space-y-3">
-      //             <div className="flex items-center justify-between">
-      //               <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-      //                 <Sparkles className="w-4 h-4 text-amber-500" />
-      //                 AI-Generated Badges
-      //               </h4>
-      //               <Badge className="bg-amber-500 text-white text-xs px-2 py-1">
-      //                 {badges.length}
-      //               </Badge>
-      //             </div>
-      //             <div className="grid grid-cols-2 gap-2">
-      //               {badges.slice(0, 4).map((badge) => (
-      //                 <div
-      //                   key={badge.id}
-      //                   className="p-3 rounded-lg bg-white border-2 border-purple-200 hover:border-purple-400 transition-all text-center"
-      //                 >
-      //                   <div className="text-3xl mb-1">{badge.icon}</div>
-      //                   <p className="text-xs font-semibold text-gray-800 truncate">
-      //                     {badge.name}
-      //                   </p>
-      //                 </div>
-      //               ))}
-      //             </div>
-      //             {badges.length > 4 && (
-      //               <p className="text-xs text-center text-gray-600">
-      //                 +{badges.length - 4} more badges
-      //               </p>
-      //             )}
-      //           </div>
-      //         )}
-
-      //         {/* Achievements Count */}
-      //         <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200">
-      //           <div className="flex items-center gap-2">
-      //             <Target className="w-5 h-5 text-purple-600" />
-      //             <span className="text-sm font-medium text-gray-700">
-      //               Total Achievements
-      //             </span>
-      //           </div>
-      //           <span className="text-2xl font-bold text-purple-600">
-      //             {achievements.length}
-      //           </span>
-      //         </div>
-
-      //         {/* View Full Page Button */}
-      //         <Button
-      //           onClick={() => navigate("/student/achievements")}
-      //           className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2"
-      //         >
-      //           View All Achievements
-      //           <ChevronRight className="w-4 h-4" />
-      //         </Button>
-      //       </>
-      //     )}
-      //   </CardContent>
-      // </Card>
     ),
   };
 
-  // Define card order based on active navigation item
-  const cardOrders = {
-    opportunities: isViewingOthersProfile
-      ? [
-        "institution",
-        "opportunities",
-        "education",
-        "training",
-        "experience",
-        "certificates",
-        "projects",
-        "softSkills",
-        "technicalSkills",
-      ]
-      : [
-        "institution",
-        "assessment",
-        "opportunities",
-        "achievements",
-        "education",
-        "training",
-        "experience",
-        "certificates",
-        "projects",
-        "softSkills",
-        "technicalSkills",
-      ],
-    skills: [
-      "institution",
-      "assessment",
-      "opportunities",
-      "technicalSkills",
-      "softSkills",
-      "projects",
-      "certificates",
-      "education",
-      "training",
-      "experience",
-    ],
-    training: [
-      "institution",
-      "assessment",
-      "opportunities",
-      "training",
-      "projects",
-      "certificates",
-      "education",
-      "technicalSkills",
-      "softSkills",
-      "experience",
-    ],
-    experience: [
-      "institution",
-      "assessment",
-      "opportunities",
-      "experience",
-      "projects",
-      "certificates",
-      "education",
-      "training",
-      "technicalSkills",
-      "softSkills",
-    ],
+  // Define 3x3 grid layout
+  const threeByThreeCards = [
+    "assessment",
+    "trainings", 
+    "opportunities",
+    "Projects", 
+    "Certificates", 
+    "My experience",
+    "Education", 
+    "technicalSkills", 
+    "softSkills"
+  ];
+
+  // Map the display names to actual card keys
+  const cardNameMapping = {
+    "assessment": "assessment",
+    "trainings": "training",
+    "opportunities": "opportunities",
+    "Projects": "projects",
+    "Certificates": "certificates",
+    "My experience": "experience",
+    "Education": "education",
+    "technicalSkills": "technicalSkills",
+    "softSkills": "softSkills"
   };
 
-  const renderCardsByPriority = () => {
-    const order = cardOrders[activeNavItem] || cardOrders.opportunities;
-
-    return order.map((cardKey, index) => {
-      const card = allCards[cardKey];
-      if (!card) return null;
-
-      // Add priority indicator for the first card
-      if (index === 0) {
-        return React.cloneElement(card, {
-          className: `${card.props.className} ring-2 ring-blue-400 ring-opacity-50`,
-          key: cardKey,
-          children: [
-            React.cloneElement(card.props.children[0], {
-              children: [
-                card.props.children[0].props.children,
-                // <Badge key="priority" className="bg-blue-500 hover:bg-blue-500 text-white text-xs ml-2">
-                //   ✨ Priority
-                // </Badge>
-              ],
-            }),
-            ...card.props.children.slice(1),
-          ],
-        });
-      }
-      return card;
-    });
+  const render3x3Grid = () => {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+        {threeByThreeCards.map((cardName, index) => {
+          const cardKey = cardNameMapping[cardName];
+          const card = allCards[cardKey];
+          if (!card) return null;
+          
+          return (
+            <div key={cardName} className="h-full">
+              {card}
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   // Utility to truncate long text and toggle full view
@@ -2403,134 +1794,48 @@ const StudentDashboard = () => {
             </div>
           </div>
         )}
-        {/* Navigation Bar */}
-        {/* <div className="mb-6">
-          <Card className="shadow-lg">
-            <CardContent className="p-4">
-              <div className="flex flex-wrap gap-2 justify-center">
-                {[
-                  { id: 'opportunities', label: 'Opportunities', icon: ExternalLink },
-                  { id: 'skills', label: 'My Skills', icon: Code },
-                  { id: 'training', label: 'My Training', icon: Award },
-                  { id: 'experience', label: 'My Experience', icon: Users },
-                ].map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeNavItem === item.id;
-                  return (
-                    <Button
-                      key={item.id}
-                      variant={isActive ? "default" : "outline"}
-                      onClick={() => {
-                        setActiveNavItem(item.id);
-                      }}
-                      className={`flex items-center gap-2 transition-all ${
-                        isActive
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md transform scale-105'
-                          : 'hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {item.label}
-                    </Button>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </div> */}
 
         {/* Conditional Rendering based on active view */}
         {activeView === 'analytics' && !isViewingOthersProfile ? (
           <AnalyticsView studentId={studentData?.id} userEmail={userEmail} />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* LEFT COLUMN - User Activity & Updates - Only show for own profile */}
-            {!isViewingOthersProfile && (
-            <div className="lg:col-span-1 space-y-6">
-              {/* Sticky container for both cards */}
-              <div className="sticky top-20 z-30 flex flex-col gap-6">
-                {/* Recent Updates 
-                <RecentUpdatesCard
-                  ref={recentUpdatesRef}
-                  updates={recentUpdates}
-                  loading={recentUpdatesLoading}
-                  error={
-                    recentUpdatesError ? "Failed to load recent updates" : null
-                  }
-                  onRetry={refreshRecentUpdates}
-                  emptyMessage="No recent updates available"
-                  isExpanded={showAllRecentUpdates}
-                  onToggle={(next) => setShowAllRecentUpdates(next)}
-                  badgeContent={
-                    unreadCount > 0 ? (
-                      <Badge className="bg-red-500 hover:bg-red-500 text-white px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        {unreadCount} {unreadCount === 1 ? "message" : "messages"}
-                      </Badge>
-                    ) : null
-                  }
-                  getUpdateClassName={(update) => {
-                    switch (update.type) {
-                      case "shortlist_added":
-                        return "bg-yellow-50 border-yellow-300";
-                      case "offer_extended":
-                        return "bg-green-50 border-green-300";
-                      case "offer_accepted":
-                        return "bg-emerald-50 border-emerald-300";
-                      case "placement_hired":
-                        return "bg-purple-50 border-purple-300";
-                      case "stage_change":
-                        return "bg-indigo-50 border-indigo-300";
-                      case "application_rejected":
-                        return "bg-red-50 border-red-300";
-                      default:
-                        return "bg-gray-50 border-gray-200";
-                    }
-                  }}
-                />*/}
-
-                {/* Suggested Next Steps - AI Job Matching 
+          <>
+            {/* 3x3 Grid Section */}
+            {render3x3Grid()}
+            
+            {/* Separate Section: 2 in a row and 1 column (Suggested Steps and Achievement Timeline) */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Suggested Steps - 2 columns wide */}
+              <div className="lg:col-span-1">
                 <Card
                   ref={suggestedNextStepsRef}
                   className="bg-white rounded-xl border border-gray-200 shadow-sm"
                   data-testid="suggested-next-steps-card"
                 >
                   <CardHeader className="px-6 py-4 border-b border-gray-100">
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-center w-full justify-between">
+                      <CardTitle className="flex items-center gap-3 m-0 p-0">
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center border border-amber-200">
                           <Sparkles className="w-5 h-5 text-amber-600" />
                         </div>
+                        <span className="text-lg font-semibold text-gray-900">
+                          Suggested Steps
+                        </span>
                         {matchedJobs.length > 0 && (
-                          <Badge
-                            variant="outline"
-                            className="bg-green-50 text-green-700 border-green-200"
-                          >
-                            <Target className="w-3 h-3 mr-1" />
+                          <Badge className="bg-green-50 text-green-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2 flex items-center gap-1">
+                            <Target className="w-3 h-3" />
                             {matchedJobs.length} Matches
                           </Badge>
                         )}
                       </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6 space-y-3">
-                      {matchingLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
-                          <p className="ml-3 text-sm text-gray-500">
-                            Finding best job matches for you...
-                          </p>
-                        </div>
-                      </div>
-                      {matchedJobs.length > 0 && (
-                        <Badge
-                          variant="outline"
-                          className="bg-green-50 text-green-700 border-green-200"
-                        >
-                          <Target className="w-3 h-3 mr-1" />
-                          {matchedJobs.length} Matches
-                        </Badge>
-                      )}
-                    </CardTitle>
+                      <button
+                        className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+                        title="View All Suggested Steps"
+                        onClick={() => navigate("/student/suggested-steps")}
+                      >
+                        <Eye className="w-4 h-4 text-gray-600" />
+                      </button>
+                    </div>
                   </CardHeader>
                   <CardContent className="p-6 space-y-3">
                     {matchingLoading ? (
@@ -2548,7 +1853,7 @@ const StudentDashboard = () => {
                       </div>
                     ) : matchedJobs.length > 0 ? (
                       <>
-                        {matchedJobs.map((match, idx) => (
+                        {matchedJobs.slice(0, 4).map((match, idx) => (
                           <div
                             key={match.job_id || `job-match-${idx}`}
                             className="p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 hover:border-amber-300 hover:shadow-md transition-all cursor-pointer group"
@@ -2563,7 +1868,7 @@ const StudentDashboard = () => {
                               }
                             }}
                           >
-                            {/* Match Score Badge 
+                            {/* Match Score Badge */}
                             <div className="flex items-start justify-between mb-2">
                               <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 text-xs font-semibold">
                                 {match.match_score}% Match
@@ -2571,7 +1876,7 @@ const StudentDashboard = () => {
                               <ExternalLink className="w-4 h-4 text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
 
-                            {/* Job Title & Company 
+                            {/* Job Title & Company */}
                             <div className="mb-3">
                               <h4 className="text-base font-bold text-gray-900 mb-1 group-hover:text-amber-700 transition-colors">
                                 {match.job_title ||
@@ -2585,74 +1890,78 @@ const StudentDashboard = () => {
                                 </span>
                               </div>
 
-                            {/* Job Details 
-                            {match.opportunity && (
-                              <div className="flex flex-wrap items-center gap-3 mb-3 text-xs text-gray-600">
-                                {match.opportunity.employment_type && (
-                                  <div className="flex items-center gap-1">
-                                    <Briefcase className="w-3.5 h-3.5" />
-                                    <span>
-                                      {match.opportunity.employment_type}
-                                    </span>
-                                  </div>
-                                )}
-                                {match.opportunity.location && (
-                                  <div className="flex items-center gap-1">
-                                    <MapPin className="w-3.5 h-3.5" />
-                                    <span>{match.opportunity.location}</span>
-                                  </div>
-                                )}
-                                {match.opportunity.deadline && (
-                                  <div className="flex items-center gap-1 text-orange-600">
-                                    <Clock className="w-3.5 h-3.5" />
-                                    <span>
-                                      Deadline:{" "}
-                                      {new Date(
-                                        match.opportunity.deadline
-                                      ).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Match Reason *
-                            <div className="mb-3 p-3 bg-white/60 rounded-lg border border-amber-100">
-                              <p className="text-xs text-gray-700 leading-relaxed">
-                                <span className="font-semibold text-amber-700">
-                                  Why this matches:{" "}
-                                </span>
-                                {match.match_reason}
-                              </p>
-                            </div>
-
-                            {/* Key Matching Skills 
-                            {match.key_matching_skills &&
-                              match.key_matching_skills.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 mb-3">
-                                  {match.key_matching_skills
-                                    .slice(0, 4)
-                                    .map((skill, skillIdx) => (
-                                      <Badge
-                                        key={skillIdx}
-                                        variant="secondary"
-                                        className="text-xs bg-white/80 text-gray-700 border border-amber-200"
-                                      >
-                                        {skill}
-                                      </Badge>
-                                    ))}
+                              {/* Job Details */}
+                              {match.opportunity && (
+                                <div className="flex flex-wrap items-center gap-3 mb-3 text-xs text-gray-600">
+                                  {match.opportunity.employment_type && (
+                                    <div className="flex items-center gap-1">
+                                      <Briefcase className="w-3.5 h-3.5" />
+                                      <span>
+                                        {match.opportunity.employment_type}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {match.opportunity.location && (
+                                    <div className="flex items-center gap-1">
+                                      <MapPin className="w-3.5 h-3.5" />
+                                      <span>{match.opportunity.location}</span>
+                                    </div>
+                                  )}
+                                  {match.opportunity.deadline && (
+                                    <div className="flex items-center gap-1 text-orange-600">
+                                      <Clock className="w-3.5 h-3.5" />
+                                      <span>
+                                        Deadline:{" "}
+                                        {new Date(
+                                          match.opportunity.deadline
+                                        ).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               )}
 
-                            {/* Recommendation *
-                            {match.recommendation && (
-                              <div className="pt-3 border-t border-amber-200/50">
-                                <p className="text-xs text-gray-600 italic">
-                                  💡 {match.recommendation}
+                              {/* Match Reason */}
+                              <div className="mb-3 p-3 bg-white/60 rounded-lg border border-amber-100">
+                                <p className="text-xs text-gray-700 leading-relaxed">
+                                  <span className="font-semibold text-amber-700">
+                                    Why this matches:{" "}
+                                  </span>
+                                  {match.match_reason}
                                 </p>
                               </div>
 
-                        {/* Refresh Button 
+                              {/* Key Matching Skills */}
+                              {match.key_matching_skills &&
+                                match.key_matching_skills.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 mb-3">
+                                    {match.key_matching_skills
+                                      .slice(0, 4)
+                                      .map((skill, skillIdx) => (
+                                        <Badge
+                                          key={skillIdx}
+                                          variant="secondary"
+                                          className="text-xs bg-white/80 text-gray-700 border border-amber-200"
+                                        >
+                                          {skill}
+                                        </Badge>
+                                      ))}
+                                  </div>
+                                )}
+
+                              {/* Recommendation */}
+                              {match.recommendation && (
+                                <div className="pt-3 border-t border-amber-200/50">
+                                  <p className="text-xs text-gray-600 italic">
+                                    💡 {match.recommendation}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Refresh Button */}
                         <Button
                           variant="outline"
                           size="sm"
@@ -2666,7 +1975,7 @@ const StudentDashboard = () => {
                       </>
                     ) : (
                       <>
-                        {/* Fallback to default suggestions if no AI matches 
+                        {/* Fallback to default suggestions if no AI matches */}
                         {suggestions.map((suggestion, idx) => (
                           <div
                             key={suggestion.id || `suggestion-${idx}`}
@@ -2690,65 +1999,15 @@ const StudentDashboard = () => {
                       </>
                     )}
                   </CardContent>
-                </Card>*/}
-
-                  {/* Student QR Code */}
-                  {/* {userEmail && (
-                  <Card className="border-2 border-purple-500 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-white text-lg font-bold justify-center">
-                        <QrCode className="w-5 h-5" />
-                        Your QR Profile
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-col items-center justify-center py-6 px-6">
-                      <div className="bg-white p-6 rounded-2xl shadow-xl">
-                        <QRCodeSVG
-                          value={qrCodeValue}
-                          size={180}
-                          level="H"
-                          includeMargin={true}
-                          bgColor="#ffffff"
-                          fgColor="#000000"
-                        />
-                      </div>
-                      <div className="mt-6 text-center">
-                        <p className="text-white text-lg font-bold tracking-wide">
-                          PASSPORT-ID: {
-                            studentData?.passport_id || 
-                            (studentData?.id ? studentData.id.toUpperCase().slice(0, 8) : null) || 
-                            (userEmail ? userEmail.split('@')[0].toUpperCase().slice(0, 5) : 'STUDENT')
-                          }
-                        </p>
-                        <p className="text-white/80 text-sm mt-2">
-                          Scan to view your profile card
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )} */}
-                </div>
+                </Card>
               </div>
-            )}
-
-            {/* RIGHT COLUMN - 6 Key Boxes with Dynamic Ordering */}
-            <div
-              className={
-                isViewingOthersProfile ? "lg:col-span-3" : "lg:col-span-2"
-              }
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {renderCardsByPriority()}
+              
+              {/* Achievement Timeline - 1 column */}
+              <div className="lg:col-span-2">
+                <AchievementsTimeline userData={userData} />
               </div>
-
-              {/* Achievement Timeline - Below cards in the right column */}
-              {!isViewingOthersProfile && (
-                <div className="mt-5">
-                  <AchievementsTimeline userData={userData} />
-                </div>
-              )}
             </div>
-          </div>
+          </>
         )}
       </div>
 
