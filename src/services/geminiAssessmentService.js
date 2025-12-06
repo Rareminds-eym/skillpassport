@@ -17,38 +17,38 @@ const validateResults = (results) => {
 
   // Check RIASEC
   if (!results.riasec?.topThree?.length) missingFields.push('riasec.topThree');
-  
+
   // Check Aptitude
   if (!results.aptitude?.scores) missingFields.push('aptitude.scores');
   if (!results.aptitude?.topStrengths?.length) missingFields.push('aptitude.topStrengths');
-  
+
   // Check Big Five
   if (!results.bigFive || typeof results.bigFive.O === 'undefined') missingFields.push('bigFive');
-  
+
   // Check Work Values
   if (!results.workValues?.topThree?.length) missingFields.push('workValues.topThree');
-  
+
   // Check Employability
   if (!results.employability?.strengthAreas?.length) missingFields.push('employability');
-  
+
   // Check Knowledge
   if (!results.knowledge || typeof results.knowledge.score === 'undefined') missingFields.push('knowledge');
-  
+
   // Check Career Fit
   if (!results.careerFit?.clusters?.length) missingFields.push('careerFit.clusters');
-  
+
   // Check Skill Gap
   if (!results.skillGap?.priorityA?.length) missingFields.push('skillGap');
-  
+
   // Check Roadmap
   if (!results.roadmap?.projects?.length) missingFields.push('roadmap');
-  
+
   // Check Final Note
   if (!results.finalNote?.advantage) missingFields.push('finalNote');
-  
+
   // Check Profile Snapshot
   if (!results.profileSnapshot?.aptitudeStrengths?.length) missingFields.push('profileSnapshot.aptitudeStrengths');
-  
+
   // Check Overall Summary
   if (!results.overallSummary) missingFields.push('overallSummary');
 
@@ -128,14 +128,14 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
   }
 
   if (!response || !response.ok) {
-    throw new Error(`Gemini API error: ${lastError}`);
+    throw new Error(`Rareminds AI error: ${lastError}`);
   }
 
   const data = await response.json();
   const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
   if (!textContent) {
-    throw new Error('No response received from Gemini AI');
+    throw new Error('No response received from Rareminds AI');
   }
 
   // Parse the JSON response from Gemini
@@ -146,7 +146,7 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
     const jsonStr = jsonMatch[1] || jsonMatch[0];
     try {
       const parsedResults = JSON.parse(jsonStr);
-      
+
       // Debug logging for aptitude data
       console.log('=== Gemini Response Debug ===');
       console.log('Parsed aptitude:', parsedResults.aptitude);
@@ -156,14 +156,14 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
           console.log(`Aptitude ${domain}:`, data);
         });
       }
-      
+
       // Validate the response (no fallback data)
       const { isValid, missingFields } = validateResults(parsedResults);
-      
+
       if (!isValid) {
         console.warn('Gemini response has missing fields:', missingFields);
       }
-      
+
       return parsedResults;
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
@@ -172,7 +172,7 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
     }
   }
 
-  throw new Error('Invalid response format from Gemini AI');
+  throw new Error('Invalid response format from Rareminds AI');
 };
 
 /**
@@ -213,7 +213,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     spatial: [],
     clerical: []
   };
-  
+
   if (aptitudeQuestions) {
     Object.entries(answers).forEach(([key, value]) => {
       if (key.startsWith('aptitude_')) {
@@ -274,7 +274,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     },
     sjt: []
   };
-  
+
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith('employability_')) {
       const questionId = key.replace('employability_', '');
@@ -294,12 +294,12 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
           // Part B: SJT scenarios - value is { best: string, worst: string }
           const studentBest = value?.best || value;
           const studentWorst = value?.worst || null;
-          
+
           // Calculate SJT score: Best=2, Worst=0, others=1
           let score = 1; // default for other answers
           if (studentBest === question.bestAnswer) score = 2;
           if (studentBest === question.worstAnswer) score = 0;
-          
+
           employabilityAnswers.sjt.push({
             scenario: question.scenario || question.text,
             question: question.text,
