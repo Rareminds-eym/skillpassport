@@ -24,7 +24,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
         stream: studentInfo?.stream || '—'
     };
     
-    // Default RIASEC names if not provided
+    // Default career interest names if not provided
     const safeRiasecNames = riasecNames || {
         R: 'Realistic',
         I: 'Investigative',
@@ -243,9 +243,9 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                 <h2 style={styles.sectionTitle}>1. Student Profile Snapshot</h2>
 
                 <div style={styles.twoCol}>
-                    {/* RIASEC Interests */}
+                    {/* Interest Profile */}
                     <div>
-                        <h3 style={styles.subTitle}>Interest Profile (RIASEC)</h3>
+                        <h3 style={styles.subTitle}>Interest Profile</h3>
                         <table style={styles.table}>
                             <thead>
                                 <tr>

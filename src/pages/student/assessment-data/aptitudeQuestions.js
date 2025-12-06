@@ -1,4 +1,4 @@
-// Multi-Aptitude Battery (DAT / GATB style)
+// Multi-Aptitude (DAT / GATB style)
 // Purpose: Measure relative cognitive strengths across domains commonly used in vocational guidance
 // Domains: Verbal, Numerical, Abstract/Logic, Spatial/Mechanical, Clerical Speed & Accuracy
 // Timing: ~8-10 minutes per subtest. Speed matters for clerical.

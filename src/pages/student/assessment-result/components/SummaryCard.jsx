@@ -19,7 +19,7 @@ const SummaryCard = ({ title, subtitle, icon: Icon, gradient, data, onClick, del
                     </div>
                     <div>
                         <h3 className="text-lg font-bold text-gray-800 group-hover:text-indigo-600 transition-colors">{title}</h3>
-                        <p className="text-xs text-gray-500">{subtitle}</p>
+                        <p className="text-sm text-gray-500">{subtitle}</p>
                     </div>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
@@ -29,14 +29,14 @@ const SummaryCard = ({ title, subtitle, icon: Icon, gradient, data, onClick, del
 
             <div className="space-y-3">
                 {data.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-sm">
+                    <div key={idx} className="flex items-center justify-between text-base">
                         <span className="text-gray-500 font-medium">{item.label}</span>
                         <span className="text-gray-800 font-semibold truncate max-w-[150px]">{item.value}</span>
                     </div>
                 ))}
             </div>
 
-            <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-center text-indigo-600 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+            <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-center text-indigo-600 font-medium text-base opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
                 View Full Details
             </div>
         </div>

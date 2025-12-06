@@ -41,7 +41,7 @@ import * as assessmentService from '../../services/assessmentService';
 const AssessmentTest = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
-    
+
     // Database integration hook
     const {
         loading: dbLoading,
@@ -99,30 +99,30 @@ const AssessmentTest = () => {
             setQuestionsLoading(false);
         }
     };
-    
+
     // Check for in-progress attempt on mount (only once)
     useEffect(() => {
         // Only run once on mount, and not if user has already started an assessment
         if (initialCheckDone || assessmentStarted) return;
-        
+
         const checkExistingAttempt = async () => {
             // Wait for auth hook to be ready
             if (dbLoading) return;
-            
+
             setCheckingExistingAttempt(true);
-            
+
             try {
                 if (user?.id) {
                     const existingAttempt = await checkInProgressAttempt();
                     if (existingAttempt) {
                         console.log('Found in-progress attempt:', existingAttempt);
-                        
+
                         // Check if user has actually answered any questions
                         const answeredCount = Object.keys(existingAttempt.restoredResponses || {}).length;
-                        const hasProgress = existingAttempt.current_section_index > 0 || 
-                                           existingAttempt.current_question_index > 0 ||
-                                           answeredCount > 0;
-                        
+                        const hasProgress = existingAttempt.current_section_index > 0 ||
+                            existingAttempt.current_question_index > 0 ||
+                            answeredCount > 0;
+
                         if (hasProgress) {
                             // Show resume prompt only if there's actual progress
                             setPendingAttempt(existingAttempt);
@@ -160,50 +160,50 @@ const AssessmentTest = () => {
     // Handle resume assessment
     const handleResumeAssessment = async () => {
         if (!pendingAttempt) return;
-        
+
         // Mark that user has started an assessment to prevent re-checking
         setAssessmentStarted(true);
         setQuestionsLoading(true);
         setShowResumePrompt(false);
-        
+
         try {
             setUseDatabase(true);
             setStudentStream(pendingAttempt.stream_id);
-            
+
             // Load questions for this stream
             await loadQuestionsFromDatabase(pendingAttempt.stream_id);
-            
+
             // Restore previous answers
             if (pendingAttempt.restoredResponses) {
                 console.log('Restoring answers:', Object.keys(pendingAttempt.restoredResponses).length, 'answers');
                 setAnswers(pendingAttempt.restoredResponses);
             }
-            
+
             // Restore progress
             const sectionIdx = pendingAttempt.current_section_index ?? 0;
             const questionIdx = pendingAttempt.current_question_index ?? 0;
-            
+
             console.log('Resuming at section:', sectionIdx, 'question:', questionIdx);
-            
+
             setCurrentSectionIndex(sectionIdx);
             setCurrentQuestionIndex(questionIdx);
-            
+
             // Show section intro if at the start of a section (question 0)
             // This ensures users see the section instructions when resuming
             const shouldShowIntro = questionIdx === 0;
             setShowSectionIntro(shouldShowIntro);
             setShowSectionComplete(false);
-            
+
             if (pendingAttempt.section_timings) {
                 setSectionTimings(pendingAttempt.section_timings);
             }
-            
+
             // Restore timer for timed sections (aptitude, knowledge)
             if (pendingAttempt.timer_remaining !== null && pendingAttempt.timer_remaining !== undefined) {
                 console.log('Restoring timer:', pendingAttempt.timer_remaining, 'seconds remaining');
                 setTimeRemaining(pendingAttempt.timer_remaining);
             }
-            
+
             // Restore elapsed time for non-timed sections
             if (pendingAttempt.elapsed_time !== null && pendingAttempt.elapsed_time !== undefined) {
                 console.log('Restoring elapsed time:', pendingAttempt.elapsed_time, 'seconds');
@@ -235,7 +235,7 @@ const AssessmentTest = () => {
     const transformDbQuestion = (dbQ) => ({
         id: dbQ.id,
         text: dbQ.question_text,
-        type: dbQ.subtype,           // Used for RIASEC (R,I,A,S,E,C), Big Five (O,C,E,A,N), Values, Employability domains
+        type: dbQ.subtype,           // Used for Career Interests (R,I,A,S,E,C), Big Five (O,C,E,A,N), Values, Employability domains
         subtype: dbQ.subtype,        // Used for aptitude categorization (verbal, numerical, etc.)
         moduleTitle: dbQ.module_title,
         options: dbQ.options,
@@ -267,7 +267,7 @@ const AssessmentTest = () => {
     const sections = useMemo(() => [
         {
             id: 'riasec',
-            title: 'Career Interests (RIASEC)',
+            title: 'Career Interests',
             icon: <Heart className="w-6 h-6 text-rose-500" />,
             description: "Discover what types of work environments and activities appeal to you most.",
             color: "rose",
@@ -281,18 +281,7 @@ const AssessmentTest = () => {
             ],
             instruction: "Rate how much you would LIKE or DISLIKE each activity."
         },
-        {
-            id: 'aptitude',
-            title: 'Multi-Aptitude Battery',
-            icon: <Zap className="w-6 h-6 text-amber-500" />,
-            description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
-            color: "amber",
-            questions: getQuestionsForSection('aptitude'),
-            isTimed: true,
-            timeLimit: 10 * 60, // 10 minutes
-            isAptitude: true,
-            instruction: "Choose the correct answer. Speed matters for clerical questions."
-        },
+
         {
             id: 'bigfive',
             title: 'Big Five Personality',
@@ -340,6 +329,18 @@ const AssessmentTest = () => {
                 { value: 5, label: "Very Much Like Me" }
             ],
             instruction: "How well does each statement describe you?"
+        },
+        {
+            id: 'aptitude',
+            title: 'Multi-Aptitude',
+            icon: <Zap className="w-6 h-6 text-amber-500" />,
+            description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
+            color: "amber",
+            questions: getQuestionsForSection('aptitude'),
+            isTimed: true,
+            timeLimit: 10 * 60, // 10 minutes
+            isAptitude: true,
+            instruction: "Choose the correct answer. Speed matters for clerical questions."
         },
         {
             id: 'knowledge',
@@ -461,12 +462,12 @@ const AssessmentTest = () => {
         setAssessmentStarted(true);
         setStudentStream(streamId);
         setShowStreamSelection(false);
-        
+
         // Load questions from database first
         await loadQuestionsFromDatabase(streamId);
-        
+
         setShowSectionIntro(true);
-        
+
         // Try to create a database attempt if user is logged in
         if (user?.id) {
             try {
@@ -488,7 +489,7 @@ const AssessmentTest = () => {
     const handleAnswer = (value) => {
         const question = currentSection.questions[currentQuestionIndex];
         const questionId = `${currentSection.id}_${question.id}`;
-        
+
         setAnswers(prev => {
             // If value is undefined or empty object, remove the answer
             if (value === undefined || (typeof value === 'object' && Object.keys(value).length === 0)) {
@@ -500,7 +501,7 @@ const AssessmentTest = () => {
                 [questionId]: value
             };
         });
-        
+
         // Save to database if in database mode
         if (useDatabase && currentAttempt?.id) {
             // Determine if answer is correct for MCQ questions
@@ -509,7 +510,7 @@ const AssessmentTest = () => {
                 isCorrect = value === question.correct;
             }
             saveDbResponse(currentSection.id, question.id, value, isCorrect);
-            
+
             // Save current progress position, timer (for timed sections), and elapsed time (for non-timed)
             const timerToSave = currentSection.isTimed ? timeRemaining : null;
             const elapsedToSave = !currentSection.isTimed ? elapsedTime : null;
@@ -520,22 +521,22 @@ const AssessmentTest = () => {
     const handleNext = async () => {
         if (currentQuestionIndex < currentSection.questions.length - 1) {
             const nextQuestionIndex = currentQuestionIndex + 1;
-            
+
             // Save progress to database before moving to next question
             if (useDatabase && currentAttempt?.id) {
                 setIsSaving(true);
                 try {
                     const timerToSave = currentSection.isTimed ? timeRemaining : null;
                     const elapsedToSave = !currentSection.isTimed ? elapsedTime : null;
-                    
+
                     const result = await updateProgress(
-                        currentSectionIndex, 
-                        nextQuestionIndex, 
-                        sectionTimings, 
-                        timerToSave, 
+                        currentSectionIndex,
+                        nextQuestionIndex,
+                        sectionTimings,
+                        timerToSave,
                         elapsedToSave
                     );
-                    
+
                     if (!result?.success) {
                         console.error('Failed to save progress:', result?.error);
                         // Still proceed but log the error
@@ -546,7 +547,7 @@ const AssessmentTest = () => {
                     setIsSaving(false);
                 }
             }
-            
+
             // Move to next question
             setCurrentQuestionIndex(nextQuestionIndex);
         } else {
@@ -563,10 +564,10 @@ const AssessmentTest = () => {
         // Save timing for current section before moving
         const currentSectionId = currentSection?.id;
         if (currentSectionId) {
-            const timeSpent = currentSection.isTimed 
+            const timeSpent = currentSection.isTimed
                 ? (currentSection.timeLimit - (timeRemaining || 0)) // For timed section, calculate used time
                 : elapsedTime; // For non-timed sections, use elapsed time
-            
+
             setSectionTimings(prev => {
                 const newTimings = { ...prev, [currentSectionId]: timeSpent };
                 // Update progress in database
@@ -606,7 +607,7 @@ const AssessmentTest = () => {
         const finalTimings = { ...sectionTimings };
         const currentSectionId = currentSection?.id;
         if (currentSectionId && !finalTimings[currentSectionId]) {
-            const timeSpent = currentSection.isTimed 
+            const timeSpent = currentSection.isTimed
                 ? (currentSection.timeLimit - (timeRemaining || 0))
                 : elapsedTime;
             finalTimings[currentSectionId] = timeSpent;
@@ -643,7 +644,7 @@ const AssessmentTest = () => {
                 // Save AI-analyzed results to localStorage (backward compatibility)
                 localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
                 console.log('Gemini analysis complete:', geminiResults);
-                
+
                 // Save results to database if in database mode
                 if (useDatabase && currentAttempt?.id) {
                     try {
@@ -670,7 +671,7 @@ const AssessmentTest = () => {
 
     const currentQuestion = currentSection?.questions[currentQuestionIndex];
     const questionId = `${currentSection?.id}_${currentQuestion?.id}`;
-    
+
     // Check if current question is answered (SJT needs both BEST and WORST)
     const isCurrentAnswered = (() => {
         const answer = answers[questionId];
@@ -717,7 +718,7 @@ const AssessmentTest = () => {
     if (showResumePrompt && pendingAttempt) {
         const streamLabel = streams.find(s => s.id === pendingAttempt.stream_id)?.label || pendingAttempt.stream_id;
         const answeredCount = Object.keys(pendingAttempt.restoredResponses || {}).length;
-        
+
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
                 <Card className="w-full max-w-lg border-none shadow-2xl">
@@ -1058,7 +1059,7 @@ const AssessmentTest = () => {
                                     transition={{ delay: 0.45, duration: 0.3 }}
                                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 ${currentSection.id === 'knowledge' || currentSection.id === 'aptitude'
                                         ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                        : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
                                         }`}
                                 >
                                     {currentSection.id === 'knowledge' ? (
@@ -1078,7 +1079,7 @@ const AssessmentTest = () => {
                                         </>
                                     )}
                                 </motion.div>
-                                
+
                                 {/* Module breakdown for Aptitude section */}
                                 {currentSection.id === 'aptitude' && (
                                     <motion.div
@@ -1173,14 +1174,14 @@ const AssessmentTest = () => {
                                         <div className={`w-12 h-12 rounded-xl bg-${currentSection.color}-100 flex items-center justify-center mb-4 shadow-sm`}>
                                             {currentSection.icon}
                                         </div>
-                                        <h2 className="text-xl font-bold text-gray-800 mb-2">{currentSection.title}</h2>
-                                        <p className="text-sm text-gray-500 leading-relaxed mb-4">{currentSection.description}</p>
+                                        <h2 className="text-2xl font-bold text-gray-800 mb-2">{currentSection.title}</h2>
+                                        <p className="text-base text-gray-500 leading-relaxed mb-4">{currentSection.description}</p>
 
                                         {/* Module indicator for Aptitude section */}
                                         {currentSection.id === 'aptitude' && currentQuestion?.moduleTitle && (
                                             <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mb-4">
-                                                <p className="text-xs font-bold text-amber-800 mb-1">{currentQuestion.moduleTitle}</p>
-                                                <p className="text-xs text-amber-600">
+                                                <p className="text-sm font-bold text-amber-800 mb-1">{currentQuestion.moduleTitle}</p>
+                                                <p className="text-sm text-amber-600">
                                                     {(() => {
                                                         const moduleInfo = getModuleQuestionIndex(currentQuestionIndex);
                                                         return `Question ${moduleInfo.moduleIndex} of ${moduleInfo.moduleTotal} in this module`;
@@ -1203,7 +1204,7 @@ const AssessmentTest = () => {
                                                         pink: 'bg-pink-500'
                                                     };
                                                     return (
-                                                        <div key={mod.id} className={`flex items-center gap-2 text-xs px-2 py-1 rounded ${isCurrentModule ? 'bg-amber-100 font-semibold' : 'opacity-60'}`}>
+                                                        <div key={mod.id} className={`flex items-center gap-2 text-sm px-2 py-1 rounded ${isCurrentModule ? 'bg-amber-100 font-semibold' : 'opacity-60'}`}>
                                                             <div className={`w-2 h-2 rounded-full ${moduleColors[mod.color]}`}></div>
                                                             <span className="truncate">{mod.title}</span>
                                                         </div>
@@ -1219,9 +1220,9 @@ const AssessmentTest = () => {
                                                     const moduleInfo = getCurrentEmployabilityModule(currentQuestionIndex);
                                                     return (
                                                         <>
-                                                            <p className="text-xs font-bold text-green-800 mb-1">{moduleInfo.partTitle}</p>
-                                                            <p className="text-xs text-green-700 font-medium">{moduleInfo.domain}</p>
-                                                            <p className="text-xs text-green-600">
+                                                            <p className="text-sm font-bold text-green-800 mb-1">{moduleInfo.partTitle}</p>
+                                                            <p className="text-sm text-green-700 font-medium">{moduleInfo.domain}</p>
+                                                            <p className="text-sm text-green-600">
                                                                 Question {moduleInfo.questionInDomain} of {moduleInfo.domainTotal}
                                                             </p>
                                                         </>
@@ -1237,10 +1238,10 @@ const AssessmentTest = () => {
                                                     const moduleInfo = getCurrentEmployabilityModule(currentQuestionIndex);
                                                     const partADomains = ['Communication', 'Teamwork', 'Problem Solving', 'Adaptability', 'Leadership', 'Digital Fluency', 'Professionalism', 'Career Readiness'];
                                                     const domainColors = ['blue', 'green', 'purple', 'orange', 'red', 'cyan', 'indigo', 'amber'];
-                                                    
+
                                                     return (
                                                         <>
-                                                            <div className={`text-xs font-semibold px-2 py-1 ${moduleInfo.part === 'A' ? 'text-green-700' : 'text-gray-400'}`}>
+                                                            <div className={`text-sm font-semibold px-2 py-1 ${moduleInfo.part === 'A' ? 'text-green-700' : 'text-gray-400'}`}>
                                                                 Part A: Self-Rating
                                                             </div>
                                                             {partADomains.map((domain, idx) => {
@@ -1252,7 +1253,7 @@ const AssessmentTest = () => {
                                                                     </div>
                                                                 );
                                                             })}
-                                                            <div className={`text-xs font-semibold px-2 py-1 mt-1 ${moduleInfo.part === 'B' ? 'text-rose-700' : 'text-gray-400'}`}>
+                                                            <div className={`text-sm font-semibold px-2 py-1 mt-1 ${moduleInfo.part === 'B' ? 'text-rose-700' : 'text-gray-400'}`}>
                                                                 Part B: SJT Scenarios
                                                             </div>
                                                         </>
@@ -1262,13 +1263,13 @@ const AssessmentTest = () => {
                                         )}
 
                                         <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100 mb-4">
-                                            <p className="text-xs font-medium text-indigo-700">{currentSection.instruction}</p>
+                                            <p className="text-sm font-medium text-indigo-700">{currentSection.instruction}</p>
                                         </div>
 
                                         {/* Section type indicator */}
-                                        <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${currentSection.id === 'knowledge' || currentSection.id === 'aptitude'
+                                        <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${currentSection.id === 'knowledge' || currentSection.id === 'aptitude'
                                             ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                                            : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                            : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
                                             }`}>
                                             {currentSection.id === 'knowledge' || currentSection.id === 'aptitude' ? (
                                                 <>
@@ -1278,7 +1279,7 @@ const AssessmentTest = () => {
                                             ) : (
                                                 <>
                                                     <CheckCircle2 className="w-3.5 h-3.5" />
-                                                    <span>No right or wrong</span>
+                                                    <span>No right or wrong answers</span>
                                                 </>
                                             )}
                                         </div>
@@ -1353,7 +1354,7 @@ const AssessmentTest = () => {
                                             >
                                                 <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
                                                 <h3 className="text-xl font-bold text-gray-800 mb-2">Analyzing your profile with AI...</h3>
-                                                <p className="text-gray-500">Gemini AI is generating your personalized career roadmap.</p>
+                                                <p className="text-gray-500">Rareminds is generating your personalized career roadmap.</p>
                                             </motion.div>
                                         ) : (
                                             <motion.div
@@ -1368,7 +1369,7 @@ const AssessmentTest = () => {
                                                     <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 block">
                                                         Question {currentQuestionIndex + 1} / {currentSection.questions.length}
                                                     </span>
-                                                    <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">
+                                                    <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug">
                                                         {currentQuestion.text}
                                                     </h3>
                                                 </div>
@@ -1382,27 +1383,26 @@ const AssessmentTest = () => {
                                                                     Select the <span className="font-bold text-green-700">BEST</span> response and the <span className="font-bold text-red-700">WORST</span> response for this scenario.
                                                                 </p>
                                                             </div>
-                                                            
+
                                                             {currentQuestion.options.map((option, idx) => {
                                                                 const optionLabel = currentQuestion.optionLabels?.[idx] || String.fromCharCode(97 + idx);
                                                                 const sjtAnswer = answers[questionId] || {};
                                                                 const isBest = sjtAnswer.best === option;
                                                                 const isWorst = sjtAnswer.worst === option;
-                                                                
+
                                                                 return (
                                                                     <div
                                                                         key={idx}
-                                                                        className={`border rounded-xl p-4 transition-all ${
-                                                                            isBest ? 'border-green-500 bg-green-50 ring-1 ring-green-500/30' :
+                                                                        className={`border rounded-xl p-4 transition-all ${isBest ? 'border-green-500 bg-green-50 ring-1 ring-green-500/30' :
                                                                             isWorst ? 'border-red-500 bg-red-50 ring-1 ring-red-500/30' :
-                                                                            'border-gray-200 hover:bg-gray-50'
-                                                                        }`}
+                                                                                'border-gray-200 hover:bg-gray-50'
+                                                                            }`}
                                                                     >
                                                                         <div className="flex items-start gap-3">
                                                                             <span className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-600 shrink-0">
                                                                                 {optionLabel}
                                                                             </span>
-                                                                            <p className="flex-1 text-gray-700 font-medium">{option}</p>
+                                                                            <p className="flex-1 text-gray-700 font-medium text-lg">{option}</p>
                                                                         </div>
                                                                         <div className="flex gap-2 mt-3 ml-9">
                                                                             <button
@@ -1419,11 +1419,10 @@ const AssessmentTest = () => {
                                                                                         handleAnswer({ ...current, best: option });
                                                                                     }
                                                                                 }}
-                                                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                                                                                    isBest 
-                                                                                        ? 'bg-green-600 text-white shadow-md' 
-                                                                                        : 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                                                } ${isWorst ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isBest
+                                                                                    ? 'bg-green-600 text-white shadow-md'
+                                                                                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                                                    } ${isWorst ? 'opacity-30 cursor-not-allowed' : ''}`}
                                                                                 disabled={isWorst}
                                                                             >
                                                                                 ✓ BEST
@@ -1442,11 +1441,10 @@ const AssessmentTest = () => {
                                                                                         handleAnswer({ ...current, worst: option });
                                                                                     }
                                                                                 }}
-                                                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                                                                                    isWorst 
-                                                                                        ? 'bg-red-600 text-white shadow-md' 
-                                                                                        : 'bg-red-100 text-red-700 hover:bg-red-200'
-                                                                                } ${isBest ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isWorst
+                                                                                    ? 'bg-red-600 text-white shadow-md'
+                                                                                    : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                                                                    } ${isBest ? 'opacity-30 cursor-not-allowed' : ''}`}
                                                                                 disabled={isBest}
                                                                             >
                                                                                 ✗ WORST
@@ -1472,7 +1470,7 @@ const AssessmentTest = () => {
                                                                         : 'border-gray-200'
                                                                         }`}>
                                                                     <RadioGroupItem value={option.value.toString()} id={`opt-${option.value}`} className="text-indigo-600" />
-                                                                    <Label htmlFor={`opt-${option.value}`} className="flex-1 cursor-pointer font-medium text-gray-700">
+                                                                    <Label htmlFor={`opt-${option.value}`} className="flex-1 cursor-pointer font-medium text-gray-700 text-lg">
                                                                         {option.label}
                                                                     </Label>
                                                                 </div>
@@ -1494,7 +1492,7 @@ const AssessmentTest = () => {
                                                                         : 'border-gray-200'
                                                                         }`}>
                                                                     <RadioGroupItem value={option} id={`opt-${idx}`} className="text-indigo-600" />
-                                                                    <Label htmlFor={`opt-${idx}`} className="flex-1 cursor-pointer font-medium text-gray-700">
+                                                                    <Label htmlFor={`opt-${idx}`} className="flex-1 cursor-pointer font-medium text-gray-700 text-lg">
                                                                         {option}
                                                                     </Label>
                                                                 </div>
