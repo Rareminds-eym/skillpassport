@@ -375,10 +375,18 @@ const AssessmentResult = () => {
                                     <CareerSection careerFit={careerFit} />
                                 )}
                                 {activeSection === 'skills' && skillGap && employability && (
-                                    <SkillsSection skillGap={skillGap} employability={employability} />
+                                    <SkillsSection 
+                                        skillGap={skillGap} 
+                                        employability={employability}
+                                        skillGapCourses={results.skillGapCourses}
+                                    />
                                 )}
                                 {activeSection === 'roadmap' && roadmap && (
-                                    <RoadmapSection roadmap={roadmap} />
+                                    <RoadmapSection 
+                                        roadmap={roadmap}
+                                        platformCourses={results.platformCourses}
+                                        skillGapCourses={results.skillGapCourses}
+                                    />
                                 )}
                             </div>
                         </div>

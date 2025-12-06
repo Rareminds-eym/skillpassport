@@ -5,4 +5,5 @@ export { default as PrintView } from './PrintView';
 export { default as ErrorState } from './ErrorState';
 export { default as LoadingState } from './LoadingState';
 export { default as ReportHeader } from './ReportHeader';
+export { default as CourseRecommendationCard } from './CourseRecommendationCard';
 export * from './sections';

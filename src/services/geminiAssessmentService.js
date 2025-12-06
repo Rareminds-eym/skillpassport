@@ -1,7 +1,15 @@
 /**
  * Gemini Assessment Service
  * Uses Google Gemini AI to analyze assessment answers and provide personalized results
+ * 
+ * Feature: rag-course-recommendations
+ * Requirements: 4.1, 5.2, 6.3
  */
+
+import { 
+  getRecommendedCourses, 
+  getCoursesForMultipleSkillGaps 
+} from './courseRecommendationService';
 
 // Gemini API configuration - try multiple models for compatibility
 const getGeminiApiUrl = (model = 'gemini-1.5-flash-latest') =>
@@ -61,6 +69,61 @@ const validateResults = (results) => {
     isValid: missingFields.length === 0,
     missingFields
   };
+};
+
+/**
+ * Add course recommendations to assessment results.
+ * Fetches platform courses that match the student's profile using RAG-based recommendations.
+ * Falls back to keyword matching if embedding-based search fails.
+ * 
+ * @param {Object} assessmentResults - Parsed results from Gemini
+ * @returns {Promise<Object>} - Assessment results with platformCourses and skillGapCourses added
+ * 
+ * Feature: rag-course-recommendations
+ * Requirements: 4.1, 5.2, 6.3
+ */
+const addCourseRecommendations = async (assessmentResults) => {
+  try {
+    console.log('=== Adding Course Recommendations ===');
+    
+    // Get recommended platform courses based on overall profile (Requirement 4.1)
+    let platformCourses = [];
+    try {
+      platformCourses = await getRecommendedCourses(assessmentResults);
+      console.log(`Found ${platformCourses.length} platform course recommendations`);
+    } catch (error) {
+      console.warn('Failed to get platform course recommendations:', error.message);
+      // Continue with empty array - fallback is handled inside getRecommendedCourses
+    }
+
+    // Get courses mapped to each priority skill gap (Requirement 5.2)
+    let skillGapCourses = {};
+    try {
+      const skillGaps = assessmentResults.skillGap?.priorityA || [];
+      if (skillGaps.length > 0) {
+        skillGapCourses = await getCoursesForMultipleSkillGaps(skillGaps);
+        console.log(`Mapped courses to ${Object.keys(skillGapCourses).length} skill gaps`);
+      }
+    } catch (error) {
+      console.warn('Failed to get skill gap course mappings:', error.message);
+      // Continue with empty object
+    }
+
+    // Return results with course recommendations added
+    return {
+      ...assessmentResults,
+      platformCourses,
+      skillGapCourses
+    };
+  } catch (error) {
+    // If anything fails, return original results without course recommendations (Requirement 6.3)
+    console.error('Error adding course recommendations:', error);
+    return {
+      ...assessmentResults,
+      platformCourses: [],
+      skillGapCourses: {}
+    };
+  }
 };
 
 /**
@@ -164,7 +227,10 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
         console.warn('Gemini response has missing fields:', missingFields);
       }
 
-      return parsedResults;
+      // Add course recommendations from platform courses (Requirement 4.1)
+      const resultsWithCourses = await addCourseRecommendations(parsedResults);
+
+      return resultsWithCourses;
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
       console.error('Raw JSON string:', jsonStr.substring(0, 500));
