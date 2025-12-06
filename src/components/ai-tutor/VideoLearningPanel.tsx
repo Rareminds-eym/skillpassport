@@ -13,7 +13,15 @@ import {
   Trophy,
   Target,
   BookOpen,
-  MessageSquare
+  MessageSquare,
+  FileText,
+  Mic,
+  List,
+  Brain,
+  Lightbulb,
+  Pin,
+  Tag,
+  type LucideIcon
 } from 'lucide-react';
 import {
   VideoSummary,
@@ -59,13 +67,13 @@ const getUserFriendlyError = (error: string) => {
   return { message: 'Something went wrong 😕', tips: ['Try refreshing', 'Try a different video'], emoji: '🔧' };
 };
 
-// Tab configuration with emojis
-const TABS = [
-  { id: 'summary' as TabType, emoji: '📝', label: 'Notes' },
-  { id: 'transcript' as TabType, emoji: '🎯', label: 'Transcript' },
-  { id: 'chapters' as TabType, emoji: '📚', label: 'Chapters' },
-  { id: 'quiz' as TabType, emoji: '🧠', label: 'Quiz' },
-  { id: 'flashcards' as TabType, emoji: '💡', label: 'Cards' },
+// Tab configuration with icons
+const TABS: { id: TabType; icon: LucideIcon; label: string }[] = [
+  { id: 'summary', icon: FileText, label: 'Notes' },
+  { id: 'transcript', icon: Mic, label: 'Transcript' },
+  { id: 'chapters', icon: List, label: 'Chapters' },
+  { id: 'quiz', icon: Brain, label: 'Quiz' },
+  { id: 'flashcards', icon: Lightbulb, label: 'Cards' },
 ];
 
 // ============ ERROR DISPLAY COMPONENT ============
@@ -303,7 +311,7 @@ const QuizTab: React.FC<{
       {showResult && (
         <div className={`p-4 rounded-2xl mb-6 ${isCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
           <div className="flex items-start gap-3">
-            <span className="text-2xl">{isCorrect ? '🎉' : '💡'}</span>
+            {isCorrect ? <Trophy className="w-6 h-6 text-emerald-500" /> : <Lightbulb className="w-6 h-6 text-amber-500" />}
             <div>
               <p className={`font-semibold ${isCorrect ? 'text-emerald-700' : 'text-amber-700'}`}>
                 {isCorrect ? 'Awesome! +10 XP' : 'Good try! +2 XP'}
@@ -712,7 +720,7 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                     : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                 }`}
               >
-                <span>{tab.emoji}</span>
+                <tab.icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
                 {count > 0 && (
                   <span className={`ml-1 px-1.5 py-0.5 text-xs rounded-full ${
@@ -783,45 +791,45 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
             {/* ===== SUMMARY TAB ===== */}
             {activeTab === 'summary' && (
               <div className="p-5 space-y-6">
-                {/* AI Summary Card */}
-                <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-2xl p-5 border border-indigo-100">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="w-5 h-5 text-indigo-500" />
-                    <h4 className="font-bold text-slate-800">AI Summary</h4>
-                  </div>
-                  <p className="text-slate-600 leading-relaxed">
-                    {summary.summary || 'No summary available.'}
-                  </p>
-                </div>
-
                 {/* Key Points */}
                 {summary.keyPoints?.length > 0 && (
                   <div>
-                    <h4 className="flex items-center gap-2 font-bold text-slate-800 mb-3">
-                      <span className="text-lg">📌</span> Key Points
+                    <h4 className="flex items-center gap-2 font-semibold text-slate-700 mb-3">
+                      <Pin className="w-5 h-5 text-slate-500" /> Key Points
                     </h4>
                     <div className="space-y-2">
                       {summary.keyPoints.map((point, i) => (
-                        <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                          <span className="w-6 h-6 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        <div key={i} className="flex items-start gap-3 p-4 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+                          <span className="w-7 h-7 bg-slate-200 text-slate-600 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">
                             {i + 1}
                           </span>
-                          <p className="text-slate-600 text-sm">{point}</p>
+                          <p className="text-slate-600 text-sm leading-relaxed pt-0.5">{point}</p>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
+                {/* AI Summary Card */}
+                <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="w-5 h-5 text-slate-500" />
+                    <h4 className="font-semibold text-slate-700">AI Summary</h4>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed">
+                    {summary.summary || 'No summary available.'}
+                  </p>
+                </div>
+
                 {/* Topics */}
                 {summary.topics?.length > 0 && (
                   <div>
-                    <h4 className="flex items-center gap-2 font-bold text-slate-800 mb-3">
-                      <span className="text-lg">🏷️</span> Topics
+                    <h4 className="flex items-center gap-2 font-semibold text-slate-700 mb-3">
+                      <Tag className="w-5 h-5 text-slate-500" /> Topics
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {summary.topics.map((topic, i) => (
-                        <span key={i} className="px-3 py-1.5 bg-gradient-to-r from-indigo-100 to-violet-100 text-indigo-700 text-sm font-medium rounded-full">
+                        <span key={i} className="px-3 py-1.5 bg-slate-100 text-slate-600 text-sm font-medium rounded-full">
                           {topic}
                         </span>
                       ))}
@@ -832,17 +840,17 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                 {/* Notable Quotes */}
                 {summary.notableQuotes && summary.notableQuotes.length > 0 && (
                   <div>
-                    <h4 className="flex items-center gap-2 font-bold text-slate-800 mb-3">
-                      <MessageSquare className="w-5 h-5 text-violet-500" /> Notable Quotes
+                    <h4 className="flex items-center gap-2 font-semibold text-slate-700 mb-3">
+                      <MessageSquare className="w-5 h-5 text-slate-500" /> Notable Quotes
                     </h4>
                     <div className="space-y-3">
                       {summary.notableQuotes.map((quote, i) => (
-                        <div key={i} className="p-4 bg-violet-50 rounded-2xl border-l-4 border-violet-400">
-                          <p className="text-slate-700 italic">"{quote.text}"</p>
+                        <div key={i} className="p-4 bg-slate-50 rounded-xl border-l-4 border-slate-300">
+                          <p className="text-slate-600 italic">"{quote.text}"</p>
                           {quote.timestamp !== undefined && (
                             <button
                               onClick={() => handleSeekTo(quote.timestamp)}
-                              className="mt-2 text-xs text-violet-600 hover:text-violet-700 flex items-center gap-1"
+                              className="mt-2 text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1"
                             >
                               <Play className="w-3 h-3" /> {formatTimestamp(quote.timestamp)}
                             </button>
@@ -883,7 +891,9 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                   </div>
                 ) : (
                   <div className="text-center py-16">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-2xl flex items-center justify-center text-2xl">📝</div>
+                    <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-2xl flex items-center justify-center">
+                      <FileText className="w-8 h-8 text-slate-400" />
+                    </div>
                     <p className="text-slate-500">No transcript available</p>
                   </div>
                 )}
@@ -923,7 +933,9 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                   </div>
                 ) : (
                   <div className="text-center py-16">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-2xl flex items-center justify-center text-2xl">📚</div>
+                    <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-2xl flex items-center justify-center">
+                      <List className="w-8 h-8 text-slate-400" />
+                    </div>
                     <p className="text-slate-500">No chapters detected</p>
                     <p className="text-slate-400 text-sm mt-1">Chapters work best with longer videos</p>
                   </div>

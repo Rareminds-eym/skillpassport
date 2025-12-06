@@ -13,9 +13,11 @@ import {
   History,
   Plus,
   LogIn,
-  Trash2
+  Trash2,
+  Pencil
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
 import { useTutorChat } from '../../hooks/useTutorChat';
 // @ts-ignore - AuthContext is a JSX file
 import { useAuth } from '../../context/AuthContext';
@@ -46,8 +48,11 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 1 | -1>>({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editedContent, setEditedContent] = useState('');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
+  const editTextareaRef = React.useRef<HTMLTextAreaElement>(null);
   const isAuthenticated = !!user;
 
   const {
@@ -61,6 +66,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     conversations,
     suggestedQuestions,
     sendMessage,
+    editMessage,
     loadConversation,
     startNewConversation,
     deleteConversation,
@@ -124,6 +130,44 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     await submitFeedback(index, rating);
     setFeedbackGiven(prev => ({ ...prev, [index]: rating }));
   };
+
+  // Edit message handlers
+  const handleStartEdit = (messageId: string, content: string) => {
+    setEditingMessageId(messageId);
+    setEditedContent(content);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditedContent('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingMessageId || !editedContent.trim() || isStreaming) return;
+    await editMessage(editingMessageId, editedContent);
+    setEditingMessageId(null);
+    setEditedContent('');
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      handleCancelEdit();
+    } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSaveEdit();
+    }
+  };
+
+  // Focus edit textarea when editing
+  useEffect(() => {
+    if (editingMessageId && editTextareaRef.current) {
+      editTextareaRef.current.focus();
+      editTextareaRef.current.setSelectionRange(
+        editTextareaRef.current.value.length,
+        editTextareaRef.current.value.length
+      );
+    }
+  }, [editingMessageId]);
 
   const handleDeleteConversation = async (convId: string) => {
     setIsDeleting(true);
@@ -255,7 +299,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                       >
                         <p className="font-medium text-gray-800 truncate text-sm">{conv.title}</p>
                         <p className="text-xs text-gray-500 mt-1 truncate">
-                          {conv.messages.length} messages · {conv.updatedAt.toLocaleDateString()}
+                          {new Set(conv.messages.map(m => m.id)).size} messages · {conv.updatedAt.toLocaleDateString()}
                         </p>
                       </button>
                       <button
@@ -387,34 +431,95 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             {messages.map((msg, index) => {
               const isUser = msg.role === 'user';
               const isLastAssistant = !isUser && index === messages.length - 1;
+              const isEditing = editingMessageId === msg.id;
+
+              // Edit mode for user messages - ChatGPT style
+              if (isUser && isEditing) {
+                return (
+                  <div key={msg.id} className="flex justify-end">
+                    <div className="max-w-[90%] w-full">
+                      <textarea
+                        ref={editTextareaRef}
+                        value={editedContent}
+                        onChange={(e) => setEditedContent(e.target.value)}
+                        onKeyDown={handleEditKeyDown}
+                        className="w-full px-4 py-3 text-sm text-gray-800 bg-white border border-gray-200 rounded-2xl resize-none focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-100 shadow-sm"
+                        rows={Math.min(Math.max(editedContent.split('\n').length, 2), 6)}
+                        placeholder="Edit your message..."
+                        disabled={isStreaming}
+                      />
+                      <div className="flex items-center justify-end gap-3 mt-2">
+                        <button
+                          onClick={handleCancelEdit}
+                          disabled={isStreaming}
+                          className="text-sm text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleSaveEdit}
+                          disabled={!editedContent.trim() || isStreaming}
+                          className="px-4 py-1.5 text-sm text-white bg-violet-600 rounded-full hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                        >
+                          {isStreaming ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Send className="w-3.5 h-3.5" />
+                          )}
+                          Send
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
 
               return (
-                <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'} group`}>
                   <div className={`max-w-[85%] ${isUser ? 'order-2' : 'order-1'}`}>
-                    <div
-                      className={`px-4 py-3 rounded-2xl ${
-                        isUser
-                          ? 'bg-violet-600 text-white rounded-br-md'
-                          : 'bg-white text-gray-800 rounded-bl-md shadow-sm border border-gray-100'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                    <div className="relative">
+                      <div
+                        className={`px-4 py-3 rounded-2xl ${
+                          isUser
+                            ? 'bg-violet-600 text-white rounded-br-md'
+                            : 'bg-white text-gray-800 rounded-bl-md shadow-sm border border-gray-100'
+                        }`}
+                      >
+                        {isUser ? (
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                        ) : (
+                          <div className="prose prose-sm max-w-none text-sm leading-relaxed text-gray-800 [&>p]:mb-2 [&>p:last-child]:mb-0 [&>p]:text-sm [&>p]:leading-relaxed [&_strong]:font-semibold [&_strong]:text-gray-900">
+                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                          </div>
+                        )}
+                        
+                        {/* Reasoning indicator */}
+                        {isReasoning && isLastAssistant && !msg.content && (
+                          <div className="flex items-center gap-2 text-violet-400">
+                            <Brain className="w-4 h-4 animate-pulse" />
+                            <span className="text-xs">Thinking...</span>
+                          </div>
+                        )}
+                        
+                        {/* Loading dots */}
+                        {isStreaming && isLastAssistant && !msg.content && !isReasoning && (
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                        )}
+                      </div>
                       
-                      {/* Reasoning indicator */}
-                      {isReasoning && isLastAssistant && !msg.content && (
-                        <div className="flex items-center gap-2 text-violet-400">
-                          <Brain className="w-4 h-4 animate-pulse" />
-                          <span className="text-xs">Thinking...</span>
-                        </div>
-                      )}
-                      
-                      {/* Loading dots */}
-                      {isStreaming && isLastAssistant && !msg.content && !isReasoning && (
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
+                      {/* Edit button for user messages - appears on hover */}
+                      {isUser && !isStreaming && (
+                        <button
+                          onClick={() => handleStartEdit(msg.id, msg.content)}
+                          className="absolute -left-8 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                          title="Edit message"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
                       )}
                     </div>
 

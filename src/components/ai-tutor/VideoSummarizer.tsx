@@ -20,6 +20,7 @@ import {
   Brain,
   Send
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import {
   VideoSummary,
   TranscriptSegment,
@@ -352,17 +353,6 @@ ${activeSegment ? `Current segment: "${activeSegment.text}"` : ''}
               {/* Summary Tab */}
               {activeTab === 'summary' && summary && (
                 <div className="p-4 space-y-6">
-                  {/* AI Summary */}
-                  <div>
-                    <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2">
-                      <Sparkles className="w-4 h-4 text-violet-500" />
-                      AI Summary
-                    </h3>
-                    <p className="text-gray-600 text-sm leading-relaxed">
-                      {summary.summary || 'No summary available'}
-                    </p>
-                  </div>
-
                   {/* Key Points */}
                   {summary.keyPoints.length > 0 && (
                     <div>
@@ -380,6 +370,17 @@ ${activeSegment ? `Current segment: "${activeSegment.text}"` : ''}
                       </ul>
                     </div>
                   )}
+
+                  {/* AI Summary */}
+                  <div>
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2">
+                      <Sparkles className="w-4 h-4 text-violet-500" />
+                      AI Summary
+                    </h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      {summary.summary || 'No summary available'}
+                    </p>
+                  </div>
 
                   {/* Topics */}
                   {summary.topics.length > 0 && (
@@ -506,7 +507,13 @@ ${activeSegment ? `Current segment: "${activeSegment.text}"` : ''}
                                 : 'bg-gray-100 text-gray-800'
                             }`}
                           >
-                            {msg.content}
+                            {msg.role === 'user' ? (
+                              msg.content
+                            ) : (
+                              <div className="prose prose-sm max-w-none text-sm leading-normal [&>p]:mb-1 [&>p:last-child]:mb-0 [&>p]:text-sm [&>p]:leading-normal [&_strong]:font-semibold [&_strong]:text-gray-900">
+                                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))

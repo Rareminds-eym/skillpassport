@@ -27,6 +27,7 @@ export interface UseTutorChatReturn {
   conversations: Conversation[];
   suggestedQuestions: string[];
   sendMessage: (content: string) => Promise<void>;
+  editMessage: (messageId: string, newContent: string) => Promise<void>;
   loadConversation: (conversationId: string) => Promise<void>;
   startNewConversation: () => void;
   deleteConversation: (conversationId: string) => Promise<void>;
@@ -186,6 +187,88 @@ export function useTutorChat({ courseId, lessonId }: UseTutorChatOptions): UseTu
     setError(null);
   }, []);
 
+  // Edit a user message and regenerate AI response (ChatGPT-style)
+  const handleEditMessage = useCallback(async (messageId: string, newContent: string) => {
+    if (!newContent.trim() || isStreaming) return;
+
+    // Find the message index
+    const messageIndex = messages.findIndex(msg => msg.id === messageId);
+    if (messageIndex === -1) return;
+
+    // Only allow editing user messages
+    const message = messages[messageIndex];
+    if (message.role !== 'user') return;
+
+    setError(null);
+    setIsLoading(true);
+    setIsStreaming(true);
+
+    // Remove all messages after the edited message and update the edited message
+    const updatedMessages = messages.slice(0, messageIndex);
+    const editedUserMessage: ChatMessage = {
+      ...message,
+      content: newContent.trim(),
+      timestamp: new Date()
+    };
+    setMessages([...updatedMessages, editedUserMessage]);
+
+    // Create placeholder for new assistant message
+    const assistantMessageId = crypto.randomUUID();
+    const assistantMessage: ChatMessage = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+
+    try {
+      // Stream the new response
+      const generator = sendMessage({
+        conversationId: conversationId || undefined,
+        courseId,
+        lessonId,
+        message: newContent.trim()
+      });
+
+      setCurrentReasoning('');
+      
+      for await (const chunk of generator) {
+        if (chunk.type === 'reasoning' && chunk.reasoning) {
+          setIsReasoning(true);
+          setCurrentReasoning(prev => prev + chunk.reasoning);
+        } else if (chunk.type === 'content' && chunk.content) {
+          setIsReasoning(false);
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === assistantMessageId 
+                ? { ...msg, content: msg.content + chunk.content }
+                : msg
+            )
+          );
+        } else if (chunk.type === 'done') {
+          if (chunk.conversationId && !conversationId) {
+            setConversationId(chunk.conversationId);
+            refreshConversations();
+          }
+        }
+      }
+
+      const newConvId = getLastConversationId();
+      if (newConvId && !conversationId) {
+        setConversationId(newConvId);
+        refreshConversations();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to regenerate response');
+      setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+    } finally {
+      setIsLoading(false);
+      setIsStreaming(false);
+      setIsReasoning(false);
+    }
+  }, [messages, conversationId, courseId, lessonId, isStreaming, refreshConversations]);
+
   // Delete a conversation permanently
   const handleDeleteConversation = useCallback(async (convId: string) => {
     setError(null);
@@ -233,6 +316,7 @@ export function useTutorChat({ courseId, lessonId }: UseTutorChatOptions): UseTu
     conversations,
     suggestedQuestions,
     sendMessage: handleSendMessage,
+    editMessage: handleEditMessage,
     loadConversation,
     startNewConversation,
     deleteConversation: handleDeleteConversation,
