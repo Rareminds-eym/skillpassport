@@ -1,6 +1,13 @@
 import { CheckCircle, Award, Rocket, Calendar, FileText, Users, Briefcase, GraduationCap } from 'lucide-react';
+import RecommendedCoursesSection from './RecommendedCoursesSection';
 
-const RoadmapSection = ({ roadmap }) => {
+/**
+ * Roadmap Section Component
+ * Displays the career action roadmap including projects, internships, activities, and recommended courses
+ * 
+ * Requirements: 4.1 - Shows recommended courses section in the roadmap
+ */
+const RoadmapSection = ({ roadmap, platformCourses = [], skillGapCourses = {}, onCourseClick }) => {
     return (
         <div className="space-y-6">
             {/* Projects Section */}
@@ -141,6 +148,13 @@ const RoadmapSection = ({ roadmap }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Recommended Platform Courses Section - Requirements: 4.1 */}
+            <RecommendedCoursesSection
+                platformCourses={platformCourses}
+                skillGapCourses={skillGapCourses}
+                onCourseClick={onCourseClick}
+            />
 
             {/* Timeline Summary */}
             <div className="bg-slate-800 rounded-xl p-6">

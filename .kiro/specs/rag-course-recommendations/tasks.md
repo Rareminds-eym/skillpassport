@@ -112,12 +112,12 @@
     - Add click handler to navigate to course enrollment
     - Style consistent with existing assessment result cards
     - _Requirements: 4.2, 4.3_
-  - [ ]* 10.2 Write property test for course card data completeness
+  - [x] 10.2 Write property test for course card data completeness
     - **Property 8: Course Card Data Completeness**
     - **Validates: Requirements 4.2**
 
-- [ ] 11. Create recommended courses section
-  - [ ] 11.1 Create RecommendedCoursesSection component
+- [x] 11. Create recommended courses section
+  - [x] 11.1 Create RecommendedCoursesSection component
     - Create `src/pages/student/assessment-result/components/sections/RecommendedCoursesSection.jsx`
     - Display "Recommended Platform Courses" header
     - Show grid of CourseRecommendationCard components
@@ -125,28 +125,28 @@
     - Handle empty state with appropriate message
     - _Requirements: 4.1, 4.4, 3.5_
 
-- [ ] 12. Update RoadmapSection to include recommendations
-  - [ ] 12.1 Integrate RecommendedCoursesSection into RoadmapSection
+- [x] 12. Update RoadmapSection to include recommendations
+  - [x] 12.1 Integrate RecommendedCoursesSection into RoadmapSection
     - Import RecommendedCoursesSection
     - Add section after existing certifications section
     - Pass platformCourses from assessment results
     - _Requirements: 4.1_
 
-- [ ] 13. Update SkillsSection with course suggestions
-  - [ ] 13.1 Add course suggestions to skill gap display
+- [x] 13. Update SkillsSection with course suggestions
+  - [x] 13.1 Add course suggestions to skill gap display
     - Modify SkillsSection.jsx to show courses per skill gap
     - Display 1-3 courses under each priority skill
     - Include "Why this course" explanation
     - Handle case when no courses match a skill gap
     - _Requirements: 5.1, 5.3, 5.4_
 
-- [ ] 14. Checkpoint - Ensure all tests pass
+- [x] 14. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Phase 7: Batch Embedding Script
 
-- [ ] 15. Create batch embedding utility
-  - [ ] 15.1 Create script to embed all existing courses
+- [x] 15. Create batch embedding utility
+  - [x] 15.1 Create script to embed all existing courses
     - Create `scripts/embedCourses.js`
     - Fetch all active courses without embeddings
     - Generate embeddings in batches of 10 to avoid rate limits
@@ -156,18 +156,18 @@
 
 ## Phase 8: Final Integration & Testing
 
-- [ ] 16. End-to-end testing and refinement
-  - [ ] 16.1 Test complete flow
+- [x] 16. End-to-end testing and refinement
+  - [x] 16.1 Test complete flow
     - Run batch embedding script on all courses
     - Complete a test assessment
     - Verify course recommendations appear in results
     - Verify skill gap courses are displayed
     - Test navigation to course enrollment
     - _Requirements: 4.1, 4.3, 4.5_
-  - [ ]* 16.2 Write integration tests
+  - [x] 16.2 Write integration tests
     - Test assessment completion → recommendations flow
     - Test fallback when no embeddings exist
     - _Requirements: 4.1, 6.3_
 
-- [ ] 17. Final Checkpoint - Ensure all tests pass
+- [x] 17. Final Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
