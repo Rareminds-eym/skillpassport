@@ -1,230 +1,316 @@
-import React, { useState } from "react";
-import {
-  BookOpenIcon,
-  PlusCircleIcon,
-  PencilSquareIcon,
-  TrashIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  XMarkIcon,
-  AcademicCapIcon,
-  ArrowPathIcon,
-} from "@heroicons/react/24/outline";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useState, useEffect } from 'react';
+import { useCurriculum } from '../../../hooks/useCurriculum';
+import * as curriculumService from '../../../services/curriculumService';
 
-interface Outcome {
-  id: number;
-  text: string;
-  bloomLevel?: string;
-}
+// Import all the modal and card components from the original file
+import CurriculumBuilderUI from '../../admin/schoolAdmin/CurriculumBuilder';
 
-interface Unit {
-  id: number;
-  title: string;
-  credits: number;
-  hours: number;
-  outcomes: Outcome[];
-}
+const CollegeCurriculumBuilder: React.FC = () => {
+  // Local state for selections
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Notification state
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+  
+  // Configuration data from database
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [academicYears, setAcademicYears] = useState<string[]>([]);
 
-interface Curriculum {
-  id: number;
-  academicYear: string;
-  department: string;
-  program: string;
-  semester: number;
-  course: string;
-  units: Unit[];
-  status: "draft" | "submitted" | "approved" | "published";
-}
+  // Load configuration data on mount
+  useEffect(() => {
+    loadConfigurationData();
+  }, []);
 
-const CurriculumBuilder: React.FC = () => {
-  const [curricula, setCurricula] = useState<Curriculum[]>([
-    {
-      id: 1,
-      academicYear: "2024-25",
-      department: "Computer Science",
-      program: "B.Tech",
-      semester: 5,
-      course: "Data Structures",
-      units: [],
-      status: "draft",
-    },
-  ]);
+  const loadConfigurationData = async () => {
+    try {
+      // Load configuration data with individual error handling
+      let subjectsData: string[] = [];
+      let classesData: string[] = [];
+      let yearsData: string[] = [];
 
-  const [selectedCurriculum, setSelectedCurriculum] = useState<Curriculum | null>(
-    curricula[0] || null
-  );
+      try {
+        subjectsData = await curriculumService.getSubjects();
+      } catch (err) {
+        console.error('Error loading subjects:', err);
+      }
 
-  const statusColors = {
-    draft: "bg-gray-100 text-gray-700",
-    submitted: "bg-blue-100 text-blue-700",
-    approved: "bg-green-100 text-green-700",
-    published: "bg-purple-100 text-purple-700",
+      try {
+        classesData = await curriculumService.getClasses();
+      } catch (err) {
+        console.error('Error loading classes:', err);
+      }
+
+      try {
+        yearsData = await curriculumService.getAcademicYears();
+      } catch (err) {
+        console.error('Error loading academic years:', err);
+      }
+      
+      setSubjects(subjectsData);
+      setClasses(classesData);
+      setAcademicYears(yearsData);
+      
+      // Auto-select current academic year if available
+      try {
+        const currentYear = await curriculumService.getCurrentAcademicYear();
+        if (currentYear && yearsData.includes(currentYear)) {
+          setSelectedAcademicYear(currentYear);
+        }
+      } catch (err) {
+        console.error('Error loading current academic year:', err);
+      }
+
+      // Show warning if no data was loaded
+      if (subjectsData.length === 0 || classesData.length === 0 || yearsData.length === 0) {
+        console.warn('Some configuration data is missing:', {
+          subjects: subjectsData.length,
+          classes: classesData.length,
+          years: yearsData.length,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error loading configuration:', error);
+      alert('Failed to load configuration data. Please check the console for details.');
+    }
   };
 
+  // Use the curriculum hook
+  const {
+    curriculumId,
+    chapters,
+    learningOutcomes,
+    assessmentTypes,
+    status,
+    rejectionReason,
+    loading,
+    saveStatus,
+    addChapter,
+    updateChapter,
+    deleteChapter,
+    addLearningOutcome,
+    updateLearningOutcome,
+    deleteLearningOutcome,
+    submitForApproval,
+    approveCurriculum,
+    rejectCurriculum,
+  } = useCurriculum(selectedSubject, selectedClass, selectedAcademicYear);
+
+  // Handler wrappers to match the original component's interface
+  const handleAddChapter = async (chapter: any) => {
+    try {
+      if (chapter.id && chapters.find(ch => ch.id === chapter.id)) {
+        // Update existing
+        await updateChapter(chapter.id, {
+          name: chapter.name,
+          code: chapter.code,
+          description: chapter.description,
+          order: chapter.order,
+          estimatedDuration: chapter.estimatedDuration,
+          durationUnit: chapter.durationUnit,
+        });
+      } else {
+        // Create new
+        await addChapter({
+          name: chapter.name,
+          code: chapter.code,
+          description: chapter.description,
+          order: chapter.order || chapters.length + 1,
+          estimatedDuration: chapter.estimatedDuration,
+          durationUnit: chapter.durationUnit,
+        });
+      }
+    } catch (error: any) {
+      alert('Error saving chapter: ' + error.message);
+      throw error;
+    }
+  };
+
+  const handleDeleteChapter = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this chapter?')) return;
+    
+    try {
+      await deleteChapter(id);
+    } catch (error: any) {
+      alert('Error deleting chapter: ' + error.message);
+      throw error;
+    }
+  };
+
+  const handleAddOutcome = async (outcome: any) => {
+    try {
+      if (outcome.id && learningOutcomes.find(lo => lo.id === outcome.id)) {
+        // Update existing
+        await updateLearningOutcome(outcome.id, {
+          outcome: outcome.outcome,
+          bloomLevel: outcome.bloomLevel,
+          assessmentMappings: outcome.assessmentMappings,
+          chapterId: outcome.chapterId,
+        });
+      } else {
+        // Create new
+        await addLearningOutcome({
+          chapterId: outcome.chapterId,
+          outcome: outcome.outcome,
+          bloomLevel: outcome.bloomLevel,
+          assessmentMappings: outcome.assessmentMappings,
+        });
+      }
+    } catch (error: any) {
+      alert('Error saving learning outcome: ' + error.message);
+      throw error;
+    }
+  };
+
+  const handleDeleteOutcome = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this outcome?')) return;
+    
+    try {
+      await deleteLearningOutcome(id);
+    } catch (error: any) {
+      alert('Error deleting outcome: ' + error.message);
+      throw error;
+    }
+  };
+
+  const handleSubmitForApproval = async () => {
+    try {
+      // Check if user is college_admin to show appropriate message
+      const { data: { user } } = await curriculumService.supabase.auth.getUser();
+      let isCollegeAdmin = false;
+      
+      if (user) {
+        const { data: userData } = await curriculumService.supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        isCollegeAdmin = userData?.role === 'college_admin';
+      }
+
+      await submitForApproval();
+      
+      const message = isCollegeAdmin
+        ? 'Curriculum approved and published successfully!'
+        : 'Curriculum submitted for approval! The Academic Coordinator will review it.';
+      
+      setNotification({ type: 'success', message });
+      setTimeout(() => setNotification(null), 5000);
+    } catch (error: any) {
+      setNotification({ type: 'error', message: 'Error submitting curriculum: ' + error.message });
+      setTimeout(() => setNotification(null), 5000);
+      throw error;
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!window.confirm('Approve this curriculum?')) return;
+    
+    try {
+      await approveCurriculum();
+      setNotification({ type: 'success', message: 'Curriculum approved successfully!' });
+      setTimeout(() => setNotification(null), 5000);
+    } catch (error: any) {
+      setNotification({ type: 'error', message: 'Error approving curriculum: ' + error.message });
+      setTimeout(() => setNotification(null), 5000);
+      throw error;
+    }
+  };
+
+  const handleReject = async () => {
+    const reason = prompt('Please provide a reason for rejection:');
+    if (!reason) return;
+    
+    try {
+      await rejectCurriculum(reason);
+      setNotification({ type: 'success', message: 'Curriculum rejected. Educator will be notified.' });
+      setTimeout(() => setNotification(null), 5000);
+    } catch (error: any) {
+      setNotification({ type: 'error', message: 'Error rejecting curriculum: ' + error.message });
+      setTimeout(() => setNotification(null), 5000);
+      throw error;
+    }
+  };
+
+  // Pass all props to the original component
   return (
-    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-          Curriculum / Syllabus Builder
-        </h1>
-        <p className="text-gray-600 text-sm sm:text-base">
-          Define academic structure, outcomes, and assessment mapping
-        </p>
-      </div>
-
-      {/* Context Selector */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Context Selector</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Academic Year
-            </label>
-            <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-              <option>2024-25</option>
-              <option>2025-26</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Department
-            </label>
-            <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-              <option>Computer Science</option>
-              <option>Electronics</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Semester
-            </label>
-            <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                <option key={s}>Semester {s}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Curriculum List */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Curriculum List</h2>
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-            <PlusCircleIcon className="h-5 w-5" />
-            Create New
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          {curricula.map((curr) => (
-            <div
-              key={curr.id}
-              onClick={() => setSelectedCurriculum(curr)}
-              className={`p-4 border-2 rounded-lg cursor-pointer transition ${
-                selectedCurriculum?.id === curr.id
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-semibold text-gray-900">{curr.course}</h3>
-                  <p className="text-sm text-gray-600">
-                    {curr.department} • {curr.program} • Semester {curr.semester}
-                  </p>
-                </div>
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    statusColors[curr.status]
-                  }`}
-                >
-                  {curr.status}
-                </span>
-              </div>
+    <>
+      {/* Notification Banner */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2">
+          <div
+            className={`rounded-lg border px-6 py-4 shadow-lg ${
+              notification.type === 'success'
+                ? 'bg-green-50 border-green-200 text-green-800'
+                : 'bg-red-50 border-red-200 text-red-800'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {notification.type === 'success' ? (
+                <svg className="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              )}
+              <p className="text-sm font-medium">{notification.message}</p>
+              <button
+                onClick={() => setNotification(null)}
+                className="ml-4 text-current opacity-70 hover:opacity-100"
+              >
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Units/Modules Section */}
-      {selectedCurriculum && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Units/Modules ({selectedCurriculum.units.length})
-            </h2>
-            <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-              <PlusCircleIcon className="h-5 w-5" />
-              Add Unit
-            </button>
-          </div>
-
-          {selectedCurriculum.units.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-              <BookOpenIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600">No units added yet</p>
-              <p className="text-sm text-gray-500 mt-1">
-                Click "Add Unit" to create your first unit
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {selectedCurriculum.units.map((unit) => (
-                <div
-                  key={unit.id}
-                  className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{unit.title}</h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {unit.credits} Credits • {unit.hours} Hours
-                      </p>
-                      <p className="text-sm text-gray-500 mt-2">
-                        {unit.outcomes.length} Learning Outcomes
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="p-2 text-blue-600 hover:bg-blue-50 rounded">
-                        <PencilSquareIcon className="h-5 w-5" />
-                      </button>
-                      <button className="p-2 text-red-600 hover:bg-red-50 rounded">
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Actions */}
-      {selectedCurriculum && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <div className="flex flex-wrap gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-              Save Draft
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-              Submit for Approval
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-              <CheckCircleIcon className="h-5 w-5" />
-              Approve
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
-              Publish
-            </button>
           </div>
         </div>
       )}
-    </div>
+      
+      <CurriculumBuilderUI
+        // Selections
+        selectedSubject={selectedSubject}
+        setSelectedSubject={setSelectedSubject}
+        selectedClass={selectedClass}
+        setSelectedClass={setSelectedClass}
+        selectedAcademicYear={selectedAcademicYear}
+        setSelectedAcademicYear={setSelectedAcademicYear}
+        // Configuration data from database
+        subjects={subjects}
+        classes={classes}
+        academicYears={academicYears}
+        // Data from hook
+        curriculumId={curriculumId}
+        chapters={chapters}
+        learningOutcomes={learningOutcomes}
+        assessmentTypes={assessmentTypes}
+        status={status}
+        rejectionReason={rejectionReason}
+        loading={loading}
+        saveStatus={saveStatus}
+        // Search
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        // Handlers
+        onAddChapter={handleAddChapter}
+        onDeleteChapter={handleDeleteChapter}
+        onAddOutcome={handleAddOutcome}
+        onDeleteOutcome={handleDeleteOutcome}
+        onSubmitForApproval={handleSubmitForApproval}
+        onApprove={handleApprove}
+        onReject={handleReject}
+      />
+    </>
   );
 };
 
-export default CurriculumBuilder;
+export default CollegeCurriculumBuilder;

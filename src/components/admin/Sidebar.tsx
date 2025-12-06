@@ -405,6 +405,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
         key: "academics",
         items: [
           {
+            name: "Courses",
+            path: "/college-admin/academics/courses",
+            icon: AcademicCapIcon,
+          },
+          {
             name: "Curriculum Builder",
             path: "/college-admin/academics/curriculum",
             icon: BookOpenIcon,

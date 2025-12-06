@@ -181,7 +181,17 @@ const UnifiedLogin = () => {
     <div className="flex items-center lg:py-8 bg-white">
       <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[700px] overflow-hidden">
         {/* LEFT SIDE - Illustration */}
-        <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#0a6aba] to-[#09277f]">
+        <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#0a6aba] to-[#09277f] overflow-hidden">
+          {/* Background Image */}
+          <div className="absolute inset-0 z-0">
+            <img 
+              src="/login/login.jpg" 
+              alt="Login background" 
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 "></div>
+          </div>
+
           <div className="relative z-10">
             <h2 className="text-3xl md:text-4xl text-center font-bold leading-tight">
               Welcome Back
@@ -192,13 +202,13 @@ const UnifiedLogin = () => {
           </div>
 
           <div className="relative z-10 flex justify-center items-center h-full">
-            <div className="text-center">
+            {/* <div className="text-center">
               <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-white/10 backdrop-blur-sm mb-6">
                 <UserCircle className="w-20 h-20 text-white" />
               </div>
               <h3 className="text-2xl font-semibold mb-2">Secure Login</h3>
               <p className="text-white/80">Access your personalized dashboard</p>
-            </div>
+            </div> */}
           </div>
         </div>
 

@@ -258,6 +258,9 @@ const CollegeUserManagement = lazy(() =>
 const CollegeCurriculumBuilder = lazy(() =>
   import("../pages/admin/collegeAdmin/CurriculumBuilder")
 );
+const CollegeAdminCourses = lazy(() =>
+  import("../pages/admin/collegeAdmin/Courses")
+);
 const LessonPlanManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/LessonPlanManagement")
 );
@@ -421,6 +424,7 @@ const AppRoutes = () => {
           <Route path="students/graduation" element={<GraduationEligibility />} />
           
           {/* Academic Management */}
+          <Route path="academics/courses" element={<CollegeAdminCourses />} />
           <Route path="academics/curriculum" element={<CollegeCurriculumBuilder />} />
           <Route path="academics/lesson-plans" element={<LessonPlanManagement />} />
           <Route path="academics/calendar" element={<AcademicCalendar />} />
