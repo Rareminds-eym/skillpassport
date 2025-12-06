@@ -78,7 +78,7 @@ const ProfileSection = ({ results, riasecNames }) => {
                         </div>
                         <div>
                             <h3 className="font-bold text-gray-900">Cognitive Abilities</h3>
-                            <p className="text-sm text-gray-500">Multi-Aptitude Battery</p>
+                            <p className="text-sm text-gray-500">Multi-Aptitude</p>
                         </div>
                     </div>
                     <div className="space-y-3">

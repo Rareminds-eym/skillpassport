@@ -281,18 +281,7 @@ const AssessmentTest = () => {
             ],
             instruction: "Rate how much you would LIKE or DISLIKE each activity."
         },
-        {
-            id: 'aptitude',
-            title: 'Multi-Aptitude Battery',
-            icon: <Zap className="w-6 h-6 text-amber-500" />,
-            description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
-            color: "amber",
-            questions: getQuestionsForSection('aptitude'),
-            isTimed: true,
-            timeLimit: 10 * 60, // 10 minutes
-            isAptitude: true,
-            instruction: "Choose the correct answer. Speed matters for clerical questions."
-        },
+
         {
             id: 'bigfive',
             title: 'Big Five Personality',
@@ -340,6 +329,18 @@ const AssessmentTest = () => {
                 { value: 5, label: "Very Much Like Me" }
             ],
             instruction: "How well does each statement describe you?"
+        },
+        {
+            id: 'aptitude',
+            title: 'Multi-Aptitude',
+            icon: <Zap className="w-6 h-6 text-amber-500" />,
+            description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
+            color: "amber",
+            questions: getQuestionsForSection('aptitude'),
+            isTimed: true,
+            timeLimit: 10 * 60, // 10 minutes
+            isAptitude: true,
+            instruction: "Choose the correct answer. Speed matters for clerical questions."
         },
         {
             id: 'knowledge',
