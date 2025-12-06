@@ -72,6 +72,8 @@ import { useStudentCertificates } from "../../hooks/useStudentCertificates";
 import { useStudentProjects } from "../../hooks/useStudentProjects";
 import AnalyticsView from "../../components/Students/components/AnalyticsView";
 import { BarChart3, LayoutDashboard } from "lucide-react";
+import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
+import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
 // Debug utilities removed for production cleanliness
 
 const StudentDashboard = () => {
@@ -195,6 +197,12 @@ const StudentDashboard = () => {
     badges,
     loading: achievementsLoading,
   } = useStudentAchievements(studentId, userEmail);
+
+    const {
+    recommendations: assessmentRecommendations,
+    loading: recommendationsLoading,
+    hasAssessment,
+  } = useAssessmentRecommendations(studentId, !!studentId && !isViewingOthersProfile);
 
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
@@ -1655,8 +1663,42 @@ const StudentDashboard = () => {
             </button>
           </div>
         </CardHeader>
+<CardContent className="pt-4 p-6 space-y-4">
+          {/* AI-Powered Recommendations Section - TOP */}
+          {hasAssessment && assessmentRecommendations && (
+            <div className="mb-4">
+              <TrainingRecommendations recommendations={assessmentRecommendations} />
+            </div>
+          )}
 
-        <CardContent className="pt-4 p-6 space-y-4">
+          {/* No Assessment CTA - TOP */}
+          {!hasAssessment && !recommendationsLoading && (
+            <div className="bg-gradient-to-br from-blue-50 to-blue-50 rounded-lg p-4 border-2 border-dashed border-blue-300 mb-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-500 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-bold text-gray-900 mb-1">
+                    Get Personalized Recommendations
+                  </h4>
+                  <p className="text-xs text-gray-600 mb-3">
+                    Take our assessment to receive AI-powered course recommendations tailored to your career goals and skills.
+                  </p>
+                  <Button
+                    onClick={() => navigate("/student/assessment/test")}
+                    size="sm"
+                    className="bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700 text-white text-xs font-semibold"
+                  >
+                    Take Assessment
+                    <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Training Courses List - BOTTOM */}
           {/* {(showAllTraining
         ? userData.training.filter((t) => t.enabled !== false)
         : userData.training.filter((t) => t.enabled !== false).slice(0, 2)
