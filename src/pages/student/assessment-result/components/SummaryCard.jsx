@@ -17,10 +17,7 @@ const SummaryCard = ({ title, subtitle, icon: Icon, gradient, data, onClick, del
                     <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300`}>
                         <Icon className="w-7 h-7 text-white" />
                     </div>
-                    <div>
-                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-600 transition-colors">{title}</h3>
-                        <p className="text-base text-gray-500">{subtitle}</p>
-                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-600 transition-colors">{title} - {subtitle}</h3>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
                     <ChevronRight className="w-6 h-6 text-gray-400 group-hover:text-indigo-600" />
