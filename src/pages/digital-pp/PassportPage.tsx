@@ -148,12 +148,26 @@ const PassportPage: React.FC = () => {
                   <p className="font-bold text-lg text-gray-900">{student?.name || 'N/A'}</p>
                 </div>
                 <div className="border-b border-gray-300 pb-2">
-                  <p className="text-xs text-gray-500 uppercase">University</p>
-                  <p className="font-semibold text-gray-800">{student?.university || 'N/A'}</p>
+                  <p className="text-xs text-gray-500 uppercase">
+                    {student?.student_type === 'school-student' ? 'School' : 'University'}
+                  </p>
+                  <p className="font-semibold text-gray-800">
+                    {student?.student_type === 'school-student'
+                      ? (student?.school?.name || student?.college_school_name || 'N/A')
+                      : (student?.university || student?.universityInfo?.name || 'N/A')
+                    }
+                  </p>
                 </div>
                 <div className="border-b border-gray-300 pb-2">
-                  <p className="text-xs text-gray-500 uppercase">Field of Study</p>
-                  <p className="font-semibold text-gray-800">{student?.branch_field || 'N/A'}</p>
+                  <p className="text-xs text-gray-500 uppercase">
+                    {student?.student_type === 'school-student' ? 'Grade/Section' : 'Field of Study'}
+                  </p>
+                  <p className="font-semibold text-gray-800">
+                    {student?.student_type === 'school-student'
+                      ? (student?.grade && student?.section ? `Grade ${student.grade} - ${student.section}` : 'N/A')
+                      : (student?.branch_field || 'N/A')
+                    }
+                  </p>
                 </div>
               </div>
             </div>
@@ -170,11 +184,18 @@ const PassportPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Location</p>
-                  <p className="text-sm text-gray-800">{student?.district_name || 'N/A'}</p>
+                  <p className="text-sm text-gray-800">
+                    {student?.city && student?.state
+                      ? `${student.city}, ${student.state}${student.country ? `, ${student.country}` : ''}`
+                      : (student?.district_name || 'N/A')
+                    }
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">ID Number</p>
-                  <p className="text-sm font-mono font-bold text-blue-600">{student?.universityId}</p>
+                  <p className="text-sm font-mono font-bold text-blue-600">
+                    {student?.student_id || student?.profile?.passportId || 'N/A'}
+                  </p>
                 </div>
               </div>
             </div>

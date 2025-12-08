@@ -42,6 +42,12 @@ export const useAssessmentRecommendations = (studentId, enabled = true) => {
           // Learning tracks with topics
           learningTracks: skillGap.learningTracks || geminiResults.skillGap?.learningTracks || [],
           
+          // Courses by type (technical and soft skills) - NEW
+          coursesByType: geminiResults.coursesByType || {
+            technical: [],
+            soft: []
+          },
+          
           // Career clusters (High fit careers)
           careerClusters: careerFit.clusters?.filter(c => c.fit === 'High') || 
                          geminiResults.careerFit?.clusters?.filter(c => c.fit === 'High') || [],

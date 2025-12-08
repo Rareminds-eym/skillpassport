@@ -404,10 +404,20 @@ function transformToPortfolioFormat(
     university_college_id: student.university_college_id,
     school: student.schools,
     universityCollege: student.university_colleges,
-    
+    universityInfo: student.universities,
+
+    // School student fields
+    student_type: student.student_type,
+    grade: student.grade,
+    section: student.section,
+
+    // Location fields
+    city: student.city,
+    state: student.state,
+    country: student.country,
+
     // Metadata
     user_id: student.user_id,
-    student_type: student.student_type,
     metadata: student.metadata
   };
 }
