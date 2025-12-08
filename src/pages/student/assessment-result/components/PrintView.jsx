@@ -1,3 +1,5 @@
+import RareMindsLogo from '../../../../assets/images/RareMinds.webp';
+
 /**
  * Print View Component
  * Professional PDF layout optimized for A4 (210mm x 297mm)
@@ -81,6 +83,14 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
             fontSize: '11px',
             color: '#94a3b8',
             margin: '0',
+        },
+        pageHeader: {
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '15px',
+            paddingBottom: '10px',
+            borderBottom: '2px solid #4f46e5',
         },
         infoGrid: {
             display: 'grid',
@@ -188,7 +198,31 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
             gridTemplateColumns: '1fr 1fr',
             gap: '15px',
         },
+        logo: {
+            width: '60px',
+            height: '60px',
+            objectFit: 'contain',
+        },
+        logoSmall: {
+            width: '40px',
+            height: '40px',
+            objectFit: 'contain',
+        },
     };
+
+    // Page header component with logo for pages 2-4
+    const PageHeaderWithLogo = ({ studentName }) => (
+        <div style={styles.pageHeader}>
+            <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                <img src={RareMindsLogo} alt="Rareminds" style={styles.logoSmall} />
+                <div>
+                    <p style={{margin: '0', fontSize: '11px', fontWeight: 'bold', color: '#1e293b'}}>RAREMINDS</p>
+                    <p style={{margin: '0', fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {studentName}</p>
+                </div>
+            </div>
+            <span style={{fontSize: '10px', color: '#4f46e5', fontWeight: '600'}}>SkillPassport Platform</span>
+        </div>
+    );
 
     return (
         <div className="print-view" style={{ background: 'white' }}>
@@ -198,7 +232,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                 <div style={styles.header}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                         <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
-                            <img src="/assets/HomePage/RMLogo.webp" alt="Rareminds" style={{width: '50px', height: '50px', objectFit: 'contain'}} />
+                            <img src={RareMindsLogo} alt="Rareminds" style={styles.logo} />
                             <div>
                                 <h1 style={styles.headerTitle}>Career Profiling & Skill Development Report</h1>
                                 <p style={styles.headerSubtitle}>4th Semester Analysis • Powered by SkillPassport AI</p>
@@ -367,11 +401,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
 
             {/* PAGE 2: Career Fit */}
             <div style={styles.page}>
-                {/* Page Header */}
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0'}}>
-                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {safeStudentInfo.name}</span>
-                    <span style={{fontSize: '9px', color: '#4f46e5', fontWeight: '600'}}>Rareminds SkillPassport</span>
-                </div>
+                <PageHeaderWithLogo studentName={safeStudentInfo.name} />
                 <h2 style={styles.sectionTitle}>2. Career Fit Analysis</h2>
 
                 {careerFit?.clusters?.map((cluster, idx) => {
@@ -430,11 +460,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
 
             {/* PAGE 3: Skills & Development */}
             <div style={styles.page}>
-                {/* Page Header */}
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0'}}>
-                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {safeStudentInfo.name}</span>
-                    <span style={{fontSize: '9px', color: '#4f46e5', fontWeight: '600'}}>Rareminds SkillPassport</span>
-                </div>
+                <PageHeaderWithLogo studentName={safeStudentInfo.name} />
                 <h2 style={styles.sectionTitle}>3. Skill Gap & Development Plan</h2>
 
                 <div style={styles.twoCol}>
@@ -460,7 +486,6 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                 <h3 style={styles.subTitle}>Priority A Skills (Build in 6 months)</h3>
                 {skillGap?.priorityA?.map((item, idx) => {
                     const currentPct = (item.currentLevel / 5) * 100;
-                    const targetPct = (item.targetLevel / 5) * 100;
                     return (
                         <div key={idx} style={{...styles.card, padding: '10px'}}>
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px'}}>
@@ -491,11 +516,43 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
 
             {/* PAGE 4: Roadmap */}
             <div style={styles.lastPage}>
-                {/* Page Header */}
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0'}}>
-                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {safeStudentInfo.name}</span>
-                    <span style={{fontSize: '9px', color: '#4f46e5', fontWeight: '600'}}>Rareminds SkillPassport</span>
+                <PageHeaderWithLogo studentName={safeStudentInfo.name} />
+                <h2 style={styles.
+
+                <h3 style={styles.subTitle}>Priority A Skills (Build in 6 months)</h3>
+                {skillGap?.priorityA?.map((item, idx) => {
+                    const currentPct = (item.currentLevel / 5) * 100;
+                    return (
+                        <div key={idx} style={{...styles.card, padding: '10px'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px'}}>
+                                <strong style={{fontSize: '11px'}}>{idx + 1}. {item.skill}</strong>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                    <span style={{...styles.badge, background: getScoreStyle(currentPct).bg, color: getScoreStyle(currentPct).color}}>{item.currentLevel}/5</span>
+                                    <span style={{fontSize: '10px'}}>→</span>
+                                    <span style={{...styles.badge, background: '#dcfce7', color: '#166534'}}>{item.targetLevel}/5</span>
+                                </div>
+                            </div>
+                            <p style={{margin: '4px 0', fontSize: '9px'}}><strong>Why:</strong> {item.whyNeeded}</p>
+                            <p style={{margin: '0', fontSize: '9px'}}><strong>How:</strong> {item.howToBuild}</p>
+                        </div>
+                    );
+                })}
+
+                <h3 style={styles.subTitle}>Priority B Skills (6-12 months)</h3>
+                <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
+                    {skillGap?.priorityB?.map((item, idx) => (
+                        <span key={idx} style={{...styles.badge, background: '#fef9c3', color: '#854d0e'}}>{item.skill}</span>
+                    ))}
                 </div>
+
+                <div style={{...styles.summaryBox, marginTop: '15px'}}>
+                    <p style={{margin: '0'}}><strong>Recommended Learning Track:</strong> {skillGap?.recommendedTrack}</p>
+                </div>
+            </div>
+
+            {/* PAGE 4: Roadmap */}
+            <div style={styles.lastPage}>
+                <PageHeaderWithLogo studentName={safeStudentInfo.name} />
                 <h2 style={styles.sectionTitle}>4. 6-12 Month Action Roadmap</h2>
 
                 <h3 style={styles.subTitle}>Portfolio Projects</h3>
@@ -546,8 +603,8 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                 {/* Footer with Branding */}
                 <div style={{marginTop: '20px', paddingTop: '15px', borderTop: '2px solid #4f46e5'}}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                            <img src="/assets/HomePage/RMLogo.webp" alt="Rareminds" style={{width: '32px', height: '32px', objectFit: 'contain'}} />
+                        <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                            <img src={RareMindsLogo} alt="Rareminds" style={styles.logoSmall} />
                             <div>
                                 <p style={{margin: '0', fontSize: '11px', fontWeight: 'bold', color: '#1e293b'}}>RAREMINDS</p>
                                 <p style={{margin: '0', fontSize: '8px', color: '#6b7280'}}>SkillPassport • AI-Powered Career Assessment</p>
