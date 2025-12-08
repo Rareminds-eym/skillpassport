@@ -56,8 +56,8 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
             fontSize: '10px',
             lineHeight: '1.4',
             color: '#1f2937',
-            pageBreakAfter: 'always',
             padding: '0',
+            marginBottom: '20px',
         },
         lastPage: {
             fontFamily: 'Arial, Helvetica, sans-serif',
@@ -191,22 +191,139 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
     };
 
     return (
-        <div className="print-view" style={{ background: 'white' }}>
-            {/* PAGE 1: Profile Overview */}
-            <div style={styles.page}>
+        <div className="print-view" style={{ background: 'white', position: 'relative' }}>
+            {/* Rareminds Bulb Logo Watermark - Center - PRINT ONLY */}
+            <div className="print-only-watermark" style={{
+                position: 'fixed', 
+                top: '50%', 
+                left: '50%', 
+                transform: 'translate(-50%, -50%)', 
+                pointerEvents: 'none', 
+                zIndex: 0,
+                opacity: 0.08
+            }}>
+                <img 
+                    src="/RMLogo.webp" 
+                    alt="Rareminds Watermark" 
+                    style={{
+                        width: '400px', 
+                        height: '400px', 
+                        objectFit: 'contain'
+                    }} 
+                />
+            </div>
+            
+            {/* Additional Logo Watermarks for Pattern - PRINT ONLY */}
+            <div className="print-only-watermark" style={{
+                position: 'fixed',
+                top: '20%',
+                left: '20%',
+                transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none',
+                zIndex: 0,
+                opacity: 0.05
+            }}>
+                <img 
+                    src="/RMLogo.webp" 
+                    alt="Rareminds Watermark" 
+                    style={{
+                        width: '200px', 
+                        height: '200px', 
+                        objectFit: 'contain'
+                    }} 
+                />
+            </div>
+            
+            <div className="print-only-watermark" style={{
+                position: 'fixed',
+                top: '20%',
+                right: '10%',
+                transform: 'translate(50%, -50%)',
+                pointerEvents: 'none',
+                zIndex: 0,
+                opacity: 0.05
+            }}>
+                <img 
+                    src="/RMLogo.webp" 
+                    alt="Rareminds Watermark" 
+                    style={{
+                        width: '200px', 
+                        height: '200px', 
+                        objectFit: 'contain'
+                    }} 
+                />
+            </div>
+            
+            <div className="print-only-watermark" style={{
+                position: 'fixed',
+                bottom: '15%',
+                left: '20%',
+                transform: 'translate(-50%, 50%)',
+                pointerEvents: 'none',
+                zIndex: 0,
+                opacity: 0.05
+            }}>
+                <img 
+                    src="/RMLogo.webp" 
+                    alt="Rareminds Watermark" 
+                    style={{
+                        width: '200px', 
+                        height: '200px', 
+                        objectFit: 'contain'
+                    }} 
+                />
+            </div>
+            
+            <div className="print-only-watermark" style={{
+                position: 'fixed',
+                bottom: '15%',
+                right: '10%',
+                transform: 'translate(50%, 50%)',
+                pointerEvents: 'none',
+                zIndex: 0,
+                opacity: 0.05
+            }}>
+                <img 
+                    src="/RMLogo.webp" 
+                    alt="Rareminds Watermark" 
+                    style={{
+                        width: '200px', 
+                        height: '200px', 
+                        objectFit: 'contain'
+                    }} 
+                />
+            </div>
+
+            {/* Fixed Footer - appears on every page */}
+            <div className="print-footer" style={{position: 'fixed', bottom: 0, left: 0, right: 0, padding: '10px 15mm', background: 'white', borderTop: '2px solid #4f46e5', zIndex: 9999}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                        <img src="/assets/HomePage/RMLogo.webp" alt="Rareminds" style={{width: '32px', height: '32px', objectFit: 'contain'}} />
+                        <div>
+                            <p style={{margin: '0', fontSize: '9px', fontWeight: 'bold', color: '#1e293b'}}>RAREMINDS SkillPassport • AI-Powered Career Assessment</p>
+                            <p style={{margin: '0', fontSize: '7px', color: '#6b7280'}}>This is a digitally generated report, does not need signature</p>
+                        </div>
+                    </div>
+                    <div style={{textAlign: 'right'}}>
+                        <p style={{margin: '0', fontSize: '7px', color: '#6b7280'}}>Report Generated: {new Date().toLocaleDateString()}</p>
+                        <p style={{margin: '0', fontSize: '7px', color: '#9ca3af'}}>Confidential • For Student Use Only</p>
+                    </div>
+                </div>
+            </div>
+            
+            {/* Continuous Content */}
+            <div className="print-content" style={{position: 'relative', zIndex: 1, paddingBottom: '70px'}}>
                 {/* Header with Branding */}
                 <div style={styles.header}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                         <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
                             <img src="/assets/HomePage/RMLogo.webp" alt="Rareminds" style={{width: '50px', height: '50px', objectFit: 'contain'}} />
                             <div>
-                                <h1 style={styles.headerTitle}>Career Profiling & Skill Development Report</h1>
-                                <p style={styles.headerSubtitle}>AI-Powered Career Assessment</p>
+                                <h1 style={styles.headerTitle}>RAREMINDS SkillPassport • AI-Powered Career Assessment</h1>
                             </div>
                         </div>
                         <div style={{textAlign: 'right'}}>
-                            <p style={{margin: '0', fontSize: '12px', fontWeight: 'bold', color: 'white'}}>RAREMINDS</p>
-                            <p style={{margin: '0', fontSize: '9px', color: '#94a3b8'}}>SkillPassport Platform</p>
+                            <p style={{margin: '0', fontSize: '12px', fontWeight: 'bold', color: 'white'}}>Career Assessment Report</p>
                         </div>
                     </div>
                 </div>
@@ -237,6 +354,11 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                         <p style={styles.infoLabel}>Assessor</p>
                         <p style={styles.infoValue}>SkillPassport AI</p>
                     </div>
+                </div>
+
+                {/* Data Privacy Notice */}
+                <div style={{background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px', padding: '10px 12px', marginBottom: '20px', fontSize: '8px', color: '#0c4a6e', lineHeight: '1.5'}}>
+                    <p style={{margin: '0'}}><strong>Data Privacy & Consent:</strong> By submitting this form, you consent to the collection and processing of the information you provide for the purpose stated. Your data will be stored securely, used only for authorised activities, and will not be shared with third parties without your explicit permission unless required by law. You may request access, correction, or deletion of your data at any time.</p>
                 </div>
 
                 {/* Section 1: Profile Snapshot */}
@@ -363,16 +485,9 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                 <div style={styles.summaryBox}>
                     <p style={{margin: '0', fontSize: '10px'}}><strong>Overall Summary:</strong> {results.overallSummary}</p>
                 </div>
-            </div>
 
-            {/* PAGE 2: Career Fit */}
-            <div style={styles.page}>
-                {/* Page Header */}
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0'}}>
-                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {safeStudentInfo.name}</span>
-                    <span style={{fontSize: '9px', color: '#4f46e5', fontWeight: '600'}}>Rareminds SkillPassport</span>
-                </div>
-                <h2 style={styles.sectionTitle}>2. Career Fit Analysis</h2>
+                {/* Section 2: Career Fit Analysis */}
+                <h2 style={{...styles.sectionTitle, marginTop: '30px'}}>2. Career Fit Analysis</h2>
 
                 {careerFit?.clusters?.map((cluster, idx) => {
                     const scoreStyle = getScoreStyle(cluster.matchScore || 0);
@@ -395,7 +510,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                                 <div>
                                     <strong>Entry Roles:</strong> {cluster.roles?.entry?.join(', ') || 'N/A'}
                                 </div>
-                                <div>
+                                <div style={{textAlign: 'right'}}>
                                     <strong>Mid Roles:</strong> {cluster.roles?.mid?.join(', ') || 'N/A'}
                                 </div>
                             </div>
@@ -426,16 +541,9 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                         </tr>
                     </tbody>
                 </table>
-            </div>
 
-            {/* PAGE 3: Skills & Development */}
-            <div style={styles.page}>
-                {/* Page Header */}
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0'}}>
-                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {safeStudentInfo.name}</span>
-                    <span style={{fontSize: '9px', color: '#4f46e5', fontWeight: '600'}}>Rareminds SkillPassport</span>
-                </div>
-                <h2 style={styles.sectionTitle}>3. Skill Gap & Development Plan</h2>
+                {/* Section 3: Skill Gap & Development Plan */}
+                <h2 style={{...styles.sectionTitle, marginTop: '30px'}}>3. Skill Gap & Development Plan</h2>
 
                 <div style={styles.twoCol}>
                     <div>
@@ -491,10 +599,17 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
 
             {/* PAGE 4: Roadmap */}
             <div style={styles.lastPage}>
-                {/* Page Header */}
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0'}}>
-                    <span style={{fontSize: '9px', color: '#6b7280'}}>Career Profiling Report • {safeStudentInfo.name}</span>
-                    <span style={{fontSize: '9px', color: '#4f46e5', fontWeight: '600'}}>Rareminds SkillPassport</span>
+                {/* Page Header with Watermark */}
+                <div style={{position: 'relative', marginBottom: '15px'}}>
+                    {/* Watermark */}
+                    <div style={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-45deg)', fontSize: '48px', fontWeight: 'bold', color: 'rgba(79, 70, 229, 0.03)', pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 0}}>
+                        RAREMINDS SkillPassport
+                    </div>
+                    
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '10px', borderBottom: '1px solid #e2e8f0', position: 'relative', zIndex: 1}}>
+                        <span style={{fontSize: '9px', color: '#6b7280'}}>Career Assessment Report • {safeStudentInfo.name}</span>
+                        <span style={{fontSize: '9px', color: '#4f46e5', fontWeight: '600'}}>RAREMINDS SkillPassport • AI-Powered Career Assessment</span>
+                    </div>
                 </div>
                 <h2 style={styles.sectionTitle}>4. 6-12 Month Action Roadmap</h2>
 
@@ -543,21 +658,9 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                     <p style={{margin: '0', fontSize: '10px'}}><strong style={{color: '#93c5fd'}}>Next Review:</strong> {finalNote?.nextReview || 'End of 5th Semester'}</p>
                 </div>
 
-                {/* Footer with Branding */}
-                <div style={{marginTop: '20px', paddingTop: '15px', borderTop: '2px solid #4f46e5'}}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                            <img src="/assets/HomePage/RMLogo.webp" alt="Rareminds" style={{width: '32px', height: '32px', objectFit: 'contain'}} />
-                            <div>
-                                <p style={{margin: '0', fontSize: '11px', fontWeight: 'bold', color: '#1e293b'}}>RAREMINDS</p>
-                                <p style={{margin: '0', fontSize: '8px', color: '#6b7280'}}>SkillPassport • AI-Powered Career Assessment</p>
-                            </div>
-                        </div>
-                        <div style={{textAlign: 'right'}}>
-                            <p style={{margin: '0', fontSize: '8px', color: '#6b7280'}}>Report Generated: {new Date().toLocaleDateString()}</p>
-                            <p style={{margin: '0', fontSize: '8px', color: '#9ca3af'}}>Confidential • For Student Use Only</p>
-                        </div>
-                    </div>
+                {/* Report Disclaimer */}
+                <div style={{background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '6px', padding: '10px 12px', marginTop: '15px', marginBottom: '30px', fontSize: '8px', color: '#78350f', lineHeight: '1.5'}}>
+                    <p style={{margin: '0'}}><strong>Report Disclaimer:</strong> This career report is generated by Rareminds using the inputs and assessment data shared by the user. Your information has been processed confidentially and in compliance with applicable data protection norms, and is not shared with any external parties.</p>
                 </div>
             </div>
         </div>
