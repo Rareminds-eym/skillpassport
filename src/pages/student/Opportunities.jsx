@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Search,
@@ -48,6 +48,7 @@ import { supabase } from '../../lib/supabaseClient';
 
 const Opportunities = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
@@ -94,6 +95,22 @@ const Opportunities = () => {
     fetchOnMount: true,
     activeOnly: true
   });
+
+  // Pre-select opportunity from navigation state (from Dashboard)
+  useEffect(() => {
+    if (location.state?.selectedOpportunityId && opportunities.length > 0) {
+      const preSelectedOpp = opportunities.find(
+        opp => opp.id === location.state.selectedOpportunityId
+      );
+      if (preSelectedOpp) {
+        setSelectedOpportunity(preSelectedOpp);
+        // Scroll to top to show the selected opportunity
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      // Clear the navigation state
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, opportunities, navigate, location.pathname]);
 
   // Ensure loader displays for at least 5 seconds
   useEffect(() => {
@@ -219,25 +236,94 @@ const Opportunities = () => {
     setFilteredApplications(filtered);
   }, [searchQuery, statusFilter, applications]);
 
-  // Filter and sort opportunities for My Jobs tab
+  // Filter and sort opportunities for My Jobs tab with advanced filters
   const filteredAndSortedOpportunities = React.useMemo(() => {
     let filtered = opportunities.filter(opp => {
+      // Search filter
       const matchesSearch = 
         opp.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         opp.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         opp.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
       
-      // Apply advanced filters (keeping existing logic)
-      return matchesSearch;
+      if (!matchesSearch) return false;
+
+      // Employment Type filter
+      if (advancedFilters.employmentType.length > 0) {
+        if (!advancedFilters.employmentType.includes(opp.employment_type)) {
+          return false;
+        }
+      }
+
+      // Experience Level filter
+      if (advancedFilters.experienceLevel.length > 0) {
+        if (!advancedFilters.experienceLevel.includes(opp.experience_level)) {
+          return false;
+        }
+      }
+
+      // Mode filter (Remote/Onsite/Hybrid)
+      if (advancedFilters.mode.length > 0) {
+        if (!advancedFilters.mode.includes(opp.mode)) {
+          return false;
+        }
+      }
+
+      // Salary filter
+      if (advancedFilters.salaryMin && opp.salary_range_min) {
+        if (opp.salary_range_min < parseInt(advancedFilters.salaryMin)) {
+          return false;
+        }
+      }
+      if (advancedFilters.salaryMax && opp.salary_range_max) {
+        if (opp.salary_range_max > parseInt(advancedFilters.salaryMax)) {
+          return false;
+        }
+      }
+
+      // Skills filter
+      if (advancedFilters.skills.length > 0) {
+        const oppSkills = opp.required_skills || [];
+        const hasMatchingSkill = advancedFilters.skills.some(skill =>
+          oppSkills.some(oppSkill => 
+            oppSkill.toLowerCase().includes(skill.toLowerCase())
+          )
+        );
+        if (!hasMatchingSkill) return false;
+      }
+
+      // Department filter
+      if (advancedFilters.department.length > 0) {
+        if (!advancedFilters.department.includes(opp.department)) {
+          return false;
+        }
+      }
+
+      // Posted Within filter
+      if (advancedFilters.postedWithin) {
+        const postedDate = new Date(opp.posted_date || opp.created_at);
+        const now = new Date();
+        const daysDiff = Math.floor((now - postedDate) / (1000 * 60 * 60 * 24));
+        
+        const withinDays = parseInt(advancedFilters.postedWithin);
+        if (daysDiff > withinDays) {
+          return false;
+        }
+      }
+
+      return true;
     });
 
+    // Sort filtered results
     return filtered.sort((a, b) => {
       if (sortBy === 'newest') {
         return new Date(b.posted_date || b.created_at) - new Date(a.posted_date || a.created_at);
       }
+      if (sortBy === 'oldest') {
+        return new Date(a.posted_date || a.created_at) - new Date(b.posted_date || b.created_at);
+      }
       return 0;
     });
-  }, [opportunities, searchTerm, sortBy]);
+  }, [opportunities, searchTerm, sortBy, advancedFilters]);
 
   const handleToggleSave = async (opportunity) => {
     if (!studentId) {
@@ -518,6 +604,43 @@ const MyJobsContent = ({
     return opportunities.slice(startIndex, startIndex + opportunitiesPerPage);
   }, [opportunities, currentPage, opportunitiesPerPage]);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, advancedFilters, sortBy, setCurrentPage]);
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push('ellipsis');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('ellipsis');
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('ellipsis');
+        pages.push(currentPage - 1);
+        pages.push(currentPage);
+        pages.push(currentPage + 1);
+        pages.push('ellipsis');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
+
   return (
     <>
       {/* AI Recommendations Section - Always show if loading or has data */}
@@ -655,10 +778,44 @@ const MyJobsContent = ({
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-gray-900">
-              Showing {opportunities.length} Jobs Results
-            </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <p className="text-sm font-semibold text-gray-900">
+                Showing {opportunities.length} Jobs Results
+              </p>
+              {opportunities.length > 0 && (
+                <span className="text-xs text-gray-500">
+                  (Page {currentPage} of {Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage))})
+                </span>
+              )}
+            </div>
+            
+            {/* Active Filters Summary */}
+            {(advancedFilters.employmentType.length > 0 || 
+              advancedFilters.experienceLevel.length > 0 || 
+              advancedFilters.mode.length > 0 ||
+              advancedFilters.skills.length > 0 ||
+              advancedFilters.department.length > 0 ||
+              advancedFilters.salaryMin ||
+              advancedFilters.salaryMax ||
+              advancedFilters.postedWithin) && (
+              <button
+                onClick={() => setAdvancedFilters({
+                  employmentType: [],
+                  experienceLevel: [],
+                  mode: [],
+                  salaryMin: '',
+                  salaryMax: '',
+                  skills: [],
+                  department: [],
+                  postedWithin: '',
+                })}
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+              >
+                <X className="w-3 h-3" />
+                Clear all filters
+              </button>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -704,60 +861,102 @@ const MyJobsContent = ({
           <p className="text-red-600 font-medium">Failed to load opportunities</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            {opportunities.length > 0 ? (
-              <>
-                {viewMode === 'grid' ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {paginatedOpportunities.map((opp) => (
-                      <OpportunityCard
-                        key={opp.id}
-                        opportunity={opp}
-                        onClick={() => setSelectedOpportunity(opp)}
-                        isSelected={selectedOpportunity?.id === opp.id}
-                        isApplied={appliedJobs.has(opp.id)}
-                        isSaved={savedJobs.has(opp.id)}
-                        onToggleSave={handleToggleSave}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {paginatedOpportunities.map((opp) => (
-                      <OpportunityListItem
-                        key={opp.id}
-                        opportunity={opp}
-                        onClick={() => setSelectedOpportunity(opp)}
-                        isSelected={selectedOpportunity?.id === opp.id}
-                        isApplied={appliedJobs.has(opp.id)}
-                        isSaved={savedJobs.has(opp.id)}
-                        onApply={() => handleApply(opp)}
-                        onToggleSave={handleToggleSave}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
-                <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">No opportunities found</h3>
-              </div>
-            )}
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              {opportunities.length > 0 ? (
+                <>
+                  {viewMode === 'grid' ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {paginatedOpportunities.map((opp) => (
+                        <OpportunityCard
+                          key={opp.id}
+                          opportunity={opp}
+                          onClick={() => setSelectedOpportunity(opp)}
+                          isSelected={selectedOpportunity?.id === opp.id}
+                          isApplied={appliedJobs.has(opp.id)}
+                          isSaved={savedJobs.has(opp.id)}
+                          onToggleSave={handleToggleSave}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {paginatedOpportunities.map((opp) => (
+                        <OpportunityListItem
+                          key={opp.id}
+                          opportunity={opp}
+                          onClick={() => setSelectedOpportunity(opp)}
+                          isSelected={selectedOpportunity?.id === opp.id}
+                          isApplied={appliedJobs.has(opp.id)}
+                          isSaved={savedJobs.has(opp.id)}
+                          onApply={() => handleApply(opp)}
+                          onToggleSave={handleToggleSave}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
+                  <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-600 mb-2">No opportunities found</h3>
+                  <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
+                </div>
+              )}
+            </div>
+
+            <div className="hidden lg:block lg:sticky lg:top-16 lg:self-start">
+              <OpportunityPreview
+                opportunity={selectedOpportunity}
+                onApply={handleApply}
+                onToggleSave={handleToggleSave}
+                isApplied={appliedJobs.has(selectedOpportunity?.id)}
+                isSaved={savedJobs.has(selectedOpportunity?.id)}
+                isApplying={isApplying}
+              />
+            </div>
           </div>
 
-          <div className="hidden lg:block lg:sticky lg:top-16 lg:self-start">
-            <OpportunityPreview
-              opportunity={selectedOpportunity}
-              onApply={handleApply}
-              onToggleSave={handleToggleSave}
-              isApplied={appliedJobs.has(selectedOpportunity?.id)}
-              isSaved={savedJobs.has(selectedOpportunity?.id)}
-              isApplying={isApplying}
-            />
-          </div>
-        </div>
+          {/* Pagination */}
+          {opportunities.length > 0 && totalPages > 1 && (
+            <div className="mt-8 flex justify-center">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+
+                  {getPageNumbers().map((page, idx) => (
+                    <PaginationItem key={idx}>
+                      {page === 'ellipsis' ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          onClick={() => setCurrentPage(page)}
+                          isActive={currentPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
+        </>
       )}
     </>
   );
