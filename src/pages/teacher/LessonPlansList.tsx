@@ -33,7 +33,7 @@ const LessonPlansList: React.FC = () => {
       const userEmail = localStorage.getItem('userEmail');
       
       const { data: teacherData } = await supabase
-        .from("teachers")
+        .from("school_educators")
         .select("id")
         .eq("email", userEmail)
         .single();
