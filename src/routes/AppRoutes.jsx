@@ -55,6 +55,14 @@ const SubscriptionManage = lazy(() =>
   import("../pages/subscription/SubscriptionManage")
 );
 
+// Event Sales (no auth required)
+const EventSales = lazy(() =>
+  import("../pages/event/EventSales")
+);
+const EventSalesSuccess = lazy(() =>
+  import("../pages/event/EventSalesSuccess")
+);
+
 const LoginStudent = lazy(() => import("../pages/auth/LoginStudent"));
 const LoginRecruiter = lazy(() => import("../pages/auth/LoginRecruiter"));
 const LoginAdmin = lazy(() => import("../pages/auth/LoginAdmin"));
@@ -363,6 +371,10 @@ const AppRoutes = () => {
           <Route path="/subscription/plans" element={<SubscriptionPlans />} />
           <Route path="/subscription/plans/:type" element={<SubscriptionPlans />} />
           <Route path="/subscription/plans/:type/:mode" element={<SubscriptionPlans />} />
+          
+          {/* Event Sales - No auth required */}
+          <Route path="/register/plans" element={<EventSales />} />
+          <Route path="/register/plans/success" element={<EventSalesSuccess />} />
           <Route path="/subscription/payment" element={<PaymentCompletion />} />
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />

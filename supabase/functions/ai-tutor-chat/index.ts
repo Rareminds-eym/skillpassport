@@ -331,88 +331,90 @@ serve(async (req) => {
 
           // Save conversation to database
           if (studentId) {
-            const dbClient = supabaseAdmin || supabaseUser;
-            const clientType = supabaseAdmin ? 'admin (service role)' : 'user (authenticated)';
+            // Prefer supabaseUser (authenticated client) for RLS compliance
+            // Fall back to supabaseAdmin only if user client unavailable
+            const dbClient = supabaseUser || supabaseAdmin;
+            const clientType = supabaseUser ? 'user (authenticated)' : supabaseAdmin ? 'admin (service role)' : 'none';
             
             console.log(`[DB Save] Using ${clientType} client for student ${studentId}`);
-            console.log(`[DB Save] supabaseAdmin available: ${!!supabaseAdmin}, supabaseUser available: ${!!supabaseUser}`);
+            console.log(`[DB Save] supabaseUser available: ${!!supabaseUser}, supabaseAdmin available: ${!!supabaseAdmin}`);
             
             if (!dbClient) {
               console.error('[DB Save] ERROR: No database client available for saving conversation');
               console.error('[DB Save] SUPABASE_SERVICE_ROLE_KEY set:', !!SUPABASE_SERVICE_ROLE_KEY);
               console.error('[DB Save] authHeader present:', !!authHeader);
+              console.error('[DB Save] user object:', user ? 'exists' : 'null');
             } else {
-              if (currentConversationId) {
-                // Update existing conversation
-                console.log(`[DB Save] Updating existing conversation ${currentConversationId}`);
-                const { error: updateError } = await dbClient.from('tutor_conversations').update({
-                  messages: updatedMessages,
-                  updated_at: new Date().toISOString()
-                }).eq('id', currentConversationId).eq('student_id', studentId);
-                
-                if (updateError) {
-                  console.error('[DB Save] Error updating conversation:', JSON.stringify(updateError));
-                  console.error('[DB Save] Update error code:', updateError.code);
-                  console.error('[DB Save] Update error message:', updateError.message);
-                } else {
-                  console.log(`[DB Save] SUCCESS: Updated conversation ${currentConversationId} with ${updatedMessages.length} messages`);
-                }
-              } else {
-                // Create new conversation
-                let title = message.slice(0, 50);
-                try {
-                  const titleResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${openRouterKey}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      model: 'openai/gpt-4o-mini',
-                      messages: [{ role: 'user', content: generateConversationTitlePrompt(message, courseContext.courseTitle) }],
-                      max_tokens: 60,
-                      temperature: 0.5
-                    })
-                  });
-                  if (titleResponse.ok) {
-                    const titleData = await titleResponse.json();
-                    title = titleData.choices?.[0]?.message?.content?.trim() || title;
-                  }
-                } catch { /* use default */ }
-
-                console.log(`[DB Save] Creating new conversation for student ${studentId}, course ${courseId}, lesson ${lessonId || 'none'}`);
-                console.log(`[DB Save] Title: ${title.slice(0, 50)}`);
-                
-                const insertData = {
-                  student_id: studentId,
-                  course_id: courseId,
-                  lesson_id: lessonId || null,
-                  title: title.slice(0, 255),
-                  messages: updatedMessages
-                };
-                console.log(`[DB Save] Insert data:`, JSON.stringify({ ...insertData, messages: `[${updatedMessages.length} messages]` }));
-                
-                const { data: newConv, error: insertError } = await dbClient.from('tutor_conversations').insert(insertData).select('id').single();
-
-                if (insertError) {
-                  console.error('[DB Save] ERROR creating conversation:', JSON.stringify(insertError));
-                  console.error('[DB Save] Insert error code:', insertError.code);
-                  console.error('[DB Save] Insert error message:', insertError.message);
-                  console.error('[DB Save] Insert error hint:', insertError.hint || 'none');
-                  console.error('[DB Save] Insert error details:', insertError.details || 'none');
+              try {
+                if (currentConversationId) {
+                  // Update existing conversation
+                  console.log(`[DB Save] Updating existing conversation ${currentConversationId}`);
+                  const { data: updateData, error: updateError } = await dbClient.from('tutor_conversations').update({
+                    messages: updatedMessages,
+                    updated_at: new Date().toISOString()
+                  }).eq('id', currentConversationId).eq('student_id', studentId).select('id').single();
                   
-                  if (insertError.code === '42501' || insertError.message?.includes('policy')) {
-                    console.error('[DB Save] RLS POLICY ERROR - This usually means:');
-                    console.error('[DB Save] 1. Service role key is not set in edge function secrets');
-                    console.error('[DB Save] 2. User auth token is not being properly passed');
-                    console.error('[DB Save] 3. student_id does not match auth.uid()');
+                  if (updateError) {
+                    console.error('[DB Save] Error updating conversation:', JSON.stringify(updateError));
+                    // Try with admin client as fallback
+                    if (supabaseAdmin && dbClient !== supabaseAdmin) {
+                      console.log('[DB Save] Retrying with admin client...');
+                      const { error: retryError } = await supabaseAdmin.from('tutor_conversations').update({
+                        messages: updatedMessages,
+                        updated_at: new Date().toISOString()
+                      }).eq('id', currentConversationId).eq('student_id', studentId);
+                      if (retryError) {
+                        console.error('[DB Save] Admin retry also failed:', JSON.stringify(retryError));
+                      } else {
+                        console.log(`[DB Save] SUCCESS (admin fallback): Updated conversation ${currentConversationId}`);
+                      }
+                    }
+                  } else {
+                    console.log(`[DB Save] SUCCESS: Updated conversation ${currentConversationId} with ${updatedMessages.length} messages`);
                   }
-                } else if (newConv) {
-                  currentConversationId = newConv.id;
-                  console.log(`[DB Save] SUCCESS: Created new conversation: ${currentConversationId}`);
-                }
-              }
-            }
-          } else {
-            console.log('[DB Save] No studentId available, conversation not saved (user not authenticated)');
-          }
+                } else {
+                  // Create new conversation
+                  let title = message.slice(0, 50);
+                  try {
+                    const titleResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                      method: 'POST',
+                      headers: { 'Authorization': `Bearer ${openRouterKey}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        model: 'openai/gpt-4o-mini',
+                        messages: [{ role: 'user', content: generateConversationTitlePrompt(message, courseContext.courseTitle) }],
+                        max_tokens: 60,
+                        temperature: 0.5
+                      })
+                    });
+                    if (titleResponse.ok) {
+                      const titleData = await titleResponse.json();
+                      title = titleData.choices?.[0]?.message?.content?.trim() || title;
+                    }
+                  } catch { /* use default */ }
+
+                  console.log(`[DB Save] Creating new conversation for student ${studentId}, course ${courseId}, lesson ${lessonId || 'none'}`);
+                  console.log(`[DB Save] Title: ${title.slice(0, 50)}`);
+                  
+                  const insertData = {
+                    student_id: studentId,
+                    course_id: courseId,
+                    lesson_id: lessonId || null,
+                    title: title.slice(0, 255),
+                    messages: updatedMessages
+                  };
+                  console.log(`[DB Save] Insert data:`, JSON.stringify({ ...insertData, messages: `[${updatedMessages.length} messages]` }));
+                  
+                  const { data: newConv, error: insertError } = await dbClient.from('tutor_conversations').insert(insertData).select('id').single();
+
+                  if (insertError) {
+                    console.error('[DB Save] ERROR creating conversation:', JSON.stringify(insertError));
+                    console.error('[DB Save] Insert error code:', insertError.code);
+                    console.error('[DB Save] Insert error message:', insertError.message);
+                    
+                    // Try with admin client as fallback
+                    if (supabaseAdmin && dbClient !== supabaseAdmin) {
+                      console.log('[DB Save] Retrying insert with admin client...');
+                      const { data: retryConv, error: retryError } = await supabaseAdmin.from('tutor_conversations').insert(insertData
 
           controller.enqueue(encoder.encode(`event: done\ndata: ${JSON.stringify({
             conversationId: currentConversationId,

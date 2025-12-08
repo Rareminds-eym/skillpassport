@@ -75,6 +75,11 @@ export const getStudentPortfolioByEmail = async (email) => {
 
     const userId = student.user_id;
     console.log('✅ Student found, fetching related data for user_id:', userId);
+    console.log('📊 Portfolio fields from DB:', {
+      hobbies: student.hobbies,
+      languages: student.languages,
+      interests: student.interests
+    });
 
     // Fetch all related data in parallel for performance
     const [
@@ -293,9 +298,9 @@ function transformToPortfolioFormat(
     experience: formattedExperience,
     certifications: formattedCertificates,
     training: formattedTrainings,
-    languages: [], // Can be added if you have a languages table
-    hobbies: [],
-    interests: [],
+    languages: student.languages || [],
+    hobbies: student.hobbies || [],
+    interests: student.interests || [],
     achievements: [],
     
     // Additional profile info
@@ -390,6 +395,9 @@ function transformToPortfolioFormat(
     certifications: formattedCertificates,
     education: formattedEducation,
     experience: formattedExperience,
+    languages: student.languages || [],
+    hobbies: student.hobbies || [],
+    interests: student.interests || [],
     
     // School/College relationships
     school_id: student.school_id,

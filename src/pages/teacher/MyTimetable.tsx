@@ -103,7 +103,7 @@ const MyTimetable: React.FC = () => {
     try {
       const { data: userData } = await supabase.auth.getUser();
       const { data: teacherData } = await supabase
-        .from("teachers")
+        .from("school_educators")
         .select("id")
         .eq("email", userData?.user?.email)
         .single();
