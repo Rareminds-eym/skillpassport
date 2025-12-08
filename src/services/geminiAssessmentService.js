@@ -7,7 +7,8 @@
  */
 
 import { 
-  getRecommendedCourses, 
+  getRecommendedCourses,
+  getRecommendedCoursesByType,
   getCoursesForMultipleSkillGaps 
 } from './courseRecommendationService';
 
@@ -74,10 +75,11 @@ const validateResults = (results) => {
 /**
  * Add course recommendations to assessment results.
  * Fetches platform courses that match the student's profile using RAG-based recommendations.
+ * Separates courses by skill type (technical vs soft) to ensure both are represented.
  * Falls back to keyword matching if embedding-based search fails.
  * 
  * @param {Object} assessmentResults - Parsed results from Gemini
- * @returns {Promise<Object>} - Assessment results with platformCourses and skillGapCourses added
+ * @returns {Promise<Object>} - Assessment results with platformCourses, coursesByType, and skillGapCourses added
  * 
  * Feature: rag-course-recommendations
  * Requirements: 4.1, 5.2, 6.3
@@ -86,14 +88,32 @@ const addCourseRecommendations = async (assessmentResults) => {
   try {
     console.log('=== Adding Course Recommendations ===');
     
-    // Get recommended platform courses based on overall profile (Requirement 4.1)
+    // Get recommended platform courses separated by skill type (Requirement 4.1)
+    // This ensures both technical and soft skills courses are fetched independently
+    let coursesByType = { technical: [], soft: [] };
     let platformCourses = [];
+    
     try {
-      platformCourses = await getRecommendedCourses(assessmentResults);
-      console.log(`Found ${platformCourses.length} platform course recommendations`);
+      // Fetch courses by type - this ensures we get both technical and soft skills
+      coursesByType = await getRecommendedCoursesByType(assessmentResults, 5);
+      console.log(`Found ${coursesByType.technical.length} technical and ${coursesByType.soft.length} soft skill courses`);
+      
+      // Also get combined recommendations for backward compatibility
+      platformCourses = [...coursesByType.technical, ...coursesByType.soft];
+      
+      // If by-type fetch returned nothing, fall back to combined fetch
+      if (platformCourses.length === 0) {
+        platformCourses = await getRecommendedCourses(assessmentResults);
+        console.log(`Fallback: Found ${platformCourses.length} platform course recommendations`);
+      }
     } catch (error) {
       console.warn('Failed to get platform course recommendations:', error.message);
-      // Continue with empty array - fallback is handled inside getRecommendedCourses
+      // Try fallback to combined fetch
+      try {
+        platformCourses = await getRecommendedCourses(assessmentResults);
+      } catch (fallbackError) {
+        console.warn('Fallback also failed:', fallbackError.message);
+      }
     }
 
     // Get courses mapped to each priority skill gap (Requirement 5.2)
@@ -113,6 +133,7 @@ const addCourseRecommendations = async (assessmentResults) => {
     return {
       ...assessmentResults,
       platformCourses,
+      coursesByType,  // New field with courses separated by type
       skillGapCourses
     };
   } catch (error) {
@@ -121,6 +142,7 @@ const addCourseRecommendations = async (assessmentResults) => {
     return {
       ...assessmentResults,
       platformCourses: [],
+      coursesByType: { technical: [], soft: [] },
       skillGapCourses: {}
     };
   }

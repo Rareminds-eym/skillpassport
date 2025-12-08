@@ -206,6 +206,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, geminiResu
       attempt_id: attemptId,
       student_id: studentId,
       stream_id: streamId,
+      status: 'completed',
       riasec_scores: geminiResults.riasec?.scores,
       riasec_code: geminiResults.riasec?.code,
       aptitude_scores: geminiResults.aptitude?.scores,

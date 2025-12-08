@@ -1085,11 +1085,228 @@ export const getAndSaveRecommendations = async (studentId, assessmentResults, as
   }
 };
 
+/**
+ * Fetch courses by skill type (technical or soft) with embeddings.
+ * 
+ * @param {string} skillType - 'technical' or 'soft'
+ * @returns {Promise<Array>} - Array of courses with embeddings
+ */
+export const fetchCoursesBySkillType = async (skillType) => {
+  try {
+    const { data: courses, error } = await supabase
+      .from('courses')
+      .select(`
+        course_id,
+        title,
+        code,
+        description,
+        duration,
+        category,
+        target_outcomes,
+        status,
+        skill_type,
+        embedding
+      `)
+      .eq('status', 'Active')
+      .eq('skill_type', skillType)
+      .not('embedding', 'is', null)
+      .is('deleted_at', null);
+
+    if (error) {
+      console.error(`Failed to fetch ${skillType} courses:`, error.message);
+      return [];
+    }
+
+    if (!courses || courses.length === 0) {
+      console.log(`No ${skillType} courses with embeddings found`);
+      return [];
+    }
+
+    // Fetch skills for each course
+    const courseIds = courses.map(c => c.course_id);
+    const { data: skillsData } = await supabase
+      .from('course_skills')
+      .select('course_id, skill_name')
+      .in('course_id', courseIds);
+
+    // Group skills by course_id
+    const skillsByCourse = {};
+    if (skillsData) {
+      skillsData.forEach(s => {
+        if (!skillsByCourse[s.course_id]) {
+          skillsByCourse[s.course_id] = [];
+        }
+        skillsByCourse[s.course_id].push(s.skill_name);
+      });
+    }
+
+    return courses.map(course => ({
+      ...course,
+      skills: skillsByCourse[course.course_id] || [],
+      embedding: parseEmbedding(course.embedding)
+    }));
+  } catch (error) {
+    console.error(`Error fetching ${skillType} courses:`, error);
+    return [];
+  }
+};
+
+/**
+ * Get recommended courses separated by skill type (technical vs soft).
+ * Fetches and ranks each type independently to ensure both are represented.
+ * 
+ * @param {Object} assessmentResults - Assessment results from Gemini analysis
+ * @param {number} maxPerType - Maximum courses per skill type (default 5)
+ * @returns {Promise<{technical: Array, soft: Array}>} - Courses separated by type
+ * 
+ * Requirements: 3.1, 3.2, 3.3, 3.4
+ */
+export const getRecommendedCoursesByType = async (assessmentResults, maxPerType = 5) => {
+  if (!assessmentResults) {
+    console.warn('No assessment results provided');
+    return { technical: [], soft: [] };
+  }
+
+  try {
+    // Build profile text
+    let profileText;
+    try {
+      profileText = buildProfileText(assessmentResults);
+    } catch (error) {
+      console.warn('Failed to build profile text:', error.message);
+      return { technical: [], soft: [] };
+    }
+
+    // Generate profile embedding
+    let profileEmbedding;
+    try {
+      profileEmbedding = await generateEmbedding(profileText);
+    } catch (error) {
+      console.error('Failed to generate profile embedding:', error.message);
+      // Fallback to simple fetch without similarity ranking
+      return await fallbackFetchByType(maxPerType);
+    }
+
+    // Fetch technical and soft courses separately
+    const [technicalCourses, softCourses] = await Promise.all([
+      fetchCoursesBySkillType('technical'),
+      fetchCoursesBySkillType('soft')
+    ]);
+
+    // Score and rank technical courses
+    const rankedTechnical = technicalCourses
+      .filter(course => course.embedding && Array.isArray(course.embedding))
+      .map(course => {
+        const similarity = cosineSimilarity(profileEmbedding, course.embedding);
+        return {
+          course_id: course.course_id,
+          title: course.title,
+          code: course.code,
+          description: course.description,
+          duration: course.duration,
+          category: course.category,
+          skills: course.skills,
+          skill_type: 'technical',
+          target_outcomes: course.target_outcomes || [],
+          relevance_score: calculateRelevanceScore(similarity),
+          match_reasons: generateMatchReasons(course, assessmentResults),
+          skill_gaps_addressed: identifySkillGapsAddressed(course, assessmentResults),
+          _similarity: similarity
+        };
+      })
+      .sort((a, b) => b._similarity - a._similarity)
+      .slice(0, maxPerType)
+      .map(({ _similarity, ...course }) => course);
+
+    // Score and rank soft courses
+    const rankedSoft = softCourses
+      .filter(course => course.embedding && Array.isArray(course.embedding))
+      .map(course => {
+        const similarity = cosineSimilarity(profileEmbedding, course.embedding);
+        return {
+          course_id: course.course_id,
+          title: course.title,
+          code: course.code,
+          description: course.description,
+          duration: course.duration,
+          category: course.category,
+          skills: course.skills,
+          skill_type: 'soft',
+          target_outcomes: course.target_outcomes || [],
+          relevance_score: calculateRelevanceScore(similarity),
+          match_reasons: generateMatchReasons(course, assessmentResults),
+          skill_gaps_addressed: identifySkillGapsAddressed(course, assessmentResults),
+          _similarity: similarity
+        };
+      })
+      .sort((a, b) => b._similarity - a._similarity)
+      .slice(0, maxPerType)
+      .map(({ _similarity, ...course }) => course);
+
+    console.log(`Found ${rankedTechnical.length} technical and ${rankedSoft.length} soft skill courses`);
+    
+    return {
+      technical: rankedTechnical,
+      soft: rankedSoft
+    };
+  } catch (error) {
+    console.error('Error getting courses by type:', error);
+    return { technical: [], soft: [] };
+  }
+};
+
+/**
+ * Fallback fetch by type when embedding fails.
+ * Returns top courses by category without similarity ranking.
+ */
+const fallbackFetchByType = async (maxPerType) => {
+  try {
+    const [technicalResult, softResult] = await Promise.all([
+      supabase
+        .from('courses')
+        .select('course_id, title, code, description, duration, category, skill_type')
+        .eq('status', 'Active')
+        .eq('skill_type', 'technical')
+        .is('deleted_at', null)
+        .limit(maxPerType),
+      supabase
+        .from('courses')
+        .select('course_id, title, code, description, duration, category, skill_type')
+        .eq('status', 'Active')
+        .eq('skill_type', 'soft')
+        .is('deleted_at', null)
+        .limit(maxPerType)
+    ]);
+
+    return {
+      technical: (technicalResult.data || []).map(c => ({
+        ...c,
+        skills: [],
+        relevance_score: 70,
+        match_reasons: ['Recommended course'],
+        skill_gaps_addressed: []
+      })),
+      soft: (softResult.data || []).map(c => ({
+        ...c,
+        skills: [],
+        relevance_score: 70,
+        match_reasons: ['Recommended course'],
+        skill_gaps_addressed: []
+      }))
+    };
+  } catch (error) {
+    console.error('Fallback fetch by type failed:', error);
+    return { technical: [], soft: [] };
+  }
+};
+
 // Default export for convenience
 export default {
   buildProfileText,
   fetchCoursesWithEmbeddings,
+  fetchCoursesBySkillType,
   getRecommendedCourses,
+  getRecommendedCoursesByType,
   getCoursesForSkillGap,
   getCoursesForMultipleSkillGaps,
   saveRecommendations,
