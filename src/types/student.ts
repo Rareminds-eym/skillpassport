@@ -25,6 +25,37 @@ export interface Student {
   approval_status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   updated_at: string;
+
+  // Additional fields for school students
+  student_type?: string;
+  student_id?: string;
+  school?: {
+    id: string;
+    name: string;
+    code?: string;
+    city?: string;
+    state?: string;
+  };
+  grade?: string;
+  section?: string;
+
+  // Location fields
+  city?: string;
+  state?: string;
+  country?: string;
+
+  // University relationship
+  universityInfo?: {
+    id: string;
+    name: string;
+    code?: string;
+    state?: string;
+  };
+
+  // Portfolio fields
+  hobbies?: string[];
+  languages?: Language[];
+  interests?: string[];
 }
 
 export interface StudentProfile {
