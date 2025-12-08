@@ -15,7 +15,8 @@ import {
     Users,
     Code,
     Zap,
-    Loader2
+    Loader2,
+    ArrowLeft
 } from 'lucide-react';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
@@ -159,6 +160,27 @@ const AssessmentTest = () => {
 
             try {
                 if (user?.id) {
+                    // First check if user can take assessment (6-month restriction)
+                    const eligibility = await assessmentService.canTakeAssessment(user.id);
+                    
+                    if (!eligibility.canTake) {
+                        // User cannot take assessment yet
+                        const nextDate = new Date(eligibility.nextAvailableDate);
+                        const lastDate = new Date(eligibility.lastAttemptDate);
+                        setError(`You can retake the assessment after ${nextDate.toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                        })}. Your last assessment was completed on ${lastDate.toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                        })}.`);
+                        setCheckingExistingAttempt(false);
+                        setInitialCheckDone(true);
+                        return;
+                    }
+
                     const existingAttempt = await checkInProgressAttempt();
                     if (existingAttempt) {
                         console.log('Found in-progress attempt:', existingAttempt);
@@ -755,6 +777,62 @@ const AssessmentTest = () => {
                 <div className="text-center">
                     <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
                     <p className="text-gray-600">Loading...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Show restriction message if user cannot take assessment
+    if (error && !showStreamSelection && !showResumePrompt && !assessmentStarted) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="w-full max-w-xl bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                    {/* Header with Icon */}
+                    <div className="text-center mb-6">
+                        <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Clock className="w-7 h-7 text-white" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Assessment Not Available</h2>
+                        <p className="text-gray-600 text-sm">You need to wait before taking the assessment again</p>
+                    </div>
+
+                    {/* Warning Message Box */}
+                    <div className="bg-slate-300 rounded-lg p-4 mb-4 border border-slate-100">
+                        <div className="flex items-start gap-2.5">
+                            <AlertCircle className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
+                            <p className="text-sm text-gray-800 leading-relaxed">{error}</p>
+                        </div>
+                    </div>
+
+                    {/* Info Box */}
+                    <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-slate-100">
+                        <div className="flex items-start gap-2.5">
+                            <AlertCircle className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
+                            <div className="text-sm text-gray-700">
+                                <p className="font-semibold text-slate-900 mb-1.5">Why the 6-month waiting period?</p>
+                                <p className="leading-relaxed">The career assessment is designed to track your growth and development over time. Taking it too frequently won't provide meaningful insights. Use this time to work on your skills and gain new experiences!</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="space-y-2.5">
+                        <Button
+                            onClick={() => navigate('/student/assessment/result')}
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 text-sm font-medium rounded-lg transition-colors"
+                        >
+                            <Target className="w-4 h-4 mr-2" />
+                            View Your Last Report
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => navigate('/student/dashboard')}
+                            className="w-full py-3 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors"
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Dashboard
+                        </Button>
+                    </div>
                 </div>
             </div>
         );
