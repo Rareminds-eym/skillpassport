@@ -147,11 +147,12 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
   const prompt = buildAnalysisPrompt(assessmentData);
 
   // Try different model variants for compatibility (updated Dec 2024)
-  // Using current available Gemini models
+  // Using non-thinking models first to avoid token budget issues
+  // gemini-2.5-flash uses "thinking" which consumes output tokens
   const models = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-flash-latest'
+    'gemini-2.0-flash',      // Non-thinking model - preferred
+    'gemini-1.5-flash',      // Stable non-thinking model
+    'gemini-2.5-flash-lite', // Lighter version if available
   ];
   let response = null;
   let lastError = null;
@@ -160,22 +161,33 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
   for (const model of models) {
     try {
       console.log(`Trying Gemini model: ${model}`);
+      
+      // Build request body - disable thinking for 2.5 models
+      const requestBody = {
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          topK: 10,
+          topP: 0.7,
+          maxOutputTokens: 16384, // Increased for large JSON response
+        }
+      };
+      
+      // For 2.5 models, disable thinking to preserve output tokens
+      if (model.includes('2.5')) {
+        requestBody.generationConfig.thinkingConfig = {
+          thinkingBudget: 0 // Disable thinking mode
+        };
+      }
+      
       response = await fetch(getGeminiApiUrl(model) + `?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-            temperature: 0.1,
-            topK: 10,
-            topP: 0.7,
-            maxOutputTokens: 8192,
-          }
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (response.ok) {
