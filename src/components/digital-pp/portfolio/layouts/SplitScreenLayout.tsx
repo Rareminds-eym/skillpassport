@@ -33,6 +33,17 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
   const [activeSection, setActiveSection] = useState<'skills' | 'projects' | 'education' | 'experience'>('skills');
   const { theme, toggleTheme } = useTheme();
 
+  // Combine both technical and soft skills
+  const allSkills = [
+    ...(student.profile?.skills || []),
+    ...(student.profile?.technicalSkills || []),
+    ...(student.technicalSkills || []),
+    ...(student.skills || [])
+  ];
+  const uniqueSkills = allSkills.filter((skill, index, self) => 
+    index === self.findIndex((s) => s.id === skill.id)
+  );
+
   const handleMouseDown = () => {
     setIsDragging(true);
   };
@@ -110,7 +121,12 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
               {student.branch_field}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {student.university}
+              {student.school?.name || 
+               student.profile?.school?.name || 
+               student.college_school_name || 
+               student.universityCollege?.name || 
+               student.profile?.universityCollege?.name ||
+               student.university || 'Student'}
             </p>
           </motion.div>
 
@@ -213,7 +229,7 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
       <div className="flex-1 h-full overflow-y-auto bg-white dark:bg-gray-900 relative">
         <div className="p-8">
           {/* Skills Section */}
-          {activeSection === 'skills' && student.profile.skills && student.profile.skills.length > 0 && (
+          {activeSection === 'skills' && uniqueSkills && uniqueSkills.length > 0 && (
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -223,7 +239,11 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
                 Skills & Expertise
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {student.profile.skills.map((skill, index) => (
+                {uniqueSkills.map((skill, index) => {
+                  const displayLevel = typeof skill.level === 'number' 
+                    ? `Level ${skill.level}` 
+                    : skill.level || 'Intermediate';
+                  return (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, x: -20 }}
@@ -238,14 +258,15 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
                         className="text-xs px-2 py-1 rounded"
                         style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
                       >
-                        {skill.level}
+                        {displayLevel}
                       </span>
                     </div>
                     {skill.category && (
                       <p className="text-sm text-gray-600 dark:text-gray-400">{skill.category}</p>
                     )}
                   </motion.div>
-                ))}
+                  );
+                })}
               </div>
             </motion.section>
           )}

@@ -29,6 +29,17 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
   const [currentView, setCurrentView] = useState<ViewType>('intro');
   const [isAnimating, setIsAnimating] = useState(false);
 
+  // Combine both technical and soft skills
+  const allSkills = [
+    ...(student.profile?.skills || []),
+    ...(student.profile?.technicalSkills || []),
+    ...(student.technicalSkills || []),
+    ...(student.skills || [])
+  ];
+  const uniqueSkills = allSkills.filter((skill, index, self) => 
+    index === self.findIndex((s) => s.id === skill.id)
+  );
+
   const handlePromptClick = (view: ViewType) => {
     if (isAnimating) return;
     setIsAnimating(true);
@@ -97,7 +108,13 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
                     Hi, I'm {student.name || student.profile.name}'s Digital Twin
                   </h1>
                   <p className="text-xl text-gray-300 mb-2">
-                    {student.branch_field} @ {student.university}
+                    {student.branch_field && `${student.branch_field} @ `}
+                    {student.school?.name || 
+                     student.profile?.school?.name || 
+                     student.college_school_name || 
+                     student.universityCollege?.name || 
+                     student.profile?.universityCollege?.name ||
+                     student.university || 'Student'}
                   </p>
                   {student.profile.bio && (
                     <p className="text-gray-400 max-w-2xl mx-auto leading-relaxed">
@@ -205,7 +222,11 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {student.profile.skills?.map((skill, index) => (
+                {uniqueSkills.map((skill, index) => {
+                  const displayLevel = typeof skill.level === 'number' 
+                    ? `Level ${skill.level}` 
+                    : skill.level || 'Intermediate';
+                  return (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 20 }}
@@ -216,7 +237,7 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
                     <div className="flex items-start justify-between mb-3">
                       <Code className="w-8 h-8 text-blue-400" />
                       <span className="px-3 py-1 text-xs rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white">
-                        {skill.level}
+                        {displayLevel}
                       </span>
                     </div>
                     <h3 className="text-xl font-bold mb-1">{skill.name}</h3>
@@ -224,7 +245,8 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
                       <p className="text-sm text-gray-400">{skill.category}</p>
                     )}
                   </motion.div>
-                ))}
+                  );
+                })}
               </div>
             </motion.div>
           )}

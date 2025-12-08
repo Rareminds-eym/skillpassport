@@ -898,7 +898,7 @@ const StudentDashboard = () => {
               )
               : userData.technicalSkills
                 .filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-                .slice(0, 2)
+                .slice(0, 3)
             ).map((skill, idx) => (
               <div
                 key={skill.id || `tech-skill-${idx}`}
@@ -930,7 +930,7 @@ const StudentDashboard = () => {
             ))
           )}
           {userData.technicalSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-            .length > 2 && (
+            .length > 3 && (
               <Button
                 variant="outline"
                 onClick={() => setShowAllTechnicalSkills((v) => !v)}
@@ -1616,7 +1616,7 @@ const StudentDashboard = () => {
               exp.enabled !== false &&
               (exp.approval_status === "verified" || exp.approval_status === "approved")
             )
-            .slice(0, 2)
+            .slice(0, 3)
             .map((exp, index) => (
               <div
                 key={index}
@@ -1645,7 +1645,7 @@ const StudentDashboard = () => {
           {userData.experience?.filter(exp =>
             exp.enabled !== false &&
             (exp.approval_status === "verified" || exp.approval_status === "approved")
-          ).length > 2 && (
+          ).length > 3 && (
             <Button
               variant="outline"
               onClick={() => navigate('/student/my-experience')}
@@ -1697,7 +1697,7 @@ const StudentDashboard = () => {
               ? userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
               : userData.softSkills
                 .filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-                .slice(0, 2)
+                .slice(0, 3)
             ).map((skill, idx) => (
               <div
                 key={skill.id || `soft-skill-${idx}`}
@@ -1729,7 +1729,7 @@ const StudentDashboard = () => {
             ))
           )}
           {userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-            .length > 2 && (
+            .length > 3 && (
               <Button
                 variant="outline"
                 onClick={() => setShowAllSoftSkills((v) => !v)}
