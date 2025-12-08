@@ -1,6 +1,6 @@
 /**
- * Gemini Assessment Service
- * Uses Google Gemini AI to analyze assessment answers and provide personalized results
+ * AI Assessment Service
+ * Uses OpenRouter or Google Gemini AI to analyze assessment answers and provide personalized results
  * 
  * Feature: rag-course-recommendations
  * Requirements: 4.1, 5.2, 6.3
@@ -12,9 +12,78 @@ import {
   getCoursesForMultipleSkillGaps 
 } from './courseRecommendationService';
 
-// Gemini API configuration - using v1beta API for Gemini models
+// API Configuration
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const getGeminiApiUrl = (model = 'gemini-1.5-flash') =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
+/**
+ * Call OpenRouter API with the given prompt
+ * @param {string} prompt - The prompt to send
+ * @param {string} apiKey - OpenRouter API key
+ * @returns {Promise<string>} - The response text
+ */
+const callOpenRouter = async (prompt, apiKey) => {
+  // Models to try in order of preference (cost-effective and capable)
+  const models = [
+    'google/gemini-2.0-flash-001',
+    'google/gemini-flash-1.5',
+    'anthropic/claude-3-haiku',
+    'meta-llama/llama-3.1-8b-instruct',
+  ];
+
+  let lastError = null;
+
+  for (const model of models) {
+    try {
+      console.log(`Trying OpenRouter model: ${model}`);
+      
+      const response = await fetch(OPENROUTER_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': window.location.origin,
+          'X-Title': 'SkillPassport Assessment'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: 16384,
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error?.message || `Status ${response.status}`;
+        console.warn(`OpenRouter model ${model} failed: ${errorMsg}`);
+        lastError = errorMsg;
+        continue;
+      }
+
+      const data = await response.json();
+      const textContent = data.choices?.[0]?.message?.content;
+
+      if (textContent) {
+        console.log(`OpenRouter success with model: ${model}`);
+        return textContent;
+      }
+
+      lastError = 'No content in response';
+    } catch (e) {
+      console.warn(`OpenRouter model ${model} exception: ${e.message}`);
+      lastError = e.message;
+    }
+  }
+
+  throw new Error(`OpenRouter failed: ${lastError}`);
+};
 
 /**
  * Validate that all required fields are present in the response
@@ -169,22 +238,28 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
   const prompt = buildAnalysisPrompt(assessmentData);
 
   // Try different model variants for compatibility (updated Dec 2024)
-  // Using non-thinking models first to avoid token budget issues
-  // gemini-2.5-flash uses "thinking" which consumes output tokens
+  // Using models in order of preference and availability
   const models = [
-    'gemini-2.0-flash',      // Non-thinking model - preferred
-    'gemini-1.5-flash',      // Stable non-thinking model
-    'gemini-2.5-flash-lite', // Lighter version if available
+    'gemini-1.5-flash-latest',  // Latest stable flash model
+    'gemini-1.5-flash-8b',      // Smaller, faster variant
+    'gemini-2.0-flash-exp',     // Experimental 2.0
+    'gemini-1.5-pro-latest',    // Pro model as fallback
   ];
   let response = null;
   let lastError = null;
   const errors = [];
 
-  for (const model of models) {
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
     try {
+      // Add delay between retries to help with rate limiting
+      if (i > 0) {
+        console.log(`Waiting 2 seconds before trying next model...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
       console.log(`Trying Gemini model: ${model}`);
       
-      // Build request body - disable thinking for 2.5 models
+      // Build request body
       const requestBody = {
         contents: [{
           parts: [{ text: prompt }]
@@ -196,13 +271,6 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
           maxOutputTokens: 16384, // Increased for large JSON response
         }
       };
-      
-      // For 2.5 models, disable thinking to preserve output tokens
-      if (model.includes('2.5')) {
-        requestBody.generationConfig.thinkingConfig = {
-          thinkingBudget: 0 // Disable thinking mode
-        };
-      }
       
       response = await fetch(getGeminiApiUrl(model) + `?key=${apiKey}`, {
         method: 'POST',
@@ -231,9 +299,44 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
     }
   }
 
+  // If all Gemini models failed, try OpenRouter as fallback
   if (!response || !response.ok) {
-    console.error('All Gemini models failed:', errors);
-    throw new Error(`Rareminds AI error: ${lastError}. Please check your VITE_GEMINI_API_KEY is valid and has access to Gemini models.`);
+    console.log('All Gemini models failed, trying OpenRouter as fallback...');
+    const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+    
+    if (openRouterKey) {
+      try {
+        const openRouterResponse = await callOpenRouter(prompt, openRouterKey);
+        
+        // Parse the JSON response from OpenRouter
+        const jsonMatch = openRouterResponse.match(/```json\n?([\s\S]*?)\n?```/) ||
+          openRouterResponse.match(/\{[\s\S]*\}/);
+
+        if (jsonMatch) {
+          const jsonStr = jsonMatch[1] || jsonMatch[0];
+          try {
+            const parsedResults = JSON.parse(jsonStr);
+            console.log('OpenRouter fallback successful!');
+            
+            // Validate and add course recommendations
+            const { isValid, missingFields } = validateResults(parsedResults);
+            if (!isValid) {
+              console.warn('OpenRouter response has missing fields:', missingFields);
+            }
+            
+            const resultsWithCourses = await addCourseRecommendations(parsedResults);
+            return resultsWithCourses;
+          } catch (parseError) {
+            console.error('OpenRouter JSON parse error:', parseError);
+          }
+        }
+      } catch (openRouterError) {
+        console.error('OpenRouter fallback also failed:', openRouterError.message);
+      }
+    }
+    
+    console.error('All AI providers failed:', errors);
+    throw new Error(`Rareminds AI error: ${lastError}. Please check your API keys are valid.`);
   }
 
   const data = await response.json();

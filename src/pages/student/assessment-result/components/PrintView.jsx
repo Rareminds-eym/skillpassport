@@ -201,7 +201,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                             <img src="/assets/HomePage/RMLogo.webp" alt="Rareminds" style={{width: '50px', height: '50px', objectFit: 'contain'}} />
                             <div>
                                 <h1 style={styles.headerTitle}>Career Profiling & Skill Development Report</h1>
-                                <p style={styles.headerSubtitle}>4th Semester Analysis • Powered by SkillPassport AI</p>
+                                <p style={styles.headerSubtitle}>AI-Powered Career Assessment</p>
                             </div>
                         </div>
                         <div style={{textAlign: 'right'}}>

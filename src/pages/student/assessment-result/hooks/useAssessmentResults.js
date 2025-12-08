@@ -273,31 +273,123 @@ export const useAssessmentResults = () => {
 
     const handleRetry = async () => {
         setRetrying(true);
-        localStorage.removeItem('assessment_gemini_results');
-        await loadResults();
-        setRetrying(false);
+        setError(null);
+        
+        try {
+            // Clear cached results
+            localStorage.removeItem('assessment_gemini_results');
+            
+            // Get answers and stream from localStorage
+            const answersJson = localStorage.getItem('assessment_answers');
+            const stream = localStorage.getItem('assessment_stream');
+            
+            if (!answersJson || !stream) {
+                setError('No assessment data found. Please retake the assessment.');
+                setRetrying(false);
+                return;
+            }
+            
+            const answers = JSON.parse(answersJson);
+            const questionBanks = {
+                riasecQuestions,
+                bigFiveQuestions,
+                workValuesQuestions,
+                employabilityQuestions,
+                streamKnowledgeQuestions
+            };
+            
+            console.log('Regenerating AI analysis...');
+            console.log('Stream:', stream);
+            console.log('Answer keys:', Object.keys(answers));
+            console.log('Total answers:', Object.keys(answers).length);
+            console.log('Sample answers:', JSON.stringify(answers).substring(0, 500));
+            
+            // Force regenerate with AI
+            const geminiResults = await analyzeAssessmentWithGemini(answers, stream, questionBanks);
+            
+            if (!geminiResults) {
+                throw new Error('AI analysis returned no results');
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
+            
+            // Update database if user is logged in
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    // Get the latest result and update it
+                    const latestResult = await assessmentService.getLatestResult(user.id);
+                    if (latestResult) {
+                        // Update the existing result with new AI analysis
+                        const { error: updateError } = await supabase
+                            .from('personal_assessment_results')
+                            .update({ 
+                                gemini_results: geminiResults,
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('id', latestResult.id);
+                        
+                        if (updateError) {
+                            console.warn('Could not update database result:', updateError.message);
+                        } else {
+                            console.log('Database result updated with regenerated AI analysis');
+                        }
+                        
+                        // Save course recommendations
+                        if (geminiResults.platformCourses && geminiResults.platformCourses.length > 0) {
+                            try {
+                                await saveRecommendations(
+                                    user.id,
+                                    geminiResults.platformCourses,
+                                    latestResult.id,
+                                    'assessment'
+                                );
+                            } catch (recError) {
+                                console.log('Recommendations sync:', recError.message);
+                            }
+                        }
+                    }
+                }
+            } catch (dbError) {
+                console.log('Could not update database:', dbError.message);
+            }
+            
+            // Update state with new results
+            setResults(geminiResults);
+            console.log('AI analysis regenerated successfully');
+            
+        } catch (e) {
+            console.error('Regeneration failed:', e);
+            setError(e.message || 'Failed to regenerate report. Please try again.');
+        } finally {
+            setRetrying(false);
+        }
     };
 
     useEffect(() => {
         loadResults();
     }, [navigate]);
 
-    // Validate results
+    // Validate results - only check critical fields that affect display
     const validateResults = () => {
         if (!results) return [];
         
         const missingFields = [];
-        const { riasec, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote } = results;
+        const { riasec, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap } = results;
 
+        // Critical fields - these are required for the report to display properly
         if (!riasec || !riasec.topThree || riasec.topThree.length === 0) missingFields.push('RIASEC Interests');
         if (!bigFive || typeof bigFive.O === 'undefined') missingFields.push('Big Five Personality');
         if (!workValues || !workValues.topThree || workValues.topThree.length === 0) missingFields.push('Work Values');
         if (!employability || !employability.strengthAreas) missingFields.push('Employability Skills');
         if (!knowledge || typeof knowledge.score === 'undefined') missingFields.push('Knowledge Assessment');
         if (!careerFit || !careerFit.clusters || careerFit.clusters.length === 0) missingFields.push('Career Fit');
-        if (!skillGap || !skillGap.priorityA) missingFields.push('Skill Gap Analysis');
-        if (!roadmap || !roadmap.projects) missingFields.push('Action Roadmap');
-        if (!finalNote) missingFields.push('Final Recommendations');
+        if (!skillGap || !skillGap.priorityA || skillGap.priorityA.length === 0) missingFields.push('Skill Gap Analysis');
+        if (!roadmap || !roadmap.projects || roadmap.projects.length === 0) missingFields.push('Action Roadmap');
+        
+        // Note: finalNote, profileSnapshot, and overallSummary are optional for display
+        // They enhance the report but aren't critical for core functionality
 
         return missingFields;
     };
