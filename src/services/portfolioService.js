@@ -80,6 +80,15 @@ export const getStudentPortfolioByEmail = async (email) => {
       languages: student.languages,
       interests: student.interests
     });
+    console.log('🏫 School/University data:', {
+      student_type: student.student_type,
+      school: student.schools,
+      college_school_name: student.college_school_name,
+      university: student.university,
+      universities: student.universities,
+      grade: student.grade,
+      section: student.section
+    });
 
     // Fetch all related data in parallel for performance
     const [
@@ -404,10 +413,20 @@ function transformToPortfolioFormat(
     university_college_id: student.university_college_id,
     school: student.schools,
     universityCollege: student.university_colleges,
-    
+    universityInfo: student.universities,
+
+    // School student fields
+    student_type: student.student_type,
+    grade: student.grade,
+    section: student.section,
+
+    // Location fields
+    city: student.city,
+    state: student.state,
+    country: student.country,
+
     // Metadata
     user_id: student.user_id,
-    student_type: student.student_type,
     metadata: student.metadata
   };
 }
