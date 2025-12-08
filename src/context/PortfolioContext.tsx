@@ -82,8 +82,18 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
     }
   };
 
-  console.log('PortfolioProvider render:', {
-    student: student ? { email: student.email, name: student.name || student.profile?.name } : null,
+  console.log('🎨 PortfolioProvider render:', {
+    student: student ? { 
+      email: student.email, 
+      name: student.name || student.profile?.name,
+      hasProfile: !!student.profile,
+      hasProjects: !!student.projects,
+      hasSkills: !!student.skills,
+      profileProjects: student.profile?.projects?.length || 0,
+      directProjects: student.projects?.length || 0,
+      profileSkills: student.profile?.skills?.length || 0,
+      directSkills: student.skills?.length || 0
+    } : null,
     isLoading,
     isManuallySet
   });

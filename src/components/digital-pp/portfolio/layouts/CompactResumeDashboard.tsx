@@ -31,6 +31,25 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<TabType>('skills');
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // Combine both technical and soft skills
+  const allSkills = [
+    ...(student.profile?.skills || []),
+    ...(student.profile?.technicalSkills || []),
+    ...(student.technicalSkills || []),
+    ...(student.skills || [])
+  ];
+  // Remove duplicates by id
+  const uniqueSkills = allSkills.filter((skill, index, self) => 
+    index === self.findIndex((s) => s.id === skill.id)
+  );
+
+  console.log('📋 CompactResumeDashboard - Skills:', {
+    profileSkills: student.profile?.skills?.length || 0,
+    profileTechnicalSkills: student.profile?.technicalSkills?.length || 0,
+    uniqueSkillsCount: uniqueSkills.length,
+    uniqueSkills: uniqueSkills.map(s => ({ name: s.name, level: s.level }))
+  });
+
   const tabs = [
     { id: 'skills', label: 'Skills', icon: Code },
     { id: 'projects', label: 'Projects', icon: Briefcase },
@@ -80,8 +99,22 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
             <h1 className="text-2xl font-bold mb-2 dark:text-white" style={{ color: secondaryColor }}>
               {student.name || student.profile.name}
             </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{student.branch_field}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-500">{student.university}</p>
+            {student.branch_field && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{student.branch_field}</p>
+            )}
+            {/* Show school name for school students, university for college students */}
+            {(student.school?.name || student.profile?.school?.name || 
+              student.college_school_name || student.university || 
+              student.universityCollege?.name || student.profile?.universityCollege?.name) && (
+              <p className="text-xs text-gray-500 dark:text-gray-500">
+                {student.school?.name || 
+                 student.profile?.school?.name || 
+                 student.college_school_name || 
+                 student.universityCollege?.name || 
+                 student.profile?.universityCollege?.name ||
+                 student.university}
+              </p>
+            )}
           </motion.div>
 
           {student.profile.bio && (
@@ -293,29 +326,42 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                 Skills & Technologies
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {student.profile.skills?.map((skill, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow hover:shadow-lg transition-shadow border-l-4"
-                    style={{ borderColor: accentColor }}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold dark:text-white">{skill.name}</h3>
-                      <span 
-                        className="text-xs px-2 py-1 rounded"
-                        style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}
+                {uniqueSkills.length > 0 ? (
+                  uniqueSkills.map((skill, index) => {
+                    const displayLevel = typeof skill.level === 'number' 
+                      ? `Level ${skill.level}` 
+                      : skill.level || 'Intermediate';
+                    
+                    return (
+                      <motion.div
+                        key={skill.id || index}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow hover:shadow-lg transition-shadow border-l-4"
+                        style={{ borderColor: accentColor }}
                       >
-                        {skill.level}
-                      </span>
-                    </div>
-                    {skill.category && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{skill.category}</p>
-                    )}
-                  </motion.div>
-                ))}
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-semibold dark:text-white">{skill.name}</h3>
+                          <span 
+                            className="text-xs px-2 py-1 rounded"
+                            style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}
+                          >
+                            {displayLevel}
+                          </span>
+                        </div>
+                        {skill.category && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{skill.category}</p>
+                        )}
+                      </motion.div>
+                    );
+                  })
+                ) : (
+                  <div className="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
+                    <Code className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                    <p>No skills added yet</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -332,7 +378,8 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                 Featured Projects
               </h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {student.profile.projects?.map((project, index) => (
+                {(student.profile?.projects || student.projects || []).length > 0 ? (
+                  (student.profile?.projects || student.projects || []).map((project, index) => (
                   <motion.div
                     key={project.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -382,7 +429,13 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                       )}
                     </div>
                   </motion.div>
-                ))}
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
+                    <Briefcase className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                    <p>No projects added yet</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

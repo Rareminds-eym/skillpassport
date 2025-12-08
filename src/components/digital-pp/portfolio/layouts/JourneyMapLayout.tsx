@@ -196,10 +196,19 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
                     <span className="text-sm">{student.contact_number}</span>
                   </span>
                 )}
-                {student.university && (
+                {(student.school?.name || student.profile?.school?.name || 
+                  student.college_school_name || student.university || 
+                  student.universityCollege?.name || student.profile?.universityCollege?.name) && (
                   <span className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
                     <GraduationCap className="w-4 h-4" />
-                    <span className="text-sm">{student.university}</span>
+                    <span className="text-sm">
+                      {student.school?.name || 
+                       student.profile?.school?.name || 
+                       student.college_school_name || 
+                       student.universityCollege?.name || 
+                       student.profile?.universityCollege?.name ||
+                       student.university}
+                    </span>
                   </span>
                 )}
               </motion.div>

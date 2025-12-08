@@ -26,13 +26,57 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
     showDownloadResume: true,
   }
 }) => {
+  console.log('🎨 InfographicDashboard received student:', {
+    name: student?.name,
+    email: student?.email,
+    hasProfile: !!student?.profile,
+    profileKeys: student?.profile ? Object.keys(student.profile) : [],
+    profileProjects: student?.profile?.projects?.length || 0,
+    profileSkills: student?.profile?.skills?.length || 0,
+    profileEducation: student?.profile?.education?.length || 0,
+    profileAchievements: student?.profile?.achievements?.length || 0,
+    directProjects: student?.projects?.length || 0,
+    directSkills: student?.skills?.length || 0,
+    fullProfileData: student?.profile
+  });
+
   const [countedProjects, setCountedProjects] = useState(0);
   const [countedSkills, setCountedSkills] = useState(0);
   const [countedAchievements, setCountedAchievements] = useState(0);
 
-  const projectCount = student.profile.projects?.length || 0;
-  const skillCount = student.profile.skills?.length || 0;
-  const achievementCount = student.profile.achievements?.length || 0;
+  // Combine both technical and soft skills for accurate count
+  const allSkills = [
+    ...(student.profile?.skills || []),
+    ...(student.profile?.technicalSkills || []),
+    ...(student.technicalSkills || []),
+    ...(student.skills || [])
+  ];
+  
+  console.log('🔍 Skills breakdown:', {
+    profileSkills: student.profile?.skills?.length || 0,
+    profileTechnicalSkills: student.profile?.technicalSkills?.length || 0,
+    directTechnicalSkills: student.technicalSkills?.length || 0,
+    directSkills: student.skills?.length || 0,
+    allSkillsBeforeDedup: allSkills.length,
+    allSkillsData: allSkills
+  });
+  
+  // Remove duplicates by id
+  const uniqueSkills = allSkills.filter((skill, index, self) => 
+    index === self.findIndex((s) => s.id === skill.id)
+  );
+  
+  const projectCount = student.profile?.projects?.length || student.projects?.length || 0;
+  const skillCount = uniqueSkills.length;
+  const achievementCount = student.profile?.achievements?.length || 0;
+  
+  console.log('📊 Final Counts:', { 
+    projectCount, 
+    skillCount, 
+    achievementCount, 
+    uniqueSkillsCount: uniqueSkills.length,
+    uniqueSkills: uniqueSkills.map(s => ({ name: s.name, level: s.level }))
+  });
 
   // Animated counters
   useEffect(() => {
@@ -60,12 +104,27 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
   }, [projectCount, skillCount, achievementCount]);
 
   // Skills radar chart simulation (simplified visual representation)
-  const topSkills = student.profile.skills?.slice(0, 8) || [];
+  // Use uniqueSkills instead of just profile.skills
+  const topSkills = uniqueSkills.slice(0, 8);
+  console.log('🎯 Top skills extracted:', topSkills);
+  
   const skillLevelMap: { [key: string]: number } = {
     'Beginner': 25,
     'Intermediate': 50,
     'Advanced': 75,
     'Expert': 100
+  };
+  
+  // Map numeric levels to percentages (for technical skills that have numeric levels)
+  const getSkillPercentage = (skill: any) => {
+    if (typeof skill.level === 'string') {
+      return skillLevelMap[skill.level] || 50;
+    }
+    // If level is numeric (1-5), convert to percentage
+    if (typeof skill.level === 'number') {
+      return (skill.level / 5) * 100;
+    }
+    return 50; // default
   };
 
   return (
@@ -121,18 +180,30 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                     {student.name || student.profile.name}
                   </h1>
                   <div className="flex flex-wrap items-center gap-4 mb-6">
-                    <div className="px-4 py-2 rounded-full font-semibold text-white shadow-lg"
-                      style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
-                    >
-                      {student.branch_field}
-                    </div>
-                    <div className="px-4 py-2 rounded-full bg-white dark:bg-gray-800 shadow-lg border-2"
-                      style={{ borderColor: accentColor }}
-                    >
-                      <span className="font-semibold" style={{ color: accentColor }}>
-                        {student.university}
-                      </span>
-                    </div>
+                    {(student.branch_field || student.profile.branch_field) && (
+                      <div className="px-4 py-2 rounded-full font-semibold text-white shadow-lg"
+                        style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
+                      >
+                        {student.branch_field || student.profile.branch_field}
+                      </div>
+                    )}
+                    {/* Show school name for school students, university for college students */}
+                    {(student.school?.name || student.profile?.school?.name || 
+                      student.college_school_name || student.university || 
+                      student.universityCollege?.name || student.profile?.universityCollege?.name) && (
+                      <div className="px-4 py-2 rounded-full bg-white dark:bg-gray-800 shadow-lg border-2"
+                        style={{ borderColor: accentColor }}
+                      >
+                        <span className="font-semibold" style={{ color: accentColor }}>
+                          {student.school?.name || 
+                           student.profile?.school?.name || 
+                           student.college_school_name || 
+                           student.universityCollege?.name || 
+                           student.profile?.universityCollege?.name ||
+                           student.university}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Quick Stats Pills */}
@@ -220,48 +291,64 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                   >
                     <Zap className="w-6 h-6 text-white" />
                   </div>
-                  <h2 className="text-2xl font-bold dark:text-white">Top Skills</h2>
+                  <div>
+                    <h2 className="text-2xl font-bold dark:text-white">Skills</h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Technical & Soft Skills
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-5">
-                {topSkills.map((skill, index) => {
-                  const percentage = skillLevelMap[skill.level] || 50;
-                  return (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 1 + index * 0.1 }}
-                      className="group"
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-semibold dark:text-gray-200">{skill.name}</span>
-                        <span className="text-xs px-2 py-1 rounded-full font-medium"
-                          style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
-                        >
-                          {skill.level}
-                        </span>
-                      </div>
-                      <div className="relative h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${percentage}%` }}
-                          transition={{ duration: 1.5, delay: 1.2 + index * 0.1, ease: "easeOut" }}
-                          className="absolute inset-y-0 left-0 rounded-full shadow-lg"
-                          style={{ 
-                            background: `linear-gradient(90deg, ${primaryColor}, ${accentColor})`
-                          }}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-end pr-2">
-                          <span className="text-[10px] font-bold text-white drop-shadow">
-                            {percentage}%
+                {topSkills.length > 0 ? (
+                  topSkills.map((skill, index) => {
+                    const percentage = getSkillPercentage(skill);
+                    const displayLevel = typeof skill.level === 'number' 
+                      ? `Level ${skill.level}` 
+                      : skill.level || 'Intermediate';
+                    
+                    return (
+                      <motion.div
+                        key={skill.id || index}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 1 + index * 0.1 }}
+                        className="group"
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-semibold dark:text-gray-200">{skill.name}</span>
+                          <span className="text-xs px-2 py-1 rounded-full font-medium"
+                            style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
+                          >
+                            {displayLevel}
                           </span>
                         </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                        <div className="relative h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${percentage}%` }}
+                            transition={{ duration: 1.5, delay: 1.2 + index * 0.1, ease: "easeOut" }}
+                            className="absolute inset-y-0 left-0 rounded-full shadow-lg"
+                            style={{ 
+                              background: `linear-gradient(90deg, ${primaryColor}, ${accentColor})`
+                            }}
+                          />
+                          <div className="absolute inset-0 flex items-center justify-end pr-2">
+                            <span className="text-[10px] font-bold text-white drop-shadow">
+                              {Math.round(percentage)}%
+                            </span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <Code className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No skills added yet</p>
+                  </div>
+                )}
               </div>
             </motion.div>
 
@@ -329,7 +416,8 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
           {/* Main Content Area */}
           <div className="lg:col-span-8 space-y-8">
             {/* Education Timeline */}
-            {student.profile.education && student.profile.education.length > 0 && (
+            {((student.profile?.education && student.profile.education.length > 0) || 
+              (student.education && student.education.length > 0)) && (
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -352,7 +440,7 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                   }} />
 
                   <div className="space-y-8">
-                    {student.profile.education.map((edu, index) => (
+                    {(student.profile?.education || student.education || []).map((edu, index) => (
                       <motion.div
                         key={edu.id}
                         initial={{ opacity: 0, x: -30 }}
@@ -405,7 +493,9 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
             )}
 
             {/* Projects Grid */}
-            {displayPreferences.showProjectImages && student.profile.projects && student.profile.projects.length > 0 && (
+            {displayPreferences.showProjectImages && 
+             ((student.profile?.projects && student.profile.projects.length > 0) || 
+              (student.projects && student.projects.length > 0)) && (
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -418,7 +508,7 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {student.profile.projects.map((project, index) => (
+                  {(student.profile?.projects || student.projects || []).map((project, index) => (
                     <motion.div
                       key={project.id}
                       initial={{ opacity: 0, scale: 0.9 }}
@@ -499,8 +589,120 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
               </motion.div>
             )}
 
+            {/* Training/Certifications Section */}
+            {((student.profile?.training && student.profile.training.length > 0) ||
+              (student.training && student.training.length > 0) ||
+              (student.profile?.certifications && student.profile.certifications.length > 0) ||
+              (student.certifications && student.certifications.length > 0)) && (
+              <motion.div
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.6 }}
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border-t-4"
+                style={{ borderColor: accentColor }}
+              >
+                <div className="flex items-center space-x-3 mb-8">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ background: `linear-gradient(135deg, ${accentColor}, ${primaryColor})` }}
+                  >
+                    <Award className="w-7 h-7 text-white" />
+                  </div>
+                  <h2 className="text-3xl font-bold dark:text-white">Training & Certifications</h2>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Training Programs */}
+                  {(student.profile?.training || student.training || []).map((training, index) => (
+                    <motion.div
+                      key={training.id}
+                      initial={{ opacity: 0, x: -30 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 1.8 + index * 0.1 }}
+                      className="group bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all border-l-4"
+                      style={{ borderColor: primaryColor }}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg dark:text-white mb-1">{training.name}</h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{training.provider}</p>
+                          {training.description && (
+                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 line-clamp-2">
+                              {training.description}
+                            </p>
+                          )}
+                        </div>
+                        <BookOpen className="w-6 h-6 ml-4" style={{ color: primaryColor }} />
+                      </div>
+                      <div className="flex items-center space-x-4 text-xs">
+                        {training.duration && (
+                          <span className="inline-flex items-center px-3 py-1.5 rounded-lg font-medium"
+                            style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+                          >
+                            <Calendar className="w-3 h-3 mr-1" />
+                            {training.duration}
+                          </span>
+                        )}
+                        {training.completionDate && (
+                          <span className="text-gray-600 dark:text-gray-400">
+                            Completed: {new Date(training.completionDate).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {/* Certifications */}
+                  {(student.profile?.certifications || student.certifications || []).map((cert, index) => (
+                    <motion.div
+                      key={cert.id}
+                      initial={{ opacity: 0, x: -30 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 1.8 + index * 0.1 }}
+                      className="group bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all border-l-4"
+                      style={{ borderColor: accentColor }}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg dark:text-white mb-1">{cert.name}</h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{cert.issuer}</p>
+                          {cert.description && (
+                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                              {cert.description}
+                            </p>
+                          )}
+                        </div>
+                        <Award className="w-6 h-6 ml-4" style={{ color: accentColor }} />
+                      </div>
+                      <div className="flex items-center space-x-4 text-xs">
+                        {cert.date && (
+                          <span className="inline-flex items-center px-3 py-1.5 rounded-lg font-medium"
+                            style={{ backgroundColor: `${accentColor}15`, color: accentColor }}
+                          >
+                            <Calendar className="w-3 h-3 mr-1" />
+                            {new Date(cert.date).toLocaleDateString()}
+                          </span>
+                        )}
+                        {cert.url && (
+                          <a
+                            href={cert.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs flex items-center space-x-1 hover:underline"
+                            style={{ color: accentColor }}
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>View Certificate</span>
+                          </a>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
             {/* Achievements Badge Carousel */}
-            {student.profile.achievements && student.profile.achievements.length > 0 && (
+            {student.profile?.achievements && student.profile.achievements.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
