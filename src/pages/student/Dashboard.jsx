@@ -805,7 +805,7 @@ const StudentDashboard = () => {
                 className="bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
               >
                 <div className="bg-teal-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <Users className="w-5 h-5" />
+                  <Users2 className="w-5 h-5" />
                 </div>
                 <span className="font-semibold text-sm flex-1">Networking Tips</span>
                 <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
