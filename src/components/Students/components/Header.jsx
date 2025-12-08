@@ -83,6 +83,46 @@ const Header = ({ activeTab, setActiveTab }) => {
   // Use real activities instead of mock data
   const recentUpdates = recentActivities.length > 0 ? recentActivities : mockRecentUpdates;
 
+  // Read/Unread tracking using localStorage
+  const [readNotifications, setReadNotifications] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`readNotifications_${userEmail}`);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Save read notifications to localStorage whenever it changes
+  React.useEffect(() => {
+    if (userEmail) {
+      localStorage.setItem(`readNotifications_${userEmail}`, JSON.stringify(readNotifications));
+    }
+  }, [readNotifications, userEmail]);
+
+  // Calculate unread count
+  const unreadCount = recentUpdates.filter(update =>
+    !readNotifications.includes(update.id || update.timestamp)
+  ).length;
+
+  // Mark notification as read
+  const markAsRead = (notificationId) => {
+    if (!readNotifications.includes(notificationId)) {
+      setReadNotifications(prev => [...prev, notificationId]);
+    }
+  };
+
+  // Mark all notifications as read
+  const markAllAsRead = () => {
+    const allIds = recentUpdates.map(update => update.id || update.timestamp);
+    setReadNotifications(allIds);
+  };
+
+  // Check if notification is read
+  const isNotificationRead = (notificationId) => {
+    return readNotifications.includes(notificationId);
+  };
+
   // Generate profile link
   const profileLink = useMemo(() => {
     const email = userEmail || "student";
@@ -283,9 +323,9 @@ const Header = ({ activeTab, setActiveTab }) => {
             <DropdownMenuTrigger asChild>
               <button className="relative p-2 rounded-full hover:bg-blue-50 transition-colors">
                 <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 hover:text-blue-600" />
-                {recentActivities.length > 0 && (
-                  <Badge className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs min-w-[20px] h-5 flex items-center justify-center px-1">
-                    {recentActivities.length}
+                {unreadCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 bg-red-500 text-white text-xs min-w-[20px] h-5 flex items-center justify-center px-1 animate-pulse">
+                    {unreadCount}
                   </Badge>
                 )}
               </button>
@@ -295,15 +335,25 @@ const Header = ({ activeTab, setActiveTab }) => {
               className="w-80 sm:w-96 bg-white border border-gray-200 shadow-xl max-h-[500px] overflow-y-auto"
             >
               <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                <h3 className="font-semibold text-blue-700 flex items-center gap-2">
-                  <Bell className="w-5 h-5" />
-                  Recent Updates
-                  {recentActivities.length > 0 && (
-                    <Badge className="bg-blue-500 text-white text-xs ml-2">
-                      {recentActivities.length}
-                    </Badge>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-blue-700 flex items-center gap-2">
+                    <Bell className="w-5 h-5" />
+                    Recent Updates
+                    {unreadCount > 0 && (
+                      <Badge className="bg-red-500 text-white text-xs ml-2">
+                        {unreadCount} new
+                      </Badge>
+                    )}
+                  </h3>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllAsRead}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                    >
+                      Mark all read
+                    </button>
                   )}
-                </h3>
+                </div>
               </div>
               <div className="p-3 space-y-3">
                 {activitiesLoading && recentActivities.length === 0 ? (
@@ -319,11 +369,14 @@ const Header = ({ activeTab, setActiveTab }) => {
                   </div>
                 ) : (
                   recentUpdates?.slice(0, showAllUpdates ? recentUpdates.length : 4).map((update, index) => {
-                    const message = update.message ||
-                      `${update.user} ${update.action} ${update.candidate}`;
+                    const notificationId = update.id || update.timestamp;
                     const timestamp = update.timestamp;
+                    const isRead = isNotificationRead(notificationId);
 
-                    const getActivityColor = (type) => {
+                    const getActivityColor = (type, isRead) => {
+                      if (isRead) {
+                        return 'from-gray-50 to-white border-l-gray-300 opacity-70';
+                      }
                       switch(type) {
                         case 'shortlist_added': return 'from-yellow-50 to-white border-l-yellow-400';
                         case 'offer_extended': return 'from-green-50 to-white border-l-green-400';
@@ -337,13 +390,17 @@ const Header = ({ activeTab, setActiveTab }) => {
 
                     return (
                       <div
-                        key={update.id || index}
-                        className={`p-3 bg-gradient-to-r ${getActivityColor(update.type)} rounded-lg border-l-2 hover:shadow-sm transition-shadow`}
+                        key={notificationId || index}
+                        onClick={() => markAsRead(notificationId)}
+                        className={`p-3 bg-gradient-to-r ${getActivityColor(update.type, isRead)} rounded-lg border-l-2 hover:shadow-md transition-all cursor-pointer relative ${!isRead ? 'border-l-4' : ''}`}
                       >
-                        <p className="text-sm text-gray-900 font-medium">
-                          {update.user && <span className="text-blue-700">{update.user}</span>}
+                        {!isRead && (
+                          <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                        )}
+                        <p className={`text-sm ${isRead ? 'text-gray-600' : 'text-gray-900'} font-medium`}>
+                          {update.user && <span className={isRead ? 'text-gray-500' : 'text-blue-700'}>{update.user}</span>}
                           {update.action && <span className="text-gray-600"> {update.action} </span>}
-                          {update.candidate && <span className="font-semibold">{update.candidate}</span>}
+                          {update.candidate && <span className={isRead ? 'font-normal' : 'font-semibold'}>{update.candidate}</span>}
                         </p>
                         {update.details && (
                           <p className="text-xs text-gray-600 mt-1">{update.details}</p>
