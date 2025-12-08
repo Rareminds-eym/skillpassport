@@ -1973,7 +1973,7 @@ const StudentDashboard = () => {
             {/* Separate Section: 2 in a row and 1 column (Suggested Steps and Achievement Timeline) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Suggested Steps - 2 columns wide */}
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
                 <Card
                   ref={suggestedNextStepsRef}
                   className="bg-white rounded-xl border border-gray-200 shadow-sm"
