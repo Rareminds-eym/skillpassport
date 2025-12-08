@@ -780,87 +780,71 @@ const StudentDashboard = () => {
               );
             }
 
-            return (showAllOpportunities
-              ? filteredOpportunities
-              : filteredOpportunities.slice(0, 2)
-            ).map((opp, idx) => (
-              <div
-                key={opp.id || `${opp.title}-${opp.company_name}-${idx}`}
-                className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
-              >
-                <h4 className="font-semibold text-gray-900 text-base mb-1">
-                  {opp.title}
-                </h4>
-                <p className="text-blue-600 text-sm font-medium mb-3">
-                  {opp.company_name}
-                </p>
-                <div className="flex items-center justify-between">
-                  <Badge className="bg-gray-200 text-gray-700 hover:bg-gray-200 text-xs font-medium px-3 py-1">
-                    {opp.employment_type}
-                  </Badge>
-                  {opp.application_link ? (
-                    <a
-                      href={opp.application_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block"
-                    >
-                      <Button
-                        size="sm"
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors"
+            const displayOpportunities = showAllOpportunities ? filteredOpportunities : filteredOpportunities.slice(0, 3);
+
+            return (
+              <>
+                <div className={`space-y-3 ${showAllOpportunities ? 'max-h-[400px] overflow-y-auto pr-2' : ''}`}>
+                  {displayOpportunities.map((opp, idx) => {
+                    // Determine mode display text
+                    const modeDisplay = opp.mode === 'Onsite' ? 'Offline' : opp.mode === 'Remote' ? 'Online' : opp.mode;
+                    
+                    return (
+                      <div
+                        key={opp.id || `${opp.title}-${opp.company_name}-${idx}`}
+                        className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
                       >
-                        Apply Now
-                      </Button>
-                    </a>
-                  ) : (
-                    <Button
-                      size="sm"
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors"
-                    >
-                      Apply Now
-                    </Button>
-                  )}
+                        <h4 className="font-semibold text-gray-900 text-base mb-1">
+                          {opp.title}
+                        </h4>
+                        <p className="text-blue-600 text-sm font-medium mb-2">
+                          {opp.company_name || 'Learning Opportunity'}
+                        </p>
+                        
+                        {/* Mode and Location */}
+                        {(opp.mode || opp.location) && (
+                          <div className="flex items-center gap-2 mb-3 text-xs text-gray-600">
+                            {opp.mode && (
+                              <div className="flex items-center gap-1">
+                                <MapPin className="w-3.5 h-3.5" />
+                                <span>{modeDisplay}</span>
+                              </div>
+                            )}
+                            {opp.location && opp.mode !== 'Remote' && (
+                              <span>• {opp.location}</span>
+                            )}
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center justify-between">
+                          <Badge className="bg-gray-200 text-gray-700 hover:bg-gray-200 text-xs font-medium px-3 py-1">
+                            {opp.employment_type}
+                          </Badge>
+                          <Button
+                            size="sm"
+                            onClick={() => navigate('/student/opportunities', { state: { selectedOpportunityId: opp.id } })}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors"
+                          >
+                            Apply Now
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-            ))
-          })()}
-          {(() => {
-            // Use the same filtering logic for the count
-            const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
-            const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
-            const hasHighSchoolOnly = userData.education.length > 0 &&
-              userData.education.every(edu =>
-                edu.level && edu.level.toLowerCase().includes('high school')
-              );
-
-            let filteredOpportunities = opportunities;
-
-            if (isSchoolStudent || hasHighSchoolOnly) {
-              filteredOpportunities = opportunities.filter(opp =>
-                opp.employment_type && opp.employment_type.toLowerCase() === 'internship'
-              );
-            } else if (isUniversityStudent) {
-              filteredOpportunities = opportunities.filter(opp =>
-                opp.experience_level && (
-                  opp.experience_level.toLowerCase().includes('intern') ||
-                  opp.experience_level.toLowerCase().includes('entry') ||
-                  opp.experience_level.toLowerCase().includes('mid') ||
-                  opp.experience_level.toLowerCase().includes('senior') ||
-                  opp.experience_level.toLowerCase().includes('lead')
-                )
-              );
-            }
-
-            return filteredOpportunities.length > 2 && (
-              <Button
-                variant="outline"
-                onClick={() => setShowAllOpportunities((v) => !v)}
-                className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-              >
-                {showAllOpportunities
-                  ? "Show Less"
-                  : `View All Opportunities (${filteredOpportunities.length})`}
-              </Button>
+                
+                {filteredOpportunities.length > 3 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAllOpportunities((v) => !v)}
+                    className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
+                  >
+                    {showAllOpportunities
+                      ? "Show Less"
+                      : `View All Opportunities (${filteredOpportunities.length})`}
+                  </Button>
+                )}
+              </>
             );
           })()}
         </CardContent>
