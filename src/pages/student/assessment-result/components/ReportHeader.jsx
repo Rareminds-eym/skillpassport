@@ -22,7 +22,7 @@ const ReportHeader = ({ studentInfo }) => (
                         <span className="text-gray-400 text-base font-medium">AI-Powered Assessment</span>
                     </div>
                     <h1 className="text-3xl md:text-4xl font-bold mb-1">Career Profiling & Skill Development Report</h1>
-                    <p className="text-gray-400 mt-1 text-lg">4th Semester Analysis</p>
+                    <p className="text-gray-400 mt-1 text-lg">AI-Powered Career Assessment</p>
                 </div>
                 <img src="/logo.png" alt="SkillPassport" className="h-14 opacity-90 hidden md:block" onError={(e) => e.target.style.display = 'none'} />
             </div>
