@@ -336,6 +336,10 @@ const AppRoutes = () => {
   return (
     <Suspense fallback={<Loader />}>
       <Routes>
+        {/* Event Sales - Standalone without layout (no header/footer) */}
+        <Route path="/register/plans" element={<EventSales />} />
+        <Route path="/register/plans/success" element={<EventSalesSuccess />} />
+        
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
@@ -372,9 +376,6 @@ const AppRoutes = () => {
           <Route path="/subscription/plans/:type" element={<SubscriptionPlans />} />
           <Route path="/subscription/plans/:type/:mode" element={<SubscriptionPlans />} />
           
-          {/* Event Sales - No auth required */}
-          <Route path="/register/plans" element={<EventSales />} />
-          <Route path="/register/plans/success" element={<EventSalesSuccess />} />
           <Route path="/subscription/payment" element={<PaymentCompletion />} />
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
