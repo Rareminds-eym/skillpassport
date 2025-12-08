@@ -24,11 +24,14 @@ import {
   ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
+import { supabase } from "@/lib/supabaseClient";
+// import { supabase } from "../../../supabaseClient";
 
 /* ==============================
    TYPES & INTERFACES
    ============================== */
 type UserRole =
+  | "school_admin"
   | "principal"
   | "vice_principal"
   | "class_teacher"
@@ -569,11 +572,13 @@ const SystemConfigModal = ({
   onClose,
   config,
   onSaved,
+  schoolId,
 }: {
   isOpen: boolean;
   onClose: () => void;
   config: SystemConfig;
   onSaved: (config: SystemConfig) => void;
+  schoolId: string | null;
 }) => {
   const [formData, setFormData] = useState<SystemConfig>(config);
   const [submitting, setSubmitting] = useState(false);
@@ -584,13 +589,40 @@ const SystemConfigModal = ({
     }
   }, [config, isOpen]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!schoolId) {
+      alert("School ID not found");
+      return;
+    }
+
     setSubmitting(true);
-    setTimeout(() => {
+    try {
+      const { error } = await supabase
+        .from("schools")
+        .update({
+          name: formData.schoolName,
+          code: formData.schoolCode,
+          address: formData.address,
+          phone: formData.phone,
+          email: formData.email,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", schoolId);
+
+      if (error) {
+        console.error("Error updating school:", error);
+        alert("Failed to update school information");
+        return;
+      }
+
       onSaved(formData);
-      setSubmitting(false);
       onClose();
-    }, 400);
+    } catch (error) {
+      console.error("Error in handleSubmit:", error);
+      alert("Failed to update school information");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -1618,249 +1650,690 @@ const Settings = () => {
   const [selectedRole, setSelectedRole] = useState<{ name: string; permissions: string[] } | null>(null);
   const [auditTimeFilter, setAuditTimeFilter] = useState("24h");
 
+  // Filter audit logs based on time filter
+  const getFilteredAuditLogs = () => {
+    if (!auditTimeFilter || auditTimeFilter === "all") return auditLogs;
+
+    const now = new Date();
+    let cutoffDate = new Date();
+
+    switch (auditTimeFilter) {
+      case "24h":
+        cutoffDate.setHours(now.getHours() - 24);
+        break;
+      case "7d":
+        cutoffDate.setDate(now.getDate() - 7);
+        break;
+      case "30d":
+        cutoffDate.setDate(now.getDate() - 30);
+        break;
+      default:
+        return auditLogs;
+    }
+
+    return auditLogs.filter((log) => {
+      const logDate = new Date(log.timestamp);
+      return logDate >= cutoffDate;
+    });
+  };
+
   // Users State
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: "1",
-      name: "Dr. Rajesh Kumar",
-      email: "rajesh.kumar@school.com",
-      role: "principal",
-      status: "active",
-      lastLogin: "2 hours ago",
-      permissions: ["student_view", "student_create", "exam_publish", "settings_manage"],
-      createdAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      name: "Priya Sharma",
-      email: "priya.sharma@school.com",
-      role: "class_teacher",
-      status: "active",
-      lastLogin: "30 minutes ago",
-      permissions: ["student_view", "attendance_mark", "exam_marks"],
-      createdAt: "2024-02-20",
-    },
-    {
-      id: "3",
-      name: "Amit Patel",
-      email: "amit.patel@school.com",
-      role: "accountant",
-      status: "active",
-      lastLogin: "1 day ago",
-      permissions: ["fee_view", "fee_collect"],
-      createdAt: "2024-03-10",
-    },
-    {
-      id: "4",
-      name: "Sunita Verma",
-      email: "sunita.verma@school.com",
-      role: "librarian",
-      status: "inactive",
-      lastLogin: "1 week ago",
-      permissions: ["library_issue"],
-      createdAt: "2024-01-25",
-    },
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Academic Years State
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([
-    {
-      id: "1",
-      year: "2024-2025",
-      startDate: "2024-04-01",
-      endDate: "2025-03-31",
-      isActive: true,
-      totalDays: 365,
-      daysElapsed: 240,
-    },
-    {
-      id: "2",
-      year: "2025-2026",
-      startDate: "2025-04-01",
-      endDate: "2026-03-31",
-      isActive: false,
-      totalDays: 365,
-      daysElapsed: 0,
-    },
-  ]);
+  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
 
   // System Config State
   const [systemConfig, setSystemConfig] = useState<SystemConfig>({
-    schoolName: "Delhi Public School",
-    schoolCode: "DPS-2024",
-    address: "123 Education Street, New Delhi, 110001",
-    phone: "+91 11 1234 5678",
-    email: "info@dpsdelhi.com",
+    schoolName: "",
+    schoolCode: "",
+    address: "",
+    phone: "",
+    email: "",
     sessionTimeout: 30,
     maxLoginAttempts: 3,
     passwordExpiryDays: 90,
-    enableMFA: true,
+    enableMFA: false,
     enableBiometric: false,
   });
+  const [currentSchoolId, setCurrentSchoolId] = useState<string | null>(null);
 
   // Notification Settings State
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSetting[]>([
-    {
-      id: "1",
-      label: "Attendance Alerts",
-      description: "Notify parents when student is absent",
-      enabled: true,
-    },
-    {
-      id: "2",
-      label: "Fee Reminders",
-      description: "Send fee payment reminders before due date",
-      enabled: true,
-    },
-    {
-      id: "3",
-      label: "Exam Notifications",
-      description: "Alert students and parents about upcoming exams",
-      enabled: true,
-    },
-    {
-      id: "4",
-      label: "Result Publishing",
-      description: "Notify when exam results are published",
-      enabled: true,
-    },
-    {
-      id: "5",
-      label: "Career Updates",
-      description: "Send career assessment and recommendation updates",
-      enabled: false,
-    },
-  ]);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSetting[]>([]);
+  const [originalNotificationSettings, setOriginalNotificationSettings] = useState<NotificationSetting[]>([]);
+  const [notificationSettingsChanged, setNotificationSettingsChanged] = useState(false);
 
   // Classes State
-  const [classes, setClasses] = useState<ClassConfig[]>([
-    {
-      id: "1",
-      name: "Class 9",
-      sections: ["A", "B", "C"],
-      capacity: 40,
-    },
-    {
-      id: "2",
-      name: "Class 10",
-      sections: ["A", "B", "C", "D"],
-      capacity: 40,
-    },
-    {
-      id: "3",
-      name: "Class 11",
-      sections: ["A", "B"],
-      capacity: 35,
-    },
-    {
-      id: "4",
-      name: "Class 12",
-      sections: ["A", "B"],
-      capacity: 35,
-    },
-  ]);
+  const [classes, setClasses] = useState<ClassConfig[]>([]);
 
   // Subjects State
-  const [subjects, setSubjects] = useState<SubjectConfig[]>([
-    {
-      id: "1",
-      name: "Mathematics",
-      code: "MATH101",
-      type: "core",
-      classes: ["1", "2", "3", "4"],
-    },
-    {
-      id: "2",
-      name: "Physics",
-      code: "PHY201",
-      type: "core",
-      classes: ["3", "4"],
-    },
-    {
-      id: "3",
-      name: "Computer Science",
-      code: "CS301",
-      type: "elective",
-      classes: ["3", "4"],
-    },
-    {
-      id: "4",
-      name: "Art & Craft",
-      code: "ART101",
-      type: "skill",
-      classes: ["1", "2"],
-    },
-  ]);
+  const [subjects, setSubjects] = useState<SubjectConfig[]>([]);
 
   // Role Permissions State
   const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>({
-    Principal: ["student_view", "student_create", "student_edit", "student_delete", "attendance_mark", "attendance_edit", "exam_create", "exam_marks", "exam_publish", "fee_view", "fee_collect", "library_issue", "career_view", "career_counsel", "settings_manage"],
-    "Vice Principal": ["student_view", "student_create", "student_edit", "attendance_mark", "attendance_edit", "exam_create", "exam_marks", "exam_publish", "career_view", "career_counsel", "settings_manage"],
-    "Class Teacher": ["student_view", "attendance_mark", "exam_marks", "career_view", "career_counsel"],
-    "Subject Teacher": ["student_view", "exam_marks", "career_view"],
-    Accountant: ["fee_view", "fee_collect"],
-    Librarian: ["library_issue"],
-    "IT Admin": ["student_view", "settings_manage"],
-    "Career Counselor": ["student_view", "career_view", "career_counsel"],
+    Principal: [],
+    "Vice Principal": [],
+    "Class Teacher": [],
+    "Subject Teacher": [],
+    Accountant: [],
+    Librarian: [],
+    "IT Admin": [],
+    "Career Counselor": [],
   });
 
   // Audit Logs State
-  const [auditLogs] = useState<AuditLog[]>([
-    {
-      id: "1",
-      timestamp: "2024-11-26 14:32:15",
-      user: "Dr. Rajesh Kumar",
-      action: "Updated user permissions",
-      module: "User Management",
-      ip: "192.168.1.100",
-      status: "success",
-    },
-    {
-      id: "2",
-      timestamp: "2024-11-26 14:28:42",
-      user: "Priya Sharma",
-      action: "Marked attendance",
-      module: "Attendance",
-      ip: "192.168.1.105",
-      status: "success",
-    },
-    {
-      id: "3",
-      timestamp: "2024-11-26 14:15:33",
-      user: "Amit Patel",
-      action: "Collected fee payment",
-      module: "Finance",
-      ip: "192.168.1.110",
-      status: "success",
-    },
-    {
-      id: "4",
-      timestamp: "2024-11-26 13:58:21",
-      user: "Unknown User",
-      action: "Failed login attempt",
-      module: "Authentication",
-      ip: "203.45.67.89",
-      status: "failed",
-    },
-    {
-      id: "5",
-      timestamp: "2024-11-26 13:45:12",
-      user: "Dr. Rajesh Kumar",
-      action: "Published exam results",
-      module: "Exams",
-      ip: "192.168.1.100",
-      status: "success",
-    },
-    {
-      id: "6",
-      timestamp: "2024-11-26 13:30:05",
-      user: "Sunita Verma",
-      action: "Issued library book",
-      module: "Library",
-      ip: "192.168.1.115",
-      status: "success",
-    },
-  ]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+
+  // Fetch current school ID and data
+  useEffect(() => {
+    fetchCurrentSchool();
+  }, []);
+
+  useEffect(() => {
+    if (currentSchoolId) {
+      fetchSchoolEducators();
+      fetchSchoolClasses();
+      fetchAcademicYears();
+      fetchSubjects();
+      fetchAuditLogs();
+      fetchRolePermissions();
+      fetchNotificationSettings();
+    }
+  }, [currentSchoolId]);
+
+  const fetchCurrentSchool = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.error("No authenticated user");
+        return;
+      }
+
+      // Get school_id from school_educators table
+      const { data: educator, error: educatorError } = await supabase
+        .from("school_educators")
+        .select("school_id, role")
+        .eq("user_id", user.id)
+        .single();
+
+      if (educatorError || !educator) {
+        console.error("Error fetching educator:", educatorError);
+        return;
+      }
+
+      setCurrentSchoolId(educator.school_id);
+
+      // Fetch school details
+      const { data: school, error: schoolError } = await supabase
+        .from("schools")
+        .select("*")
+        .eq("id", educator.school_id)
+        .single();
+
+      if (schoolError || !school) {
+        console.error("Error fetching school:", schoolError);
+        return;
+      }
+
+      setSystemConfig({
+        schoolName: school.name || "",
+        schoolCode: school.code || "",
+        address: school.address || "",
+        phone: school.phone || "",
+        email: school.email || "",
+        sessionTimeout: 30,
+        maxLoginAttempts: 3,
+        passwordExpiryDays: 90,
+        enableMFA: false,
+        enableBiometric: false,
+      });
+    } catch (error) {
+      console.error("Error in fetchCurrentSchool:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSchoolEducators = async () => {
+    if (!currentSchoolId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("school_educators")
+        .select(`
+          id,
+          user_id,
+          first_name,
+          last_name,
+          email,
+          role,
+          account_status,
+          created_at,
+          metadata
+        `)
+        .eq("school_id", currentSchoolId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching educators:", error);
+        return;
+      }
+
+      const mappedUsers: User[] = (data || []).map((educator: any) => ({
+        id: educator.id,
+        name: `${educator.first_name || ""} ${educator.last_name || ""}`.trim() || "Unknown",
+        email: educator.email || "",
+        role: mapEducatorRoleToUserRole(educator.role),
+        status: mapAccountStatusToUserStatus(educator.account_status),
+        lastLogin: "N/A",
+        permissions: educator.metadata?.permissions || getRolePermissions(educator.role),
+        createdAt: educator.created_at ? new Date(educator.created_at).toLocaleDateString() : "",
+      }));
+
+      setUsers(mappedUsers);
+    } catch (error) {
+      console.error("Error in fetchSchoolEducators:", error);
+    }
+  };
+
+  const fetchSchoolClasses = async () => {
+    if (!currentSchoolId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("school_classes")
+        .select("*")
+        .eq("school_id", currentSchoolId)
+        .eq("account_status", "active")
+        .order("grade", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching classes:", error);
+        return;
+      }
+
+      const mappedClasses: ClassConfig[] = (data || []).map((cls: any) => ({
+        id: cls.id,
+        name: `${cls.name || cls.grade}${cls.section ? ` - ${cls.section}` : ""}`,
+        sections: cls.section ? [cls.section] : [],
+        capacity: cls.max_students || 40,
+      }));
+
+      setClasses(mappedClasses);
+    } catch (error) {
+      console.error("Error in fetchSchoolClasses:", error);
+    }
+  };
+
+  const fetchAcademicYears = async () => {
+    if (!currentSchoolId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("curriculum_academic_years")
+        .select("*")
+        .eq("school_id", currentSchoolId)
+        .eq("is_active", true)
+        .order("year", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching academic years:", error);
+        return;
+      }
+
+      const mappedYears: AcademicYear[] = (data || []).map((year: any) => {
+        const start = new Date(year.start_date);
+        const end = new Date(year.end_date);
+        const today = new Date();
+        const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        const daysElapsed = today > start ? Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
+        return {
+          id: year.id,
+          year: year.year,
+          startDate: year.start_date,
+          endDate: year.end_date,
+          isActive: year.is_current || false,
+          totalDays,
+          daysElapsed: Math.min(daysElapsed, totalDays),
+        };
+      });
+
+      setAcademicYears(mappedYears);
+    } catch (error) {
+      console.error("Error in fetchAcademicYears:", error);
+    }
+  };
+
+  const fetchSubjects = async () => {
+    if (!currentSchoolId) return;
+
+    try {
+      // Fetch subjects for this school (school-specific and global)
+      const { data, error } = await supabase
+        .from("curriculum_subjects")
+        .select("*")
+        .or(`school_id.eq.${currentSchoolId},school_id.is.null`)
+        .eq("is_active", true)
+        .order("display_order", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching subjects:", error);
+        return;
+      }
+
+      // For each subject, we need to find which classes use it
+      // This requires checking the curriculums table
+      const subjectsWithClasses = await Promise.all(
+        (data || []).map(async (subject: any) => {
+          const { data: curriculums } = await supabase
+            .from("curriculums")
+            .select("id, class")
+            .eq("school_id", currentSchoolId)
+            .eq("subject", subject.name);
+
+          const classIds = curriculums?.map((c: any) => c.id) || [];
+
+          return {
+            id: subject.id,
+            name: subject.name,
+            code: subject.name.substring(0, 3).toUpperCase() + "101",
+            type: "core" as "core" | "elective" | "skill",
+            classes: classIds,
+          };
+        })
+      );
+
+      setSubjects(subjectsWithClasses);
+    } catch (error) {
+      console.error("Error in fetchSubjects:", error);
+    }
+  };
+
+  const fetchAuditLogs = async () => {
+    if (!currentSchoolId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .select(`
+          id,
+          action,
+          target,
+          payload,
+          ip,
+          createdAt,
+          actorId,
+          users!audit_logs_actorid_fkey (
+            firstName,
+            lastName,
+            email,
+            role
+          )
+        `)
+        .order("createdAt", { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error("Error fetching audit logs:", error);
+        return;
+      }
+
+      // Filter logs to only include school_admin and school_educator roles
+      const filteredData = (data || []).filter((log: any) => {
+        if (!log.users || !log.users.role) return false;
+        return log.users.role === "school_admin" || log.users.role === "school_educator";
+      });
+
+      const mappedLogs: AuditLog[] = filteredData.map((log: any) => {
+        // Format user name
+        let userName = "System";
+        if (log.users) {
+          const fullName = `${log.users.firstName || ""} ${log.users.lastName || ""}`.trim();
+          userName = fullName || log.users.email || "Unknown User";
+        }
+
+        // Format action - convert snake_case to Title Case
+        const formattedAction = log.action
+          ? log.action
+              .split("_")
+              .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+              .join(" ")
+          : "Unknown Action";
+
+        // Format module/target - convert to readable format
+        let module = "System";
+        if (log.target) {
+          // If target is a UUID, try to get more info from payload
+          if (log.target.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+            // Check payload for more context
+            if (log.payload && typeof log.payload === "object") {
+              if (log.payload.table) {
+                module = formatTableName(log.payload.table);
+              } else if (log.payload.type) {
+                module = formatTableName(log.payload.type);
+              } else {
+                module = "Record Management";
+              }
+            } else {
+              module = "Record Management";
+            }
+          } else {
+            module = formatTableName(log.target);
+          }
+        }
+
+        // Determine status from action or payload
+        let status: "success" | "failed" = "success";
+        if (log.action?.includes("fail") || log.action?.includes("error")) {
+          status = "failed";
+        }
+
+        return {
+          id: log.id,
+          timestamp: new Date(log.createdAt).toLocaleString(),
+          user: userName,
+          action: formattedAction,
+          module: module,
+          ip: log.ip || "N/A",
+          status: status,
+        };
+      });
+
+      setAuditLogs(mappedLogs);
+    } catch (error) {
+      console.error("Error in fetchAuditLogs:", error);
+    }
+  };
+
+  // Fetch role permissions from user_settings
+  const fetchRolePermissions = async () => {
+    if (!currentSchoolId) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch from user_settings table using privacy_settings JSONB column
+      const { data, error } = await supabase
+        .from("user_settings")
+        .select("privacy_settings")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching role permissions:", error);
+        return;
+      }
+
+      // If data exists and has rolePermissions, use it
+      if (data?.privacy_settings?.rolePermissions) {
+        setRolePermissions(data.privacy_settings.rolePermissions);
+      } else {
+        // Set default permissions if none exist
+        const defaultPermissions = {
+          Principal: ["student_view", "student_create", "student_edit", "student_delete", "attendance_mark", "attendance_edit", "exam_create", "exam_marks", "exam_publish", "fee_view", "fee_collect", "library_issue", "career_view", "career_counsel", "settings_manage"],
+          "Vice Principal": ["student_view", "student_create", "student_edit", "attendance_mark", "attendance_edit", "exam_create", "exam_marks", "exam_publish", "career_view", "career_counsel", "settings_manage"],
+          "Class Teacher": ["student_view", "attendance_mark", "exam_marks", "career_view", "career_counsel"],
+          "Subject Teacher": ["student_view", "exam_marks", "career_view"],
+          Accountant: ["fee_view", "fee_collect"],
+          Librarian: ["library_issue"],
+          "IT Admin": ["student_view", "settings_manage"],
+          "Career Counselor": ["student_view", "career_view", "career_counsel"],
+        };
+        setRolePermissions(defaultPermissions);
+        // Save defaults to database
+        await saveRolePermissionsToDb(defaultPermissions);
+      }
+    } catch (error) {
+      console.error("Error in fetchRolePermissions:", error);
+    }
+  };
+
+  // Save role permissions to database
+  const saveRolePermissionsToDb = async (permissions: Record<string, string[]>) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Check if user_settings record exists
+      const { data: existing } = await supabase
+        .from("user_settings")
+        .select("id, privacy_settings")
+        .eq("user_id", user.id)
+        .single();
+
+      const updatedPrivacySettings = {
+        ...(existing?.privacy_settings || {}),
+        rolePermissions: permissions,
+      };
+
+      if (existing) {
+        // Update existing record
+        const { error } = await supabase
+          .from("user_settings")
+          .update({
+            privacy_settings: updatedPrivacySettings,
+            updated_at: new Date().toISOString(),
+            updated_by: user.id,
+          })
+          .eq("user_id", user.id);
+
+        if (error) {
+          console.error("Error updating role permissions:", error);
+        }
+      } else {
+        // Insert new record
+        const { error } = await supabase
+          .from("user_settings")
+          .insert({
+            user_id: user.id,
+            privacy_settings: updatedPrivacySettings,
+            notification_preferences: {},
+            ui_preferences: {},
+            communication_preferences: {},
+            updated_by: user.id,
+          });
+
+        if (error) {
+          console.error("Error inserting role permissions:", error);
+        }
+      }
+    } catch (error) {
+      console.error("Error in saveRolePermissionsToDb:", error);
+    }
+  };
+
+  // Fetch notification settings from user_settings
+  const fetchNotificationSettings = async () => {
+    if (!currentSchoolId) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch from user_settings table using notification_preferences JSONB column
+      const { data, error } = await supabase
+        .from("user_settings")
+        .select("notification_preferences")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching notification settings:", error);
+        return;
+      }
+
+      // If data exists and has notificationSettings, use it
+      if (data?.notification_preferences?.notificationSettings) {
+        const settings = data.notification_preferences.notificationSettings;
+        setNotificationSettings(settings);
+        setOriginalNotificationSettings(JSON.parse(JSON.stringify(settings))); // Deep copy
+        setNotificationSettingsChanged(false);
+      } else {
+        // Set default notification settings if none exist
+        const defaultSettings: NotificationSetting[] = [
+          {
+            id: "1",
+            label: "Attendance Alerts",
+            description: "Notify parents when student is absent",
+            enabled: true,
+          },
+          {
+            id: "2",
+            label: "Fee Reminders",
+            description: "Send fee payment reminders before due date",
+            enabled: true,
+          },
+          {
+            id: "3",
+            label: "Exam Notifications",
+            description: "Alert students and parents about upcoming exams",
+            enabled: true,
+          },
+          {
+            id: "4",
+            label: "Result Publishing",
+            description: "Notify when exam results are published",
+            enabled: true,
+          },
+          {
+            id: "5",
+            label: "Career Updates",
+            description: "Send career assessment and recommendation updates",
+            enabled: false,
+          },
+        ];
+        setNotificationSettings(defaultSettings);
+        setOriginalNotificationSettings(JSON.parse(JSON.stringify(defaultSettings))); // Deep copy
+        setNotificationSettingsChanged(false);
+        // Save defaults to database
+        await saveNotificationSettingsToDb(defaultSettings);
+      }
+    } catch (error) {
+      console.error("Error in fetchNotificationSettings:", error);
+    }
+  };
+
+  // Save notification settings to database
+  const saveNotificationSettingsToDb = async (settings: NotificationSetting[]) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Check if user_settings record exists
+      const { data: existing } = await supabase
+        .from("user_settings")
+        .select("id, notification_preferences")
+        .eq("user_id", user.id)
+        .single();
+
+      const updatedNotificationPreferences = {
+        ...(existing?.notification_preferences || {}),
+        notificationSettings: settings,
+      };
+
+      if (existing) {
+        // Update existing record
+        const { error } = await supabase
+          .from("user_settings")
+          .update({
+            notification_preferences: updatedNotificationPreferences,
+            updated_at: new Date().toISOString(),
+            updated_by: user.id,
+          })
+          .eq("user_id", user.id);
+
+        if (error) {
+          console.error("Error updating notification settings:", error);
+        }
+      } else {
+        // Insert new record
+        const { error } = await supabase
+          .from("user_settings")
+          .insert({
+            user_id: user.id,
+            notification_preferences: updatedNotificationPreferences,
+            privacy_settings: {},
+            ui_preferences: {},
+            communication_preferences: {},
+            updated_by: user.id,
+          });
+
+        if (error) {
+          console.error("Error inserting notification settings:", error);
+        }
+      }
+    } catch (error) {
+      console.error("Error in saveNotificationSettingsToDb:", error);
+    }
+  };
+
+  // Helper function to format table names
+  const formatTableName = (name: string): string => {
+    if (!name) return "System";
+    
+    // Common table name mappings
+    const tableNameMap: Record<string, string> = {
+      courses: "Course Management",
+      students: "Student Management",
+      school_educators: "Educator Management",
+      school_classes: "Class Management",
+      curriculum_subjects: "Subject Management",
+      curriculums: "Curriculum Management",
+      lesson_plans: "Lesson Plans",
+      attendance_records: "Attendance",
+      assignments: "Assignments",
+      timetables: "Timetable",
+      users: "User Management",
+      schools: "School Settings",
+    };
+
+    // Check if we have a mapping
+    if (tableNameMap[name.toLowerCase()]) {
+      return tableNameMap[name.toLowerCase()];
+    }
+
+    // Otherwise, format the name
+    return name
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+  };
+
+  // Helper functions
+  const mapEducatorRoleToUserRole = (role: string): UserRole => {
+    const roleMap: Record<string, UserRole> = {
+      school_admin: "school_admin",
+      principal: "principal",
+      vice_principal: "vice_principal",
+      class_teacher: "class_teacher",
+      subject_teacher: "subject_teacher",
+      it_admin: "it_admin",
+    };
+    return roleMap[role] || "subject_teacher";
+  };
+
+  const mapAccountStatusToUserStatus = (status: string): "active" | "inactive" | "suspended" => {
+    if (status === "active") return "active";
+    if (status === "suspended") return "suspended";
+    return "inactive";
+  };
+
+  const getRolePermissions = (role: string): string[] => {
+    const permissionsMap: Record<string, string[]> = {
+      principal: ["student_view", "student_create", "student_edit", "student_delete", "attendance_mark", "exam_publish", "settings_manage"],
+      vice_principal: ["student_view", "student_create", "attendance_mark", "exam_marks"],
+      class_teacher: ["student_view", "attendance_mark", "exam_marks"],
+      subject_teacher: ["student_view", "exam_marks"],
+      school_admin: ["student_view", "student_create", "settings_manage"],
+      it_admin: ["settings_manage"],
+    };
+    return permissionsMap[role] || [];
+  };
 
   // Filtered Users
   const filteredUsers = users.filter((user) => {
@@ -1892,24 +2365,73 @@ const Settings = () => {
     }
   };
 
-  const handleSaveUser = (user: User) => {
-    if (editUser) {
-      setUsers(users.map((u) => (u.id === user.id ? user : u)));
-    } else {
-      setUsers([...users, user]);
+  const handleSaveUser = async (user: User) => {
+    try {
+      if (editUser) {
+        // Update existing educator
+        const { error } = await supabase
+          .from("school_educators")
+          .update({
+            first_name: user.name.split(" ")[0],
+            last_name: user.name.split(" ").slice(1).join(" "),
+            email: user.email,
+            role: user.role,
+            account_status: user.status,
+            metadata: {
+              permissions: user.permissions,
+            },
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", user.id);
+
+        if (error) {
+          console.error("Error updating educator:", error);
+          alert("Failed to update user");
+          return;
+        }
+
+        setUsers(users.map((u) => (u.id === user.id ? user : u)));
+      } else {
+        // Create new educator - Note: This requires creating a user in auth first
+        alert("Creating new users requires additional setup. Please use the user management system.");
+      }
+    } catch (error) {
+      console.error("Error saving user:", error);
+      alert("Failed to save user");
     }
   };
 
-  const handleToggleUserStatus = (userId: string) => {
-    setUsers(users.map((u) => {
-      if (u.id === userId) {
-        return {
-          ...u,
-          status: u.status === "active" ? "inactive" : "active",
-        };
+  const handleToggleUserStatus = async (userId: string) => {
+    const user = users.find((u) => u.id === userId);
+    if (!user) return;
+
+    const newStatus = user.status === "active" ? "inactive" : "active";
+
+    try {
+      const { error } = await supabase
+        .from("school_educators")
+        .update({
+          account_status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      if (error) {
+        console.error("Error updating user status:", error);
+        alert("Failed to update user status");
+        return;
       }
-      return u;
-    }));
+
+      setUsers(users.map((u) => {
+        if (u.id === userId) {
+          return { ...u, status: newStatus };
+        }
+        return u;
+      }));
+    } catch (error) {
+      console.error("Error in handleToggleUserStatus:", error);
+      alert("Failed to update user status");
+    }
   };
 
   // Academic Year Handlers
@@ -1923,35 +2445,134 @@ const Settings = () => {
     setShowAcademicModal(true);
   };
 
-  const handleSaveAcademicYear = (year: AcademicYear) => {
-    if (editAcademicYear) {
-      setAcademicYears(academicYears.map((y) => (y.id === year.id ? year : y)));
-    } else {
-      setAcademicYears([...academicYears, year]);
+  const handleSaveAcademicYear = async (year: AcademicYear) => {
+    if (!currentSchoolId) return;
+
+    try {
+      if (editAcademicYear) {
+        // Update existing academic year
+        const { error } = await supabase
+          .from("curriculum_academic_years")
+          .update({
+            year: year.year,
+            start_date: year.startDate,
+            end_date: year.endDate,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", year.id);
+
+        if (error) {
+          console.error("Error updating academic year:", error);
+          alert("Failed to update academic year");
+          return;
+        }
+
+        setAcademicYears(academicYears.map((y) => (y.id === year.id ? year : y)));
+      } else {
+        // Create new academic year
+        const { data, error } = await supabase
+          .from("curriculum_academic_years")
+          .insert({
+            school_id: currentSchoolId,
+            year: year.year,
+            start_date: year.startDate,
+            end_date: year.endDate,
+            is_active: true,
+            is_current: false,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error("Error creating academic year:", error);
+          alert("Failed to create academic year");
+          return;
+        }
+
+        setAcademicYears([...academicYears, { ...year, id: data.id }]);
+      }
+    } catch (error) {
+      console.error("Error saving academic year:", error);
+      alert("Failed to save academic year");
     }
   };
 
-  const handleActivateAcademicYear = (yearId: string) => {
-    setAcademicYears(academicYears.map((y) => ({
-      ...y,
-      isActive: y.id === yearId,
-    })));
+  const handleActivateAcademicYear = async (yearId: string) => {
+    if (!currentSchoolId) return;
+
+    try {
+      // First, deactivate all academic years for this school
+      await supabase
+        .from("curriculum_academic_years")
+        .update({ is_current: false })
+        .eq("school_id", currentSchoolId);
+
+      // Then activate the selected year
+      const { error } = await supabase
+        .from("curriculum_academic_years")
+        .update({ is_current: true })
+        .eq("id", yearId);
+
+      if (error) {
+        console.error("Error activating academic year:", error);
+        alert("Failed to activate academic year");
+        return;
+      }
+
+      setAcademicYears(academicYears.map((y) => ({
+        ...y,
+        isActive: y.id === yearId,
+      })));
+    } catch (error) {
+      console.error("Error in handleActivateAcademicYear:", error);
+      alert("Failed to activate academic year");
+    }
   };
 
-  const handleDeleteAcademicYear = (yearId: string) => {
-    if (confirm("Are you sure you want to delete this academic year?")) {
+  const handleDeleteAcademicYear = async (yearId: string) => {
+    if (!confirm("Are you sure you want to delete this academic year?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("curriculum_academic_years")
+        .delete()
+        .eq("id", yearId);
+
+      if (error) {
+        console.error("Error deleting academic year:", error);
+        alert("Failed to delete academic year");
+        return;
+      }
+
       setAcademicYears(academicYears.filter((y) => y.id !== yearId));
+    } catch (error) {
+      console.error("Error in handleDeleteAcademicYear:", error);
+      alert("Failed to delete academic year");
     }
   };
 
   // Notification Handler
   const handleToggleNotification = (notifId: string) => {
-    setNotificationSettings(notificationSettings.map((n) => {
+    const updatedSettings = notificationSettings.map((n) => {
       if (n.id === notifId) {
         return { ...n, enabled: !n.enabled };
       }
       return n;
-    }));
+    });
+    
+    setNotificationSettings(updatedSettings);
+    setNotificationSettingsChanged(true);
+  };
+
+  const handleSaveNotificationSettings = async () => {
+    await saveNotificationSettingsToDb(notificationSettings);
+    setOriginalNotificationSettings(JSON.parse(JSON.stringify(notificationSettings)));
+    setNotificationSettingsChanged(false);
+  };
+
+  const handleCancelNotificationSettings = () => {
+    setNotificationSettings(JSON.parse(JSON.stringify(originalNotificationSettings)));
+    setNotificationSettingsChanged(false);
   };
 
   // Role Permissions Handlers
@@ -1963,12 +2584,16 @@ const Settings = () => {
     setShowRolePermissionsModal(true);
   };
 
-  const handleSaveRolePermissions = (permissions: string[]) => {
+  const handleSaveRolePermissions = async (permissions: string[]) => {
     if (selectedRole) {
-      setRolePermissions({
+      const updatedPermissions = {
         ...rolePermissions,
         [selectedRole.name]: permissions,
-      });
+      };
+      setRolePermissions(updatedPermissions);
+      
+      // Save to database
+      await saveRolePermissionsToDb(updatedPermissions);
     }
   };
 
@@ -1983,22 +2608,82 @@ const Settings = () => {
     setShowClassModal(true);
   };
 
-  const handleSaveClass = (cls: ClassConfig) => {
-    if (editClass) {
-      setClasses(classes.map((c) => (c.id === cls.id ? cls : c)));
-    } else {
-      setClasses([...classes, cls]);
+  const handleSaveClass = async (cls: ClassConfig) => {
+    if (!currentSchoolId) return;
+
+    try {
+      if (editClass) {
+        // Update existing class
+        const { error } = await supabase
+          .from("school_classes")
+          .update({
+            name: cls.name,
+            max_students: cls.capacity,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", cls.id);
+
+        if (error) {
+          console.error("Error updating class:", error);
+          alert("Failed to update class");
+          return;
+        }
+
+        setClasses(classes.map((c) => (c.id === cls.id ? cls : c)));
+      } else {
+        // Create new class(es) - one for each section
+        const classInserts = cls.sections.map((section) => ({
+          school_id: currentSchoolId,
+          name: cls.name,
+          grade: cls.name,
+          section: section,
+          max_students: cls.capacity,
+          account_status: "active",
+        }));
+
+        const { data, error } = await supabase
+          .from("school_classes")
+          .insert(classInserts)
+          .select();
+
+        if (error) {
+          console.error("Error creating class:", error);
+          alert("Failed to create class");
+          return;
+        }
+
+        // Refresh classes
+        fetchSchoolClasses();
+      }
+    } catch (error) {
+      console.error("Error saving class:", error);
+      alert("Failed to save class");
     }
   };
 
-  const handleDeleteClass = (classId: string) => {
-    if (confirm("Are you sure you want to delete this class? This will affect associated subjects.")) {
+  const handleDeleteClass = async (classId: string) => {
+    if (!confirm("Are you sure you want to delete this class? This will affect associated subjects.")) return;
+
+    try {
+      const { error } = await supabase
+        .from("school_classes")
+        .delete()
+        .eq("id", classId);
+
+      if (error) {
+        console.error("Error deleting class:", error);
+        alert("Failed to delete class");
+        return;
+      }
+
       setClasses(classes.filter((c) => c.id !== classId));
-      // Remove class from subjects
       setSubjects(subjects.map((s) => ({
         ...s,
         classes: s.classes.filter((c) => c !== classId),
       })));
+    } catch (error) {
+      console.error("Error in handleDeleteClass:", error);
+      alert("Failed to delete class");
     }
   };
 
@@ -2013,17 +2698,79 @@ const Settings = () => {
     setShowSubjectModal(true);
   };
 
-  const handleSaveSubject = (subject: SubjectConfig) => {
-    if (editSubject) {
-      setSubjects(subjects.map((s) => (s.id === subject.id ? subject : s)));
-    } else {
-      setSubjects([...subjects, subject]);
+  const handleSaveSubject = async (subject: SubjectConfig) => {
+    if (!currentSchoolId) return;
+
+    try {
+      if (editSubject) {
+        // Update existing subject
+        const { error } = await supabase
+          .from("curriculum_subjects")
+          .update({
+            name: subject.name,
+            description: `${subject.type} subject`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", subject.id);
+
+        if (error) {
+          console.error("Error updating subject:", error);
+          alert("Failed to update subject");
+          return;
+        }
+
+        setSubjects(subjects.map((s) => (s.id === subject.id ? subject : s)));
+      } else {
+        // Create new subject
+        const { data, error } = await supabase
+          .from("curriculum_subjects")
+          .insert({
+            school_id: currentSchoolId,
+            name: subject.name,
+            description: `${subject.type} subject`,
+            is_active: true,
+            display_order: subjects.length,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error("Error creating subject:", error);
+          alert("Failed to create subject");
+          return;
+        }
+
+        setSubjects([...subjects, { ...subject, id: data.id }]);
+      }
+    } catch (error) {
+      console.error("Error saving subject:", error);
+      alert("Failed to save subject");
     }
   };
 
-  const handleDeleteSubject = (subjectId: string) => {
-    if (confirm("Are you sure you want to delete this subject?")) {
+  const handleDeleteSubject = async (subjectId: string) => {
+    if (!confirm("Are you sure you want to delete this subject? This may affect existing curriculums.")) return;
+
+    try {
+      // Soft delete by setting is_active to false
+      const { error } = await supabase
+        .from("curriculum_subjects")
+        .update({
+          is_active: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", subjectId);
+
+      if (error) {
+        console.error("Error deleting subject:", error);
+        alert("Failed to delete subject");
+        return;
+      }
+
       setSubjects(subjects.filter((s) => s.id !== subjectId));
+    } catch (error) {
+      console.error("Error in handleDeleteSubject:", error);
+      alert("Failed to delete subject");
     }
   };
 
@@ -2078,6 +2825,7 @@ const Settings = () => {
   // Helper Functions
   const getRoleBadgeColor = (role: UserRole) => {
     const colors: Record<UserRole, string> = {
+      school_admin: "bg-violet-100 text-violet-700 border-violet-300",
       principal: "bg-purple-100 text-purple-700 border-purple-300",
       vice_principal: "bg-indigo-100 text-indigo-700 border-indigo-300",
       class_teacher: "bg-blue-100 text-blue-700 border-blue-300",
@@ -2088,6 +2836,21 @@ const Settings = () => {
       career_counselor: "bg-pink-100 text-pink-700 border-pink-300",
     };
     return colors[role];
+  };
+
+  const getRoleDisplayName = (role: UserRole): string => {
+    const displayNames: Record<UserRole, string> = {
+      school_admin: "School Admin",
+      principal: "Principal",
+      vice_principal: "Vice Principal",
+      class_teacher: "Class Teacher",
+      subject_teacher: "Subject Teacher",
+      accountant: "Accountant",
+      librarian: "Librarian",
+      it_admin: "IT Admin",
+      career_counselor: "Career Counselor",
+    };
+    return displayNames[role] || role.replace("_", " ").toUpperCase();
   };
 
   const getStatusBadgeColor = (status: string) => {
@@ -2129,6 +2892,17 @@ const Settings = () => {
       color: "red" as const,
     },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center">
+          <ArrowPathIcon className="h-12 w-12 text-indigo-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -2231,13 +3005,7 @@ const Settings = () => {
                   <ArrowDownTrayIcon className="h-4 w-4" />
                   Export
                 </button>
-                <button
-                  onClick={handleAddUser}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm"
-                >
-                  <UserPlusIcon className="h-4 w-4" />
-                  Add User
-                </button>
+                {/* Add User button hidden - users are managed through educator creation flow */}
               </div>
             </div>
 
@@ -2307,18 +3075,17 @@ const Settings = () => {
                                 user.role
                               )}`}
                             >
-                              {user.role.replace("_", " ").toUpperCase()}
+                              {getRoleDisplayName(user.role)}
                             </span>
                           </td>
                           <td className="px-6 py-4">
-                            <button
-                              onClick={() => handleToggleUserStatus(user.id)}
+                            <span
                               className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusBadgeColor(
                                 user.status
-                              )} hover:opacity-80 transition-opacity`}
+                              )}`}
                             >
                               {user.status.toUpperCase()}
-                            </button>
+                            </span>
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-1.5 text-xs text-gray-600">
@@ -2341,13 +3108,7 @@ const Settings = () => {
                               >
                                 <PencilSquareIcon className="h-4 w-4" />
                               </button>
-                              <button
-                                onClick={() => handleDeleteUser(user.id)}
-                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Delete User"
-                              >
-                                <TrashIcon className="h-4 w-4" />
-                              </button>
+                              {/* Delete button hidden - users should be managed through educator management */}
                             </div>
                           </td>
                         </tr>
@@ -2705,7 +3466,9 @@ const Settings = () => {
                       <div className="p-3 bg-white rounded-lg border border-green-200">
                         <p className="text-xs text-gray-600 mb-1">Days Remaining</p>
                         <p className="text-lg font-bold text-gray-900">
-                          {year.totalDays - year.daysElapsed}
+                          {year.totalDays - year.daysElapsed <= 0 
+                            ? "Completed" 
+                            : year.totalDays - year.daysElapsed}
                         </p>
                       </div>
                     </div>
@@ -2825,9 +3588,28 @@ const Settings = () => {
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">
-                Notification Settings
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Notification Settings
+                </h3>
+                {notificationSettingsChanged && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleCancelNotificationSettings}
+                      className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveNotificationSettings}
+                      className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <CheckIcon className="h-4 w-4" />
+                      Save Changes
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="space-y-3">
                 {notificationSettings.map((setting) => (
                   <label
@@ -2877,7 +3659,7 @@ const Settings = () => {
                     <option value="24h">Last 24 hours</option>
                     <option value="7d">Last 7 days</option>
                     <option value="30d">Last 30 days</option>
-                    <option value="custom">Custom range</option>
+                    <option value="all">All time</option>
                   </select>
                   <button
                     onClick={handleExportAuditLogs}
@@ -2915,43 +3697,61 @@ const Settings = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {auditLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-xs text-gray-600 whitespace-nowrap">
-                        {log.timestamp}
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {log.user}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700">{log.action}</td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-300">
-                          {log.module}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-gray-600 font-mono">
-                        {log.ip}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                            log.status === "success"
-                              ? "bg-green-100 text-green-700 border-green-300"
-                              : "bg-red-100 text-red-700 border-red-300"
-                          }`}
-                        >
-                          {log.status.toUpperCase()}
-                        </span>
+                  {getFilteredAuditLogs().length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <DocumentTextIcon className="h-12 w-12 text-gray-300 mb-3" />
+                          <p className="text-sm font-medium text-gray-900 mb-1">
+                            No audit logs found
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {auditTimeFilter === "all" 
+                              ? "There are no activity logs to display yet."
+                              : "No activity logs found for the selected time period."}
+                          </p>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    getFilteredAuditLogs().map((log) => (
+                      <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 text-xs text-gray-600 whitespace-nowrap">
+                          {log.timestamp}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          {log.user}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-700">{log.action}</td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-300">
+                            {log.module}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-gray-600 font-mono">
+                          {log.ip}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                              log.status === "success"
+                                ? "bg-green-100 text-green-700 border-green-300"
+                                : "bg-red-100 text-red-700 border-red-300"
+                            }`}
+                          >
+                            {log.status.toUpperCase()}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
 
             <div className="p-4 border-t border-gray-200 bg-gray-50">
               <div className="flex items-center justify-between text-sm text-gray-600">
-                <span>Showing 1-{auditLogs.length} of 1,234 entries</span>
+                <span>Showing {getFilteredAuditLogs().length} {getFilteredAuditLogs().length === 1 ? 'entry' : 'entries'}</span>
                 <div className="flex items-center gap-2">
                   <button className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                     Previous
@@ -2982,6 +3782,7 @@ const Settings = () => {
         onClose={() => setShowConfigModal(false)}
         config={systemConfig}
         onSaved={setSystemConfig}
+        schoolId={currentSchoolId}
       />
 
       <AcademicYearModal

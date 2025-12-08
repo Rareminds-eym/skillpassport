@@ -238,7 +238,7 @@ const Dashboard = () => {
         </Card>
       ),
       training: (
-        <Card key="training" className="h-full shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-[#5378f1]/10 to-[#5378f1]/20 cursor-pointer" onClick={() => navigate('/student/my-training')}>
+        <Card key="training" className="h-full shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-[#5378f1]/10 to-[#5378f1]/20 cursor-pointer" onClick={() => navigate('/student/my-learning')}>
           <CardHeader className="bg-gradient-to-r from-[#5378f1]/20 to-[#5378f1]/30 border-b border-[#5378f1]/30">
             <CardTitle className="flex items-center justify-between text-[#5378f1]">
               <div className="flex items-center gap-2">
@@ -264,7 +264,7 @@ const Dashboard = () => {
                   className="text-[#5378f1] hover:text-[#4267d9] hover:bg-[#5378f1]/20 p-1"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate('/student/my-training');
+                    navigate('/student/my-learning');
                   }}
                 >
                   View All →
@@ -617,10 +617,10 @@ const Dashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* LEFT COLUMN - User Activity & Updates */}
+          {/* LEFT COLUMN - User Activity & Updates 
           <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-20">
             
-            {/* Recent Updates */}
+            {/* Recent Updates 
             <Card className="border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
                 <CardTitle className="flex items-center gap-2 text-blue-700">
@@ -708,6 +708,7 @@ const Dashboard = () => {
                 )}
               </CardContent>
             </Card>
+            */}
 
             {/* Suggestions */}
             <Card className="border-l-4 border-l-amber-500 shadow-lg hover:shadow-xl transition-shadow">

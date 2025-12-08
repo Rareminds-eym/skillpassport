@@ -57,7 +57,7 @@ const StudentCard3D = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 text-lg font-medium">Loading student profile...</p>
@@ -68,7 +68,7 @@ const StudentCard3D = () => {
 
   if (error || !studentData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md text-center">
           <div className="text-red-500 mb-4">
             <User className="w-16 h-16 mx-auto" />
@@ -94,7 +94,7 @@ const StudentCard3D = () => {
   const qrCodeValue = `${window.location.origin}/student/profile/${email}`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-50 py-12 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Back Button */}
         <Button
@@ -114,7 +114,7 @@ const StudentCard3D = () => {
         >
           <div
             style={tiltStyle}
-            className="bg-gradient-to-br from-blue-600 via-blue-700 to-purple-700 rounded-3xl shadow-2xl overflow-hidden"
+            className="bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-700 rounded-3xl shadow-2xl overflow-hidden"
           >
             {/* Yellow Top Bar */}
             <div className="h-16 bg-gradient-to-r from-yellow-400 to-amber-400"></div>
@@ -147,7 +147,7 @@ const StudentCard3D = () => {
                           className="w-24 h-24 rounded-xl object-cover border-4 border-white shadow-lg"
                         />
                       ) : (
-                        <div className="w-24 h-24 rounded-xl bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center border-4 border-white shadow-lg">
+                        <div className="w-24 h-24 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center border-4 border-white shadow-lg">
                           <User className="w-12 h-12 text-white" />
                         </div>
                       )}
@@ -342,15 +342,15 @@ const StudentCard3D = () => {
                             <p className="text-white/70 text-sm mb-2">Soft Skills</p>
                             <div className="flex flex-wrap gap-2">
                               {studentData.softSkills.slice(0, 5).map((skill, idx) => (
-                                <Badge 
+                                <Badge
                                   key={idx}
-                                  className="bg-purple-500 text-white border-0"
+                                  className="bg-indigo-500 text-white border-0"
                                 >
                                   {skill.name}
                                 </Badge>
                               ))}
                               {studentData.softSkills.length > 5 && (
-                                <Badge className="bg-purple-600 text-white border-0">
+                                <Badge className="bg-indigo-600 text-white border-0">
                                   +{studentData.softSkills.length - 5} more
                                 </Badge>
                               )}

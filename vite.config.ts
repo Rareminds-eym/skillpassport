@@ -13,6 +13,20 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  build: {
+    // Reduce memory usage during build
+    sourcemap: false,
+    minify: 'esbuild',
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs'],
+        },
+      },
+    },
+  },
    server: {
     host: '0.0.0.0',
     port: 3000,
@@ -24,6 +38,18 @@ export default defineConfig({
     ],
     hmr: {
       port: 3000
+    },
+    proxy: {
+      '/api/upload-to-r2': {
+        target: 'https://dpooleduinyyzxgrcwko.supabase.co/functions/v1/upload-to-r2',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/upload-to-r2/, '')
+      },
+      '/api/delete-from-r2': {
+        target: 'https://dpooleduinyyzxgrcwko.supabase.co/functions/v1/delete-from-r2',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/delete-from-r2/, '')
+      }
     }
   },
 });

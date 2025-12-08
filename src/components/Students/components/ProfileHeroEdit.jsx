@@ -33,6 +33,7 @@ import {
 import EmployabilityDebugger from "./EmployabilityDebugger";
 import { generateBadges } from "../../../services/badgeService";
 import DigitalBadges from "./DigitalBadges";
+import { supabase } from "../../../lib/supabaseClient";
 
 // ================= REUSABLE DETAIL ITEM =================
 const DetailItem = ({ label, value, highlight }) => (
@@ -73,7 +74,8 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState(null);
 
-
+  // State for institution name
+  const [fetchedInstitutionName, setFetchedInstitutionName] = useState(null);
 
   // Fetch real student data
   const {
@@ -118,13 +120,43 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     }
   }, [realStudentData]);
 
+  // Calculate graduation year for school students
+  const getGraduationYear = () => {
+    if (!realStudentData) return null;
+    
+    // For university/college students, use class_year or expectedGraduationDate
+    if (realStudentData.class_year) {
+      return realStudentData.class_year;
+    }
+    if (realStudentData.expectedGraduationDate) {
+      return new Date(realStudentData.expectedGraduationDate).getFullYear();
+    }
+    
+    // For school students, calculate based on current grade
+    if (realStudentData.school_id && realStudentData.grade) {
+      const currentYear = new Date().getFullYear();
+      const grade = parseInt(realStudentData.grade);
+      
+      // Assuming Grade 10 graduates in current academic year
+      if (grade === 10) return currentYear;
+      if (grade === 9) return currentYear + 1;
+      if (grade === 8) return currentYear + 2;
+      if (grade === 7) return currentYear + 3;
+      if (grade === 6) return currentYear + 4;
+    }
+    
+    return null;
+  };
+
+  const graduationYear = getGraduationYear();
+
   // Use individual columns instead of profile JSONB
   const displayData = realStudentData ? {
     name: realStudentData.name,
     email: realStudentData.email,
     department: realStudentData.branch_field,
     university: realStudentData.university,
-    classYear: realStudentData.class_year || realStudentData.profile?.classYear || "Class of 2025",
+    classYear: graduationYear ? (realStudentData.school_id ? `Graduating ${graduationYear}` : `Class of ${graduationYear}`) : (realStudentData.profile?.classYear || null),
     github_link: realStudentData.github_link,
     portfolio_link: realStudentData.portfolio_link,
     linkedin_link: realStudentData.linkedin_link,
@@ -135,33 +167,122 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     // Fallback to profile JSONB for any missing data
     ...realStudentData.profile
   } : null;
+  // Fetch institution name if not in relationship data
+  useEffect(() => {
+    const fetchInstitutionName = async () => {
+      if (!realStudentData) return;
+      
+      // If school student and no school relationship data
+      if (realStudentData.school_id && !realStudentData.schools?.name) {
+        try {
+          const { data, error } = await supabase
+            .from('schools')
+            .select('name')
+            .eq('id', realStudentData.school_id)
+            .single();
+          
+          if (data && !error) {
+            setFetchedInstitutionName(data.name);
+          }
+        } catch (err) {
+          console.error('Error fetching school name:', err);
+        }
+      }
+      
+      // If college student and no college relationship data
+      if (realStudentData.university_college_id && !realStudentData.university_colleges) {
+        try {
+          const { data, error } = await supabase
+            .from('university_colleges')
+            .select(`
+              name,
+              universities:university_id (
+                name
+              )
+            `)
+            .eq('id', realStudentData.university_college_id)
+            .single();
+          
+          if (data && !error) {
+            const collegeName = data.name;
+            const universityName = data.universities?.name;
+            setFetchedInstitutionName(
+              universityName ? `${collegeName} - ${universityName}` : collegeName
+            );
+          }
+        } catch (err) {
+          console.error('Error fetching college name:', err);
+        }
+      }
+    };
+    
+    fetchInstitutionName();
+  }, [realStudentData]);
 
   // Determine institution from relationships (school_id or university_college_id)
   const institutionName = React.useMemo(() => {
-    if (realStudentData?.school_id && realStudentData?.schools) {
-      return realStudentData.schools.name;
-    } else if (realStudentData?.university_college_id && realStudentData?.university_colleges) {
-      const college = realStudentData.university_colleges;
-      const university = college.universities;
-      // Show both college and university name
-      return university?.name ? `${college.name} - ${university.name}` : college.name;
+    if (!realStudentData) return "Institution";
+    
+    // For school students - check schools relationship first, then fallback to university field
+    if (realStudentData.school_id) {
+      if (realStudentData.schools?.name) {
+        return realStudentData.schools.name;
+      }
+      // Use fetched name if available
+      if (fetchedInstitutionName) {
+        return fetchedInstitutionName;
+      }
+      // Fallback to university field (which might contain school name)
+      if (realStudentData.university) {
+        return realStudentData.university;
+      }
+      if (realStudentData.profile?.university) {
+        return realStudentData.profile.university;
+      }
+      return "School";
     }
-    // Fallback to profile.university if no institutional linkage
-    return displayData?.university || "Institution";
-  }, [realStudentData, displayData]);
+    
+    // For college students - check university_colleges relationship
+    if (realStudentData.university_college_id) {
+      if (realStudentData.university_colleges) {
+        const college = realStudentData.university_colleges;
+        const university = college.universities;
+        return university?.name ? `${college.name} - ${university.name}` : college.name;
+      }
+      // Use fetched name if available
+      if (fetchedInstitutionName) {
+        return fetchedInstitutionName;
+      }
+      // Fallback to university field
+      if (realStudentData.university) {
+        return realStudentData.university;
+      }
+      if (realStudentData.profile?.university) {
+        return realStudentData.profile.university;
+      }
+      return "College";
+    }
+    
+    // For students without school_id or university_college_id
+    return realStudentData.university || realStudentData.profile?.university || "Institution";
+  }, [realStudentData, fetchedInstitutionName]);
 
   // Debug: Log student_id and school fields from database
   React.useEffect(() => {
     if (realStudentData) {
       console.log('🔍 Student ID from database:', realStudentData.student_id);
       console.log('🏫 School ID:', realStudentData.school_id);
+      console.log('🏫 School Data:', realStudentData.schools);
+      console.log('🎓 College ID:', realStudentData.university_college_id);
+      console.log('� College Darta:', realStudentData.university_colleges);
       console.log('📚 Grade:', realStudentData.grade);
-      console.log('📝 Section:', realStudentData.section);
+      console.log('� FSection:', realStudentData.section);
       console.log('🎯 Roll Number:', realStudentData.roll_number);
       console.log('🎓 Admission Number:', realStudentData.admission_number);
+      console.log('🏢 Institution Name:', institutionName);
       console.log('📦 Full realStudentData:', realStudentData);
     }
-  }, [realStudentData]);
+  }, [realStudentData, institutionName]);
 
 
   // Generate QR code value once and keep it constant
@@ -243,13 +364,12 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
       <div className="max-w-7xl mx-auto">
         <div
-          className="rounded-3xl shadow-2xl border-2 border-yellow-400 overflow-hidden relative"
+          className="rounded-3xl shadow-2xl border border-blue-300/70 overflow-hidden relative bg-blue-200/70 backdrop-blur-2xl"
           style={{
-            background:
-              "linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #5f5cff 100%)",
+            boxShadow: '0 8px 32px 0 rgba(59, 130, 246, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.8)'
           }}
         >
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 z-10" />
+          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500 z-10" />
           <CardContent className="p-8 relative z-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start mt-5 md-mt-10 ">
               {/* Left Column - Profile Info */}
@@ -257,16 +377,16 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                 {/* Profile Icon with Badge */}
                 <div className="flex items-start gap-4">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center shadow-lg border-2 border-white">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg border-2 border-white">
                       <GraduationCap className="w-8 h-8 text-white" />
                     </div>
-                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full border-2 border-white flex items-center justify-center shadow-md">
-                      <Award className="w-3 h-3 text-purple-700" />
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center shadow-md">
+                      <Award className="w-3 h-3 text-white" />
                     </div>
                   </div>
                   <div className="flex-1 pt-1">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+                      <h1 className="text-3xl font-bold text-gray-900 drop-shadow-sm">
                         {displayData.name || "Student Name"}
                       </h1>
                       {/* Approval Status Badge */}
@@ -276,7 +396,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                           Approved
                         </Badge>
                       ) : (
-                        <Badge className="bg-amber-400 text-amber-900 border-0 px-3 py-1.5 text-xs font-semibold rounded-full shadow-lg flex items-center gap-1.5 animate-in fade-in duration-300">
+                        <Badge className="bg-blue-100 text-yellow-400 border-blue-300 border px-3 py-1.5 text-xs font-semibold rounded-full shadow-lg flex items-center gap-1.5 animate-in fade-in duration-300">
                           <Clock className="w-3.5 h-3.5" />
                           Pending
                         </Badge>
@@ -287,7 +407,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
                 {/* University and Student ID */}
                 <div className="space-y-2 ml-1">
-                  <div className="flex items-center gap-2 text-white">
+                  <div className="flex items-center gap-2 text-gray-800">
                     <Briefcase className="w-4 h-4" />
                     <span className="font-medium">
                       {institutionName}
@@ -304,31 +424,31 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
                 {/* School-specific fields - Display when school_id is not null */}
                 {realStudentData?.school_id && (
-                  <div className="ml-1 bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-                    <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
+                  <div className="ml-1 bg-blue-50/60 backdrop-blur-md rounded-2xl p-4 border border-blue-200/60 shadow-lg">
+                    <h3 className="text-gray-900 font-semibold text-sm mb-3 flex items-center gap-2">
                       <GraduationCap className="w-4 h-4" />
                       School Information
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                       {/* <div className="flex flex-col">
-                        <span className="text-xs text-white/70">Name</span>
-                        <span className="text-sm text-white font-medium">{realStudentData.name || 'N/A'}</span>
+                        <span className="text-xs text-gray-600">Name</span>
+                        <span className="text-sm text-gray-900 font-medium">{realStudentData.name || 'N/A'}</span>
                       </div> */}
                       <div className="flex flex-col">
-                        <span className="text-xs text-white/70">Grade</span>
-                        <span className="text-sm text-white font-medium">{realStudentData.grade || 'N/A'}</span>
+                        <span className="text-xs text-gray-600">Grade</span>
+                        <span className="text-sm text-gray-900 font-medium">{realStudentData.grade || 'N/A'}</span>
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-xs text-white/70">Section</span>
-                        <span className="text-sm text-white font-medium">{realStudentData.section || 'N/A'}</span>
+                        <span className="text-xs text-gray-600">Section</span>
+                        <span className="text-sm text-gray-900 font-medium">{realStudentData.section || 'N/A'}</span>
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-xs text-white/70">Roll Number</span>
-                        <span className="text-sm text-white font-medium">{realStudentData.roll_number || 'N/A'}</span>
+                        <span className="text-xs text-gray-600">Roll Number</span>
+                        <span className="text-sm text-gray-900 font-medium">{realStudentData.roll_number || 'N/A'}</span>
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-xs text-white/70">Admission Number</span>
-                        <span className="text-sm text-white font-medium">{realStudentData.admission_number || 'N/A'}</span>
+                        <span className="text-xs text-gray-600">Admission Number</span>
+                        <span className="text-sm text-gray-900 font-medium">{realStudentData.admission_number || 'N/A'}</span>
                       </div>
                     </div>
                   </div>
@@ -336,12 +456,12 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-3 ml-1">
-                  <Badge className="bg-white text-purple-700 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
+                  <Badge className="bg-white text-indigo-700 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
                     {displayData.department ||
                       displayData.degree ||
                       "Computer Science"}
                   </Badge>
-                  <Badge className="bg-white text-pink-600 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
+                  <Badge className="bg-white text-blue-600 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
                     {displayData.classYear || "Class of 2025"}
                   </Badge>
                 </div>
@@ -366,11 +486,11 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   displayData.facebook_link) && (
                     <div className="ml-1 space-y-3">
                       <div className="flex items-center gap-2">
-                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
-                        <span className="text-xs font-medium text-white/80 px-2">
+                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                        <span className="text-xs font-medium text-gray-700 px-2">
                           Connect With Me
                         </span>
-                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {displayData.github_link && (
@@ -508,7 +628,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
               {/* Right Column - QR Code and Score */}
               <div className="space-y-6">
                 {/* QR Code Card */}
-                <Card className="bg-white/5 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl">
+                <Card className="bg-blue-50/60 backdrop-blur-xl border border-blue-200/60 rounded-2xl shadow-2xl">
                   <CardContent className="p-6 text-center pt-5 md:pt-10">
                     <div className="w-28 h-28 mx-auto mb-2 bg-white rounded-xl flex items-center justify-center shadow-md p-2">
                       {/* Student QR Code */}
@@ -523,7 +643,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                     </div>
                     <button
                       onClick={() => setShowDetailsModal(true)}
-                      className="text-xs text-white font-bold mt-2 mb-4 hover:text-yellow-200 transition-colors cursor-pointer"
+                      className="text-xs text-gray-900 font-bold mt-2 mb-4 hover:text-blue-600 transition-colors cursor-pointer"
                     >
                       PASSPORT-ID: {
                         // Priority: 1. student_id column, 2. registration_number, 3. generated from email
@@ -538,7 +658,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                     <div className="flex gap-2 justify-center">
                       <button
                         onClick={handleCopyLink}
-                        className="flex items-center gap-2 px-4 py-2 bg-white/90 hover:bg-white text-purple-700 rounded-lg text-sm font-semibold transition-all shadow-md hover:shadow-lg"
+                        className="flex items-center gap-2 px-4 py-2 bg-white/90 hover:bg-white text-blue-600 rounded-lg text-sm font-semibold transition-all shadow-md hover:shadow-lg"
                         title="Copy Link"
                       >
                         {copied ? (
@@ -555,7 +675,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       </button>
                       <button
                         onClick={handleShare}
-                        className="flex items-center gap-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-300 text-purple-700 rounded-lg text-sm font-semibold transition-all shadow-md hover:shadow-lg"
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md hover:shadow-lg"
                         title="Share"
                       >
                         <Share2 className="w-4 h-4" />
@@ -568,31 +688,31 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                 {/* Employability Score */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="font-bold text-white text-lg">
+                    <span className="font-bold text-gray-900 text-lg">
                       Employability Score
                     </span>
-                    <span className="ml-auto text-2xl font-bold text-yellow-300 drop-shadow-lg">
+                    <span className="ml-auto text-2xl font-bold text-blue-600 drop-shadow-sm">
                       {employabilityData.employabilityScore}%
                     </span>
                   </div>
-                  <div className="relative h-3 bg-white/30 rounded-full overflow-hidden backdrop-blur-sm">
+                  <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden backdrop-blur-sm">
                     <div
-                      className="absolute top-0 left-0 h-full bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 rounded-full transition-all duration-300 shadow-lg"
+                      className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 rounded-full transition-all duration-300 shadow-lg"
                       style={{
                         width: `${employabilityData.employabilityScore}%`,
                       }}
                     />
                   </div>
-                  <div className="flex justify-between text-xs text-white font-medium mt-1">
+                  <div className="flex justify-between text-xs text-gray-700 font-medium mt-1">
                     <span>Beginner</span>
-                    <span className="text-yellow-300 font-semibold">
+                    <span className="text-blue-600 font-semibold">
                       {employabilityData.label}
                     </span>
                     <span>Expert</span>
                   </div>
                   {/* Score Breakdown Tooltip (Optional) */}
                   {process.env.NODE_ENV === "development" && (
-                    <div className="text-xs text-white/70 mt-2 text-center">
+                    <div className="text-xs text-gray-600 mt-2 text-center">
                       Debug: F:{employabilityData.breakdown?.foundational}% |
                       C21:{employabilityData.breakdown?.century21}% | D:
                       {employabilityData.breakdown?.digital}% | B:
@@ -759,7 +879,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   />
                   <button
                     onClick={handleCopyLink}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors shadow-md"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-md"
                   >
                     {copied ? (
                       <Check className="w-5 h-5" />
@@ -795,7 +915,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
             {/* Profile Info */}
             <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-sm">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center shadow-lg border-2 border-white">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg border-2 border-white">
                 <GraduationCap className="w-8 h-8 text-white" />
               </div>
               <div>
@@ -880,8 +1000,8 @@ const ProfileHeroEdit = ({ onEditClick }) => {
               {/* Earned Date */}
               <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                    <Award className="w-5 h-5 text-purple-600" />
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                    <Award className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">Earned On</p>
@@ -909,7 +1029,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
               <div className="pt-4 border-t border-gray-100">
                 <button
                   onClick={() => setShowBadgeModal(false)}
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300"
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300"
                 >
                   Close Details
                 </button>

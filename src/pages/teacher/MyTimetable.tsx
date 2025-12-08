@@ -33,29 +33,65 @@ const MyTimetable: React.FC = () => {
   const loadTimetable = async () => {
     setLoading(true);
     try {
-      // Get current teacher
+      // Get current educator
       const { data: userData } = await supabase.auth.getUser();
-      const { data: teacherData } = await supabase
-        .from("school_educators")
-        .select("id")
-        .eq("email", userData?.user?.email)
-        .single();
-
-      if (!teacherData) {
-        throw new Error("Teacher not found");
+      
+      if (!userData?.user?.id) {
+        throw new Error("User not authenticated");
       }
 
-      // Get timetable from view
+      const { data: educatorData, error: educatorError } = await supabase
+        .from("school_educators")
+        .select("id, user_id")
+        .eq("user_id", userData.user.id)
+        .single();
+
+      if (educatorError || !educatorData) {
+        console.error("Educator lookup error:", educatorError);
+        throw new Error("Educator profile not found");
+      }
+
+      // Get timetable slots assigned to this educator
       const { data, error } = await supabase
-        .from("teacher_weekly_timetable")
-        .select("*")
-        .eq("teacher_id", teacherData.id)
+        .from("timetable_slots")
+        .select(`
+          id,
+          day_of_week,
+          period_number,
+          start_time,
+          end_time,
+          room_number,
+          subject_name,
+          classes:class_id (
+            id,
+            name
+          )
+        `)
+        .eq("educator_id", educatorData.id)
         .order("day_of_week")
         .order("period_number");
 
-      if (error) throw error;
+      if (error) {
+        console.error("Timetable fetch error:", error);
+        throw error;
+      }
 
-      setTimetable(data || []);
+      // Transform data to match expected format
+      const transformedData = (data || []).map((slot: any) => ({
+        slot_id: slot.id,
+        day_of_week: slot.day_of_week,
+        period_number: slot.period_number,
+        start_time: slot.start_time,
+        end_time: slot.end_time,
+        class_name: slot.classes?.name || "N/A",
+        subject_name: slot.subject_name || "N/A",
+        room_number: slot.room_number || "N/A",
+        lesson_plan_id: null,
+        lesson_plan_title: null,
+        lesson_plan_status: null,
+      }));
+
+      setTimetable(transformedData);
     } catch (error: any) {
       console.error("Error loading timetable:", error);
     } finally {

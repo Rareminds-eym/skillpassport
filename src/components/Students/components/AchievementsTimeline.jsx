@@ -8,11 +8,11 @@ import "react-vertical-timeline-component/style.min.css";
 import "./AchievementsTimeline.css";
 import {
   Award,
-  Briefcase,
-  Code,
+  Building2,
+  Rocket,
   Medal,
-  BookOpen,
-  Calendar as CalendarIcon,
+  GraduationCap,
+  Trophy,
   ChevronRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -25,13 +25,13 @@ const getIconByType = (type) => {
     case "certificate":
       return <Medal className="w-5 h-5" />;
     case "project":
-      return <Code className="w-5 h-5" />;
+      return <Rocket className="w-5 h-5" />;
     case "education":
-      return <BookOpen className="w-5 h-5" />;
+      return <GraduationCap className="w-5 h-5" />;
     case "experience":
-      return <Briefcase className="w-5 h-5" />;
+      return <Building2 className="w-5 h-5" />;
     default:
-      return <Award className="w-5 h-5" />;
+      return <Trophy className="w-5 h-5" />;
   }
 };
 
@@ -168,8 +168,8 @@ const AchievementsTimeline = ({ userData }) => {
         <CardHeader className="px-6 py-4 border-b border-gray-100">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-                <CalendarIcon className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Trophy className="w-5 h-5 text-blue-600" />
               </div>
               <div>
                 <span className="text-lg font-semibold text-gray-900">

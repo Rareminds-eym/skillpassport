@@ -25,6 +25,8 @@ export default function StudentDashboard() {
     const [loading, setLoading] = useState(true);
     const [myMemberships, setMyMemberships] = useState([]);
     const [attendanceData, setAttendanceData] = useState({});
+    const [myAchievementsData, setMyAchievementsData] = useState([]);
+    const [myCertificates, setMyCertificates] = useState([]);
 
     // Fetch clubs, competitions, and student's memberships from Supabase
     useEffect(() => {
@@ -39,106 +41,191 @@ export default function StudentDashboard() {
                     return;
                 }
 
-                // Fetch student's school_id first
-                const { data: studentData, error: studentError } = await supabase
-                    .from('students')
-                    .select('school_id')
-                    .eq('email', userEmail)
-                    .maybeSingle();
-
-                if (studentError) {
-                    console.error('❌ [Student Clubs] Error fetching student data:', studentError);
-                }
-
-                const schoolId = studentData?.school_id;
-                console.log('🏫 [Student Clubs] Student school_id:', schoolId);
-
-                // Fetch all clubs from the student's school
-                const { data: clubsData, error: clubsError } = await supabase
-                    .from('clubs')
-                    .select('*')
-                    .eq('school_id', schoolId)
-                    .eq('is_active', true)
-                    .order('name');
-
-                if (clubsError) {
-                    console.error('❌ [Student Clubs] Error fetching clubs:', clubsError);
-                } else {
-                    console.log('✅ [Student Clubs] Loaded', clubsData?.length || 0, 'clubs');
-                }
-
-                // Fetch student's memberships
-                const { data: membershipsData, error: membershipsError } = await supabase
-                    .from('club_memberships')
+                // Fetch student's clubs using the view that joins memberships with club details
+                const { data: membershipData, error: membershipError } = await supabase
+                    .from('club_memberships_with_students')
                     .select('*')
                     .eq('student_email', userEmail)
                     .eq('status', 'active');
 
-                if (membershipsError) {
-                    console.error('❌ [Student Clubs] Error fetching memberships:', membershipsError);
+                if (membershipError) {
+                    console.error('❌ [Student Clubs] Error fetching club memberships:', membershipError);
                 } else {
-                    console.log('✅ [Student Clubs] Student is member of', membershipsData?.length || 0, 'clubs');
-                    setMyMemberships(membershipsData || []);
+                    console.log('✅ [Student Clubs] Student is member of', membershipData?.length || 0, 'clubs');
+                    console.log('📋 [Student Clubs] Membership data:', membershipData);
                 }
 
-                // Fetch competitions
-                const { data: competitionsData, error: competitionsError } = await supabase
-                    .from('competitions')
-                    .select('*')
-                    .eq('school_id', schoolId)
-                    .order('competition_date', { ascending: true });
+                // Transform membership data into clubs format
+                const clubsData = (membershipData || []).map(membership => ({
+                    club_id: membership.club_id,
+                    name: membership.club_name,
+                    category: membership.club_category,
+                    description: '', // Not in view, can be added if needed
+                    meeting_day: membership.meeting_day,
+                    meeting_time: membership.meeting_time,
+                    location: membership.location,
+                    mentor_type: membership.mentor_type,
+                    mentor_name: membership.mentor_name,
+                    mentor_email: membership.mentor_email,
+                    mentor_phone: membership.mentor_phone,
+                    is_active: true,
+                    capacity: 0, // Not in view
+                    members: [], // Will be populated below
+                    // Membership specific data
+                    membership_id: membership.membership_id,
+                    enrolled_at: membership.enrolled_at,
+                    total_sessions_attended: membership.total_sessions_attended,
+                    total_sessions_held: membership.total_sessions_held,
+                    attendance_percentage: membership.attendance_percentage,
+                    performance_score: membership.performance_score
+                }));
 
-                if (competitionsError) {
-                    console.error('❌ [Student Clubs] Error fetching competitions:', competitionsError);
-                } else {
-                    console.log('✅ [Student Clubs] Loaded', competitionsData?.length || 0, 'competitions');
-                }
+                // Store memberships for later use
+                setMyMemberships(membershipData || []);
 
-                // Fetch attendance data for each membership
-                const attendanceMap = {};
-                if (membershipsData && membershipsData.length > 0) {
-                    for (const membership of membershipsData) {
-                        const { data: attendanceRecords } = await supabase
-                            .from('club_attendance_records')
-                            .select(`
-                                *,
-                                club_attendance (
-                                    session_date,
-                                    session_topic
-                                )
-                            `)
-                            .eq('student_email', userEmail)
-                            .in('attendance_id', 
-                                await supabase
-                                    .from('club_attendance')
-                                    .select('attendance_id')
-                                    .eq('club_id', membership.club_id)
-                                    .then(res => res.data?.map(a => a.attendance_id) || [])
-                            );
-
-                        attendanceMap[membership.club_id] = attendanceRecords || [];
-                    }
-                }
-                setAttendanceData(attendanceMap);
-
-                // Add members array to clubs
+                // Fetch full club details including capacity and member count
                 const clubsWithMembers = await Promise.all(
-                    (clubsData || []).map(async (club) => {
-                        const { data: memberships } = await supabase
-                            .from('club_memberships')
-                            .select('student_email')
+                    clubsData.map(async (club) => {
+                        // Get full club details
+                        const { data: clubDetails } = await supabase
+                            .from('clubs')
+                            .select('capacity, description')
+                            .eq('club_id', club.club_id)
+                            .single();
+
+                        // Get member count from the view (RLS-friendly)
+                        const { count: memberCount } = await supabase
+                            .from('club_memberships_with_students')
+                            .select('*', { count: 'exact', head: true })
                             .eq('club_id', club.club_id)
                             .eq('status', 'active');
 
+                        console.log(`👥 [Student Clubs] Club "${club.name}" has ${memberCount} members`);
+
                         return {
                             ...club,
-                            members: memberships?.map(m => m.student_email) || []
+                            capacity: clubDetails?.capacity || 30,
+                            description: clubDetails?.description || '',
+                            memberCount: memberCount || 0,
+                            members: [] // Not needed for display, just count
                         };
                     })
                 );
 
+                // Get school_id from first membership for competitions
+                const schoolId = membershipData?.[0]?.club_id ? 
+                    await supabase
+                        .from('clubs')
+                        .select('school_id')
+                        .eq('club_id', membershipData[0].club_id)
+                        .single()
+                        .then(res => res.data?.school_id)
+                    : null;
+
+                console.log('🏫 [Student Clubs] School ID:', schoolId);
+
+                // Fetch competitions for the student's school
+                let competitionsData = [];
+                if (schoolId) {
+                    const { data: compsData, error: competitionsError } = await supabase
+                        .from('competitions')
+                        .select('*')
+                        .eq('school_id', schoolId)
+                        .order('competition_date', { ascending: true });
+
+                    if (competitionsError) {
+                        console.error('❌ [Student Clubs] Error fetching competitions:', competitionsError);
+                    } else {
+                        console.log('✅ [Student Clubs] Loaded', compsData?.length || 0, 'competitions');
+                        competitionsData = compsData || [];
+                    }
+                }
+
+                // Fetch attendance data for each membership
+                const attendanceMap = {};
+                if (membershipData && membershipData.length > 0) {
+                    for (const membership of membershipData) {
+                        const { data: attendanceIds } = await supabase
+                            .from('club_attendance')
+                            .select('attendance_id')
+                            .eq('club_id', membership.club_id);
+
+                        if (attendanceIds && attendanceIds.length > 0) {
+                            const { data: attendanceRecords } = await supabase
+                                .from('club_attendance_records')
+                                .select(`
+                                    *,
+                                    club_attendance (
+                                        session_date,
+                                        session_topic
+                                    )
+                                `)
+                                .eq('student_email', userEmail)
+                                .in('attendance_id', attendanceIds.map(a => a.attendance_id));
+
+                            attendanceMap[membership.club_id] = attendanceRecords || [];
+                        }
+                    }
+                }
+                setAttendanceData(attendanceMap);
+
+                // Fetch student's competition results and achievements
+                const { data: resultsData, error: resultsError } = await supabase
+                    .from('competition_results')
+                    .select(`
+                        result_id,
+                        rank,
+                        score,
+                        award,
+                        performance_notes,
+                        competitions (
+                            comp_id,
+                            name,
+                            level,
+                            category,
+                            competition_date,
+                            status
+                        )
+                    `)
+                    .eq('student_email', userEmail)
+                    .order('rank', { ascending: true });
+
+                if (resultsError) {
+                    console.error('❌ [Student Clubs] Error fetching competition results:', resultsError);
+                } else {
+                    console.log('✅ [Student Clubs] Loaded', resultsData?.length || 0, 'competition results');
+                    setMyAchievementsData(resultsData || []);
+                }
+
+                // Fetch student's certificates
+                const { data: certificatesData, error: certificatesError } = await supabase
+                    .from('club_certificates')
+                    .select(`
+                        certificate_id,
+                        title,
+                        description,
+                        certificate_type,
+                        issued_date,
+                        credential_id,
+                        metadata,
+                        competitions (
+                            name,
+                            level,
+                            category
+                        )
+                    `)
+                    .eq('student_email', userEmail)
+                    .order('issued_date', { ascending: false });
+
+                if (certificatesError) {
+                    console.error('❌ [Student Clubs] Error fetching certificates:', certificatesError);
+                } else {
+                    console.log('✅ [Student Clubs] Loaded', certificatesData?.length || 0, 'certificates');
+                    setMyCertificates(certificatesData || []);
+                }
+
                 setClubs(clubsWithMembers);
-                setCompetitions(competitionsData || []);
+                setCompetitions(competitionsData);
                 
             } catch (error) {
                 console.error('❌ [Student Clubs] Error fetching data:', error);
@@ -155,15 +242,14 @@ export default function StudentDashboard() {
             
             return () => clearInterval(interval);
         }
-    }, [userEmail]);
+}, [userEmail]);
 
     // Get clubs the student is enrolled in with enhanced data
     const myClubs = useMemo(() => {
-        const memberClubIds = new Set(myMemberships.map(m => m.club_id));
-        return clubs.filter((club) => memberClubIds.has(club.club_id)).map(club => {
-            const membership = myMemberships.find(m => m.club_id === club.club_id);
+        // Clubs already contain only the student's enrolled clubs
+        return clubs.map(club => {
             const attendance = attendanceData[club.club_id] || [];
-            const attendancePercentage = membership?.attendance_percentage || 0;
+            const attendancePercentage = club.attendance_percentage || 0;
             
             return {
                 ...club,
@@ -173,7 +259,7 @@ export default function StudentDashboard() {
                 meetingTime: club.meeting_time || 'TBD',
             };
         });
-    }, [clubs, myMemberships, attendanceData]);
+    }, [clubs, attendanceData]);
 
     // Get student's competition registrations
     const myCompetitions = useMemo(() => {
@@ -203,16 +289,22 @@ export default function StudentDashboard() {
 
     // Get student achievements from competitions
     const myAchievements = useMemo(() => {
-        return competitions
-            .filter(comp => comp.student_email === userEmail && comp.rank)
-            .map(comp => ({
-                name: comp.competition_name,
-                rank: comp.rank,
-                award: comp.award || 'Participant',
-                level: comp.level || 'School',
-                date: comp.competition_date
-            }));
-    }, [competitions, userEmail]);
+        return myAchievementsData
+            .filter(result => result.competitions) // Only include results with competition data
+            .map(result => ({
+                result_id: result.result_id,
+                name: result.competitions.name,
+                rank: result.rank,
+                score: result.score,
+                award: result.award || 'Participant',
+                level: result.competitions.level || 'School',
+                category: result.competitions.category || 'General',
+                date: result.competitions.competition_date,
+                status: result.competitions.status,
+                notes: result.performance_notes
+            }))
+            .sort((a, b) => a.rank - b.rank); // Sort by rank (best first)
+    }, [myAchievementsData]);
 
     const categoryColors = {
         robotics: "bg-blue-100 text-blue-700 border-blue-200",
@@ -251,19 +343,7 @@ export default function StudentDashboard() {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-green-100">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600 mb-1">Upcoming Events</p>
-                                <p className="text-3xl font-bold text-green-600">
-                                    {upcomingActivities.length}
-                                </p>
-                            </div>
-                            <div className="bg-green-100 rounded-full p-3">
-                                <Calendar className="text-green-600" size={28} />
-                            </div>
-                        </div>
-                    </div>
+                   
 
                     <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-yellow-100">
                         <div className="flex items-center justify-between">
@@ -363,7 +443,7 @@ export default function StudentDashboard() {
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <Users size={16} className="text-purple-500" />
                                                 <span>
-                                                    {club.members?.length || 0}/{club.capacity} members
+                                                    {club.memberCount || 0}/{club.capacity || 30} members
                                                 </span>
                                             </div>
                                         </div>
@@ -372,7 +452,7 @@ export default function StudentDashboard() {
                                             <div className="text-sm">
                                                 <span className="text-gray-600">Mentor: </span>
                                                 <span className="font-semibold text-gray-900">
-                                                    {club.mentor_type === 'educator' ? 'Educator' : 'School Admin'}
+                                                    {club.mentor_name || (club.mentor_type === 'educator' ? 'Educator' : 'School Admin')}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">
@@ -449,41 +529,71 @@ export default function StudentDashboard() {
                                 </div>
                             )}
                         </div>
-
-                        {/* My Achievements */}
+                        {/* My Certificates */}
                         <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-gray-100">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Trophy className="text-yellow-600" size={24} />
-                                <h3 className="text-lg font-bold text-gray-900">My Achievements</h3>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <Award className="text-indigo-600" size={24} />
+                                    <h3 className="text-lg font-bold text-gray-900">Competitions Certificates</h3>
+                                </div>
+                                {myCertificates.length > 0 && (
+                                    <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-bold">
+                                        {myCertificates.length}
+                                    </span>
+                                )}
                             </div>
-                            {myAchievements.length === 0 ? (
-                                <p className="text-gray-500 text-sm">
-                                    No achievements yet. Keep participating!
-                                </p>
+                            {myCertificates.length === 0 ? (
+                                <div className="text-center py-6">
+                                    <Award className="mx-auto text-gray-300 mb-3" size={48} />
+                                    <p className="text-gray-500 text-sm">
+                                        No certificates yet
+                                    </p>
+                                </div>
                             ) : (
-                                <div className="space-y-3">
-                                    {myAchievements.map((achievement, idx) => (
+                                <div className="space-y-3 max-h-96 overflow-y-auto">
+                                    {myCertificates.map((cert) => (
                                         <div
-                                            key={idx}
-                                            className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-4 border-2 border-yellow-200"
+                                            key={cert.certificate_id}
+                                            className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border-2 border-indigo-200 hover:shadow-md transition-shadow"
                                         >
                                             <div className="flex items-start gap-3">
-                                                <Award className="text-yellow-600 flex-shrink-0" size={20} />
-                                                <div className="flex-1">
-                                                    <p className="font-bold text-gray-900 text-sm">
-                                                        {achievement.name}
+                                                <div className="bg-indigo-100 rounded-full p-2 flex-shrink-0">
+                                                    <Award className="text-indigo-600" size={16} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-gray-900 text-sm truncate">
+                                                        {cert.title}
                                                     </p>
-                                                    <p className="text-xs text-gray-600 mt-1">
-                                                        Rank {achievement.rank} • {achievement.award}
+                                                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                                        {cert.description}
                                                     </p>
-                                                    <div className="flex items-center gap-2 mt-2">
-                                                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
-                                                            {achievement.level}
+                                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                                        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-semibold capitalize">
+                                                            {cert.certificate_type.replace('_', ' ')}
                                                         </span>
                                                         <span className="text-xs text-gray-500">
-                                                            {new Date(achievement.date).toLocaleDateString()}
+                                                            {new Date(cert.issued_date).toLocaleDateString('en-US', {
+                                                                month: 'short',
+                                                                year: 'numeric'
+                                                            })}
                                                         </span>
                                                     </div>
+                                                    {cert.metadata?.rank && (
+                                                        <div className="mt-2 flex items-center gap-2">
+                                                            <span className="text-xs text-gray-600">Rank:</span>
+                                                            <span className="text-xs font-bold text-indigo-600">
+                                                                #{cert.metadata.rank}
+                                                            </span>
+                                                            {cert.metadata?.score && (
+                                                                <>
+                                                                    <span className="text-xs text-gray-400">•</span>
+                                                                    <span className="text-xs font-semibold text-green-600">
+                                                                        {cert.metadata.score}
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

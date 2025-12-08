@@ -123,24 +123,42 @@ export class OpportunitiesService {
   static formatOpportunityForDisplay(opportunity) {
     if (!opportunity) return null;
 
-    try {
-      const skills = opportunity.skills_required
-        ? (typeof opportunity.skills_required === 'string' 
-          ? JSON.parse(opportunity.skills_required)
-          : opportunity.skills_required)
-        : [];
+    // Helper function to safely parse JSONB fields
+    const parseJSONBField = (field) => {
+      if (!field) return [];
+      if (Array.isArray(field)) return field;
 
+      if (typeof field === 'string') {
+        // If it starts with '[', it's likely a JSON array string
+        if (field.trim().startsWith('[')) {
+          try {
+            return JSON.parse(field);
+          } catch (e) {
+            console.warn('Failed to parse JSON array, treating as plain string:', field);
+            return [field];
+          }
+        }
+        // Otherwise, it's a plain string - convert to array
+        return [field];
+      }
+
+      return [];
+    };
+
+    try {
       return {
         ...opportunity,
-        skills_required: skills,
-        deadline_formatted: opportunity.deadline 
+        skills_required: parseJSONBField(opportunity.skills_required),
+        requirements: parseJSONBField(opportunity.requirements),
+        responsibilities: parseJSONBField(opportunity.responsibilities),
+        deadline_formatted: opportunity.deadline
           ? new Date(opportunity.deadline).toLocaleDateString('en-IN', {
               year: 'numeric',
               month: 'short',
               day: 'numeric'
             })
           : 'No deadline',
-        is_active: opportunity.deadline 
+        is_active: opportunity.deadline
           ? new Date(opportunity.deadline) > new Date()
           : true
       };
@@ -149,6 +167,8 @@ export class OpportunitiesService {
       return {
         ...opportunity,
         skills_required: [],
+        requirements: [],
+        responsibilities: [],
         deadline_formatted: 'No deadline',
         is_active: true
       };

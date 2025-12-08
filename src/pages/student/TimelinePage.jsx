@@ -1,544 +1,577 @@
-import React, { useState } from "react";
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  VerticalTimeline,
-  VerticalTimelineElement,
-} from "react-vertical-timeline-component";
-import "react-vertical-timeline-component/style.min.css";
-import Calendar from "react-calendar";
-import "react-calendar/dist/Calendar.css";
-import {
-  Award,
   Briefcase,
   Code,
   Medal,
   BookOpen,
   Calendar as CalendarIcon,
   ArrowLeft,
-  Filter,
-  Grid,
-  List,
+  Trophy,
+  GraduationCap,
+  ChevronRight,
+  Github,
+  ExternalLink,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/Students/components/ui/card";
-import { Button } from "../../components/Students/components/ui/button";
-import { Badge } from "../../components/Students/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
+import { useAuth } from "../../context/AuthContext";
 
-// Helper functions (same as AchievementsTimeline)
-const getIconByType = (type) => {
-  switch (type) {
-    case "certificate":
-      return <Medal className="w-5 h-5" />;
-    case "project":
-      return <Code className="w-5 h-5" />;
-    case "education":
-      return <BookOpen className="w-5 h-5" />;
-    case "experience":
-      return <Briefcase className="w-5 h-5" />;
-    default:
-      return <Award className="w-5 h-5" />;
-  }
-};
-
-const getColorByType = (type) => {
-  switch (type) {
-    case "certificate":
-      return "#10b981";
-    case "project":
-      return "#3b82f6";
-    case "education":
-      return "#8b5cf6";
-    case "experience":
-      return "#f59e0b";
-    default:
-      return "#6366f1";
-  }
-};
-
-const parseDate = (dateStr) => {
-  if (!dateStr) return new Date();
-  
-  if (dateStr.includes("-")) {
-    return new Date(dateStr);
-  } else if (dateStr.match(/^\d{4}$/)) {
-    return new Date(dateStr, 0, 1);
-  } else {
-    return new Date(dateStr);
-  }
-};
+/**
+ * TimelinePage - Digital Portfolio Journey Map
+ * 
+ * This component displays a comprehensive achievement timeline following the
+ * digital portfolio journey map design pattern. It provides an interactive
+ * visual representation of a student's educational journey, work experience,
+ * projects, certifications, and achievements.
+ * 
+ * Design Features:
+ * - Interactive milestone timeline with alternating left/right layout
+ * - Category-based filtering (Education, Experience, Projects, Certifications, Achievements)
+ * - Expandable milestone cards with detailed information
+ * - Year badges and color-coded categories
+ * - Smooth animations and transitions
+ * - Responsive design for mobile and desktop
+ */
 
 const TimelinePage = () => {
   const navigate = useNavigate();
-  const { userData, loading } = useStudentDataByEmail();
-  const [viewMode, setViewMode] = useState("timeline"); // timeline or calendar
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [filterType, setFilterType] = useState("all"); // all, certificate, project, education, experience
+  const { user } = useAuth();
+  const userEmail = localStorage.getItem('userEmail') || user?.email;
+  const { studentData, loading } = useStudentDataByEmail(userEmail);
+  const [selectedMilestone, setSelectedMilestone] = useState(null);
+  const [activeTab, setActiveTab] = useState("all"); // all, education, experience, project, certificate, achievement
 
-  // Aggregate achievements
-  const aggregateAchievements = () => {
-    if (!userData) return [];
-    const achievements = [];
+  // Create comprehensive milestone data from user data
+  const createMilestones = () => {
+    if (!studentData) return [];
+    
+    // Debug: Log the data structure
+    console.log('📊 Student Data Structure:', studentData);
+    console.log('📚 Education:', studentData.education);
+    console.log('💼 Experience:', studentData.experience);
+    console.log('🚀 Projects:', studentData.projects);
+    console.log('🏆 Certificates:', studentData.certificates);
+    console.log('⭐ Achievements:', studentData.achievements);
+    
+    const milestones = [];
 
-    // Certificates
-    if (Array.isArray(userData.certificates)) {
-      userData.certificates
-        .filter((cert) => cert && cert.enabled !== false)
-        .forEach((cert) => {
-          achievements.push({
-            id: `cert-${cert.id}`,
-            type: "certificate",
-            title: cert.title || cert.name || "Certificate",
-            subtitle: cert.issuer || cert.organization || cert.institution,
-            description: cert.description || `Earned certificate in ${cert.title || "this field"}`,
-            date: cert.year || cert.date || cert.issueDate || cert.issuedOn || new Date().getFullYear(),
-            link: cert.link || cert.url,
-          });
-        });
-    }
-
-    // Projects
-    if (Array.isArray(userData.projects)) {
-      userData.projects
-        .filter((project) => project && project.enabled !== false)
-        .forEach((project) => {
-          achievements.push({
-            id: `project-${project.id}`,
-            type: "project",
-            title: project.title || project.name || "Project",
-            subtitle: project.organization || project.company || project.client,
-            description: project.description || "Completed project",
-            date: project.duration || project.timeline || project.period || new Date().getFullYear(),
-            tech: Array.isArray(project.tech) ? project.tech : 
-                  Array.isArray(project.technologies) ? project.technologies : 
-                  Array.isArray(project.techStack) ? project.techStack : [],
-          });
-        });
-    }
-
-    // Education
-    if (Array.isArray(userData.education)) {
-      userData.education
+    // Education Milestones
+    if (Array.isArray(studentData.education)) {
+      studentData.education
         .filter((edu) => edu && edu.enabled !== false)
-        .forEach((edu) => {
-          achievements.push({
-            id: `edu-${edu.id}`,
+        .forEach((edu, index) => {
+          milestones.push({
+            id: `edu-${index}`,
             type: "education",
+            icon: GraduationCap,
             title: edu.degree || "Degree",
             subtitle: edu.university || edu.institution,
-            description: `${edu.level || ""} - ${edu.cgpa ? `Grade: ${edu.cgpa}` : ""}`,
-            date: edu.yearOfPassing || edu.year || new Date().getFullYear(),
+            date: `${edu.startDate || edu.year || ''} - ${edu.endDate || edu.yearOfPassing || 'Present'}`,
+            description: `${edu.field || edu.level || ""} ${edu.cgpa ? `- Grade: ${edu.cgpa}` : ""}`,
+            details: edu,
+            color: "from-blue-500 to-indigo-600",
+            bgColor: "bg-blue-50",
+            borderColor: "border-blue-500",
+            year: edu.yearOfPassing || edu.year || new Date().getFullYear(),
           });
         });
     }
 
-    // Experience
-    if (Array.isArray(userData.experience)) {
-      userData.experience
+    // Experience Milestones
+    if (Array.isArray(studentData.experience)) {
+      studentData.experience
         .filter((exp) => exp && exp.enabled !== false)
-        .forEach((exp) => {
-          achievements.push({
-            id: `exp-${exp.id}`,
+        .forEach((exp, index) => {
+          milestones.push({
+            id: `exp-${index}`,
             type: "experience",
+            icon: Briefcase,
             title: exp.role || exp.position || "Role",
             subtitle: exp.company || exp.organization,
+            date: exp.duration || exp.period || `${exp.startDate || ''} - ${exp.endDate || 'Present'}`,
             description: exp.description || "Work experience",
-            date: exp.duration || exp.period || exp.startDate || new Date().getFullYear(),
+            details: exp,
+            color: "from-green-500 to-emerald-600",
+            bgColor: "bg-green-50",
+            borderColor: "border-green-500",
+            year: exp.startDate ? new Date(exp.startDate).getFullYear() : new Date().getFullYear(),
           });
         });
     }
 
-    return achievements.sort((a, b) => {
-      const dateA = parseDate(a.date.toString());
-      const dateB = parseDate(b.date.toString());
-      return dateB - dateA;
-    });
-  };
-
-  const allAchievements = aggregateAchievements();
-  const filteredAchievements =
-    filterType === "all"
-      ? allAchievements
-      : allAchievements.filter((a) => a.type === filterType);
-
-  // Get dates with achievements for calendar highlighting
-  const achievementDates = allAchievements.map((a) => {
-    const date = parseDate(a.date.toString());
-    return date.toDateString();
-  });
-
-  // Custom tile content for calendar
-  const tileContent = ({ date, view }) => {
-    if (view === "month") {
-      const dateStr = date.toDateString();
-      const hasAchievement = achievementDates.includes(dateStr);
-      
-      if (hasAchievement) {
-        return (
-          <div className="flex justify-center mt-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-          </div>
-        );
-      }
+    // Project Milestones
+    if (Array.isArray(studentData.projects)) {
+      studentData.projects
+        .filter((project) => project && project.enabled !== false)
+        .forEach((project, index) => {
+          const tech = Array.isArray(project.tech) ? project.tech : 
+                      Array.isArray(project.technologies) ? project.technologies : 
+                      Array.isArray(project.techStack) ? project.techStack : [];
+          
+          milestones.push({
+            id: `project-${index}`,
+            type: "project",
+            icon: Code,
+            title: project.title || project.name || "Project",
+            subtitle: tech.join(", ") || project.organization || project.company,
+            date: project.duration || project.timeline || `${project.startDate || ''} - ${project.endDate || 'Recent'}`,
+            description: project.description || "Completed project",
+            details: { ...project, technologies: tech, github_url: project.github || project.githubUrl, live_url: project.link || project.liveUrl },
+            color: "from-purple-500 to-violet-600",
+            bgColor: "bg-purple-50",
+            borderColor: "border-purple-500",
+            year: project.startDate ? new Date(project.startDate).getFullYear() : new Date().getFullYear(),
+          });
+        });
     }
-    return null;
-  };
 
-  // Get achievements for selected date
-  const getAchievementsForDate = (date) => {
-    const selectedDateStr = date.toDateString();
-    return allAchievements.filter((a) => {
-      const achievementDate = parseDate(a.date.toString());
-      return achievementDate.toDateString() === selectedDateStr;
+    // Certificate Milestones
+    if (Array.isArray(studentData.certificates)) {
+      studentData.certificates
+        .filter((cert) => cert && cert.enabled !== false)
+        .forEach((cert, index) => {
+          milestones.push({
+            id: `cert-${index}`,
+            type: "certificate",
+            icon: Medal,
+            title: cert.title || cert.name || "Certificate",
+            subtitle: cert.issuer || cert.organization || cert.institution,
+            date: cert.year || cert.date || cert.issueDate || cert.issuedOn || new Date().getFullYear().toString(),
+            description: cert.description || `Earned certificate from ${cert.issuer || "this institution"}`,
+            details: cert,
+            color: "from-orange-500 to-red-600",
+            bgColor: "bg-orange-50",
+            borderColor: "border-orange-500",
+            year: cert.year || new Date().getFullYear(),
+          });
+        });
+    }
+
+    // Achievement Milestones
+    if (Array.isArray(studentData.achievements)) {
+      studentData.achievements
+        .filter((achievement) => achievement && achievement.enabled !== false)
+        .forEach((achievement, index) => {
+          milestones.push({
+            id: `ach-${index}`,
+            type: "achievement",
+            icon: Trophy,
+            title: achievement.title || "Achievement",
+            subtitle: achievement.category || achievement.organization || "Achievement",
+            date: achievement.date || achievement.year || new Date().getFullYear().toString(),
+            description: achievement.description || "Earned achievement",
+            details: achievement,
+            color: "from-yellow-500 to-amber-600",
+            bgColor: "bg-yellow-50",
+            borderColor: "border-yellow-500",
+            year: achievement.date ? new Date(achievement.date).getFullYear() : new Date().getFullYear(),
+          });
+        });
+    }
+
+    // Sort by year (most recent first)
+    return milestones.sort((a, b) => {
+      const yearA = typeof a.year === 'number' ? a.year : parseInt(a.year) || 0;
+      const yearB = typeof b.year === 'number' ? b.year : parseInt(b.year) || 0;
+      return yearB - yearA;
     });
   };
 
-  const selectedDateAchievements = getAchievementsForDate(selectedDate);
+  const allMilestones = createMilestones();
+  
+  // Filter milestones based on active tab
+  const filteredMilestones = activeTab === "all" 
+    ? allMilestones 
+    : allMilestones.filter((m) => m.type === activeTab);
+
+  // Count milestones by type
+  const counts = {
+    education: allMilestones.filter((m) => m.type === "education").length,
+    experience: allMilestones.filter((m) => m.type === "experience").length,
+    project: allMilestones.filter((m) => m.type === "project").length,
+    certificate: allMilestones.filter((m) => m.type === "certificate").length,
+    achievement: allMilestones.filter((m) => m.type === "achievement").length,
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your timeline...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your journey...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+      {/* Profile Header Section */}
+      <div className="bg-white shadow-lg border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <button
+            onClick={() => navigate("/student/dashboard")}
+            className="mb-6 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Dashboard</span>
+          </button>
+
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
+            {/* Profile Image */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="relative"
+            >
+              <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-indigo-500 ring-offset-4 shadow-xl">
+                <img
+                  src={studentData?.profile_photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(studentData?.name || 'Student')}&size=200&background=6366f1&color=fff&bold=true`}
+                  alt={studentData?.name || 'Student'}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </motion.div>
+
+            {/* Profile Details */}
+            <div className="flex-1 text-center md:text-left">
+              <motion.h1
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-4xl font-bold text-gray-900 mb-2"
+              >
+                {studentData?.name || 'Student'}
+              </motion.h1>
+              
+              <motion.p
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-xl text-indigo-600 font-medium mb-4"
+              >
+                {studentData?.branch_field || 'Student'}
+              </motion.p>
+
+              <motion.p
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 }}
+                className="text-gray-600 mb-6 max-w-2xl"
+              >
+                {studentData?.bio || 'Passionate about learning and growth'}
+              </motion.p>
+
+              {/* Contact Info */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="flex flex-wrap gap-4 justify-center md:justify-start"
+              >
+                {studentData?.email && (
+                  <span className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
+                    <span className="text-sm">{studentData.email}</span>
+                  </span>
+                )}
+                {studentData?.contact_number && (
+                  <span className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
+                    <span className="text-sm">{studentData.contact_number}</span>
+                  </span>
+                )}
+                {studentData?.university && (
+                  <span className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
+                    <GraduationCap className="w-4 h-4" />
+                    <span className="text-sm">{studentData.university}</span>
+                  </span>
+                )}
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 py-12">
+        {/* Journey Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="text-center mb-8"
         >
-          <Button
-            onClick={() => navigate("/student/dashboard")}
-            variant="ghost"
-            className="mb-4 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
+          <h2 className="text-4xl font-bold text-gray-900 mb-3">
+            My Professional Journey
+          </h2>
+          <p className="text-lg text-gray-600">
+            Navigate through my career milestones and achievements
+          </p>
+        </motion.div>
 
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Your Achievement Timeline
-              </h1>
-              <p className="text-gray-600">
-                A comprehensive view of your journey and milestones
-              </p>
-            </div>
+        {/* Journey Navigation Tabs */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-12"
+        >
+          <div className="flex flex-wrap gap-3 justify-center">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+                activeTab === 'all'
+                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg scale-105'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md'
+              }`}
+            >
+              <span>All</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                activeTab === 'all' ? 'bg-white/20' : 'bg-gray-200'
+              }`}>
+                {allMilestones.length}
+              </span>
+            </button>
 
-            <div className="flex items-center gap-3">
-              {/* View Mode Toggle */}
-              <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 p-1">
-                <button
-                  onClick={() => setViewMode("timeline")}
-                  className={`px-4 py-2 rounded-md transition-all flex items-center gap-2 ${
-                    viewMode === "timeline"
-                      ? "bg-blue-600 text-white"
-                      : "text-gray-600 hover:bg-gray-100"
-                  }`}
-                >
-                  <List className="w-4 h-4" />
-                  Timeline
-                </button>
-                <button
-                  onClick={() => setViewMode("calendar")}
-                  className={`px-4 py-2 rounded-md transition-all flex items-center gap-2 ${
-                    viewMode === "calendar"
-                      ? "bg-blue-600 text-white"
-                      : "text-gray-600 hover:bg-gray-100"
-                  }`}
-                >
-                  <Grid className="w-4 h-4" />
-                  Calendar
-                </button>
-              </div>
-            </div>
+            <button
+              onClick={() => setActiveTab('education')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+                activeTab === 'education'
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg scale-105'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md'
+              }`}
+            >
+              <GraduationCap className="w-5 h-5" />
+              <span>Education</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                activeTab === 'education' ? 'bg-white/20' : 'bg-gray-200'
+              }`}>
+                {counts.education}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('experience')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+                activeTab === 'experience'
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg scale-105'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md'
+              }`}
+            >
+              <Briefcase className="w-5 h-5" />
+              <span>Experience</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                activeTab === 'experience' ? 'bg-white/20' : 'bg-gray-200'
+              }`}>
+                {counts.experience}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('project')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+                activeTab === 'project'
+                  ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg scale-105'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md'
+              }`}
+            >
+              <Code className="w-5 h-5" />
+              <span>Projects</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                activeTab === 'project' ? 'bg-white/20' : 'bg-gray-200'
+              }`}>
+                {counts.project}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('certificate')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+                activeTab === 'certificate'
+                  ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg scale-105'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md'
+              }`}
+            >
+              <Medal className="w-5 h-5" />
+              <span>Certifications</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                activeTab === 'certificate' ? 'bg-white/20' : 'bg-gray-200'
+              }`}>
+                {counts.certificate}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('achievement')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+                activeTab === 'achievement'
+                  ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white shadow-lg scale-105'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md'
+              }`}
+            >
+              <Trophy className="w-5 h-5" />
+              <span>Achievements</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                activeTab === 'achievement' ? 'bg-white/20' : 'bg-gray-200'
+              }`}>
+                {counts.achievement}
+              </span>
+            </button>
           </div>
         </motion.div>
 
-        {/* Statistics */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
-        >
-          {[
-            { label: "Total", count: allAchievements.length, color: "blue" },
-            {
-              label: "Certificates",
-              count: allAchievements.filter((a) => a.type === "certificate").length,
-              color: "green",
-            },
-            {
-              label: "Projects",
-              count: allAchievements.filter((a) => a.type === "project").length,
-              color: "blue",
-            },
-            {
-              label: "Education",
-              count: allAchievements.filter((a) => a.type === "education").length,
-              color: "purple",
-            },
-          ].map((stat, idx) => (
-            <Card key={idx} className="bg-white">
-              <CardContent className="p-4">
-                <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                <p className={`text-2xl font-bold text-${stat.color}-600`}>
-                  {stat.count}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </motion.div>
-
-        {/* Filter Pills */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-6 flex flex-wrap gap-2"
-        >
-          {["all", "certificate", "project", "education", "experience"].map((type) => (
-            <Badge
-              key={type}
-              onClick={() => setFilterType(type)}
-              className={`cursor-pointer px-4 py-2 text-sm font-medium rounded-full transition-all ${
-                filterType === type
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-300"
-              }`}
-            >
-              {type.charAt(0).toUpperCase() + type.slice(1)}
-            </Badge>
-          ))}
-        </motion.div>
-
-        {/* Main Content */}
-        {viewMode === "timeline" ? (
+        {/* Journey Timeline */}
+        <AnimatePresence mode="wait">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
+            key={activeTab}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="relative"
           >
-            <Card className="bg-white">
-              <CardContent className="p-6">
-                <VerticalTimeline layout="1-column-left" lineColor="#e5e7eb">
-                  {filteredAchievements.map((achievement, index) => (
-                    <VerticalTimelineElement
-                      key={achievement.id}
-                      className="vertical-timeline-element--work"
-                      contentStyle={{
-                        background: "#ffffff",
-                        border: "1px solid #e5e7eb",
-                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                        borderRadius: "1rem",
-                      }}
-                      contentArrowStyle={{
-                        borderRight: "7px solid #ffffff",
-                      }}
-                      date={achievement.date.toString()}
-                      dateClassName="text-sm font-semibold text-gray-700"
-                      iconStyle={{
-                        background: getColorByType(achievement.type),
-                        color: "#fff",
-                        boxShadow:
-                          "0 0 0 4px #fff, inset 0 2px 0 rgba(0,0,0,.08), 0 3px 0 4px rgba(0,0,0,.05)",
-                      }}
-                      icon={getIconByType(achievement.type)}
-                    >
+            {filteredMilestones.length === 0 ? (
+              <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">No {activeTab === 'all' ? 'milestones' : activeTab} yet</h3>
+                <p className="text-gray-600">Start your journey by adding some {activeTab === 'all' ? 'achievements' : activeTab}!</p>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {/* Timeline */}
+                <div className="relative">
+                  {/* Vertical Line */}
+                  <div className="absolute left-8 md:left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-200 via-purple-200 to-pink-200"></div>
+
+                  {filteredMilestones.map((milestone, index) => {
+                    const Icon = milestone.icon;
+                    const isLeft = index % 2 === 0;
+
+                    return (
                       <motion.div
-                        initial={{ opacity: 0, x: -20 }}
+                        key={milestone.id}
+                        initial={{ opacity: 0, x: isLeft ? -50 : 50 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                        transition={{ delay: index * 0.1 }}
+                        className={`relative flex items-center mb-12 ${
+                          isLeft ? 'md:flex-row' : 'md:flex-row-reverse'
+                        } flex-row`}
                       >
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-1">
-                              {achievement.title}
-                            </h3>
-                            {achievement.subtitle && (
-                              <h4 className="text-sm font-semibold text-blue-600 mb-2">
-                                {achievement.subtitle}
-                              </h4>
-                            )}
-                          </div>
-                          <Badge
-                            className="capitalize"
-                            style={{
-                              backgroundColor: `${getColorByType(achievement.type)}20`,
-                              color: getColorByType(achievement.type),
-                            }}
+                        {/* Year Badge (Desktop) */}
+                        <div className={`hidden md:block ${isLeft ? 'md:w-1/2 md:pr-12 md:text-right' : 'md:w-1/2 md:pl-12 md:text-left'}`}>
+                          <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            className="inline-block"
                           >
-                            {achievement.type}
-                          </Badge>
+                            <div className={`inline-flex items-center gap-2 bg-gradient-to-r ${milestone.color} text-white px-4 py-2 rounded-full shadow-lg`}>
+                              <CalendarIcon className="w-4 h-4" />
+                              <span className="font-bold">{milestone.year}</span>
+                            </div>
+                          </motion.div>
                         </div>
-                        <p className="text-sm text-gray-600 mb-3">
-                          {achievement.description}
-                        </p>
-                        {achievement.tech && achievement.tech.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {achievement.tech.map((tech, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2.5 py-1 text-xs rounded-md bg-blue-50 text-blue-700 font-medium"
+
+                        {/* Icon */}
+                        <div className="absolute left-8 md:left-1/2 transform md:-translate-x-1/2 z-10">
+                          <motion.div
+                            whileHover={{ scale: 1.2, rotate: 360 }}
+                            transition={{ duration: 0.5 }}
+                            className={`w-16 h-16 rounded-full bg-gradient-to-r ${milestone.color} flex items-center justify-center shadow-xl border-4 border-white`}
+                          >
+                            <Icon className="w-8 h-8 text-white" />
+                          </motion.div>
+                        </div>
+
+                        {/* Content Card */}
+                        <div className={`w-full md:w-1/2 ml-24 md:ml-0 ${isLeft ? '' : 'md:ml-0'}`}>
+                          <motion.div
+                            whileHover={{ scale: 1.02, y: -4 }}
+                            className={`bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-6 border-l-4 ${milestone.borderColor} ${milestone.bgColor} cursor-pointer`}
+                            onClick={() => setSelectedMilestone(selectedMilestone?.id === milestone.id ? null : milestone)}
+                          >
+                            {/* Mobile Year Badge */}
+                            <div className="md:hidden mb-3">
+                              <div className={`inline-flex items-center gap-2 bg-gradient-to-r ${milestone.color} text-white px-3 py-1 rounded-full shadow-md text-sm`}>
+                                <CalendarIcon className="w-3 h-3" />
+                                <span className="font-bold">{milestone.year}</span>
+                              </div>
+                            </div>
+
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">{milestone.title}</h3>
+                            <p className="text-indigo-600 font-medium mb-3">{milestone.subtitle}</p>
+                            
+                            {milestone.date && (
+                              <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+                                <CalendarIcon className="w-4 h-4" />
+                                <span>{milestone.date}</span>
+                              </div>
+                            )}
+
+                            <p className="text-gray-700 mb-3">{milestone.description}</p>
+
+                            {/* Show more details on click */}
+                            {selectedMilestone?.id === milestone.id && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mt-4 pt-4 border-t border-gray-200"
                               >
-                                {tech}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        {achievement.link && (
-                          <a
-                            href={achievement.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline"
-                          >
-                            View Details →
-                          </a>
-                        )}
-                      </motion.div>
-                    </VerticalTimelineElement>
-                  ))}
-                </VerticalTimeline>
-
-                {filteredAchievements.length === 0 && (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500 font-medium">
-                      No achievements found for this filter
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-          >
-            {/* Calendar */}
-            <Card className="lg:col-span-2 bg-white">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarIcon className="w-5 h-5" />
-                  Achievement Calendar
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="calendar-wrapper">
-                  <Calendar
-                    onChange={setSelectedDate}
-                    value={selectedDate}
-                    tileContent={tileContent}
-                    className="w-full border-none shadow-none"
-                  />
-                </div>
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    <span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-2"></span>
-                    Blue dots indicate days with achievements
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Selected Date Achievements */}
-            <Card className="bg-white">
-              <CardHeader>
-                <CardTitle className="text-base">
-                  {selectedDate.toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {selectedDateAchievements.length > 0 ? (
-                  <div className="space-y-4">
-                    {selectedDateAchievements.map((achievement) => (
-                      <div
-                        key={achievement.id}
-                        className="p-4 rounded-lg border border-gray-200 hover:border-blue-300 transition-all"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                            style={{
-                              backgroundColor: getColorByType(achievement.type),
-                            }}
-                          >
-                            {getIconByType(achievement.type)}
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900 text-sm mb-1">
-                              {achievement.title}
-                            </h4>
-                            {achievement.subtitle && (
-                              <p className="text-xs text-blue-600 mb-1">
-                                {achievement.subtitle}
-                              </p>
+                                {milestone.type === 'project' && milestone.details.technologies && milestone.details.technologies.length > 0 && (
+                                  <div className="mb-3">
+                                    <p className="text-sm font-semibold text-gray-700 mb-2">Technologies:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {milestone.details.technologies.map((tech, idx) => (
+                                        <span key={idx} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
+                                          {tech}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {milestone.type === 'project' && milestone.details.github_url && (
+                                  <a
+                                    href={milestone.details.github_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium mt-2"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Github className="w-4 h-4" />
+                                    <span>View on GitHub</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                )}
+                                
+                                {milestone.type === 'project' && milestone.details.live_url && (
+                                  <a
+                                    href={milestone.details.live_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium mt-2 ml-4"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                    <span>Live Demo</span>
+                                  </a>
+                                )}
+                              </motion.div>
                             )}
-                            <Badge
-                              className="text-xs capitalize"
-                              style={{
-                                backgroundColor: `${getColorByType(achievement.type)}20`,
-                                color: getColorByType(achievement.type),
-                              }}
-                            >
-                              {achievement.type}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">
-                      No achievements on this date
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </div>
 
-      <style jsx>{`
-        .calendar-wrapper :global(.react-calendar) {
-          width: 100%;
-          border: none;
-          font-family: inherit;
-        }
-        .calendar-wrapper :global(.react-calendar__tile--active) {
-          background: #3b82f6;
-          color: white;
-        }
-        .calendar-wrapper :global(.react-calendar__tile--now) {
-          background: #dbeafe;
-        }
-        .calendar-wrapper :global(.react-calendar__tile:enabled:hover) {
-          background-color: #f3f4f6;
-        }
-        .calendar-wrapper :global(.react-calendar__tile--active:enabled:hover) {
-          background: #2563eb;
-        }
-      `}</style>
+                            <div className="flex items-center gap-2 text-indigo-600 mt-4 font-medium text-sm">
+                              <span>{selectedMilestone?.id === milestone.id ? 'Hide Details' : 'View Details'}</span>
+                              <ChevronRight className={`w-4 h-4 transition-transform ${selectedMilestone?.id === milestone.id ? 'rotate-90' : ''}`} />
+                            </div>
+                          </motion.div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

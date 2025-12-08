@@ -29,6 +29,8 @@ import SearchBar from "../../../components/common/SearchBar";
 import { FileTextIcon } from "lucide-react";
 import { useCurriculum } from "../../../hooks/useLessonPlans";
 import type { LessonPlan as LessonPlanType } from "../../../services/lessonPlansService";
+import { getSubjects, getClasses, getAcademicYears, getCurrentAcademicYear } from "../../../services/curriculumService";
+import { supabase } from "../../../lib/supabaseClient";
 
 /* ==============================
    TYPES & INTERFACES
@@ -85,6 +87,7 @@ interface LessonPlan {
   title: string;
   subject: string;
   class: string;
+  academicYear?: string; // Academic year from school_classes
   date: string;
   chapterId: string; // Link to curriculum chapter
   chapterName: string; // Display name
@@ -99,6 +102,7 @@ interface LessonPlan {
   evaluationItems: EvaluationCriteria[];
   homework?: string; // Homework/Follow-up (optional)
   differentiationNotes?: string; // Differentiation notes (optional)
+  status?: string; // Status of the lesson plan (draft, approved, etc.)
 }
 
 /* ==============================
@@ -216,11 +220,25 @@ const LessonPlanCard = ({
   return (
     <div className="group bg-white rounded-xl border-2 border-gray-200 p-5 transition-all hover:border-indigo-300 hover:shadow-md">
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-semibold text-gray-900 line-clamp-1 mb-2">
             {plan.title}
           </h3>
+          {/* Status Badge on New Row */}
+          <div>
+            {plan.status === 'approved' ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                <CheckCircleIcon className="h-3 w-3" />
+                Published
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
+                <DocumentIcon className="h-3 w-3" />
+                Draft
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0 ml-3">
@@ -559,8 +577,8 @@ const ViewLessonPlanModal = ({
    ============================== */
 interface LessonPlanProps {
   initialLessonPlans?: LessonPlanType[];
-  onCreateLessonPlan?: (formData: any, classId: string) => Promise<{ data: any; error: any }>;
-  onUpdateLessonPlan?: (id: string, formData: any, classId: string) => Promise<{ data: any; error: any }>;
+  onCreateLessonPlan?: (formData: any, classId: string | null) => Promise<{ data: any; error: any }>;
+  onUpdateLessonPlan?: (id: string, formData: any, classId: string | null) => Promise<{ data: any; error: any }>;
   onDeleteLessonPlan?: (id: string) => Promise<{ error: any }>;
   subjects?: string[];
   classes?: any[];
@@ -579,121 +597,11 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   classes: propClasses,
   schoolId,
 }) => {
-  // Use props or fallback to sample data
-  const subjects = propSubjects || ["Mathematics", "Physics", "Chemistry", "Biology", "English", "History"];
-  const classes = propClasses?.map(c => c.grade || c) || ["9", "10", "11", "12"];
-
-  // Sample curriculum data (in real app, this would come from API/database)
-  const sampleCurriculums: Curriculum[] = [
-    {
-      id: "curr-1",
-      subject: "Mathematics",
-      class: "9",
-      academicYear: "2024-2025",
-      chapters: [
-        {
-          id: "ch-1",
-          name: "Algebraic Expressions",
-          code: "CH-01",
-          description: "Introduction to variables, expressions, and equations",
-          order: 1,
-          estimatedDuration: 8,
-          durationUnit: "hours",
-        },
-        {
-          id: "ch-2",
-          name: "Linear Equations",
-          code: "CH-02",
-          description: "Solving linear equations in one variable",
-          order: 2,
-          estimatedDuration: 2,
-          durationUnit: "weeks",
-        },
-      ],
-      learningOutcomes: [
-        {
-          id: "lo-1",
-          chapterId: "ch-1",
-          outcome: "Students will understand basic algebraic concepts and operations",
-          bloomLevel: "Understand",
-        },
-        {
-          id: "lo-2",
-          chapterId: "ch-1",
-          outcome: "Students will be able to solve simple algebraic expressions",
-          bloomLevel: "Apply",
-        },
-        {
-          id: "lo-3",
-          chapterId: "ch-2",
-          outcome: "Students will solve linear equations and apply to real-world problems",
-          bloomLevel: "Apply",
-        },
-      ],
-    },
-    {
-      id: "curr-2",
-      subject: "Physics",
-      class: "10",
-      academicYear: "2024-2025",
-      chapters: [
-        {
-          id: "ch-3",
-          name: "Forces and Motion",
-          code: "CH-05",
-          description: "Newton's laws and their applications",
-          order: 5,
-          estimatedDuration: 3,
-          durationUnit: "weeks",
-        },
-      ],
-      learningOutcomes: [
-        {
-          id: "lo-4",
-          chapterId: "ch-3",
-          outcome: "Students will explain and demonstrate Newton's three laws of motion",
-          bloomLevel: "Understand",
-        },
-        {
-          id: "lo-5",
-          chapterId: "ch-3",
-          outcome: "Students will apply force concepts to everyday situations",
-          bloomLevel: "Apply",
-        },
-      ],
-    },
-    {
-      id: "curr-3",
-      subject: "Biology",
-      class: "9",
-      academicYear: "2024-2025",
-      chapters: [
-        {
-          id: "ch-4",
-          name: "Plant Biology",
-          code: "CH-03",
-          description: "Photosynthesis and plant structures",
-          order: 3,
-          estimatedDuration: 10,
-          durationUnit: "hours",
-        },
-      ],
-      learningOutcomes: [
-        {
-          id: "lo-6",
-          chapterId: "ch-4",
-          outcome: "Students will understand the complete process of photosynthesis",
-          bloomLevel: "Understand",
-        },
-        {
-          id: "lo-7",
-          chapterId: "ch-4",
-          outcome: "Students will identify key components involved in photosynthesis",
-          bloomLevel: "Remember",
-        },
-      ],
-    },
-  ];
+  // State for dynamic data from database
+  const [subjects, setSubjects] = useState<string[]>(propSubjects || []);
+  const [classes, setClasses] = useState<string[]>(propClasses?.map(c => c.grade || c) || []);
+  const [academicYears, setAcademicYears] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
   // Convert backend data to UI format
   const convertToUIFormat = (backendPlans: LessonPlanType[]): LessonPlan[] => {
@@ -702,6 +610,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       title: plan.title,
       subject: plan.subject,
       class: plan.class_name,
+      academicYear: plan.academic_year,
       date: plan.date,
       chapterId: plan.chapter_id || "",
       chapterName: plan.chapter_name || "",
@@ -716,6 +625,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       evaluationItems: plan.evaluation_items || [],
       homework: plan.homework,
       differentiationNotes: plan.differentiation_notes,
+      status: plan.status,
     }));
   };
 
@@ -724,16 +634,24 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     initialLessonPlans ? convertToUIFormat(initialLessonPlans) : []
   );
 
+  // Placeholder for loadCurriculumData (used by edit/duplicate)
+  const loadCurriculumData = async (_subject: string, _className: string) => {
+    // Curriculum data is loaded via useCurriculum hook
+  };
+
   const [showEditor, setShowEditor] = useState(false);
   const [editingPlan, setEditingPlan] = useState<LessonPlan | null>(null);
   const [viewingPlan, setViewingPlan] = useState<LessonPlan | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState<string>("");
+  const [gradeFilter, setGradeFilter] = useState<string>("");
+  const [academicYearFilter, setAcademicYearFilter] = useState<string>("");
 
   const [formData, setFormData] = useState({
     title: "",
     subject: "",
     class: "",
+    academicYear: "",
     date: "",
     chapterId: "",
     learningObjectives: "",
@@ -743,6 +661,40 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     homework: "",
     differentiationNotes: "",
   });
+
+  // Load subjects, classes, and academic years from database
+  useEffect(() => {
+    const loadFilterData = async () => {
+      try {
+        const [subjectsData, classesData, yearsData, currentYear] = await Promise.all([
+          getSubjects(),
+          getClasses(),
+          getAcademicYears(),
+          getCurrentAcademicYear(),
+        ]);
+        
+        setSubjects(subjectsData);
+        setClasses(classesData);
+        setAcademicYears(yearsData);
+        
+        // Set current academic year as default for new lesson plans
+        if (currentYear && !formData.academicYear) {
+          setFormData(prev => ({ ...prev, academicYear: currentYear }));
+        }
+      } catch (error) {
+        console.error('Error loading filter data:', error);
+      }
+    };
+
+    loadFilterData();
+  }, []);
+
+  // Load curriculum when subject, class, or academic year changes
+  useEffect(() => {
+    if (formData.subject && formData.class && formData.academicYear) {
+      loadCurriculumData(formData.subject, formData.class);
+    }
+  }, [formData.subject, formData.class, formData.academicYear]);
 
   const [selectedLearningOutcomes, setSelectedLearningOutcomes] = useState<string[]>([]);
 
@@ -762,7 +714,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
   // Use curriculum hook for backend data
   const { chapters, learningOutcomes, loadChapters, loadLearningOutcomes } = 
-    useCurriculum(formData.subject, formData.class);
+    useCurriculum(formData.subject, formData.class, formData.academicYear);
 
   // Load chapters when subject and class are selected
   useEffect(() => {
@@ -788,9 +740,13 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         plan.subject.toLowerCase().includes(q);
       const matchesSubject =
         subjectFilter === "" || plan.subject === subjectFilter;
-      return matchesSearch && matchesSubject;
+      const matchesGrade =
+        gradeFilter === "" || plan.class === gradeFilter;
+      const matchesAcademicYear =
+        academicYearFilter === "" || plan.academicYear === academicYearFilter;
+      return matchesSearch && matchesSubject && matchesGrade && matchesAcademicYear;
     });
-  }, [lessonPlans, searchQuery, subjectFilter]);
+  }, [lessonPlans, searchQuery, subjectFilter, gradeFilter, academicYearFilter]);
 
   // Stats
   const stats = {
@@ -832,6 +788,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       title: "",
       subject: "",
       class: "",
+      academicYear: "",
       date: "",
       chapterId: "",
       learningObjectives: "",
@@ -931,31 +888,51 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    // Basic required fields
+    if (!formData.title.trim()) {
+      newErrors.title = "Lesson title is required";
+    }
+    if (!formData.subject) {
+      newErrors.subject = "Please select a subject";
+    }
+    if (!formData.class) {
+      newErrors.class = "Please select a class";
+    }
+    if (!formData.academicYear) {
+      newErrors.academicYear = "Please select an academic year";
+    }
+    if (!formData.date) {
+      newErrors.date = "Please select a date for the lesson";
+    }
+    
+    // Curriculum-linked fields
     if (!formData.chapterId) {
       newErrors.chapterId = "Please select a chapter from curriculum";
     }
     if (selectedLearningOutcomes.length === 0) {
       newErrors.learningOutcomes = "Please select at least one learning outcome";
     }
+    
+    // Content fields
     if (!formData.learningObjectives.trim()) {
-      newErrors.learningObjectives = "Lesson Objectives are mandatory";
+      newErrors.learningObjectives = "Lesson Objectives are required";
     }
     if (!formData.teachingMethodology.trim()) {
-      newErrors.teachingMethodology = "Teaching Methodology is mandatory";
+      newErrors.teachingMethodology = "Teaching Methodology is required";
     }
     if (!formData.requiredMaterials.trim() && resourceFiles.length === 0 && resourceLinks.length === 0) {
       newErrors.requiredMaterials = "Please provide at least one material (text, file, or link)";
     }
     if (!formData.evaluationCriteria.trim() && evaluationItems.length === 0) {
-      newErrors.evaluationCriteria = "Evaluation Criteria are mandatory";
+      newErrors.evaluationCriteria = "Evaluation Criteria are required";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle submit
-  const handleSubmit = async () => {
+  // Handle submit with status parameter
+  const handleSubmit = async (status: 'draft' | 'approved' = 'draft') => {
     if (!validateForm()) {
       return;
     }
@@ -963,14 +940,80 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     setSubmitting(true);
 
     try {
-      // Find class ID
-      const classObj = propClasses?.find((c: any) => c.grade === formData.class || c === formData.class);
-      const classId = classObj?.id || "";
-
-      if (!classId) {
-        alert("Class not found. Please select a valid class.");
-        setSubmitting(false);
-        return;
+      // Find class ID - need to fetch from school_classes using grade and academic year
+      let classId: string | null = null;
+      
+      if (formData.class && formData.academicYear) {
+        // Get school_id from current user if not provided
+        let currentSchoolId = schoolId;
+        if (!currentSchoolId) {
+          // Fetch school_id from current educator
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: educatorData } = await supabase
+              .from('school_educators')
+              .select('school_id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            currentSchoolId = educatorData?.school_id || null;
+          }
+        }
+        
+        if (currentSchoolId) {
+          // Fetch the actual class ID from school_classes table
+          // Use limit(1) to handle multiple classes with same grade/year
+          const { data: classDataArray, error: classError } = await supabase
+            .from('school_classes')
+            .select('id')
+            .eq('school_id', currentSchoolId)
+            .eq('grade', formData.class)
+            .eq('academic_year', formData.academicYear)
+            .limit(1);
+          
+          if (classError) {
+            console.error('Error fetching class:', classError);
+          }
+          
+          const classData = classDataArray?.[0];
+          classId = classData?.id || null;
+          
+          if (!classId) {
+            console.warn('No class found for:', {
+              school_id: currentSchoolId,
+              grade: formData.class,
+              academic_year: formData.academicYear
+            });
+          }
+        } else {
+          // Last resort: try to find any class with matching grade and academic year
+          console.warn('No school_id found, searching for any matching class');
+          const { data: classDataArray, error: classError } = await supabase
+            .from('school_classes')
+            .select('id, school_id')
+            .eq('grade', formData.class)
+            .eq('academic_year', formData.academicYear)
+            .limit(1);
+          
+          const classData = classDataArray?.[0];
+          
+          if (classError) {
+            console.error('Error fetching class (no school filter):', classError);
+          }
+          
+          if (classData) {
+            classId = classData.id;
+            console.log('Found class:', classData);
+          }
+        }
+      }
+      
+      // Fallback: try to find from propClasses
+      if (!classId && propClasses) {
+        const classObj = propClasses?.find((c: any) => 
+          (c.grade === formData.class || c === formData.class) &&
+          (!formData.academicYear || c.academic_year === formData.academicYear)
+        );
+        classId = classObj?.id || null;
       }
 
       const submitData = {
@@ -979,6 +1022,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         resourceFiles,
         resourceLinks,
         evaluationItems,
+        status,
       };
 
       if (editingPlan) {
@@ -1014,6 +1058,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                     resourceFiles,
                     resourceLinks,
                     evaluationItems,
+                    status,
                   }
                 : p
             )
@@ -1047,6 +1092,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
             resourceFiles,
             resourceLinks,
             evaluationItems,
+            status,
           };
           setLessonPlans([newPlan, ...lessonPlans]);
         }
@@ -1055,20 +1101,34 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       resetForm();
       setShowEditor(false);
     } catch (error: any) {
-      alert("Error: " + error.message);
+      console.error("Error saving lesson plan:", error);
+      alert("Error: " + (error.message || "Failed to save lesson plan"));
     } finally {
       setSubmitting(false);
     }
   };
 
   // Handle edit
-  const handleEdit = (plan: LessonPlan) => {
+  const handleEdit = async (plan: LessonPlan) => {
+    // Load curriculum data first if subject and class are available
+    if (plan.subject && plan.class) {
+      await loadCurriculumData(plan.subject, plan.class);
+    }
+    
+    // If academic year is not set, try to get the current academic year as default
+    let academicYear = plan.academicYear || "";
+    if (!academicYear) {
+      const currentYear = await getCurrentAcademicYear();
+      academicYear = currentYear || "";
+    }
+    
     setFormData({
       title: plan.title,
       subject: plan.subject,
       class: plan.class,
+      academicYear: academicYear,
       date: plan.date,
-      chapterId: plan.chapterId,
+      chapterId: plan.chapterId || "",
       learningObjectives: plan.learningObjectives,
       teachingMethodology: plan.teachingMethodology,
       requiredMaterials: plan.requiredMaterials,
@@ -1085,13 +1145,19 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   };
 
   // Handle duplicate
-  const handleDuplicate = (plan: LessonPlan) => {
+  const handleDuplicate = async (plan: LessonPlan) => {
+    // Load curriculum data first if subject and class are available
+    if (plan.subject && plan.class) {
+      await loadCurriculumData(plan.subject, plan.class);
+    }
+    
     setFormData({
       title: `${plan.title} (Copy)`,
       subject: plan.subject,
       class: plan.class,
+      academicYear: plan.academicYear || "",
       date: "",
-      chapterId: plan.chapterId,
+      chapterId: plan.chapterId || "",
       learningObjectives: plan.learningObjectives,
       teachingMethodology: plan.teachingMethodology,
       requiredMaterials: plan.requiredMaterials,
@@ -1106,6 +1172,17 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     setEditingPlan(null);
     setShowEditor(true);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <ArrowPathIcon className="h-12 w-12 text-indigo-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading lesson plans...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
@@ -1128,8 +1205,13 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
           {!showEditor && (
             <button
-              onClick={() => {
+              onClick={async () => {
                 resetForm();
+                // Set current academic year as default for new lesson plans
+                const currentYear = await getCurrentAcademicYear();
+                if (currentYear) {
+                  setFormData(prev => ({ ...prev, academicYear: currentYear }));
+                }
                 setShowEditor(true);
               }}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 active:scale-95 transition-all"
@@ -1176,7 +1258,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
                 <select
                   value={subjectFilter}
                   onChange={(e) => setSubjectFilter(e.target.value)}
@@ -1190,10 +1272,35 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                   ))}
                 </select>
 
+                <select
+                  value={gradeFilter}
+                  onChange={(e) => setGradeFilter(e.target.value)}
+                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                >
+                  <option value="">All Grades</option>
+                  {classes.map((grade) => (
+                    <option key={grade} value={grade}>
+                      Grade {grade}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={academicYearFilter}
+                  onChange={(e) => setAcademicYearFilter(e.target.value)}
+                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                >
+                  <option value="">All Academic Years</option>
+                  {academicYears.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {(searchQuery || subjectFilter) && (
+            {(searchQuery || subjectFilter || gradeFilter || academicYearFilter) && (
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
                 <p className="text-sm text-gray-600">
                   Showing <span className="font-semibold text-gray-900">{filteredPlans.length}</span> of{" "}
@@ -1203,6 +1310,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                   onClick={() => {
                     setSearchQuery("");
                     setSubjectFilter("");
+                    setGradeFilter("");
+                    setAcademicYearFilter("");
                   }}
                   className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
                 >
@@ -1373,6 +1482,30 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Academic Year <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.academicYear}
+                      onChange={(e) => {
+                        setFormData({ ...formData, academicYear: e.target.value, chapterId: "" });
+                        setSelectedLearningOutcomes([]); // Reset when academic year changes
+                      }}
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                    >
+                      <option value="">Select Academic Year</option>
+                      {academicYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Required to load correct curriculum
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Chapter <span className="text-red-500">*</span>
                     </label>
                     <select
@@ -1381,14 +1514,14 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                         setFormData({ ...formData, chapterId: e.target.value });
                         setSelectedLearningOutcomes([]); // Reset learning outcomes when chapter changes
                       }}
-                      disabled={!formData.subject || !formData.class}
+                      disabled={!formData.subject || !formData.class || !formData.academicYear}
                       className={`w-full px-4 py-2.5 rounded-lg border ${
                         errors.chapterId ? "border-red-300" : "border-gray-300"
                       } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
                     >
                       <option value="">
-                        {!formData.subject || !formData.class
-                          ? "Select subject and class first"
+                        {!formData.subject || !formData.class || !formData.academicYear
+                          ? "Select subject, class, and academic year first"
                           : "Select Chapter from Curriculum"}
                       </option>
                       {availableChapters.map((chapter) => (
@@ -1425,7 +1558,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Lesson Date
+                      Lesson Date <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="date"
@@ -1433,8 +1566,18 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                       onChange={(e) =>
                         setFormData({ ...formData, date: e.target.value })
                       }
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
+                      className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:ring-2 transition-colors ${
+                        errors.date
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-500/20"
+                          : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20"
+                      }`}
                     />
+                    {errors.date && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                        <ExclamationTriangleIcon className="h-4 w-4" />
+                        {errors.date}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1663,7 +1806,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                             type="text"
                             value={newLinkTitle}
                             onChange={(e) => setNewLinkTitle(e.target.value)}
-                            placeholder="Link Title (e.g., Khan Academy Tutorial)"
+                            placeholder="Link Title (e.g., Google Drive, YouTube Video, etc.)"
                             className="w-full px-3 py-2 rounded-lg border border-indigo-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                           />
                         </div>
@@ -1977,9 +2120,9 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                   Cancel
                 </button>
                 <button
-                  onClick={handleSubmit}
+                  onClick={() => handleSubmit('draft')}
                   disabled={submitting}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors shadow-md"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gray-600 text-white text-sm font-semibold hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-md"
                 >
                   {submitting ? (
                     <>
@@ -1988,8 +2131,25 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                     </>
                   ) : (
                     <>
+                      <DocumentIcon className="h-4 w-4" />
+                      Save as Draft
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => handleSubmit('approved')}
+                  disabled={submitting}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-colors shadow-md"
+                >
+                  {submitting ? (
+                    <>
+                      <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    <>
                       <CheckCircleIcon className="h-4 w-4" />
-                      {editingPlan ? "Update Lesson Plan" : "Create Lesson Plan"}
+                      Publish
                     </>
                   )}
                 </button>

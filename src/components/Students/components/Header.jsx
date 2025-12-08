@@ -10,8 +10,12 @@ import {
   Check,
   Bookmark,
   Sparkles,
+  Bell,
+  Loader2,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,10 +23,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { useAuth } from "../../../context/AuthContext"; // <-- Add this import
+import { useAuth } from "../../../context/AuthContext";
+import { useStudentRealtimeActivities } from "../../../hooks/useStudentRealtimeActivities";
+import { recentUpdates as mockRecentUpdates } from '../data/mockData';
 
 const Header = ({ activeTab, setActiveTab }) => {
-  // Add scrollbar-hide styles
+  // Add scrollbar-hide and navbar hover styles
   React.useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
@@ -33,6 +39,27 @@ const Header = ({ activeTab, setActiveTab }) => {
       .scrollbar-hide::-webkit-scrollbar {
         display: none;
       }
+      .nav-tab {
+        text-decoration: none;
+        transition: 0.4s;
+        position: relative;
+      }
+      .nav-tab::before {
+        content: "";
+        position: absolute;
+        width: 0;
+        height: 4px;
+        background-color: #3B82F6;
+        bottom: 0;
+        left: 0;
+        transition: width 0.4s;
+      }
+      .nav-tab:hover::before {
+        width: 100%;
+      }
+      .nav-tab.active::before {
+        width: 100%;
+      }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
@@ -41,10 +68,62 @@ const Header = ({ activeTab, setActiveTab }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [copied, setCopied] = useState(false);
-  const { logout } = useAuth();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showAllUpdates, setShowAllUpdates] = useState(false);
+  const { logout, user } = useAuth();
 
-  // Get user email and generate profile link
-  const userEmail = localStorage.getItem("userEmail");
+  // Fetch real-time student activities
+  const userEmail = user?.email || localStorage.getItem("userEmail");
+  const {
+    activities: recentActivities,
+    isLoading: activitiesLoading,
+    isError: activitiesError
+  } = useStudentRealtimeActivities(userEmail, 10);
+
+  // Use real activities instead of mock data
+  const recentUpdates = recentActivities.length > 0 ? recentActivities : mockRecentUpdates;
+
+  // Read/Unread tracking using localStorage
+  const [readNotifications, setReadNotifications] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`readNotifications_${userEmail}`);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Save read notifications to localStorage whenever it changes
+  React.useEffect(() => {
+    if (userEmail) {
+      localStorage.setItem(`readNotifications_${userEmail}`, JSON.stringify(readNotifications));
+    }
+  }, [readNotifications, userEmail]);
+
+  // Calculate unread count
+  const unreadCount = recentUpdates.filter(update =>
+    !readNotifications.includes(update.id || update.timestamp)
+  ).length;
+
+  // Mark notification as read
+  const markAsRead = (notificationId) => {
+    if (!readNotifications.includes(notificationId)) {
+      setReadNotifications(prev => [...prev, notificationId]);
+    }
+  };
+
+  // Mark all notifications as read
+  const markAllAsRead = () => {
+    const allIds = recentUpdates.map(update => update.id || update.timestamp);
+    setReadNotifications(allIds);
+  };
+
+  // Check if notification is read
+  const isNotificationRead = (notificationId) => {
+    return readNotifications.includes(notificationId);
+  };
+
+  // Generate profile link
   const profileLink = useMemo(() => {
     const email = userEmail || "student";
     return `${window.location.origin}/student/profile/${email}`;
@@ -83,7 +162,7 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: "opportunities", label: "Opportunities" },
     { id: "career-ai", label: "Career AI", icon: "✨" },
     { id: "assignments", label: "My Class" },
-    {id: "clubs", label: "Co-Curriculars"},
+    // {id: "clubs", label: "Co-Curriculars"},
     { id: "messages", label: "Messages" },
     // Analytics removed - now integrated in Dashboard with tabs
   ];
@@ -110,13 +189,10 @@ const Header = ({ activeTab, setActiveTab }) => {
                 localStorage.removeItem("dashboardActiveNav");
                 navigate("/student/dashboard");
               }}
-              className={`relative py-2 px-1 lg:px-1.5 xl:px-2 text-xs lg:text-xs xl:text-sm font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === "dashboard" ? "font-semibold" : ""
+              className={`nav-tab relative py-2 px-1.5 lg:px-2 xl:px-3 text-xs lg:text-sm xl:text-sm font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === "dashboard" ? "active font-semibold text-blue-600" : ""
                 }`}
             >
               Dashboard
-              {activeTab === "dashboard" && (
-                <span className="absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-12 xl:w-14 h-1 bg-gradient-to-r from-amber-300 to-yellow-400 rounded-full"></span>
-              )}
             </button>
             {tabs.map((tab) => (
               <button
@@ -128,7 +204,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   } else if (tab.id === "skills") {
                     navigate("/student/my-skills");
                   } else if (tab.id === "training") {
-                    navigate("/student/my-training");
+                    navigate("/student/my-learning");
                   } else if (tab.id === "experience") {
                     navigate("/student/my-experience");
                   } else if (tab.id === "courses") {
@@ -141,23 +217,21 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
-                  } else if (tab.id === "clubs") {
-                    navigate("/student/clubs");
+                  // } 
+                  // else if (tab.id === "clubs") {
+                  //   navigate("/student/clubs");
                   } else if (tab.id === "career-ai") {
                     navigate("/student/career-ai");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
                   }
                 }}
-                className={`relative py-2 px-1 lg:px-1.5 xl:px-2 text-xs lg:text-xs xl:text-sm font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === tab.id ? "font-semibold" : ""
+                className={`nav-tab relative py-2 px-1.5 lg:px-2 xl:px-3 text-xs lg:text-sm xl:text-sm font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === tab.id ? "active font-semibold text-blue-600" : ""
                   }`}
               >
                 {tab.icon && <span className="mr-1">{tab.icon}</span>}
                 <span className="hidden xl:inline">{tab.label}</span>
                 <span className="xl:hidden">{tab.label.split(' ').map(word => word.charAt(0)).join('')}</span>
-                {activeTab === tab.id && (
-                  <span className="absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-12 xl:w-14 h-1 bg-gradient-to-r from-amber-300 to-yellow-400 rounded-full"></span>
-                )}
               </button>
             ))}
           </div>
@@ -173,13 +247,10 @@ const Header = ({ activeTab, setActiveTab }) => {
                 localStorage.removeItem("dashboardActiveNav");
                 navigate("/student/dashboard");
               }}
-              className={`relative py-2 px-3 text-xs font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none whitespace-nowrap flex-shrink-0 ${activeTab === "dashboard" ? "font-semibold" : ""
+              className={`nav-tab relative py-2 px-3 text-xs font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap flex-shrink-0 ${activeTab === "dashboard" ? "active font-semibold text-blue-600" : ""
                 }`}
             >
               Dashboard
-              {activeTab === "dashboard" && (
-                <span className="absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-12 h-1 bg-gradient-to-r from-amber-300 to-yellow-400 rounded-full"></span>
-              )}
             </button>
             {tabs.map((tab) => (
               <button
@@ -191,7 +262,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   } else if (tab.id === "skills") {
                     navigate("/student/my-skills");
                   } else if (tab.id === "training") {
-                    navigate("/student/my-training");
+                    navigate("/student/my-learning");
                   } else if (tab.id === "experience") {
                     navigate("/student/my-experience");
                   } else if (tab.id === "courses") {
@@ -204,22 +275,19 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
-                  } else if (tab.id === "clubs") {
-                    navigate("/student/clubs");
+                  // } else if (tab.id === "clubs") {
+                  //   navigate("/student/clubs");
                   } else if (tab.id === "career-ai") {
                     navigate("/student/career-ai");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
                   }
                 }}
-                className={`relative py-2 px-3 text-xs font-medium transition-all duration-200 text-black hover:text-amber-500 bg-transparent border-none outline-none whitespace-nowrap flex-shrink-0 ${activeTab === tab.id ? "font-semibold" : ""
+                className={`nav-tab relative py-2 px-3 text-xs font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap flex-shrink-0 ${activeTab === tab.id ? "active font-semibold text-blue-600" : ""
                   }`}
               >
                 {tab.icon && <span className="mr-1">{tab.icon}</span>}
                 {tab.label.split(' ').map(word => word.charAt(0)).join('')}
-                {activeTab === tab.id && (
-                  <span className="absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-12 h-1 bg-gradient-to-r from-amber-300 to-yellow-400 rounded-full"></span>
-                )}
               </button>
             ))}
           </div>
@@ -250,10 +318,129 @@ const Header = ({ activeTab, setActiveTab }) => {
             </button>
           </div>
 
+          {/* Notifications Dropdown */}
+          <DropdownMenu open={showNotifications} onOpenChange={setShowNotifications}>
+            <DropdownMenuTrigger asChild>
+              <button className="relative p-2 rounded-full hover:bg-blue-50 transition-colors">
+                <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 hover:text-blue-600" />
+                {unreadCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 bg-red-500 text-white text-xs min-w-[20px] h-5 flex items-center justify-center px-1 animate-pulse">
+                    {unreadCount}
+                  </Badge>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-80 sm:w-96 bg-white border border-gray-200 shadow-xl max-h-[500px] overflow-y-auto"
+            >
+              <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-blue-700 flex items-center gap-2">
+                    <Bell className="w-5 h-5" />
+                    Recent Updates
+                    {unreadCount > 0 && (
+                      <Badge className="bg-red-500 text-white text-xs ml-2">
+                        {unreadCount} new
+                      </Badge>
+                    )}
+                  </h3>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllAsRead}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="p-3 space-y-3">
+                {activitiesLoading && recentActivities.length === 0 ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-600 mr-2" />
+                    <span className="text-sm text-gray-600">Loading activities...</span>
+                  </div>
+                ) : recentActivities.length === 0 ? (
+                  <div className="text-center py-6">
+                    <Bell className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No recent activities yet</p>
+                    <p className="text-xs text-gray-400 mt-1">Recruiters' actions will appear here</p>
+                  </div>
+                ) : (
+                  recentUpdates?.slice(0, showAllUpdates ? recentUpdates.length : 4).map((update, index) => {
+                    const notificationId = update.id || update.timestamp;
+                    const timestamp = update.timestamp;
+                    const isRead = isNotificationRead(notificationId);
+
+                    const getActivityColor = (type, isRead) => {
+                      if (isRead) {
+                        return 'from-gray-50 to-white border-l-gray-300 opacity-70';
+                      }
+                      switch(type) {
+                        case 'shortlist_added': return 'from-yellow-50 to-white border-l-yellow-400';
+                        case 'offer_extended': return 'from-green-50 to-white border-l-green-400';
+                        case 'offer_accepted': return 'from-emerald-50 to-white border-l-emerald-400';
+                        case 'placement_hired': return 'from-purple-50 to-white border-l-purple-400';
+                        case 'stage_change': return 'from-indigo-50 to-white border-l-indigo-400';
+                        case 'application_rejected': return 'from-red-50 to-white border-l-red-400';
+                        default: return 'from-blue-50 to-white border-l-blue-400';
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={notificationId || index}
+                        onClick={() => markAsRead(notificationId)}
+                        className={`p-3 bg-gradient-to-r ${getActivityColor(update.type, isRead)} rounded-lg border-l-2 hover:shadow-md transition-all cursor-pointer relative ${!isRead ? 'border-l-4' : ''}`}
+                      >
+                        {!isRead && (
+                          <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                        )}
+                        <p className={`text-sm ${isRead ? 'text-gray-600' : 'text-gray-900'} font-medium`}>
+                          {update.user && <span className={isRead ? 'text-gray-500' : 'text-blue-700'}>{update.user}</span>}
+                          {update.action && <span className="text-gray-600"> {update.action} </span>}
+                          {update.candidate && <span className={isRead ? 'font-normal' : 'font-semibold'}>{update.candidate}</span>}
+                        </p>
+                        {update.details && (
+                          <p className="text-xs text-gray-600 mt-1">{update.details}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {typeof timestamp === 'string' && timestamp.includes('ago')
+                            ? timestamp
+                            : new Date(timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    );
+                  })
+                )}
+                {recentActivities.length > 4 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAllUpdates(!showAllUpdates)}
+                    className="w-full border-blue-300 text-blue-700 hover:bg-blue-50 mt-2"
+                  >
+                    {showAllUpdates ? (
+                      <>
+                        <ChevronUp className="w-4 h-4 mr-2" />
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4 mr-2" />
+                        View All Updates ({recentActivities.length})
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {/* Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-yellow-400 flex items-center justify-center shadow-md hover:bg-yellow-500 transition-colors">
+              <button className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-600 flex items-center justify-center shadow-md hover:bg-blue-700 transition-colors">
                 <User className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
               </button>
             </DropdownMenuTrigger>
@@ -318,7 +505,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                 navigate("/student/dashboard");
                 setMobileMenuOpen(false);
               }}
-              className={`w-full text-left py-3 px-4 rounded-lg text-black hover:text-amber-500 hover:bg-amber-50 font-medium transition-all duration-200 ${activeTab === "dashboard" ? "font-semibold bg-amber-100 text-amber-700" : ""
+              className={`w-full text-left py-3 px-4 rounded-lg text-gray-900 hover:text-blue-600 hover:bg-blue-50 font-medium transition-all duration-200 ${activeTab === "dashboard" ? "font-semibold bg-blue-100 text-blue-700" : ""
                 }`}
             >
               <div className="flex items-center">
@@ -336,7 +523,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   } else if (tab.id === "skills") {
                     navigate("/student/my-skills");
                   } else if (tab.id === "training") {
-                    navigate("/student/my-training");
+                    navigate("/student/my-learning");
                   } else if (tab.id === "experience") {
                     navigate("/student/my-experience");
                   } else if (tab.id === "courses") {
@@ -349,14 +536,14 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
-                   } else if (tab.id === "clubs") {
-                    navigate("/student/clubs");
+                  // } else if (tab.id === "clubs") {
+                  //   navigate("/student/clubs");
                   } else if (tab.id === "messages") {
                     navigate("/student/messages");
                   }
                   setMobileMenuOpen(false);
                 }}
-                className={`w-full text-left py-3 px-4 rounded-lg text-black hover:text-amber-500 hover:bg-amber-50 font-medium transition-all duration-200 ${activeTab === tab.id ? "font-semibold bg-amber-100 text-amber-700" : ""
+                className={`w-full text-left py-3 px-4 rounded-lg text-gray-900 hover:text-blue-600 hover:bg-blue-50 font-medium transition-all duration-200 ${activeTab === tab.id ? "font-semibold bg-blue-100 text-blue-700" : ""
                   }`}
               >
                 <div className="flex items-center">
@@ -388,7 +575,7 @@ const Header = ({ activeTab, setActiveTab }) => {
               {/* Web Share API button for supported devices */}
               {navigator.share && (
                 <button
-                  className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors shadow-md"
+                  className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors shadow-md"
                   onClick={() => {
                     navigator
                       .share({
@@ -458,7 +645,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-colors shadow-md"
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-md"
                 >
                   <svg
                     className="w-5 h-5"
@@ -526,7 +713,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   />
                   <button
                     onClick={handleCopyLink}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors shadow-md"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-md"
                     title={copied ? "Copied!" : "Copy Link"}
                   >
                     {copied ? (
@@ -546,3 +733,4 @@ const Header = ({ activeTab, setActiveTab }) => {
 };
 
 export default Header;
+

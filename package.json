@@ -11,7 +11,8 @@
     "test": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "generate-embeddings": "node scripts/generateEmbeddings.js",
-    "generate-student-embeddings": "node scripts/generateStudentEmbeddingsViaEdge.js"
+    "generate-student-embeddings": "node scripts/generateStudentEmbeddingsViaEdge.js",
+    "embed-courses": "node scripts/embedCourses.js"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -70,6 +71,7 @@
     "react": "^18.3.1",
     "react-apexcharts": "^1.8.0",
     "react-calendar": "^6.0.0",
+    "react-datepicker": "^8.10.0",
     "react-day-picker": "^9.11.1",
     "react-dom": "^18.3.1",
     "react-grid-layout": "^1.5.2",
@@ -81,8 +83,10 @@
     "react-router-dom": "^7.9.4",
     "react-vertical-timeline-component": "^3.5.3",
     "recharts": "^3.5.1",
+    "simplex-noise": "^4.0.3",
     "tailwind-merge": "^3.3.1",
     "uuid": "^13.0.0",
+    "xlsx": "^0.18.5",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
@@ -94,6 +98,7 @@
     "@types/papaparse": "^5.3.16",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.5",
+    "@types/react-datepicker": "^7.0.0",
     "@types/react-dom": "^18.3.0",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.3.1",
@@ -101,6 +106,7 @@
     "eslint": "^9.9.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
+    "fast-check": "^4.3.0",
     "globals": "^15.9.0",
     "jsdom": "^27.2.0",
     "postcss": "^8.4.35",
