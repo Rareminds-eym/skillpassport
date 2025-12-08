@@ -36,13 +36,10 @@ import {
   FileText,
   ClipboardList,
   GraduationCap,
-<<<<<<< HEAD
-=======
   PresentationIcon,
   Rocket,
   Cpu,
   Users2,
->>>>>>> af97fc3fadfdeebf986882ca9042efc104542b8b
   Lightbulb,
 } from "lucide-react";
 import {
