@@ -11,8 +11,8 @@ import {
   getCoursesForMultipleSkillGaps 
 } from './courseRecommendationService';
 
-// Gemini API configuration - try multiple models for compatibility
-const getGeminiApiUrl = (model = 'gemini-1.5-flash-latest') =>
+// Gemini API configuration - using v1beta API for Gemini models
+const getGeminiApiUrl = (model = 'gemini-1.5-flash') =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 /**
@@ -147,34 +147,47 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
   const prompt = buildAnalysisPrompt(assessmentData);
 
   // Try different model variants for compatibility (updated Dec 2024)
+  // Using non-thinking models first to avoid token budget issues
+  // gemini-2.5-flash uses "thinking" which consumes output tokens
   const models = [
-    'gemini-2.0-flash',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro',
-    'gemini-1.0-pro'
+    'gemini-2.0-flash',      // Non-thinking model - preferred
+    'gemini-1.5-flash',      // Stable non-thinking model
+    'gemini-2.5-flash-lite', // Lighter version if available
   ];
   let response = null;
   let lastError = null;
+  const errors = [];
 
   for (const model of models) {
     try {
+      console.log(`Trying Gemini model: ${model}`);
+      
+      // Build request body - disable thinking for 2.5 models
+      const requestBody = {
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          topK: 10,
+          topP: 0.7,
+          maxOutputTokens: 16384, // Increased for large JSON response
+        }
+      };
+      
+      // For 2.5 models, disable thinking to preserve output tokens
+      if (model.includes('2.5')) {
+        requestBody.generationConfig.thinkingConfig = {
+          thinkingBudget: 0 // Disable thinking mode
+        };
+      }
+      
       response = await fetch(getGeminiApiUrl(model) + `?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-            // Very low temperature for maximum consistency
-            temperature: 0.1,
-            topK: 10,
-            topP: 0.7,
-            maxOutputTokens: 8192,
-          }
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (response.ok) {
@@ -184,21 +197,62 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
 
       // Get error details from response
       const errorData = await response.json().catch(() => ({}));
-      lastError = errorData.error?.message || `Model ${model} returned ${response.status}`;
+      const errorMsg = errorData.error?.message || `Model ${model} returned ${response.status}`;
+      console.warn(`Model ${model} failed: ${errorMsg}`);
+      errors.push(`${model}: ${errorMsg}`);
+      lastError = errorMsg;
+      response = null; // Reset so we try next model
     } catch (e) {
+      console.warn(`Model ${model} exception: ${e.message}`);
+      errors.push(`${model}: ${e.message}`);
       lastError = e.message;
     }
   }
 
   if (!response || !response.ok) {
-    throw new Error(`Rareminds AI error: ${lastError}`);
+    console.error('All Gemini models failed:', errors);
+    throw new Error(`Rareminds AI error: ${lastError}. Please check your VITE_GEMINI_API_KEY is valid and has access to Gemini models.`);
   }
 
   const data = await response.json();
+  
+  // Debug: Log the full response structure to understand what Gemini returns
+  console.log('=== Gemini API Response Debug ===');
+  console.log('Full response keys:', Object.keys(data));
+  console.log('Candidates:', data.candidates?.length || 0);
+  if (data.candidates?.[0]) {
+    console.log('First candidate keys:', Object.keys(data.candidates[0]));
+    console.log('Content:', data.candidates[0].content);
+    console.log('Finish reason:', data.candidates[0].finishReason);
+  }
+  if (data.promptFeedback) {
+    console.log('Prompt feedback:', data.promptFeedback);
+  }
+  if (data.error) {
+    console.error('API Error in response:', data.error);
+  }
+  
   const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
   if (!textContent) {
-    throw new Error('No response received from Rareminds AI');
+    // Provide more detailed error information
+    const finishReason = data.candidates?.[0]?.finishReason;
+    const blockReason = data.promptFeedback?.blockReason;
+    const safetyRatings = data.candidates?.[0]?.safetyRatings;
+    
+    let errorDetail = 'No response received from Rareminds AI';
+    if (finishReason && finishReason !== 'STOP') {
+      errorDetail += `. Finish reason: ${finishReason}`;
+    }
+    if (blockReason) {
+      errorDetail += `. Blocked: ${blockReason}`;
+    }
+    if (safetyRatings?.some(r => r.blocked)) {
+      errorDetail += '. Content was blocked by safety filters.';
+    }
+    
+    console.error('Response structure:', JSON.stringify(data, null, 2).substring(0, 2000));
+    throw new Error(errorDetail);
   }
 
   // Parse the JSON response from Gemini

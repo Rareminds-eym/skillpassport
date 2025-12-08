@@ -6,6 +6,7 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 import { Course, CourseModule } from '../../../types/educator/course';
+import ImageUpload from '../../common/ImageUpload';
 
 interface CreateCourseModalProps {
   isOpen: boolean;
@@ -521,7 +522,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                       placeholder={editingCourse?.description || "Brief description of the course"}
                     />
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Duration *
@@ -555,27 +556,18 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                         <option value="Archived">Archived</option>
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Thumbnail/Icon
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="text"
-                          value={courseData.thumbnail}
-                          onChange={(e) => {
-                            console.log('Thumbnail changed:', e.target.value);
-                            setCourseData({ ...courseData, thumbnail: e.target.value });
-                          }}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                          placeholder={editingCourse?.thumbnail || "Icon name or URL"}
-                        />
-                        <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                          <PhotoIcon className="h-5 w-5 text-gray-600" />
-                        </button>
-                      </div>
-                    </div>
                   </div>
+
+                  {/* Image Upload Component */}
+                  <ImageUpload
+                    currentImage={courseData.thumbnail}
+                    onImageChange={(url) => {
+                      console.log('Thumbnail URL changed:', url);
+                      setCourseData({ ...courseData, thumbnail: url });
+                    }}
+                    folder="courses"
+                    label="Course Thumbnail"
+                  />
                 </div>
               </div>
 

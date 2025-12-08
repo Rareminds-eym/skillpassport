@@ -15,10 +15,10 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
     postedWithin: initialFilters.postedWithin || '',
   });
 
-  // Options based on actual database schema
-  const employmentTypes = ['full-time', 'part-time', 'contract', 'internship', 'temporary'];
-  const experienceLevels = ['entry level', 'mid level', 'senior level', 'lead', 'executive'];
-  const workModes = ['onsite', 'remote', 'hybrid'];
+  // Options based on actual database schema (matching case-sensitive values)
+  const employmentTypes = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Temporary'];
+  const experienceLevels = ['Entry Level', 'Mid Level', 'Senior Level', 'Lead', 'Executive'];
+  const workModes = ['Onsite', 'Remote', 'Hybrid'];
   const departments = ['Engineering', 'Design', 'Product', 'Marketing', 'Sales', 'HR', 'Finance', 'Operations', 'Customer Support', 'Legal'];
   
   // Common tech skills - can be expanded

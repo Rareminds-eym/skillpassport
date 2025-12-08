@@ -38,6 +38,18 @@ export default defineConfig({
     ],
     hmr: {
       port: 3000
+    },
+    proxy: {
+      '/api/upload-to-r2': {
+        target: 'https://dpooleduinyyzxgrcwko.supabase.co/functions/v1/upload-to-r2',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/upload-to-r2/, '')
+      },
+      '/api/delete-from-r2': {
+        target: 'https://dpooleduinyyzxgrcwko.supabase.co/functions/v1/delete-from-r2',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/delete-from-r2/, '')
+      }
     }
   },
 });

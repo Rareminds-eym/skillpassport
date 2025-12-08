@@ -89,7 +89,13 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
                 {student.name || student.profile.name}
               </h1>
               <p className="text-xl mb-6 opacity-90">
-                {student.branch_field} • {student.university}
+                {student.branch_field && `${student.branch_field} • `}
+                {student.school?.name || 
+                 student.profile?.school?.name || 
+                 student.college_school_name || 
+                 student.universityCollege?.name || 
+                 student.profile?.universityCollege?.name ||
+                 student.university || 'Student'}
               </p>
               {student.profile.bio && (
                 <p className="text-lg max-w-2xl leading-relaxed opacity-80">

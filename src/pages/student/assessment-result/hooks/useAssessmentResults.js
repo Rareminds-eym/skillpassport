@@ -8,6 +8,7 @@ import { workValuesQuestions } from '../../assessment-data/workValuesQuestions';
 import { employabilityQuestions } from '../../assessment-data/employabilityQuestions';
 import { streamKnowledgeQuestions } from '../../assessment-data/streamKnowledgeQuestions';
 import * as assessmentService from '../../../../services/assessmentService';
+import { saveRecommendations } from '../../../../services/courseRecommendationService';
 
 /**
  * Custom hook for managing assessment results
@@ -104,7 +105,27 @@ export const useAssessmentResults = () => {
             try {
                 const attempt = await assessmentService.getAttemptWithResults(attemptId);
                 if (attempt?.results?.[0]?.gemini_results) {
-                    setResults(attempt.results[0].gemini_results);
+                    const geminiResults = attempt.results[0].gemini_results;
+                    setResults(geminiResults);
+                    
+                    // Ensure recommendations are saved (in case they weren't before)
+                    if (geminiResults.platformCourses && geminiResults.platformCourses.length > 0) {
+                        try {
+                            const { data: { user } } = await supabase.auth.getUser();
+                            if (user) {
+                                await saveRecommendations(
+                                    user.id,
+                                    geminiResults.platformCourses,
+                                    attempt.results[0].id,
+                                    'assessment'
+                                );
+                            }
+                        } catch (recError) {
+                            // Silently fail - recommendations may already exist
+                            console.log('Recommendations sync:', recError.message);
+                        }
+                    }
+                    
                     setLoading(false);
                     return;
                 }
@@ -120,7 +141,23 @@ export const useAssessmentResults = () => {
                 const latestResult = await assessmentService.getLatestResult(user.id);
                 if (latestResult?.gemini_results) {
                     console.log('Loaded results from database');
-                    setResults(latestResult.gemini_results);
+                    const geminiResults = latestResult.gemini_results;
+                    setResults(geminiResults);
+                    
+                    // Ensure recommendations are saved
+                    if (geminiResults.platformCourses && geminiResults.platformCourses.length > 0) {
+                        try {
+                            await saveRecommendations(
+                                user.id,
+                                geminiResults.platformCourses,
+                                latestResult.id,
+                                'assessment'
+                            );
+                        } catch (recError) {
+                            console.log('Recommendations sync:', recError.message);
+                        }
+                    }
+                    
                     setLoading(false);
                     return;
                 }
@@ -180,7 +217,7 @@ export const useAssessmentResults = () => {
                             const inProgressAttempt = await assessmentService.getInProgressAttempt(user.id);
                             if (inProgressAttempt) {
                                 const sectionTimings = JSON.parse(localStorage.getItem('assessment_section_timings') || '{}');
-                                await assessmentService.completeAttempt(
+                                const completedAttempt = await assessmentService.completeAttempt(
                                     inProgressAttempt.id,
                                     user.id,
                                     stream,
@@ -188,6 +225,28 @@ export const useAssessmentResults = () => {
                                     sectionTimings
                                 );
                                 console.log('Results saved to database');
+                                
+                                // Save course recommendations to database
+                                if (geminiResults.platformCourses && geminiResults.platformCourses.length > 0) {
+                                    try {
+                                        // Get the assessment result ID
+                                        const { data: resultData } = await supabase
+                                            .from('personal_assessment_results')
+                                            .select('id')
+                                            .eq('attempt_id', inProgressAttempt.id)
+                                            .single();
+                                        
+                                        await saveRecommendations(
+                                            user.id,
+                                            geminiResults.platformCourses,
+                                            resultData?.id || null,
+                                            'assessment'
+                                        );
+                                        console.log('Course recommendations saved to database');
+                                    } catch (recError) {
+                                        console.warn('Could not save recommendations:', recError.message);
+                                    }
+                                }
                             }
                         }
                     } catch (dbError) {
