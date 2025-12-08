@@ -78,7 +78,53 @@ const AssessmentTest = () => {
     const [showSectionIntro, setShowSectionIntro] = useState(true);
     const [showSectionComplete, setShowSectionComplete] = useState(false);
     const [elapsedTime, setElapsedTime] = useState(0); // Elapsed time for non-timed sections
+    
+    // TEST MODE - Auto-fill answers for development/testing
+    const [testMode, setTestMode] = useState(false);
+    const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
     const [sectionTimings, setSectionTimings] = useState({}); // Track time spent on each section
+
+    // Auto-fill all answers for test mode
+    const autoFillAllAnswers = () => {
+        if (!sections || sections.length === 0) return;
+        
+        const filledAnswers = {};
+        
+        sections.forEach(section => {
+            section.questions.forEach(question => {
+                const questionId = `${section.id}_${question.id}`;
+                
+                if (question.partType === 'sjt') {
+                    // SJT questions need best and worst
+                    const options = question.options || [];
+                    if (options.length >= 2) {
+                        filledAnswers[questionId] = {
+                            best: options[0],
+                            worst: options[options.length - 1]
+                        };
+                    }
+                } else if (section.responseScale) {
+                    // Likert scale - pick middle value (3)
+                    filledAnswers[questionId] = 3;
+                } else if (question.options && question.options.length > 0) {
+                    // MCQ - pick first option (or correct if available for testing)
+                    filledAnswers[questionId] = question.correct || question.options[0];
+                }
+            });
+        });
+        
+        setAnswers(filledAnswers);
+        console.log('Test Mode: Auto-filled', Object.keys(filledAnswers).length, 'answers');
+    };
+
+    // Skip to last section for quick testing
+    const skipToLastSection = () => {
+        autoFillAllAnswers();
+        setCurrentSectionIndex(sections.length - 1);
+        setCurrentQuestionIndex(sections[sections.length - 1].questions.length - 1);
+        setShowSectionIntro(false);
+        setShowSectionComplete(false);
+    };
 
     // Load questions from database when stream is selected
     const loadQuestionsFromDatabase = async (streamId) => {
@@ -824,6 +870,33 @@ const AssessmentTest = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Dev Mode Toggle - Only visible in development */}
+                        {isDevMode && (
+                            <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Zap className="w-5 h-5 text-amber-600" />
+                                        <span className="text-sm font-semibold text-amber-800">Dev Mode</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setTestMode(!testMode)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                            testMode 
+                                                ? 'bg-amber-600 text-white' 
+                                                : 'bg-amber-200 text-amber-700 hover:bg-amber-300'
+                                        }`}
+                                    >
+                                        {testMode ? 'ON' : 'OFF'}
+                                    </button>
+                                </div>
+                                {testMode && (
+                                    <p className="text-xs text-amber-700 mt-2">
+                                        Test mode enabled. Auto-fill and skip controls will be available.
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
@@ -847,6 +920,36 @@ const AssessmentTest = () => {
                         <span className="text-sm font-semibold text-indigo-700">{Math.round(progress)}% Complete</span>
                     </div>
                 </div>
+
+                {/* Dev Mode Controls - Only visible when test mode is enabled */}
+                {isDevMode && testMode && (
+                    <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Zap className="w-4 h-4 text-amber-600" />
+                            <span className="text-sm font-semibold text-amber-800">Test Mode Active</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={autoFillAllAnswers}
+                                className="px-3 py-1.5 bg-amber-200 text-amber-800 rounded-lg text-xs font-semibold hover:bg-amber-300 transition-all"
+                            >
+                                Auto-fill All
+                            </button>
+                            <button
+                                onClick={skipToLastSection}
+                                className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-semibold hover:bg-amber-700 transition-all"
+                            >
+                                Skip to Submit
+                            </button>
+                            <button
+                                onClick={() => setTestMode(false)}
+                                className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-300 transition-all"
+                            >
+                                Exit Test Mode
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Section Steps with Progress Lines - Proper Alignment */}
                 <div className="relative">
