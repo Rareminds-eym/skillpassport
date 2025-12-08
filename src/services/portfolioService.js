@@ -75,6 +75,20 @@ export const getStudentPortfolioByEmail = async (email) => {
 
     const userId = student.user_id;
     console.log('✅ Student found, fetching related data for user_id:', userId);
+    console.log('📊 Portfolio fields from DB:', {
+      hobbies: student.hobbies,
+      languages: student.languages,
+      interests: student.interests
+    });
+    console.log('🏫 School/University data:', {
+      student_type: student.student_type,
+      school: student.schools,
+      college_school_name: student.college_school_name,
+      university: student.university,
+      universities: student.universities,
+      grade: student.grade,
+      section: student.section
+    });
 
     // Fetch all related data in parallel for performance
     const [
@@ -293,9 +307,9 @@ function transformToPortfolioFormat(
     experience: formattedExperience,
     certifications: formattedCertificates,
     training: formattedTrainings,
-    languages: [], // Can be added if you have a languages table
-    hobbies: [],
-    interests: [],
+    languages: student.languages || [],
+    hobbies: student.hobbies || [],
+    interests: student.interests || [],
     achievements: [],
     
     // Additional profile info
@@ -390,16 +404,29 @@ function transformToPortfolioFormat(
     certifications: formattedCertificates,
     education: formattedEducation,
     experience: formattedExperience,
+    languages: student.languages || [],
+    hobbies: student.hobbies || [],
+    interests: student.interests || [],
     
     // School/College relationships
     school_id: student.school_id,
     university_college_id: student.university_college_id,
     school: student.schools,
     universityCollege: student.university_colleges,
-    
+    universityInfo: student.universities,
+
+    // School student fields
+    student_type: student.student_type,
+    grade: student.grade,
+    section: student.section,
+
+    // Location fields
+    city: student.city,
+    state: student.state,
+    country: student.country,
+
     // Metadata
     user_id: student.user_id,
-    student_type: student.student_type,
     metadata: student.metadata
   };
 }
