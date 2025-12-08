@@ -1075,7 +1075,7 @@ const AssessmentTest = () => {
                                     ) : (
                                         <>
                                             <CheckCircle2 className="w-4 h-4" />
-                                            <span className="text-sm font-medium">No right or wrong answers</span>
+                                            <span className="text-sm font-medium">There are no right or wrong answers.</span>
                                         </>
                                     )}
                                 </motion.div>
@@ -1279,7 +1279,7 @@ const AssessmentTest = () => {
                                             ) : (
                                                 <>
                                                     <CheckCircle2 className="w-3.5 h-3.5" />
-                                                    <span>No right or wrong answers</span>
+                                                    <span>There are no right or wrong answers.</span>
                                                 </>
                                             )}
                                         </div>

@@ -385,6 +385,7 @@ const AssessmentResult = () => {
                                     <RoadmapSection 
                                         roadmap={roadmap}
                                         platformCourses={results.platformCourses}
+                                        coursesByType={results.coursesByType}
                                         skillGapCourses={results.skillGapCourses}
                                     />
                                 )}

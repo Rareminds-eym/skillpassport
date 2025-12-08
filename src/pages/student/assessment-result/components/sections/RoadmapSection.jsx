@@ -7,7 +7,13 @@ import RecommendedCoursesSection from './RecommendedCoursesSection';
  * 
  * Requirements: 4.1 - Shows recommended courses section in the roadmap
  */
-const RoadmapSection = ({ roadmap, platformCourses = [], skillGapCourses = {}, onCourseClick }) => {
+const RoadmapSection = ({ 
+    roadmap, 
+    platformCourses = [], 
+    coursesByType = { technical: [], soft: [] },
+    skillGapCourses = {}, 
+    onCourseClick 
+}) => {
     return (
         <div className="space-y-6">
             {/* Projects Section */}
@@ -152,6 +158,7 @@ const RoadmapSection = ({ roadmap, platformCourses = [], skillGapCourses = {}, o
             {/* Recommended Platform Courses Section - Requirements: 4.1 */}
             <RecommendedCoursesSection
                 platformCourses={platformCourses}
+                coursesByType={coursesByType}
                 skillGapCourses={skillGapCourses}
                 onCourseClick={onCourseClick}
             />
