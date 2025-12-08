@@ -964,7 +964,7 @@ const StudentDashboard = () => {
                 <FolderGit2 className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">
-                Projects
+                Projects/Internships
               </span>
               <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
                 {enabledProjects.length}
@@ -972,7 +972,7 @@ const StudentDashboard = () => {
             </CardTitle>
             <button
               className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-              title="Manage Projects"
+              title="Manage Projects & Internships"
               onClick={() => setActiveModal("projects")}
             >
               <Edit className="w-4 h-4 text-gray-600" />

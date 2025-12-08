@@ -4107,6 +4107,9 @@ import {
   LinkIcon,
   Github,
   Building2,
+  Briefcase,
+  FolderGit2,
+  MapPin,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -6345,12 +6348,16 @@ export const ExperienceEditModal = ({ isOpen, onClose, data, onSave}) => {
 
 export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
   const [projectsList, setProjectsList] = useState(data || []);
-  const [isAdding, setIsAdding] = useState(false);
+  const [internshipsList, setInternshipsList] = useState([]);
+  const [isAddingProject, setIsAddingProject] = useState(false);
+  const [isAddingInternship, setIsAddingInternship] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [editingType, setEditingType] = useState(null); // 'project' or 'internship'
   const [expandedDescriptions, setExpandedDescriptions] = useState({});
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
+    // Project fields
     title: "",
     duration: "",
     status: "",
@@ -6370,6 +6377,18 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
     certificateLink: "",
     videoLink: "",
     pptLink: "",
+
+    // Internship-specific fields
+    company_name: "",
+    role: "",
+    location: "",
+    internship_type: "",
+    stipend: "",
+    skills_learned: "",
+    responsibilities: "",
+    achievements: "",
+    offer_letter_url: "",
+    recommendation_letter_url: "",
   });
 
   useEffect(() => {
@@ -6378,6 +6397,7 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
 
   const resetForm = () => {
     setFormData({
+      // Project fields
       title: "",
       duration: "",
       status: "",
@@ -6397,8 +6417,21 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
       certificateLink: "",
       videoLink: "",
       pptLink: "",
+
+      // Internship fields
+      company_name: "",
+      role: "",
+      location: "",
+      internship_type: "",
+      stipend: "",
+      skills_learned: "",
+      responsibilities: "",
+      achievements: "",
+      offer_letter_url: "",
+      recommendation_letter_url: "",
     });
     setEditingIndex(null);
+    setEditingType(null);
   };
 
   const extractTech = (project) =>
@@ -6439,7 +6472,9 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
       pptLink: project.ppt_url || "",
     });
     setEditingIndex(index);
-    setIsAdding(true);
+    setEditingType("project");
+    setIsAddingProject(true);
+    setIsAddingInternship(false);
   };
 
   const prepareProject = (base, existing = {}) => {
@@ -6537,7 +6572,8 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
         description: "New project added successfully.",
       });
     }
-    setIsAdding(false);
+    setIsAddingProject(false);
+    setIsAddingInternship(false);
     resetForm();
   };
 
@@ -6551,6 +6587,112 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
 
   const deleteProject = (index) => {
     setProjectsList((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Internship functions
+  const prepareInternship = (base, existing = {}) => {
+    const enabledValue =
+      typeof base.enabled === "boolean"
+        ? base.enabled
+        : typeof existing.enabled === "boolean"
+        ? existing.enabled
+        : true;
+    let durationText = "";
+    let startLabel = "";
+    let endLabel = "";
+
+    if (base.start_date && base.end_date) {
+      const start = new Date(base.start_date);
+      const end = new Date(base.end_date);
+      const diffMs = Math.abs(end - start);
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+      let duration = "";
+      if (diffDays >= 30) {
+        const diffMonths = Math.floor(diffDays / 30);
+        duration = `${diffMonths} month${diffMonths > 1 ? "s" : ""}`;
+      } else if (diffDays >= 14) {
+        const diffWeeks = Math.floor(diffDays / 7);
+        duration = `${diffWeeks} week${diffWeeks > 1 ? "s" : ""}`;
+      } else if (diffDays > 1) {
+        duration = `${diffDays} days`;
+      } else {
+        duration = "1 day";
+      }
+
+      const formatMonthYear = (date) =>
+        date.toLocaleString("default", { month: "short", year: "numeric" });
+
+      startLabel = formatMonthYear(start);
+      endLabel = formatMonthYear(end);
+      durationText = `${startLabel} – ${endLabel} (${duration})`;
+    }
+
+    return {
+      ...existing,
+      ...base,
+      start_date: base.start_date || null,
+      end_date: base.end_date || null,
+      duration: durationText,
+      enabled: enabledValue,
+      company_name: base.company_name?.trim() || "",
+      role: base.role?.trim() || "",
+      location: base.location?.trim() || null,
+      internship_type: base.internship_type || null,
+      stipend: base.stipend?.trim() || null,
+      skills_learned: base.skills_learned?.trim() || null,
+      responsibilities: base.responsibilities?.trim() || null,
+      achievements: base.achievements?.trim() || null,
+      offer_letter_url: base.offer_letter_url?.trim() || null,
+      recommendation_letter_url: base.recommendation_letter_url?.trim() || null,
+      updatedAt: new Date().toISOString(),
+    };
+  };
+
+  const saveInternship = () => {
+    if (!formData.company_name.trim() || !formData.role.trim()) {
+      toast({
+        title: "Missing required fields",
+        description: "Please provide company name and role before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newInternship = prepareInternship(formData);
+    if (editingIndex !== null && editingType === "internship") {
+      setInternshipsList((prev) =>
+        prev.map((item, idx) => (idx === editingIndex ? newInternship : item))
+      );
+      toast({
+        title: "Internship Updated",
+        description: "Changes saved successfully.",
+      });
+    } else {
+      setInternshipsList((prev) => [
+        ...prev,
+        { ...newInternship, createdAt: new Date().toISOString(), enabled: true },
+      ]);
+      toast({
+        title: "Internship Added",
+        description: "New internship added successfully.",
+      });
+    }
+    setIsAddingProject(false);
+    setIsAddingInternship(false);
+    resetForm();
+  };
+
+  const toggleInternship = (index) => {
+    setInternshipsList((prev) =>
+      prev.map((item, idx) =>
+        idx === index ? { ...item, enabled: !item.enabled } : item
+      )
+    );
+  };
+
+  const deleteInternship = (index) => {
+    setInternshipsList((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
@@ -6572,7 +6714,19 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-lg">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
-            <Edit3 className="w-5 h-5 text-blue-600" /> Manage Projects
+            {isAddingProject ? (
+              <>
+                <Edit3 className="w-5 h-5 text-blue-600" /> Manage Project
+              </>
+            ) : isAddingInternship ? (
+              <>
+                <Briefcase className="w-5 h-5 text-green-600" /> Manage Internship
+              </>
+            ) : (
+              <>
+                <Edit3 className="w-5 h-5 text-blue-600" /> Projects & Internships
+              </>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -6795,17 +6949,209 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
             </div>
           ))}
 
-          {/* Add Form */}
-          {!isAdding ? (
+          {/* Add Project Button */}
+          {!isAddingProject && !isAddingInternship && (
             <Button
-              onClick={() => setIsAdding(true)}
+              onClick={() => {
+                setIsAddingProject(true);
+                setIsAddingInternship(false);
+                setEditingIndex(null);
+                setEditingType(null);
+                resetForm();
+              }}
               variant="outline"
-              className="w-full border-dashed border-gray-300 text-gray-600 hover:bg-gray-50"
+              className="w-full border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add New Project
+              Add Project
             </Button>
-          ) : (
+          )}
+
+          {/* Internship List */}
+          {internshipsList.map((internship, index) => (
+            <div
+              key={`internship-${index}`}
+              className={`relative border border-green-200 rounded-xl p-6 shadow-sm transition-opacity ${
+                internship.enabled === false ? "bg-gray-50 opacity-60" : "bg-green-50"
+              }`}
+            >
+              <div className="absolute top-4 right-4 flex gap-2">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="text-green-600 bg-white border-green-200 hover:bg-green-50"
+                  onClick={() => {
+                    setFormData({
+                      ...internship,
+                      techInput: "",
+                    });
+                    setEditingIndex(index);
+                    setEditingType("internship");
+                    setIsAddingInternship(true);
+                    setIsAddingProject(false);
+                  }}
+                >
+                  <Edit3 className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="text-red-600 bg-red-50 border-red-200 hover:bg-red-50"
+                  onClick={() => deleteInternship(index)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className={
+                    internship.enabled
+                      ? "text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+                      : "text-gray-500 border-gray-300 bg-white hover:bg-gray-100"
+                  }
+                  onClick={() => toggleInternship(index)}
+                  title={internship.enabled ? "Disable internship" : "Enable internship"}
+                >
+                  {internship.enabled ? (
+                    <Eye className="w-4 h-4" />
+                  ) : (
+                    <EyeOff className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2 mb-2">
+                <Briefcase className="w-5 h-5 text-green-600" />
+                <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-1 rounded">
+                  INTERNSHIP
+                </span>
+              </div>
+
+              <h2 className="text-xl font-semibold text-black w-[calc(100%-8rem)]">
+                {internship.role}
+              </h2>
+              {internship.company_name && (
+                <p className="text-sm text-gray-700 font-medium flex items-center gap-1 mt-1">
+                  <Building2 className="w-4 h-4 text-gray-500" />
+                  {internship.company_name}
+                </p>
+              )}
+              {internship.duration && (
+                <p className="text-sm text-gray-500 flex items-center gap-1 my-2">
+                  <CalendarDays className="w-4 h-4 text-gray-400" />
+                  {internship.duration}
+                </p>
+              )}
+
+              <div className="flex gap-2 mt-3 flex-wrap">
+                {internship.location && (
+                  <span className="flex items-center px-3 py-1 text-xs rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                    <MapPin className="w-3 h-3 mr-1" /> {internship.location}
+                  </span>
+                )}
+                {internship.internship_type && (
+                  <span className="flex items-center px-3 py-1 text-xs rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                    {internship.internship_type}
+                  </span>
+                )}
+                {internship.stipend && (
+                  <span className="flex items-center px-3 py-1 text-xs rounded-full bg-green-50 text-green-700 border border-green-200">
+                    {internship.stipend}
+                  </span>
+                )}
+              </div>
+
+              {internship.responsibilities && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-gray-600 mb-1">Responsibilities:</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {internship.responsibilities}
+                  </p>
+                </div>
+              )}
+
+              {internship.achievements && (
+                <div className="mt-2">
+                  <p className="text-xs font-semibold text-gray-600 mb-1">Achievements:</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {internship.achievements}
+                  </p>
+                </div>
+              )}
+
+              {internship.skills_learned && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-gray-600 mb-1">Skills Learned:</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {internship.skills_learned.split(',').map((skill, i) => (
+                      <span
+                        key={i}
+                        className="px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 text-xs border border-orange-100"
+                      >
+                        {skill.trim()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end items-center gap-2 pt-4 mt-3 border-t border-green-100 flex-wrap">
+                {internship.offer_letter_url && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="text-green-600 border-green-200 hover:bg-green-50"
+                  >
+                    <a
+                      href={internship.offer_letter_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <FileText className="w-4 h-4 mr-1" /> Offer Letter
+                    </a>
+                  </Button>
+                )}
+                {internship.recommendation_letter_url && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  >
+                    <a
+                      href={internship.recommendation_letter_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <FileText className="w-4 h-4 mr-1" /> Recommendation
+                    </a>
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Add Internship Button */}
+          {!isAddingInternship && !isAddingProject && (
+            <Button
+              onClick={() => {
+                setIsAddingInternship(true);
+                setIsAddingProject(false);
+                setEditingIndex(null);
+                setEditingType(null);
+                resetForm();
+              }}
+              variant="outline"
+              className="w-full border-dashed border-green-300 text-green-600 hover:bg-green-50 hover:border-green-400"
+            >
+              <Briefcase className="w-4 h-4 mr-2" />
+              Add Internship
+            </Button>
+          )}
+
+          {/* Add Project Form */}
+          {isAddingProject && (
             <div className="p-5 border border-gray-200 rounded-xl bg-gray-50 space-y-4">
               {/* Basic Info */}
               <div className="space-y-2">
@@ -7259,7 +7605,8 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setIsAdding(false);
+                    setIsAddingProject(false);
+                    setIsAddingInternship(false);
                     resetForm();
                   }}
                 >
@@ -7270,6 +7617,251 @@ export const ProjectsEditModal = ({ isOpen, onClose, data, onSave }) => {
                   className="bg-blue-500 hover:bg-blue-600 text-white"
                 >
                   {editingIndex !== null ? "Update Project" : "Add Project"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Add Internship Form */}
+          {isAddingInternship && (
+            <div className="p-5 border border-gray-200 rounded-xl bg-gray-50 space-y-4">
+              {/* Basic Info */}
+              <div className="space-y-2">
+                <Label htmlFor="internship-company">Company Name *</Label>
+                <Input
+                  id="internship-company"
+                  value={formData.company_name}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, company_name: e.target.value }))
+                  }
+                  placeholder="e.g., Google, Microsoft, etc."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="internship-role">Role / Position *</Label>
+                <Input
+                  id="internship-role"
+                  value={formData.role}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, role: e.target.value }))
+                  }
+                  placeholder="e.g., Software Engineering Intern"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="internship-location">Location</Label>
+                  <Input
+                    id="internship-location"
+                    value={formData.location}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, location: e.target.value }))
+                    }
+                    placeholder="e.g., Bangalore, India or Remote"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="internship-type">Internship Type</Label>
+                  <select
+                    id="internship-type"
+                    value={formData.internship_type}
+                    onChange={(e) =>
+                      setFormData((p) => ({
+                        ...p,
+                        internship_type: e.target.value,
+                      }))
+                    }
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select Type</option>
+                    <option value="Full-time">Full-time</option>
+                    <option value="Part-time">Part-time</option>
+                    <option value="Remote">Remote</option>
+                    <option value="Hybrid">Hybrid</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Timeline Section */}
+              <div className="space-y-2">
+                <Label className="font-medium text-gray-800">Timeline</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="internship-start"
+                      className="text-sm text-gray-600"
+                    >
+                      Start Date
+                    </Label>
+                    <Input
+                      type="date"
+                      id="internship-start"
+                      value={formData.start_date}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          start_date: e.target.value,
+                        }))
+                      }
+                      className="border-gray-300 text-gray-700"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="internship-end"
+                      className="text-sm text-gray-600"
+                    >
+                      End Date
+                    </Label>
+                    <Input
+                      type="date"
+                      id="internship-end"
+                      value={formData.end_date}
+                      onChange={(e) =>
+                        setFormData((p) => ({ ...p, end_date: e.target.value }))
+                      }
+                      className="border-gray-300 text-gray-700"
+                    />
+                  </div>
+                </div>
+
+                {formData.duration && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Duration:{" "}
+                    <span className="font-medium text-gray-700">
+                      {formData.duration}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="internship-stipend">Stipend</Label>
+                <Input
+                  id="internship-stipend"
+                  value={formData.stipend}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, stipend: e.target.value }))
+                  }
+                  placeholder="e.g., ₹15,000/month or Unpaid"
+                />
+              </div>
+
+              {/* Description & Details */}
+              <div className="space-y-2">
+                <Label htmlFor="internship-responsibilities">
+                  Key Responsibilities
+                </Label>
+                <textarea
+                  id="internship-responsibilities"
+                  value={formData.responsibilities}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      responsibilities: e.target.value,
+                    }))
+                  }
+                  placeholder="Describe your key responsibilities during the internship..."
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="internship-achievements">Achievements</Label>
+                <textarea
+                  id="internship-achievements"
+                  value={formData.achievements}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      achievements: e.target.value,
+                    }))
+                  }
+                  placeholder="List your key achievements and contributions..."
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="internship-skills">Skills Learned</Label>
+                <Input
+                  id="internship-skills"
+                  value={formData.skills_learned}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      skills_learned: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g., React, Node.js, AWS, etc."
+                />
+              </div>
+
+              {/* Documents */}
+              <div className="space-y-3">
+                <Label className="font-medium text-gray-800">
+                  Supporting Documents
+                </Label>
+
+                <div className="space-y-2">
+                  <Label htmlFor="offer-letter-url" className="text-sm">
+                    Offer Letter URL
+                  </Label>
+                  <Input
+                    id="offer-letter-url"
+                    type="url"
+                    value={formData.offer_letter_url}
+                    onChange={(e) =>
+                      setFormData((p) => ({
+                        ...p,
+                        offer_letter_url: e.target.value,
+                      }))
+                    }
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="recommendation-letter-url" className="text-sm">
+                    Recommendation Letter URL
+                  </Label>
+                  <Input
+                    id="recommendation-letter-url"
+                    type="url"
+                    value={formData.recommendation_letter_url}
+                    onChange={(e) =>
+                      setFormData((p) => ({
+                        ...p,
+                        recommendation_letter_url: e.target.value,
+                      }))
+                    }
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsAddingProject(false);
+                    setIsAddingInternship(false);
+                    resetForm();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={saveInternship}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {editingIndex !== null && editingType === "internship"
+                    ? "Update Internship"
+                    : "Add Internship"}
                 </Button>
               </div>
             </div>
