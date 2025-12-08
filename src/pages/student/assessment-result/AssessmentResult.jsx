@@ -230,8 +230,8 @@ const AssessmentResult = () => {
 
                     {/* Summary Grid */}
                     <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Your Assessment Summary</h2>
-                        <p className="text-gray-500 text-center mb-8">Click on any section to view detailed insights</p>
+                        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Your Assessment Summary</h2>
+                        <p className="text-gray-500 text-center mb-8 text-lg">Click on any section to view detailed insights</p>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <SummaryCard
@@ -295,12 +295,12 @@ const AssessmentResult = () => {
                     {/* Overall Summary Banner */}
                     <div className="bg-slate-800 rounded-2xl p-6 text-white">
                         <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                                <Rocket className="w-5 h-5" />
+                            <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                                <Rocket className="w-6 h-6" />
                             </div>
                             <div>
-                                <h4 className="font-bold text-lg mb-2">Overall Career Direction</h4>
-                                <p className="text-gray-300 leading-relaxed">"{results.overallSummary}"</p>
+                                <h4 className="font-bold text-xl mb-2">Overall Career Direction</h4>
+                                <p className="text-gray-300 leading-relaxed text-base">"{results.overallSummary}"</p>
                             </div>
                         </div>
                     </div>
@@ -311,48 +311,47 @@ const AssessmentResult = () => {
                     <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] !p-0 gap-0 overflow-hidden border-0 shadow-2xl rounded-2xl">
                         {/* Header */}
                         <DialogHeader className="bg-slate-800 px-6 py-5">
-                            <DialogTitle className="text-xl font-bold text-white flex items-center gap-3">
+                            <DialogTitle className="text-3xl font-bold text-white flex items-center gap-4">
                                 {activeSection === 'profile' && (
                                     <>
-                                        <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
-                                            <Target className="w-5 h-5 text-white" />
+                                        <div className="w-14 h-14 rounded-lg bg-white/10 flex items-center justify-center">
+                                            <Target className="w-7 h-7 text-white" />
                                         </div>
                                         <div>
                                             <span>Student Profile Snapshot</span>
-                                            <p className="text-gray-400 text-sm font-normal mt-0.5">Your interests, aptitudes & personality</p>
+                                            <p className="text-gray-400 text-lg font-normal mt-0.5">Your interests, aptitudes & personality</p>
                                         </div>
                                     </>
                                 )}
                                 {activeSection === 'career' && (
                                     <>
-                                        <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
-                                            <Briefcase className="w-5 h-5 text-white" />
+                                        <div className="w-14 h-14 rounded-lg bg-white/10 flex items-center justify-center">
+                                            <Briefcase className="w-7 h-7 text-white" />
                                         </div>
                                         <div>
                                             <span>Career Fit Results</span>
-                                            <p className="text-gray-400 text-sm font-normal mt-0.5">Best-matching career paths for you</p>
+                                            <p className="text-gray-400 text-lg font-normal mt-0.5">Best-matching career paths for you</p>
                                         </div>
                                     </>
                                 )}
                                 {activeSection === 'skills' && (
                                     <>
-                                        <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
-                                            <Zap className="w-5 h-5 text-white" />
+                                        <div className="w-14 h-14 rounded-lg bg-white/10 flex items-center justify-center">
+                                            <Zap className="w-7 h-7 text-white" />
                                         </div>
                                         <div>
                                             <span>Skill Gap & Development</span>
-                                            <p className="text-gray-400 text-sm font-normal mt-0.5">Skills to build for career success</p>
+                                            <p className="text-gray-400 text-lg font-normal mt-0.5">Skills to build for career success</p>
                                         </div>
                                     </>
                                 )}
                                 {activeSection === 'roadmap' && (
                                     <>
-                                        <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
-                                            <Rocket className="w-5 h-5 text-white" />
+                                        <div className="w-14 h-14 rounded-lg bg-white/10 flex items-center justify-center">
+                                            <Rocket className="w-7 h-7 text-white" />
                                         </div>
                                         <div>
-                                            <span>Action Roadmap</span>
-                                            <p className="text-gray-400 text-sm font-normal mt-0.5">Your 6-12 month career plan</p>
+                                            <span>Action Roadmap - Your 6-12 month career plan</span>
                                         </div>
                                     </>
                                 )}

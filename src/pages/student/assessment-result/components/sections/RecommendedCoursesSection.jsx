@@ -152,7 +152,7 @@ const RecommendedCoursesSection = ({
             <div className="bg-white rounded-xl p-8 border border-gray-200 shadow-sm">
                 <div className="flex items-center justify-center gap-3">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
-                    <span className="text-gray-600">Loading course recommendations...</span>
+                    <span className="text-gray-600 text-base">Loading course recommendations...</span>
                 </div>
             </div>
         );
@@ -165,8 +165,8 @@ const RecommendedCoursesSection = ({
                 <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
                     <AlertCircle className="w-8 h-8 text-gray-400" />
                 </div>
-                <h4 className="font-semibold text-gray-700 mb-2">No Course Recommendations Available</h4>
-                <p className="text-gray-500 text-sm max-w-md mx-auto">
+                <h4 className="font-semibold text-gray-700 mb-2 text-lg">No Course Recommendations Available</h4>
+                <p className="text-gray-500 text-base max-w-md mx-auto">
                     We couldn't find platform courses that match your profile at this time. 
                     Check back later as new courses are added regularly.
                 </p>
@@ -177,17 +177,17 @@ const RecommendedCoursesSection = ({
     return (
         <div className="space-y-6">
             {/* Main Header */}
-            <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
                 <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                        <GraduationCap className="w-5 h-5 text-indigo-600" />
+                    <div className="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center">
+                        <GraduationCap className="w-6 h-6 text-indigo-600" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-gray-900">Recommended Courses</h3>
-                        <p className="text-xs text-gray-500">Courses matched to your assessment results & skill gaps</p>
+                        <h3 className="font-bold text-gray-900 text-2xl">Recommended Courses</h3>
+                        <p className="text-sm text-gray-500">Courses matched to your assessment results & skill gaps</p>
                     </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-3">
+                <p className="text-base text-gray-600 mt-3">
                     Based on your skill gaps and career interests, we've identified courses
                     that can help accelerate your career development.
                 </p>
@@ -198,25 +198,25 @@ const RecommendedCoursesSection = ({
                 {/* Technical Skills Sub-section */}
                 {hasTechnical && (
                     <div className={hasSoft ? "border-b border-gray-200" : ""}>
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-blue-100">
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 border-b border-blue-100">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center">
-                                        <Code className="w-4 h-4 text-white" />
+                                    <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center">
+                                        <Code className="w-5 h-5 text-white" />
                                     </div>
                                     <div>
-                                        <h4 className="font-semibold text-gray-900">Technical Skills</h4>
-                                        <p className="text-xs text-gray-500">
+                                        <h4 className="font-semibold text-gray-900 text-xl">Technical Skills</h4>
+                                        <p className="text-sm text-gray-500">
                                             Programming, tools & domain expertise
                                         </p>
                                     </div>
                                 </div>
-                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm font-medium">
                                     Top {technicalCourses.length}
                                 </span>
                             </div>
                         </div>
-                        <div className="p-4">
+                        <div className="p-5">
                             <div className="grid md:grid-cols-3 gap-4">
                                 {technicalCourses.map((course, idx) => (
                                     <CourseRecommendationCard
@@ -233,25 +233,25 @@ const RecommendedCoursesSection = ({
                 {/* Soft Skills Sub-section */}
                 {hasSoft && (
                     <div>
-                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 border-b border-purple-100">
+                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-5 border-b border-purple-100">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-purple-500 flex items-center justify-center">
-                                        <Users className="w-4 h-4 text-white" />
+                                    <div className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center">
+                                        <Users className="w-5 h-5 text-white" />
                                     </div>
                                     <div>
-                                        <h4 className="font-semibold text-gray-900">Soft Skills</h4>
-                                        <p className="text-xs text-gray-500">
+                                        <h4 className="font-semibold text-gray-900 text-xl">Soft Skills</h4>
+                                        <p className="text-sm text-gray-500">
                                             Communication, leadership & interpersonal skills
                                         </p>
                                     </div>
                                 </div>
-                                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                                <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm font-medium">
                                     Top {softCourses.length}
                                 </span>
                             </div>
                         </div>
-                        <div className="p-4">
+                        <div className="p-5">
                             <div className="grid md:grid-cols-3 gap-4">
                                 {softCourses.map((course, idx) => (
                                     <CourseRecommendationCard
@@ -268,13 +268,13 @@ const RecommendedCoursesSection = ({
 
             {/* Call to Action */}
             <div className="bg-slate-800 rounded-xl p-6 text-center">
-                <h4 className="text-lg font-bold text-white mb-2">Ready to Start Learning?</h4>
-                <p className="text-gray-400 text-sm mb-4">
+                <h4 className="text-2xl font-bold text-white mb-2">Ready to Start Learning?</h4>
+                <p className="text-gray-400 text-base mb-4">
                     Click on any course card above to view details and enroll. 
                     Start with courses that address your Priority A skills for maximum impact.
                 </p>
-                <div className="flex items-center justify-center gap-2 text-indigo-400 text-sm">
-                    <Sparkles className="w-4 h-4" />
+                <div className="flex items-center justify-center gap-2 text-indigo-400 text-base">
+                    <Sparkles className="w-5 h-5" />
                     <span>Courses are ranked by relevance to your profile</span>
                 </div>
             </div>
