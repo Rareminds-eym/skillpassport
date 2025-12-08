@@ -698,6 +698,132 @@ const StudentDashboard = () => {
             Start Assessment
             <ChevronRight className="w-4 h-4 ml-2" />
           </Button>
+
+          {/* Conditional content below Start Assessment button */}
+          {!hasAssessment ? (
+            // Show detailed assessment info when NOT completed
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <p className="text-gray-700 text-sm leading-relaxed mb-4">
+                Take this comprehensive assessment to uncover your strengths, identify areas for growth, and explore potential opportunities tailored to you. Gain insights that can help guide your learning, career, or personal development journey.
+              </p>
+
+              <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                <h4 className="text-sm font-semibold text-gray-900 mb-2">Why Take This Assessment?</h4>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span>Understand your unique strengths and skills</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span>Identify opportunities for growth and improvement</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span>Get insights that can help guide your career or personal goals</span>
+                  </li>
+                </ul>
+              </div>
+
+              <p className="text-sm text-gray-600 italic">
+                It's simple, quick, and tailored just for you—discover more about yourself today!
+              </p>
+            </div>
+          ) : (
+            // Show Career AI Tools when assessment completed
+            <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Career AI Tools</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => navigate("/student/career-ai", { state: { query: 'What jobs match my skills and experience?' } })}
+                className="bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+              >
+                <div className="bg-amber-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <span className="font-semibold text-sm flex-1">Find Jobs</span>
+                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+              </button>
+
+              <button
+                onClick={() => navigate("/student/career-ai", { state: { query: 'Analyze my skill gaps for my target career' } })}
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+              >
+                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <Target className="w-5 h-5" />
+                </div>
+                <span className="font-semibold text-sm flex-1">Skill Gap Analysis</span>
+                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+              </button>
+
+              <button
+                onClick={() => navigate("/student/career-ai", { state: { query: 'Help me prepare for upcoming interviews' } })}
+                className="bg-green-50 hover:bg-green-100 text-green-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+              >
+                <div className="bg-green-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <span className="font-semibold text-sm flex-1">Interview Prep</span>
+                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+              </button>
+
+              <button
+                onClick={() => navigate("/student/career-ai", { state: { query: 'Review my resume and suggest improvements' } })}
+                className="bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+              >
+                <div className="bg-purple-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <span className="font-semibold text-sm flex-1">Resume Review</span>
+                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+              </button>
+
+              <button
+                onClick={() => navigate("/student/career-ai", { state: { query: 'Create a learning roadmap for my career goals' } })}
+                className="bg-pink-50 hover:bg-pink-100 text-pink-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+              >
+                <div className="bg-pink-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <span className="font-semibold text-sm flex-1">Learning Path</span>
+                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+              </button>
+
+              <button
+                onClick={() => navigate("/student/career-ai", { state: { query: 'What career paths are best suited for me?' } })}
+                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+              >
+                <div className="bg-indigo-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <span className="font-semibold text-sm flex-1">Career Guidance</span>
+                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+              </button>
+
+              <button
+                onClick={() => navigate("/student/career-ai", { state: { query: 'Give me networking strategies for my field' } })}
+                className="bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+              >
+                <div className="bg-teal-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <Users className="w-5 h-5" />
+                </div>
+                <span className="font-semibold text-sm flex-1">Networking Tips</span>
+                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+              </button>
+
+              <button
+                onClick={() => navigate("/student/career-ai", { state: { query: 'I need career advice and guidance' } })}
+                className="bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+              >
+                <div className="bg-orange-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <Lightbulb className="w-5 h-5" />
+                </div>
+                <span className="font-semibold text-sm flex-1">Career Advice</span>
+                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+              </button>
+            </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     ),
