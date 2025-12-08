@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase,
@@ -41,6 +41,11 @@ const TimelinePage = () => {
   const { studentData, loading } = useStudentDataByEmail(userEmail);
   const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [activeTab, setActiveTab] = useState("all"); // all, education, experience, project, certificate, achievement
+
+  // Scroll to top when page loads
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   // Create comprehensive milestone data from user data
   const createMilestones = () => {
