@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import { 
   Send,
   Briefcase, 
@@ -32,6 +33,7 @@ interface Message {
 
 const CareerAssistant: React.FC = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,6 +42,7 @@ const CareerAssistant: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+  const [autoSendQuery, setAutoSendQuery] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -117,6 +120,107 @@ const CareerAssistant: React.FC = () => {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Handle incoming query from navigation state (from Dashboard cards)
+  useEffect(() => {
+    const state = location.state as { query?: string } | null;
+    if (state?.query && messages.length === 0) {
+      // Set the input field with the query
+      setInput(state.query);
+      setAutoSendQuery(true);
+      // Clear the state to prevent re-triggering
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  // Auto-send query when flag is set
+  useEffect(() => {
+    if (autoSendQuery && input && !loading) {
+      setAutoSendQuery(false);
+      // Small delay to ensure UI is ready
+      const timer = setTimeout(async () => {
+        if (!input.trim() || loading) return;
+
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          role: 'user',
+          content: input.trim(),
+          timestamp: new Date().toISOString()
+        };
+
+        setMessages(prev => [...prev, userMessage]);
+        const userInput = input.trim();
+        setInput('');
+        setLoading(true);
+        setShowWelcome(false);
+        setUserScrolledUp(false);
+        userInteractedRef.current = false;
+
+        try {
+          const studentId = user?.id;
+          if (!studentId) {
+            throw new Error('Please log in to use Career AI');
+          }
+
+          const id = (Date.now() + 1).toString();
+          
+          const aiMessage: Message = {
+            id,
+            role: 'assistant',
+            content: '',
+            timestamp: new Date().toISOString()
+          };
+          
+          setMessages(prev => [...prev, aiMessage]);
+          setLoading(false);
+          setIsTyping(true);
+
+          const result = await careerIntelligenceEngine.processQueryStream(
+            userInput,
+            studentId,
+            (chunk: string) => {
+              setMessages(prev => prev.map(m => 
+                m.id === id ? { ...m, content: m.content + chunk } : m
+              ));
+              
+              if (!userInteractedRef.current) {
+                requestAnimationFrame(() => {
+                  if (!userInteractedRef.current) {
+                    messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+                  }
+                });
+              }
+            }
+          );
+
+          if (result.interactive) {
+            setMessages(prev => prev.map(m => 
+              m.id === id ? { ...m, interactive: result.interactive } : m
+            ));
+          }
+        } catch (error) {
+          console.error('Career AI Error:', error);
+          
+          const errorMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: "I'm sorry, I encountered an error while processing your request. Please make sure your OpenAI API key is configured correctly in the .env file. Try again in a moment!",
+            timestamp: new Date().toISOString()
+          };
+          
+          setMessages(prev => [...prev, errorMessage]);
+        } finally {
+          setLoading(false);
+          setIsTyping(false);
+          if (typingTimerRef.current) {
+            clearTimeout(typingTimerRef.current);
+            typingTimerRef.current = null;
+          }
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [autoSendQuery, input, loading]);
 
   // Cleanup any pending typing timers on unmount
   useEffect(() => {
