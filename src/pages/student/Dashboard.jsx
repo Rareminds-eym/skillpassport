@@ -17,11 +17,7 @@ import {
   Calendar,
   Award,
   Eye,
-  Users,
-  Code,
-  MessageCircle,
   QrCode,
-  FolderGit2,
   Medal,
   Briefcase,
   MapPin,
@@ -39,6 +35,12 @@ import {
   File,
   FileText,
   ClipboardList,
+  GraduationCap,
+  PresentationIcon,
+  Rocket,
+  Cpu,
+  Users2,
+  Lightbulb,
 } from "lucide-react";
 import {
   suggestions,
@@ -708,11 +710,14 @@ const StudentDashboard = () => {
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <ExternalLink className="w-5 h-5 text-blue-600" />
+                <Briefcase className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">
                 Opportunities
               </span>
+              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
+                {opportunities?.length || 0}
+              </Badge>
             </div>
           </CardTitle>
         </CardHeader>
@@ -859,11 +864,14 @@ const StudentDashboard = () => {
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Code className="w-5 h-5 text-blue-600" />
+                <Cpu className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">
                 Technical Skills
               </span>
+              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
+                {userData.technicalSkills.filter((skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified')).length}
+              </Badge>
             </CardTitle>
             <button
               className="p-2 rounded-md hover:bg-gray-100 transition-colors"
@@ -945,7 +953,7 @@ const StudentDashboard = () => {
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <FolderGit2 className="w-5 h-5 text-blue-600" />
+                <Rocket className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">
                 Projects/Internships
@@ -1157,7 +1165,7 @@ const StudentDashboard = () => {
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Award className="w-5 h-5 text-blue-600" />
+                <GraduationCap className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">
                 Education
@@ -1263,7 +1271,7 @@ const StudentDashboard = () => {
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Code className="w-5 h-5 text-blue-600" />
+                <PresentationIcon className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">Training</span>
             </CardTitle>
@@ -1584,11 +1592,14 @@ const StudentDashboard = () => {
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Users className="w-5 h-5 text-blue-600" />
+                <Building2 className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">
                 My Experience
               </span>
+              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
+                {userData.experience?.filter(exp => exp.enabled !== false && (exp.approval_status === "verified" || exp.approval_status === "approved")).length || 0}
+              </Badge>
             </CardTitle>
             <button
               className="p-2 rounded-md hover:bg-gray-100 transition-colors"
@@ -1655,11 +1666,14 @@ const StudentDashboard = () => {
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <MessageCircle className="w-5 h-5 text-blue-600" />
+                <Users2 className="w-5 h-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold text-gray-900">
                 Soft Skills
               </span>
+              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
+                {userData.softSkills.filter((skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified')).length}
+              </Badge>
             </CardTitle>
             <button
               className="p-2 rounded-md hover:bg-gray-100 transition-colors"
@@ -1846,15 +1860,14 @@ const StudentDashboard = () => {
                     <div className="flex items-center w-full justify-between">
                       <CardTitle className="flex items-center gap-3 m-0 p-0">
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center border border-amber-200">
-                          <Sparkles className="w-5 h-5 text-amber-600" />
+                          <Lightbulb className="w-5 h-5 text-amber-600" />
                         </div>
                         <span className="text-lg font-semibold text-gray-900">
                           Suggested Steps
                         </span>
                         {matchedJobs.length > 0 && (
-                          <Badge className="bg-green-50 text-green-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2 flex items-center gap-1">
-                            <Target className="w-3 h-3" />
-                            {matchedJobs.length} Matches
+                          <Badge className="bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
+                            {matchedJobs.length}
                           </Badge>
                         )}
                       </CardTitle>
