@@ -76,6 +76,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               icon: UserGroupIcon,
             },
             {
+              name: "Digital Portfolio",
+              path: "/school-admin/students/digital-portfolio",
+              icon: FolderIcon,
+            },
+            {
               name: "Class Management",
               path: "/school-admin/classes/management",
               icon: AcademicCapIcon,
