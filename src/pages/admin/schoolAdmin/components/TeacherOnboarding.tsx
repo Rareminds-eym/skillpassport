@@ -43,6 +43,8 @@ const TeacherOnboardingPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [generatedTeacherId, setGeneratedTeacherId] = useState<string | null>(null);
 
   const handleFileChange = (field: keyof typeof documents, files: FileList | null) => {
     if (!files) return;
@@ -136,6 +138,10 @@ const TeacherOnboardingPage: React.FC = () => {
       // Upload documents (only if provided)
       const degreeUrl = documents.degree_certificate
         ? await uploadFile(documents.degree_certificate, "degrees")
+        : null;
+
+      const idProofUrl = documents.id_proof
+        ? await uploadFile(documents.id_proof, "id-proofs")
         : null;
 
       // If still no school_id, try to get from users table

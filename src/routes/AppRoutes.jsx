@@ -200,6 +200,9 @@ const FacultyManagement = lazy(() =>
 const ExaminationManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/ExaminationManagement")
 );
+const CollegeAdminDigitalPortfolio = lazy(() =>
+  import("../pages/admin/collegeAdmin/DigitalPortfolio")
+);
 const PlacementManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/PlacementManagement")
 );
@@ -452,6 +455,7 @@ const AppRoutes = () => {
           <Route path="students/performance" element={<PerformanceMonitoring />} />
           <Route path="students/assessment-results" element={<CollegeAdminAssessmentResults />} />
           <Route path="students/graduation" element={<GraduationEligibility />} />
+          <Route path="students/digital-portfolio" element={<CollegeAdminDigitalPortfolio />} />
           
           {/* Academic Management */}
           <Route path="academics/courses" element={<CollegeAdminCourses />} />

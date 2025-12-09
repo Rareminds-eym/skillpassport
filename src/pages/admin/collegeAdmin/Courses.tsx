@@ -19,6 +19,7 @@ import CourseDetailDrawer from '../../../components/educator/courses/CourseDetai
 
 import {
   getCoursesByEducator,
+  getAllCourses,
   createCourse,
   updateCourse
 } from '../../../services/educator/coursesService';
@@ -40,6 +41,7 @@ const CollegeAdminCourses: React.FC = () => {
 
   const [educatorId, setEducatorId] = useState<string | null>(null);
   const [educatorName, setEducatorName] = useState<string>('');
+  const [schoolId, setSchoolId] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTabFilter, setActiveTabFilter] = useState('All Courses');
@@ -90,9 +92,23 @@ const CollegeAdminCourses: React.FC = () => {
         setEducatorName(fullName);
         console.log('✅ College Admin name set:', fullName);
 
-        // Load courses
-        console.log('📡 Fetching courses for college admin:', user.id);
-        const coursesData = await getCoursesByEducator(user.id);
+        // Get school_id from school_educators table for creating courses
+        const { data: educatorData, error: educatorError } = await supabase
+          .from('school_educators')
+          .select('school_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (educatorData) {
+          setSchoolId(educatorData.school_id);
+          console.log('✅ School ID set:', educatorData.school_id);
+        } else {
+          console.warn('⚠️ No school_id found for user, will not be able to create courses');
+        }
+
+        // Load ALL courses (not filtered by school)
+        console.log('📡 Fetching all courses');
+        const coursesData = await getAllCourses();
         console.log('✅ Courses loaded:', coursesData.length, 'courses');
         
         // Debug: Log module counts for each course
@@ -209,12 +225,14 @@ const CollegeAdminCourses: React.FC = () => {
     console.log('=== HANDLE CREATE COURSE ===');
     console.log('College Admin ID:', educatorId);
     console.log('College Admin Name:', educatorName);
+    console.log('School ID:', schoolId);
     console.log('Course Data:', courseData);
     
-    if (!educatorId || !educatorName) {
+    if (!educatorId || !educatorName || !schoolId) {
       console.error('❌ Missing college admin information');
       console.log('educatorId:', educatorId);
       console.log('educatorName:', educatorName);
+      console.log('schoolId:', schoolId);
       setError('College admin information not available. Please refresh the page and try again.');
       return;
     }
@@ -240,7 +258,8 @@ const CollegeAdminCourses: React.FC = () => {
           coEducators: []
         },
         educatorId,
-        educatorName
+        educatorName,
+        schoolId
       );
 
       console.log('✅ Course created successfully:', newCourse);
@@ -426,7 +445,7 @@ const CollegeAdminCourses: React.FC = () => {
           </p>
         </div>
 
-        <button
+        {/* <button
           onClick={() => {
             console.log('Create Course button clicked');
             console.log('Current educatorId:', educatorId);
@@ -438,7 +457,7 @@ const CollegeAdminCourses: React.FC = () => {
         >
           <PlusIcon className="h-5 w-5" />
           Create Course
-        </button>
+        </button> */}
       </div>
 
       {/* Tabs */}

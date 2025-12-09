@@ -21,6 +21,7 @@ import {
   BuildingLibraryIcon,
   ClipboardIcon,
   FolderOpenIcon,
+  FolderIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../../context/AuthContext";
