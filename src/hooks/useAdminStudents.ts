@@ -359,6 +359,9 @@ export function useStudents() {
             } else if (userData.role === 'college_admin' && userData.collegeId) {
               collegeId = userData.collegeId;
               console.log('✅ College admin detected, using collegeId from localStorage:', collegeId);
+            } else if (userData.role === 'university_admin' && (userData.universityId || userData.organizationId)) {
+              universityId = userData.universityId || userData.organizationId;
+              console.log('✅ University admin detected, using universityId from localStorage:', universityId);
             }
           } catch (e) {
             console.error('Error parsing stored user:', e);
@@ -478,16 +481,19 @@ export function useStudents() {
           .order('updatedAt', { ascending: false })
           .limit(500);
         
-        // Filter by school_id or college_id based on user role
+        // Filter by school_id, college_id, or universityId based on user role
         if (schoolId) {
           console.log('✅ Filtering students by school_id:', schoolId);
           query = query.eq('school_id', schoolId);
         } else if (collegeId) {
           console.log('✅ Filtering students by college_id:', collegeId);
           query = query.eq('college_id', collegeId);
+        } else if (universityId) {
+          console.log('✅ Filtering students by universityId:', universityId);
+          query = query.eq('universityId', universityId);
         } else {
-          console.warn('⚠️ No school_id or college_id found - User role:', userRole);
-          console.warn('⚠️ This will fetch ALL students - this should not happen for college_admin');
+          console.warn('⚠️ No school_id, college_id, or universityId found - User role:', userRole);
+          console.warn('⚠️ This will fetch ALL students - this should not happen for admins');
         }
         
         let result = await query;
@@ -501,11 +507,13 @@ export function useStudents() {
             .order('updatedAt', { ascending: false })
             .limit(500);
           
-          // Filter by school_id or college_id based on user role
+          // Filter by school_id, college_id, or universityId based on user role
           if (schoolId) {
             simpleQuery = simpleQuery.eq('school_id', schoolId);
           } else if (collegeId) {
             simpleQuery = simpleQuery.eq('college_id', collegeId);
+          } else if (universityId) {
+            simpleQuery = simpleQuery.eq('universityId', universityId);
           }
           
           result = await simpleQuery;
