@@ -90,6 +90,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               path: "/school-admin/students/attendance-reports",
               icon: ChartBarIcon,
             },
+            {
+              name: "Assessment Results",
+              path: "/school-admin/students/assessment-results",
+              icon: ChartPieIcon,
+            },
           ],
         },
         {

@@ -345,6 +345,9 @@ const AttendanceReports = lazy(() =>
 const ClassManagement = lazy(() =>
   import("../pages/admin/schoolAdmin/ClassManagement")
 );
+const SchoolAdminAssessmentResults = lazy(() =>
+  import("../pages/admin/schoolAdmin/AssessmentResults")
+);
 
 // Settings
 const SchoolAdminSettings = lazy(() =>
@@ -512,6 +515,7 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<SchoolAdminDashboard />} />
           <Route path="students/admissions" element={<StudentAdmissions />} />
           <Route path="students/attendance-reports" element={<AttendanceReports />} />
+          <Route path="students/assessment-results" element={<SchoolAdminAssessmentResults />} />
           <Route path="students/digital-portfolio" element={<SchoolAdminDigitalPortfolio />} />
           <Route path="classes/management" element={<ClassManagement />} />
           <Route path="teachers/list" element={<TeacherList />} />
