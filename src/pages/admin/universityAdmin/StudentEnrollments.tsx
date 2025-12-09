@@ -249,8 +249,8 @@ const StudentEnrollments = () => {
   }, [students]);
 
   const filteredAndSortedStudents = useMemo(() => {
-    // Filter students associated with colleges/universities (universityId is not null)
-    let result = students.filter(student => student.universityId);
+    // Students are already filtered by university/college in the hook
+    let result = [...students];
 
     if (searchQuery && searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase().trim();

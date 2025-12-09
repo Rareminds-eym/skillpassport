@@ -793,12 +793,32 @@ const OpportunityPreview = ({
               </button>
             </div>
 
-            {/* Modal Content - Two Column Grid */}
+            {/* Modal Content - Dynamic Layout */}
             <div className="p-4 sm:p-6 overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 10rem)' }}>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                
-                {/* LEFT COLUMN */}
-                <div className="space-y-5">
+              {(() => {
+                // Determine which fields exist for left column
+                const hasLeftColumn = opportunity.sector || opportunity.exposure_type || 
+                  (opportunity.duration_weeks || opportunity.duration_days || opportunity.total_hours) ||
+                  opportunity.what_youll_do || 
+                  (opportunity.final_artifact_type || opportunity.final_artifact_description) ||
+                  opportunity.mentor_bio ||
+                  (opportunity.cost_inr !== null && opportunity.cost_inr !== undefined) || opportunity.cost_note;
+
+                // Determine which fields exist for right column
+                const hasRightColumn = opportunity.prerequiste || opportunity.safety_note || opportunity.parent_role ||
+                  skills.length > 0 || requirements.length > 0 || responsibilities.length > 0 || benefits.length > 0;
+
+                // Use single column if only one side has data, otherwise use two columns
+                const gridClass = (hasLeftColumn && hasRightColumn) 
+                  ? "grid grid-cols-1 lg:grid-cols-2 gap-5" 
+                  : "max-w-3xl mx-auto space-y-5";
+
+                return (
+                  <div className={gridClass}>
+                    
+                    {/* LEFT COLUMN - Only render if has content */}
+                    {hasLeftColumn && (
+                      <div className="space-y-5">
                   
                   {/* Sector & Exposure Type */}
                   {(opportunity.sector || opportunity.exposure_type) && (
@@ -951,10 +971,12 @@ const OpportunityPreview = ({
                     </div>
                   )}
                   
-                </div>
-                
-                {/* RIGHT COLUMN */}
-                <div className="space-y-5">
+                      </div>
+                    )}
+                    
+                    {/* RIGHT COLUMN - Only render if has content */}
+                    {hasRightColumn && (
+                      <div className="space-y-5">
 
                   {/* Prerequisites */}
                   {opportunity.prerequiste && (
@@ -1085,30 +1107,33 @@ const OpportunityPreview = ({
                     </div>
                   )}
                   
-                </div>
-                
-                {/* Deadline - Full Width at Bottom */}
-                {(opportunity.deadline || opportunity.closing_date) && (
-                  <div className="col-span-1 lg:col-span-2">
-                    <div className="flex items-center gap-2.5 p-4 bg-rose-50 rounded-lg border border-rose-100">
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-md">
-                        <Calendar className="w-4.5 h-4.5 text-white" />
                       </div>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Application Deadline</p>
-                        <p className="text-sm font-bold text-gray-900">
-                          {new Date(opportunity.deadline || opportunity.closing_date).toLocaleDateString('en-US', { 
-                            month: 'long', 
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </p>
+                    )}
+                    
+                    {/* Deadline - Full Width at Bottom */}
+                    {(opportunity.deadline || opportunity.closing_date) && (
+                      <div className={(hasLeftColumn && hasRightColumn) ? "col-span-1 lg:col-span-2" : ""}>
+                        <div className="flex items-center gap-2.5 p-4 bg-rose-50 rounded-lg border border-rose-100">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-md">
+                            <Calendar className="w-4.5 h-4.5 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Application Deadline</p>
+                            <p className="text-sm font-bold text-gray-900">
+                              {new Date(opportunity.deadline || opportunity.closing_date).toLocaleDateString('en-US', { 
+                                month: 'long', 
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
+                    
                   </div>
-                )}
-                
-              </div>
+                );
+              })()}
             </div>
 
             {/* Modal Footer with Apply Button */}

@@ -19,7 +19,7 @@ import CourseDetailDrawer from '../../../components/educator/courses/CourseDetai
 import AssignEducatorModal from '../../../components/educator/courses/AssignEducatorModal';
 
 import {
-  getCoursesByEducator,
+  getAllCourses,
   createCourse,
   updateCourse
 } from '../../../services/educator/coursesService';
@@ -108,121 +108,23 @@ const Courses: React.FC = () => {
         setEducatorName(fullName);
         console.log('✅ School Admin name set:', fullName);
 
-        // For school admin, fetch ALL courses from their school, not just their own
-        console.log('📡 Fetching all school courses for school admin:', supabaseUserId);
-        
-        // First, get the school admin's school ID
-        const { data: schoolData, error: schoolError } = await supabase
-          .from('schools')
-          .select('id')
-          .or(`created_by.eq.${supabaseUserId},email.eq.${user.email}`)
-          .maybeSingle();
+        // Get school_id from school_educators table for creating courses
+        const { data: educatorData } = await supabase
+          .from('school_educators')
+          .select('school_id')
+          .eq('user_id', supabaseUserId)
+          .single();
 
-        if (schoolError) {
-          console.error('❌ Error fetching school:', schoolError);
-        }
-
-        let coursesData: Course[] = [];
-
-        if (schoolData) {
-          console.log('✅ School found:', schoolData.id);
-          setSchoolId(schoolData.id);
-          
-          // Fetch all courses from educators in this school
-          const { data: schoolEducators } = await supabase
-            .from('school_educators')
-            .select('user_id')
-            .eq('school_id', schoolData.id);
-
-          const educatorIds = schoolEducators?.map(se => se.user_id) || [];
-          
-          // Also include the school admin's own ID
-          if (!educatorIds.includes(supabaseUserId)) {
-            educatorIds.push(supabaseUserId);
-          }
-
-          console.log('📡 Fetching courses for', educatorIds.length, 'educators');
-          console.log('📡 Educator IDs:', educatorIds);
-
-          // Fetch courses for all educators in the school
-          if (educatorIds.length > 0) {
-            const { data: allCourses, error: coursesError } = await supabase
-              .from('courses')
-              .select(`
-                *,
-                course_skills(skill_name),
-                course_classes(class_name),
-                course_modules(
-                  *,
-                  lessons(
-                    *,
-                    lesson_resources(*)
-                  )
-                )
-              `)
-              .in('educator_id', educatorIds)
-              .is('deleted_at', null)
-              .order('created_at', { ascending: false });
-
-            if (coursesError) {
-              console.error('❌ Error fetching courses:', coursesError);
-              console.error('Error details:', JSON.stringify(coursesError, null, 2));
-            } else {
-              console.log('✅ Raw courses fetched:', allCourses?.length || 0);
-              // Transform the data to match Course interface
-              coursesData = (allCourses || []).map((courseRow: any) => ({
-                id: courseRow.course_id,
-                title: courseRow.title,
-                code: courseRow.code,
-                description: courseRow.description,
-                thumbnail: courseRow.thumbnail,
-                status: courseRow.status,
-                duration: courseRow.duration,
-                skillsCovered: courseRow.course_skills?.map((s: any) => s.skill_name) || [],
-                skillsMapped: courseRow.skills_mapped || 0,
-                totalSkills: courseRow.total_skills || 0,
-                enrollmentCount: courseRow.enrollment_count || 0,
-                completionRate: courseRow.completion_rate || 0,
-                evidencePending: courseRow.evidence_pending || 0,
-                linkedClasses: courseRow.course_classes?.map((c: any) => c.class_name) || [],
-                targetOutcomes: courseRow.target_outcomes || [],
-                modules: (courseRow.course_modules || []).map((mod: any) => ({
-                  id: mod.module_id,
-                  title: mod.title,
-                  description: mod.description || '',
-                  skillTags: mod.skill_tags || [],
-                  activities: mod.activities || [],
-                  order: mod.order_index,
-                  lessons: (mod.lessons || []).map((les: any) => ({
-                    id: les.lesson_id,
-                    title: les.title,
-                    content: les.content || '',
-                    description: les.description || '',
-                    duration: les.duration || '',
-                    order: les.order_index,
-                    resources: (les.lesson_resources || []).map((res: any) => ({
-                      id: res.resource_id,
-                      name: res.name,
-                      type: res.type,
-                      url: res.url,
-                      size: res.file_size,
-                      thumbnailUrl: res.thumbnail_url,
-                      embedUrl: res.embed_url
-                    }))
-                  }))
-                })),
-                coEducators: [],
-                createdAt: courseRow.created_at,
-                updatedAt: courseRow.updated_at
-              }));
-            }
-          }
+        if (educatorData) {
+          setSchoolId(educatorData.school_id);
+          console.log('✅ School ID set:', educatorData.school_id);
         } else {
-          // Fallback: If no school found, just fetch courses created by this admin
-          console.log('⚠️ No school found, fetching only admin-created courses');
-          coursesData = await getCoursesByEducator(supabaseUserId);
+          console.warn('⚠️ No school_id found for user, will not be able to create courses');
         }
 
+        // Load ALL courses (not filtered by school)
+        console.log('📡 Fetching all courses');
+        const coursesData = await getAllCourses();
         console.log('✅ Courses loaded:', coursesData.length, 'courses');
         
         // Debug: Log module counts for each course
@@ -382,7 +284,8 @@ const Courses: React.FC = () => {
           coEducators: []
         },
         educatorId,
-        educatorName
+        educatorName,
+        schoolId || undefined
       );
 
       console.log('✅ Course created successfully:', newCourse);
@@ -616,7 +519,7 @@ const Courses: React.FC = () => {
           </p>
         </div>
 
-        <button
+        {/* <button
           onClick={() => {
             console.log('Create Course button clicked');
             console.log('Current educatorId:', educatorId);
@@ -628,7 +531,7 @@ const Courses: React.FC = () => {
         >
           <PlusIcon className="h-5 w-5" />
           Create Course
-        </button>
+        </button> */}
       </div>
 
       {/* Tabs */}

@@ -293,6 +293,42 @@ export const getLatestResult = async (studentId) => {
 };
 
 /**
+ * Check if student can take assessment (6-month restriction)
+ * @param {string} studentId - Student's user_id
+ * @returns {object} { canTake: boolean, lastAttemptDate: Date|null, nextAvailableDate: Date|null }
+ */
+export const canTakeAssessment = async (studentId) => {
+  const { data, error } = await supabase
+    .from('personal_assessment_results')
+    .select('created_at')
+    .eq('student_id', studentId)
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  if (!data) {
+    // No previous assessment, can take
+    return { canTake: true, lastAttemptDate: null, nextAvailableDate: null };
+  }
+
+  const lastAttemptDate = new Date(data.created_at);
+  const sixMonthsLater = new Date(lastAttemptDate);
+  sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+  
+  const now = new Date();
+  const canTake = now >= sixMonthsLater;
+
+  return {
+    canTake,
+    lastAttemptDate,
+    nextAvailableDate: canTake ? null : sixMonthsLater
+  };
+};
+
+/**
  * Check if student has an in-progress attempt
  * @param {string} studentId - Student's user_id
  */
@@ -385,5 +421,6 @@ export default {
   getLatestResult,
   getInProgressAttempt,
   abandonAttempt,
-  transformQuestionsForUI
+  transformQuestionsForUI,
+  canTakeAssessment
 };

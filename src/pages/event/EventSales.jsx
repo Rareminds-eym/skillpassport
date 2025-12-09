@@ -480,12 +480,21 @@ function EventSales() {
             navigate(`/register/plans/success?id=${reg.id}&plan=${encodeURIComponent(currentPricing.name)}`);
           }
         },
-        modal: { ondismiss: () => setLoading(false) },
+        modal: { 
+          ondismiss: () => {
+            setLoading(false);
+            // Update registration status to cancelled
+            supabase.from('event_registrations').update({ 
+              payment_status: 'cancelled' 
+            }).eq('id', reg.id);
+            navigate(`/register/plans/failure?error=cancelled&plan=${encodeURIComponent(currentPricing.name)}`);
+          }
+        },
       }).open();
     } catch (e) {
       console.error('Payment error:', e);
       setLoading(false);
-      alert('Payment failed. Please try again.');
+      navigate(`/register/plans/failure?error=payment_failed&plan=${encodeURIComponent(currentPricing?.name || '')}`);
     }
   };
 

@@ -50,14 +50,20 @@ export const PRINT_STYLES = `
         visibility: visible !important;
         display: block !important;
     }
+    
+    /* Hide watermarks on screen */
+    .print-only-watermark {
+        display: none !important;
+        visibility: hidden !important;
+    }
 }
 
 /* Print styles */
 @media print {
-    /* Page setup - A4: 210mm x 297mm */
+    /* Page setup - A4: 210mm x 297mm with footer space */
     @page {
         size: A4 portrait;
-        margin: 12mm 15mm;
+        margin: 0;
     }
     
     /* Reset everything */
@@ -98,6 +104,7 @@ export const PRINT_STYLES = `
         transform: none !important;
         left: 0 !important;
         top: 0 !important;
+        padding: 12mm 15mm 25mm 15mm !important;
     }
     
     /* Ensure print-view content is visible */
@@ -148,13 +155,40 @@ export const PRINT_STYLES = `
         position: static !important;
     }
     
-    /* Page breaks */
+    /* Page breaks - let content flow naturally */
     .print-view > div {
-        page-break-inside: avoid;
-        page-break-after: always;
-    }
-    .print-view > div:last-child {
+        page-break-inside: auto;
         page-break-after: auto;
+    }
+    
+    /* Print Footer - appears on every page */
+    .print-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 10px 15mm;
+        background: white;
+        border-top: 2px solid #4f46e5;
+        font-size: 8px;
+        z-index: 9999;
+    }
+    
+    /* Add padding to content to avoid footer overlap */
+    .print-content {
+        padding-bottom: 60px;
+    }
+    
+    /* Show watermarks only in print */
+    .print-only-watermark {
+        display: block !important;
+        visibility: visible !important;
+    }
+    
+    /* Watermark styling - Logo based */
+    .print-view img[alt*="Watermark"] {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
     
     /* Ensure backgrounds print */
