@@ -228,6 +228,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           key: "courses",
           items: [
             {
+              name: "Courses",
+              path: "/university-admin/courses",
+              icon: BookOpenIcon,
+            },
+            {
               name: "Syllabus Approval",
               path: "/university-admin/courses/syllabus",
               icon: BookOpenIcon,
@@ -268,6 +273,16 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               name: "Enrollment & Profiles",
               path: "/university-admin/students/enrollments",
               icon: UserGroupIcon,
+            },
+            {
+              name: "Digital Portfolios",
+              path: "/university-admin/students/digital-portfolios",
+              icon: FolderOpenIcon,
+            },
+            {
+              name: "Assessment Results",
+              path: "/university-admin/students/assessment-results",
+              icon: ChartPieIcon,
             },
             {
               name: "Continuous Assessment",
@@ -395,9 +410,9 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             icon: ChartBarIcon,
           },
           {
-            name: "Digital Portfolio",
-            path: "/college-admin/students/digital-portfolio",
-            icon: FolderIcon,
+            name: "Assessment Results",
+            path: "/college-admin/students/assessment-results",
+            icon: ChartPieIcon,
           },
           {
             name: "Graduation & Alumni",

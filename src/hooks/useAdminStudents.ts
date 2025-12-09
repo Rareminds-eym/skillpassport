@@ -48,6 +48,9 @@ interface StudentRow {
   approval_status?: string
   student_type?: string
   student_id?: string
+  // Additional fields
+  currentCgpa?: string | number
+  college_id?: string
   // Joined tables
   skills?: any[]
   projects?: any[]
@@ -133,6 +136,11 @@ export interface UICandidate {
   district_name?: string
   university?: string
   contactNumber?: string
+  // Additional fields for profile display
+  currentCgpa?: string | number
+  course_name?: string
+  branch_field?: string
+  enrollment_status?: string
 }
 
 function safeParseProfile(input: unknown): StudentProfile | null {
@@ -168,7 +176,9 @@ function mapToUICandidate(row: StudentRow): UICandidate {
   // Use direct fields first, then fallback to profile
   const name = row.name || profile.name || 'Unknown'
   const email = row.email || profile.email
-  const dial = row.contact_dial_code || profile.contact_number_dial_code ? String(row.contact_dial_code || profile.contact_number_dial_code).replace(/\.0$/, '') : ''
+  const rawDial = row.contact_dial_code || profile.contact_number_dial_code ? String(row.contact_dial_code || profile.contact_number_dial_code).replace(/\.0$/, '') : ''
+  // Remove any existing + from dial code to avoid double ++
+  const dial = rawDial.replace(/^\+/, '')
   const phoneNum = row.contact_number || profile.contact_number ? String(row.contact_number || profile.contact_number).replace(/\.0$/, '') : ''
   const altNum = row.alternate_number || profile.alternate_number ? String(row.alternate_number || profile.alternate_number).replace(/\.0$/, '') : ''
   const phone = phoneNum || altNum ? `${dial ? '+' + dial + ' ' : ''}${phoneNum || altNum}` : undefined
@@ -307,6 +317,11 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     gender: (row as any).gender,
     district_name: row.district_name,
     university: row.university,
+    // Additional fields for profile display
+    currentCgpa: (row as any).currentCgpa,
+    course_name: row.course_name,
+    branch_field: row.branch_field,
+    enrollment_status: (row as any).approval_status || 'approved',
   }
 }
 
@@ -321,61 +336,121 @@ export function useStudents() {
       setLoading(true)
       setError(null)
       try {
-        console.log('🚀 [UPDATED CODE v3.0] Fetching students with school filtering...');
+        console.log('🚀 [UPDATED CODE v4.0] Fetching students with school/university filtering...');
         
-        // Get current user's school_id
+        // Get current user's school_id or university organizationId
         let schoolId: string | null = null;
+        let universityId: string | null = null;
+        let userRole: string | null = null;
+        let userId: string | null = null;
         
-        // First, check if user is logged in via AuthContext (for school admins)
+        // First, check if user is logged in via AuthContext
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           try {
             const userData = JSON.parse(storedUser);
             console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
+            userRole = userData.role;
+            userId = userData.user_id || userData.id;
             
             if (userData.role === 'school_admin' && userData.schoolId) {
               schoolId = userData.schoolId;
               console.log('✅ School admin detected, using schoolId from localStorage:', schoolId);
+            } else if (userData.role === 'university_admin') {
+              // For university admin, we need to get organizationId from database
+              console.log('🎓 University admin detected, will fetch organizationId from database');
             }
           } catch (e) {
             console.error('Error parsing stored user:', e);
           }
         }
         
-        // If not found in localStorage, try Supabase Auth (for educators/teachers)
-        if (!schoolId) {
+        // If not found in localStorage, try Supabase Auth
+        if (!schoolId && !universityId) {
           const { data: { user } } = await supabase.auth.getUser();
           
           if (user) {
             console.log('🔍 Checking Supabase auth user:', user.email);
+            userId = user.id;
             
-            // Check school_educators table
-            const { data: educator } = await supabase
-              .from('school_educators')
-              .select('school_id')
-              .eq('user_id', user.id)
+            // First check the users table for role and organizationId
+            const { data: dbUser } = await supabase
+              .from('users')
+              .select('role, organizationId')
+              .eq('id', user.id)
               .single();
             
-            if (educator?.school_id) {
-              schoolId = educator.school_id;
-              console.log('✅ Found school_id in school_educators:', schoolId);
-            } else {
-              // Check schools table by email
-              const { data: school } = await supabase
-                .from('schools')
-                .select('id')
-                .eq('email', user.email)
+            if (dbUser) {
+              userRole = dbUser.role;
+              console.log('📋 User role from DB:', userRole);
+              
+              if (dbUser.role === 'university_admin' && dbUser.organizationId) {
+                universityId = dbUser.organizationId;
+                console.log('✅ University admin - organizationId:', universityId);
+              }
+            }
+            
+            // Check school_educators table for school admins/educators
+            if (!universityId) {
+              const { data: educator } = await supabase
+                .from('school_educators')
+                .select('school_id')
+                .eq('user_id', user.id)
                 .single();
               
-              schoolId = school?.id || null;
-              if (schoolId) {
-                console.log('✅ Found school_id in schools table:', schoolId);
+              if (educator?.school_id) {
+                schoolId = educator.school_id;
+                console.log('✅ Found school_id in school_educators:', schoolId);
+              } else {
+                // Check schools table by email
+                const { data: school } = await supabase
+                  .from('schools')
+                  .select('id')
+                  .eq('email', user.email)
+                  .single();
+                
+                schoolId = school?.id || null;
+                if (schoolId) {
+                  console.log('✅ Found school_id in schools table:', schoolId);
+                }
               }
             }
           }
         }
         
-        // Try full query first
+        // For university admin, get organizationId from users table if not already set
+        if (userRole === 'university_admin' && !universityId && userId) {
+          const { data: dbUser } = await supabase
+            .from('users')
+            .select('organizationId')
+            .eq('id', userId)
+            .single();
+          
+          if (dbUser?.organizationId) {
+            universityId = dbUser.organizationId;
+            console.log('✅ Got universityId from users table:', universityId);
+          }
+        }
+        
+        let collegeIds: string[] = [];
+        
+        // If university admin, get all colleges under this university
+        if (universityId) {
+          console.log('🏫 Fetching colleges for university:', universityId);
+          const { data: colleges, error: collegesError } = await supabase
+            .from('colleges')
+            .select('id')
+            .eq('universityId', universityId);
+          
+          if (collegesError) {
+            console.error('Error fetching colleges:', collegesError);
+          } else if (colleges && colleges.length > 0) {
+            collegeIds = colleges.map(c => c.id);
+            console.log('✅ Found', collegeIds.length, 'colleges under university');
+          }
+        }
+        
+        // Build the query - use foreign key hints for joins
         let query = supabase
           .from('students')
           .select(`*,
@@ -388,12 +463,19 @@ export function useStudents() {
           .order('updatedAt', { ascending: false })
           .limit(500);
         
-        // Filter by school_id if user is a school admin
+        // Apply filters based on user type
         if (schoolId) {
           console.log('✅ Filtering students by school_id:', schoolId);
           query = query.eq('school_id', schoolId);
+        } else if (collegeIds.length > 0) {
+          console.log('✅ Filtering students by college_ids:', collegeIds.length, 'colleges');
+          query = query.in('college_id', collegeIds);
+        } else if (universityId) {
+          // Fallback: filter by universityId directly on students table
+          console.log('✅ Filtering students by universityId:', universityId);
+          query = query.eq('universityId', universityId);
         } else {
-          console.warn('⚠️ No school_id found - will fetch ALL students');
+          console.warn('⚠️ No school_id or universityId found - will fetch ALL students');
         }
         
         let result = await query;
@@ -407,9 +489,13 @@ export function useStudents() {
             .order('updatedAt', { ascending: false })
             .limit(500);
           
-          // Filter by school_id if user is a school admin
+          // Apply same filters
           if (schoolId) {
             simpleQuery = simpleQuery.eq('school_id', schoolId);
+          } else if (collegeIds.length > 0) {
+            simpleQuery = simpleQuery.in('college_id', collegeIds);
+          } else if (universityId) {
+            simpleQuery = simpleQuery.eq('universityId', universityId);
           }
           
           result = await simpleQuery;
@@ -422,7 +508,7 @@ export function useStudents() {
         
         if (!isMounted) return;
         
-        console.log(`✅ Fetched ${result.data?.length || 0} students for school_id: ${schoolId || 'ALL'}`);
+        console.log(`✅ Fetched ${result.data?.length || 0} students`);
         
         // Log sample data to verify related tables are loaded
         if (result.data && result.data.length > 0) {

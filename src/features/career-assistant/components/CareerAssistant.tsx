@@ -19,7 +19,11 @@ import {
   Square
 } from 'lucide-react';
 import { careerIntelligenceEngine } from '../services/careerIntelligenceEngine';
+import { streamCareerChat } from '../services/careerEdgeFunctionService';
 import { useAuth } from '../../../context/AuthContext';
+
+// Feature flag to switch between edge function and frontend processing
+const USE_EDGE_FUNCTION = true;
 import { EnhancedMessage, SimpleMessage } from './EnhancedMessage';
 import { EnhancedAIResponse } from '../types/interactive';
 
@@ -175,23 +179,51 @@ const CareerAssistant: React.FC = () => {
           setLoading(false);
           setIsTyping(true);
 
-          const result = await careerIntelligenceEngine.processQueryStream(
-            userInput,
-            studentId,
-            (chunk: string) => {
-              setMessages(prev => prev.map(m => 
-                m.id === id ? { ...m, content: m.content + chunk } : m
-              ));
-              
-              if (!userInteractedRef.current) {
-                requestAnimationFrame(() => {
-                  if (!userInteractedRef.current) {
-                    messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-                  }
-                });
+          // Use edge function or fallback to frontend
+          let result: any;
+          
+          if (USE_EDGE_FUNCTION) {
+            result = await streamCareerChat(
+              userInput,
+              null,
+              selectedChips,
+              (chunk: string) => {
+                setMessages(prev => prev.map(m => 
+                  m.id === id ? { ...m, content: m.content + chunk } : m
+                ));
+                
+                if (!userInteractedRef.current) {
+                  requestAnimationFrame(() => {
+                    if (!userInteractedRef.current) {
+                      messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+                    }
+                  });
+                }
               }
+            );
+            
+            if (!result.success && result.error) {
+              throw new Error(result.error);
             }
-          );
+          } else {
+            result = await careerIntelligenceEngine.processQueryStream(
+              userInput,
+              studentId,
+              (chunk: string) => {
+                setMessages(prev => prev.map(m => 
+                  m.id === id ? { ...m, content: m.content + chunk } : m
+                ));
+                
+                if (!userInteractedRef.current) {
+                  requestAnimationFrame(() => {
+                    if (!userInteractedRef.current) {
+                      messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+                    }
+                  });
+                }
+              }
+            );
+          }
 
           if (result.interactive) {
             setMessages(prev => prev.map(m => 
@@ -204,7 +236,7 @@ const CareerAssistant: React.FC = () => {
           const errorMessage: Message = {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
-            content: "I'm sorry, I encountered an error while processing your request. Please make sure your OpenAI API key is configured correctly in the .env file. Try again in a moment!",
+            content: "I'm sorry, I encountered an error while processing your request. Please try again in a moment!",
             timestamp: new Date().toISOString()
           };
           
@@ -328,25 +360,58 @@ const CareerAssistant: React.FC = () => {
       setIsTyping(true);
 
       // Stream response from LLM in real-time
-      const result = await careerIntelligenceEngine.processQueryStream(
-        userInput,
-        studentId,
-        (chunk: string) => {
-          // Update message content as chunks arrive from LLM
-          setMessages(prev => prev.map(m => 
-            m.id === id ? { ...m, content: m.content + chunk } : m
-          ));
-          
-          // Auto-scroll if user hasn't scrolled up
-          if (!userInteractedRef.current) {
-            requestAnimationFrame(() => {
-              if (!userInteractedRef.current) {
-                messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-              }
-            });
+      // Use edge function for faster server-side processing, or fallback to frontend
+      let result: any;
+      
+      if (USE_EDGE_FUNCTION) {
+        // Use edge function (faster, server-side)
+        console.log('🚀 Using Career AI Edge Function');
+        result = await streamCareerChat(
+          userInput,
+          null, // conversationId - can be enhanced to track conversations
+          selectedChips,
+          (chunk: string) => {
+            // Update message content as chunks arrive from edge function
+            setMessages(prev => prev.map(m => 
+              m.id === id ? { ...m, content: m.content + chunk } : m
+            ));
+            
+            // Auto-scroll if user hasn't scrolled up
+            if (!userInteractedRef.current) {
+              requestAnimationFrame(() => {
+                if (!userInteractedRef.current) {
+                  messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+                }
+              });
+            }
           }
+        );
+        
+        // Handle edge function errors
+        if (!result.success && result.error) {
+          throw new Error(result.error);
         }
-      );
+      } else {
+        // Fallback to frontend processing (slower, but works without edge function)
+        console.log('📱 Using Frontend Career Intelligence Engine');
+        result = await careerIntelligenceEngine.processQueryStream(
+          userInput,
+          studentId,
+          (chunk: string) => {
+            setMessages(prev => prev.map(m => 
+              m.id === id ? { ...m, content: m.content + chunk } : m
+            ));
+            
+            if (!userInteractedRef.current) {
+              requestAnimationFrame(() => {
+                if (!userInteractedRef.current) {
+                  messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+                }
+              });
+            }
+          }
+        );
+      }
 
       // Update with interactive elements if any
       if (result.interactive) {
@@ -354,13 +419,17 @@ const CareerAssistant: React.FC = () => {
           m.id === id ? { ...m, interactive: result.interactive } : m
         ));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Career AI Error:', error);
+      
+      // Show the actual error message for debugging
+      const actualError = error?.message || 'Unknown error occurred';
+      console.error('Actual error:', actualError);
       
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm sorry, I encountered an error while processing your request. Please make sure your OpenAI API key is configured correctly in the .env file. Try again in a moment!",
+        content: `I'm sorry, I encountered an error: ${actualError}. Please try again in a moment!`,
         timestamp: new Date().toISOString()
       };
       
