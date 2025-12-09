@@ -342,6 +342,8 @@ export function useStudents() {
         let schoolId: string | null = null;
         let collegeId: string | null = null;
         let userRole: string | null = null;
+        let userId: string | null = null;
+        let universityId: string | null = null;
         
         // First, check if user is logged in via AuthContext (for school/college admins)
         const storedUser = localStorage.getItem('user');
