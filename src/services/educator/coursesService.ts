@@ -6,6 +6,72 @@ import { Course, CourseModule, Lesson, Resource } from '../../types/educator/cou
 // =====================================================
 
 /**
+ * Get all courses (for admin/college admin to see all courses)
+ */
+export const getAllCourses = async (): Promise<Course[]> => {
+  try {
+    console.log('📡 Fetching all courses');
+    
+    // Step 1: Fetch basic course data only
+    const { data: coursesData, error: coursesError } = await supabase
+      .from('courses')
+      .select('*')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+
+    if (coursesError) {
+      console.error('❌ Error fetching courses:', coursesError);
+      throw coursesError;
+    }
+
+    if (!coursesData || coursesData.length === 0) {
+      console.log('✅ No courses found');
+      return [];
+    }
+
+    console.log('✅ Courses fetched:', coursesData.length);
+    return await transformCoursesData(coursesData);
+  } catch (error) {
+    console.error('❌ Error fetching courses:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all courses for a specific school/college
+ * Used by college admins to see all courses in their institution
+ */
+export const getCoursesBySchool = async (schoolId: string): Promise<Course[]> => {
+  try {
+    console.log('📡 Fetching courses for school:', schoolId);
+    
+    // Step 1: Fetch basic course data only
+    const { data: coursesData, error: coursesError } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('school_id', schoolId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+
+    if (coursesError) {
+      console.error('❌ Error fetching courses:', coursesError);
+      throw coursesError;
+    }
+
+    if (!coursesData || coursesData.length === 0) {
+      console.log('✅ No courses found');
+      return [];
+    }
+
+    console.log('✅ Courses fetched:', coursesData.length);
+    return await transformCoursesData(coursesData);
+  } catch (error) {
+    console.error('❌ Error fetching courses:', error);
+    throw error;
+  }
+};
+
+/**
  * Get all courses for the current educator
  * FIXED: Fetch all related data separately to avoid RLS recursion issues
  */
@@ -32,6 +98,19 @@ export const getCoursesByEducator = async (educatorId: string): Promise<Course[]
     }
 
     console.log('✅ Courses fetched:', coursesData.length);
+    return await transformCoursesData(coursesData);
+  } catch (error) {
+    console.error('❌ Error fetching courses:', error);
+    throw error;
+  }
+};
+
+/**
+ * Transform raw course data from database to Course interface
+ * Shared by getCoursesByEducator and getCoursesBySchool
+ */
+const transformCoursesData = async (coursesData: any[]): Promise<Course[]> => {
+  try {
     const courseIds = coursesData.map((c: any) => c.course_id);
     console.log('📋 Course IDs for modules query:', courseIds);
 
@@ -235,7 +314,7 @@ export const getCoursesByEducator = async (educatorId: string): Promise<Course[]
     console.log('✅ Courses transformed:', transformedCourses.length);
     return transformedCourses;
   } catch (error) {
-    console.error('❌ Error fetching courses:', error);
+    console.error('❌ Error transforming courses:', error);
     throw error;
   }
 };
@@ -266,10 +345,26 @@ export const getCourseById = async (courseId: string): Promise<Course | null> =>
 export const createCourse = async (
   courseData: Omit<Course, 'id' | 'createdAt' | 'updatedAt' | 'enrollmentCount' | 'completionRate' | 'evidencePending'>,
   educatorId: string,
-  educatorName: string
+  educatorName: string,
+  schoolId?: string
 ): Promise<Course> => {
   try {
     console.log('📡 Creating course:', courseData);
+    
+    // If schoolId not provided, try to get it from school_educators table
+    let finalSchoolId = schoolId;
+    if (!finalSchoolId) {
+      const { data: educatorData } = await supabase
+        .from('school_educators')
+        .select('school_id')
+        .eq('user_id', educatorId)
+        .single();
+      
+      if (educatorData) {
+        finalSchoolId = educatorData.school_id;
+        console.log('✅ School ID retrieved from educator:', finalSchoolId);
+      }
+    }
     
     // Insert course
     const { data: courseRow, error: courseError } = await supabase
@@ -285,7 +380,8 @@ export const createCourse = async (
         total_skills: courseData.totalSkills,
         target_outcomes: courseData.targetOutcomes,
         educator_id: educatorId,
-        educator_name: educatorName
+        educator_name: educatorName,
+        school_id: finalSchoolId
       })
       .select()
       .single();

@@ -48,6 +48,9 @@ interface StudentRow {
   approval_status?: string
   student_type?: string
   student_id?: string
+  // Additional fields
+  currentCgpa?: string | number
+  college_id?: string
   // Joined tables
   skills?: any[]
   projects?: any[]
@@ -133,6 +136,11 @@ export interface UICandidate {
   district_name?: string
   university?: string
   contactNumber?: string
+  // Additional fields for profile display
+  currentCgpa?: string | number
+  course_name?: string
+  branch_field?: string
+  enrollment_status?: string
 }
 
 function safeParseProfile(input: unknown): StudentProfile | null {
@@ -168,7 +176,9 @@ function mapToUICandidate(row: StudentRow): UICandidate {
   // Use direct fields first, then fallback to profile
   const name = row.name || profile.name || 'Unknown'
   const email = row.email || profile.email
-  const dial = row.contact_dial_code || profile.contact_number_dial_code ? String(row.contact_dial_code || profile.contact_number_dial_code).replace(/\.0$/, '') : ''
+  const rawDial = row.contact_dial_code || profile.contact_number_dial_code ? String(row.contact_dial_code || profile.contact_number_dial_code).replace(/\.0$/, '') : ''
+  // Remove any existing + from dial code to avoid double ++
+  const dial = rawDial.replace(/^\+/, '')
   const phoneNum = row.contact_number || profile.contact_number ? String(row.contact_number || profile.contact_number).replace(/\.0$/, '') : ''
   const altNum = row.alternate_number || profile.alternate_number ? String(row.alternate_number || profile.alternate_number).replace(/\.0$/, '') : ''
   const phone = phoneNum || altNum ? `${dial ? '+' + dial + ' ' : ''}${phoneNum || altNum}` : undefined
@@ -307,6 +317,11 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     gender: (row as any).gender,
     district_name: row.district_name,
     university: row.university,
+    // Additional fields for profile display
+    currentCgpa: (row as any).currentCgpa,
+    course_name: row.course_name,
+    branch_field: row.branch_field,
+    enrollment_status: (row as any).approval_status || 'approved',
   }
 }
 
@@ -354,6 +369,7 @@ export function useStudents() {
           
           if (user) {
             console.log('🔍 Checking Supabase auth user:', user.email);
+            userId = user.id;
             
             // Get user role from users table
             const { data: userRecord } = await supabase
@@ -415,7 +431,39 @@ export function useStudents() {
           }
         }
         
-        // Try full query first
+        // For university admin, get organizationId from users table if not already set
+        if (userRole === 'university_admin' && !universityId && userId) {
+          const { data: dbUser } = await supabase
+            .from('users')
+            .select('organizationId')
+            .eq('id', userId)
+            .single();
+          
+          if (dbUser?.organizationId) {
+            universityId = dbUser.organizationId;
+            console.log('✅ Got universityId from users table:', universityId);
+          }
+        }
+        
+        let collegeIds: string[] = [];
+        
+        // If university admin, get all colleges under this university
+        if (universityId) {
+          console.log('🏫 Fetching colleges for university:', universityId);
+          const { data: colleges, error: collegesError } = await supabase
+            .from('colleges')
+            .select('id')
+            .eq('universityId', universityId);
+          
+          if (collegesError) {
+            console.error('Error fetching colleges:', collegesError);
+          } else if (colleges && colleges.length > 0) {
+            collegeIds = colleges.map(c => c.id);
+            console.log('✅ Found', collegeIds.length, 'colleges under university');
+          }
+        }
+        
+        // Build the query - use foreign key hints for joins
         let query = supabase
           .from('students')
           .select(`*,

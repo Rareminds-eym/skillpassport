@@ -124,10 +124,12 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   const getGraduationYear = () => {
     if (!realStudentData) return null;
     
-    // For university/college students, use class_year or expectedGraduationDate
-    if (realStudentData.class_year) {
-      return realStudentData.class_year;
+    // For college students, check profile.classYear first
+    if (realStudentData.university_college_id && realStudentData.profile?.classYear) {
+      return realStudentData.profile.classYear;
     }
+    
+    // For university/college students, use expectedGraduationDate
     if (realStudentData.expectedGraduationDate) {
       return new Date(realStudentData.expectedGraduationDate).getFullYear();
     }
@@ -156,7 +158,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     email: realStudentData.email,
     department: realStudentData.branch_field,
     university: realStudentData.university,
-    classYear: graduationYear ? (realStudentData.school_id ? `Graduating ${graduationYear}` : `Class of ${graduationYear}`) : (realStudentData.profile?.classYear || null),
+    classYear: graduationYear || realStudentData.profile?.classYear || null,
     github_link: realStudentData.github_link,
     portfolio_link: realStudentData.portfolio_link,
     linkedin_link: realStudentData.linkedin_link,
@@ -402,17 +404,18 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                         </Badge>
                       )}
                     </div>
+                    {/* Institution Name - Below Name */}
+                    <div className="flex items-center gap-2 text-gray-800 mt-2">
+                      <Briefcase className="w-4 h-4" />
+                      <span className="font-medium">
+                        {institutionName}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* University and Student ID */}
-                <div className="space-y-2 ml-1">
-                  <div className="flex items-center gap-2 text-gray-800">
-                    <Briefcase className="w-4 h-4" />
-                    <span className="font-medium">
-                      {institutionName}
-                    </span>
-                  </div>
+                {/* Student ID (commented out) */}
+                <div className="space-y-2 ml-1" style={{ display: 'none' }}>
                   {/* <div className="flex items-center gap-2 text-white">
                     <CreditCard className="w-4 h-4" />
                     <span>
@@ -430,10 +433,6 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       School Information
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
-                      {/* <div className="flex flex-col">
-                        <span className="text-xs text-gray-600">Name</span>
-                        <span className="text-sm text-gray-900 font-medium">{realStudentData.name || 'N/A'}</span>
-                      </div> */}
                       <div className="flex flex-col">
                         <span className="text-xs text-gray-600">Grade</span>
                         <span className="text-sm text-gray-900 font-medium">{realStudentData.grade || 'N/A'}</span>
@@ -454,17 +453,69 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   </div>
                 )}
 
-                {/* Tags */}
-                <div className="flex flex-wrap gap-3 ml-1">
-                  <Badge className="bg-white text-indigo-700 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
-                    {displayData.department ||
-                      displayData.degree ||
-                      "Computer Science"}
-                  </Badge>
-                  <Badge className="bg-white text-blue-600 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
-                    {displayData.classYear || "Class of 2025"}
-                  </Badge>
+                {/* College-specific fields - Display when university_college_id is not null */}
+                {realStudentData?.university_college_id && (
+                  <div className="ml-1 bg-indigo-50/60 backdrop-blur-md rounded-2xl p-4 border border-indigo-200/60 shadow-lg">
+                    <h3 className="text-gray-900 font-semibold text-sm mb-3 flex items-center gap-2">
+                      <Award className="w-4 h-4" />
+                      College Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {realStudentData.registration_number && (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600">Registration No.</span>
+                          <span className="text-sm text-gray-900 font-medium">{realStudentData.registration_number}</span>
+                        </div>
+                      )}
+                      {realStudentData.admission_number && (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600">Admission Number</span>
+                          <span className="text-sm text-gray-900 font-medium">{realStudentData.admission_number}</span>
+                        </div>
+                      )}
+                      {realStudentData.student_id && (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600">Student ID</span>
+                          <span className="text-sm text-gray-900 font-medium">{realStudentData.student_id}</span>
+                        </div>
+                      )}
+                      {realStudentData.roll_number && (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600">Roll Number</span>
+                          <span className="text-sm text-gray-900 font-medium">{realStudentData.roll_number}</span>
+                        </div>
+                      )}
+                      {realStudentData.branch_field && (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600">Program/Degree</span>
+                          <span className="text-sm text-gray-900 font-medium">{realStudentData.branch_field}</span>
+                        </div>
+                      )}
+                      {realStudentData.section && (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600">Section</span>
+                          <span className="text-sm text-gray-900 font-medium">{realStudentData.section}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                 {/* Tags */}
+                {(displayData.classYear || displayData.department || displayData.degree) && (
+                  <div className="flex flex-wrap gap-3 ml-1">
+                  {(displayData.department || displayData.degree) && (
+                    <Badge className="bg-white text-indigo-700 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
+                      {displayData.department || displayData.degree}
+                    </Badge>
+                  )}
+                  {displayData.classYear && (
+                    <Badge className="bg-white text-blue-600 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
+                      {displayData.classYear}
+                    </Badge>
+                  )}
                 </div>
+                )}
 
                 {/* Digital Badges */}
                 <DigitalBadges
@@ -731,9 +782,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
             <div
               className="fixed z-[9999] transition-all duration-200"
               style={{
-                top: hoveredBadgeData.rect.bottom + 5, // Position below the badge
-                left: hoveredBadgeData.rect.left + hoveredBadgeData.rect.width / 2, // Center horizontally on the badge
-                transform: 'translateX(-50%)', // Center the card
+                top: hoveredBadgeData.rect.top-80, // Position below the badge
+                left: hoveredBadgeData.rect.left + hoveredBadgeData.rect.width / 2 , // Center horizontally on the badge
+                transform: 'translateX(-40%)', // Center the card
               }}
             >
               <div className="bg-white rounded-lg shadow-2xl border border-gray-200 p-4 min-w-64 max-w-xs relative">
