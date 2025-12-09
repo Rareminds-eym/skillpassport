@@ -21,6 +21,7 @@ import {
   BuildingLibraryIcon,
   ClipboardIcon,
   FolderOpenIcon,
+  FolderIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../../context/AuthContext";
@@ -392,6 +393,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             name: "Performance Monitoring",
             path: "/college-admin/students/performance",
             icon: ChartBarIcon,
+          },
+          {
+            name: "Digital Portfolio",
+            path: "/college-admin/students/digital-portfolio",
+            icon: FolderIcon,
           },
           {
             name: "Graduation & Alumni",
