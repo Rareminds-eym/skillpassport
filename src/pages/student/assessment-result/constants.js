@@ -63,10 +63,7 @@ export const PRINT_STYLES = `
     /* Page setup - A4: 210mm x 297mm with footer space */
     @page {
         size: A4 portrait;
-        margin: 12mm 15mm 25mm 15mm;
-        @bottom-center {
-            content: element(footer);
-        }
+        margin: 0;
     }
     
     /* Reset everything */
@@ -107,6 +104,7 @@ export const PRINT_STYLES = `
         transform: none !important;
         left: 0 !important;
         top: 0 !important;
+        padding: 12mm 15mm 25mm 15mm !important;
     }
     
     /* Ensure print-view content is visible */

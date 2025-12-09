@@ -321,55 +321,95 @@ export function useStudents() {
       setLoading(true)
       setError(null)
       try {
-        console.log('🚀 [UPDATED CODE v3.0] Fetching students with school filtering...');
+        console.log('🚀 [UPDATED CODE v4.0] Fetching students with school/college filtering...');
         
-        // Get current user's school_id
+        // Get current user's school_id or college_id
         let schoolId: string | null = null;
+        let collegeId: string | null = null;
+        let userRole: string | null = null;
         
-        // First, check if user is logged in via AuthContext (for school admins)
+        // First, check if user is logged in via AuthContext (for school/college admins)
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           try {
             const userData = JSON.parse(storedUser);
             console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
+            userRole = userData.role;
             
             if (userData.role === 'school_admin' && userData.schoolId) {
               schoolId = userData.schoolId;
               console.log('✅ School admin detected, using schoolId from localStorage:', schoolId);
+            } else if (userData.role === 'college_admin' && userData.collegeId) {
+              collegeId = userData.collegeId;
+              console.log('✅ College admin detected, using collegeId from localStorage:', collegeId);
             }
           } catch (e) {
             console.error('Error parsing stored user:', e);
           }
         }
         
-        // If not found in localStorage, try Supabase Auth (for educators/teachers)
-        if (!schoolId) {
+        // If not found in localStorage, try Supabase Auth
+        if (!schoolId && !collegeId) {
           const { data: { user } } = await supabase.auth.getUser();
           
           if (user) {
             console.log('🔍 Checking Supabase auth user:', user.email);
             
-            // Check school_educators table
-            const { data: educator } = await supabase
-              .from('school_educators')
-              .select('school_id')
-              .eq('user_id', user.id)
+            // Get user role from users table
+            const { data: userRecord } = await supabase
+              .from('users')
+              .select('role')
+              .eq('id', user.id)
               .single();
             
-            if (educator?.school_id) {
-              schoolId = educator.school_id;
-              console.log('✅ Found school_id in school_educators:', schoolId);
-            } else {
-              // Check schools table by email
-              const { data: school } = await supabase
-                .from('schools')
-                .select('id')
-                .eq('email', user.email)
+            userRole = userRecord?.role || null;
+            console.log('👤 User role from database:', userRole);
+            
+            // Check for college admin
+            if (userRole === 'college_admin') {
+              // Find college by matching deanEmail (case-insensitive)
+              const { data: college } = await supabase
+                .from('colleges')
+                .select('id, name, deanEmail')
+                .ilike('deanEmail', user.email)
                 .single();
               
-              schoolId = school?.id || null;
-              if (schoolId) {
-                console.log('✅ Found school_id in schools table:', schoolId);
+              if (college?.id) {
+                collegeId = college.id;
+                console.log('✅ Found college_id for college admin:', collegeId, 'College:', college.name, 'DeanEmail:', college.deanEmail);
+              } else {
+                console.warn('⚠️ College admin but no matching college found for email:', user.email);
+                // Try fetching all colleges to debug
+                const { data: allColleges } = await supabase
+                  .from('colleges')
+                  .select('id, name, deanEmail');
+                console.log('📋 All colleges in database:', allColleges);
+              }
+            }
+            // Check for school admin/educator
+            else {
+              // Check school_educators table
+              const { data: educator } = await supabase
+                .from('school_educators')
+                .select('school_id')
+                .eq('user_id', user.id)
+                .single();
+              
+              if (educator?.school_id) {
+                schoolId = educator.school_id;
+                console.log('✅ Found school_id in school_educators:', schoolId);
+              } else {
+                // Check schools table by email
+                const { data: school } = await supabase
+                  .from('schools')
+                  .select('id')
+                  .eq('email', user.email)
+                  .single();
+                
+                schoolId = school?.id || null;
+                if (schoolId) {
+                  console.log('✅ Found school_id in schools table:', schoolId);
+                }
               }
             }
           }
@@ -388,12 +428,16 @@ export function useStudents() {
           .order('updatedAt', { ascending: false })
           .limit(500);
         
-        // Filter by school_id if user is a school admin
+        // Filter by school_id or college_id based on user role
         if (schoolId) {
           console.log('✅ Filtering students by school_id:', schoolId);
           query = query.eq('school_id', schoolId);
+        } else if (collegeId) {
+          console.log('✅ Filtering students by college_id:', collegeId);
+          query = query.eq('college_id', collegeId);
         } else {
-          console.warn('⚠️ No school_id found - will fetch ALL students');
+          console.warn('⚠️ No school_id or college_id found - User role:', userRole);
+          console.warn('⚠️ This will fetch ALL students - this should not happen for college_admin');
         }
         
         let result = await query;
@@ -407,9 +451,11 @@ export function useStudents() {
             .order('updatedAt', { ascending: false })
             .limit(500);
           
-          // Filter by school_id if user is a school admin
+          // Filter by school_id or college_id based on user role
           if (schoolId) {
             simpleQuery = simpleQuery.eq('school_id', schoolId);
+          } else if (collegeId) {
+            simpleQuery = simpleQuery.eq('college_id', collegeId);
           }
           
           result = await simpleQuery;
@@ -422,7 +468,9 @@ export function useStudents() {
         
         if (!isMounted) return;
         
-        console.log(`✅ Fetched ${result.data?.length || 0} students for school_id: ${schoolId || 'ALL'}`);
+        const filterType = schoolId ? 'school_id' : collegeId ? 'college_id' : 'ALL';
+        const filterId = schoolId || collegeId || 'ALL';
+        console.log(`✅ Fetched ${result.data?.length || 0} students for ${filterType}: ${filterId}`);
         
         // Log sample data to verify related tables are loaded
         if (result.data && result.data.length > 0) {
