@@ -402,17 +402,18 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                         </Badge>
                       )}
                     </div>
+                    {/* Institution Name - Below Name */}
+                    <div className="flex items-center gap-2 text-gray-800 mt-2">
+                      <Briefcase className="w-4 h-4" />
+                      <span className="font-medium">
+                        {institutionName}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* University and Student ID */}
-                <div className="space-y-2 ml-1">
-                  <div className="flex items-center gap-2 text-gray-800">
-                    <Briefcase className="w-4 h-4" />
-                    <span className="font-medium">
-                      {institutionName}
-                    </span>
-                  </div>
+                {/* Student ID (commented out) */}
+                <div className="space-y-2 ml-1" style={{ display: 'none' }}>
                   {/* <div className="flex items-center gap-2 text-white">
                     <CreditCard className="w-4 h-4" />
                     <span>
@@ -454,17 +455,21 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   </div>
                 )}
 
-                {/* Tags */}
-                <div className="flex flex-wrap gap-3 ml-1">
-                  <Badge className="bg-white text-indigo-700 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
-                    {displayData.department ||
-                      displayData.degree ||
-                      "Computer Science"}
-                  </Badge>
-                  <Badge className="bg-white text-blue-600 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
-                    {displayData.classYear || "Class of 2025"}
-                  </Badge>
+                 {/* Tags */}
+                {(displayData.classYear && displayData.department && displayData.degree) && (
+                  <div className="flex flex-wrap gap-3 ml-1">
+                  {(displayData.department || displayData.degree) && (
+                    <Badge className="bg-white text-indigo-700 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
+                      {displayData.department || displayData.degree}
+                    </Badge>
+                  )}
+                  {displayData.classYear && (
+                    <Badge className="bg-white text-blue-600 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
+                      {displayData.classYear}
+                    </Badge>
+                  )}
                 </div>
+                )}
 
                 {/* Digital Badges */}
                 <DigitalBadges
@@ -731,9 +736,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
             <div
               className="fixed z-[9999] transition-all duration-200"
               style={{
-                top: hoveredBadgeData.rect.bottom + 5, // Position below the badge
-                left: hoveredBadgeData.rect.left + hoveredBadgeData.rect.width / 2, // Center horizontally on the badge
-                transform: 'translateX(-50%)', // Center the card
+                top: hoveredBadgeData.rect.top-80, // Position below the badge
+                left: hoveredBadgeData.rect.left + hoveredBadgeData.rect.width / 2 , // Center horizontally on the badge
+                transform: 'translateX(-40%)', // Center the card
               }}
             >
               <div className="bg-white rounded-lg shadow-2xl border border-gray-200 p-4 min-w-64 max-w-xs relative">
