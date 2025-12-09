@@ -62,6 +62,9 @@ const EventSales = lazy(() =>
 const EventSalesSuccess = lazy(() =>
   import("../pages/event/EventSalesSuccess")
 );
+const EventSalesFailure = lazy(() =>
+  import("../pages/event/EventSalesFailure")
+);
 
 const LoginStudent = lazy(() => import("../pages/auth/LoginStudent"));
 const LoginRecruiter = lazy(() => import("../pages/auth/LoginRecruiter"));
@@ -250,6 +253,15 @@ const OutcomeBasedEducation = lazy(() =>
 const AICounselling = lazy(() =>
   import("../pages/admin/universityAdmin/AICounselling")
 );
+const UniversityAdminCourses = lazy(() =>
+  import("../pages/admin/universityAdmin/Courses")
+);
+const UniversityAdminDigitalPortfolio = lazy(() =>
+  import("../pages/admin/universityAdmin/DigitalPortfolio")
+);
+const UniversityAdminAssessmentResults = lazy(() =>
+  import("../pages/admin/universityAdmin/AssessmentResults")
+);
 
 const AttendanceTracking = lazy(() =>
   import("../pages/admin/collegeAdmin/Attendancetracking")
@@ -268,6 +280,9 @@ const CollegeCurriculumBuilder = lazy(() =>
 );
 const CollegeAdminCourses = lazy(() =>
   import("../pages/admin/collegeAdmin/Courses")
+);
+const CollegeAdminAssessmentResults = lazy(() =>
+  import("../pages/admin/collegeAdmin/AssessmentResults")
 );
 const LessonPlanManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/LessonPlanManagement")
@@ -339,6 +354,7 @@ const AppRoutes = () => {
         {/* Event Sales - Standalone without layout (no header/footer) */}
         <Route path="/register/plans" element={<EventSales />} />
         <Route path="/register/plans/success" element={<EventSalesSuccess />} />
+        <Route path="/register/plans/failure" element={<EventSalesFailure />} />
         
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
@@ -434,6 +450,7 @@ const AppRoutes = () => {
           <Route path="students/data-management" element={<StudentDataAdmission />} />
           <Route path="students/attendance" element={<AttendanceTracking />} />
           <Route path="students/performance" element={<PerformanceMonitoring />} />
+          <Route path="students/assessment-results" element={<CollegeAdminAssessmentResults />} />
           <Route path="students/graduation" element={<GraduationEligibility />} />
           
           {/* Academic Management */}
@@ -530,7 +547,10 @@ const AppRoutes = () => {
         >
           <Route path="dashboard" element={<UniversityAdminDashboard />} />
           <Route path="colleges/registration" element={<CollegeRegistration />} />
+          <Route path="courses" element={<UniversityAdminCourses />} />
           <Route path="students/enrollments" element={<StudentEnrollments />} />
+          <Route path="students/digital-portfolios" element={<UniversityAdminDigitalPortfolio />} />
+          <Route path="students/assessment-results" element={<UniversityAdminAssessmentResults />} />
           <Route path="students/continuous-assessment" element={<ContinuousAssessment />} />
           <Route path="placements/readiness" element={<PlacementReadiness />} />
           <Route path="analytics/obe-tracking" element={<OutcomeBasedEducation />} />
