@@ -175,16 +175,35 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         throw new Error('You are not logged in. Please login and try again.')
       }
       
-      // Get schoolId from localStorage
+      // Get schoolId or collegeId from localStorage
       let schoolId = null
+      let collegeId = null
+      let userRole = null
       try {
         const userData = JSON.parse(userStr || '{}')
         schoolId = userData.schoolId || null
+        collegeId = userData.collegeId || null
+        userRole = userData.role || null
       } catch (e) {
         console.warn('Could not parse user data from localStorage')
       }
       
-      console.log('✅ User authenticated:', userEmail, 'School ID:', schoolId)
+      // If collegeId not in localStorage but user is college_admin, fetch from database
+      if (!collegeId && userRole === 'college_admin' && userEmail) {
+        console.log('🔍 Fetching collegeId from database for college admin:', userEmail)
+        const { data: college } = await supabase
+          .from('colleges')
+          .select('id')
+          .ilike('deanEmail', userEmail)
+          .single()
+        
+        if (college?.id) {
+          collegeId = college.id
+          console.log('✅ Found collegeId:', collegeId)
+        }
+      }
+      
+      console.log('✅ User authenticated:', userEmail, 'School ID:', schoolId, 'College ID:', collegeId, 'Role:', userRole)
 
       // Call the create-student Edge Function using direct fetch for better error handling
       console.log('Calling create-student Edge Function with data:', {
@@ -205,7 +224,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         },
         body: JSON.stringify({
           userEmail: userEmail,
-          schoolId: schoolId, // Send schoolId from localStorage
+          schoolId: schoolId, // Send schoolId from localStorage (for school admins)
+          collegeId: collegeId, // Send collegeId from localStorage (for college admins)
           student: {
             name: formData.name.trim(),
             email: formData.email.trim().toLowerCase(),
@@ -325,19 +345,40 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           const userStr = localStorage.getItem('user')
           const userEmail = localStorage.getItem('userEmail')
           let schoolId: string | null = null
+          let collegeId: string | null = null
+          let userRole: string | null = null
           
           try {
             const userData = JSON.parse(userStr || '{}')
             schoolId = userData.schoolId || null
+            collegeId = userData.collegeId || null
+            userRole = userData.role || null
           } catch (e) {
             console.warn('Could not parse user data from localStorage')
           }
 
           console.log('🔍 DEBUG: Initial schoolId from localStorage:', schoolId)
+          console.log('🔍 DEBUG: Initial collegeId from localStorage:', collegeId)
+          console.log('🔍 DEBUG: User role:', userRole)
           console.log('🔍 DEBUG: User email:', userEmail)
 
+          // If collegeId not in localStorage but user is college_admin, fetch from database
+          if (!collegeId && userRole === 'college_admin' && userEmail) {
+            console.log('🔍 DEBUG: Fetching collegeId from database for college admin:', userEmail)
+            const { data: college } = await supabase
+              .from('colleges')
+              .select('id')
+              .ilike('deanEmail', userEmail)
+              .single()
+            
+            if (college?.id) {
+              collegeId = college.id
+              console.log('✅ Found collegeId:', collegeId)
+            }
+          }
+
           // If schoolId not in localStorage, fetch from database
-          if (!schoolId && userEmail) {
+          if (!schoolId && !collegeId && userEmail) {
             console.log('🔍 DEBUG: Fetching schoolId from database for user:', userEmail)
             
             // Check school_educators table
@@ -382,8 +423,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
           console.log('🔍 DEBUG: Classes to check from CSV:', Array.from(classesToCheck.entries()))
           console.log('🔍 DEBUG: School ID:', schoolId)
+          console.log('🔍 DEBUG: College ID:', collegeId)
 
-          // Check which classes exist in database and store their IDs
+          // Check which classes exist in database and store their IDs (only for schools)
           const existingClasses = new Set<string>()
           const classIdMap = new Map<string, string>() // Map of "grade-section" to class_id
           
@@ -531,15 +573,32 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             }
 
             let schoolId: string | null = null
+            let collegeId: string | null = null
+            let userRole: string | null = null
             try {
               const userData = JSON.parse(userStr || '{}')
               schoolId = userData.schoolId || null
+              collegeId = userData.collegeId || null
+              userRole = userData.role || null
             } catch (e) {
               console.warn('Could not parse user data from localStorage')
             }
 
+            // If collegeId not in localStorage but user is college_admin, fetch from database
+            if (!collegeId && userRole === 'college_admin' && userEmail) {
+              const { data: college } = await supabase
+                .from('colleges')
+                .select('id')
+                .ilike('deanEmail', userEmail)
+                .single()
+              
+              if (college?.id) {
+                collegeId = college.id
+              }
+            }
+
             // If schoolId not in localStorage, fetch from database
-            if (!schoolId && userEmail) {
+            if (!schoolId && !collegeId && userEmail) {
               const { data: educatorData } = await supabase
                 .from('school_educators')
                 .select('school_id')
@@ -551,8 +610,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               }
             }
 
-            if (!schoolId) {
-              setError('School ID not found. Please ensure you are logged in as a school admin.')
+            if (!schoolId && !collegeId) {
+              setError('School/College ID not found. Please ensure you are logged in as a school or college admin.')
               setLoading(false)
               return
             }
@@ -689,6 +748,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     body: JSON.stringify({
                       userEmail: userEmail,
                       schoolId: schoolId,
+                      collegeId: collegeId,
                       student: data
                     })
                   })

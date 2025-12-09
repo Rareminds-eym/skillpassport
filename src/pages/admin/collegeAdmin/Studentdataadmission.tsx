@@ -12,10 +12,12 @@ import {
   PhoneIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
+import { UserPlusIcon } from 'lucide-react';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/admin/Pagination';
 import StudentProfileDrawer from '@/components/admin/components/StudentProfileDrawer';
 import CareerPathDrawer from '@/components/admin/components/CareerPathDrawer';
+import AddStudentModal from '../../../components/educator/modals/Addstudentmodal';
 import { useStudents } from '../../../hooks/useAdminStudents';
 import { generateCareerPath, type CareerPathResponse, type StudentProfile } from '@/services/aiCareerPathService';
 
@@ -159,6 +161,8 @@ const StudentDataAdmission = () => {
   const [careerPath, setCareerPath] = useState<CareerPathResponse | null>(null);
   const [careerPathLoading, setCareerPathLoading] = useState(false);
   const [careerPathError, setCareerPathError] = useState<string | null>(null);
+  const [currentStudentForCareer, setCurrentStudentForCareer] = useState<any>(null);
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -248,8 +252,9 @@ const StudentDataAdmission = () => {
   }, [students]);
 
   const filteredAndSortedStudents = useMemo(() => {
-    // Filter students associated with colleges/universities (universityId is not null)
-    let result = students.filter(student => student.universityId);
+    // Filter students associated with colleges (college_id is not null)
+    // Note: The useStudents hook already filters by college_id via RLS, so we get all relevant students
+    let result = students;
 
     if (searchQuery && searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase().trim();
@@ -353,13 +358,17 @@ const StudentDataAdmission = () => {
   };
 
   const handleViewCareerPath = async (student: any) => {
-    console.log('Career button clicked for student:', student);
+    setCurrentStudentForCareer(student); // Store for retry
     setCareerPathLoading(true);
     setCareerPathError(null);
     setCareerPath(null);
-    setShowCareerPathDrawer(true);
+    setShowCareerPathDrawer(true); // Open drawer immediately
 
     try {
+      // Validate student data
+      if (!student || !student.id) {
+        throw new Error('Invalid student data');
+      }
       // Extract comprehensive data from student object
       const skills = Array.isArray(student.skills) 
         ? student.skills.map((s: any) => typeof s === 'string' ? s : s.name || s.title).filter(Boolean)
@@ -443,11 +452,32 @@ const StudentDataAdmission = () => {
       console.log('Career path generated:', generatedPath);
       setCareerPath(generatedPath);
     } catch (err) {
-      console.error('Career path error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate career path';
+      console.error('Error generating career path:', err);
+
+      // Provide user-friendly error messages
+      let errorMessage = 'Failed to generate career path';
+
+      if (err instanceof Error) {
+        if (err.message.includes('API')) {
+          errorMessage = 'AI service is currently unavailable. Please check your API key configuration or try again later.';
+        } else if (err.message.includes('network') || err.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (err.message.includes('JSON') || err.message.includes('parse')) {
+          errorMessage = 'Failed to process AI response. Please try again.';
+        } else {
+          errorMessage = `Error: ${err.message}`;
+        }
+      }
+
       setCareerPathError(errorMessage);
     } finally {
       setCareerPathLoading(false);
+    }
+  };
+
+  const handleRetryCareerPath = () => {
+    if (currentStudentForCareer) {
+      handleViewCareerPath(currentStudentForCareer);
     }
   };
 
@@ -455,9 +485,16 @@ const StudentDataAdmission = () => {
     <div className="flex flex-col h-screen">
       <div className="p-4 sm:p-6 lg:p-8 mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold text-gray-900">Enrollment & Profiles</h1>
-          <p className="text-base md:text-lg mt-2 text-gray-600">Manage student enrollments and profiles across affiliated colleges.</p>
+          <h1 className="text-xl md:text-3xl font-bold text-gray-900">Student Data & Admission</h1>
+          <p className="text-base md:text-lg mt-2 text-gray-600">Manage student enrollments and profiles for your college.</p>
         </div>
+        <button
+          onClick={() => setShowAddStudentModal(true)}
+          className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
+        >
+          <UserPlusIcon className="h-5 w-5 mr-2" />
+          Add Student
+        </button>
       </div>
 
       <div className="px-4 sm:px-6 lg:px-8 hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
@@ -806,13 +843,31 @@ const StudentDataAdmission = () => {
         isOpen={showCareerPathDrawer}
         onClose={() => {
           setShowCareerPathDrawer(false);
-          setCareerPath(null);
           setCareerPathError(null);
+          setCareerPath(null);
         }}
         careerPath={careerPath}
         isLoading={careerPathLoading}
         error={careerPathError}
+        onRetry={handleRetryCareerPath}
       />
+
+      {/* Add Student Modal */}
+      <AddStudentModal
+        isOpen={showAddStudentModal}
+        onClose={() => {
+          setShowAddStudentModal(false);
+          // Small delay to let user see the modal close, then refresh
+          setTimeout(() => {
+            window.location.reload();
+          }, 300);
+        }}
+        onSuccess={() => {
+          // Success is handled in the modal - just log it
+          console.log('Student created successfully');
+        }}
+      />
+
     </div>
   );
 };
