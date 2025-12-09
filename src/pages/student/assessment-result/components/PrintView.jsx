@@ -2,8 +2,9 @@
  * Print View Component
  * Professional PDF layout optimized for A4 (210mm x 297mm)
  * Margins: 15mm, Content area: ~180mm x 267mm
+ * Now supports different grade levels: middle, highschool, after12
  */
-const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
+const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, traitNames }) => {
     if (!results) {
         return (
             <div className="print-view">
@@ -15,6 +16,9 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
     }
 
     const { riasec, aptitude, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, finalNote } = results;
+
+    // Determine if this is a simplified assessment (middle/high school)
+    const isSimplifiedAssessment = gradeLevel === 'middle' || gradeLevel === 'highschool';
     
     // Default student info if not provided
     const safeStudentInfo = {
@@ -364,10 +368,11 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                 {/* Section 1: Profile Snapshot */}
                 <h2 style={styles.sectionTitle}>1. Student Profile Snapshot</h2>
 
-                <div style={styles.twoCol}>
+                {/* For all grade levels: Interest Profile */}
+                <div style={isSimplifiedAssessment ? {} : styles.twoCol}>
                     {/* Interest Profile */}
                     <div>
-                        <h3 style={styles.subTitle}>Interest Profile</h3>
+                        <h3 style={styles.subTitle}>{isSimplifiedAssessment ? 'Interest Explorer Results' : 'Interest Profile'}</h3>
                         <table style={styles.table}>
                             <thead>
                                 <tr>
@@ -397,9 +402,10 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                         <p style={{fontSize: '9px', color: '#6b7280', fontStyle: 'italic', margin: '0'}}>{riasec?.interpretation}</p>
                     </div>
 
-                    {/* Aptitude Scores */}
+                    {/* Aptitude Scores - Only for after12 OR high school with aptitude sampling */}
+                    {(!isSimplifiedAssessment || (gradeLevel === 'highschool' && aptitude?.scores)) && (
                     <div>
-                        <h3 style={styles.subTitle}>Cognitive Abilities</h3>
+                        <h3 style={styles.subTitle}>{isSimplifiedAssessment ? 'Aptitude Sampling' : 'Cognitive Abilities'}</h3>
                         <table style={styles.table}>
                             <thead>
                                 <tr>
@@ -426,8 +432,11 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                         </table>
                         <p style={{fontSize: '9px', margin: '4px 0 0 0'}}><strong>Strengths:</strong> {aptitude?.topStrengths?.join(', ')}</p>
                     </div>
+                    )}
                 </div>
 
+                {/* For after12 only: Big Five, Work Values, Knowledge */}
+                {!isSimplifiedAssessment && (
                 <div style={{...styles.twoCol, marginTop: '15px'}}>
                     {/* Personality */}
                     <div>
@@ -480,13 +489,18 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                         </div>
                     </div>
                 </div>
+                )}
 
-                {/* Overall Summary */}
+                {/* Overall Summary - For all grade levels */}
+                {results.overallSummary && (
                 <div style={styles.summaryBox}>
                     <p style={{margin: '0', fontSize: '10px'}}><strong>Overall Summary:</strong> {results.overallSummary}</p>
                 </div>
+                )}
 
-                {/* Section 2: Career Fit Analysis */}
+                {/* Section 2: Career Fit Analysis - ONLY for after12 */}
+                {!isSimplifiedAssessment && careerFit && (
+                <>
                 <h2 style={{...styles.sectionTitle, marginTop: '30px'}}>2. Career Fit Analysis</h2>
 
                 {careerFit?.clusters?.map((cluster, idx) => {
@@ -541,8 +555,12 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                         </tr>
                     </tbody>
                 </table>
+                </>
+                )}
 
-                {/* Section 3: Skill Gap & Development Plan */}
+                {/* Section 3: Skill Gap & Development Plan - ONLY for after12 */}
+                {!isSimplifiedAssessment && skillGap && (
+                <>
                 <h2 style={{...styles.sectionTitle, marginTop: '30px'}}>3. Skill Gap & Development Plan</h2>
 
                 <div style={styles.twoCol}>
@@ -595,9 +613,12 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                 <div style={{...styles.summaryBox, marginTop: '15px'}}>
                     <p style={{margin: '0'}}><strong>Recommended Learning Track:</strong> {skillGap?.recommendedTrack}</p>
                 </div>
+                </>
+                )}
             </div>
 
-            {/* PAGE 4: Roadmap */}
+            {/* PAGE 4: Roadmap - ONLY for after12 */}
+            {!isSimplifiedAssessment && roadmap && (
             <div style={styles.lastPage}>
                 {/* Page Header with Watermark */}
                 <div style={{position: 'relative', marginBottom: '15px'}}>
@@ -663,6 +684,7 @@ const PrintView = ({ results, studentInfo, riasecNames, traitNames }) => {
                     <p style={{margin: '0'}}><strong>Report Disclaimer:</strong> This career report is generated by Rareminds using the inputs and assessment data shared by the user. Your information has been processed confidentially and in compliance with applicable data protection norms, and is not shared with any external parties.</p>
                 </div>
             </div>
+            )}
         </div>
     );
 };

@@ -30,6 +30,18 @@ import { bigFiveQuestions as fallbackBigFiveQuestions } from './assessment-data/
 import { workValuesQuestions as fallbackWorkValuesQuestions } from './assessment-data/workValuesQuestions';
 import { employabilityQuestions as fallbackEmployabilityQuestions, getCurrentEmployabilityModule } from './assessment-data/employabilityQuestions';
 import { streamKnowledgeQuestions as fallbackStreamKnowledgeQuestions } from './assessment-data/streamKnowledgeQuestions';
+import {
+    interestExplorerQuestions,
+    strengthsCharacterQuestions,
+    learningPreferencesQuestions,
+    strengthsRatingScale,
+    highSchoolInterestQuestions,
+    highSchoolStrengthsQuestions,
+    highSchoolLearningQuestions,
+    highSchoolAptitudeQuestions,
+    highSchoolRatingScale,
+    aptitudeRatingScale
+} from './assessment-data/middleSchoolQuestions';
 
 // Import Gemini assessment service
 import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentService';
@@ -68,6 +80,8 @@ const AssessmentTest = () => {
     const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [answers, setAnswers] = useState({});
+    const [gradeLevel, setGradeLevel] = useState(null); // 'middle' (6-8) or 'after12' (After 12th)
+    const [showGradeSelection, setShowGradeSelection] = useState(false); // Show grade level selection first
     const [studentStream, setStudentStream] = useState(null);
     const [showStreamSelection, setShowStreamSelection] = useState(false); // Start false, set true after check
     const [timeRemaining, setTimeRemaining] = useState(null);
@@ -128,11 +142,11 @@ const AssessmentTest = () => {
     };
 
     // Load questions from database when stream is selected
-    const loadQuestionsFromDatabase = async (streamId) => {
+    const loadQuestionsFromDatabase = async (streamId, gradeLevel) => {
         setQuestionsLoading(true);
         setQuestionsError(null);
         try {
-            const allQuestions = await assessmentService.fetchAllQuestions(streamId);
+            const allQuestions = await assessmentService.fetchAllQuestions(streamId, gradeLevel);
             console.log('Questions loaded from database:', allQuestions);
             setDbQuestions(allQuestions);
             setUseDatabase(true);
@@ -204,19 +218,19 @@ const AssessmentTest = () => {
                             } catch (err) {
                                 console.error('Error abandoning empty attempt:', err);
                             }
-                            setShowStreamSelection(true);
+                            setShowGradeSelection(true);
                         }
                     } else {
-                        // No existing attempt, show stream selection
-                        setShowStreamSelection(true);
+                        // No existing attempt, show grade selection
+                        setShowGradeSelection(true);
                     }
                 } else {
-                    // Not logged in, show stream selection
-                    setShowStreamSelection(true);
+                    // Not logged in, show grade selection
+                    setShowGradeSelection(true);
                 }
             } catch (err) {
                 console.error('Error checking for existing attempt:', err);
-                setShowStreamSelection(true);
+                setShowGradeSelection(true);
             } finally {
                 setCheckingExistingAttempt(false);
                 setInitialCheckDone(true);
@@ -238,8 +252,13 @@ const AssessmentTest = () => {
             setUseDatabase(true);
             setStudentStream(pendingAttempt.stream_id);
 
-            // Load questions for this stream
-            await loadQuestionsFromDatabase(pendingAttempt.stream_id);
+            // Restore grade level from pending attempt
+            if (pendingAttempt.grade_level) {
+                setGradeLevel(pendingAttempt.grade_level);
+            }
+
+            // Load questions for this stream and grade level
+            await loadQuestionsFromDatabase(pendingAttempt.stream_id, pendingAttempt.grade_level);
 
             // Restore previous answers
             if (pendingAttempt.restoredResponses) {
@@ -296,7 +315,7 @@ const AssessmentTest = () => {
         }
         setPendingAttempt(null);
         setShowResumePrompt(false);
-        setShowStreamSelection(true);
+        setShowGradeSelection(true);
     };
 
     // Transform database questions to match UI format
@@ -332,7 +351,87 @@ const AssessmentTest = () => {
     };
 
     // Define assessment sections with dynamic questions
-    const sections = useMemo(() => [
+    const sections = useMemo(() => {
+        // For middle school (grades 6-8), show simplified assessment with 3 sections
+        if (gradeLevel === 'middle') {
+            return [
+                {
+                    id: 'interest_explorer',
+                    title: 'Interest Explorer',
+                    icon: <Heart className="w-6 h-6 text-rose-500" />,
+                    description: "Let's discover what kinds of activities and subjects you enjoy most!",
+                    color: "rose",
+                    questions: interestExplorerQuestions,
+                    instruction: "There are no right or wrong answers. Pick what feels most like you today."
+                },
+                {
+                    id: 'strengths_character',
+                    title: 'Strengths & Character',
+                    icon: <Award className="w-6 h-6 text-amber-500" />,
+                    description: "Discover your personal strengths and character traits.",
+                    color: "amber",
+                    questions: strengthsCharacterQuestions,
+                    responseScale: strengthsRatingScale,
+                    instruction: "Rate each statement: 1 = not like me, 2 = sometimes, 3 = mostly me, 4 = very me"
+                },
+                {
+                    id: 'learning_preferences',
+                    title: 'Learning & Work Preferences',
+                    icon: <Users className="w-6 h-6 text-blue-500" />,
+                    description: "Learn about how you like to work and learn best.",
+                    color: "blue",
+                    questions: learningPreferencesQuestions,
+                    instruction: "Choose the options that best describe you."
+                }
+            ];
+        }
+
+        // For high school (grades 9-12), show detailed assessment with 4 sections
+        if (gradeLevel === 'highschool') {
+            return [
+                {
+                    id: 'hs_interest_explorer',
+                    title: 'Interest Explorer',
+                    icon: <Heart className="w-6 h-6 text-rose-500" />,
+                    description: "Discover what activities and subjects truly excite you.",
+                    color: "rose",
+                    questions: highSchoolInterestQuestions,
+                    instruction: "Answer honestly based on your real preferences, not what others expect."
+                },
+                {
+                    id: 'hs_strengths_character',
+                    title: 'Strengths & Character',
+                    icon: <Award className="w-6 h-6 text-amber-500" />,
+                    description: "Identify your personal strengths and character traits.",
+                    color: "amber",
+                    questions: highSchoolStrengthsQuestions,
+                    responseScale: highSchoolRatingScale,
+                    instruction: "Rate each: 1 = not me, 2 = a bit, 3 = mostly, 4 = strongly me"
+                },
+                {
+                    id: 'hs_learning_preferences',
+                    title: 'Learning & Work Preferences',
+                    icon: <Users className="w-6 h-6 text-blue-500" />,
+                    description: "Understand how you work, learn, and contribute best.",
+                    color: "blue",
+                    questions: highSchoolLearningQuestions,
+                    instruction: "Select the options that best describe you."
+                },
+                {
+                    id: 'hs_aptitude_sampling',
+                    title: 'Aptitude Sampling',
+                    icon: <Zap className="w-6 h-6 text-purple-500" />,
+                    description: "Rate your experience with different types of tasks.",
+                    color: "purple",
+                    questions: highSchoolAptitudeQuestions,
+                    responseScale: aptitudeRatingScale,
+                    instruction: "After each task, rate: Ease 1–4, Enjoyment 1–4"
+                }
+            ];
+        }
+
+        // For after 12th, show full comprehensive assessment
+        return [
         {
             id: 'riasec',
             title: 'Career Interests',
@@ -421,7 +520,8 @@ const AssessmentTest = () => {
             timeLimit: 30 * 60, // 30 minutes in seconds
             instruction: "Choose the best answer for each question."
         }
-    ], [dbQuestions, studentStream]);
+        ];
+    }, [dbQuestions, studentStream, gradeLevel]);
 
     const streams = [
         { id: 'cs', label: 'B.Sc Computer Science / B.Tech CS/IT' },
@@ -525,6 +625,54 @@ const AssessmentTest = () => {
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [useDatabase, currentAttempt?.id, currentSection?.isTimed, timeRemaining, elapsedTime, currentSectionIndex, currentQuestionIndex, sectionTimings]);
 
+    // Handle grade level selection
+    const handleGradeSelect = async (level) => {
+        setGradeLevel(level);
+        setShowGradeSelection(false);
+
+        // For middle school and high school, skip stream selection and go directly to assessment
+        if (level === 'middle') {
+            setAssessmentStarted(true);
+            const streamId = 'middle_school'; // Use a generic stream for middle school
+            setStudentStream(streamId);
+
+            // Load questions and create attempt for middle school
+            await loadQuestionsFromDatabase(streamId, 'middle');
+
+            if (user?.id) {
+                try {
+                    await startAssessment(streamId, 'middle');
+                    setUseDatabase(true);
+                } catch (err) {
+                    console.log('Could not create database attempt:', err.message);
+                }
+            }
+
+            setShowSectionIntro(true);
+        } else if (level === 'highschool') {
+            setAssessmentStarted(true);
+            const streamId = 'high_school'; // Use a generic stream for high school
+            setStudentStream(streamId);
+
+            // Load questions and create attempt for high school
+            await loadQuestionsFromDatabase(streamId, 'highschool');
+
+            if (user?.id) {
+                try {
+                    await startAssessment(streamId, 'highschool');
+                    setUseDatabase(true);
+                } catch (err) {
+                    console.log('Could not create database attempt:', err.message);
+                }
+            }
+
+            setShowSectionIntro(true);
+        } else {
+            // For after 12th, show stream selection
+            setShowStreamSelection(true);
+        }
+    };
+
     const handleStreamSelect = async (streamId) => {
         // Mark that user has started an assessment to prevent re-checking
         setAssessmentStarted(true);
@@ -532,14 +680,14 @@ const AssessmentTest = () => {
         setShowStreamSelection(false);
 
         // Load questions from database first
-        await loadQuestionsFromDatabase(streamId);
+        await loadQuestionsFromDatabase(streamId, gradeLevel || 'after12');
 
         setShowSectionIntro(true);
 
         // Try to create a database attempt if user is logged in
         if (user?.id) {
             try {
-                await startAssessment(streamId);
+                await startAssessment(streamId, gradeLevel || 'after12');
                 setUseDatabase(true);
                 console.log('Assessment attempt created in database');
             } catch (err) {
@@ -740,13 +888,21 @@ const AssessmentTest = () => {
     const currentQuestion = currentSection?.questions[currentQuestionIndex];
     const questionId = `${currentSection?.id}_${currentQuestion?.id}`;
 
-    // Check if current question is answered (SJT needs both BEST and WORST)
+    // Check if current question is answered (SJT needs both BEST and WORST, multiselect needs required count, text needs content)
     const isCurrentAnswered = (() => {
         const answer = answers[questionId];
         if (!answer) return false;
         // For SJT questions, both best and worst must be selected
         if (currentQuestion?.partType === 'sjt') {
             return answer.best && answer.worst;
+        }
+        // For multiselect questions, check if required number of selections made
+        if (currentQuestion?.type === 'multiselect') {
+            return Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
+        }
+        // For text questions, check if there's some content (at least 10 characters for meaningful response)
+        if (currentQuestion?.type === 'text') {
+            return typeof answer === 'string' && answer.trim().length >= 10;
         }
         return true;
     })();
@@ -894,7 +1050,8 @@ const AssessmentTest = () => {
         );
     }
 
-    if (showStreamSelection) {
+    // Grade Level Selection Screen
+    if (showGradeSelection) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
                 <Card className="w-full max-w-2xl border-none shadow-2xl">
@@ -904,7 +1061,102 @@ const AssessmentTest = () => {
                                 <Award className="w-8 h-8 text-white" />
                             </div>
                             <h1 className="text-3xl font-bold text-gray-800 mb-2">Career Assessment</h1>
-                            <p className="text-gray-600">Let's personalize your assessment based on your stream</p>
+                            <p className="text-gray-600">Select your grade level to get started</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <Label className="text-sm font-semibold text-gray-700">Choose Your Grade Level</Label>
+
+                            {/* Grades 6-8 (Middle School) */}
+                            <button
+                                onClick={() => handleGradeSelect('middle')}
+                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">Grades 6–8</h3>
+                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
+                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">Middle School Students</p>
+                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                                        <Clock className="w-4 h-4" />
+                                        <span>Assessment: 20 questions (15-20 minutes)</span>
+                                    </div>
+                                </div>
+                            </button>
+
+                            {/* Grades 9-12 (High School) */}
+                            <button
+                                onClick={() => handleGradeSelect('highschool')}
+                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">Grades 9–12</h3>
+                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
+                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">High School Students</p>
+                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                                        <Clock className="w-4 h-4" />
+                                        <span>Assessment: 32 questions (30-40 minutes)</span>
+                                    </div>
+                                </div>
+                            </button>
+
+                            {/* After 12th (College Level) */}
+                            <button
+                                onClick={() => handleGradeSelect('after12')}
+                                className="w-full p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-100 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 transition-all duration-300 text-left group transform hover:-translate-y-1 relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-indigo-700">After 12th</h3>
+                                        <div className="w-10 h-10 rounded-full bg-gray-50 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-indigo-500/30">
+                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 group-hover:text-gray-700">College/University Students</p>
+                                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                                        <Clock className="w-4 h-4" />
+                                        <span>Comprehensive assessment (45-60 minutes)</span>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+
+                        <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                            <div className="flex gap-3">
+                                <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                                <div className="text-sm text-blue-700">
+                                    <p className="font-semibold mb-1">Personalized Career Guidance</p>
+                                    <p>This assessment is designed to help you discover your interests, strengths, and potential career paths based on your age and educational level.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    if (showStreamSelection) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+                <Card className="w-full max-w-2xl border-none shadow-2xl">
+                    <CardContent className="p-8">
+                        <div className="text-center mb-8">
+                            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                                <Award className="w-8 h-8 text-white" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-gray-800 mb-2">Career Assessment - After 12th</h1>
+                            <p className="text-gray-600">Let's personalize your assessment based on your stream/course</p>
                         </div>
 
                         {questionsError && (
@@ -1635,8 +1887,148 @@ const AssessmentTest = () => {
                                                                 );
                                                             })}
                                                         </div>
+                                                    ) : currentQuestion.type === 'multiselect' ? (
+                                                        // Multi-select questions (Middle School)
+                                                        <div className="space-y-4">
+                                                            <div className="p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
+                                                                <p className="text-sm font-medium text-green-700">
+                                                                    Select up to <span className="font-bold">{currentQuestion.maxSelections}</span> options that feel most like you
+                                                                    {answers[questionId]?.length > 0 && (
+                                                                        <span className="ml-2 text-green-600">
+                                                                            ({answers[questionId]?.length || 0}/{currentQuestion.maxSelections} selected)
+                                                                        </span>
+                                                                    )}
+                                                                </p>
+                                                            </div>
+
+                                                            {currentQuestion.options.map((option, idx) => {
+                                                                const selectedOptions = answers[questionId] || [];
+                                                                const isSelected = selectedOptions.includes(option);
+                                                                const canSelect = selectedOptions.length < currentQuestion.maxSelections || isSelected;
+
+                                                                return (
+                                                                    <button
+                                                                        key={idx}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const current = answers[questionId] || [];
+                                                                            if (isSelected) {
+                                                                                // Deselect
+                                                                                const newSelection = current.filter(opt => opt !== option);
+                                                                                handleAnswer(newSelection.length > 0 ? newSelection : undefined);
+                                                                            } else if (current.length < currentQuestion.maxSelections) {
+                                                                                // Select
+                                                                                handleAnswer([...current, option]);
+                                                                            }
+                                                                        }}
+                                                                        disabled={!canSelect}
+                                                                        className={`w-full border rounded-xl p-4 transition-all text-left ${
+                                                                            isSelected
+                                                                                ? 'border-green-500 bg-green-50 ring-2 ring-green-500/30'
+                                                                                : canSelect
+                                                                                    ? 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                                                                    : 'border-gray-200 opacity-40 cursor-not-allowed'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-start gap-3">
+                                                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                                                                                isSelected
+                                                                                    ? 'bg-green-500 text-white'
+                                                                                    : 'bg-gray-100 text-gray-400'
+                                                                            }`}>
+                                                                                {isSelected && <CheckCircle2 className="w-4 h-4" />}
+                                                                            </div>
+                                                                            <p className={`flex-1 font-medium text-lg ${
+                                                                                isSelected ? 'text-green-700' : 'text-gray-700'
+                                                                            }`}>
+                                                                                {option}
+                                                                            </p>
+                                                                        </div>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : currentQuestion.type === 'singleselect' ? (
+                                                        // Single-select questions (Middle School - simpler UI)
+                                                        <div className="space-y-3">
+                                                            {currentQuestion.options.map((option, idx) => {
+                                                                const isSelected = answers[questionId] === option;
+
+                                                                return (
+                                                                    <button
+                                                                        key={idx}
+                                                                        type="button"
+                                                                        onClick={() => handleAnswer(option)}
+                                                                        className={`w-full border rounded-xl p-4 transition-all text-left ${
+                                                                            isSelected
+                                                                                ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
+                                                                                : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-start gap-3">
+                                                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                                                                                isSelected
+                                                                                    ? 'bg-indigo-500 text-white'
+                                                                                    : 'bg-gray-100 text-gray-400'
+                                                                            }`}>
+                                                                                {isSelected && <CheckCircle2 className="w-4 h-4" />}
+                                                                            </div>
+                                                                            <p className={`flex-1 font-medium text-lg ${
+                                                                                isSelected ? 'text-indigo-700' : 'text-gray-700'
+                                                                            }`}>
+                                                                                {option}
+                                                                            </p>
+                                                                        </div>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : currentQuestion.type === 'rating' ? (
+                                                        // Rating questions (1-4 scale for middle school)
+                                                        <div className="space-y-4">
+                                                            <div className="flex justify-center gap-2 md:gap-4">
+                                                                {currentSection.responseScale.map((option) => (
+                                                                    <button
+                                                                        key={option.value}
+                                                                        type="button"
+                                                                        onClick={() => handleAnswer(option.value)}
+                                                                        className={`flex-1 max-w-[120px] border-2 rounded-xl p-4 transition-all ${
+                                                                            answers[questionId] === option.value
+                                                                                ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-500/30 shadow-md'
+                                                                                : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="text-center">
+                                                                            <div className={`text-3xl font-bold mb-2 ${
+                                                                                answers[questionId] === option.value ? 'text-amber-600' : 'text-gray-600'
+                                                                            }`}>
+                                                                                {option.value}
+                                                                            </div>
+                                                                            <div className={`text-xs font-medium ${
+                                                                                answers[questionId] === option.value ? 'text-amber-700' : 'text-gray-600'
+                                                                            }`}>
+                                                                                {option.label}
+                                                                            </div>
+                                                                        </div>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ) : currentQuestion.type === 'text' ? (
+                                                        // Text input questions (open reflection)
+                                                        <div className="space-y-3">
+                                                            <textarea
+                                                                value={answers[questionId] || ''}
+                                                                onChange={(e) => handleAnswer(e.target.value)}
+                                                                placeholder={currentQuestion.placeholder || 'Type your answer here...'}
+                                                                className="w-full min-h-[150px] p-4 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all resize-none text-lg text-gray-700"
+                                                            />
+                                                            <p className="text-sm text-gray-500">
+                                                                {answers[questionId]?.length || 0} characters
+                                                            </p>
+                                                        </div>
                                                     ) : currentSection.responseScale ? (
-                                                        // Likert scale response
+                                                        // Likert scale response (for After 12th assessments)
                                                         <RadioGroup
                                                             value={answers[questionId]?.toString() || ""}
                                                             onValueChange={(val) => handleAnswer(parseInt(val))}
