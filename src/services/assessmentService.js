@@ -7,13 +7,20 @@ import { supabase } from '../lib/supabaseClient';
 
 /**
  * Fetch all assessment sections
+ * @param {string} gradeLevel - Grade level filter: 'middle', 'highschool', or 'after12'
  */
-export const fetchSections = async () => {
-  const { data, error } = await supabase
+export const fetchSections = async (gradeLevel = null) => {
+  let query = supabase
     .from('personal_assessment_sections')
     .select('*')
-    .eq('is_active', true)
-    .order('order_number');
+    .eq('is_active', true);
+
+  // Filter by grade level if provided
+  if (gradeLevel) {
+    query = query.eq('grade_level', gradeLevel);
+  }
+
+  const { data, error } = await query.order('order_number');
 
   if (error) throw error;
   return data;
@@ -60,9 +67,10 @@ export const fetchQuestionsBySection = async (sectionId, streamId = null) => {
 /**
  * Fetch all questions for an assessment (organized by section)
  * @param {string} streamId - Student's selected stream
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
  */
-export const fetchAllQuestions = async (streamId) => {
-  const sections = await fetchSections();
+export const fetchAllQuestions = async (streamId, gradeLevel = null) => {
+  const sections = await fetchSections(gradeLevel);
   const questionsBySection = {};
 
   for (const section of sections) {
@@ -84,13 +92,15 @@ export const fetchAllQuestions = async (streamId) => {
  * Create a new assessment attempt
  * @param {string} studentId - Student's user_id
  * @param {string} streamId - Selected stream
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
  */
-export const createAttempt = async (studentId, streamId) => {
+export const createAttempt = async (studentId, streamId, gradeLevel) => {
   const { data, error } = await supabase
     .from('personal_assessment_attempts')
     .insert({
       student_id: studentId,
       stream_id: streamId,
+      grade_level: gradeLevel,
       status: 'in_progress',
       started_at: new Date().toISOString()
     })
@@ -183,10 +193,11 @@ export const getAttemptResponses = async (attemptId) => {
  * @param {string} attemptId - Attempt UUID
  * @param {string} studentId - Student's user_id
  * @param {string} streamId - Selected stream
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
  * @param {object} geminiResults - Full Gemini AI analysis results
  * @param {object} sectionTimings - Time spent on each section
  */
-export const completeAttempt = async (attemptId, studentId, streamId, geminiResults, sectionTimings) => {
+export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel, geminiResults, sectionTimings) => {
   // Update attempt status
   const { error: attemptError } = await supabase
     .from('personal_assessment_attempts')
@@ -205,6 +216,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, geminiResu
     .insert({
       attempt_id: attemptId,
       student_id: studentId,
+      grade_level: gradeLevel,
       stream_id: streamId,
       status: 'completed',
       riasec_scores: geminiResults.riasec?.scores,
@@ -295,14 +307,22 @@ export const getLatestResult = async (studentId) => {
 /**
  * Check if student can take assessment (6-month restriction)
  * @param {string} studentId - Student's user_id
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
  * @returns {object} { canTake: boolean, lastAttemptDate: Date|null, nextAvailableDate: Date|null }
  */
-export const canTakeAssessment = async (studentId) => {
-  const { data, error } = await supabase
+export const canTakeAssessment = async (studentId, gradeLevel = null) => {
+  let query = supabase
     .from('personal_assessment_results')
     .select('created_at')
     .eq('student_id', studentId)
-    .eq('status', 'completed')
+    .eq('status', 'completed');
+
+  // Filter by grade level if provided
+  if (gradeLevel) {
+    query = query.eq('grade_level', gradeLevel);
+  }
+
+  const { data, error } = await query
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -317,7 +337,7 @@ export const canTakeAssessment = async (studentId) => {
   const lastAttemptDate = new Date(data.created_at);
   const sixMonthsLater = new Date(lastAttemptDate);
   sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
-  
+
   const now = new Date();
   const canTake = now >= sixMonthsLater;
 

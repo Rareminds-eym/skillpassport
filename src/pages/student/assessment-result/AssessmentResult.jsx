@@ -46,6 +46,7 @@ const AssessmentResult = () => {
         loading,
         error,
         retrying,
+        gradeLevel,
         studentInfo,
         handleRetry,
         validateResults,
@@ -141,6 +142,7 @@ const AssessmentResult = () => {
             <PrintView
                 results={results}
                 studentInfo={studentInfo}
+                gradeLevel={gradeLevel}
                 riasecNames={RIASEC_NAMES}
                 traitNames={TRAIT_NAMES}
             />
