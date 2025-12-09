@@ -203,75 +203,27 @@ const CollegeAdminDigitalPortfolio = () => {
   // Fetch college info and students
   useEffect(() => {
     const fetchData = async () => {
-      if (!user?.id) return;
+      if (!user?.email) return;
 
       try {
         setLoading(true);
 
-        // Get college admin's college - try multiple methods
-        let collegeId = null;
-        let collegeData = null;
+        // Find college by matching deanEmail (case-insensitive) - primary method for college admins
+        const { data: college, error: collegeError } = await supabase
+          .from('colleges')
+          .select('id, name, deanEmail')
+          .ilike('deanEmail', user.email)
+          .single();
 
-        // Method 1: Check if user is a college lecturer
-        const { data: lecturerData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (lecturerData?.collegeId) {
-          collegeId = lecturerData.collegeId;
-        }
-
-        // Method 2: Check if user created/owns a college (for college admins)
-        if (!collegeId) {
-          const { data: ownedCollege } = await supabase
-            .from('colleges')
-            .select('id, name')
-            .eq('created_by', user.id)
-            .maybeSingle();
-
-          if (ownedCollege) {
-            collegeId = ownedCollege.id;
-            collegeData = ownedCollege;
-          }
-        }
-
-        // Method 3: Check by email match
-        if (!collegeId && user.email) {
-          const { data: emailCollege } = await supabase
-            .from('colleges')
-            .select('id, name')
-            .eq('email', user.email)
-            .maybeSingle();
-
-          if (emailCollege) {
-            collegeId = emailCollege.id;
-            collegeData = emailCollege;
-          }
-        }
-
-        if (!collegeId) {
-          console.error('No college found for this user');
+        if (collegeError || !college?.id) {
+          console.error('Error fetching college:', collegeError, 'for email:', user.email);
           setLoading(false);
           return;
         }
 
-        // Get college info if not already fetched
-        if (!collegeData) {
-          const { data: fetchedCollege, error: collegeError } = await supabase
-            .from('colleges')
-            .select('id, name')
-            .eq('id', collegeId)
-            .single();
-
-          if (collegeError) {
-            console.error('Error fetching college:', collegeError);
-          } else {
-            collegeData = fetchedCollege;
-          }
-        }
-
+        const collegeId = college.id;
+        const collegeData = college;
+        
         setCollegeInfo(collegeData);
 
         // Fetch students from the same college using the students table
@@ -325,7 +277,7 @@ const CollegeAdminDigitalPortfolio = () => {
     };
 
     fetchData();
-  }, [user?.id]);
+  }, [user?.email]);
 
   // Reset to page 1 when filters or search change
   useEffect(() => {

@@ -147,6 +147,7 @@ const EducatorDashboard = lazy(() => import("../pages/educator/Dashboard"));
 const EducatorLogin = lazy(() => import("../pages/auth/LoginEducator"));
 const EducatorStudents = lazy(() => import("../pages/educator/StudentsPage"));
 const EducatorClasses = lazy(() => import("../pages/educator/ClassesPage"));
+const EducatorAssessmentResults = lazy(() => import("../pages/educator/AssessmentResults"));
 
 const EducatorCourses = lazy(() => import("../pages/educator/Courses"));
 const EducatorAssessments = lazy(() => import("../pages/educator/Assessments"));
@@ -344,6 +345,9 @@ const AttendanceReports = lazy(() =>
 const ClassManagement = lazy(() =>
   import("../pages/admin/schoolAdmin/ClassManagement")
 );
+const SchoolAdminAssessmentResults = lazy(() =>
+  import("../pages/admin/schoolAdmin/AssessmentResults")
+);
 
 // Settings
 const SchoolAdminSettings = lazy(() =>
@@ -511,6 +515,7 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<SchoolAdminDashboard />} />
           <Route path="students/admissions" element={<StudentAdmissions />} />
           <Route path="students/attendance-reports" element={<AttendanceReports />} />
+          <Route path="students/assessment-results" element={<SchoolAdminAssessmentResults />} />
           <Route path="students/digital-portfolio" element={<SchoolAdminDigitalPortfolio />} />
           <Route path="classes/management" element={<ClassManagement />} />
           <Route path="teachers/list" element={<TeacherList />} />
@@ -786,6 +791,7 @@ const AppRoutes = () => {
           <Route path="classes" element={<EducatorClasses />} />
           <Route path="courses" element={<EducatorCourses />} />
           <Route path="courses/:courseId/analytics" element={<CourseAnalytics />} />
+          <Route path="assessment-results" element={<EducatorAssessmentResults />} />
           <Route path="assignments" element={<EducatorAssessments />} />
           <Route path="mentornotes" element={<EducatorMentorNotes />} />
           <Route path="digital-portfolio" element={<EducatorDigitalPortfolio />} />

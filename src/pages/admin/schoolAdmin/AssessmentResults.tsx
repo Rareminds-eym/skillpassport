@@ -29,8 +29,8 @@ interface AssessmentResult {
   created_at: string;
   student_name: string | null;
   student_email: string | null;
-  college_id: string | null;
-  college_name: string | null;
+  school_id: string | null;
+  school_name: string | null;
   career_fit: any;
   skill_gap: any;
   gemini_results: any;
@@ -530,7 +530,7 @@ const AssessmentDetailModal = ({
 
 
 // Main Component
-const CollegeAdminAssessmentResults: React.FC = () => {
+const SchoolAdminAssessmentResults: React.FC = () => {
   // @ts-ignore - AuthContext is a .jsx file
   const { user } = useAuth();
 
@@ -538,7 +538,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
   const [results, setResults] = useState<AssessmentResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [collegeName, setCollegeName] = useState<string>('');
+  const [schoolName, setSchoolName] = useState<string>('');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -556,7 +556,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
     readiness: [] as string[],
   });
 
-  // Fetch assessment results for this college only
+  // Fetch assessment results for this school only
   const fetchResults = async () => {
     try {
       setLoading(true);
@@ -570,30 +570,30 @@ const CollegeAdminAssessmentResults: React.FC = () => {
         return;
       }
 
-      // Find college by matching deanEmail (case-insensitive)
-      const { data: college, error: collegeError } = await supabase
-        .from('colleges')
-        .select('id, name, deanEmail')
-        .ilike('deanEmail', userEmail)
+      // Find school by matching email (case-insensitive)
+      const { data: school, error: schoolError } = await supabase
+        .from('schools')
+        .select('id, name, email')
+        .ilike('email', userEmail)
         .single();
 
-      if (collegeError || !college?.id) {
-        console.error('Error fetching college:', collegeError, 'for email:', userEmail);
-        setError('No college associated with your account');
+      if (schoolError || !school?.id) {
+        console.error('Error fetching school:', schoolError, 'for email:', userEmail);
+        setError('No school associated with your account');
         setLoading(false);
         return;
       }
 
-      const collegeId = college.id;
+      const schoolId = school.id;
       
-      // Set college name from the already fetched college data
-      setCollegeName(college.name);
+      // Set school name from the already fetched school data
+      setSchoolName(school.name);
 
-      // Get students from this college
+      // Get students from this school
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
         .select('user_id, name, email')
-        .eq('college_id', collegeId);
+        .eq('school_id', schoolId);
 
       if (studentsError) throw studentsError;
 
@@ -643,8 +643,8 @@ const CollegeAdminAssessmentResults: React.FC = () => {
           ...r,
           student_name: student?.name || null,
           student_email: student?.email || null,
-          college_id: collegeId,
-          college_name: college.name || null,
+          school_id: schoolId,
+          school_name: school.name || null,
         };
       });
 
@@ -847,7 +847,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
               Student Assessment Results
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              View personal assessment results for {collegeName || 'your college'}
+              View personal assessment results for {schoolName || 'your school'}
             </p>
           </div>
         </div>
@@ -1159,4 +1159,4 @@ const CollegeAdminAssessmentResults: React.FC = () => {
   );
 };
 
-export default CollegeAdminAssessmentResults;
+export default SchoolAdminAssessmentResults;

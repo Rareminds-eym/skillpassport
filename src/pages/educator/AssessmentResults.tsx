@@ -12,9 +12,9 @@ import {
   UserIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from '../../../lib/supabaseClient';
-import SearchBar from '../../../components/common/SearchBar';
-import { useAuth } from '../../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
+import SearchBar from '../../components/common/SearchBar';
+import { useAuth } from '../../context/AuthContext';
 
 // Types
 interface AssessmentResult {
@@ -530,7 +530,7 @@ const AssessmentDetailModal = ({
 
 
 // Main Component
-const CollegeAdminAssessmentResults: React.FC = () => {
+const EducatorAssessmentResults: React.FC = () => {
   // @ts-ignore - AuthContext is a .jsx file
   const { user } = useAuth();
 
@@ -538,7 +538,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
   const [results, setResults] = useState<AssessmentResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [collegeName, setCollegeName] = useState<string>('');
+  const [schoolName, setSchoolName] = useState<string>('');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -556,7 +556,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
     readiness: [] as string[],
   });
 
-  // Fetch assessment results for this college only
+  // Fetch assessment results for this educator's students
   const fetchResults = async () => {
     try {
       setLoading(true);
@@ -570,30 +570,31 @@ const CollegeAdminAssessmentResults: React.FC = () => {
         return;
       }
 
-      // Find college by matching deanEmail (case-insensitive)
-      const { data: college, error: collegeError } = await supabase
-        .from('colleges')
-        .select('id, name, deanEmail')
-        .ilike('deanEmail', userEmail)
+      // Find educator by email
+      const { data: educator, error: educatorError } = await supabase
+        .from('school_educators')
+        .select('id, school_id, schools(name)')
+        .eq('email', userEmail)
         .single();
 
-      if (collegeError || !college?.id) {
-        console.error('Error fetching college:', collegeError, 'for email:', userEmail);
-        setError('No college associated with your account');
+      if (educatorError || !educator?.school_id) {
+        console.error('Error fetching educator:', educatorError, 'for email:', userEmail);
+        setError('No school associated with your account');
         setLoading(false);
         return;
       }
 
-      const collegeId = college.id;
+      const schoolId = educator.school_id;
       
-      // Set college name from the already fetched college data
-      setCollegeName(college.name);
+      // Set school name
+      // @ts-ignore
+      setSchoolName(educator.schools?.name || '');
 
-      // Get students from this college
+      // Get students from this school
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
         .select('user_id, name, email')
-        .eq('college_id', collegeId);
+        .eq('school_id', schoolId);
 
       if (studentsError) throw studentsError;
 
@@ -643,8 +644,8 @@ const CollegeAdminAssessmentResults: React.FC = () => {
           ...r,
           student_name: student?.name || null,
           student_email: student?.email || null,
-          college_id: collegeId,
-          college_name: college.name || null,
+          college_id: schoolId,
+          college_name: schoolName || null,
         };
       });
 
@@ -847,7 +848,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
               Student Assessment Results
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              View personal assessment results for {collegeName || 'your college'}
+              View personal assessment results for {schoolName || 'your school'}
             </p>
           </div>
         </div>
@@ -1159,4 +1160,4 @@ const CollegeAdminAssessmentResults: React.FC = () => {
   );
 };
 
-export default CollegeAdminAssessmentResults;
+export default EducatorAssessmentResults;

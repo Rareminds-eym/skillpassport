@@ -197,16 +197,56 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
     maxScore: 100
   });
 
-  // Fetch all students (university-wide)
+  // Fetch students for this university
   const fetchStudents = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
+      // Get university admin's universityId
+      let universityId: string | null = null;
+      
+      // Check localStorage first
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          if (userData.role === 'university_admin') {
+            universityId = userData.universityId || userData.organizationId;
+          }
+        } catch (e) {
+          console.error('Error parsing stored user:', e);
+        }
+      }
+      
+      // If not in localStorage, check Supabase auth
+      if (!universityId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: dbUser } = await supabase
+            .from('users')
+            .select('organizationId')
+            .eq('id', user.id)
+            .single();
+          
+          universityId = dbUser?.organizationId || null;
+        }
+      }
+
+      let query = supabase
         .from('students')
         .select('*')
         .order('created_at', { ascending: false });
+
+      // Filter by universityId if available
+      if (universityId) {
+        console.log('✅ Filtering portfolios by universityId:', universityId);
+        query = query.eq('universityId', universityId);
+      } else {
+        console.warn('⚠️ No universityId found for university admin');
+      }
+
+      const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
       setStudents(data || []);
@@ -218,13 +258,47 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
     }
   };
 
-  // Fetch colleges for filter
+  // Fetch colleges for filter (only colleges under this university)
   const fetchColleges = async () => {
     try {
-      const { data, error } = await supabase
+      // Get university admin's universityId
+      let universityId: string | null = null;
+      
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          if (userData.role === 'university_admin') {
+            universityId = userData.universityId || userData.organizationId;
+          }
+        } catch (e) {
+          console.error('Error parsing stored user:', e);
+        }
+      }
+      
+      if (!universityId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: dbUser } = await supabase
+            .from('users')
+            .select('organizationId')
+            .eq('id', user.id)
+            .single();
+          
+          universityId = dbUser?.organizationId || null;
+        }
+      }
+
+      let query = supabase
         .from('colleges')
         .select('id, name')
         .order('name');
+
+      if (universityId) {
+        query = query.eq('universityId', universityId);
+      }
+
+      const { data, error } = await query;
       
       if (!error && data) {
         setColleges(data);

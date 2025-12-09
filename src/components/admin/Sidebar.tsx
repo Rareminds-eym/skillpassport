@@ -90,6 +90,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               path: "/school-admin/students/attendance-reports",
               icon: ChartBarIcon,
             },
+            {
+              name: "Assessment Results",
+              path: "/school-admin/students/assessment-results",
+              icon: ChartPieIcon,
+            },
           ],
         },
         {
@@ -418,6 +423,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             name: "Assessment Results",
             path: "/college-admin/students/assessment-results",
             icon: ChartPieIcon,
+          },
+          {
+            name: "Digital Portfolio",
+            path: "/college-admin/students/digital-portfolio",
+            icon: FolderIcon,
           },
           {
             name: "Graduation & Alumni",
