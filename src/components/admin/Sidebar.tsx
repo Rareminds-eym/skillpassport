@@ -420,6 +420,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             icon: ChartPieIcon,
           },
           {
+            name: "Digital Portfolio",
+            path: "/college-admin/students/digital-portfolio",
+            icon: FolderIcon,
+          },
+          {
             name: "Graduation & Alumni",
             path: "/college-admin/students/graduation",
             icon: AcademicCapIcon,

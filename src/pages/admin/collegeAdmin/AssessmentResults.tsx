@@ -562,45 +562,32 @@ const CollegeAdminAssessmentResults: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Guard: ensure user.id exists and is valid
-      const userId = user?.id;
-      if (!userId || userId === 'null' || userId === 'undefined') {
+      // Get current user's email
+      const userEmail = user?.email;
+      if (!userEmail) {
         setError('User not authenticated');
         setLoading(false);
         return;
       }
 
-      // Get current user's college_id from users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('metadata')
-        .eq('id', userId)
+      // Find college by matching deanEmail (case-insensitive)
+      const { data: college, error: collegeError } = await supabase
+        .from('colleges')
+        .select('id, name, deanEmail')
+        .ilike('deanEmail', userEmail)
         .single();
 
-      if (userError) {
-        console.error('Error fetching user data:', userError, 'userId:', userId);
-        throw userError;
-      }
-
-      const collegeId = userData?.metadata?.college_id;
-      
-      // Validate collegeId is a proper UUID
-      if (!collegeId || collegeId === 'null' || collegeId === 'undefined') {
+      if (collegeError || !college?.id) {
+        console.error('Error fetching college:', collegeError, 'for email:', userEmail);
         setError('No college associated with your account');
         setLoading(false);
         return;
       }
 
-      // Get college name
-      const { data: collegeData } = await supabase
-        .from('colleges')
-        .select('name')
-        .eq('id', collegeId)
-        .single();
-
-      if (collegeData) {
-        setCollegeName(collegeData.name);
-      }
+      const collegeId = college.id;
+      
+      // Set college name from the already fetched college data
+      setCollegeName(college.name);
 
       // Get students from this college
       const { data: studentsData, error: studentsError } = await supabase
@@ -657,7 +644,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
           student_name: student?.name || null,
           student_email: student?.email || null,
           college_id: collegeId,
-          college_name: collegeData?.name || null,
+          college_name: college.name || null,
         };
       });
 
@@ -671,10 +658,10 @@ const CollegeAdminAssessmentResults: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.email) {
       fetchResults();
     }
-  }, [user?.id]);
+  }, [user?.email]);
 
   useEffect(() => {
     setCurrentPage(1);
