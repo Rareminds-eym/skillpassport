@@ -151,7 +151,14 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
             </motion.div>
             <motion.div variants={itemVariants} className="flex items-center space-x-3">
               <MapPin className="w-5 h-5" style={{ color: primaryColor }} />
-              <span>{student.district_name}</span>
+              <span>
+                {[
+                  student.address,
+                  student.city,
+                  student.state,
+                  student.country || 'India'
+                ].filter(Boolean).join(', ')}
+              </span>
             </motion.div>
           </div>
         </div>
