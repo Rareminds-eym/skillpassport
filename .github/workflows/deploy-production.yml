@@ -1,9 +1,9 @@
-name: Deploy React App to Hostinger via FTP
+name: Deploy React App to Hostinger (Production)
 
 on:
   push:
     branches:
-      - production   # Deploy only when production branch is updated
+      - production
 
 jobs:
   build_and_deploy:
@@ -18,18 +18,29 @@ jobs:
       with:
         node-version: 18
 
-    # ⭐ Create .env.production dynamically
     - name: Create .env.production
       run: |
         echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" > .env.production
         echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env.production
         echo "VITE_OPENAI_API_KEY=${{ secrets.VITE_OPENAI_API_KEY }}" >> .env.production
+        
+        # Razorpay LIVE
+        echo "VITE_RAZORPAY_KEY_ID=${{ secrets.VITE_RAZORPAY_KEY_ID_LIVE }}" >> .env.production
+        echo "VITE_RAZORPAY_KEY_SECRET=${{ secrets.VITE_RAZORPAY_KEY_SECRET_LIVE }}" >> .env.production
+
+        # Supabase Service Role
+        echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env.production
+
+        # R2 Storage Keys
+        echo "R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }}" >> .env.production
+        echo "R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}" >> .env.production
+        echo "R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}" >> .env.production
+        echo "R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }}" >> .env.production
 
     - name: Install dependencies
       run: npm install
 
-    # ⭐ Build project (no --mode required)
-    - name: Build Vite project
+    - name: Build project
       run: npm run build
 
     - name: Deploy to Hostinger via FTP
@@ -39,4 +50,4 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: dist/
-        server-dir: domains/rareminds.in/public_html/skillpassport/
+        server-dir: public_html/skillpassport/
