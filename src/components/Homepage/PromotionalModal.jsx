@@ -109,7 +109,7 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
       <svg viewBox="0 0 100 100" className="h-28 w-28 sm:h-36 sm:w-36 drop-shadow-lg">
         <path
           d="M50 0 L54 38 L65 5 L58 39 L78 15 L61 42 L88 28 L63 46 L95 45 L64 50 L95 55 L63 54 L88 72 L61 58 L78 85 L58 61 L65 95 L54 62 L50 100 L46 62 L35 95 L42 61 L22 85 L39 58 L12 72 L37 54 L5 55 L36 50 L5 45 L37 46 L12 28 L39 42 L22 15 L42 39 L35 5 L46 38 Z"
-          fill="#1B6B6B"
+          fill="#0166cc"
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
@@ -174,12 +174,12 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
     >
       {/* Celebration stars */}
       <svg viewBox="0 0 40 60" className="h-14 w-8 sm:h-18 sm:w-10">
-        <path fill="#4A7C59" d="M20 0L22 8L30 10L22 12L20 20L18 12L10 10L18 8Z" />
-        <path fill="#4A7C59" opacity="0.6" d="M30 25L31.5 30L37 31L31.5 32L30 37L28.5 32L23 31L28.5 30Z" />
-        <path fill="#4A7C59" opacity="0.4" d="M12 35L13 39L17 40L13 41L12 45L11 41L7 40L11 39Z" />
+        <path fill="#0166cc" d="M20 0L22 8L30 10L22 12L20 20L18 12L10 10L18 8Z" />
+        <path fill="#0166cc" opacity="0.6" d="M30 25L31.5 30L37 31L31.5 32L30 37L28.5 32L23 31L28.5 30Z" />
+        <path fill="#0166cc" opacity="0.4" d="M12 35L13 39L17 40L13 41L12 45L11 41L7 40L11 39Z" />
       </svg>
       {/* Small sparkle */}
-      <svg viewBox="0 0 24 24" className="h-4 w-4 text-emerald-400">
+      <svg viewBox="0 0 24 24" className="h-4 w-4 text-blue-400">
         <path fill="currentColor" d="M12 0L14 10L24 12L14 14L12 24L10 14L0 12L10 10Z" />
       </svg>
     </motion.div>
@@ -188,7 +188,7 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
   // Countdown box with label - NO animation, just static
   const CountdownBox = ({ value, label }) => (
     <div className="flex flex-col items-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#1B6B6B] text-xl font-bold text-white shadow-md">
+      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#0166cc] text-xl font-bold text-white shadow-md">
         {String(value).padStart(2, '0')}
       </div>
       <span className="mt-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">{label}</span>
@@ -253,7 +253,7 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: hasAnimated.current ? 0 : 0.25 }}
               >
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1B6B6B]/10 px-3 py-1 text-xs font-semibold text-[#1B6B6B]">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#0166cc]/10 px-3 py-1 text-xs font-semibold text-[#0166cc]">
                   {event.banner_emoji || '🎉'} {event.event_name || 'Special Event'}
                 </span>
               </motion.div>
@@ -296,11 +296,11 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
                   {/* Countdown Timer */}
                   <div className="flex items-start justify-center gap-2 sm:gap-3">
                     <CountdownBox value={timeLeft.days} label="Days" />
-                    <span className="mt-3 text-lg font-bold text-[#1B6B6B] sm:text-xl">:</span>
+                    <span className="mt-3 text-lg font-bold text-[#0166cc] sm:text-xl">:</span>
                     <CountdownBox value={timeLeft.hours} label="Hrs" />
-                    <span className="mt-3 text-lg font-bold text-[#1B6B6B] sm:text-xl">:</span>
+                    <span className="mt-3 text-lg font-bold text-[#0166cc] sm:text-xl">:</span>
                     <CountdownBox value={timeLeft.minutes} label="Min" />
-                    <span className="mt-3 text-lg font-bold text-[#1B6B6B] sm:text-xl">:</span>
+                    <span className="mt-3 text-lg font-bold text-[#0166cc] sm:text-xl">:</span>
                     <CountdownBox value={timeLeft.seconds} label="Sec" />
                   </div>
                 </div>
@@ -308,7 +308,7 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
 
               {/* CTA Button */}
               <motion.button
-                className="mt-8 w-full rounded-xl bg-[#1B6B6B] px-6 py-4 text-base font-semibold text-white shadow-lg transition-all hover:bg-[#155555] hover:shadow-xl"
+                className="mt-8 w-full rounded-xl bg-[#0166cc] px-6 py-4 text-base font-semibold text-white shadow-lg transition-all hover:bg-[#0155aa] hover:shadow-xl"
                 onClick={handleExplore}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}

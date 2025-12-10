@@ -4,9 +4,8 @@
  */
 
 import { supabase } from '../../lib/supabaseClient';
+import { getRazorpayKeyId, getRazorpayKeyMode } from '../../config/payment';
 
-// Use TEST_ prefixed key for easy identification, fallback to regular key for backward compatibility
-const RAZORPAY_KEY_ID = import.meta.env.TEST_VITE_RAZORPAY_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY_ID;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const DEMO_MODE = false; // Production mode with Supabase Edge Functions
 
@@ -355,9 +354,13 @@ export const initiateRazorpayPayment = async ({
     // Get current origin for redirect URLs
     const origin = window.location.origin;
 
+    // Get the appropriate Razorpay key based on environment and route
+    const razorpayKeyId = getRazorpayKeyId();
+    console.log(`💳 Razorpay Payment: Using ${getRazorpayKeyMode()} key`);
+
     // Razorpay checkout options with redirect
     const options = {
-      key: RAZORPAY_KEY_ID,
+      key: razorpayKeyId,
       amount: orderData.amount,
       currency: orderData.currency,
       name: 'RareMinds Skill Passport',

@@ -23,6 +23,8 @@ interface Student {
   cgpa: number;
   atRisk: boolean;
   email: string;
+  batch: string;
+  mentorId?: number;
 }
 
 interface Mentor {
@@ -34,6 +36,10 @@ interface Mentor {
   capacity: number;
   currentLoad: number;
   students: Student[];
+  allocationPeriod?: {
+    startDate: string;
+    endDate: string;
+  };
 }
 
 interface MentorNote {
@@ -43,6 +49,8 @@ interface MentorNote {
   note: string;
   date: string;
   outcome: string;
+  isPrivate: boolean;
+  interventionType: 'academic' | 'personal' | 'career' | 'attendance' | 'other';
 }
 
 const MentorAllocation: React.FC = () => {
@@ -56,6 +64,10 @@ const MentorAllocation: React.FC = () => {
       capacity: 15,
       currentLoad: 12,
       students: [],
+      allocationPeriod: {
+        startDate: "2024-01-01",
+        endDate: "2024-06-30",
+      },
     },
     {
       id: 2,
@@ -66,6 +78,10 @@ const MentorAllocation: React.FC = () => {
       capacity: 12,
       currentLoad: 8,
       students: [],
+      allocationPeriod: {
+        startDate: "2024-01-01",
+        endDate: "2024-06-30",
+      },
     },
   ]);
 
@@ -79,6 +95,7 @@ const MentorAllocation: React.FC = () => {
       cgpa: 7.2,
       atRisk: true,
       email: "amit.patel@student.edu",
+      batch: "2021-2025",
     },
     {
       id: 2,
@@ -89,6 +106,18 @@ const MentorAllocation: React.FC = () => {
       cgpa: 8.5,
       atRisk: false,
       email: "sneha.reddy@student.edu",
+      batch: "2021-2025",
+    },
+    {
+      id: 3,
+      name: "Rahul Singh",
+      rollNo: "CS2022001",
+      department: "Computer Science",
+      semester: 3,
+      cgpa: 6.8,
+      atRisk: true,
+      email: "rahul.singh@student.edu",
+      batch: "2022-2026",
     },
   ]);
 
@@ -100,6 +129,11 @@ const MentorAllocation: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [noteText, setNoteText] = useState("");
   const [noteOutcome, setNoteOutcome] = useState("");
+  const [selectedBatch, setSelectedBatch] = useState<string>("all");
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [studentToReassign, setStudentToReassign] = useState<Student | null>(null);
+  const [interventionType, setInterventionType] = useState<'academic' | 'personal' | 'career' | 'attendance' | 'other'>('academic');
+  const [isPrivateNote, setIsPrivateNote] = useState(false);
 
   const filteredMentors = useMemo(() => {
     return mentors.filter(
@@ -109,7 +143,26 @@ const MentorAllocation: React.FC = () => {
     );
   }, [mentors, searchQuery]);
 
+  const filteredStudents = useMemo(() => {
+    return availableStudents.filter(student => 
+      selectedBatch === "all" || student.batch === selectedBatch
+    );
+  }, [availableStudents, selectedBatch]);
+
+  const uniqueBatches = useMemo(() => {
+    return Array.from(new Set(availableStudents.map(s => s.batch)));
+  }, [availableStudents]);
+
   const handleAllocateStudents = (mentorId: number, studentIds: number[]) => {
+    const mentor = mentors.find(m => m.id === mentorId);
+    if (!mentor) return;
+
+    const newStudentsCount = studentIds.length;
+    if (mentor.currentLoad + newStudentsCount > mentor.capacity) {
+      alert(`Cannot allocate ${newStudentsCount} students. Mentor capacity exceeded. Available slots: ${mentor.capacity - mentor.currentLoad}`);
+      return;
+    }
+
     setMentors((prev) =>
       prev.map((m) => {
         if (m.id === mentorId) {
@@ -138,12 +191,43 @@ const MentorAllocation: React.FC = () => {
       note: noteText,
       date: new Date().toISOString().split("T")[0],
       outcome: noteOutcome,
+      isPrivate: isPrivateNote,
+      interventionType: interventionType,
     };
 
     setNotes([...notes, newNote]);
     setNoteText("");
     setNoteOutcome("");
+    setInterventionType('academic');
+    setIsPrivateNote(false);
     setShowNoteModal(false);
+  };
+
+  const handleReassignStudent = (newMentorId: number) => {
+    if (!studentToReassign) return;
+
+    setMentors(prev => prev.map(mentor => {
+      // Remove student from current mentor
+      if (mentor.students.some(s => s.id === studentToReassign.id)) {
+        return {
+          ...mentor,
+          students: mentor.students.filter(s => s.id !== studentToReassign.id),
+          currentLoad: mentor.currentLoad - 1
+        };
+      }
+      // Add student to new mentor
+      if (mentor.id === newMentorId) {
+        return {
+          ...mentor,
+          students: [...mentor.students, studentToReassign],
+          currentLoad: mentor.currentLoad + 1
+        };
+      }
+      return mentor;
+    }));
+
+    setShowReassignModal(false);
+    setStudentToReassign(null);
   };
 
   return (
@@ -215,13 +299,25 @@ const MentorAllocation: React.FC = () => {
               placeholder="Search mentors..."
             />
           </div>
-          <button
-            onClick={() => setShowAllocationModal(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
-          >
-            <PlusCircleIcon className="h-5 w-5" />
-            Allocate Students
-          </button>
+          <div className="flex gap-3">
+            <select
+              value={selectedBatch}
+              onChange={(e) => setSelectedBatch(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="all">All Batches</option>
+              {uniqueBatches.map(batch => (
+                <option key={batch} value={batch}>{batch}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => setShowAllocationModal(true)}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+            >
+              <PlusCircleIcon className="h-5 w-5" />
+              Allocate Students
+            </button>
+          </div>
         </div>
       </div>
 
@@ -241,6 +337,11 @@ const MentorAllocation: React.FC = () => {
                   <h3 className="font-semibold text-gray-900">{mentor.name}</h3>
                   <p className="text-sm text-gray-600">{mentor.designation}</p>
                   <p className="text-xs text-gray-500">{mentor.department}</p>
+                  {mentor.allocationPeriod && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Period: {new Date(mentor.allocationPeriod.startDate).toLocaleDateString()} - {new Date(mentor.allocationPeriod.endDate).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="text-right">
@@ -281,15 +382,40 @@ const MentorAllocation: React.FC = () => {
                       key={student.id}
                       className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
                     >
-                      <div>
+                      <div className="flex-1">
                         <p className="text-sm font-medium text-gray-900">
                           {student.name}
                         </p>
-                        <p className="text-xs text-gray-500">{student.rollNo}</p>
+                        <p className="text-xs text-gray-500">
+                          {student.rollNo} • {student.batch}
+                        </p>
                       </div>
-                      {student.atRisk && (
-                        <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
-                      )}
+                      <div className="flex items-center gap-2">
+                        {student.atRisk && (
+                          <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
+                        )}
+                        <button
+                          onClick={() => {
+                            setSelectedMentor(mentor);
+                            setSelectedStudent(student);
+                            setShowNoteModal(true);
+                          }}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                          title="Add Note"
+                        >
+                          <PencilSquareIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setStudentToReassign(student);
+                            setShowReassignModal(true);
+                          }}
+                          className="p-1 text-orange-600 hover:bg-orange-50 rounded"
+                          title="Reassign"
+                        >
+                          <UserGroupIcon className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -316,7 +442,7 @@ const MentorAllocation: React.FC = () => {
       {showAllocationModal && (
         <AllocationModal
           mentor={selectedMentor}
-          availableStudents={availableStudents}
+          availableStudents={filteredStudents}
           onClose={() => {
             setShowAllocationModal(false);
             setSelectedMentor(null);
@@ -332,14 +458,31 @@ const MentorAllocation: React.FC = () => {
           student={selectedStudent}
           noteText={noteText}
           noteOutcome={noteOutcome}
+          interventionType={interventionType}
+          isPrivateNote={isPrivateNote}
           onNoteChange={setNoteText}
           onOutcomeChange={setNoteOutcome}
+          onInterventionTypeChange={setInterventionType}
+          onPrivateChange={setIsPrivateNote}
           onClose={() => {
             setShowNoteModal(false);
             setSelectedMentor(null);
             setSelectedStudent(null);
           }}
           onSave={handleAddNote}
+        />
+      )}
+
+      {/* Reassign Modal */}
+      {showReassignModal && studentToReassign && (
+        <ReassignModal
+          student={studentToReassign}
+          mentors={mentors}
+          onClose={() => {
+            setShowReassignModal(false);
+            setStudentToReassign(null);
+          }}
+          onReassign={handleReassignStudent}
         />
       )}
     </div>
@@ -401,7 +544,7 @@ const AllocationModal = ({ mentor, availableStudents, onClose, onAllocate }: any
                 <div>
                   <p className="font-medium text-gray-900">{student.name}</p>
                   <p className="text-sm text-gray-600">
-                    {student.rollNo} • {student.department} • CGPA: {student.cgpa}
+                    {student.rollNo} • {student.department} • {student.batch} • CGPA: {student.cgpa}
                   </p>
                 </div>
               </div>
@@ -449,8 +592,12 @@ const NoteModal = ({
   student,
   noteText,
   noteOutcome,
+  interventionType,
+  isPrivateNote,
   onNoteChange,
   onOutcomeChange,
+  onInterventionTypeChange,
+  onPrivateChange,
   onClose,
   onSave,
 }: any) => {
@@ -469,7 +616,25 @@ const NoteModal = ({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Student
             </label>
-            <p className="text-gray-900">{student?.name}</p>
+            <p className="text-gray-900 font-medium">{student?.name}</p>
+            <p className="text-sm text-gray-600">{student?.rollNo} • {student?.batch}</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Intervention Type
+            </label>
+            <select
+              value={interventionType}
+              onChange={(e) => onInterventionTypeChange(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="academic">Academic Support</option>
+              <option value="personal">Personal Counseling</option>
+              <option value="career">Career Guidance</option>
+              <option value="attendance">Attendance Issues</option>
+              <option value="other">Other</option>
+            </select>
           </div>
 
           <div>
@@ -481,13 +646,13 @@ const NoteModal = ({
               onChange={(e) => onNoteChange(e.target.value)}
               rows={4}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              placeholder="Enter mentoring notes..."
+              placeholder="Enter detailed mentoring notes..."
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Outcome
+              Outcome/Action Taken
             </label>
             <input
               type="text"
@@ -496,6 +661,19 @@ const NoteModal = ({
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
               placeholder="e.g., Improved attendance, Career guidance provided"
             />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="privateNote"
+              checked={isPrivateNote}
+              onChange={(e) => onPrivateChange(e.target.checked)}
+              className="h-4 w-4 text-purple-600 rounded"
+            />
+            <label htmlFor="privateNote" className="text-sm text-gray-700">
+              Mark as private note (visible only to mentor and admin)
+            </label>
           </div>
         </div>
 
@@ -512,6 +690,97 @@ const NoteModal = ({
             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
           >
             Save Note
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Reassign Modal Component
+const ReassignModal = ({ student, mentors, onClose, onReassign }: any) => {
+  const [selectedMentorId, setSelectedMentorId] = useState<number | null>(null);
+
+  const availableMentors = mentors.filter((m: Mentor) => 
+    m.currentLoad < m.capacity && !m.students.some(s => s.id === student.id)
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-900">Reassign Student</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Student to Reassign
+            </label>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="font-medium text-gray-900">{student.name}</p>
+              <p className="text-sm text-gray-600">{student.rollNo} • {student.batch}</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select New Mentor
+            </label>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {availableMentors.length === 0 ? (
+                <p className="text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
+                  No mentors available with capacity
+                </p>
+              ) : (
+                availableMentors.map((mentor: Mentor) => (
+                  <label
+                    key={mentor.id}
+                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="mentor"
+                        value={mentor.id}
+                        checked={selectedMentorId === mentor.id}
+                        onChange={() => setSelectedMentorId(mentor.id)}
+                        className="h-4 w-4 text-purple-600"
+                      />
+                      <div>
+                        <p className="font-medium text-gray-900">{mentor.name}</p>
+                        <p className="text-sm text-gray-600">{mentor.department}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-900">
+                        {mentor.currentLoad}/{mentor.capacity}
+                      </p>
+                      <p className="text-xs text-gray-500">Capacity</p>
+                    </div>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => selectedMentorId && onReassign(selectedMentorId)}
+            disabled={!selectedMentorId}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+          >
+            Reassign
           </button>
         </div>
       </div>

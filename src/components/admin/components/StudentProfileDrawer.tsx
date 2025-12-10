@@ -812,6 +812,18 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                                 <span className="font-medium text-gray-900">{student.admission_number}</span>
                               </div>
                             )}
+                            {student.category && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Category</span>
+                                <span className="font-medium text-gray-900">{student.category}</span>
+                              </div>
+                            )}
+                            {student.quota && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Quota</span>
+                                <span className="font-medium text-gray-900">{student.quota}</span>
+                              </div>
+                            )}
                             {student.date_of_birth && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Date of Birth</span>
@@ -878,6 +890,24 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }) => {
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Registration Number</span>
                                 <span className="font-medium text-gray-900">{student.registration_number}</span>
+                              </div>
+                            )}
+                            {student.roll_number && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Roll Number</span>
+                                <span className="font-medium text-gray-900">{student.roll_number}</span>
+                              </div>
+                            )}
+                            {student.category && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Category</span>
+                                <span className="font-medium text-gray-900">{student.category}</span>
+                              </div>
+                            )}
+                            {student.quota && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Quota</span>
+                                <span className="font-medium text-gray-900">{student.quota}</span>
                               </div>
                             )}
                             {student.date_of_birth && (
