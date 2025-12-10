@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - dev-skillpassport
-      - main
 
 jobs:
   build_and_deploy:
@@ -42,10 +41,7 @@ jobs:
       run: npm install
 
     - name: Build project
-      run: npm run build -- --mode development
-    
-    - name: Copy dev .htaccess
-      run: cp public/.htaccess.dev dist/.htaccess
+      run: npm run build
 
     - name: Deploy to Hostinger via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
@@ -54,4 +50,4 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: dist/
-        server-dir: domains/rareminds.in/public_html/dev-skillpassport/
+        server-dir: domains/dev-skillpassport.rareminds.in/public_html/
