@@ -1,11 +1,16 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteBase /
-  RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{REQUEST_FILENAME} !-l
-  RewriteRule . /index.html [L]
+  # Don't rewrite files or directories that exist
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d [OR]
+  RewriteCond %{REQUEST_FILENAME} -l
+  RewriteRule ^ - [L]
+  
+  # Don't rewrite static assets (js, css, images, fonts)
+  RewriteRule \.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff|woff2|ttf|eot|map)$ - [L]
+  
+  # For everything else, serve index.html (SPA routing)
+  RewriteRule ^ index.html [L]
 </IfModule>
 
 # Set correct MIME types
