@@ -41,7 +41,7 @@ jobs:
       run: npm install
 
     - name: Build project
-      run: npm run build
+      run: npm run build -- --mode development
 
     - name: Deploy to Hostinger via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
@@ -50,4 +50,4 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: dist/
-        server-dir: public_html/dev-skillpassport/
+        server-dir: domains/rareminds.in/public_html/dev-skillpassport/
