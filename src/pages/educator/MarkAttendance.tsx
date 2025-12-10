@@ -142,7 +142,7 @@ const MarkAttendance: React.FC = () => {
       const dayOfWeek = date.getDay();
 
       const currentYear = new Date().getFullYear();
-      const { data: timetables, error: timetableError } = await supabase
+      const { data: timetables } = await supabase
         .from("timetables")
         .select("id")
         .eq("school_id", schoolId)
@@ -201,17 +201,26 @@ const MarkAttendance: React.FC = () => {
         studentsByClass.set(student.school_class_id, classStudents);
       });
 
-      // Fetch all attendance records for today in one query
+      // Fetch all attendance records for today with valid slot_id
       const allStudentIds = allStudents?.map(s => s.id) || [];
       const { data: attendanceRecords } = allStudentIds.length > 0 ? await supabase
         .from("attendance_records")
-        .select("student_id")
+        .select("student_id, slot_id")
         .eq("school_id", schoolId)
         .eq("date", selectedDate)
-        .in("student_id", allStudentIds) : { data: [] };
+        .in("student_id", allStudentIds)
+        .not("slot_id", "is", null) : { data: [] };
 
-      // Create a set of student IDs with attendance marked
-      const markedStudentIds = new Set(attendanceRecords?.map(r => r.student_id) || []);
+      // Create a map of slot_id -> Set of student IDs with attendance marked
+      const attendanceBySlot = new Map();
+      attendanceRecords?.forEach(record => {
+        if (record.slot_id) {
+          if (!attendanceBySlot.has(record.slot_id)) {
+            attendanceBySlot.set(record.slot_id, new Set());
+          }
+          attendanceBySlot.get(record.slot_id).add(record.student_id);
+        }
+      });
 
       // Check if slot is locked once
       const isDateLocked = isSlotLocked(selectedDate);
@@ -219,7 +228,8 @@ const MarkAttendance: React.FC = () => {
       // Format slots with pre-fetched data
       const formattedSlots: TimetableSlot[] = (slots || []).map((slot: any) => {
         const classStudentIds = studentsByClass.get(slot.class_id) || [];
-        const attendanceMarked = classStudentIds.some(id => markedStudentIds.has(id));
+        const slotAttendanceSet = attendanceBySlot.get(slot.id) || new Set();
+        const attendanceMarked = classStudentIds.some(id => slotAttendanceSet.has(id));
         const locked = isDateLocked && !attendanceMarked;
 
         return {
@@ -249,6 +259,11 @@ const MarkAttendance: React.FC = () => {
   };
 
   const startAttendanceSession = async (slot: TimetableSlot) => {
+    if (!slot || !slot.id) {
+      alert("Error: Invalid slot information. Please refresh the page and try again.");
+      return;
+    }
+    
     setLoading(true);
     try {
       // First get all students in this class
@@ -260,12 +275,13 @@ const MarkAttendance: React.FC = () => {
 
       const classStudentIds = classStudents?.map(s => s.id) || [];
 
-      // Check if attendance already exists for these students on this date
+      // Check if attendance already exists for these students on this date and slot
       const { data: existingRecords } = await supabase
         .from("attendance_records")
         .select("*")
         .eq("school_id", schoolId)
         .eq("date", selectedDate)
+        .eq("slot_id", slot.id)
         .in("student_id", classStudentIds);
 
       const existingForThisSlot = existingRecords || [];
@@ -392,18 +408,62 @@ const MarkAttendance: React.FC = () => {
   const submitAttendance = async () => {
     if (!activeSession || !educatorUserId || !schoolId) return;
 
+    if (!activeSession.slot.id) {
+      alert("Error: Invalid slot information. Please refresh and try again.");
+      return;
+    }
+
     if (!confirm("Submit attendance? This will save the records.")) return;
 
     setSubmitting(true);
     try {
       if (activeSession.isSubmitted) {
-        const studentIds = activeSession.students.map(s => s.id);
         await supabase
           .from("attendance_records")
           .delete()
           .eq("school_id", schoolId)
           .eq("date", selectedDate)
-          .in("student_id", studentIds);
+          .eq("slot_id", activeSession.slot.id);
+      }
+
+      let slotId = activeSession.slot.id;
+      
+      // If slot_id is missing, query it from database
+      if (!slotId && educatorId && schoolId) {
+        try {
+          const dayOfWeek = new Date(selectedDate).getDay();
+          
+          const { data: slotData } = await supabase
+            .from("timetable_slots")
+            .select("id")
+            .eq("educator_id", educatorId)
+            .eq("period_number", activeSession.slot.period_number)
+            .eq("day_of_week", dayOfWeek)
+            .eq("subject_name", activeSession.slot.subject_name)
+            .eq("class_id", activeSession.slot.class_id)
+            .single();
+            
+          if (slotData?.id) {
+            slotId = slotData.id;
+          }
+        } catch (error) {
+          console.error("Failed to retrieve slot_id from database:", error);
+        }
+      }
+      
+      // Final fallback: try to find slot from current slots
+      if (!slotId) {
+        const matchingSlot = todaySlots.find(s => 
+          s.period_number === activeSession.slot.period_number &&
+          s.subject_name === activeSession.slot.subject_name &&
+          s.class_id === activeSession.slot.class_id
+        );
+        
+        if (matchingSlot?.id) {
+          slotId = matchingSlot.id;
+        } else {
+          throw new Error("Unable to determine slot information. Please refresh the page and try again.");
+        }
       }
 
       const recordsToInsert = Array.from(activeSession.records.values()).map((record) => ({
@@ -417,7 +477,14 @@ const MarkAttendance: React.FC = () => {
         remarks: record.remarks || null,
         mode: "manual",
         otp_verified: false,
+        slot_id: slotId,
       }));
+
+      // Validate that all records have slot_id before inserting
+      const invalidRecords = recordsToInsert.filter(record => !record.slot_id);
+      if (invalidRecords.length > 0) {
+        throw new Error("Invalid slot information detected. Please refresh and try again.");
+      }
 
       const { error } = await supabase
         .from("attendance_records")
@@ -434,6 +501,7 @@ const MarkAttendance: React.FC = () => {
       setViewMode("schedule");
       loadTodaySchedule();
     } catch (error) {
+      console.error("Attendance submission error:", error);
       alert("Failed to submit attendance. Please try again.");
     } finally {
       setSubmitting(false);
@@ -1159,9 +1227,9 @@ const MarkingView: React.FC<MarkingViewProps> = ({
           {/* Table Header - Hidden on Mobile */}
           <div className="hidden lg:block bg-gray-50 px-6 py-3 border-b border-gray-200">
             <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-600 uppercase">
-              <div className="col-span-1">Roll</div>
+              <div className="col-span-2">Roll</div>
               <div className="col-span-3">Student</div>
-              <div className="col-span-4">Status</div>
+              <div className="col-span-3">Status</div>
               <div className="col-span-2">Time In</div>
               <div className="col-span-2">Remarks</div>
             </div>
@@ -1263,10 +1331,12 @@ const StudentRow: React.FC<StudentRowProps> = ({ student, record, isDisabled, on
       <div className="hidden lg:block px-6 py-4 hover:bg-gray-50 transition-colors">
         <div className="grid grid-cols-12 gap-4 items-center">
           {/* Roll Number */}
-          <div className="col-span-1">
-            <span className="inline-flex items-center justify-center w-8 h-8 bg-indigo-100 text-indigo-700 rounded-lg font-bold text-xs">
-              {student.roll_number}
-            </span>
+          <div className="col-span-2">
+            <div className="flex items-left justify-left min-w-0">
+              <span className="inline-flex items-center justify-center px-3 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-bold text-xs whitespace-nowrap">
+                {student.roll_number}
+              </span>
+            </div>
           </div>
 
           {/* Student Name */}
@@ -1276,10 +1346,10 @@ const StudentRow: React.FC<StudentRowProps> = ({ student, record, isDisabled, on
                 <img
                   src={student.profile_picture}
                   alt={student.name}
-                  className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                  className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-xs">
+                <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
                   {student.name.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -1293,7 +1363,7 @@ const StudentRow: React.FC<StudentRowProps> = ({ student, record, isDisabled, on
           </div>
 
           {/* Status Buttons */}
-          <div className="col-span-4">
+          <div className="col-span-3">
             <div className="flex gap-2">
               {statusButtons.map((btn) => {
                 const Icon = btn.icon;

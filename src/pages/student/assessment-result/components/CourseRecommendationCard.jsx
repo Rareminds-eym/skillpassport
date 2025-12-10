@@ -33,12 +33,30 @@ const CourseRecommendationCard = ({ course, onClick }) => {
 
     const matchColor = getMatchColor(matchPercentage);
 
-    // Handle click to navigate to course enrollment
+    // Handle click to navigate to course enrollment or marketplace
     const handleClick = () => {
         if (onClick) {
             onClick(course);
         } else {
-            navigate(`/student/courses/${course_id}/learn`);
+            // Check user role from URL path to determine navigation
+            const currentPath = window.location.pathname;
+            
+            if (currentPath.includes('/educator/')) {
+                // Navigate to educator browse courses marketplace
+                navigate('/educator/browse-courses');
+            } else if (currentPath.includes('/school-admin/')) {
+                // Navigate to school admin browse courses marketplace
+                navigate('/school-admin/academics/browse-courses');
+            } else if (currentPath.includes('/college-admin/')) {
+                // Navigate to college admin browse courses marketplace
+                navigate('/college-admin/academics/browse-courses');
+            } else if (currentPath.includes('/university-admin/')) {
+                // Navigate to university admin browse courses marketplace
+                navigate('/university-admin/browse-courses');
+            } else {
+                // Default: student - navigate to course player (free enrollment)
+                navigate(`/student/courses/${course_id}/learn`);
+            }
         }
     };
 

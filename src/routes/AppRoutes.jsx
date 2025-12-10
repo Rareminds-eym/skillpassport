@@ -150,6 +150,7 @@ const EducatorClasses = lazy(() => import("../pages/educator/ClassesPage"));
 const EducatorAssessmentResults = lazy(() => import("../pages/educator/AssessmentResults"));
 
 const EducatorCourses = lazy(() => import("../pages/educator/Courses"));
+const EducatorBrowseCourses = lazy(() => import("../pages/educator/BrowseCourses"));
 const EducatorAssessments = lazy(() => import("../pages/educator/Assessments"));
 const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
 const EducatorSettings = lazy(() => import("../pages/educator/Settings"));
@@ -311,6 +312,9 @@ const CurriculumBuilder = lazy(() =>
   import("../pages/admin/schoolAdmin/CurriculumBuilderWrapper")
 );
 const SchoolAdminCourses = lazy(() => import("../pages/admin/schoolAdmin/Courses"));
+const SchoolAdminBrowseCourses = lazy(() => import("../pages/admin/schoolAdmin/BrowseCourses"));
+const CollegeAdminBrowseCourses = lazy(() => import("../pages/admin/collegeAdmin/BrowseCourses"));
+const UniversityAdminBrowseCourses = lazy(() => import("../pages/admin/universityAdmin/BrowseCourses"));
 const LessonPlan = lazy(() => import("../pages/admin/schoolAdmin/LessonPlanWrapper"));
 const ExamsAssessments = lazy(() =>
   import("../pages/admin/schoolAdmin/ExamsAssessments")
@@ -466,6 +470,7 @@ const AppRoutes = () => {
           
           {/* Academic Management */}
           <Route path="academics/courses" element={<CollegeAdminCourses />} />
+          <Route path="academics/browse-courses" element={<CollegeAdminBrowseCourses />} />
           <Route path="academics/curriculum" element={<CollegeCurriculumBuilder />} />
           <Route path="academics/lesson-plans" element={<LessonPlanManagement />} />
           <Route path="academics/calendar" element={<AcademicCalendar />} />
@@ -524,6 +529,7 @@ const AppRoutes = () => {
           <Route path="lesson-plans/approvals" element={<LessonPlanApprovals />} />
           {/* Academic Management System Routes */}
           <Route path="academics/courses" element={<SchoolAdminCourses />} />
+          <Route path="academics/browse-courses" element={<SchoolAdminBrowseCourses />} />
           <Route path="academics/curriculum" element={<CurriculumBuilder />} />
           <Route path="academics/lesson-plans" element={<LessonPlan />} />
           <Route path="academics/exams" element={<ExamsAssessments />} />
@@ -561,6 +567,7 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<UniversityAdminDashboard />} />
           <Route path="colleges/registration" element={<CollegeRegistration />} />
           <Route path="courses" element={<UniversityAdminCourses />} />
+          <Route path="browse-courses" element={<UniversityAdminBrowseCourses />} />
           <Route path="students/enrollments" element={<StudentEnrollments />} />
           <Route path="students/digital-portfolios" element={<UniversityAdminDigitalPortfolio />} />
           <Route path="students/assessment-results" element={<UniversityAdminAssessmentResults />} />
@@ -790,6 +797,7 @@ const AppRoutes = () => {
           <Route path="students" element={<EducatorStudents />} />
           <Route path="classes" element={<EducatorClasses />} />
           <Route path="courses" element={<EducatorCourses />} />
+          <Route path="browse-courses" element={<EducatorBrowseCourses />} />
           <Route path="courses/:courseId/analytics" element={<CourseAnalytics />} />
           <Route path="assessment-results" element={<EducatorAssessmentResults />} />
           <Route path="assignments" element={<EducatorAssessments />} />
