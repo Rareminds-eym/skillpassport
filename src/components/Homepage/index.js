@@ -8,4 +8,6 @@ export { default as HowItWorks } from './HowItWorks';
 export { default as ProductWalkthrough } from './ProductWalkthrough';
 export { default as CaseHighlights } from './CaseHighlights';
 export { default as FinalCTA } from './FinalCTA';
+export { default as PromotionalModal } from './PromotionalModal';
+export { default as PromotionalBanner } from './PromotionalBanner';
 
