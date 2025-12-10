@@ -26,12 +26,10 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { getEntityContent } from '../../utils/getEntityContent';
-import { isTestPricing } from '../../config/payment';
+import { isTestPricing, getRazorpayKeyId, getRazorpayKeyMode } from '../../config/payment';
 import Header from '../../layouts/Header';
 import FlipClockCountdown from '@leenguyen/react-flip-clock-countdown';
 import '@leenguyen/react-flip-clock-countdown/dist/index.css';
-
-const RAZORPAY_KEY_ID = import.meta.env.TEST_VITE_RAZORPAY_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY_ID;
 
 // Role types that use institution pricing tiers (not individual plans)
 const ADMIN_ROLES = ['school-admin', 'college-admin', 'university-admin', 'educator', 'recruiter'];
@@ -615,8 +613,12 @@ function EventSales() {
       const { data: reg, error: err } = await supabase.from('event_registrations').insert(registrationData).select().single();
       if (err) throw err;
 
+      // Get the appropriate Razorpay key based on environment and route
+      const razorpayKeyId = getRazorpayKeyId();
+      console.log(`💳 Razorpay Payment: Using ${getRazorpayKeyMode()} key`);
+
       new window.Razorpay({
-        key: RAZORPAY_KEY_ID,
+        key: razorpayKeyId,
         amount: currentPricing.price * 100,
         currency: 'INR',
         name: 'Skill Passport',
