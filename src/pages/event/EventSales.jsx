@@ -5,19 +5,36 @@
 
 import { useState, useMemo, memo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { 
-  Check, User, Mail, Phone, MapPin, Building, CreditCard, ChevronRight, 
-  Shield, Zap, Award, Users, GraduationCap, Briefcase, Globe, Hash, BookOpen
+import {
+  Check,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Building,
+  CreditCard,
+  ChevronRight,
+  Shield,
+  Zap,
+  Award,
+  Users,
+  GraduationCap,
+  Briefcase,
+  Globe,
+  Hash,
+  BookOpen,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { getEntityContent } from '../../utils/getEntityContent';
 import { isTestPricing } from '../../config/payment';
 import Header from '../../layouts/Header';
+import FlipClockCountdown from '@leenguyen/react-flip-clock-countdown';
+import '@leenguyen/react-flip-clock-countdown/dist/index.css';
 
 const RAZORPAY_KEY_ID = import.meta.env.TEST_VITE_RAZORPAY_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY_ID;
 
-// Admin role types
-const ADMIN_ROLES = ['school-admin', 'college-admin', 'university-admin'];
+// Role types that use institution pricing tiers (not individual plans)
+const ADMIN_ROLES = ['school-admin', 'college-admin', 'university-admin', 'educator', 'recruiter'];
 
 // Roles
 const ROLES = [
@@ -98,15 +115,37 @@ const RoleCard = memo(({ role, isSelected, onSelect }) => (
   </button>
 ));
 
-// Student Tier Card
-const StudentTierCard = memo(({ tier, isSelected, onSelect }) => (
+// Selected Role Badge - Shows the selected role with option to change
+const SelectedRoleBadge = memo(({ role, onChangeRole }) => (
+  <div className="flex justify-center mb-4">
+    <div className="inline-flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-full shadow-sm max-w-full">
+      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+        <span className="text-lg sm:text-xl flex-shrink-0">{role.icon}</span>
+        <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+          <span className="font-semibold text-gray-900 text-sm sm:text-base truncate">{role.label}</span>
+          <span className="text-gray-400 hidden sm:inline">•</span>
+          <span className="text-xs sm:text-sm text-gray-500 hidden sm:inline truncate">{role.desc}</span>
+        </div>
+      </div>
+      <button 
+        onClick={onChangeRole}
+        className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors flex-shrink-0"
+      >
+        Change
+      </button>
+    </div>
+  </div>
+));
+
+// Student/Capacity Tier Card
+const StudentTierCard = memo(({ tier, isSelected, onSelect, capacityLabel = 'Students' }) => (
   <button onClick={() => onSelect(tier)} className={`w-full p-5 rounded-2xl border-2 text-left transition-all duration-200 relative ${isSelected ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-white shadow-xl shadow-blue-500/10' : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-lg'}`}>
     {tier.is_recommended && <div className="absolute -top-3 left-4 px-3 py-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-semibold rounded-full">Recommended</div>}
     <div className="flex justify-between items-start">
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-2">
           <Users className="w-5 h-5 text-blue-500" />
-          <span className="text-lg font-bold text-gray-900">{tier.min_students} - {tier.max_students} Students</span>
+          <span className="text-lg font-bold text-gray-900">{tier.max_students === 99999 ? `${tier.min_students}+` : `${tier.min_students} - ${tier.max_students}`} {capacityLabel}</span>
         </div>
         <div className="font-semibold text-blue-600 mb-3">{tier.tier_name} Plan</div>
         <ul className="space-y-1.5">
@@ -184,6 +223,56 @@ const SelectField = memo(({ label, icon: Icon, options, error, required, ...prop
 ));
 
 
+// Get role-specific UX content for steps
+const getStepContent = (roleId) => {
+  switch (roleId) {
+    case 'school-student':
+      return {
+        step2: {
+          heading: 'Start Your Journey',
+          subtitle: 'Build skills early and discover your career path'
+        },
+        step3: {
+          heading: 'Student Information',
+          subtitle: 'Tell us about yourself'
+        }
+      };
+    case 'college-student':
+      return {
+        step2: {
+          heading: 'Boost Your Career',
+          subtitle: 'Stand out to recruiters with verified skills'
+        },
+        step3: {
+          heading: 'Student Information',
+          subtitle: 'Help us personalize your experience'
+        }
+      };
+    case 'university-student':
+      return {
+        step2: {
+          heading: 'Advance Your Career',
+          subtitle: 'Access premium opportunities and industry connections'
+        },
+        step3: {
+          heading: 'Student Information',
+          subtitle: 'Complete your professional profile'
+        }
+      };
+    default:
+      return {
+        step2: {
+          heading: 'Choose Your Plan',
+          subtitle: 'Select the plan that fits your needs'
+        },
+        step3: {
+          heading: 'Your Details',
+          subtitle: 'Enter your information'
+        }
+      };
+  }
+};
+
 // Get initial form state based on role
 const getInitialFormState = (roleId) => {
   const common = { email: '', phone: '', address: '', city: '', state: '', pincode: '' };
@@ -221,18 +310,76 @@ function EventSales() {
   const [studentTier, setStudentTier] = useState(null);
   const [studentTiers, setStudentTiers] = useState([]);
   const [tiersLoading, setTiersLoading] = useState(false);
+  const [selectedTierGroupIndex, setSelectedTierGroupIndex] = useState(0);
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [promoEvent, setPromoEvent] = useState(null);
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  // Fetch active promotional event
+  useEffect(() => {
+    const fetchPromoEvent = async () => {
+      try {
+        const now = new Date().toISOString();
+        const { data, error } = await supabase
+          .from('promotional_events')
+          .select('*')
+          .eq('is_active', true)
+          .lte('start_date', now)
+          .gte('end_date', now)
+          .single();
+        
+        if (!error && data) {
+          setPromoEvent(data);
+        }
+      } catch (err) {
+        console.error('Error fetching promo event:', err);
+      }
+    };
+    fetchPromoEvent();
+  }, []);
+
+  // Countdown timer
+  useEffect(() => {
+    if (!promoEvent?.end_date) return;
+    
+    const updateCountdown = () => {
+      const now = new Date().getTime();
+      const endTime = new Date(promoEvent.end_date).getTime();
+      const diff = endTime - now;
+      
+      if (diff <= 0) {
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        setPromoEvent(null); // Promotion ended
+        return;
+      }
+      
+      setCountdown({
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((diff % (1000 * 60)) / 1000)
+      });
+    };
+    
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [promoEvent?.end_date]);
+
+  const isPromoActive = !!promoEvent;
 
   const isAdminRole = role && ADMIN_ROLES.includes(role.id);
 
   // Dynamic steps
   const steps = useMemo(() => {
     if (isAdminRole) {
+      // Use "Capacity" for recruiter, "Students" for others
+      const tierLabel = role?.id === 'recruiter' ? 'Capacity' : 'Students';
       return [
         { id: 1, title: 'Role', icon: User },
-        { id: 2, title: 'Students', icon: Users },
+        { id: 2, title: tierLabel, icon: Users },
         { id: 3, title: 'Details', icon: Building },
         { id: 4, title: 'Payment', icon: Shield },
       ];
@@ -243,9 +390,36 @@ function EventSales() {
       { id: 3, title: 'Details', icon: Mail },
       { id: 4, title: 'Payment', icon: Shield },
     ];
-  }, [isAdminRole]);
+  }, [isAdminRole, role?.id]);
 
   const { plans } = useMemo(() => role && !isAdminRole ? getEntityContent(role.type) : { plans: [] }, [role, isAdminRole]);
+
+  // Group tiers by student count range for better display
+  const groupedTiers = useMemo(() => {
+    if (!studentTiers.length) return [];
+    
+    const groups = {};
+    studentTiers.forEach(tier => {
+      const key = `${tier.min_students}-${tier.max_students}`;
+      if (!groups[key]) {
+        groups[key] = {
+          min: tier.min_students,
+          max: tier.max_students,
+          tiers: []
+        };
+      }
+      groups[key].tiers.push(tier);
+    });
+    
+    // Sort groups by min_students and sort tiers within each group by plan type
+    const planOrder = { 'Basic-Cost': 1, 'Professional': 2, 'Entreprise': 3 };
+    return Object.values(groups)
+      .sort((a, b) => a.min - b.min)
+      .map(group => ({
+        ...group,
+        tiers: group.tiers.sort((a, b) => (planOrder[a.tier_name] || 99) - (planOrder[b.tier_name] || 99))
+      }));
+  }, [studentTiers]);
 
   // Fetch student tiers for admin roles
   useEffect(() => {
@@ -285,6 +459,7 @@ function EventSales() {
       setForm(getInitialFormState(role.id));
       setPlan(null);
       setStudentTier(null);
+      setSelectedTierGroupIndex(0);
     }
   }, [role?.id]);
 
@@ -381,11 +556,23 @@ function EventSales() {
 
   const currentPricing = useMemo(() => {
     if (isAdminRole && studentTier) {
-      return { name: `${studentTier.tier_name} (${studentTier.min_students}-${studentTier.max_students} students)`, price: studentTier.price, duration: studentTier.duration };
+      const capacityLabel = role?.id === 'recruiter' ? 'candidates' : 'students';
+      const rangeDisplay = studentTier.max_students === 99999 ? `${studentTier.min_students}+` : `${studentTier.min_students}-${studentTier.max_students}`;
+      // Only apply ESFE pricing if promotion is active
+      const hasEsfePrice = isPromoActive && studentTier.esfe_active && studentTier.esfe_price;
+      const displayPrice = hasEsfePrice ? studentTier.esfe_price : studentTier.price;
+      return { 
+        name: `${studentTier.tier_name} (${rangeDisplay} ${capacityLabel})`, 
+        price: displayPrice,
+        originalPrice: hasEsfePrice ? studentTier.price : null,
+        isEsfe: hasEsfePrice,
+        discountPercent: hasEsfePrice ? studentTier.esfe_discount_percent : 0,
+        duration: studentTier.duration 
+      };
     }
     if (plan) return { name: plan.name, price: parseInt(plan.price), duration: plan.duration };
     return null;
-  }, [isAdminRole, studentTier, plan]);
+  }, [isAdminRole, studentTier, plan, role?.id, isPromoActive]);
 
   const handlePayment = async () => {
     if (loading || !currentPricing) return;
@@ -711,29 +898,265 @@ function EventSales() {
         {/* Step 2: Plan/Student Count Selection */}
         {step === 2 && (
           <div>
+            {role && <SelectedRoleBadge role={role} onChangeRole={() => setStep(1)} />}
             {isAdminRole ? (
               <>
-                <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Select Student Count</h2>
-                  <p className="text-gray-500 mt-1">Choose based on your institution size</p>
+                {/* ESFE Event Banner - Mobile Responsive with Flip Clock */}
+                {isPromoActive && promoEvent?.end_date && (
+                  <div className="mb-6 relative overflow-hidden rounded-2xl shadow-lg">
+                    {/* Custom responsive styles for flip clock */}
+                    <style>{`
+                      .flip-clock-container {
+                        transform: scale(0.75);
+                        transform-origin: center;
+                      }
+                      @media (min-width: 640px) {
+                        .flip-clock-container {
+                          transform: scale(1);
+                        }
+                      }
+                      .flip-clock-container .flip-clock__piece {
+                        margin: 0 1px;
+                      }
+                      @media (min-width: 640px) {
+                        .flip-clock-container .flip-clock__piece {
+                          margin: 0 3px;
+                        }
+                      }
+                      .flip-clock-container .flip-clock__slot {
+                        font-size: 9px;
+                        font-weight: 600;
+                        letter-spacing: 0.05em;
+                        color: rgba(255,255,255,0.7);
+                        margin-top: 4px;
+                      }
+                      @media (min-width: 640px) {
+                        .flip-clock-container .flip-clock__slot {
+                          font-size: 11px;
+                          margin-top: 6px;
+                        }
+                      }
+                    `}</style>
+                    
+                    {/* Base Gradient - Consistent Blue */}
+                    <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgb(30, 78, 216) 0%, rgb(59, 130, 246) 100%)' }} />
+                    
+                    {/* Subtle Geometric Shapes */}
+                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 200" preserveAspectRatio="xMidYMid slice">
+                      <defs>
+                        <linearGradient id="shape1" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="rgba(255,255,255,0.15)" />
+                          <stop offset="100%" stopColor="rgba(255,255,255,0.05)" />
+                        </linearGradient>
+                      </defs>
+                      <ellipse cx="700" cy="30" rx="150" ry="100" fill="url(#shape1)" />
+                      <ellipse cx="50" cy="180" rx="120" ry="80" fill="url(#shape1)" />
+                    </svg>
+                    
+                    {/* Content */}
+                    <div className="relative z-10 px-3 sm:px-6 py-4 sm:py-5 text-white text-center">
+                      {/* Badge + Heading - Stack on mobile, row on desktop */}
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 mb-3 sm:mb-4">
+                        <span className="px-3 sm:px-4 py-1 sm:py-1.5 bg-emerald-500 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider shadow-md whitespace-nowrap">
+                          Limited Time
+                        </span>
+                        <h2 className="text-lg sm:text-2xl font-bold tracking-tight leading-tight">
+                          {promoEvent?.banner_text || 'ESFE Event Special Pricing!'}
+                        </h2>
+                      </div>
+                      
+                      {/* Flip Clock Countdown */}
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] sm:text-[11px] text-white/70 uppercase tracking-widest font-medium mb-2 sm:mb-3">
+                          Offer Ends In
+                        </span>
+                        <div className="flip-clock-container">
+                          <FlipClockCountdown
+                            to={new Date(promoEvent.end_date)}
+                            labels={['DAYS', 'HOURS', 'MIN', 'SEC']}
+                            labelStyle={{ 
+                              fontSize: 10, 
+                              fontWeight: 600, 
+                              textTransform: 'uppercase', 
+                              color: 'rgba(255,255,255,0.7)',
+                              letterSpacing: '0.03em'
+                            }}
+                            digitBlockStyle={{ 
+                              width: 32, 
+                              height: 44, 
+                              fontSize: 22, 
+                              fontWeight: 700,
+                              backgroundColor: '#1e293b', 
+                              color: '#fff',
+                              borderRadius: 5
+                            }}
+                            dividerStyle={{ color: '#334155', height: 1 }}
+                            separatorStyle={{ color: 'rgba(255,255,255,0.5)', size: '4px' }}
+                            duration={0.5}
+                            onComplete={() => setPromoEvent(null)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="text-center mb-6 sm:mb-8">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                    {role?.id === 'recruiter' ? 'Select Candidate Capacity' : 'Select Student Count'}
+                  </h2>
+                  <p className="text-gray-500 mt-1 sm:mt-2 text-sm sm:text-base">
+                    {role?.id === 'recruiter' 
+                      ? 'Choose based on your hiring volume' 
+                      : 'Choose based on your institution size'}
+                  </p>
                 </div>
                 {tiersLoading ? (
                   <div className="flex justify-center py-12">
                     <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {studentTiers.map(tier => (
-                      <StudentTierCard key={tier.id} tier={tier} isSelected={studentTier?.id === tier.id} onSelect={setStudentTier} />
-                    ))}
+                  <div className="space-y-6 sm:space-y-8">
+                    {/* Tier Group Tabs - Scrollable on mobile */}
+                    <div className="flex justify-center overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+                      <div className="inline-flex bg-gray-100 rounded-full p-1 sm:p-1.5 gap-0.5 sm:gap-1 shadow-inner min-w-max">
+                        {groupedTiers.map((group, index) => {
+                          const label = group.max === 99999 
+                            ? `${group.min}+` 
+                            : `${group.min}-${group.max}`;
+                          const isActive = selectedTierGroupIndex === index;
+                          return (
+                            <button
+                              key={`${group.min}-${group.max}`}
+                              onClick={() => setSelectedTierGroupIndex(index)}
+                              className={`px-3 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
+                                isActive
+                                  ? 'bg-white text-blue-600 shadow-md'
+                                  : 'text-gray-600 hover:text-gray-900'
+                              }`}
+                              style={isActive ? { color: 'rgb(30, 78, 216)' } : {}}
+                            >
+                              <span className="flex items-center gap-1 sm:gap-2">
+                                <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+                                {label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Plan Cards for Selected Tier Group - Stack on mobile */}
+                    {groupedTiers[selectedTierGroupIndex] && (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+                        {groupedTiers[selectedTierGroupIndex].tiers.map(tier => {
+                          const isRecommended = tier.tier_name === 'Professional';
+                          const isSelected = studentTier?.id === tier.id;
+                          // Only show ESFE pricing if promotion is active
+                          const hasEsfePrice = isPromoActive && tier.esfe_active && tier.esfe_price;
+                          const displayPrice = hasEsfePrice ? tier.esfe_price : tier.price;
+                          
+                          // Get tier-specific features
+                          const tierFeatures = tier.features || (
+                            tier.tier_name === 'Basic-Cost' 
+                              ? [`${groupedTiers[selectedTierGroupIndex].max === 99999 ? '2000+' : groupedTiers[selectedTierGroupIndex].min + '-' + groupedTiers[selectedTierGroupIndex].max} students`, 'Basic analytics', 'Email support', 'Multi-college support']
+                              : tier.tier_name === 'Professional'
+                                ? [`${groupedTiers[selectedTierGroupIndex].max === 99999 ? '2000+' : groupedTiers[selectedTierGroupIndex].min + '-' + groupedTiers[selectedTierGroupIndex].max} students`, 'Advanced analytics', 'Priority support', 'All features']
+                                : [`${groupedTiers[selectedTierGroupIndex].max === 99999 ? '2000+' : groupedTiers[selectedTierGroupIndex].min + '-' + groupedTiers[selectedTierGroupIndex].max} students`, 'Enterprise analytics', '24/7 support', 'All features']
+                          );
+                          
+                          return (
+                            <button
+                              key={tier.id}
+                              onClick={() => setStudentTier(tier)}
+                              className={`relative flex flex-col p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 text-center transition-all duration-300 ${
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-50/50 shadow-xl shadow-blue-500/15 sm:scale-[1.02]'
+                                  : isRecommended
+                                    ? 'border-blue-300 bg-white hover:border-blue-400 hover:shadow-lg shadow-md'
+                                    : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
+                              }`}
+                            >
+                              {/* Recommended Badge */}
+                              {isRecommended && (
+                                <div 
+                                  className="absolute -top-2.5 sm:-top-3 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-0.5 sm:py-1 text-white text-[10px] sm:text-xs font-semibold rounded-full shadow-md"
+                                  style={{ backgroundColor: 'rgb(30, 78, 216)' }}
+                                >
+                                  Recommended
+                                </div>
+                              )}
+                              
+                              {/* Plan Name */}
+                              <h3 className={`text-lg sm:text-xl font-bold mb-2 sm:mb-4 ${isRecommended ? 'text-blue-600' : 'text-gray-800'}`}>
+                                {tier.tier_name}
+                              </h3>
+                              
+                              {/* ESFE Special Badge */}
+                              {hasEsfePrice && (
+                                <div className="mb-2 sm:mb-3">
+                                  <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-0.5 sm:py-1 bg-orange-500 text-white text-[10px] sm:text-xs font-bold rounded-full">
+                                    <span>🎉</span> ESFE Special
+                                  </span>
+                                </div>
+                              )}
+                              
+                              {/* Price Section */}
+                              <div className="mb-3 sm:mb-4">
+                                {hasEsfePrice && (
+                                  <div className="flex items-center justify-center gap-2 mb-1 sm:mb-2">
+                                    <span className="text-sm sm:text-base text-gray-400 line-through">₹{tier.price?.toLocaleString()}</span>
+                                    <span className="text-[10px] sm:text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 sm:px-2 py-0.5 rounded-full">
+                                      {tier.esfe_discount_percent}% OFF
+                                    </span>
+                                  </div>
+                                )}
+                                <div className={`text-3xl sm:text-5xl font-bold tracking-tight ${hasEsfePrice ? 'text-emerald-600' : 'text-gray-900'}`}>
+                                  ₹{displayPrice?.toLocaleString()}
+                                </div>
+                                <div className="text-xs sm:text-sm text-gray-500 mt-1">per {tier.duration}</div>
+                              </div>
+                              
+                              {/* Features - Hidden on mobile for compact view */}
+                              <div className="hidden sm:block space-y-3 mb-6 text-left flex-grow">
+                                {tierFeatures.slice(0, 4).map((feature, i) => (
+                                  <div key={i} className="flex items-center gap-2.5 text-sm text-gray-600">
+                                    <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                                    <span>{feature}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              
+                              {/* Select Button */}
+                              <div 
+                                className={`w-full py-2 sm:py-3 px-3 sm:px-4 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base transition-all ${
+                                  isSelected
+                                    ? 'text-white shadow-md'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                                style={isSelected ? { backgroundColor: 'rgb(30, 78, 216)' } : {}}
+                              >
+                                {isSelected ? (
+                                  <span className="flex items-center justify-center gap-1 sm:gap-2">
+                                    <Check className="w-3 h-3 sm:w-4 sm:h-4" /> Selected
+                                  </span>
+                                ) : (
+                                  'Select Plan'
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
               </>
             ) : (
               <>
                 <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Choose Your Plan</h2>
-                  <p className="text-gray-500 mt-1">Select the plan that fits your needs</p>
+                  <h2 className="text-2xl font-bold text-gray-900">{getStepContent(role?.id).step2.heading}</h2>
+                  <p className="text-gray-500 mt-1">{getStepContent(role?.id).step2.subtitle}</p>
                 </div>
                 <div className="space-y-4">
                   {plans.map(p => <PlanCard key={p.id} plan={p} isSelected={plan?.id === p.id} onSelect={setPlan} />)}
@@ -746,12 +1169,13 @@ function EventSales() {
         {/* Step 3: Role-Specific Details */}
         {step === 3 && (
           <div>
+            {role && <SelectedRoleBadge role={role} onChangeRole={() => setStep(1)} />}
             <div className="text-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                {isAdminRole ? 'Institution Details' : 'Your Details'}
+                {isAdminRole ? 'Institution Details' : getStepContent(role?.id).step3.heading}
               </h2>
               <p className="text-gray-500 mt-1">
-                {isAdminRole ? 'Enter your institution information' : 'Enter your information'}
+                {isAdminRole ? 'Enter your institution information' : getStepContent(role?.id).step3.subtitle}
               </p>
             </div>
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
@@ -775,15 +1199,36 @@ function EventSales() {
                   {isAdminRole && studentTier && (
                     <div className="flex items-center gap-1 text-sm text-blue-600 mt-1">
                       <Users className="w-4 h-4" />
-                      <span>{studentTier.min_students} - {studentTier.max_students} students</span>
+                      <span>{studentTier.max_students === 99999 ? `${studentTier.min_students}+` : `${studentTier.min_students} - ${studentTier.max_students}`} {role?.id === 'recruiter' ? 'candidates' : 'students'}</span>
                     </div>
                   )}
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-gray-900">₹{currentPricing.price.toLocaleString()}</div>
+                  {currentPricing.isEsfe && currentPricing.originalPrice && (
+                    <div className="flex items-center justify-end gap-2 mb-1">
+                      <span className="text-sm text-gray-400 line-through">₹{currentPricing.originalPrice.toLocaleString()}</span>
+                      <span className="text-xs font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded">
+                        {currentPricing.discountPercent}% OFF
+                      </span>
+                    </div>
+                  )}
+                  <div className={`text-2xl font-bold ${currentPricing.isEsfe ? 'text-green-600' : 'text-gray-900'}`}>
+                    ₹{currentPricing.price.toLocaleString()}
+                  </div>
                   <div className="text-sm text-gray-500">per {currentPricing.duration}</div>
                 </div>
               </div>
+              
+              {/* ESFE Special Badge in Order Summary */}
+              {currentPricing.isEsfe && (
+                <div className="mb-4 p-3 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl">
+                  <div className="flex items-center justify-center gap-2 text-orange-700">
+                    <span>🎉</span>
+                    <span className="font-semibold text-sm">ESFE Event Special Pricing Applied!</span>
+                  </div>
+                </div>
+              )}
+              
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between"><span className="text-gray-500">Name</span><span className="font-medium">{getDisplayName()}</span></div>
                 {getInstitutionName() && (
@@ -795,7 +1240,14 @@ function EventSales() {
               </div>
               <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
                 <span className="font-semibold">Total</span>
-                <span className="text-2xl font-bold text-blue-600">₹{currentPricing.price.toLocaleString()}</span>
+                <div className="text-right">
+                  {currentPricing.isEsfe && currentPricing.originalPrice && (
+                    <div className="text-xs text-gray-400 line-through mb-0.5">₹{currentPricing.originalPrice.toLocaleString()}</div>
+                  )}
+                  <span className={`text-2xl font-bold ${currentPricing.isEsfe ? 'text-green-600' : 'text-blue-600'}`}>
+                    ₹{currentPricing.price.toLocaleString()}
+                  </span>
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
@@ -811,23 +1263,23 @@ function EventSales() {
       </div>
 
       {/* Fixed Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
-        <div className="max-w-3xl mx-auto flex gap-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 sm:p-4">
+        <div className="max-w-3xl mx-auto flex gap-2 sm:gap-3">
           {step > 1 && (
-            <button onClick={() => setStep(s => s - 1)} className="px-6 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-semibold hover:bg-gray-50">
+            <button onClick={() => setStep(s => s - 1)} className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-xl border-2 border-gray-200 text-gray-700 font-semibold text-sm sm:text-base hover:bg-gray-50">
               Back
             </button>
           )}
           {step < 4 ? (
-            <button onClick={nextStep} disabled={!canProceed()} className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-semibold flex items-center justify-center gap-2 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
-              Continue <ChevronRight className="w-5 h-5" />
+            <button onClick={nextStep} disabled={!canProceed()} className="flex-1 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-blue-600 text-white font-semibold text-sm sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
+              Continue <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           ) : (
-            <button onClick={handlePayment} disabled={loading || !currentPricing} className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-semibold flex items-center justify-center gap-2 hover:bg-blue-700 disabled:bg-blue-400">
+            <button onClick={handlePayment} disabled={loading || !currentPricing} className="flex-1 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-blue-600 text-white font-semibold text-sm sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 hover:bg-blue-700 disabled:bg-blue-400">
               {loading ? (
-                <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Processing...</>
+                <><div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Processing...</>
               ) : (
-                <><CreditCard className="w-5 h-5" />Pay ₹{currentPricing?.price.toLocaleString()}</>
+                <><CreditCard className="w-4 h-4 sm:w-5 sm:h-5" />Pay ₹{currentPricing?.price.toLocaleString()}</>
               )}
             </button>
           )}
