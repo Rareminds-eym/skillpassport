@@ -3,7 +3,7 @@ name: Deploy Dev Skillpassport to Hostinger via FTP
 on:
   push:
     branches:
-      - dev-skillpassport
+      - main
 
 jobs:
   build_and_deploy:
