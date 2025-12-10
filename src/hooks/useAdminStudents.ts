@@ -35,6 +35,8 @@ interface StudentRow {
   section?: string
   roll_number?: string
   admission_number?: string
+  category?: string
+  quota?: string
   bloodGroup?: string
   guardianName?: string
   guardianPhone?: string
@@ -117,6 +119,8 @@ export interface UICandidate {
   section?: string
   roll_number?: string
   admission_number?: string
+  category?: string
+  quota?: string
   bloodGroup?: string
   guardianName?: string
   guardianPhone?: string
@@ -299,6 +303,8 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     section: row.section,
     roll_number: row.roll_number,
     admission_number: row.admission_number,
+    category: row.category,
+    quota: row.quota,
     bloodGroup: row.bloodGroup,
     guardianName: row.guardianName,
     guardianPhone: row.guardianPhone,
