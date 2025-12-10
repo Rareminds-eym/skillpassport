@@ -3,6 +3,7 @@ name: Deploy Dev Skillpassport to Hostinger via FTP
 on:
   push:
     branches:
+      - dev-skillpassport
       - main
 
 jobs:
@@ -42,6 +43,9 @@ jobs:
 
     - name: Build project
       run: npm run build -- --mode development
+    
+    - name: Copy dev .htaccess
+      run: cp public/.htaccess.dev dist/.htaccess
 
     - name: Deploy to Hostinger via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
