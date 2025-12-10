@@ -18,7 +18,7 @@ import CreateCourseModal from '../../components/educator/courses/CreateCourseMod
 import CourseDetailDrawer from '../../components/educator/courses/CourseDetailDrawer';
 
 import {
-  getCoursesByEducator,
+  getAllCourses,
   createCourse,
   updateCourse
 } from '../../services/educator/coursesService';
@@ -192,9 +192,9 @@ const Courses: React.FC = () => {
           console.log('✅ Educator is independent (not affiliated)');
         }
 
-        // Load courses
-        console.log('📡 Fetching courses for educator:', user.id);
-        const coursesData = await getCoursesByEducator(user.id);
+        // Load all courses (not filtered by educator)
+        console.log('📡 Fetching all courses');
+        const coursesData = await getAllCourses();
         console.log('✅ Courses loaded:', coursesData.length, 'courses');
         
         // Debug: Log module counts for each course
