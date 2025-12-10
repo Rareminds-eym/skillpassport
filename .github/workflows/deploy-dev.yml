@@ -1,4 +1,4 @@
-name: Deploy React App to Hostinger (DEV)
+name: Deploy Dev Skillpassport to Hostinger via FTP
 
 on:
   push:
@@ -23,15 +23,9 @@ jobs:
         echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" > .env.production
         echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env.production
         echo "VITE_OPENAI_API_KEY=${{ secrets.VITE_OPENAI_API_KEY }}" >> .env.production
-        
-        # Razorpay TEST
         echo "VITE_RAZORPAY_KEY_ID=${{ secrets.VITE_RAZORPAY_KEY_ID_TEST }}" >> .env.production
-        echo "VITE_RAZORPAY_KEY_SECRET=${{ secrets.VITE_RAZORPAY_KEY_SECRET_TEST }}" >> .env.production
-
-        # Supabase Service Role
+        echo "RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET_TEST }}" >> .env.production
         echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env.production
-
-        # R2 Storage Keys
         echo "R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }}" >> .env.production
         echo "R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}" >> .env.production
         echo "R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}" >> .env.production
@@ -40,8 +34,8 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Build project
-      run: npm run build
+    - name: Build Vite project
+      run: npm run build --mode production
 
     - name: Deploy to Hostinger via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
@@ -50,4 +44,4 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: dist/
-        server-dir: public_html/dev-skillpassport/
+        server-dir: domains/rareminds.in/public_html/dev-skillpassport/
