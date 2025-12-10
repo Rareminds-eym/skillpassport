@@ -1,11 +1,18 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteBase /dev-skillpassport/
-  RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{REQUEST_FILENAME} !-l
-  RewriteRule . /dev-skillpassport/index.html [L]
+  RewriteBase /
+  
+  # Don't rewrite files or directories that exist
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d [OR]
+  RewriteCond %{REQUEST_FILENAME} -l
+  RewriteRule ^ - [L]
+  
+  # Don't rewrite static assets
+  RewriteRule \.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff|woff2|ttf|eot|map|json)$ - [L]
+  
+  # For SPA routing, serve index.html
+  RewriteRule ^ /index.html [L]
 </IfModule>
 
 # Set correct MIME types
