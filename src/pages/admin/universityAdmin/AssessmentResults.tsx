@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ClipboardDocumentListIcon,
   EyeIcon,
@@ -215,11 +216,13 @@ const AssessmentCard = ({ result, onView }: { result: AssessmentResult; onView: 
 const AssessmentDetailModal = ({ 
   result, 
   isOpen, 
-  onClose 
+  onClose,
+  navigate
 }: { 
   result: AssessmentResult | null; 
   isOpen: boolean; 
   onClose: () => void;
+  navigate: any;
 }) => {
   if (!isOpen || !result) return null;
 
@@ -385,7 +388,7 @@ const AssessmentDetailModal = ({
                     </h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {gemini.coursesByType.technical.slice(0, 4).map((course: any, idx: number) => (
-                        <div key={idx} className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                        <div key={idx} onClick={(e) => { e.stopPropagation(); navigate(`/university-admin/browse-courses?search=${encodeURIComponent(course.title)}`); }} className="bg-blue-50 border border-blue-100 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-blue-200 hover:bg-blue-100 transition-all duration-200">
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-gray-900 text-sm truncate">{course.title}</p>
@@ -419,7 +422,7 @@ const AssessmentDetailModal = ({
                     </h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {gemini.coursesByType.soft.slice(0, 4).map((course: any, idx: number) => (
-                        <div key={idx} className="bg-green-50 border border-green-100 rounded-lg p-3">
+                        <div key={idx} onClick={(e) => { e.stopPropagation(); navigate(`/university-admin/browse-courses?search=${encodeURIComponent(course.title)}`); }} className="bg-green-50 border border-green-100 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-green-200 hover:bg-green-100 transition-all duration-200">
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-gray-900 text-sm truncate">{course.title}</p>
@@ -465,6 +468,7 @@ const AssessmentDetailModal = ({
 
 // Main Component
 const UniversityAdminAssessmentResults: React.FC = () => {
+  const navigate = useNavigate();
   // State
   const [results, setResults] = useState<AssessmentResult[]>([]);
   const [_colleges, setColleges] = useState<{ id: string; name: string }[]>([]);
@@ -1041,6 +1045,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
       <AssessmentDetailModal
         result={selectedResult}
         isOpen={showDetailModal}
+        navigate={navigate}
         onClose={() => {
           setShowDetailModal(false);
           setSelectedResult(null);

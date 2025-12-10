@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ClipboardDocumentListIcon,
   EyeIcon,
@@ -236,10 +237,12 @@ const AssessmentDetailModal = ({
   result,
   isOpen,
   onClose,
+  navigate,
 }: {
   result: AssessmentResult | null;
   isOpen: boolean;
   onClose: () => void;
+  navigate: any;
 }) => {
   if (!isOpen || !result) return null;
 
@@ -427,7 +430,11 @@ const AssessmentDetailModal = ({
                           .map((course: any, idx: number) => (
                             <div
                               key={idx}
-                              className="bg-blue-50 border border-blue-100 rounded-lg p-3"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/educator/browse-courses?search=${encodeURIComponent(course.title)}`);
+                              }}
+                              className="bg-blue-50 border border-blue-100 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-blue-200 hover:bg-blue-100 transition-all duration-200"
                             >
                               <div className="flex items-start justify-between">
                                 <div className="flex-1 min-w-0">
@@ -475,7 +482,11 @@ const AssessmentDetailModal = ({
                         .map((course: any, idx: number) => (
                           <div
                             key={idx}
-                            className="bg-green-50 border border-green-100 rounded-lg p-3"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/educator/browse-courses?search=${encodeURIComponent(course.title)}`);
+                            }}
+                            className="bg-green-50 border border-green-100 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-green-200 hover:bg-green-100 transition-all duration-200"
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex-1 min-w-0">
@@ -533,6 +544,7 @@ const AssessmentDetailModal = ({
 const EducatorAssessmentResults: React.FC = () => {
   // @ts-ignore - AuthContext is a .jsx file
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // State
   const [results, setResults] = useState<AssessmentResult[]>([]);
@@ -573,7 +585,7 @@ const EducatorAssessmentResults: React.FC = () => {
       // Find educator by email
       const { data: educator, error: educatorError } = await supabase
         .from('school_educators')
-        .select('id, school_id, schools(name)')
+        .select('id, school_id')
         .eq('email', userEmail)
         .single();
 
@@ -586,9 +598,14 @@ const EducatorAssessmentResults: React.FC = () => {
 
       const schoolId = educator.school_id;
       
-      // Set school name
-      // @ts-ignore
-      setSchoolName(educator.schools?.name || '');
+      // Get school name separately
+      const { data: schoolData } = await supabase
+        .from('schools')
+        .select('name')
+        .eq('id', schoolId)
+        .single();
+      
+      setSchoolName(schoolData?.name || '');
 
       // Get students from this school
       const { data: studentsData, error: studentsError } = await supabase
@@ -1151,6 +1168,7 @@ const EducatorAssessmentResults: React.FC = () => {
       <AssessmentDetailModal
         result={selectedResult}
         isOpen={showDetailModal}
+        navigate={navigate}
         onClose={() => {
           setShowDetailModal(false);
           setSelectedResult(null);
