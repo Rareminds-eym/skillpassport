@@ -4,8 +4,8 @@ import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // Use relative paths for subdirectory deployment (works for /dev-skillpassport/ and /skillpassport/)
-  base: './',
+  // Use absolute paths for subdomain root deployment
+  base: '/',
   plugins: [react()],
   resolve: {
     alias: {
