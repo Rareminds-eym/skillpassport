@@ -45,11 +45,19 @@ jobs:
     - name: Copy correct .htaccess for subdomain
       run: cp public/.htaccess dist/.htaccess
 
+    - name: Verify build output
+      run: |
+        echo "Listing dist directory contents:"
+        ls -la dist/
+        echo "Checking if assets folder exists:"
+        ls -la dist/assets/ || echo "No assets folder found"
+
     - name: Deploy to Hostinger via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
         server: ${{ secrets.FTP_HOST }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: dist/
-        server-dir: public_html/dev-skillpassport/
+        local-dir: ./dist/
+        server-dir: /domains/rareminds.in/public_html/dev-skillpassport/
+        log-level: verbose
