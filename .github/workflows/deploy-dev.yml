@@ -47,10 +47,12 @@ jobs:
       run: cp public/.htaccess.dev dist/.htaccess
 
     - name: Deploy to Hostinger via FTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
         server: ${{ secrets.FTP_HOST }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: dist/
         server-dir: domains/dev-skillpassport.rareminds.in/public_html/
+        dangerous-clean-slate: true
+        log-level: verbose
