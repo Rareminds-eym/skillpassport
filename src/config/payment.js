@@ -73,7 +73,8 @@ const isDevEnvironment = () => {
   const devHosts = [
     'localhost',
     '127.0.0.1',
-    'rareminds-skillpassport.netlify.app', // Netlify demo URL
+    'rareminds-skillpassport.netlify.app',
+    'dev-skillpassport.rareminds.in' // Netlify demo URL
     // Add any other testing domains here
   ];
   
