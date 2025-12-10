@@ -122,9 +122,14 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           title: "Academic Management",
           key: "academics",
           items: [
+            // {
+            //   name: "Courses",
+            //   path: "/school-admin/academics/courses",
+            //   icon: AcademicCapIcon,
+            // },
             {
               name: "Courses",
-              path: "/school-admin/academics/courses",
+              path: "/school-admin/academics/browse-courses",
               icon: AcademicCapIcon,
             },
             {
@@ -237,9 +242,14 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           title: "Course & Curriculum Management",
           key: "courses",
           items: [
+            // {
+            //   name: "Courses",
+            //   path: "/university-admin/courses",
+            //   icon: BookOpenIcon,
+            // },
             {
               name: "Courses",
-              path: "/university-admin/courses",
+              path: "/university-admin/browse-courses",
               icon: BookOpenIcon,
             },
             {
@@ -440,9 +450,14 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
         title: "Academic Management",
         key: "academics",
         items: [
+          // {
+          //   name: "Courses",
+          //   path: "/college-admin/academics/courses",
+          //   icon: AcademicCapIcon,
+          // },
           {
             name: "Courses",
-            path: "/college-admin/academics/courses",
+            path: "/college-admin/academics/browse-courses",
             icon: AcademicCapIcon,
           },
           {
