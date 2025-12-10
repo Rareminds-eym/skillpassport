@@ -4,7 +4,7 @@ import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: '/',
+  base: mode === 'development' ? '/dev-skillpassport/' : '/',
   plugins: [react()],
   resolve: {
     alias: {
