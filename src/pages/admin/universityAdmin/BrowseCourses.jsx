@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/Students/components/ui/card';
 import { Button } from '../../../components/Students/components/ui/button';
 import { Badge } from '../../../components/Students/components/ui/badge';
@@ -24,6 +24,7 @@ import CoursePurchaseModal from '../../../components/admin/courses/CoursePurchas
 
 const BrowseCourses = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -58,6 +59,14 @@ const BrowseCourses = () => {
     }
   };
 
+  // Read search parameter from URL
+  useEffect(() => {
+    const searchParam = searchParams.get('search');
+    if (searchParam) {
+      setSearchTerm(searchParam);
+    }
+  }, [searchParams]);
+
   // Fetch courses from Supabase
   useEffect(() => {
     fetchCourses();
@@ -85,18 +94,18 @@ const BrowseCourses = () => {
       console.log('📚 Fetched courses for students:', data?.length || 0);
       setCourses(data || []);
 
-      // Ensure loader displays for at least 5 seconds
+      // Ensure loader displays for at least 1 second
       const elapsedTime = Date.now() - startTime;
-      const remainingTime = Math.max(0, 5000 - elapsedTime);
+      const remainingTime = Math.max(0, 1000 - elapsedTime);
 
       if (remainingTime > 0) {
         await new Promise(resolve => setTimeout(resolve, remainingTime));
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
-      // Still wait for 5 seconds even on error
+      // Still wait for 1 second even on error
       const elapsedTime = Date.now() - startTime;
-      const remainingTime = Math.max(0, 5000 - elapsedTime);
+      const remainingTime = Math.max(0, 1000 - elapsedTime);
       if (remainingTime > 0) {
         await new Promise(resolve => setTimeout(resolve, remainingTime));
       }

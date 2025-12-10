@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   PlusIcon,
   BookOpenIcon,
@@ -30,6 +30,7 @@ import { View } from 'lucide-react';
 
 const Courses: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuth();
 
   /** ─────────────────────────────────────────────
@@ -226,6 +227,16 @@ const Courses: React.FC = () => {
 
     loadEducatorAndCourses();
   }, [user, isAuthenticated]);
+
+  /** ─────────────────────────────────────────────
+   *  READ SEARCH PARAMETER FROM URL
+   * ───────────────────────────────────────────── */
+  useEffect(() => {
+    const searchParam = searchParams.get('search');
+    if (searchParam) {
+      setSearchQuery(searchParam);
+    }
+  }, [searchParams]);
 
   /** ─────────────────────────────────────────────
    *  FILTER + SORT
