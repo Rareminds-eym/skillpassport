@@ -13,6 +13,7 @@ interface EventOrderRequest {
   planName: string;
   userEmail: string;
   userName: string;
+  origin?: string; // Frontend origin URL
 }
 
 const MAX_AMOUNT_RUPEES = 10000000; // ₹1 crore max (in rupees)
@@ -30,29 +31,41 @@ serve(async (req) => {
     const PROD_RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
     const PROD_RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
 
-    // Parse amount early to determine which credentials to use
+    // Parse request body
     const requestBody = await req.json();
-    const { amount, currency, registrationId, planName, userEmail, userName } = requestBody as EventOrderRequest;
+    const { amount: originalAmount, currency, registrationId, planName, userEmail, userName, origin: bodyOrigin } = requestBody as EventOrderRequest;
+    
+    // Detect if request is from production site
+    // ONLY skillpassport.rareminds.in is production, everything else is test
+    const headerOrigin = req.headers.get("origin") || req.headers.get("referer") || "";
+    const requestOrigin = bodyOrigin || headerOrigin;
+    const isProductionSite = requestOrigin.includes("skillpassport.rareminds.in") && !requestOrigin.includes("dev-");
     
     // Razorpay TEST mode has a max limit of ₹50,000 (5,000,000 paise)
     const TEST_MODE_MAX_AMOUNT = 5000000; // ₹50,000 in paise
-    const amountExceedsTestLimit = amount > TEST_MODE_MAX_AMOUNT;
     
-    // Use PRODUCTION credentials for large amounts, TEST for small amounts
+    // Determine credentials and amount based on site
     let RAZORPAY_KEY_ID: string | undefined;
     let RAZORPAY_KEY_SECRET: string | undefined;
     let usingTestCredentials = false;
+    let amount = originalAmount;
     
-    if (amountExceedsTestLimit) {
-      // Large amount - must use production credentials
-      RAZORPAY_KEY_ID = PROD_RAZORPAY_KEY_ID;
-      RAZORPAY_KEY_SECRET = PROD_RAZORPAY_KEY_SECRET;
-      usingTestCredentials = false;
+    if (isProductionSite) {
+      // PRODUCTION SITE (skillpassport.rareminds.in): Use production credentials with actual amount
+      RAZORPAY_KEY_ID = PROD_RAZORPAY_KEY_ID || TEST_RAZORPAY_KEY_ID;
+      RAZORPAY_KEY_SECRET = PROD_RAZORPAY_KEY_SECRET || TEST_RAZORPAY_KEY_SECRET;
+      usingTestCredentials = !PROD_RAZORPAY_KEY_ID && !!TEST_RAZORPAY_KEY_ID;
     } else {
-      // Small amount - prefer test credentials if available
+      // TEST SITE (dev-skillpassport, localhost, or any other): Use test credentials and cap amount
       RAZORPAY_KEY_ID = TEST_RAZORPAY_KEY_ID || PROD_RAZORPAY_KEY_ID;
       RAZORPAY_KEY_SECRET = TEST_RAZORPAY_KEY_SECRET || PROD_RAZORPAY_KEY_SECRET;
       usingTestCredentials = !!TEST_RAZORPAY_KEY_ID;
+      
+      // Cap amount at test limit for non-production sites
+      if (amount > TEST_MODE_MAX_AMOUNT) {
+        console.log(`TEST MODE: Capping amount from ₹${amount / 100} to ₹${TEST_MODE_MAX_AMOUNT / 100} for testing`);
+        amount = TEST_MODE_MAX_AMOUNT;
+      }
     }
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -66,8 +79,8 @@ serve(async (req) => {
       );
     }
 
-    // Log which credentials are being used
-    console.log(`Amount: ₹${amount / 100}, Using ${usingTestCredentials ? 'TEST' : 'PRODUCTION'} Razorpay credentials`);
+    // Log which credentials and mode are being used
+    console.log(`Site: ${isProductionSite ? 'PRODUCTION' : 'TEST'}, Origin: ${requestOrigin}, Amount: ₹${amount / 100}, Original: ₹${originalAmount / 100}, Using ${usingTestCredentials ? 'TEST' : 'PRODUCTION'} Razorpay credentials`);
 
     // Create Supabase client with service role
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
