@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   FunnelIcon,
   TableCellsIcon,
@@ -6,10 +6,7 @@ import {
   EyeIcon,
   ChevronDownIcon,
   StarIcon,
-  XMarkIcon,
   PencilSquareIcon,
-  EnvelopeIcon,
-  PhoneIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { UserPlusIcon } from 'lucide-react';
@@ -38,7 +35,11 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   );
 };
 
-const CheckboxGroup = ({ options, selectedValues, onChange }: any) => {
+const CheckboxGroup = ({ options, selectedValues, onChange }: {
+  options: Array<{ value: string; label: string; count?: number }>;
+  selectedValues: string[];
+  onChange: (values: string[]) => void;
+}) => {
   return (
     <div className="space-y-2">
       {options.map((option) => (
@@ -65,7 +66,7 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: any) => {
   );
 };
 
-const StatusBadgeComponent = ({ status }) => {
+const StatusBadgeComponent = ({ status }: { status: string }) => {
   const statusConfig = {
     enrolled: { color: 'bg-green-100 text-green-800', label: 'Enrolled' },
     pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
@@ -74,7 +75,7 @@ const StatusBadgeComponent = ({ status }) => {
     suspended: { color: 'bg-orange-100 text-orange-800', label: 'Suspended' }
   };
 
-  const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', label: status };
+  const config = statusConfig[status as keyof typeof statusConfig] || { color: 'bg-gray-100 text-gray-800', label: status };
 
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
@@ -83,7 +84,14 @@ const StatusBadgeComponent = ({ status }) => {
   );
 };
 
-const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }) => {
+const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }: {
+  student: any;
+  onViewProfile: (student: any) => void;
+  onAddNote: (student: any) => void;
+  onViewCareerPath: (student: any) => void;
+}) => {
+
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-3">
@@ -97,7 +105,7 @@ const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }) =>
             <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
             <span className="text-sm font-medium text-gray-700 ml-1">{student.ai_score_overall || '0'}</span>
           </div>
-          <StatusBadgeComponent status={student.enrollment_status || 'pending'} />
+          <StatusBadgeComponent status={student.approval_status || 'pending'} />
         </div>
       </div>
 
@@ -116,6 +124,8 @@ const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }) =>
           </p>
         )}
       </div>
+
+
 
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-500">
@@ -165,7 +175,7 @@ const StudentDataAdmission = () => {
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage] = useState(25);
 
   const [filters, setFilters] = useState({
     degree: [] as string[],
@@ -194,9 +204,9 @@ const StudentDataAdmission = () => {
       .map(([degree, count]) => ({
         value: degree,
         label: degree.charAt(0).toUpperCase() + degree.slice(1),
-        count
+        count: count as number
       }))
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => (b.count as number) - (a.count as number));
   }, [students]);
 
   const courseOptions = useMemo(() => {
@@ -211,9 +221,9 @@ const StudentDataAdmission = () => {
       .map(([course, count]) => ({
         value: course,
         label: course.charAt(0).toUpperCase() + course.slice(1),
-        count
+        count: count as number
       }))
-      .sort((a, b) => b.count - a.count)
+      .sort((a, b) => (b.count as number) - (a.count as number))
       .slice(0, 15);
   }, [students]);
 
@@ -229,16 +239,16 @@ const StudentDataAdmission = () => {
       .map(([college, count]) => ({
         value: college,
         label: college.charAt(0).toUpperCase() + college.slice(1),
-        count
+        count: count as number
       }))
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => (b.count as number) - (a.count as number));
   }, [students]);
 
   const statusOptions = useMemo(() => {
     const statusCounts: any = {};
     students.forEach(student => {
-      if (student.enrollment_status) {
-        const status = student.enrollment_status.toLowerCase();
+      if (student.approval_status) {
+        const status = student.approval_status.toLowerCase();
         statusCounts[status] = (statusCounts[status] || 0) + 1;
       }
     });
@@ -246,9 +256,9 @@ const StudentDataAdmission = () => {
       .map(([status, count]) => ({
         value: status,
         label: status.charAt(0).toUpperCase() + status.slice(1),
-        count
+        count: count as number
       }))
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => (b.count as number) - (a.count as number));
   }, [students]);
 
   const filteredAndSortedStudents = useMemo(() => {
@@ -278,9 +288,7 @@ const StudentDataAdmission = () => {
 
     if (filters.course.length > 0) {
       result = result.filter(student =>
-        student.dept?.some((course: any) =>
-          filters.course.includes(course.toLowerCase())
-        )
+        student.dept && filters.course.includes(student.dept.toLowerCase())
       );
     }
 
@@ -292,7 +300,7 @@ const StudentDataAdmission = () => {
 
     if (filters.status.length > 0) {
       result = result.filter(student =>
-        student.enrollment_status && filters.status.includes(student.enrollment_status.toLowerCase())
+        student.approval_status && filters.status.includes(student.approval_status.toLowerCase())
       );
     }
 
@@ -347,12 +355,12 @@ const StudentDataAdmission = () => {
     });
   };
 
-  const handleViewProfile = (student) => {
+  const handleViewProfile = (student: any) => {
     setSelectedStudent(student);
     setShowDrawer(true);
   };
 
-  const handleAddNoteClick = (student) => {
+  const handleAddNoteClick = (student: any) => {
     setSelectedStudent(student);
     setShowDrawer(true);
   };
@@ -480,6 +488,8 @@ const StudentDataAdmission = () => {
       handleViewCareerPath(currentStudentForCareer);
     }
   };
+
+
 
   return (
     <div className="flex flex-col h-screen">
@@ -748,6 +758,9 @@ const StudentDataAdmission = () => {
                         Score
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Semester
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -785,7 +798,48 @@ const StudentDataAdmission = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <StatusBadgeComponent status={student.enrollment_status} />
+                          <span className="text-sm text-gray-800">
+                            {(() => {
+                              // Dynamic semester calculation
+                              let currentSem = 1;
+                              let totalSems = 8;
+                              
+                              // For college students, calculate based on enrollment date
+                              if ((student as any).college_id && (student as any).enrollmentDate) {
+                                const enrollmentDate = new Date((student as any).enrollmentDate);
+                                const currentDate = new Date();
+                                const monthsDiff = (currentDate.getFullYear() - enrollmentDate.getFullYear()) * 12 + 
+                                                  (currentDate.getMonth() - enrollmentDate.getMonth());
+                                currentSem = Math.max(1, Math.floor(monthsDiff / 6) + 1);
+                              }
+                              // For school students, use grade
+                              else if (student.school_id && student.grade) {
+                                currentSem = parseInt(student.grade) || 1;
+                                totalSems = 12;
+                              }
+                              // Fallback
+                              else {
+                                currentSem = parseInt((student as any).current_semester) || 1;
+                              }
+                              
+                              // Calculate total semesters
+                              if (student.school_id) {
+                                totalSems = 12;
+                              } else {
+                                const degreeType = student.branch_field?.toLowerCase() || student.dept?.toLowerCase() || '';
+                                if (degreeType.includes('phd') || degreeType.includes('doctorate')) totalSems = 8;
+                                else if (degreeType.includes('master') || degreeType.includes('mtech') || degreeType.includes('mba')) totalSems = 4;
+                                else if (degreeType.includes('bachelor') || degreeType.includes('btech') || degreeType.includes('be') || degreeType.includes('bsc') || degreeType.includes('ba')) totalSems = 8;
+                                else if (degreeType.includes('diploma')) totalSems = 6;
+                                else totalSems = 8;
+                              }
+                              
+                              return `${currentSem} / ${totalSems}`;
+                            })()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <StatusBadgeComponent status={student.approval_status || 'pending'} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                           <button
