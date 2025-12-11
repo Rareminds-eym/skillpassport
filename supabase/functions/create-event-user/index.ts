@@ -26,20 +26,49 @@ function generatePassword(length = 12): string {
   return password;
 }
 
-// Send welcome email with login credentials using Brevo (Sendinblue)
+// Map role to human-readable display name
+function getRoleDisplayName(role: string): string {
+  const roleDisplayNames: Record<string, string> = {
+    'school-student': 'School Student',
+    'college-student': 'College Student',
+    'university-student': 'University Student',
+    'educator': 'Educator',
+    'school-educator': 'School Educator',
+    'college-educator': 'College Educator',
+    'school-admin': 'School Admin',
+    'college-admin': 'College Admin',
+    'university-admin': 'University Admin',
+    'recruiter': 'Recruiter',
+    'company-admin': 'Company Admin',
+    'school_student': 'School Student',
+    'college_student': 'College Student',
+    'school_educator': 'School Educator',
+    'college_educator': 'College Educator',
+    'school_admin': 'School Admin',
+    'college_admin': 'College Admin',
+    'university_admin': 'University Admin',
+    'company_admin': 'Company Admin',
+  };
+  return roleDisplayNames[role] || role.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Send welcome email with login credentials using Resend
 async function sendWelcomeEmail(
   email: string,
   firstName: string,
   temporaryPassword: string,
   planName: string,
+  role: string,
   loginUrl: string = 'https://skillpassport.rareminds.in/login'
 ): Promise<{ success: boolean; error?: string }> {
-  const BREVO_API_KEY = Deno.env.get("BREVO_EMAIL");
+  const Emails = Deno.env.get("Emails");
   
-  if (!BREVO_API_KEY) {
-    console.log("BREVO_EMAIL API key not configured, skipping email");
+  if (!Emails) {
+    console.log("Emails env variable not configured, skipping email");
     return { success: false, error: "Email service not configured" };
   }
+
+  const roleDisplayName = getRoleDisplayName(role);
 
   const htmlContent = `
 <!DOCTYPE html>
@@ -83,6 +112,10 @@ async function sendWelcomeEmail(
                     <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Temporary Password:</td>
                     <td style="padding: 8px 0; color: #1F2937; font-size: 14px; font-weight: 600; font-family: monospace; background-color: #E5E7EB; padding: 4px 8px; border-radius: 4px;">${temporaryPassword}</td>
                   </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Role:</td>
+                    <td style="padding: 8px 0; color: #1F2937; font-size: 14px; font-weight: 600;">${roleDisplayName}</td>
+                  </tr>
                 </table>
               </div>
               
@@ -123,33 +156,29 @@ async function sendWelcomeEmail(
   `;
 
   try {
-    // Brevo (Sendinblue) API
-    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    // Resend API
+    const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        "api-key": BREVO_API_KEY,
+        "Authorization": `Bearer ${Emails}`,
         "Content-Type": "application/json",
-        "Accept": "application/json",
       },
       body: JSON.stringify({
-        sender: {
-          name: "Skill Passport",
-          email: "dev@rareminds.in"
-        },
-        to: [{ email: email, name: firstName }],
+        from: "Skill Passport <dev@rareminds.in>",
+        to: [email],
         subject: `Welcome to Skill Passport - Your ${planName} is Active! 🎉`,
-        htmlContent: htmlContent,
+        html: htmlContent,
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error("Brevo API error:", errorData);
+      console.error("Resend API error:", errorData);
       return { success: false, error: errorData };
     }
 
     const data = await response.json();
-    console.log(`Welcome email sent successfully to ${email}, messageId: ${data.messageId}`);
+    console.log(`Welcome email sent successfully to ${email}, id: ${data.id}`);
     return { success: true };
   } catch (error) {
     console.error("Failed to send welcome email:", error);
@@ -364,7 +393,8 @@ serve(async (req) => {
       email,
       firstName,
       temporaryPassword,
-      planName
+      planName,
+      role
     );
 
     // Return success with temporary password
