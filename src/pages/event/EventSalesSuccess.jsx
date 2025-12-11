@@ -4,12 +4,13 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { CheckCircle, Mail, ArrowRight, Sparkles, Key, Copy, Check, Eye, EyeOff } from 'lucide-react';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { CheckCircle, Mail, ArrowRight, ArrowLeft, Sparkles, Key, Copy, Check, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import Header from '../../layouts/Header';
 
 export default function EventSalesSuccess() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const registrationId = searchParams.get('id');
   const planName = searchParams.get('plan');
@@ -63,6 +64,15 @@ export default function EventSalesSuccess() {
       
       <div className="py-12 px-4">
         <div className="max-w-lg mx-auto">
+          {/* Back Button */}
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Home</span>
+          </button>
+
           {/* Success Card */}
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             {/* Success Icon */}
