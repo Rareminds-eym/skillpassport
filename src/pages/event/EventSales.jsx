@@ -309,6 +309,7 @@ function EventSales() {
   const [studentTiers, setStudentTiers] = useState([]);
   const [tiersLoading, setTiersLoading] = useState(false);
   const [selectedTierGroupIndex, setSelectedTierGroupIndex] = useState(0);
+  const [studentCount, setStudentCount] = useState(''); // Manual student count input
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -458,6 +459,7 @@ function EventSales() {
       setPlan(null);
       setStudentTier(null);
       setSelectedTierGroupIndex(0);
+      setStudentCount('');
     }
   }, [role?.id]);
 
@@ -526,7 +528,66 @@ function EventSales() {
 
   const canProceed = () => {
     if (step === 1) return !!role;
-    if (step === 2) return isAdminRole ? !!studentTier : !!plan;
+    if (step === 2) {
+      // Step 2: Just select a plan/tier
+      if (isAdminRole) return !!studentTier;
+      return !!plan;
+    }
+    if (step === 3) {
+      // Step 3: Validate form fields and student count
+      
+      // Check common required fields
+      const emailRegex = /\S+@\S+\.\S+/;
+      const phoneRegex = /^\d{10}$/;
+      const commonFieldsValid = 
+        form.email?.trim() && emailRegex.test(form.email) &&
+        form.phone?.trim() && phoneRegex.test(form.phone.replace(/\D/g, '')) &&
+        form.address?.trim() && 
+        form.city?.trim() && 
+        form.state && 
+        form.pincode?.trim() && form.pincode.length === 6;
+      
+      if (!commonFieldsValid) return false;
+      
+      // Check role-specific required fields
+      let roleFieldsValid = true;
+      switch (role?.id) {
+        case 'school-admin':
+          roleFieldsValid = form.school_name?.trim() && form.school_type && form.principal_name?.trim();
+          break;
+        case 'college-admin':
+          roleFieldsValid = form.college_name?.trim() && form.college_type && form.dean_name?.trim();
+          break;
+        case 'university-admin':
+          roleFieldsValid = form.university_name?.trim() && form.university_type && form.vc_name?.trim();
+          break;
+        case 'educator':
+          roleFieldsValid = form.full_name?.trim() && form.institution_name?.trim() && form.designation?.trim();
+          break;
+        case 'recruiter':
+          roleFieldsValid = form.full_name?.trim() && form.company_name?.trim() && form.designation?.trim();
+          break;
+        case 'school-student':
+          roleFieldsValid = form.full_name?.trim() && form.school_name?.trim() && form.class_grade?.trim();
+          break;
+        case 'college-student':
+        case 'university-student':
+          roleFieldsValid = form.full_name?.trim() && form.institution_name?.trim() && form.course?.trim();
+          break;
+        default:
+          roleFieldsValid = form.full_name?.trim();
+      }
+      
+      if (!roleFieldsValid) return false;
+      
+      // Check student count for admin roles
+      if (isAdminRole && studentTier) {
+        const count = parseInt(studentCount) || 0;
+        return count >= studentTier.min_students && (studentTier.max_students === 99999 || count <= studentTier.max_students);
+      }
+      
+      return true;
+    }
     return true;
   };
 
@@ -555,22 +616,36 @@ function EventSales() {
   const currentPricing = useMemo(() => {
     if (isAdminRole && studentTier) {
       const capacityLabel = role?.id === 'recruiter' ? 'candidates' : 'students';
-      const rangeDisplay = studentTier.max_students === 99999 ? `${studentTier.min_students}+` : `${studentTier.min_students}-${studentTier.max_students}`;
-      // Only apply ESFE pricing if promotion is active
+      const count = parseInt(studentCount) || 0;
+      
+      // Regular price per student
+      const regularPricePerStudent = parseFloat(studentTier.price) || 0;
+      
+      // Check if ESFE pricing is active
       const hasEsfePrice = isPromoActive && studentTier.esfe_active && studentTier.esfe_price;
-      const displayPrice = hasEsfePrice ? studentTier.esfe_price : studentTier.price;
+      
+      // ESFE price per student (use esfe_price column directly)
+      const esfePricePerStudent = hasEsfePrice ? parseFloat(studentTier.esfe_price) || 0 : regularPricePerStudent;
+      
+      // Calculate totals
+      const originalTotal = Math.round(regularPricePerStudent * count);
+      const displayTotal = Math.round(esfePricePerStudent * count);
+      
       return { 
-        name: `${studentTier.tier_name} (${rangeDisplay} ${capacityLabel})`, 
-        price: displayPrice,
-        originalPrice: hasEsfePrice ? studentTier.price : null,
+        name: `${studentTier.tier_name} Plan`, 
+        price: displayTotal,
+        originalPrice: hasEsfePrice ? originalTotal : null,
         isEsfe: hasEsfePrice,
         discountPercent: hasEsfePrice ? studentTier.esfe_discount_percent : 0,
-        duration: studentTier.duration 
+        pricePerStudent: hasEsfePrice ? esfePricePerStudent : regularPricePerStudent,
+        originalPricePerStudent: regularPricePerStudent,
+        studentCount: count,
+        capacityLabel
       };
     }
     if (plan) return { name: plan.name, price: parseInt(plan.price), duration: plan.duration };
     return null;
-  }, [isAdminRole, studentTier, plan, role?.id, isPromoActive]);
+  }, [isAdminRole, studentTier, plan, role?.id, isPromoActive, studentCount]);
 
   const handlePayment = async () => {
     if (loading || !currentPricing) return;
@@ -608,6 +683,8 @@ function EventSales() {
         registrationData.student_tier_id = studentTier.id;
         registrationData.student_count_min = studentTier.min_students;
         registrationData.student_count_max = studentTier.max_students;
+        registrationData.student_count = parseInt(studentCount) || 0;
+        registrationData.price_per_student = parseFloat(studentTier.price) || 0;
       }
 
       const { data: reg, error: err } = await supabase.from('event_registrations').insert(registrationData).select().single();
@@ -1105,18 +1182,25 @@ function EventSales() {
                               
                               {/* Price Section */}
                               <div className="mb-3 sm:mb-4">
+                                {/* Original price with strikethrough when ESFE is active */}
                                 {hasEsfePrice && (
-                                  <div className="flex items-center justify-center gap-2 mb-1 sm:mb-2">
-                                    <span className="text-sm sm:text-base text-gray-400 line-through">₹{tier.price?.toLocaleString()}</span>
-                                    <span className="text-[10px] sm:text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 sm:px-2 py-0.5 rounded-full">
-                                      {tier.esfe_discount_percent}% OFF
+                                  <div className="text-base sm:text-lg text-gray-400 line-through mb-1">
+                                    ₹{parseFloat(tier.price || 0).toLocaleString()}
+                                  </div>
+                                )}
+                                {/* Display price - ESFE price when active, regular price otherwise */}
+                                <div className={`text-3xl sm:text-5xl font-bold tracking-tight ${hasEsfePrice ? 'text-emerald-600' : 'text-gray-900'}`}>
+                                  ₹{hasEsfePrice ? parseFloat(tier.esfe_price || 0).toLocaleString() : parseFloat(tier.price || 0).toLocaleString()}
+                                </div>
+                                <div className="text-xs sm:text-sm text-gray-500 mt-1">per {role?.id === 'recruiter' ? 'candidate' : 'student'}</div>
+                                {/* Savings badge */}
+                                {hasEsfePrice && (
+                                  <div className="flex items-center justify-center gap-2 mt-2">
+                                    <span className="text-[10px] sm:text-xs font-bold text-white bg-emerald-500 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-sm">
+                                      Save {tier.esfe_discount_percent}%
                                     </span>
                                   </div>
                                 )}
-                                <div className={`text-3xl sm:text-5xl font-bold tracking-tight ${hasEsfePrice ? 'text-emerald-600' : 'text-gray-900'}`}>
-                                  ₹{displayPrice?.toLocaleString()}
-                                </div>
-                                <div className="text-xs sm:text-sm text-gray-500 mt-1">per {tier.duration}</div>
                               </div>
                               
                               {/* Features - Hidden on mobile for compact view */}
@@ -1180,9 +1264,139 @@ function EventSales() {
                 {isAdminRole ? 'Enter your institution information' : getStepContent(role?.id).step3.subtitle}
               </p>
             </div>
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+            
+            {/* Form Fields First */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4 mb-6">
               {renderFormFields()}
             </div>
+            
+            {/* Student Count Input - Modern Compact Design */}
+            {isAdminRole && studentTier && (() => {
+              const hasEsfePrice = isPromoActive && studentTier.esfe_active && studentTier.esfe_price;
+              const pricePerStudent = hasEsfePrice ? parseFloat(studentTier.esfe_price) : parseFloat(studentTier.price);
+              const originalPricePerStudent = parseFloat(studentTier.price);
+              const count = parseInt(studentCount) || 0;
+              const totalPrice = Math.round(pricePerStudent * count);
+              const originalTotalPrice = Math.round(originalPricePerStudent * count);
+              
+              const minStudents = studentTier.min_students;
+              const maxStudents = studentTier.max_students;
+              const isUnlimited = maxStudents === 99999;
+              const isBelowMin = count > 0 && count < minStudents;
+              const isAboveMax = count > 0 && !isUnlimited && count > maxStudents;
+              const isValidCount = count >= minStudents && (isUnlimited || count <= maxStudents);
+              const hasError = count > 0 && !isValidCount;
+              const capacityLabel = role?.id === 'recruiter' ? 'candidates' : 'students';
+              
+              return (
+                <div className={`rounded-2xl border-2 transition-all duration-300 ${
+                  hasError 
+                    ? 'bg-red-50 border-red-200' 
+                    : isValidCount && count > 0
+                      ? hasEsfePrice ? 'bg-emerald-50 border-emerald-200' : 'bg-blue-50 border-blue-200'
+                      : 'bg-white border-gray-100'
+                }`}>
+                  {/* Header with inline range info */}
+                  <div className="px-4 sm:px-5 py-3 border-b border-gray-100/50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`p-1.5 rounded-lg ${hasError ? 'bg-red-100' : 'bg-blue-100'}`}>
+                          <Users className={`w-4 h-4 ${hasError ? 'text-red-600' : 'text-blue-600'}`} />
+                        </div>
+                        <span className="font-semibold text-gray-900 text-sm sm:text-base">
+                          Number of {role?.id === 'recruiter' ? 'Candidates' : 'Students'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs sm:text-sm">
+                        <span className={`px-2 py-0.5 rounded-md ${isBelowMin ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
+                          {minStudents.toLocaleString()}
+                        </span>
+                        <span className="text-gray-400">—</span>
+                        <span className={`px-2 py-0.5 rounded-md ${isAboveMax ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
+                          {isUnlimited ? '∞' : maxStudents.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Input and Result Row */}
+                  <div className="px-4 sm:px-5 py-4">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                      {/* Input */}
+                      <div className="flex-1 relative">
+                        <input
+                          type="number"
+                          value={studentCount}
+                          onChange={(e) => setStudentCount(e.target.value)}
+                          placeholder="Enter count"
+                          min={minStudents}
+                          max={isUnlimited ? undefined : maxStudents}
+                          className={`w-full h-12 px-4 text-lg font-bold rounded-xl border-2 outline-none transition-all ${
+                            hasError 
+                              ? 'border-red-300 bg-white text-red-600 focus:border-red-400 focus:ring-2 focus:ring-red-100' 
+                              : 'border-gray-200 bg-white text-gray-900 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
+                          }`}
+                        />
+                        {hasError && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <span className="text-red-500 text-lg">⚠</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Multiplication sign and price */}
+                      {count > 0 && (
+                        <div className="flex items-center justify-center gap-2 sm:gap-3">
+                          <span className="text-gray-400 text-lg">×</span>
+                          <div className="text-center">
+                            {hasEsfePrice && (
+                              <div className="text-xs text-gray-400 line-through">₹{originalPricePerStudent.toLocaleString()}</div>
+                            )}
+                            <div className={`font-bold ${hasEsfePrice ? 'text-emerald-600' : 'text-gray-700'}`}>
+                              ₹{pricePerStudent.toLocaleString()}
+                            </div>
+                          </div>
+                          <span className="text-gray-400 text-lg">=</span>
+                          
+                          {/* Total */}
+                          <div className={`px-4 py-2 rounded-xl font-bold text-lg sm:text-xl ${
+                            hasError 
+                              ? 'bg-red-100 text-red-600' 
+                              : hasEsfePrice 
+                                ? 'bg-emerald-100 text-emerald-700' 
+                                : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            ₹{totalPrice.toLocaleString()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Error or Success Message */}
+                    {count > 0 && (
+                      <div className={`mt-3 text-center text-sm font-medium ${
+                        hasError ? 'text-red-600' : hasEsfePrice ? 'text-emerald-600' : 'text-blue-600'
+                      }`}>
+                        {hasError ? (
+                          isBelowMin 
+                            ? `⚠ Need at least ${minStudents.toLocaleString()} ${capacityLabel}`
+                            : `⚠ Maximum ${maxStudents.toLocaleString()} ${capacityLabel} for this plan`
+                        ) : (
+                          <span className="flex items-center justify-center gap-2">
+                            <span>✓ {count.toLocaleString()} {capacityLabel}</span>
+                            {hasEsfePrice && (
+                              <span className="inline-flex items-center gap-1 text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full">
+                                Save ₹{(originalTotalPrice - totalPrice).toLocaleString()}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1201,23 +1415,55 @@ function EventSales() {
                   {isAdminRole && studentTier && (
                     <div className="flex items-center gap-1 text-sm text-blue-600 mt-1">
                       <Users className="w-4 h-4" />
-                      <span>{studentTier.max_students === 99999 ? `${studentTier.min_students}+` : `${studentTier.min_students} - ${studentTier.max_students}`} {role?.id === 'recruiter' ? 'candidates' : 'students'}</span>
+                      <span>{currentPricing.studentCount?.toLocaleString()} {currentPricing.capacityLabel}</span>
                     </div>
                   )}
                 </div>
                 <div className="text-right">
-                  {currentPricing.isEsfe && currentPricing.originalPrice && (
-                    <div className="flex items-center justify-end gap-2 mb-1">
-                      <span className="text-sm text-gray-400 line-through">₹{currentPricing.originalPrice.toLocaleString()}</span>
-                      <span className="text-xs font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded">
-                        {currentPricing.discountPercent}% OFF
-                      </span>
+                  {isAdminRole && currentPricing.pricePerStudent ? (
+                    // Admin role pricing breakdown
+                    <div className="space-y-1">
+                      {/* Show original price per student with strikethrough when ESFE active */}
+                      {currentPricing.isEsfe && currentPricing.originalPricePerStudent && (
+                        <div className="text-sm text-gray-400 line-through">
+                          ₹{currentPricing.originalPricePerStudent.toLocaleString()} per {role?.id === 'recruiter' ? 'candidate' : 'student'}
+                        </div>
+                      )}
+                      <div className={`text-sm ${currentPricing.isEsfe ? 'text-emerald-600 font-semibold' : 'text-gray-600'}`}>
+                        ₹{currentPricing.pricePerStudent.toLocaleString()} <span className={currentPricing.isEsfe ? 'text-emerald-500' : 'text-gray-400'}>per {role?.id === 'recruiter' ? 'candidate' : 'student'}</span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        × {currentPricing.studentCount?.toLocaleString()} {currentPricing.capacityLabel}
+                      </div>
+                      {currentPricing.isEsfe && currentPricing.originalPrice && (
+                        <div className="flex items-center justify-end gap-2 mt-2">
+                          <span className="text-sm text-gray-400 line-through">₹{currentPricing.originalPrice.toLocaleString()}</span>
+                          <span className="text-xs font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full">
+                            Save {currentPricing.discountPercent}%
+                          </span>
+                        </div>
+                      )}
+                      <div className={`text-2xl font-bold mt-1 ${currentPricing.isEsfe ? 'text-emerald-600' : 'text-gray-900'}`}>
+                        = ₹{currentPricing.price.toLocaleString()}
+                      </div>
                     </div>
+                  ) : (
+                    // Non-admin role pricing
+                    <>
+                      {currentPricing.isEsfe && currentPricing.originalPrice && (
+                        <div className="flex items-center justify-end gap-2 mb-1">
+                          <span className="text-sm text-gray-400 line-through">₹{currentPricing.originalPrice.toLocaleString()}</span>
+                          <span className="text-xs font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded">
+                            {currentPricing.discountPercent}% OFF
+                          </span>
+                        </div>
+                      )}
+                      <div className={`text-2xl font-bold ${currentPricing.isEsfe ? 'text-green-600' : 'text-gray-900'}`}>
+                        ₹{currentPricing.price.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-gray-500">per {currentPricing.duration}</div>
+                    </>
                   )}
-                  <div className={`text-2xl font-bold ${currentPricing.isEsfe ? 'text-green-600' : 'text-gray-900'}`}>
-                    ₹{currentPricing.price.toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-500">per {currentPricing.duration}</div>
                 </div>
               </div>
               
@@ -1240,15 +1486,37 @@ function EventSales() {
                 <div className="flex justify-between"><span className="text-gray-500">Phone</span><span>{form.phone}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Location</span><span>{form.city}, {form.state}</span></div>
               </div>
-              <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-                <span className="font-semibold">Total</span>
-                <div className="text-right">
-                  {currentPricing.isEsfe && currentPricing.originalPrice && (
-                    <div className="text-xs text-gray-400 line-through mb-0.5">₹{currentPricing.originalPrice.toLocaleString()}</div>
-                  )}
-                  <span className={`text-2xl font-bold ${currentPricing.isEsfe ? 'text-green-600' : 'text-blue-600'}`}>
-                    ₹{currentPricing.price.toLocaleString()}
-                  </span>
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                {isAdminRole && currentPricing.pricePerStudent && (
+                  <div className={`mb-3 p-3 rounded-xl ${currentPricing.isEsfe ? 'bg-emerald-50' : 'bg-blue-50'}`}>
+                    <div className="text-sm text-center">
+                      {/* Show original calculation with strikethrough when ESFE active */}
+                      {currentPricing.isEsfe && currentPricing.originalPricePerStudent && (
+                        <div className="text-gray-400 line-through mb-1">
+                          ₹{currentPricing.originalPricePerStudent.toLocaleString()} × {currentPricing.studentCount?.toLocaleString()} = ₹{currentPricing.originalPrice?.toLocaleString()}
+                        </div>
+                      )}
+                      {/* Current calculation */}
+                      <div className={currentPricing.isEsfe ? 'text-emerald-700' : 'text-gray-600'}>
+                        <span className="font-medium">₹{currentPricing.pricePerStudent.toLocaleString()}</span>
+                        <span className={currentPricing.isEsfe ? 'text-emerald-500' : 'text-gray-400'}> × </span>
+                        <span className="font-medium">{currentPricing.studentCount?.toLocaleString()} {currentPricing.capacityLabel}</span>
+                        <span className={currentPricing.isEsfe ? 'text-emerald-500' : 'text-gray-400'}> = </span>
+                        <span className={`font-bold ${currentPricing.isEsfe ? 'text-emerald-600' : 'text-blue-600'}`}>₹{currentPricing.price.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold">Total</span>
+                  <div className="text-right">
+                    {currentPricing.isEsfe && currentPricing.originalPrice && (
+                      <div className="text-xs text-gray-400 line-through mb-0.5">₹{currentPricing.originalPrice.toLocaleString()}</div>
+                    )}
+                    <span className={`text-2xl font-bold ${currentPricing.isEsfe ? 'text-emerald-600' : 'text-blue-600'}`}>
+                      ₹{currentPricing.price.toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
