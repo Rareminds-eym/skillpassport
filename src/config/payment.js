@@ -1,48 +1,40 @@
 /**
  * Payment Configuration
  * Handles environment-based pricing and Razorpay settings
+ * 
+ * Simple logic:
+ * - Production (skillpassport.rareminds.in) → LIVE keys
+ * - Everything else (dev, localhost, etc.) → TEST keys
  */
 
 // Production domain for live payments
 const PRODUCTION_DOMAIN = 'skillpassport.rareminds.in';
-
-// Routes that should use LIVE Razorpay keys on production
-const LIVE_KEY_ROUTES = [
-  '/subscription/plans/school-student/purchase',
-  '/register/plans'
-];
 
 // Razorpay Keys
 const RAZORPAY_LIVE_KEY = import.meta.env.VITE_RAZORPAY_LIVE_KEY_ID;
 const RAZORPAY_TEST_KEY = import.meta.env.VITE_RAZORPAY_TEST_KEY_ID;
 
 /**
+ * Check if current environment is production
+ * @returns {boolean} True if production domain
+ */
+export const isProductionEnvironment = () => {
+  return window.location.hostname === PRODUCTION_DOMAIN;
+};
+
+/**
  * Check if current environment should use LIVE Razorpay key
- * LIVE key is used ONLY when:
- * 1. Domain is skillpassport.rareminds.in (production)
- * 2. Current route is one of the specified LIVE_KEY_ROUTES
+ * LIVE key is used ONLY on production domain
  * 
  * @returns {boolean} True if should use LIVE key
  */
 export const shouldUseLiveKey = () => {
-  const hostname = window.location.hostname;
-  const pathname = window.location.pathname;
-  
-  // Must be on production domain
-  if (hostname !== PRODUCTION_DOMAIN) {
-    console.log('🔧 Razorpay: Using TEST key (not production domain)');
-    return false;
-  }
-  
-  // Must be on one of the specified routes
-  const isLiveRoute = LIVE_KEY_ROUTES.some(route => pathname.startsWith(route));
-  
-  if (isLiveRoute) {
-    console.log('💳 Razorpay: Using LIVE key (production domain + live route)');
+  if (isProductionEnvironment()) {
+    console.log('� Razorpay:  Using LIVE key (production domain)');
     return true;
   }
   
-  console.log('🔧 Razorpay: Using TEST key (production domain but not live route)');
+  console.log('🔧 Razorpay: Using TEST key (dev/staging environment)');
   return false;
 };
 
@@ -108,7 +100,6 @@ export const PAYMENT_CONFIG = {
   
   // Razorpay key info
   RAZORPAY_MODE: getRazorpayKeyMode(),
-  LIVE_KEY_ROUTES,
   PRODUCTION_DOMAIN,
 };
 
