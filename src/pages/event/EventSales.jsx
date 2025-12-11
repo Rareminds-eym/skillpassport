@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { getEntityContent } from '../../utils/getEntityContent';
-import { isTestPricing, getRazorpayKeyId, getRazorpayKeyMode } from '../../config/payment';
+import { isTestPricing } from '../../config/payment';
 import Header from '../../layouts/Header';
 import FlipClockCountdown from '@leenguyen/react-flip-clock-countdown';
 import '@leenguyen/react-flip-clock-countdown/dist/index.css';
@@ -582,8 +582,11 @@ function EventSales() {
       
       // Check student count for admin roles
       if (isAdminRole && studentTier) {
-        const count = parseInt(studentCount) || 0;
-        return count >= studentTier.min_students && (studentTier.max_students === 99999 || count <= studentTier.max_students);
+        const count = parseInt(studentCount, 10) || 0;
+        const minStudents = parseInt(studentTier.min_students, 10) || 0;
+        const maxStudents = parseInt(studentTier.max_students, 10) || 0;
+        const isUnlimited = maxStudents >= 99999;
+        return count >= minStudents && (isUnlimited || count <= maxStudents);
       }
       
       return true;
@@ -690,14 +693,40 @@ function EventSales() {
       const { data: reg, error: err } = await supabase.from('event_registrations').insert(registrationData).select().single();
       if (err) throw err;
 
-      // Get the appropriate Razorpay key based on environment and route
-      const razorpayKeyId = getRazorpayKeyId();
-      console.log(`💳 Razorpay Payment: Using ${getRazorpayKeyMode()} key`);
+      // Create order via Edge Function (uses server-side Razorpay credentials)
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const orderResponse = await fetch(`${SUPABASE_URL}/functions/v1/create-event-order`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          amount: currentPricing.price * 100, // Amount in paise
+          currency: 'INR',
+          registrationId: reg.id,
+          planName: currentPricing.name,
+          userEmail: form.email,
+          userName: getDisplayName(),
+          origin: window.location.origin, // Send origin for dev/prod detection
+        }),
+      });
+
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json();
+        throw new Error(errorData.error || 'Failed to create order');
+      }
+
+      const orderData = await orderResponse.json();
+      console.log('💳 Razorpay: Order created via Edge Function', orderData.id);
 
       new window.Razorpay({
-        key: razorpayKeyId,
-        amount: currentPricing.price * 100,
-        currency: 'INR',
+        key: orderData.key,
+        order_id: orderData.id,
+        amount: orderData.amount,
+        currency: orderData.currency,
         name: 'Skill Passport',
         description: currentPricing.name,
         prefill: { name: getDisplayName(), email: form.email, contact: form.phone },
