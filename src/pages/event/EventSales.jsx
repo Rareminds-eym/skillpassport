@@ -710,6 +710,7 @@ function EventSales() {
           planName: currentPricing.name,
           userEmail: form.email,
           userName: getDisplayName(),
+          origin: window.location.origin, // Send origin for dev/prod detection
         }),
       });
 
