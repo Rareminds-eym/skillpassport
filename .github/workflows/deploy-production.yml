@@ -25,8 +25,8 @@ jobs:
         echo "VITE_OPENAI_API_KEY=${{ secrets.VITE_OPENAI_API_KEY }}" >> .env.production
         
         # Razorpay LIVE
-        echo "VITE_RAZORPAY_KEY_ID=${{ secrets.VITE_RAZORPAY_KEY_ID_LIVE }}" >> .env.production
-        echo "VITE_RAZORPAY_KEY_SECRET=${{ secrets.VITE_RAZORPAY_KEY_SECRET_LIVE }}" >> .env.production
+        echo "VITE_RAZORPAY_LIVE_KEY_ID=${{ secrets.VITE_RAZORPAY_LIVE_KEY_ID }}" >> .env.production
+        echo "RAZORPAY_LIVE_KEY_SECRET=${{ secrets.RAZORPAY_LIVE_KEY_SECRET }}" >> .env.production
 
         # Supabase Service Role
         echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env.production
