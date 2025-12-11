@@ -1,33 +1,23 @@
-import { useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
+const PromotionalEventContext = createContext(null);
+
 /**
- * Custom hook to fetch and manage promotional events
+ * Provider for promotional event state
  * Modal shows first, then banner shows after modal is dismissed
- * Banner state is NOT persisted - only modal dismissal triggers banner
+ * Banner persists until user closes it (stored in sessionStorage)
  */
-export const usePromotionalEvent = () => {
+export const PromotionalEventProvider = ({ children }) => {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
   // Modal dismissed state - persisted in sessionStorage
-  const [isModalDismissed, setIsModalDismissed] = useState(() => {
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key?.startsWith('promo_modal_dismissed_') && sessionStorage.getItem(key) === 'true') {
-        return true;
-      }
-    }
-    return false;
-  });
+  const [isModalDismissed, setIsModalDismissed] = useState(false);
   
-  // Banner dismissed state - NOT persisted, only in memory
-  // This ensures banner shows after modal close but NOT after refresh
-  const [isBannerDismissed, setIsBannerDismissed] = useState(true); // Start as true (hidden)
-  
-  // Track if modal was just dismissed in this session to show banner
-  const [showBannerAfterModal, setShowBannerAfterModal] = useState(false);
+  // Banner dismissed state - persisted in sessionStorage
+  const [isBannerDismissed, setIsBannerDismissed] = useState(false);
 
   // Fetch active promotional event
   useEffect(() => {
@@ -51,8 +41,11 @@ export const usePromotionalEvent = () => {
 
         if (data) {
           setEvent(data);
+          // Check sessionStorage for dismissal states
           const modalKey = `promo_modal_dismissed_${data.event_code}`;
+          const bannerKey = `promo_banner_dismissed_${data.event_code}`;
           setIsModalDismissed(sessionStorage.getItem(modalKey) === 'true');
+          setIsBannerDismissed(sessionStorage.getItem(bannerKey) === 'true');
         }
       } catch (err) {
         console.error('Error fetching promotional event:', err);
@@ -65,22 +58,21 @@ export const usePromotionalEvent = () => {
     fetchEvent();
   }, []);
 
-  // Dismiss modal handler - shows banner immediately after
+  // Dismiss modal handler - banner will show after this
   const dismissModal = useCallback(() => {
     if (event) {
       sessionStorage.setItem(`promo_modal_dismissed_${event.event_code}`, 'true');
       setIsModalDismissed(true);
-      // Show banner immediately after modal is dismissed
-      setIsBannerDismissed(false);
-      setShowBannerAfterModal(true);
     }
   }, [event]);
 
-  // Dismiss banner handler - only in memory, not persisted
+  // Dismiss banner handler - persisted in sessionStorage
   const dismissBanner = useCallback(() => {
-    setIsBannerDismissed(true);
-    setShowBannerAfterModal(false);
-  }, []);
+    if (event) {
+      sessionStorage.setItem(`promo_banner_dismissed_${event.event_code}`, 'true');
+      setIsBannerDismissed(true);
+    }
+  }, [event]);
 
   // Calculate time remaining
   const getTimeRemaining = useCallback(() => {
@@ -100,13 +92,13 @@ export const usePromotionalEvent = () => {
     return { days, hours, minutes, seconds, total: diff };
   }, [event]);
 
-  // Show modal if event exists and not dismissed
+  // Show modal if event exists and modal not dismissed
   const showModal = event && !isModalDismissed;
   
-  // Show banner only if modal was dismissed AND banner not dismissed (in current session only)
-  const showBanner = event && isModalDismissed && showBannerAfterModal && !isBannerDismissed;
+  // Show banner if event exists, modal is dismissed, and banner not dismissed
+  const showBanner = event && isModalDismissed && !isBannerDismissed;
 
-  return {
+  const value = {
     event,
     loading,
     error,
@@ -118,6 +110,20 @@ export const usePromotionalEvent = () => {
     isModalDismissed,
     isBannerDismissed,
   };
+
+  return (
+    <PromotionalEventContext.Provider value={value}>
+      {children}
+    </PromotionalEventContext.Provider>
+  );
 };
 
-export default usePromotionalEvent;
+export const usePromotionalEventContext = () => {
+  const context = useContext(PromotionalEventContext);
+  if (!context) {
+    throw new Error('usePromotionalEventContext must be used within PromotionalEventProvider');
+  }
+  return context;
+};
+
+export default PromotionalEventContext;

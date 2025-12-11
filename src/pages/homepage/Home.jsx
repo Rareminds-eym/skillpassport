@@ -11,10 +11,10 @@ import {
   ProductWalkthrough,
   PromotionalModal,
 } from '../../components/Homepage';
-import { usePromotionalEvent } from '../../hooks/usePromotionalEvent';
+import { usePromotionalEventContext } from '../../contexts/PromotionalEventContext';
 
 const Home = () => {
-  const { event, showModal, dismissModal, getTimeRemaining } = usePromotionalEvent();
+  const { event, showModal, dismissModal, getTimeRemaining } = usePromotionalEventContext();
 
   return (
     <div className="min-h-screen">
