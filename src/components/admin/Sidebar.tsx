@@ -471,6 +471,16 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             icon: ClipboardDocumentListIcon,
           },
           {
+            name: "Coverage Tracker",
+            path: "/college-admin/academics/coverage-tracker",
+            icon: ChartBarIcon,
+          },
+          {
+            name: "Program & Sections",
+            path: "/college-admin/academics/program-sections",
+            icon: UserGroupIcon,
+          },
+          {
             name: "Academic Calendar",
             path: "/college-admin/academics/calendar",
             icon: CalendarDaysIcon,
@@ -556,6 +566,17 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             name: "Finance",
             path: "/college-admin/finance",
             icon: BanknotesIcon,
+          },
+        ],
+      },
+      {
+        title: "Library & Assets",
+        key: "library",
+        items: [
+          {
+            name: "Library",
+            path: "/college-admin/library",
+            icon: BookOpenIcon,
           },
         ],
       },
