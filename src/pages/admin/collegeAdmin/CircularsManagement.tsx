@@ -9,7 +9,6 @@ import {
   XMarkIcon,
   CalendarIcon,
   UserGroupIcon,
-  ExclamationTriangleIcon,
   DocumentArrowDownIcon,
   FunnelIcon,
   CheckCircleIcon,
@@ -81,7 +80,7 @@ const CircularsManagement: React.FC = () => {
     },
   ]);
 
-  const [notifications] = useState<Notification[]>([
+  const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: 1,
       title: "New Assignment Posted",
@@ -102,15 +101,24 @@ const CircularsManagement: React.FC = () => {
     },
   ]);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string;
+    audienceType: "all" | "grade" | "department" | "batch" | "section";
+    audience: string;
+    priority: "normal" | "high";
+    messageBody: string;
+    publishDate: string;
+    expiryDate: string;
+    attachments: File[];
+  }>({
     title: "",
-    audienceType: "all" as const,
+    audienceType: "all",
     audience: "",
-    priority: "normal" as const,
+    priority: "normal",
     messageBody: "",
     publishDate: "",
     expiryDate: "",
-    attachments: [] as File[],
+    attachments: [],
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -202,6 +210,86 @@ const CircularsManagement: React.FC = () => {
 
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleString();
+  };
+
+  // Mark notification as read
+  const handleMarkAsRead = (notificationId: number) => {
+    setNotifications(notifications.map(notification => 
+      notification.id === notificationId 
+        ? { ...notification, isRead: true }
+        : notification
+    ));
+    
+    // Optional: Show success feedback
+    console.log('Notification marked as read');
+  };
+
+  // Download attachment functionality
+  const handleDownloadAttachment = (attachmentName: string) => {
+    // In a real application, this would fetch the file from your server/storage
+    // For demo purposes, we'll simulate a download
+    try {
+      // Determine file type based on extension
+      const extension = attachmentName.split('.').pop()?.toLowerCase();
+      let mimeType = 'application/octet-stream';
+      let mockContent = `Mock content for ${attachmentName}`;
+
+      switch (extension) {
+        case 'pdf':
+          mimeType = 'application/pdf';
+          mockContent = '%PDF-1.4 Mock PDF content';
+          break;
+        case 'doc':
+        case 'docx':
+          mimeType = 'application/msword';
+          break;
+        case 'xls':
+        case 'xlsx':
+          mimeType = 'application/vnd.ms-excel';
+          break;
+        case 'jpg':
+        case 'jpeg':
+          mimeType = 'image/jpeg';
+          break;
+        case 'png':
+          mimeType = 'image/png';
+          break;
+        case 'txt':
+          mimeType = 'text/plain';
+          break;
+        default:
+          mimeType = 'application/octet-stream';
+      }
+      
+      // Create a mock blob for demonstration
+      const blob = new Blob([mockContent], { type: mimeType });
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link element and trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachmentName;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+      
+      // Show success message (you could use a toast notification library)
+      console.log(`Downloading ${attachmentName}...`);
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Download failed. Please try again.');
+    }
+  };
+
+  // Mark all notifications as read
+  const handleMarkAllAsRead = () => {
+    setNotifications(notifications.map(notification => ({ ...notification, isRead: true })));
   };
 
   return (
@@ -361,10 +449,23 @@ const CircularsManagement: React.FC = () => {
                           Published: {circular.publishDate} • Expires: {circular.expiryDate}
                         </p>
                         {circular.attachments && circular.attachments.length > 0 && (
-                          <p className="text-sm text-blue-600">
-                            <PaperClipIcon className="inline h-4 w-4 mr-1" />
-                            {circular.attachments.length} attachment(s)
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-blue-600">
+                              <PaperClipIcon className="inline h-4 w-4 mr-1" />
+                              {circular.attachments.length} attachment(s)
+                            </p>
+                            <button
+                              onClick={() => {
+                                circular.attachments?.forEach(attachment => {
+                                  handleDownloadAttachment(attachment);
+                                });
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-800 underline"
+                              title="Download all attachments"
+                            >
+                              Download All
+                            </button>
+                          </div>
                         )}
                       </div>
                       <div className="flex gap-2">
@@ -436,7 +537,18 @@ const CircularsManagement: React.FC = () => {
             <>
               {/* Notifications Tab */}
               <div className="mb-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Notifications Inbox</h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Notifications Inbox</h2>
+                  {notifications.filter(n => !n.isRead).length > 0 && (
+                    <button
+                      onClick={handleMarkAllAsRead}
+                      className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                      <CheckCircleIcon className="h-4 w-4" />
+                      Mark All as Read
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-3">
                   {notifications.map((notification) => (
                     <div
@@ -477,7 +589,11 @@ const CircularsManagement: React.FC = () => {
                         </div>
                         <div className="flex gap-2">
                           {!notification.isRead && (
-                            <button className="p-2 text-blue-600 hover:bg-blue-50 rounded" title="Mark as read">
+                            <button 
+                              onClick={() => handleMarkAsRead(notification.id)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded" 
+                              title="Mark as read"
+                            >
                               <CheckCircleIcon className="h-5 w-5" />
                             </button>
                           )}
@@ -488,10 +604,21 @@ const CircularsManagement: React.FC = () => {
                   
                   {notifications.length === 0 && (
                     <div className="text-center py-8 text-gray-500">
-                      No notifications available.
+                      <BellIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>No notifications available.</p>
                     </div>
                   )}
                 </div>
+                
+                {/* Notifications Summary */}
+                {notifications.length > 0 && (
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Total: {notifications.length} notifications</span>
+                      <span>Unread: {notifications.filter(n => !n.isRead).length}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -766,7 +893,11 @@ const CircularsManagement: React.FC = () => {
                       <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
                         <PaperClipIcon className="h-4 w-4 text-gray-500" />
                         <span className="text-sm text-gray-600">{attachment}</span>
-                        <button className="ml-auto text-blue-600 hover:text-blue-800">
+                        <button 
+                          onClick={() => handleDownloadAttachment(attachment)}
+                          className="ml-auto text-blue-600 hover:text-blue-800"
+                          title={`Download ${attachment}`}
+                        >
                           <DocumentArrowDownIcon className="h-4 w-4" />
                         </button>
                       </div>
