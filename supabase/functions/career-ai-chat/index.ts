@@ -348,14 +348,20 @@ function getPhaseParameters(phase: ConversationPhase, intent?: CareerIntent): { 
 
 async function buildStudentContext(supabase: SupabaseClient, studentId: string): Promise<StudentProfile | null> {
   try {
-    // Fetch student basic info
-    const { data: student, error } = await supabase
+    // Fetch student basic info - try user_id first, then id
+    let student: any = null;
+    let actualStudentId = studentId;
+    
+    const { data: studentByUserId, error } = await supabase
       .from('students')
       .select('*')
       .eq('user_id', studentId)
       .single();
     
-    if (error || !student) {
+    if (!error && studentByUserId) {
+      student = studentByUserId;
+      actualStudentId = student.id; // Use the student's actual id for related queries
+    } else {
       // Try with id field
       const { data: studentById, error: error2 } = await supabase
         .from('students')
@@ -367,92 +373,159 @@ async function buildStudentContext(supabase: SupabaseClient, studentId: string):
         console.error('Error fetching student:', error || error2);
         return null;
       }
-      Object.assign(student || {}, studentById);
+      student = studentById;
+      actualStudentId = student.id;
     }
 
     const profile = student?.profile || {};
+    console.log(`[buildStudentContext] Student found: ${student.name}, actualStudentId: ${actualStudentId}`);
 
-    // Fetch skills from skills table
+    // Fetch skills from skills table using the actual student id
     const { data: skillsData } = await supabase
       .from('skills')
       .select('name, type, level, verified')
-      .eq('student_id', studentId)
+      .eq('student_id', actualStudentId)
       .eq('enabled', true);
 
-    const technicalSkills = (skillsData || [])
+    console.log(`[buildStudentContext] Skills from DB: ${skillsData?.length || 0} skills found`);
+
+    // Start with skills from the database
+    let technicalSkills = (skillsData || [])
       .filter((s: any) => s.type === 'technical')
       .map((s: any) => ({ name: s.name, level: s.level || 3, type: 'technical', verified: s.verified || false }));
     
-    const softSkills = (skillsData || [])
+    let softSkills = (skillsData || [])
       .filter((s: any) => s.type === 'soft')
       .map((s: any) => ({ name: s.name, level: s.level || 3 }));
 
-    // Fetch education
+    // FALLBACK: If no skills in DB, check profile JSONB for technicalSkills
+    if (technicalSkills.length === 0 && profile.technicalSkills && Array.isArray(profile.technicalSkills)) {
+      console.log(`[buildStudentContext] Using skills from profile JSONB: ${profile.technicalSkills.length} skills`);
+      technicalSkills = profile.technicalSkills
+        .filter((s: any) => s.enabled !== false)
+        .map((s: any) => ({ 
+          name: s.name, 
+          level: s.level || 3, 
+          type: 'technical', 
+          verified: s.verified || false 
+        }));
+    }
+
+    // FALLBACK: Check profile JSONB for softSkills
+    if (softSkills.length === 0 && profile.softSkills && Array.isArray(profile.softSkills)) {
+      softSkills = profile.softSkills
+        .filter((s: any) => s.enabled !== false)
+        .map((s: any) => ({ name: s.name, level: s.level || 3 }));
+    }
+
+    // Fetch education using actual student id
     const { data: educationData } = await supabase
       .from('education')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('student_id', actualStudentId)
       .order('year_of_passing', { ascending: false });
 
-    // Fetch experience
+    // FALLBACK: Check profile JSONB for education
+    let education = educationData || [];
+    if (education.length === 0 && profile.education && Array.isArray(profile.education)) {
+      education = profile.education.filter((e: any) => e.enabled !== false);
+    }
+
+    // Fetch experience using actual student id
     const { data: experienceData } = await supabase
       .from('experience')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('student_id', actualStudentId)
       .order('start_date', { ascending: false });
 
-    // Fetch projects
+    // FALLBACK: Check profile JSONB for experience
+    let experience = experienceData || [];
+    if (experience.length === 0 && profile.experience && Array.isArray(profile.experience)) {
+      experience = profile.experience.filter((e: any) => e.enabled !== false);
+    }
+
+    // Fetch projects using actual student id
     const { data: projectsData } = await supabase
       .from('projects')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('student_id', actualStudentId)
       .eq('enabled', true)
       .order('created_at', { ascending: false });
 
-    // Fetch trainings
+    // FALLBACK: Check profile JSONB for projects
+    let projects = projectsData || [];
+    if (projects.length === 0 && profile.projects && Array.isArray(profile.projects)) {
+      projects = profile.projects.filter((p: any) => p.enabled !== false);
+    }
+
+    // Fetch trainings using actual student id
     const { data: trainingsData } = await supabase
       .from('trainings')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('student_id', actualStudentId)
       .order('created_at', { ascending: false });
 
-    // Fetch certificates
+    // FALLBACK: Check profile JSONB for trainings
+    let trainings = trainingsData || [];
+    if (trainings.length === 0 && profile.training && Array.isArray(profile.training)) {
+      trainings = profile.training;
+    }
+
+    // Fetch certificates using actual student id
     const { data: certificatesData } = await supabase
       .from('certificates')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('student_id', actualStudentId)
       .eq('enabled', true)
       .order('issued_on', { ascending: false });
 
-    // Extract additional skills from projects if not in skills table
-    if (projectsData) {
-      projectsData.forEach((p: any) => {
-        const techStack = p.tech_stack || [];
+    // FALLBACK: Check profile JSONB for certificates
+    let certificates = certificatesData || [];
+    if (certificates.length === 0 && profile.certificates && Array.isArray(profile.certificates)) {
+      certificates = profile.certificates.filter((c: any) => c.enabled !== false);
+    }
+
+    // Extract additional skills from projects' tech_stack if not already in skills
+    // NOTE: Only add if the skill is explicitly listed in tech_stack, don't infer
+    if (projects && projects.length > 0) {
+      projects.forEach((p: any) => {
+        const techStack = p.tech_stack || p.technologies || [];
         techStack.forEach((skill: string) => {
-          if (skill && !technicalSkills.find(s => s.name?.toLowerCase() === skill.toLowerCase())) {
+          if (skill && typeof skill === 'string' && !technicalSkills.find(s => s.name?.toLowerCase() === skill.toLowerCase())) {
             technicalSkills.push({ name: skill, level: 3, type: 'technical', verified: false });
           }
         });
       });
     }
 
+    // Remove duplicate skills (case-insensitive)
+    const uniqueSkillNames = new Set<string>();
+    technicalSkills = technicalSkills.filter(s => {
+      const lowerName = s.name?.toLowerCase();
+      if (uniqueSkillNames.has(lowerName)) return false;
+      uniqueSkillNames.add(lowerName);
+      return true;
+    });
+
+    console.log(`[buildStudentContext] Final technical skills: ${technicalSkills.map(s => s.name).join(', ')}`);
+
     return {
       id: student?.id || studentId,
       name: student?.name || profile.name || 'Student',
       email: student?.email || profile.email || '',
-      department: student?.branch_field || profile.branch_field || educationData?.[0]?.department || 'General',
-      university: student?.university || profile.university || educationData?.[0]?.university || '',
-      cgpa: student?.currentCgpa || educationData?.[0]?.cgpa || '',
-      yearOfPassing: educationData?.[0]?.year_of_passing || '',
+      department: student?.branch_field || profile.branch_field || education?.[0]?.department || 'General',
+      university: student?.university || profile.university || education?.[0]?.university || '',
+      cgpa: student?.currentCgpa || education?.[0]?.cgpa || '',
+      yearOfPassing: education?.[0]?.year_of_passing || education?.[0]?.yearOfPassing || '',
       grade: student?.grade || '',
       bio: student?.bio || '',
       technicalSkills,
       softSkills,
-      education: educationData || [],
-      experience: experienceData || [],
-      projects: projectsData || [],
-      trainings: trainingsData || [],
-      certificates: certificatesData || [],
+      education,
+      experience,
+      projects,
+      trainings,
+      certificates,
       hobbies: student?.hobbies || [],
       interests: student?.interests || [],
       languages: student?.languages || []
@@ -902,7 +975,7 @@ ${phaseInstructions[phase]}
 </response_guidelines>
 
 <anti_hallucination_rules>
-  ⚠️ CRITICAL: Before mentioning ANY job opportunity:
+  ⚠️ CRITICAL JOB RULES: Before mentioning ANY job opportunity:
   1. Verify it exists in <available_opportunities>
   2. Use the EXACT job title from the list
   3. If company_name is empty, say "Company not specified"
@@ -910,6 +983,26 @@ ${phaseInstructions[phase]}
   5. NEVER make up job titles, companies, or opportunities
   
   If you catch yourself about to mention a job not in the list, STOP and only use real jobs.
+  
+  ⚠️ CRITICAL SKILLS RULES - READ CAREFULLY:
+  1. The student's skills are ONLY what is listed in <skills><technical> section above
+  2. NEVER infer, assume, or expand skills beyond what is explicitly listed
+  3. If a skill is "Programming" - that's the skill. Do NOT assume it means HTML, CSS, JavaScript, Python, etc.
+  4. If a skill is "Technical Skills" - that's generic. Do NOT assume specific technologies
+  5. Hobbies like "Coding basic scripts" are NOT the same as professional programming skills
+  6. Interests are NOT skills - they show what the student is interested in, not what they can do
+  7. When matching jobs, ONLY use the exact skills listed in <skills><technical>
+  8. If the student lacks skills for a job, say so honestly - don't pretend they have skills they don't
+  
+  EXAMPLE OF WHAT NOT TO DO:
+  ❌ "Your programming skills (HTML, CSS, JavaScript, SQL)" - WRONG if only "Programming" is listed
+  ❌ "Your technical background in web development" - WRONG if no web dev skills are listed
+  ❌ "Since you know coding from your hobbies" - WRONG, hobbies ≠ professional skills
+  
+  EXAMPLE OF CORRECT BEHAVIOR:
+  ✅ "Your skills in GMP, SOP Documentation, and Quality Assurance" - using exact listed skills
+  ✅ "While you have 'Programming' listed, you may need to specify which languages you know"
+  ✅ "This role requires Python, which isn't in your current skill list"
 </anti_hallucination_rules>
 
 <internal_reasoning>
@@ -942,20 +1035,38 @@ function buildIntentInstructions(
 <task name="JOB_MATCHING">
   <objective>Match ${studentName}'s profile against REAL opportunities from the database</objective>
   
+  <student_actual_skills>
+    ⚠️ IMPORTANT: These are ${studentName}'s ONLY verified skills. Do NOT assume or infer additional skills:
+    ${profile.technicalSkills.length > 0 
+      ? profile.technicalSkills.map(s => `- ${s.name} (Level ${s.level}/5${s.verified ? ', Verified' : ''})`).join('\n    ')
+      : '- No technical skills listed yet'}
+  </student_actual_skills>
+  
   <matching_criteria>
     <criterion weight="40%">Field/Department alignment - Does the job match their ${profile.department} background?</criterion>
-    <criterion weight="30%">Skills match - How many required skills does ${studentName} have?</criterion>
+    <criterion weight="30%">Skills match - How many required skills does ${studentName} ACTUALLY have from the list above?</criterion>
     <criterion weight="15%">Experience level - Is the job suitable for their experience (${profile.experience.length} roles)?</criterion>
     <criterion weight="15%">Location/Mode preference - Consider practical factors</criterion>
     ${assessment.hasAssessment ? `<criterion bonus="10%">RIASEC alignment - Does the job type match their ${assessment.riasecCode} profile?</criterion>` : ''}
   </matching_criteria>
   
+  <skill_matching_rules>
+    ⚠️ CRITICAL - When matching skills:
+    1. ONLY count skills that are EXPLICITLY listed in <student_actual_skills> above
+    2. Do NOT assume "Programming" means specific languages like Python, JavaScript, etc.
+    3. Do NOT treat hobbies or interests as professional skills
+    4. If a job requires skills the student doesn't have, clearly state the gap
+    5. Be HONEST about skill mismatches - don't inflate match percentages
+    6. Generic skills like "Technical Skills" should not be matched to specific requirements
+  </skill_matching_rules>
+  
   <steps>
     <step>Review ALL jobs in <available_opportunities> - these are the ONLY jobs you can recommend</step>
     <step>If user asks to "list all" or "show all", LIST EVERY job from the list</step>
-    <step>For recommendations, calculate match score using criteria above</step>
+    <step>For recommendations, compare job requirements against <student_actual_skills> ONLY</step>
+    <step>Calculate honest match score - if skills don't match, score should be lower</step>
     <step>Check if ${studentName} has already applied (see career_progress) - don't recommend those</step>
-    <step>Rank top 3-5 best matches with clear reasoning</step>
+    <step>Rank top 3-5 best matches with clear, honest reasoning</step>
   </steps>
   
   <output_format>
@@ -963,15 +1074,18 @@ function buildIntentInstructions(
     - **[Exact Job Title]** (ID: X) - Match: Y%
     - Company: [From list or "Not specified"]
     - Location: [From list] | Mode: [From list]
-    - Why it fits ${studentName}: 2-3 specific reasons using their profile data
-    - Skills match: [Which of their skills align]
-    - Gap to address: [Any missing skills]
-    - Next step: How to apply
+    - Why it fits ${studentName}: 2-3 specific reasons using ONLY their actual listed skills
+    - Skills they have that match: [List ONLY skills from <student_actual_skills> that align]
+    - Skills gap: [Skills required by job that student does NOT have - be honest]
+    - Next step: How to apply or what skills to develop first
   </output_format>
   
   <special_cases>
     <case name="list_all_request">If user says "list all", "show all", "what jobs available" - show ALL jobs from the list with brief details</case>
-    <case name="no_good_matches">If no jobs match ${studentName}'s ${profile.department} field well, acknowledge this honestly and suggest closest alternatives or skills to develop</case>
+    <case name="no_good_matches">If no jobs match ${studentName}'s actual skills well, acknowledge this honestly and suggest:
+      1. Jobs that match their field/interests even if skills gap exists
+      2. Specific skills they should develop to qualify for more jobs
+      3. Entry-level roles that don't require specific technical skills</case>
     <case name="already_applied">If recommending a job they've already applied to, mention their application status instead</case>
   </special_cases>
 </task>`,
@@ -980,22 +1094,40 @@ function buildIntentInstructions(
 <task name="SKILL_GAP_ANALYSIS">
   <objective>Identify gaps between ${studentName}'s current skills and market/career requirements</objective>
   
+  <student_current_skills>
+    ⚠️ These are ${studentName}'s ONLY verified skills - do not assume additional skills:
+    ${profile.technicalSkills.length > 0 
+      ? profile.technicalSkills.map(s => `- ${s.name} (Level ${s.level}/5)`).join('\n    ')
+      : '- No technical skills listed yet - this is a significant gap to address'}
+    
+    Soft skills: ${profile.softSkills.length > 0 ? profile.softSkills.map(s => s.name).join(', ') : 'None listed'}
+  </student_current_skills>
+  
   <analysis_approach>
-    <step>List ${studentName}'s current skills: ${profile.technicalSkills.map(s => s.name).slice(0, 10).join(', ')}</step>
+    <step>Review ONLY the skills listed in <student_current_skills> above - these are their actual skills</step>
     <step>Identify target role requirements based on their ${profile.department} field</step>
     ${assessment.hasAssessment && assessment.skillGaps.length > 0 ? 
       `<step>Reference assessment-identified gaps: ${assessment.skillGaps.slice(0, 5).map((g: any) => g.skill || g).join(', ')}</step>` : ''}
-    <step>Compare against in-demand skills for their target industry</step>
+    <step>Compare their ACTUAL skills against in-demand skills for their target industry</step>
+    <step>Be honest about gaps - if they lack common skills for their field, say so clearly</step>
     <step>Prioritize gaps by: (1) Job market demand, (2) Career impact, (3) Learning difficulty</step>
   </analysis_approach>
   
+  <important_notes>
+    - Do NOT assume skills based on hobbies or interests
+    - Generic skills like "Programming" or "Technical Skills" need to be made specific
+    - If their skill list is sparse, acknowledge this as a priority area
+  </important_notes>
+  
   <output_format>
     **Current Strengths** 💪
-    - Skills ${studentName} has that are valuable in the market
+    - List ONLY skills from <student_current_skills> that are valuable in the market
+    - Be specific about how each skill applies to their target field
     
     **Critical Gaps** 🎯 (High Priority)
     - Must-have skills they're missing for their target roles
     - Why each skill matters
+    - How it affects their job prospects
     
     **Nice-to-Have** 📈 (Medium Priority)
     - Skills that would boost their profile
