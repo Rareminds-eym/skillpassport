@@ -75,48 +75,85 @@ const ProgramSectionManagement: React.FC = () => {
       setLoading(true);
 
       // Load departments
-      const { data: deptData } = await supabase
+      const { data: deptData, error: deptError } = await supabase
         .from("departments")
         .select("*")
         .eq("status", "active");
+      
+      if (deptError) throw deptError;
       setDepartments(deptData || []);
 
       // Load programs
-      const { data: progData } = await supabase
+      const { data: progData, error: progError } = await supabase
         .from("programs")
-        .select("*");
+        .select("*")
+        .eq("status", "active");
+      
+      if (progError) throw progError;
       setPrograms(progData || []);
 
-      // Load faculty
-      const { data: facultyData } = await supabase
-        .from("users")
-        .select("id, name, email")
-        .contains("roles", ["faculty"]);
-      setFaculty(facultyData || []);
+      // Load faculty from college_lecturers
+      const { data: facultyData, error: facultyError } = await supabase
+        .from("college_lecturers")
+        .select(`
+          id,
+          user_id,
+          users!fk_college_lecturers_user (
+            firstName,
+            lastName,
+            email
+          )
+        `)
+        .eq("accountStatus", "active");
+      
+      if (facultyError) {
+        console.error("Error loading faculty:", facultyError);
+        // Continue without faculty data
+        setFaculty([]);
+      } else {
+        // Transform the data to match Faculty interface
+        const transformedFaculty = (facultyData || []).map((f: any) => ({
+          id: f.user_id,
+          name: f.users ? `${f.users.firstName || ''} ${f.users.lastName || ''}`.trim() || f.users.email : 'Unknown',
+          email: f.users?.email || '',
+        }));
+        setFaculty(transformedFaculty);
+      }
 
-      // Load sections (mock data for now - replace with actual table)
-      // In production, create a 'program_sections' table
-      const mockSections: ProgramSection[] = [
-        {
-          id: "1",
-          department_id: deptData?.[0]?.id || "",
-          department_name: deptData?.[0]?.name || "Computer Science",
-          program_id: progData?.[0]?.id || "",
-          program_name: progData?.[0]?.name || "B.Tech CSE",
-          semester: 1,
-          section: "A",
-          max_students: 60,
-          current_students: 58,
-          faculty_id: facultyData?.[0]?.id,
-          faculty_name: facultyData?.[0]?.name,
-          status: "active",
-          created_at: new Date().toISOString(),
-        },
-      ];
-      setSections(mockSections);
+      // Load sections from program_sections_view
+      const { data: sectionsData, error: sectionsError } = await supabase
+        .from("program_sections_view")
+        .select("*")
+        .order("department_name", { ascending: true })
+        .order("program_name", { ascending: true })
+        .order("semester", { ascending: true })
+        .order("section", { ascending: true });
+      
+      if (sectionsError) {
+        console.error("Error loading sections:", sectionsError);
+        // If view doesn't exist yet, show empty state
+        setSections([]);
+      } else {
+        const formattedSections: ProgramSection[] = (sectionsData || []).map((s: any) => ({
+          id: s.id,
+          department_id: s.department_id,
+          department_name: s.department_name,
+          program_id: s.program_id,
+          program_name: s.program_name,
+          semester: s.semester,
+          section: s.section,
+          max_students: s.max_students,
+          current_students: s.current_students,
+          faculty_id: s.faculty_id,
+          faculty_name: s.faculty_name,
+          status: s.status,
+          created_at: s.created_at,
+        }));
+        setSections(formattedSections);
+      }
     } catch (error: any) {
       console.error("Error loading data:", error);
-      toast.error("Failed to load data");
+      toast.error(`Failed to load data: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -134,28 +171,56 @@ const ProgramSectionManagement: React.FC = () => {
 
   const handleSaveSection = async (data: Partial<ProgramSection>) => {
     try {
-      // In production, save to 'program_sections' table
+      const { data: { user } } = await supabase.auth.getUser();
+      
       if (selectedSection) {
-        // Update
-        setSections((prev) =>
-          prev.map((s) => (s.id === selectedSection.id ? { ...s, ...data } : s))
-        );
+        // Update existing section
+        const { error } = await supabase
+          .from("program_sections")
+          .update({
+            department_id: data.department_id,
+            program_id: data.program_id,
+            semester: data.semester,
+            section: data.section,
+            max_students: data.max_students,
+            faculty_id: data.faculty_id || null,
+            status: data.status,
+            updated_by: user?.id,
+          })
+          .eq("id", selectedSection.id);
+
+        if (error) throw error;
         toast.success("Section updated successfully");
       } else {
-        // Create
-        const newSection: ProgramSection = {
-          ...data,
-          id: `section-${Date.now()}`,
-          current_students: 0,
-          created_at: new Date().toISOString(),
-        } as ProgramSection;
-        setSections((prev) => [...prev, newSection]);
+        // Create new section
+        const currentYear = new Date().getFullYear();
+        const nextYear = (currentYear + 1).toString().slice(-2);
+        const academicYear = `${currentYear}-${nextYear}`;
+
+        const { error } = await supabase
+          .from("program_sections")
+          .insert({
+            department_id: data.department_id,
+            program_id: data.program_id,
+            semester: data.semester,
+            section: data.section,
+            max_students: data.max_students,
+            faculty_id: data.faculty_id || null,
+            academic_year: academicYear,
+            status: data.status || "active",
+            current_students: 0,
+            created_by: user?.id,
+          });
+
+        if (error) throw error;
         toast.success("Section created successfully");
       }
+      
       setIsModalOpen(false);
+      loadData(); // Reload data to show changes
     } catch (error: any) {
       console.error("Error saving section:", error);
-      toast.error("Failed to save section");
+      toast.error(`Failed to save section: ${error.message}`);
     }
   };
 
