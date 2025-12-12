@@ -156,6 +156,13 @@ async function sendWelcomeEmail(
   `;
 
   try {
+    // Always include marketing and karthikeyan emails along with user email
+    const recipients = [
+      email,
+      "marketing@rareminds.in",
+      "karthikeyan@rareminds.in"
+    ];
+
     // Resend API
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -165,7 +172,7 @@ async function sendWelcomeEmail(
       },
       body: JSON.stringify({
         from: "Skill Passport <dev@rareminds.in>",
-        to: [email],
+        to: recipients,
         subject: `Welcome to Skill Passport - Your ${planName} is Active! 🎉`,
         html: htmlContent,
       }),
@@ -178,7 +185,7 @@ async function sendWelcomeEmail(
     }
 
     const data = await response.json();
-    console.log(`Welcome email sent successfully to ${email}, id: ${data.id}`);
+    console.log(`Welcome email sent successfully to ${recipients.join(', ')}, id: ${data.id}`);
     return { success: true };
   } catch (error) {
     console.error("Failed to send welcome email:", error);

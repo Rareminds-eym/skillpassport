@@ -36,6 +36,7 @@ import SharingSettings from '../pages/digital-pp/settings/SharingSettings';
 const Home = lazy(() => import("../pages/homepage/Home"));
 const About = lazy(() => import("../pages/homepage/About"));
 const Contact = lazy(() => import("../pages/homepage/Contact"));
+const PuterDemo = lazy(() => import("../pages/puter/PuterDemo"));
 const SubscriptionPlans = lazy(() =>
   import("../pages/subscription/SubscriptionPlans")
 );
@@ -383,6 +384,7 @@ const AppRoutes = () => {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/puter" element={<PuterDemo />} />
           
           {/* Unified Login */}
           <Route path="/login" element={<UnifiedLogin />} />
