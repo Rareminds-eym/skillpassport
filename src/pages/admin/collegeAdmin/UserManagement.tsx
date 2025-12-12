@@ -159,8 +159,10 @@ const UserManagement: React.FC = () => {
             <option value="College Admin">College Admin</option>
             <option value="HoD">HoD</option>
             <option value="Faculty">Faculty</option>
+            <option value="Lecturer">Lecturer</option>
             <option value="Exam Cell">Exam Cell</option>
             <option value="Finance Admin">Finance Admin</option>
+            <option value="Placement Officer">Placement Officer</option>
           </select>
 
           <select
@@ -216,18 +218,25 @@ const UserManagement: React.FC = () => {
               <tbody className="divide-y divide-gray-200">
                 {users.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{user.email}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {user.name || 'N/A'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {user.email || 'N/A'}
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       <div className="flex flex-wrap gap-1">
-                        {(user.roles || []).map((role) => (
+                        {(user.roles || []).map((role, idx) => (
                           <span
-                            key={role}
-                            className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs"
+                            key={`${role}-${idx}`}
+                            className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium"
                           >
                             {role}
                           </span>
                         ))}
+                        {(!user.roles || user.roles.length === 0) && (
+                          <span className="text-gray-400 italic text-xs">No roles</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
@@ -241,28 +250,28 @@ const UserManagement: React.FC = () => {
                             : "bg-gray-100 text-gray-700"
                         }`}
                       >
-                        {user.status}
+                        {user.status || 'active'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         <button 
                           onClick={() => handleEditUser(user)}
-                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"
                           title="Edit user"
                         >
                           <PencilSquareIcon className="h-5 w-5" />
                         </button>
                         <button 
                           onClick={() => handleResetPassword(user.id)}
-                          className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                          className="p-1 text-purple-600 hover:bg-purple-50 rounded transition"
                           title="Reset password"
                         >
                           <KeyIcon className="h-5 w-5" />
                         </button>
                         <button 
                           onClick={() => handleDeactivateUser(user.id)}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                          className="p-1 text-red-600 hover:bg-red-50 rounded transition"
                           title="Deactivate user"
                         >
                           <TrashIcon className="h-5 w-5" />

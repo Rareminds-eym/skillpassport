@@ -14,6 +14,22 @@ export interface User {
   status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
+  metadata?: {
+    type?: 'lecturer' | 'student';
+    // Lecturer specific
+    specialization?: string;
+    qualification?: string;
+    experienceYears?: number;
+    dateOfJoining?: string;
+    // Student specific
+    grade?: string;
+    section?: string;
+    roll_number?: string;
+    admission_number?: string;
+    course_name?: string;
+    branch_field?: string;
+    currentCgpa?: number;
+  };
 }
 
 export interface BulkImportResult {
