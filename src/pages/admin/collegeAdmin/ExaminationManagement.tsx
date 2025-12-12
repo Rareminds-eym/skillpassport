@@ -125,8 +125,10 @@ const ExaminationManagement: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('curriculum_courses')
-        .select('id, course_name, course_code')
-        .order('course_name');
+        .select('id, course_name, course_code, semester, course_type, credits')
+        .eq('is_active', true)
+        .order('semester', { ascending: true })
+        .order('course_name', { ascending: true });
       if (error) throw error;
       return data || [];
     },
