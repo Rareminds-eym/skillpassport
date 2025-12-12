@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Briefcase,
   Building2,
@@ -21,6 +21,8 @@ import {
   UserCheck,
   Target,
   Award,
+  ChevronDown,
+  MoreVertical,
 } from "lucide-react";
 
 interface CompanyFormData {
@@ -299,11 +301,6 @@ const PlacementManagement: React.FC = () => {
   const [showAnalyticsFilter, setShowAnalyticsFilter] = useState(false);
 
   // Enhanced job posting state
-  const [showEligibleStudents, setShowEligibleStudents] = useState(false);
-  const [showApplicationTracker, setShowApplicationTracker] = useState(false);
-  const [selectedJobForTracking, setSelectedJobForTracking] = useState<string | null>(null);
-  const [currentRound, setCurrentRound] = useState(0);
-  const [showRoundModal, setShowRoundModal] = useState(false);
   const [showJobDetailsModal, setShowJobDetailsModal] = useState(false);
   const [selectedJobDetails, setSelectedJobDetails] = useState<JobPosting | null>(null);
   const [showStageUpdateModal, setShowStageUpdateModal] = useState(false);
@@ -321,6 +318,45 @@ const PlacementManagement: React.FC = () => {
   const [selectedCompanyForAction, setSelectedCompanyForAction] = useState<Company | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'activate' | 'deactivate' | 'blacklist'>('approve');
   const [actionReason, setActionReason] = useState("");
+  
+  // Edit Company state
+  const [showEditCompanyModal, setShowEditCompanyModal] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  
+  // Dropdown state for actions
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  
+  // Edit Job state
+  const [showEditJobModal, setShowEditJobModal] = useState(false);
+  const [editingJob, setEditingJob] = useState<JobPosting | null>(null);
+  
+  // Student Details Modal state
+  const [showStudentDetailsModal, setShowStudentDetailsModal] = useState(false);
+  const [selectedStudentDetails, setSelectedStudentDetails] = useState<EligibleStudent | null>(null);
+  const [editFormData, setEditFormData] = useState<CompanyFormData>({
+    name: "",
+    code: "",
+    industry: "",
+    companySize: "",
+    hqAddress: "",
+    hqCity: "",
+    hqState: "",
+    hqCountry: "India",
+    hqPincode: "",
+    phone: "",
+    email: "",
+    website: "",
+    establishedYear: "",
+    contactPersonName: "",
+    contactPersonDesignation: "",
+    contactPersonEmail: "",
+    contactPersonPhone: "",
+    eligibilityTemplate: "",
+    mouDocument: null,
+    jdDocument: null,
+    companyDescription: "",
+    specialRequirements: "",
+  });
 
   const tabs = [
     { id: "companies", label: "Company Registration" },
@@ -358,42 +394,17 @@ const PlacementManagement: React.FC = () => {
     "Andaman and Nicobar Islands", "Dadra and Nagar Haveli and Daman and Diu", "Lakshadweep"
   ];
 
-  // D7.1 Eligibility Criteria Templates
-  const eligibilityTemplates = [
-    {
-      id: "tech_standard",
-      name: "Technology - Standard",
-      criteria: "Min CGPA: 7.0, Max Backlogs: 2, Departments: CS/IT/ECE, Skills: Programming Languages"
-    },
-    {
-      id: "tech_premium",
-      name: "Technology - Premium",
-      criteria: "Min CGPA: 8.0, Max Backlogs: 0, Departments: CS/IT, Skills: Advanced Programming, Data Structures"
-    },
-    {
-      id: "finance_standard",
-      name: "Finance - Standard",
-      criteria: "Min CGPA: 7.5, Max Backlogs: 1, Departments: Finance/Economics/Management, Skills: Financial Analysis"
-    },
-    {
-      id: "consulting_premium",
-      name: "Consulting - Premium",
-      criteria: "Min CGPA: 8.5, Max Backlogs: 0, All Departments, Skills: Analytics, Communication, Problem Solving"
-    },
-    {
-      id: "manufacturing_standard",
-      name: "Manufacturing - Standard",
-      criteria: "Min CGPA: 6.5, Max Backlogs: 3, Departments: Mechanical/Chemical/Industrial, Skills: Technical Knowledge"
-    },
-    {
-      id: "custom",
-      name: "Custom Template",
-      criteria: "Define your own eligibility criteria"
-    }
-  ];
+  
 
   const handleInputChange = (field: keyof CompanyFormData, value: string) => {
     setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleEditInputChange = (field: keyof CompanyFormData, value: string) => {
+    setEditFormData(prev => ({
       ...prev,
       [field]: value
     }));
@@ -429,6 +440,11 @@ const PlacementManagement: React.FC = () => {
         contactPersonDesignation: "",
         contactPersonEmail: "",
         contactPersonPhone: "",
+        eligibilityTemplate: "",
+        mouDocument: null,
+        jdDocument: null,
+        companyDescription: "",
+        specialRequirements: "",
       });
       setShowAddCompanyModal(false);
       
@@ -463,6 +479,11 @@ const PlacementManagement: React.FC = () => {
       contactPersonDesignation: "",
       contactPersonEmail: "",
       contactPersonPhone: "",
+      eligibilityTemplate: "",
+      mouDocument: null,
+      jdDocument: null,
+      companyDescription: "",
+      specialRequirements: "",
     });
   };
 
@@ -685,6 +706,71 @@ const PlacementManagement: React.FC = () => {
     }
   };
 
+  const getClickableStatusBadge = (company: Company) => {
+    const status = company.accountStatus;
+    let badgeClasses = "px-2 py-1 text-xs font-medium rounded-full cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1";
+    
+    switch (status) {
+      case 'active':
+        badgeClasses += " bg-green-100 text-green-800 hover:bg-green-200";
+        break;
+      case 'approved':
+        badgeClasses += " bg-blue-100 text-blue-800 hover:bg-blue-200";
+        break;
+      case 'pending':
+        badgeClasses += " bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
+        break;
+      case 'rejected':
+        badgeClasses += " bg-red-100 text-red-800 hover:bg-red-200";
+        break;
+      case 'inactive':
+        badgeClasses += " bg-gray-100 text-gray-800 hover:bg-gray-200";
+        break;
+      case 'blacklisted':
+        badgeClasses += " bg-black text-white hover:bg-gray-800";
+        break;
+      default:
+        badgeClasses += " bg-gray-100 text-gray-800 hover:bg-gray-200";
+    }
+
+    return (
+      <div className="relative">
+        <button 
+          onClick={() => toggleDropdown(company.id)}
+          className={badgeClasses}
+          title="Click to change status"
+        >
+          {status.charAt(0).toUpperCase() + status.slice(1)}
+          <ChevronDown className="h-3 w-3" />
+        </button>
+        
+        {openDropdownId === company.id && (
+          <div className="absolute left-0 top-8 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[200px]">
+            <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-100">
+              Change Status To:
+            </div>
+            {getAvailableStatusOptions(company.accountStatus).map((statusOption, index) => {
+              const StatusIcon = statusOption.icon;
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleActionSelect(company, statusOption.action)}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-start gap-2 ${statusOption.color} transition-colors`}
+                >
+                  <StatusIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="font-medium">{statusOption.title}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{statusOption.description}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // D7.1 Enhanced Company Actions
   const handleCompanyAction = (company: Company, action: 'approve' | 'reject' | 'activate' | 'deactivate' | 'blacklist') => {
     setSelectedCompanyForAction(company);
@@ -720,14 +806,91 @@ const PlacementManagement: React.FC = () => {
       };
 
       alert(`Company ${actionType}d successfully!`);
-      setShowApprovalModal(false);
-      setSelectedCompanyForAction(null);
-      setActionReason("");
+      closeActionModal();
     } catch (error) {
       console.error(`Error ${actionType}ing company:`, error);
       alert(`Error ${actionType}ing company. Please try again.`);
     }
   };
+
+  const closeActionModal = () => {
+    setShowApprovalModal(false);
+    setSelectedCompanyForAction(null);
+    setActionReason("");
+    setActionType('approve');
+  };
+
+  // Helper function to get all available status options for a company
+  const getAvailableStatusOptions = (currentStatus: string) => {
+    const allStatuses = [
+      { 
+        status: 'approved', 
+        action: 'approve', 
+        icon: CheckCircle, 
+        color: 'text-blue-600', 
+        title: 'Set as Approved',
+        description: 'Company is approved but not yet active'
+      },
+      { 
+        status: 'active', 
+        action: 'activate', 
+        icon: CheckCircle, 
+        color: 'text-green-600', 
+        title: 'Set as Active',
+        description: 'Company can post jobs and recruit'
+      },
+      { 
+        status: 'inactive', 
+        action: 'deactivate', 
+        icon: Clock, 
+        color: 'text-orange-600', 
+        title: 'Set as Inactive',
+        description: 'Company cannot post new jobs'
+      },
+      { 
+        status: 'blacklisted', 
+        action: 'blacklist', 
+        icon: X, 
+        color: 'text-red-600', 
+        title: 'Set as Blacklisted',
+        description: 'Company is permanently restricted'
+      },
+      { 
+        status: 'rejected', 
+        action: 'reject', 
+        icon: X, 
+        color: 'text-red-500', 
+        title: 'Set as Rejected',
+        description: 'Company registration is rejected'
+      }
+    ];
+
+    // Filter out the current status and return available options
+    return allStatuses.filter(statusOption => statusOption.status !== currentStatus);
+  };
+
+  const toggleDropdown = (companyId: string) => {
+    setOpenDropdownId(openDropdownId === companyId ? null : companyId);
+  };
+
+  const handleActionSelect = (company: Company, action: string) => {
+    setOpenDropdownId(null); // Close dropdown
+    handleCompanyAction(company, action as any);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openDropdownId) {
+        setOpenDropdownId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdownId]);
 
   const viewCompanyDetails = (company: Company) => {
     setSelectedCompanyDetails(company);
@@ -737,6 +900,100 @@ const PlacementManagement: React.FC = () => {
   const viewCompanyHistory = (company: Company) => {
     setSelectedCompanyDetails(company);
     setShowCompanyHistoryModal(true);
+  };
+
+  const editCompany = (company: Company) => {
+    setEditingCompany(company);
+    setEditFormData({
+      name: company.name,
+      code: company.code,
+      industry: company.industry,
+      companySize: company.companySize,
+      hqAddress: "", // You might need to add this to Company interface
+      hqCity: company.hqCity,
+      hqState: company.hqState,
+      hqCountry: "India",
+      hqPincode: "", // You might need to add this to Company interface
+      phone: company.phone,
+      email: company.email,
+      website: company.website,
+      establishedYear: company.establishedYear.toString(),
+      contactPersonName: company.contactPersonName,
+      contactPersonDesignation: company.contactPersonDesignation,
+      contactPersonEmail: "", // You might need to add this to Company interface
+      contactPersonPhone: "", // You might need to add this to Company interface
+      eligibilityTemplate: company.eligibilityTemplate || "",
+      mouDocument: null,
+      jdDocument: null,
+      companyDescription: company.companyDescription || "",
+      specialRequirements: company.specialRequirements || "",
+    });
+    setShowEditCompanyModal(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCompany) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      console.log("Updating company:", editingCompany.id, editFormData);
+      
+      // Here you would make API call to update company
+      // const response = await updateCompany(editingCompany.id, editFormData);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Add to history
+      const historyEntry: CompanyHistoryEntry = {
+        id: `h${Date.now()}`,
+        action: "Company Updated",
+        performedBy: "Current User",
+        timestamp: new Date().toISOString(),
+        details: "Company information updated",
+      };
+      
+      alert("Company updated successfully!");
+      setShowEditCompanyModal(false);
+      setEditingCompany(null);
+      
+    } catch (error) {
+      console.error("Error updating company:", error);
+      alert("Error updating company. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditCompanyModal(false);
+    setEditingCompany(null);
+    setEditFormData({
+      name: "",
+      code: "",
+      industry: "",
+      companySize: "",
+      hqAddress: "",
+      hqCity: "",
+      hqState: "",
+      hqCountry: "India",
+      hqPincode: "",
+      phone: "",
+      email: "",
+      website: "",
+      establishedYear: "",
+      contactPersonName: "",
+      contactPersonDesignation: "",
+      contactPersonEmail: "",
+      contactPersonPhone: "",
+      eligibilityTemplate: "",
+      mouDocument: null,
+      jdDocument: null,
+      companyDescription: "",
+      specialRequirements: "",
+    });
   };
 
   const getJobStatusBadge = (status: string) => {
@@ -1540,6 +1797,146 @@ const PlacementManagement: React.FC = () => {
     setShowJobFilterModal(false);
   };
 
+  const editJob = (job: JobPosting) => {
+    setEditingJob(job);
+    setJobFormData({
+      title: job.title,
+      company_name: job.company_name,
+      job_title: job.job_title,
+      employment_type: job.employment_type,
+      location: job.location,
+      mode: job.mode,
+      salary_range_min: job.salary_range_min.toString(),
+      salary_range_max: job.salary_range_max.toString(),
+      experience_required: job.experience_required,
+      skills_required: job.skills_required.join(", "),
+      description: job.description,
+      requirements: job.requirements.join("\n"),
+      responsibilities: job.responsibilities.join("\n"),
+      benefits: job.benefits.join("\n"),
+      deadline: job.deadline,
+      department: job.department,
+      min_cgpa: job.eligibility_criteria.min_cgpa.toString(),
+      eligible_departments: job.eligibility_criteria.eligible_departments,
+      required_skills_eligibility: job.eligibility_criteria.required_skills,
+      max_backlogs: job.eligibility_criteria.max_backlogs.toString(),
+      graduation_years: job.eligibility_criteria.graduation_year,
+      intake_count: job.intake_count.toString(),
+      placement_window_start: job.placement_window.start_date,
+      placement_window_end: job.placement_window.end_date,
+      rounds: job.rounds_schedule.map(round => ({
+        round_name: round.round_name,
+        round_type: round.round_type,
+        date: round.date,
+        time: round.time,
+        duration_minutes: round.duration_minutes.toString(),
+        location: round.location,
+        instructions: round.instructions
+      }))
+    });
+    setShowEditJobModal(true);
+  };
+
+  const handleEditJobSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingJob) return;
+    
+    // Validate form
+    const validationErrors = validateJobForm();
+    if (validationErrors.length > 0) {
+      alert("Please fix the following errors:\n" + validationErrors.join("\n"));
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      console.log("Updating job posting:", editingJob.id, jobFormData);
+      
+      // Here you would make API call to update job posting
+      // const response = await updateJobPosting(editingJob.id, jobFormData);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      alert("Job posting updated successfully!");
+      setShowEditJobModal(false);
+      setEditingJob(null);
+      
+      // Reset form
+      setJobFormData({
+        title: "",
+        company_name: "",
+        job_title: "",
+        employment_type: "",
+        location: "",
+        mode: "",
+        salary_range_min: "",
+        salary_range_max: "",
+        experience_required: "",
+        skills_required: "",
+        description: "",
+        requirements: "",
+        responsibilities: "",
+        benefits: "",
+        deadline: "",
+        department: "",
+        min_cgpa: "",
+        eligible_departments: [],
+        required_skills_eligibility: [],
+        max_backlogs: "",
+        graduation_years: [],
+        intake_count: "",
+        placement_window_start: "",
+        placement_window_end: "",
+        rounds: [],
+      });
+      
+    } catch (error) {
+      console.error("Error updating job posting:", error);
+      alert("Error updating job posting. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCloseEditJobModal = () => {
+    setShowEditJobModal(false);
+    setEditingJob(null);
+    setJobFormData({
+      title: "",
+      company_name: "",
+      job_title: "",
+      employment_type: "",
+      location: "",
+      mode: "",
+      salary_range_min: "",
+      salary_range_max: "",
+      experience_required: "",
+      skills_required: "",
+      description: "",
+      requirements: "",
+      responsibilities: "",
+      benefits: "",
+      deadline: "",
+      department: "",
+      min_cgpa: "",
+      eligible_departments: [],
+      required_skills_eligibility: [],
+      max_backlogs: "",
+      graduation_years: [],
+      intake_count: "",
+      placement_window_start: "",
+      placement_window_end: "",
+      rounds: [],
+    });
+  };
+
+  const viewStudentDetails = (student: EligibleStudent) => {
+    setSelectedStudentDetails(student);
+    setShowStudentDetailsModal(true);
+  };
+
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
@@ -1693,7 +2090,7 @@ const PlacementManagement: React.FC = () => {
                             <div className="text-sm text-gray-500">{company.contactPersonDesignation}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            {getStatusBadge(company.accountStatus)}
+                            {getClickableStatusBadge(company)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex items-center gap-1">
@@ -1705,6 +2102,7 @@ const PlacementManagement: React.FC = () => {
                                 <Eye className="h-4 w-4" />
                               </button>
                               <button 
+                                onClick={() => editCompany(company)}
                                 className="text-green-600 hover:text-green-900 p-1"
                                 title="Edit Company"
                               >
@@ -1718,55 +2116,7 @@ const PlacementManagement: React.FC = () => {
                                 <Clock className="h-4 w-4" />
                               </button>
                               
-                              {/* Status-based Actions */}
-                              {company.accountStatus === 'pending' && (
-                                <>
-                                  <button 
-                                    onClick={() => handleCompanyAction(company, 'approve')}
-                                    className="text-green-600 hover:text-green-900 p-1"
-                                    title="Approve Company"
-                                  >
-                                    <CheckCircle className="h-4 w-4" />
-                                  </button>
-                                  <button 
-                                    onClick={() => handleCompanyAction(company, 'reject')}
-                                    className="text-red-600 hover:text-red-900 p-1"
-                                    title="Reject Company"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </button>
-                                </>
-                              )}
-                              
-                              {(company.accountStatus === 'approved' || company.accountStatus === 'inactive') && (
-                                <button 
-                                  onClick={() => handleCompanyAction(company, 'activate')}
-                                  className="text-green-600 hover:text-green-900 p-1"
-                                  title="Activate Company"
-                                >
-                                  <CheckCircle className="h-4 w-4" />
-                                </button>
-                              )}
-                              
-                              {company.accountStatus === 'active' && (
-                                <button 
-                                  onClick={() => handleCompanyAction(company, 'deactivate')}
-                                  className="text-orange-600 hover:text-orange-900 p-1"
-                                  title="Deactivate Company"
-                                >
-                                  <Clock className="h-4 w-4" />
-                                </button>
-                              )}
-                              
-                              {(company.accountStatus === 'active' || company.accountStatus === 'inactive') && (
-                                <button 
-                                  onClick={() => handleCompanyAction(company, 'blacklist')}
-                                  className="text-black hover:text-gray-700 p-1"
-                                  title="Blacklist Company"
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              )}
+
                             </div>
                           </td>
                         </tr>
@@ -1941,6 +2291,7 @@ const PlacementManagement: React.FC = () => {
                                 <Eye className="h-4 w-4" />
                               </button>
                               <button 
+                                onClick={() => editJob(job)}
                                 className="text-green-600 hover:text-green-900"
                                 title="Edit Job"
                               >
@@ -2243,7 +2594,11 @@ const PlacementManagement: React.FC = () => {
                               >
                                 <Edit className="h-4 w-4" />
                               </button>
-                              <button className="text-green-600 hover:text-green-900">
+                              <button 
+                                onClick={() => viewStudentDetails(student)}
+                                className="text-green-600 hover:text-green-900"
+                                title="View Student Details"
+                              >
                                 <Eye className="h-4 w-4" />
                               </button>
                             </div>
@@ -3355,6 +3710,258 @@ const PlacementManagement: React.FC = () => {
         </div>
       )}
 
+      {/* Edit Job Posting Modal */}
+      {showEditJobModal && editingJob && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Edit className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Edit Job Posting</h2>
+                  <p className="text-sm text-gray-600">Update job posting: {editingJob.title}</p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseEditJobModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditJobSubmit} className="p-6 space-y-6">
+              {/* Basic Job Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Briefcase className="h-5 w-5 text-green-600" />
+                  Job Information
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Job Title *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={jobFormData.title}
+                      onChange={(e) => handleJobInputChange('title', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter job title"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={jobFormData.company_name}
+                      onChange={(e) => handleJobInputChange('company_name', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter company name"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Employment Type *
+                    </label>
+                    <select
+                      required
+                      value={jobFormData.employment_type}
+                      onChange={(e) => handleJobInputChange('employment_type', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                      <option value="">Select Employment Type</option>
+                      <option value="Full-time">Full-time</option>
+                      <option value="Part-time">Part-time</option>
+                      <option value="Internship">Internship</option>
+                      <option value="Contract">Contract</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Work Mode *
+                    </label>
+                    <select
+                      required
+                      value={jobFormData.mode}
+                      onChange={(e) => handleJobInputChange('mode', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                      <option value="">Select Work Mode</option>
+                      <option value="Remote">Remote</option>
+                      <option value="On-site">On-site</option>
+                      <option value="Hybrid">Hybrid</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Location *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={jobFormData.location}
+                      onChange={(e) => handleJobInputChange('location', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter job location"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Department *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={jobFormData.department}
+                      onChange={(e) => handleJobInputChange('department', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter department"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Salary Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                  Salary & Experience
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Minimum Salary (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      value={jobFormData.salary_range_min}
+                      onChange={(e) => handleJobInputChange('salary_range_min', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter minimum salary"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Maximum Salary (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      value={jobFormData.salary_range_max}
+                      onChange={(e) => handleJobInputChange('salary_range_max', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter maximum salary"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Experience Required
+                    </label>
+                    <input
+                      type="text"
+                      value={jobFormData.experience_required}
+                      onChange={(e) => handleJobInputChange('experience_required', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="e.g., 2-4 years"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Job Description */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900">Job Description</h3>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Job Description *
+                  </label>
+                  <textarea
+                    rows={4}
+                    required
+                    value={jobFormData.description}
+                    onChange={(e) => handleJobInputChange('description', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Enter detailed job description..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Required Skills (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={jobFormData.skills_required}
+                    onChange={(e) => handleJobInputChange('skills_required', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="e.g., React, Node.js, MongoDB"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Application Deadline *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={jobFormData.deadline}
+                    onChange={(e) => handleJobInputChange('deadline', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={handleCloseEditJobModal}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4" />
+                      Update Job Posting
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Filter Modal */}
       {showFilterModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -3993,6 +4600,93 @@ const PlacementManagement: React.FC = () => {
                 </div>
               </div>
 
+              {/* Enhanced D7.1 Fields */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Target className="h-5 w-5 text-blue-600" />
+                  Additional Information
+                </h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Eligibility Template
+                    </label>
+                    <select
+                      value={formData.eligibilityTemplate}
+                      onChange={(e) => handleInputChange('eligibilityTemplate', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select Template</option>
+                      <option value="tech_premium">Tech Premium</option>
+                      <option value="tech_standard">Tech Standard</option>
+                      <option value="finance_standard">Finance Standard</option>
+                      <option value="general">General</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company Description
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={formData.companyDescription}
+                      onChange={(e) => handleInputChange('companyDescription', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter detailed company description..."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Special Requirements
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={formData.specialRequirements}
+                      onChange={(e) => handleInputChange('specialRequirements', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter any special requirements or preferences..."
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        MoU Document
+                      </label>
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setFormData(prev => ({ ...prev, mouDocument: file }));
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Upload MoU document (PDF, DOC, DOCX)</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        JD Document
+                      </label>
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setFormData(prev => ({ ...prev, jdDocument: file }));
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Upload Job Description template (PDF, DOC, DOCX)</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Modal Footer */}
               <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
                 <button
@@ -4021,6 +4715,1093 @@ const PlacementManagement: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Company Details Modal */}
+      {showCompanyDetailsModal && selectedCompanyDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <Building2 className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">{selectedCompanyDetails.name}</h2>
+                    <p className="text-gray-600">{selectedCompanyDetails.code}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCompanyDetailsModal(false)}
+                  className="text-gray-400 hover:text-gray-600 p-2"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Company Status */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <h3 className="font-medium text-gray-900">Current Status</h3>
+                  <p className="text-sm text-gray-600">Account status and approval information</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {getStatusBadge(selectedCompanyDetails.accountStatus)}
+                  <span className="text-gray-400">•</span>
+                  {getStatusBadge(selectedCompanyDetails.approvalStatus)}
+                </div>
+              </div>
+
+              {/* Company Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-blue-600" />
+                    Company Information
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Industry</label>
+                      <p className="text-gray-900">{selectedCompanyDetails.industry}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Company Size</label>
+                      <p className="text-gray-900">{selectedCompanyDetails.companySize}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Established Year</label>
+                      <p className="text-gray-900">{selectedCompanyDetails.establishedYear}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Website</label>
+                      <a 
+                        href={selectedCompanyDetails.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 underline"
+                      >
+                        {selectedCompanyDetails.website}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-blue-600" />
+                    Location & Contact
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Headquarters</label>
+                      <p className="text-gray-900">{selectedCompanyDetails.hqCity}, {selectedCompanyDetails.hqState}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Phone</label>
+                      <p className="text-gray-900">{selectedCompanyDetails.phone}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Email</label>
+                      <p className="text-gray-900">{selectedCompanyDetails.email}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Person */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <User className="h-5 w-5 text-blue-600" />
+                  Contact Person
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Name</label>
+                    <p className="text-gray-900">{selectedCompanyDetails.contactPersonName}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Designation</label>
+                    <p className="text-gray-900">{selectedCompanyDetails.contactPersonDesignation}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Enhanced D7.1 Fields */}
+              {selectedCompanyDetails.companyDescription && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Company Description</h3>
+                  <p className="text-gray-700 leading-relaxed">{selectedCompanyDetails.companyDescription}</p>
+                </div>
+              )}
+
+              {selectedCompanyDetails.specialRequirements && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Special Requirements</h3>
+                  <p className="text-gray-700 leading-relaxed">{selectedCompanyDetails.specialRequirements}</p>
+                </div>
+              )}
+
+
+              {/* Metadata */}
+              <div className="space-y-4 pt-4 border-t border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Metadata</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <label className="text-gray-500">Created At</label>
+                    <p className="text-gray-900">{new Date(selectedCompanyDetails.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  {selectedCompanyDetails.lastUpdated && (
+                    <div>
+                      <label className="text-gray-500">Last Updated</label>
+                      <p className="text-gray-900">{new Date(selectedCompanyDetails.lastUpdated).toLocaleDateString()}</p>
+                    </div>
+                  )}
+                  {selectedCompanyDetails.updatedBy && (
+                    <div>
+                      <label className="text-gray-500">Updated By</label>
+                      <p className="text-gray-900">{selectedCompanyDetails.updatedBy}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200">
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowCompanyDetailsModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCompanyDetailsModal(false);
+                    viewCompanyHistory(selectedCompanyDetails);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                >
+                  <Clock className="h-4 w-4" />
+                  View History
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Company History Modal */}
+      {showCompanyHistoryModal && selectedCompanyDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-lg bg-purple-100 flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Company History</h2>
+                    <p className="text-gray-600">{selectedCompanyDetails.name}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCompanyHistoryModal(false)}
+                  className="text-gray-400 hover:text-gray-600 p-2"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {selectedCompanyDetails.history && selectedCompanyDetails.history.length > 0 ? (
+                <div className="space-y-4">
+                  {selectedCompanyDetails.history.map((entry, index) => (
+                    <div key={entry.id} className="relative">
+                      {/* Timeline line */}
+                      {index < selectedCompanyDetails.history.length - 1 && (
+                        <div className="absolute left-6 top-12 w-0.5 h-16 bg-gray-200"></div>
+                      )}
+                      
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0">
+                          <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                            <div className="h-3 w-3 rounded-full bg-blue-600"></div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h3 className="text-sm font-medium text-gray-900">{entry.action}</h3>
+                                <p className="text-sm text-gray-600 mt-1">{entry.details}</p>
+                                
+                                {(entry.previousStatus || entry.newStatus) && (
+                                  <div className="flex items-center gap-2 mt-2">
+                                    {entry.previousStatus && (
+                                      <>
+                                        {getStatusBadge(entry.previousStatus)}
+                                        <span className="text-gray-400">→</span>
+                                      </>
+                                    )}
+                                    {entry.newStatus && getStatusBadge(entry.newStatus)}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="text-right text-xs text-gray-500 ml-4">
+                                <p>{new Date(entry.timestamp).toLocaleDateString()}</p>
+                                <p>{new Date(entry.timestamp).toLocaleTimeString()}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="mt-2 text-xs text-gray-500">
+                              Performed by: <span className="font-medium">{entry.performedBy}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No History Available</h3>
+                  <p className="text-gray-500">No historical actions have been recorded for this company yet.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200">
+              <div className="flex items-center justify-end">
+                <button
+                  onClick={() => setShowCompanyHistoryModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+
+      {/* Edit Company Modal */}
+      {showEditCompanyModal && editingCompany && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Edit className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Edit Company</h2>
+                  <p className="text-sm text-gray-600">Update company information for {editingCompany.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseEditModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <form onSubmit={handleEditSubmit} className="p-6 space-y-6">
+              {/* Company Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-green-600" />
+                  Company Information
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editFormData.name}
+                      onChange={(e) => handleEditInputChange('name', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter company name"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company Code *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editFormData.code}
+                      onChange={(e) => handleEditInputChange('code', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter company code (e.g., TECH001)"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Industry
+                    </label>
+                    <select
+                      value={editFormData.industry}
+                      onChange={(e) => handleEditInputChange('industry', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                      <option value="">Select Industry</option>
+                      {industryOptions.map(industry => (
+                        <option key={industry} value={industry}>{industry}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company Size
+                    </label>
+                    <select
+                      value={editFormData.companySize}
+                      onChange={(e) => handleEditInputChange('companySize', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                      <option value="">Select Company Size</option>
+                      {companySizeOptions.map(size => (
+                        <option key={size} value={size}>{size}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Established Year
+                    </label>
+                    <input
+                      type="number"
+                      min="1800"
+                      max={new Date().getFullYear()}
+                      value={editFormData.establishedYear}
+                      onChange={(e) => handleEditInputChange('establishedYear', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="e.g., 2010"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Headquarters Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-green-600" />
+                  Headquarters Information
+                </h3>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Address
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editFormData.hqAddress}
+                      onChange={(e) => handleEditInputChange('hqAddress', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter complete address"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        City
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.hqCity}
+                        onChange={(e) => handleEditInputChange('hqCity', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Enter city"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        State
+                      </label>
+                      <select
+                        value={editFormData.hqState}
+                        onChange={(e) => handleEditInputChange('hqState', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="">Select State</option>
+                        {indianStates.map(state => (
+                          <option key={state} value={state}>{state}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Pincode
+                      </label>
+                      <input
+                        type="text"
+                        pattern="[0-9]{6}"
+                        value={editFormData.hqPincode}
+                        onChange={(e) => handleEditInputChange('hqPincode', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Enter pincode"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.hqCountry}
+                      onChange={(e) => handleEditInputChange('hqCountry', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Country"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Phone className="h-5 w-5 text-green-600" />
+                  Contact Information
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={editFormData.phone}
+                      onChange={(e) => handleEditInputChange('phone', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter phone number"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={editFormData.email}
+                      onChange={(e) => handleEditInputChange('email', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter email address"
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Website
+                    </label>
+                    <input
+                      type="url"
+                      value={editFormData.website}
+                      onChange={(e) => handleEditInputChange('website', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="https://www.company.com"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Person Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <User className="h-5 w-5 text-green-600" />
+                  Contact Person Details
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Contact Person Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.contactPersonName}
+                      onChange={(e) => handleEditInputChange('contactPersonName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter contact person name"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Designation
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.contactPersonDesignation}
+                      onChange={(e) => handleEditInputChange('contactPersonDesignation', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="e.g., HR Manager, Recruiter"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Contact Person Email
+                    </label>
+                    <input
+                      type="email"
+                      value={editFormData.contactPersonEmail}
+                      onChange={(e) => handleEditInputChange('contactPersonEmail', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter contact person email"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Contact Person Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={editFormData.contactPersonPhone}
+                      onChange={(e) => handleEditInputChange('contactPersonPhone', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter contact person phone"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Enhanced D7.1 Fields */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Target className="h-5 w-5 text-green-600" />
+                  Additional Information
+                </h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Eligibility Template
+                    </label>
+                    <select
+                      value={editFormData.eligibilityTemplate}
+                      onChange={(e) => handleEditInputChange('eligibilityTemplate', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                      <option value="">Select Template</option>
+                      <option value="tech_premium">Tech Premium</option>
+                      <option value="tech_standard">Tech Standard</option>
+                      <option value="finance_standard">Finance Standard</option>
+                      <option value="general">General</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company Description
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={editFormData.companyDescription}
+                      onChange={(e) => handleEditInputChange('companyDescription', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter detailed company description..."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Special Requirements
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editFormData.specialRequirements}
+                      onChange={(e) => handleEditInputChange('specialRequirements', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Enter any special requirements or preferences..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={handleCloseEditModal}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4" />
+                      Update Company
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Company Action Modal (Approve/Reject/Activate/Deactivate/Blacklist) */}
+      {showApprovalModal && selectedCompanyForAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${
+                  actionType === 'approve' ? 'bg-green-100' :
+                  actionType === 'reject' ? 'bg-red-100' :
+                  actionType === 'activate' ? 'bg-blue-100' :
+                  actionType === 'deactivate' ? 'bg-orange-100' :
+                  'bg-gray-100'
+                }`}>
+                  {actionType === 'approve' && <CheckCircle className="h-6 w-6 text-green-600" />}
+                  {actionType === 'reject' && <X className="h-6 w-6 text-red-600" />}
+                  {actionType === 'activate' && <CheckCircle className="h-6 w-6 text-blue-600" />}
+                  {actionType === 'deactivate' && <Clock className="h-6 w-6 text-orange-600" />}
+                  {actionType === 'blacklist' && <X className="h-6 w-6 text-gray-600" />}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {actionType.charAt(0).toUpperCase() + actionType.slice(1)} Company
+                  </h2>
+                  <p className="text-sm text-gray-600">{selectedCompanyForAction.name}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-gray-700 mb-4">
+                  {actionType === 'approve' && `Change company status from "${selectedCompanyForAction?.accountStatus}" to "Approved"? This will allow them to be activated for job postings.`}
+                  {actionType === 'reject' && `Change company status from "${selectedCompanyForAction?.accountStatus}" to "Rejected"? They will not be able to participate in placements.`}
+                  {actionType === 'activate' && `Change company status from "${selectedCompanyForAction?.accountStatus}" to "Active"? They will be able to post jobs and recruit students.`}
+                  {actionType === 'deactivate' && `Change company status from "${selectedCompanyForAction?.accountStatus}" to "Inactive"? They will not be able to post new jobs or recruit students.`}
+                  {actionType === 'blacklist' && `Change company status from "${selectedCompanyForAction?.accountStatus}" to "Blacklisted"? This is a serious action that will permanently restrict their access.`}
+                </p>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Reason {actionType === 'reject' || actionType === 'blacklist' ? '(Required)' : '(Optional)'}
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={actionReason}
+                    onChange={(e) => setActionReason(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder={`Enter reason for ${actionType}ing this company...`}
+                    required={actionType === 'reject' || actionType === 'blacklist'}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200">
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={closeActionModal}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeCompanyAction}
+                  className={`px-6 py-2 text-white rounded-lg transition flex items-center gap-2 ${
+                    actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' :
+                    actionType === 'reject' ? 'bg-red-600 hover:bg-red-700' :
+                    actionType === 'activate' ? 'bg-blue-600 hover:bg-blue-700' :
+                    actionType === 'deactivate' ? 'bg-orange-600 hover:bg-orange-700' :
+                    'bg-gray-600 hover:bg-gray-700'
+                  }`}
+                >
+                  {actionType === 'approve' && <CheckCircle className="h-4 w-4" />}
+                  {actionType === 'reject' && <X className="h-4 w-4" />}
+                  {actionType === 'activate' && <CheckCircle className="h-4 w-4" />}
+                  {actionType === 'deactivate' && <Clock className="h-4 w-4" />}
+                  {actionType === 'blacklist' && <X className="h-4 w-4" />}
+                  {actionType.charAt(0).toUpperCase() + actionType.slice(1)} Company
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Company Filter Modal */}
+      {showFilterModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">Filter Companies</h2>
+                <button
+                  onClick={() => setShowFilterModal(false)}
+                  className="text-gray-400 hover:text-gray-600 p-2"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Industry
+                </label>
+                <select
+                  value={selectedIndustry}
+                  onChange={(e) => setSelectedIndustry(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">All Industries</option>
+                  {industryOptions.map(industry => (
+                    <option key={industry} value={industry}>{industry}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Company Size
+                </label>
+                <select
+                  value={selectedCompanySize}
+                  onChange={(e) => setSelectedCompanySize(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">All Sizes</option>
+                  {companySizeOptions.map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="blacklisted">Blacklisted</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200">
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={clearFilters}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                >
+                  Clear All
+                </button>
+                <button
+                  onClick={() => setShowFilterModal(false)}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                >
+                  Apply Filters
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Job Filter Modal */}
+      {showJobFilterModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">Filter Job Postings</h2>
+                <button
+                  onClick={() => setShowJobFilterModal(false)}
+                  className="text-gray-400 hover:text-gray-600 p-2"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={selectedJobStatus}
+                  onChange={(e) => setSelectedJobStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="active">Active</option>
+                  <option value="closed">Closed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Employment Type
+                </label>
+                <select
+                  value={selectedEmploymentType}
+                  onChange={(e) => setSelectedEmploymentType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">All Types</option>
+                  <option value="Full-time">Full-time</option>
+                  <option value="Part-time">Part-time</option>
+                  <option value="Internship">Internship</option>
+                  <option value="Contract">Contract</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Work Mode
+                </label>
+                <select
+                  value={selectedJobMode}
+                  onChange={(e) => setSelectedJobMode(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">All Modes</option>
+                  <option value="Remote">Remote</option>
+                  <option value="On-site">On-site</option>
+                  <option value="Hybrid">Hybrid</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200">
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={clearJobFilters}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                >
+                  Clear All
+                </button>
+                <button
+                  onClick={() => setShowJobFilterModal(false)}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                >
+                  Apply Filters
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student Details Modal */}
+      {showStudentDetailsModal && selectedStudentDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <User className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">{selectedStudentDetails.name}</h2>
+                    <p className="text-gray-600">{selectedStudentDetails.id}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowStudentDetailsModal(false)}
+                  className="text-gray-400 hover:text-gray-600 p-2"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Student Status */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <h3 className="font-medium text-gray-900">Application Status</h3>
+                  <p className="text-sm text-gray-600">Current stage in recruitment process</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {selectedStudentDetails.status === 'eligible' && (
+                    <span className="px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-full">Eligible</span>
+                  )}
+                  {selectedStudentDetails.status === 'applied' && (
+                    <span className="px-3 py-1 text-sm font-medium bg-yellow-100 text-yellow-800 rounded-full">Applied</span>
+                  )}
+                  {selectedStudentDetails.status === 'shortlisted' && (
+                    <span className="px-3 py-1 text-sm font-medium bg-purple-100 text-purple-800 rounded-full">Shortlisted</span>
+                  )}
+                  {selectedStudentDetails.status === 'selected' && (
+                    <span className="px-3 py-1 text-sm font-medium bg-green-100 text-green-800 rounded-full">Selected</span>
+                  )}
+                  {selectedStudentDetails.status === 'rejected' && (
+                    <span className="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">Rejected</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Personal Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <User className="h-5 w-5 text-blue-600" />
+                    Personal Information
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Full Name</label>
+                      <p className="text-gray-900">{selectedStudentDetails.name}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Student ID</label>
+                      <p className="text-gray-900">{selectedStudentDetails.id}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Email Address</label>
+                      <p className="text-gray-900">{selectedStudentDetails.email}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Award className="h-5 w-5 text-blue-600" />
+                    Academic Information
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Department</label>
+                      <p className="text-gray-900">{selectedStudentDetails.department}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">CGPA</label>
+                      <p className="text-gray-900">{selectedStudentDetails.cgpa}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Graduation Year</label>
+                      <p className="text-gray-900">{selectedStudentDetails.graduation_year}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Backlogs</label>
+                      <p className="text-gray-900">{selectedStudentDetails.backlogs}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Skills */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Target className="h-5 w-5 text-blue-600" />
+                  Skills & Competencies
+                </h3>
+                
+                <div className="flex flex-wrap gap-2">
+                  {selectedStudentDetails.skills.map((skill, index) => (
+                    <span key={index} className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Application Progress */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-blue-600" />
+                  Application Progress
+                </h3>
+                
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">Current Stage:</span>
+                    <span className="text-sm text-gray-900">{selectedStudentDetails.application_stage}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200">
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowStudentDetailsModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    setShowStudentDetailsModal(false);
+                    setSelectedStudentForUpdate(selectedStudentDetails);
+                    setShowStageUpdateModal(true);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Update Status
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
