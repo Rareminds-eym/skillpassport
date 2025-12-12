@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
+import { useAuth } from '@/context/AuthContext';
+import { departmentService, DepartmentWithStats } from '@/services/college/departmentService';
+import { supabase } from '../../../lib/supabaseClient';
 import {
   FunnelIcon,
   TableCellsIcon,
@@ -39,20 +44,16 @@ interface Faculty {
   specialization: string;
 }
 
-interface Department {
-  id: number;
-  name: string;
-  code: string;
-  hod: string;
+// Use the Department type from the service
+type Department = DepartmentWithStats & {
+  hod?: string;
   hodId?: number;
-  email: string;
-  facultyCount: number;
-  studentCount: number;
-  status: string;
+  email?: string;
+  facultyCount?: number;
+  studentCount?: number;
   courses?: Course[];
   faculty?: Faculty[];
-  description?: string;
-}
+};
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -821,11 +822,13 @@ const HODAssignmentModal = ({
 const AddDepartmentModal = ({
   isOpen,
   onClose,
-  onCreated,
+  onSubmit,
+  isSubmitting,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: (dept: Department) => void;
+  onSubmit: (data: any) => void;
+  isSubmitting: boolean;
 }) => {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
@@ -834,45 +837,34 @@ const AddDepartmentModal = ({
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("Active");
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = () => {
-    if (!name.trim() || !code.trim() || !hod.trim()) {
+    if (!name.trim() || !code.trim()) {
       setError("Please fill in all required fields");
       return;
     }
 
     setError(null);
-    setSubmitting(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      const newDept: Department = {
-        id: Date.now(),
-        name: name.trim(),
-        code: code.trim().toUpperCase(),
+    onSubmit({
+      name: name.trim(),
+      code: code.trim().toUpperCase(),
+      description: description.trim(),
+      status,
+      metadata: {
         hod: hod.trim(),
         email: email.trim(),
-        description: description.trim(),
-        facultyCount: 0,
-        studentCount: 0,
-        status,
-        courses: [],
-        faculty: [],
-      };
-      onCreated(newDept);
-      setSubmitting(false);
-      onClose();
-      // Reset form
-      setName("");
-      setCode("");
-      setHod("");
-      setEmail("");
-      setDescription("");
-      setStatus("Active");
-    }, 500);
+      }
+    });
+
+    // Reset form
+    setName("");
+    setCode("");
+    setHod("");
+    setEmail("");
+    setDescription("");
+    setStatus("Active");
   };
 
   return (
@@ -986,7 +978,7 @@ const AddDepartmentModal = ({
             <button
               onClick={onClose}
               className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              disabled={submitting}
+              disabled={isSubmitting}
               type="button"
             >
               Cancel
@@ -994,10 +986,10 @@ const AddDepartmentModal = ({
             <button
               onClick={handleSubmit}
               className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-              disabled={submitting}
+              disabled={isSubmitting}
               type="button"
             >
-              {submitting ? "Adding..." : "Add Department"}
+              {isSubmitting ? "Adding..." : "Add Department"}
             </button>
           </div>
         </div>
@@ -1190,6 +1182,53 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
 };
 
 const DepartmentManagement: React.FC = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  // Fetch college ID from colleges table using created_by
+  const { data: collegeData, isLoading: isLoadingCollege, error: collegeError } = useQuery({
+    queryKey: ['userCollege', user?.id],
+    queryFn: async () => {
+      console.log('Fetching college for user:', user?.id);
+      const { data, error } = await supabase
+        .from('colleges')
+        .select('id, name')
+        .eq('created_by', user?.id)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching college:', error);
+        // If query fails, try to get from deanEmail match
+        const { data: collegeByEmail, error: emailError } = await supabase
+          .from('colleges')
+          .select('id, name')
+          .eq('deanEmail', user?.email)
+          .single();
+        
+        if (emailError) {
+          console.error('Error fetching college by email:', emailError);
+          throw emailError;
+        }
+        
+        console.log('College data fetched by email:', collegeByEmail);
+        return collegeByEmail;
+      }
+      
+      console.log('College data fetched:', data);
+      return data;
+    },
+    enabled: !!user?.id,
+    retry: 1,
+  });
+  
+  const collegeId = collegeData?.id;
+  
+  useEffect(() => {
+    console.log('College ID updated:', collegeId);
+    console.log('College data:', collegeData);
+    console.log('College error:', collegeError);
+  }, [collegeId, collegeData, collegeError]);
+
   const [viewMode, setViewMode] = useState("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1203,7 +1242,93 @@ const DepartmentManagement: React.FC = () => {
   const [showHODAssignmentModal, setShowHODAssignmentModal] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
 
-  // Sample data - In real app, this would come from API
+  // Fetch departments from database
+  const { data: departmentsData = [], isLoading, error } = useQuery({
+    queryKey: ['departments', collegeId],
+    queryFn: () => departmentService.getDepartments(collegeId!),
+    enabled: !!collegeId,
+  });
+
+  // Transform database departments to match UI expectations
+  const departments: Department[] = useMemo(() => {
+    return departmentsData.map(dept => ({
+      ...dept,
+      id: dept.id as any, // Keep as string but cast for compatibility
+      facultyCount: dept.faculty_count || 0,
+      studentCount: dept.student_count || 0,
+      status: dept.status || 'Active',
+      hod: dept.metadata?.hod || 'Not Assigned',
+      email: dept.metadata?.email || '',
+      courses: [],
+      faculty: [],
+    }));
+  }, [departmentsData]);
+
+  // Create department mutation
+  const createDepartmentMutation = useMutation({
+    mutationFn: (data: any) => {
+      console.log('Creating department with collegeId:', collegeId);
+      console.log('User ID:', user?.id);
+      console.log('Form data:', data);
+      
+      if (!collegeId) {
+        throw new Error('College ID not found. Please refresh the page and try again.');
+      }
+      
+      return departmentService.createDepartment({
+        school_id: null,
+        college_id: collegeId,
+        name: data.name,
+        code: data.code,
+        description: data.description,
+        status: data.status?.toLowerCase() || 'active',
+        metadata: data.metadata || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      toast.success('Department created successfully');
+      setShowAddModal(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to create department');
+    },
+  });
+
+  // Update department mutation
+  const updateDepartmentMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: any }) =>
+      departmentService.updateDepartment(id, {
+        name: updates.name,
+        code: updates.code,
+        description: updates.description,
+        status: updates.status?.toLowerCase(),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      toast.success('Department updated successfully');
+      setShowEditModal(false);
+      setSelectedDepartment(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update department');
+    },
+  });
+
+  // Delete department mutation
+  const deleteDepartmentMutation = useMutation({
+    mutationFn: (id: string) => departmentService.deleteDepartment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      toast.success('Department deleted successfully');
+      if (detailDepartment) setDetailDepartment(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete department');
+    },
+  });
+
+  // Sample data for courses and faculty (these would also come from API in production)
   const [allCourses] = useState<Course[]>([
     { id: 1, code: "CS101", name: "Introduction to Programming", credits: 4, semester: 1 },
     { id: 2, code: "CS102", name: "Data Structures", credits: 4, semester: 2 },
@@ -1222,65 +1347,6 @@ const DepartmentManagement: React.FC = () => {
     { id: 4, name: "Dr. Sunita Reddy", email: "sunita.reddy@example.edu", designation: "Assistant Professor", specialization: "Data Science" },
     { id: 5, name: "Dr. Vikram Singh", email: "vikram.singh@example.edu", designation: "Associate Professor", specialization: "Computer Networks" },
     { id: 6, name: "Dr. Anita Desai", email: "anita.desai@example.edu", designation: "Assistant Professor", specialization: "Signal Processing" },
-  ]);
-
-  const [departments, setDepartments] = useState<Department[]>([
-    {
-      id: 1,
-      name: "Computer Science & Engineering",
-      code: "CSE",
-      hod: "Dr. Anil Kumar",
-      hodId: 1,
-      email: "cse@example.edu",
-      description: "Leading department in software development, AI, and computer systems.",
-      facultyCount: 18,
-      studentCount: 420,
-      status: "Active",
-      courses: [
-        { id: 1, code: "CS101", name: "Introduction to Programming", credits: 4, semester: 1 },
-        { id: 2, code: "CS102", name: "Data Structures", credits: 4, semester: 2 },
-      ],
-      faculty: [
-        { id: 1, name: "Dr. Anil Kumar", email: "anil.kumar@example.edu", designation: "Professor", specialization: "AI & ML" },
-        { id: 4, name: "Dr. Sunita Reddy", email: "sunita.reddy@example.edu", designation: "Assistant Professor", specialization: "Data Science" },
-        { id: 5, name: "Dr. Vikram Singh", email: "vikram.singh@example.edu", designation: "Associate Professor", specialization: "Computer Networks" },
-      ],
-    },
-    {
-      id: 2,
-      name: "Electronics & Communication",
-      code: "ECE",
-      hod: "Dr. Priya Nair",
-      hodId: 2,
-      email: "ece@example.edu",
-      description: "Specializing in electronics, telecommunications, and embedded systems.",
-      facultyCount: 14,
-      studentCount: 385,
-      status: "Active",
-      courses: [
-        { id: 5, code: "EC101", name: "Circuit Theory", credits: 4, semester: 1 },
-      ],
-      faculty: [
-        { id: 2, name: "Dr. Priya Nair", email: "priya.nair@example.edu", designation: "Associate Professor", specialization: "VLSI Design" },
-        { id: 6, name: "Dr. Anita Desai", email: "anita.desai@example.edu", designation: "Assistant Professor", specialization: "Signal Processing" },
-      ],
-    },
-    {
-      id: 3,
-      name: "Mechanical Engineering",
-      code: "MECH",
-      hod: "Dr. Rajesh Sharma",
-      hodId: 3,
-      email: "mech@example.edu",
-      description: "Focused on design, manufacturing, and thermal systems.",
-      facultyCount: 20,
-      studentCount: 330,
-      status: "Inactive",
-      courses: [],
-      faculty: [
-        { id: 3, name: "Dr. Rajesh Sharma", email: "rajesh.sharma@example.edu", designation: "Professor", specialization: "Thermal Engineering" },
-      ],
-    },
   ]);
 
   const [filters, setFilters] = useState({ status: [] as string[] });
@@ -1348,45 +1414,60 @@ const DepartmentManagement: React.FC = () => {
   };
 
   const handleSaveCourseMapping = (deptId: number, courses: Course[]) => {
-    setDepartments(prev =>
-      prev.map(dept =>
-        dept.id === deptId ? { ...dept, courses } : dept
-      )
-    );
-    if (detailDepartment?.id === deptId) {
-      setDetailDepartment(prev => prev ? { ...prev, courses } : null);
-    }
+    // TODO: Implement course mapping with backend API
+    toast.info('Course mapping will be implemented with backend API');
+    setShowCourseMappingModal(false);
+    setSelectedDepartment(null);
   };
 
   const handleSaveFacultyAssignment = (deptId: number, faculty: Faculty[]) => {
-    setDepartments(prev =>
-      prev.map(dept =>
-        dept.id === deptId ? { ...dept, faculty, facultyCount: faculty.length } : dept
-      )
-    );
-    if (detailDepartment?.id === deptId) {
-      setDetailDepartment(prev => prev ? { ...prev, faculty, facultyCount: faculty.length } : null);
-    }
+    // TODO: Implement faculty assignment with backend API
+    toast.info('Faculty assignment will be implemented with backend API');
+    setShowFacultyAssignmentModal(false);
+    setSelectedDepartment(null);
   };
 
   const handleSaveHODAssignment = (deptId: number, hodId: number, hodName: string) => {
-    setDepartments(prev =>
-      prev.map(dept =>
-        dept.id === deptId ? { ...dept, hodId, hod: hodName } : dept
-      )
-    );
-    if (detailDepartment?.id === deptId) {
-      setDetailDepartment(prev => prev ? { ...prev, hodId, hod: hodName } : null);
-    }
+    // Update department with HOD information
+    updateDepartmentMutation.mutate({
+      id: deptId.toString(),
+      updates: {
+        metadata: { hod_id: hodId, hod_name: hodName }
+      }
+    });
+    setShowHODAssignmentModal(false);
+    setSelectedDepartment(null);
   };
 
   const handleDeleteDepartment = (deptId: number) => {
-    setDepartments(prev => prev.filter(d => d.id !== deptId));
-    if (detailDepartment?.id === deptId) setDetailDepartment(null);
-    if (selectedDepartment?.id === deptId) setSelectedDepartment(null);
+    if (confirm('Are you sure you want to delete this department?')) {
+      deleteDepartmentMutation.mutate(deptId.toString());
+    }
   };
 
   const isEmpty = paginatedDepartments.length === 0 && !searchQuery && totalFilters === 0;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading departments...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-red-600">Error loading departments</p>
+          <p className="text-sm text-gray-500 mt-2">{(error as Error).message}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen">
@@ -1867,10 +1948,10 @@ const DepartmentManagement: React.FC = () => {
       <AddDepartmentModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onCreated={(newDept) => {
-          setDepartments([...departments, newDept]);
-          setShowAddModal(false);
+        onSubmit={(data) => {
+          createDepartmentMutation.mutate(data);
         }}
+        isSubmitting={createDepartmentMutation.isPending}
       />
 
       <EditDepartmentModal
@@ -1881,12 +1962,12 @@ const DepartmentManagement: React.FC = () => {
         }}
         department={selectedDepartment}
         onUpdated={(updated) => {
-          setDepartments(prev => prev.map(d => d.id === updated.id ? { ...d, ...updated } : d));
-          if (detailDepartment?.id === updated.id) {
-            setDetailDepartment(prev => prev ? { ...prev, ...updated } : null);
+          if (selectedDepartment) {
+            updateDepartmentMutation.mutate({
+              id: selectedDepartment.id.toString(),
+              updates: updated
+            });
           }
-          setShowEditModal(false);
-          setSelectedDepartment(null);
         }}
       />
 

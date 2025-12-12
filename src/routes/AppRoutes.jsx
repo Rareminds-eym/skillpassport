@@ -307,6 +307,15 @@ const PerformanceMonitoring = lazy(() =>
 const CollegeSettings = lazy(() =>
   import("../pages/admin/collegeAdmin/Settings")
 );
+const AcademicCoverageTracker = lazy(() =>
+  import("../pages/admin/collegeAdmin/AcademicCoverageTracker")
+);
+const ProgramSectionManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/ProgramSectionManagement")
+);
+const CollegeLibrary = lazy(() =>
+  import("../pages/admin/collegeAdmin/Library")
+);
 
 const CurriculumBuilder = lazy(() =>
   import("../pages/admin/schoolAdmin/CurriculumBuilderWrapper")
@@ -473,6 +482,8 @@ const AppRoutes = () => {
           <Route path="academics/browse-courses" element={<CollegeAdminBrowseCourses />} />
           <Route path="academics/curriculum" element={<CollegeCurriculumBuilder />} />
           <Route path="academics/lesson-plans" element={<LessonPlanManagement />} />
+          <Route path="academics/coverage-tracker" element={<AcademicCoverageTracker />} />
+          <Route path="academics/program-sections" element={<ProgramSectionManagement />} />
           <Route path="academics/calendar" element={<AcademicCalendar />} />
           
           {/* Examination Management */}
@@ -496,6 +507,9 @@ const AppRoutes = () => {
           
           {/* Finance & Accounts */}
           <Route path="finance" element={<FinanceManagement />} />
+          
+          {/* Library & Assets */}
+          <Route path="library" element={<CollegeLibrary />} />
           
           {/* Reports & Analytics */}
           <Route path="reports" element={<ReportsAnalytics />} />
