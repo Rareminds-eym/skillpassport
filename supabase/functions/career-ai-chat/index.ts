@@ -98,6 +98,271 @@ type CareerIntent =
   | 'networking' 
   | 'general';
 
+// ==================== JOB MATCHING TYPES ====================
+
+interface JobMatchResult {
+  opportunity: Opportunity;
+  matchScore: number;
+  matchingSkills: string[];
+  missingSkills: string[];
+  partialMatches: { studentSkill: string; jobSkill: string; similarity: number }[];
+  matchReasons: string[];
+  fieldAlignment: number;
+}
+
+interface EnhancedOpportunity extends Opportunity {
+  matchData?: JobMatchResult;
+}
+
+// ==================== SKILL MATCHING ALGORITHM ====================
+
+/**
+ * Normalize a skill name for comparison
+ */
+function normalizeSkill(skill: string): string {
+  return skill.toLowerCase().trim()
+    .replace(/[^a-z0-9\s\+\#\.]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * Calculate similarity between two skill names (0-1)
+ * Uses word overlap and common abbreviation matching
+ */
+function calculateSkillSimilarity(skill1: string, skill2: string): number {
+  const s1 = normalizeSkill(skill1);
+  const s2 = normalizeSkill(skill2);
+  
+  // Exact match
+  if (s1 === s2) return 1.0;
+  
+  // One contains the other
+  if (s1.includes(s2) || s2.includes(s1)) return 0.85;
+  
+  // Common abbreviation mappings
+  const abbreviations: Record<string, string[]> = {
+    'javascript': ['js', 'node', 'nodejs', 'node.js'],
+    'typescript': ['ts'],
+    'python': ['py'],
+    'react': ['reactjs', 'react.js'],
+    'angular': ['angularjs', 'angular.js'],
+    'vue': ['vuejs', 'vue.js'],
+    'database': ['db', 'sql', 'mysql', 'postgresql', 'postgres', 'mongodb'],
+    'machine learning': ['ml', 'ai', 'artificial intelligence'],
+    'data science': ['data analysis', 'analytics', 'data analytics'],
+    'quality assurance': ['qa', 'testing', 'test'],
+    'user interface': ['ui', 'frontend', 'front-end'],
+    'user experience': ['ux', 'design'],
+    'devops': ['ci/cd', 'deployment', 'docker', 'kubernetes'],
+    'amazon web services': ['aws', 'cloud'],
+    'google cloud': ['gcp', 'cloud'],
+    'microsoft azure': ['azure', 'cloud'],
+    'communication': ['communication skills', 'verbal', 'written'],
+    'problem solving': ['analytical', 'critical thinking', 'logic'],
+    'programming': ['coding', 'development', 'software development'],
+  };
+  
+  // Check abbreviation matches
+  for (const [full, abbrevs] of Object.entries(abbreviations)) {
+    const allVariants = [full, ...abbrevs];
+    const s1Match = allVariants.some(v => s1.includes(v) || v.includes(s1));
+    const s2Match = allVariants.some(v => s2.includes(v) || v.includes(s2));
+    if (s1Match && s2Match) return 0.75;
+  }
+  
+  // Word overlap
+  const words1 = s1.split(' ').filter(w => w.length > 2);
+  const words2 = s2.split(' ').filter(w => w.length > 2);
+  const commonWords = words1.filter(w => words2.some(w2 => w2.includes(w) || w.includes(w2)));
+  
+  if (commonWords.length > 0) {
+    return 0.5 * (commonWords.length / Math.max(words1.length, words2.length));
+  }
+  
+  return 0;
+}
+
+/**
+ * Calculate match score between student profile and job opportunity
+ */
+function calculateJobMatch(
+  studentSkills: { name: string; level: number; type: string; verified: boolean }[],
+  studentDepartment: string,
+  opportunity: Opportunity
+): JobMatchResult {
+  const jobSkills = opportunity.skills_required || [];
+  const matchingSkills: string[] = [];
+  const missingSkills: string[] = [];
+  const partialMatches: { studentSkill: string; jobSkill: string; similarity: number }[] = [];
+  const matchReasons: string[] = [];
+  
+  // Normalize student skills
+  const studentSkillNames = studentSkills.map(s => ({
+    original: s.name,
+    normalized: normalizeSkill(s.name),
+    level: s.level,
+    verified: s.verified
+  }));
+  
+  let skillMatchScore = 0;
+  let totalJobSkills = jobSkills.length || 1; // Avoid division by zero
+  
+  // Match each job skill against student skills
+  for (const jobSkill of jobSkills) {
+    const normalizedJobSkill = normalizeSkill(jobSkill);
+    let bestMatch = { skill: '', similarity: 0, level: 0, verified: false };
+    
+    for (const studentSkill of studentSkillNames) {
+      const similarity = calculateSkillSimilarity(studentSkill.normalized, normalizedJobSkill);
+      if (similarity > bestMatch.similarity) {
+        bestMatch = {
+          skill: studentSkill.original,
+          similarity,
+          level: studentSkill.level,
+          verified: studentSkill.verified
+        };
+      }
+    }
+    
+    if (bestMatch.similarity >= 0.75) {
+      // Strong match
+      matchingSkills.push(jobSkill);
+      // Weight by skill level (1-5) and verification status
+      const levelWeight = bestMatch.level / 5;
+      const verifiedBonus = bestMatch.verified ? 0.1 : 0;
+      skillMatchScore += (0.7 + (0.3 * levelWeight) + verifiedBonus) * bestMatch.similarity;
+      
+      if (bestMatch.similarity < 1.0) {
+        partialMatches.push({
+          studentSkill: bestMatch.skill,
+          jobSkill: jobSkill,
+          similarity: bestMatch.similarity
+        });
+      }
+    } else if (bestMatch.similarity >= 0.4) {
+      // Partial match
+      partialMatches.push({
+        studentSkill: bestMatch.skill,
+        jobSkill: jobSkill,
+        similarity: bestMatch.similarity
+      });
+      skillMatchScore += 0.3 * bestMatch.similarity;
+    } else {
+      // No match
+      missingSkills.push(jobSkill);
+    }
+  }
+  
+  // Calculate field/department alignment
+  let fieldAlignment = 0;
+  const jobSector = (opportunity.sector || opportunity.department || '').toLowerCase();
+  const studentField = (studentDepartment || '').toLowerCase();
+  
+  const fieldMappings: Record<string, string[]> = {
+    'computer science': ['it', 'software', 'technology', 'tech', 'engineering', 'development'],
+    'information technology': ['it', 'software', 'technology', 'tech', 'computer'],
+    'biotechnology': ['biotech', 'life sciences', 'pharma', 'healthcare', 'biology'],
+    'mechanical': ['manufacturing', 'automotive', 'engineering', 'production'],
+    'electrical': ['electronics', 'power', 'engineering', 'embedded'],
+    'commerce': ['finance', 'accounting', 'business', 'banking', 'management'],
+    'management': ['business', 'hr', 'marketing', 'operations', 'admin'],
+  };
+  
+  for (const [field, related] of Object.entries(fieldMappings)) {
+    if (studentField.includes(field) || related.some(r => studentField.includes(r))) {
+      if (jobSector.includes(field) || related.some(r => jobSector.includes(r))) {
+        fieldAlignment = 1.0;
+        matchReasons.push(`Field alignment: Your ${studentDepartment} background matches this ${opportunity.sector || 'role'}`);
+        break;
+      }
+    }
+  }
+  
+  // If no specific field match, check for general alignment
+  if (fieldAlignment === 0 && studentField && jobSector) {
+    if (studentField.includes(jobSector) || jobSector.includes(studentField)) {
+      fieldAlignment = 0.7;
+      matchReasons.push(`Partial field alignment with ${opportunity.sector || opportunity.department}`);
+    }
+  }
+  
+  // Calculate final match score (0-100)
+  const skillScore = totalJobSkills > 0 ? (skillMatchScore / totalJobSkills) * 100 : 50;
+  const fieldScore = fieldAlignment * 100;
+  
+  // Weighted combination: 60% skills, 30% field, 10% base
+  const finalScore = Math.round(
+    (skillScore * 0.6) + 
+    (fieldScore * 0.3) + 
+    10 // Base score for being an active opportunity
+  );
+  
+  // Generate match reasons
+  if (matchingSkills.length > 0) {
+    matchReasons.push(`Skills match: ${matchingSkills.slice(0, 3).join(', ')}${matchingSkills.length > 3 ? ` +${matchingSkills.length - 3} more` : ''}`);
+  }
+  if (partialMatches.length > 0 && matchingSkills.length === 0) {
+    matchReasons.push(`Related skills: ${partialMatches.slice(0, 2).map(p => `${p.studentSkill} → ${p.jobSkill}`).join(', ')}`);
+  }
+  if (missingSkills.length > 0 && missingSkills.length <= 3) {
+    matchReasons.push(`Skills to develop: ${missingSkills.join(', ')}`);
+  } else if (missingSkills.length > 3) {
+    matchReasons.push(`Skills gap: ${missingSkills.length} skills needed`);
+  }
+  
+  return {
+    opportunity,
+    matchScore: Math.min(100, Math.max(0, finalScore)),
+    matchingSkills,
+    missingSkills,
+    partialMatches,
+    matchReasons,
+    fieldAlignment
+  };
+}
+
+/**
+ * Rank opportunities by match score for a student
+ */
+function rankOpportunitiesByMatch(
+  opportunities: Opportunity[],
+  studentSkills: { name: string; level: number; type: string; verified: boolean }[],
+  studentDepartment: string
+): JobMatchResult[] {
+  const matchResults = opportunities.map(opp => 
+    calculateJobMatch(studentSkills, studentDepartment, opp)
+  );
+  
+  // Sort by match score (descending)
+  return matchResults.sort((a, b) => b.matchScore - a.matchScore);
+}
+
+/**
+ * Format job match for display in AI context
+ */
+function formatJobMatchForContext(match: JobMatchResult, index: number): string {
+  const opp = match.opportunity;
+  return `
+  <job id="${opp.id}" rank="${index + 1}" match_score="${match.matchScore}%">
+    <title>${opp.title}</title>
+    <company>${opp.company_name || 'Not specified'}</company>
+    <type>${opp.employment_type || 'Not specified'}</type>
+    <location>${opp.location || 'Not specified'}</location>
+    <mode>${opp.mode || 'Not specified'}</mode>
+    <experience>${opp.experience_required || 'Not specified'}</experience>
+    <salary>${opp.stipend_or_salary || 'Not disclosed'}</salary>
+    <sector>${opp.sector || opp.department || 'General'}</sector>
+    <deadline>${opp.deadline || 'Open'}</deadline>
+    <required_skills>${(opp.skills_required || []).join(', ') || 'Not specified'}</required_skills>
+    <match_analysis>
+      <score>${match.matchScore}%</score>
+      <matching_skills>${match.matchingSkills.length > 0 ? match.matchingSkills.join(', ') : 'None'}</matching_skills>
+      <missing_skills>${match.missingSkills.length > 0 ? match.missingSkills.join(', ') : 'None - Great fit!'}</missing_skills>
+      <reasons>${match.matchReasons.join(' | ')}</reasons>
+    </match_analysis>
+  </job>`;
+}
+
 interface IntentScore {
   intent: CareerIntent;
   score: number;
@@ -328,19 +593,440 @@ function getConversationPhase(messageCount: number): ConversationPhase {
 
 function getPhaseParameters(phase: ConversationPhase, intent?: CareerIntent): { max_tokens: number; temperature: number } {
   // Base parameters by phase
-  const params: Record<ConversationPhase, { max_tokens: number; temperature: number }> = {
-    opening: { max_tokens: 500, temperature: 0.8 },
-    exploring: { max_tokens: 2000, temperature: 0.7 },
-    deep_dive: { max_tokens: 4000, temperature: 0.6 },
-    follow_up: { max_tokens: 2500, temperature: 0.65 }
+  const baseParams: Record<ConversationPhase, { max_tokens: number; temperature: number }> = {
+    opening: { max_tokens: 500, temperature: 0.7 },
+    exploring: { max_tokens: 2000, temperature: 0.6 },
+    deep_dive: { max_tokens: 4000, temperature: 0.5 },
+    follow_up: { max_tokens: 2500, temperature: 0.55 }
   };
   
-  // Intent-specific overrides for detailed responses
-  if (intent === 'learning-path' || intent === 'career-guidance' || intent === 'skill-gap') {
-    return { max_tokens: Math.max(params[phase].max_tokens, 3500), temperature: 0.65 };
+  // Intent-specific temperature optimization (Prompt Engineering Best Practice)
+  // Lower temperature = more deterministic/factual, Higher = more creative
+  // IMPORTANT: Keep temperatures LOW to prevent skill hallucination
+  const intentTemperatures: Record<CareerIntent, number> = {
+    'find-jobs': 0.25,          // Factual - must match DB exactly, NO hallucination
+    'application-status': 0.25, // Factual status reporting
+    'assessment-insights': 0.35,// Factual with interpretation
+    'skill-gap': 0.4,           // Analysis - must use exact skills only
+    'resume-review': 0.4,       // Analysis - must use exact profile data
+    'interview-prep': 0.5,      // Balanced - questions + guidance
+    'networking': 0.55,         // Personalized suggestions
+    'learning-path': 0.6,       // Creative but grounded roadmap
+    'career-guidance': 0.6,     // Creative but data-driven advice
+    'general': 0.5              // Friendly but careful - avoid skill inference
+  };
+  
+  // Intent-specific max_tokens optimization
+  const intentMaxTokens: Partial<Record<CareerIntent, number>> = {
+    'learning-path': 4000,      // Detailed roadmaps need more tokens
+    'career-guidance': 3500,    // Strategic advice needs space
+    'skill-gap': 3000,          // Comprehensive analysis
+    'interview-prep': 3000,     // Multiple questions with frameworks
+  };
+  
+  let result = { ...baseParams[phase] };
+  
+  if (intent) {
+    // Apply intent-specific temperature
+    result.temperature = intentTemperatures[intent] ?? result.temperature;
+    
+    // Apply intent-specific max_tokens (take the higher value)
+    const intentTokens = intentMaxTokens[intent];
+    if (intentTokens) {
+      result.max_tokens = Math.max(result.max_tokens, intentTokens);
+    }
+    
+    // Phase adjustments on top of intent
+    if (phase === 'opening') {
+      result.temperature = Math.min(result.temperature + 0.1, 0.8); // Slightly warmer for greetings
+      result.max_tokens = Math.min(result.max_tokens, 600); // Keep opening short
+    }
   }
   
-  return params[phase];
+  return result;
+}
+
+// ==================== FEW-SHOT EXAMPLES (Prompt Engineering Best Practice) ====================
+
+function buildFewShotExamples(intent: CareerIntent, studentName: string, profile: StudentProfile, assessment?: AssessmentResults): string {
+  // Provide default assessment if not passed
+  const assessmentData = assessment || { hasAssessment: false, riasecCode: '', riasecInterpretation: '', personalityInterpretation: '', aptitudeOverall: 0 };
+  
+  const examples: Partial<Record<CareerIntent, string>> = {
+    'find-jobs': `
+<few_shot_examples>
+<example intent="find-jobs" quality="excellent">
+USER: "What jobs are available for me?"
+ASSISTANT: "Hi ${studentName}! 👋 Let me match your profile against our current opportunities.
+
+**Your Profile Highlights:**
+- Field: ${profile.department || 'Your field'}
+- Key Skills: ${profile.technicalSkills.slice(0, 3).map(s => s.name).join(', ') || 'Skills from your profile'}
+
+**Top Matches:**
+
+1. **[Exact Job Title from Database]** (ID: X) - Match: 85%
+   - Company: [From database or 'Not specified']
+   - Location: [From database] | Mode: [From database]
+   - Why it fits: Your [specific skill] directly aligns with their requirements
+   - Skills gap: [Honest assessment - if none, say 'Great fit!']
+
+2. **[Another Job Title]** (ID: Y) - Match: 70%
+   - Company: [From database]
+   - Why it fits: [Specific reason using ONLY listed skills]
+   - Skills gap: [What they'd need to learn]
+
+Would you like details on any of these, or should I filter by location/type?"
+</example>
+
+<anti_pattern intent="find-jobs" quality="poor">
+❌ WRONG: "Based on your programming skills in Python, JavaScript, and React..."
+   (If student only has "Programming" listed, don't assume specific languages)
+❌ WRONG: "I found this great opportunity at TechCorp for a Senior Developer..."
+   (If this job isn't in <available_opportunities>, don't mention it)
+❌ WRONG: "Your coding hobby shows you'd be great at..."
+   (Hobbies ≠ professional skills)
+</anti_pattern>
+</few_shot_examples>`,
+
+    'skill-gap': `
+<few_shot_examples>
+<example intent="skill-gap" quality="excellent">
+USER: "What skills am I missing?"
+ASSISTANT: "Great question, ${studentName}! Let me analyze your current skills against market demands for ${profile.department || 'your field'}.
+
+**Your Current Skills:**
+${profile.technicalSkills.slice(0, 5).map(s => `- ${s.name} (Level ${s.level}/5)`).join('\n') || '- [Skills from your profile]'}
+
+**Critical Gaps for ${profile.department || 'Your Target Role'}:**
+
+1. **[Specific Skill]** - High Priority 🔴
+   - Why: [Market demand reason]
+   - Learn via: [Specific course/resource]
+   - Timeline: 4-6 weeks
+
+2. **[Another Skill]** - Medium Priority 🟡
+   - Why: [Career impact]
+   - Learn via: [Resource]
+
+**Quick Action Plan:**
+- This week: Start with [specific first step]
+- This month: Complete [specific milestone]
+
+Would you like a detailed learning roadmap for any of these skills?"
+</example>
+
+<anti_pattern intent="skill-gap" quality="poor">
+❌ WRONG: "Since you know Python from your projects..."
+   (Only reference skills explicitly listed in <skills><technical>)
+❌ WRONG: "Your interest in AI means you should learn TensorFlow..."
+   (Interests ≠ skills, don't conflate them)
+</anti_pattern>
+</few_shot_examples>`,
+
+    'learning-path': `
+<few_shot_examples>
+<example intent="learning-path" quality="excellent">
+USER: "Create a 6-month learning roadmap for me"
+ASSISTANT: "Absolutely, ${studentName}! Here's a personalized 6-month roadmap based on your ${profile.department || 'field'} background.
+
+**Current Level:** ${profile.technicalSkills.length > 0 ? `You have ${profile.technicalSkills.length} skills including ${profile.technicalSkills.slice(0, 2).map(s => s.name).join(', ')}` : 'Building your foundation'}
+
+**Target Role:** [Role aligned with their field]
+
+---
+
+**Phase 1: Foundation (Weeks 1-4)** 🏗️
+- **Skill 1**: [Specific to their field]
+  - Resource: [Actual course name] on Coursera/Udemy
+  - Time: 10 hrs/week
+- **Milestone**: [What they should achieve]
+
+**Phase 2: Intermediate (Weeks 5-10)** 📈
+- **Skill 2**: [Building on Phase 1]
+  - Resource: [Specific resource]
+- **Project**: Build [specific project idea]
+
+**Phase 3: Advanced (Weeks 11-18)** 🚀
+- **Industry Tools**: [Relevant to their field]
+- **Certification**: [Industry-recognized cert]
+
+**Phase 4: Job-Ready (Weeks 19-24)** 🎯
+- Portfolio projects
+- Interview preparation
+- Application strategy
+
+**Free Resources:**
+- [Specific YouTube channel]
+- [Specific free course]
+
+Shall I dive deeper into any phase?"
+</example>
+</few_shot_examples>`,
+
+    'interview-prep': `
+<few_shot_examples>
+<example intent="interview-prep" quality="excellent">
+USER: "Help me prepare for interviews"
+ASSISTANT: "Great initiative, ${studentName}! 💪 Let me help you prepare based on your ${profile.department || 'field'} background.
+
+**For Your Profile, Focus On:**
+
+**1. Technical Questions** (${profile.department || 'Your Field'})
+- Q: "Explain [concept related to their field]"
+- Framework: Define → Example → Application
+- Your angle: Reference your project "${profile.projects[0]?.title || 'your projects'}"
+
+**2. Behavioral Questions** (STAR Method)
+- Q: "Tell me about a challenge you overcame"
+- **S**ituation: [From your experience/project]
+- **T**ask: What you needed to do
+- **A**ction: Steps you took
+- **R**esult: Outcome achieved
+
+**3. Questions to Ask Them**
+- "What does success look like in this role?"
+- "What's the team structure?"
+
+**Practice Tip:** Record yourself answering and review.
+
+Want me to do a mock interview for a specific role, or dive deeper into any area?"
+</example>
+</few_shot_examples>`,
+
+    'career-guidance': `
+<few_shot_examples>
+<example intent="career-guidance" quality="excellent">
+USER: "What career path should I take?"
+ASSISTANT: "Let's map out your options, ${studentName}! 🗺️
+
+**Based on Your Profile:**
+- Field: ${profile.department || 'Your background'}
+- Skills: ${profile.technicalSkills.slice(0, 3).map(s => s.name).join(', ') || 'Your current skills'}
+${assessmentData.hasAssessment ? `- RIASEC: ${assessmentData.riasecCode} (${assessmentData.riasecInterpretation?.split('.')[0] || 'Your profile'})` : ''}
+
+**Career Path Options:**
+
+**Path 1: [Role aligned with their field]** ⭐ Recommended
+- Why: Aligns with your ${profile.department || 'background'} and skills
+- Growth: Junior → Mid → Senior → Lead
+- Timeline: 5-7 years to senior level
+- Salary range: ₹X - ₹Y LPA
+
+**Path 2: [Alternative path]**
+- Why: Leverages your [specific skill]
+- Requires: Additional skills in [area]
+
+**Path 3: [Emerging field option]**
+- Why: Growing demand, good for your interests
+- Requires: Upskilling in [specific area]
+
+**My Recommendation:** Path 1 because [specific reason based on their profile].
+
+**Next Steps:**
+1. [Immediate action]
+2. [Short-term goal]
+
+Which path interests you most? I can create a detailed roadmap."
+</example>
+</few_shot_examples>`,
+
+    'assessment-insights': `
+<few_shot_examples>
+<example intent="assessment-insights" quality="excellent">
+USER: "Explain my assessment results"
+ASSISTANT: "Let me break down your assessment results, ${studentName}! 📊
+
+${assessmentData.hasAssessment ? `**Your RIASEC Profile: ${assessmentData.riasecCode}**
+
+This means you're:
+${assessmentData.riasecInterpretation || '- [Interpretation based on their code]'}
+
+**What This Means for Your Career:**
+- Best environments: [Based on their type]
+- Ideal roles: [Careers matching their profile]
+- Work style: [How they prefer to work]
+
+**Your Personality Insights:**
+${assessmentData.personalityInterpretation || '- [Big Five interpretation]'}
+
+**Aptitude Score: ${assessmentData.aptitudeOverall}%**
+- This indicates [interpretation]
+
+**Recommended Next Steps:**
+1. Explore roles in [aligned field]
+2. Develop skills in [gap area]
+3. Consider [specific opportunity type]
+
+Would you like me to find jobs that match your assessment profile?"` : `I don't see completed assessment results in your profile yet.
+
+**Why Take the Assessment?**
+- Discover your interest profile (RIASEC)
+- Understand your personality traits
+- Get AI-matched career recommendations
+- Identify skill gaps
+
+Would you like me to guide you to the assessment, or help with something else?`}
+</example>
+</few_shot_examples>`,
+
+    'resume-review': `
+<few_shot_examples>
+<example intent="resume-review" quality="excellent">
+USER: "Review my profile/resume"
+ASSISTANT: "Let me analyze your profile, ${studentName}! 📝
+
+**Profile Completeness Score: ${Math.round((
+  (profile.technicalSkills.length > 0 ? 20 : 0) +
+  (profile.education.length > 0 ? 20 : 0) +
+  (profile.experience.length > 0 ? 20 : 0) +
+  (profile.projects.length > 0 ? 20 : 0) +
+  (profile.certificates.length > 0 ? 20 : 0)
+))}%**
+
+**✅ Strengths:**
+${profile.technicalSkills.length > 0 ? `- ${profile.technicalSkills.length} technical skills listed` : ''}
+${profile.projects.length > 0 ? `- ${profile.projects.length} projects showcased` : ''}
+${profile.education.length > 0 ? `- Education details complete` : ''}
+
+**⚠️ Areas to Improve:**
+${profile.technicalSkills.length < 5 ? `- Add more technical skills (aim for 5-10)` : ''}
+${profile.experience.length === 0 ? `- Add internships or work experience` : ''}
+${profile.certificates.length === 0 ? `- Add certifications to stand out` : ''}
+
+**🎯 Quick Wins:**
+1. [Most impactful improvement]
+2. [Second priority]
+3. [Third priority]
+
+**ATS Tips:**
+- Use keywords from job descriptions
+- Quantify achievements where possible
+
+Want me to suggest specific improvements for any section?"
+</example>
+</few_shot_examples>`,
+
+    'general': `
+<few_shot_examples>
+<example intent="general" quality="excellent">
+USER: "Hi"
+ASSISTANT: "Hi ${studentName}! 👋 Nice to meet you.
+
+I'm your Career AI assistant. I can help with job matching 💼, skill development 📚, interview prep, and career guidance.
+
+How can I help you today? 🎯"
+</example>
+</few_shot_examples>`
+  };
+
+  return examples[intent] || examples['general'] || '';
+}
+
+// ==================== CHAIN-OF-THOUGHT FRAMEWORK (Prompt Engineering Best Practice) ====================
+
+function buildChainOfThoughtFramework(intent: CareerIntent, studentName: string): string {
+  const baseCoT = `
+<chain_of_thought_framework>
+Before responding, reason through these steps (internally, don't output this):
+
+**Step 1 - UNDERSTAND**: What is ${studentName} actually asking?
+- Surface question: [What they literally asked]
+- Underlying need: [What they really want to achieve]
+
+**Step 2 - GATHER**: What relevant data do I have?
+- From <student_profile>: [List specific data points]
+- From <assessment_results>: [If available]
+- From <available_opportunities>: [If job-related]
+
+**Step 3 - VERIFY**: Am I using ONLY real data?
+- ✓ Check: All jobs mentioned exist in <available_opportunities>
+- ✓ Check: All skills attributed are in <skills><technical>
+- ✓ Check: No assumptions from hobbies/interests
+
+**Step 4 - RESPOND**: Structure the response
+- Acknowledge their query
+- Provide specific, data-backed answer
+- Include actionable next steps
+- End with follow-up question or offer
+</chain_of_thought_framework>`;
+
+  // Intent-specific CoT additions
+  const intentCoT: Partial<Record<CareerIntent, string>> = {
+    'find-jobs': `
+<job_matching_reasoning>
+For job recommendations, think step by step:
+1. List student's ACTUAL skills from <skills><technical>
+2. For EACH job in <available_opportunities>:
+   - Compare required skills vs student's skills
+   - Calculate honest match percentage
+   - Note specific skill gaps
+3. Rank by match quality
+4. Only recommend jobs that EXIST in the database
+5. Be honest about gaps - don't inflate scores
+</job_matching_reasoning>`,
+
+    'skill-gap': `
+<skill_analysis_reasoning>
+For skill gap analysis, think step by step:
+1. List ONLY skills from <skills><technical> - these are verified
+2. Identify target role requirements for ${studentName}'s field
+3. Compare: What's missing?
+4. Prioritize gaps by: market demand > career impact > learning difficulty
+5. Suggest specific resources for each gap
+</skill_analysis_reasoning>`,
+
+    'learning-path': `
+<roadmap_reasoning>
+For learning path creation, think step by step:
+1. Assess current skill level from <skills><technical>
+2. Identify target role based on their field
+3. Map the skill progression needed
+4. Break into phases matching requested duration
+5. Include SPECIFIC resources (not generic advice)
+6. Add milestones and projects for each phase
+</roadmap_reasoning>`
+  };
+
+  return baseCoT + (intentCoT[intent] || '');
+}
+
+// ==================== SELF-VERIFICATION CHECKLIST (Prompt Engineering Best Practice) ====================
+
+function buildSelfVerificationChecklist(phase: ConversationPhase, intent: CareerIntent): string {
+  const phaseConstraints: Record<ConversationPhase, string> = {
+    opening: '150-200 words, friendly greeting, one follow-up question',
+    exploring: '300-500 words, introduce specific details, 2-3 recommendations',
+    deep_dive: 'up to 800 words, comprehensive with structure, clear next steps',
+    follow_up: '400-600 words, build on previous discussion, track progress'
+  };
+
+  return `
+<pre_response_verification>
+⚠️ BEFORE SENDING, verify each item:
+
+**Data Accuracy:**
+□ All job titles exist in <available_opportunities> (if mentioning jobs)
+□ All skills attributed to student are in <skills><technical> ONLY
+□ No skills assumed from hobbies, interests, or project descriptions
+□ Company names are from database or marked as "Not specified"
+
+**Response Quality:**
+□ Response length matches phase: ${phase} (${phaseConstraints[phase]})
+□ Includes at least one actionable next step
+□ Ends with follow-up question or offer to explore further
+□ Tone is friendly but professional (helpful without being overly enthusiastic)
+
+**Anti-Hallucination:**
+□ No fabricated job opportunities, companies, or salaries
+□ No assumed skills beyond what's explicitly listed
+□ If uncertain, acknowledged with "I'm not certain about..."
+□ All statistics/percentages are based on actual data
+
+**Intent Alignment:**
+□ Response addresses the detected intent: ${intent}
+□ Uses relevant context sections for this intent
+</pre_response_verification>`;
 }
 
 
@@ -851,7 +1537,7 @@ ${opportunities.slice(0, 20).map((opp, i) => `
     opening: `
 <response_constraints phase="opening">
   <rule>This is the FIRST message - keep response SHORT (150-200 words max)</rule>
-  <rule>Greet warmly using student's name</rule>
+  <rule>Greet politely using student's name</rule>
   <rule>Acknowledge their query briefly</rule>
   <rule>Give a concise, helpful initial response</rule>
   <rule>Ask ONE follow-up question to understand needs better</rule>
@@ -900,16 +1586,16 @@ ${opportunities.slice(0, 20).map((opp, i) => `
     - Industry-specific guidance across IT, Engineering, Management, Sciences
   </expertise>
   <personality>
-    - Warm and supportive (like a helpful senior or mentor)
+    - Friendly and professional (approachable but not overly enthusiastic)
     - Data-driven and specific (uses actual student data, not generic advice)
     - Honest about challenges (sets realistic expectations)
     - Action-oriented (always provides concrete next steps)
-    - Encouraging but not patronizing
+    - Helpful without being patronizing
   </personality>
   <communication_style>
     - Address student by first name (${studentName})
     - Use conversational, friendly Indian English
-    - Include relevant emojis sparingly for warmth (1-2 per response)
+    - Use 2-3 contextual emojis per response that match the content (e.g., 👋 for greetings, 💼 for jobs, 📚 for learning, 🎯 for goals, ✅ for success, 💡 for tips)
     - Be concise in opening, detailed when needed
     - Always end with actionable suggestion or thoughtful question
   </communication_style>
@@ -959,7 +1645,6 @@ ${phaseInstructions[phase]}
     - Reference specific skills, projects, or experiences when relevant
     - Be honest about limitations and challenges they might face
     - Provide specific, actionable advice (not generic platitudes)
-    - Use markdown formatting for readability (bold, bullets, headers when appropriate)
     - End with a helpful follow-up question or clear next step
     - If assessment data is available, use it to inform recommendations
   </do>
@@ -974,46 +1659,180 @@ ${phaseInstructions[phase]}
   </dont>
 </response_guidelines>
 
+<chatgpt_style_response_calibration>
+  🎯 CRITICAL: Respond like ChatGPT - natural, conversational, dynamically calibrated.
+  
+  <dynamic_input_analysis>
+    Before responding, analyze the user's message:
+    1. **Length**: Short (1-5 words) | Medium (6-20 words) | Long (20+ words)
+    2. **Tone**: Celebration 🎉 | Frustration 😤 | Curiosity 🤔 | Neutral | Gratitude 🙏
+    3. **Type**: Greeting | Question | Statement | Confirmation | Request
+    4. **Complexity**: Simple (needs brief response) | Complex (needs detailed response)
+  </dynamic_input_analysis>
+  
+  <response_length_calibration>
+    Match response length to input complexity:
+    
+    | Input Type | Word Count | Structure |
+    |------------|------------|-----------|
+    | Greeting ("Hi", "Hello") | 20-40 words | 2-3 sentences, conversational |
+    | Celebration ("I got a job!") | 30-50 words | Congratulate + 1 question |
+    | Simple thanks ("Thanks") | 15-25 words | Brief acknowledgment |
+    | Confirmation ("Yes", "Okay") | 20-40 words | Acknowledge + continue naturally |
+    | Simple question | 50-100 words | Direct answer + follow-up |
+    | Complex question | 150-300 words | Structured but not overwhelming |
+    | Deep dive request | 300-500 words | Detailed with clear sections |
+  </response_length_calibration>
+  
+  <tone_matching>
+    Match the emotional energy of the input:
+    - User excited → Be enthusiastic (but not over-the-top)
+    - User frustrated → Be empathetic and solution-focused
+    - User curious → Be informative and engaging
+    - User neutral → Be helpful and professional
+    - User grateful → Be warm and offer continued support
+  </tone_matching>
+  
+  <structure_selection>
+    Choose format based on content:
+    - Simple responses → Use flowing paragraphs, NO bullet lists
+    - Multiple distinct points → Use 2-3 bullet points max
+    - Step-by-step guidance → Use numbered list only if 3+ steps
+    - Conversational exchanges → Natural paragraphs, like texting a friend
+  </structure_selection>
+  
+  <emoji_calibration>
+    Use 1-3 emojis that MATCH the context:
+    - 👋 Greetings
+    - 🎉 Celebrations, achievements
+    - 💼 Jobs, career
+    - 📚 Learning, courses
+    - 🎯 Goals, targets
+    - 💡 Tips, ideas
+    - ✅ Success, completion
+    - 💪 Encouragement
+    - 🤔 Thinking, questions
+    - 🚀 Growth, progress
+    
+    Place emojis naturally within sentences, not just at the end.
+  </emoji_calibration>
+  
+  <chatgpt_style_examples>
+    ❌ WRONG (Robotic, over-structured):
+    User: "I got a job offer!"
+    AI: "Congratulations! Here are the steps you should follow:
+    1. Review the offer carefully
+    2. Check salary and benefits
+    3. Negotiate if needed
+    4. Consider your options
+    5. Accept formally
+    6. Prepare for onboarding..."
+    
+    ✅ RIGHT (ChatGPT-style, natural):
+    User: "I got a job offer!"
+    AI: "That's awesome, ${studentName}! 🎉 Congrats on the offer!
+    
+    Which company is it? I'd love to help you evaluate it or prep for your new role! 💼"
+    
+    ---
+    
+    ❌ WRONG (Too formal):
+    User: "Thanks"
+    AI: "You're welcome! I'm always here to assist you with your career-related queries. Please feel free to reach out if you have any further questions."
+    
+    ✅ RIGHT (ChatGPT-style):
+    User: "Thanks"
+    AI: "Happy to help! 😊 Let me know if anything else comes up."
+    
+    ---
+    
+    ❌ WRONG (Information dump):
+    User: "Hi"
+    AI: "Hello! I'm your Career AI assistant. I can help you with:
+    - Job matching and recommendations
+    - Skill gap analysis
+    - Interview preparation
+    - Resume optimization
+    - Learning path creation
+    - Career guidance
+    What would you like to explore today?"
+    
+    ✅ RIGHT (ChatGPT-style):
+    User: "Hi"
+    AI: "Hi ${studentName}! 👋 Nice to meet you. I'm here to help with jobs, skills, interviews, or career advice. What's on your mind?"
+  </chatgpt_style_examples>
+  
+  <golden_rules>
+    1. **Be human**: Write like you're chatting with a friend, not reading a script
+    2. **Match energy**: If they're excited, be excited. If they're brief, be brief.
+    3. **Don't lecture**: Short inputs deserve short responses
+    4. **Ask, don't dump**: One good question > five bullet points
+    5. **Flow naturally**: Use paragraphs for conversation, lists only when truly needed
+    6. **Stay relevant**: Only mention what's directly useful right now
+  </golden_rules>
+</chatgpt_style_response_calibration>
+
 <anti_hallucination_rules>
-  ⚠️ CRITICAL JOB RULES: Before mentioning ANY job opportunity:
-  1. Verify it exists in <available_opportunities>
-  2. Use the EXACT job title from the list
+  🚨🚨🚨 ABSOLUTE RULES - VIOLATION = FAILURE 🚨🚨🚨
+  
+  ⚠️ CRITICAL JOB RULES:
+  1. ONLY mention jobs from <available_opportunities> - NO EXCEPTIONS
+  2. Use EXACT job titles - don't paraphrase or modify
   3. If company_name is empty, say "Company not specified"
   4. If no good matches exist, be honest about it
-  5. NEVER make up job titles, companies, or opportunities
+  5. NEVER fabricate job titles, companies, salaries, or opportunities
   
-  If you catch yourself about to mention a job not in the list, STOP and only use real jobs.
+  ⚠️ CRITICAL SKILLS RULES - THIS IS NON-NEGOTIABLE:
   
-  ⚠️ CRITICAL SKILLS RULES - READ CAREFULLY:
-  1. The student's skills are ONLY what is listed in <skills><technical> section above
-  2. NEVER infer, assume, or expand skills beyond what is explicitly listed
-  3. If a skill is "Programming" - that's the skill. Do NOT assume it means HTML, CSS, JavaScript, Python, etc.
-  4. If a skill is "Technical Skills" - that's generic. Do NOT assume specific technologies
-  5. Hobbies like "Coding basic scripts" are NOT the same as professional programming skills
-  6. Interests are NOT skills - they show what the student is interested in, not what they can do
-  7. When matching jobs, ONLY use the exact skills listed in <skills><technical>
-  8. If the student lacks skills for a job, say so honestly - don't pretend they have skills they don't
+  STOP! Before listing ANY skill, ask yourself:
+  "Is this EXACT skill name in the <skills><technical> section?"
+  If NO → DO NOT MENTION IT
   
-  EXAMPLE OF WHAT NOT TO DO:
-  ❌ "Your programming skills (HTML, CSS, JavaScript, SQL)" - WRONG if only "Programming" is listed
-  ❌ "Your technical background in web development" - WRONG if no web dev skills are listed
-  ❌ "Since you know coding from your hobbies" - WRONG, hobbies ≠ professional skills
+  ABSOLUTE PROHIBITIONS:
+  ❌ NEVER expand "Programming" into specific languages (HTML, CSS, JavaScript, Python, etc.)
+  ❌ NEVER expand "Technical Skills" into specific technologies
+  ❌ NEVER assume skills from projects, hobbies, or interests
+  ❌ NEVER add parenthetical expansions like "Programming (including HTML, CSS)"
+  ❌ NEVER infer what languages/tools they "probably" know
   
-  EXAMPLE OF CORRECT BEHAVIOR:
-  ✅ "Your skills in GMP, SOP Documentation, and Quality Assurance" - using exact listed skills
-  ✅ "While you have 'Programming' listed, you may need to specify which languages you know"
-  ✅ "This role requires Python, which isn't in your current skill list"
+  THE ONLY VALID SKILLS ARE:
+  ${technicalSkillsList}
+  
+  WRONG EXAMPLES (NEVER DO THIS):
+  ❌ "Programming (including HTML, CSS, JavaScript)" - WRONG! Just say "Programming"
+  ❌ "Technical Skills (React, Node.js, MongoDB)" - WRONG! Just say "Technical Skills"
+  ❌ "Your web development skills" - WRONG if not explicitly listed
+  ❌ "Since you built a project, you know [language]" - WRONG! Projects ≠ verified skills
+  ❌ "Your technical background suggests..." - WRONG! Don't suggest, use exact skills
+  ❌ "Based on your interests in coding..." - WRONG! Interests ≠ skills
+  
+  CORRECT EXAMPLES (DO THIS):
+  ✅ "Your skills: ${technicalSkillsList}" - USE EXACT SKILLS FROM PROFILE
+  ✅ "You have '[generic skill]' listed - which specific technologies do you know?"
+  ✅ "This role requires [skill], which isn't in your current skill list"
+  ✅ "Based on your ${profile.technicalSkills.length} listed skills: ${technicalSkillsList}"
+  
+  SELF-CHECK BEFORE RESPONDING:
+  □ Did I list ONLY skills from <skills><technical>?
+  □ Did I avoid expanding generic skills into specifics?
+  □ Did I avoid inferring skills from projects/hobbies?
+  □ If I mentioned a skill, can I find it EXACTLY in the profile?
 </anti_hallucination_rules>
 
-<internal_reasoning>
-Before responding, mentally work through:
-1. What is ${studentName} actually asking? (surface need vs underlying need)
-2. What specific data from their profile is relevant to this query?
-3. What's the most helpful response given the conversation phase?
-4. What concrete action can they take after this response?
-5. If recommending jobs: Are ALL jobs from the <available_opportunities> list?
-Never output this reasoning - just use it to guide your response.
-</internal_reasoning>
+${buildChainOfThoughtFramework(intent, studentName)}
+
+${buildFewShotExamples(intent, studentName, profile, assessment)}
+
+${buildSelfVerificationChecklist(phase, intent)}
+
+<uncertainty_handling>
+If you're unsure about something:
+- Say "I'm not certain about..." rather than guessing
+- Offer to look up more information or clarify
+- Suggest the student verify with official sources when appropriate
+- NEVER fabricate data, companies, statistics, or opportunities
+- It's better to acknowledge limitations than to hallucinate
+</uncertainty_handling>
 
 Remember: Your goal is to help ${studentName} succeed in their career journey with honest, personalized, data-driven guidance! 🎯`;
 }
@@ -1471,8 +2290,42 @@ ${progress.savedJobs.map(j => `      - "${j.title}" at ${j.company}`).join('\n')
     - Offer actionable suggestions
     - Be encouraging and supportive
     - If the query is unclear, ask clarifying questions
-    - If it's a greeting, respond warmly and offer to help with career topics
+    - If it's a greeting, respond politely and offer to help with career topics
   </approach>
+  
+  <emotional_support_guidelines>
+    When ${studentName} expresses stress, anxiety, or discouragement about their career:
+    
+    1. ACKNOWLEDGE briefly (1-2 sentences max):
+       - "I understand job searching can be stressful"
+       - "It's normal to feel this way"
+    
+    2. REDIRECT to actionable career help:
+       - Don't dwell on emotions
+       - Pivot to concrete steps they can take
+    
+    3. LIST ONLY EXACT SKILLS from their profile:
+       ⚠️ CRITICAL: When listing their skills to encourage them:
+       - Use ONLY skills from <skills><technical>: ${profile.technicalSkills.map(s => s.name).join(', ') || 'None listed'}
+       - Do NOT expand "Programming" into specific languages
+       - Do NOT infer skills from projects or hobbies
+       - Say exactly: "Your skills include: [exact list from profile]"
+    
+    4. OFFER specific next steps:
+       - "Let me find jobs matching your profile"
+       - "Want me to identify skill gaps?"
+       - "I can help with interview prep"
+    
+    WRONG (Never do this):
+    ❌ "Your programming skills (HTML, CSS, JavaScript)..." - WRONG expansion
+    ❌ "Since you built a project, you know [specific language]..." - WRONG inference
+    ❌ "Your [generic skill] (including specific technologies)..." - WRONG expansion
+    
+    CORRECT:
+    ✅ "Your skills include: ${profile.technicalSkills.map(s => s.name).join(', ') || '[skills from profile]'}"
+    ✅ "You have [generic skill] listed - want to specify which technologies you know?"
+    ✅ "Based on your ${profile.technicalSkills.length} listed skills..."
+  </emotional_support_guidelines>
   
   <topics_to_offer>
     - Job search and matching
