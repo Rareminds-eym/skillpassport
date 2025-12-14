@@ -98,7 +98,8 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
       reasonText,
       // Allow moderation even after publishing and approval
       canModerate: marksEntered,
-      canApprove: marksEntered && hasModeration && !subjectMarks?.isModerated
+      // Only show approve button if there are actual moderation changes that need approval
+      canApprove: marksEntered && hasModeration && moderationCount > 0 && !subjectMarks?.isModerated
     };
   });
 
