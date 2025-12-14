@@ -107,7 +107,110 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
   const canPublish = exam.marks.length === exam.subjects.length && subjectsReadyForPublishing === exam.marks.length;
 
   return (
-    <div className="space-y-8">
+    <>
+      {/* Enhanced Publish Confirmation Modal */}
+      {showPublishConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-100">
+              <div className="text-center">
+                <div className="p-3 bg-green-100 rounded-full w-fit mx-auto mb-4">
+                  <BellAlertIcon className="h-8 w-8 text-green-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Publish Exam Results</h3>
+                <p className="text-sm text-gray-600">
+                  You're about to publish results for <span className="font-semibold">{exam.name}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-4">
+              {/* Summary Stats */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-medium text-gray-900 mb-3">Publication Summary</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Students:</span>
+                    <span className="font-medium">{exam.marks[0]?.studentMarks.length || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subjects:</span>
+                    <span className="font-medium">{exam.marks.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Grade:</span>
+                    <span className="font-medium">{exam.grade}{exam.section ? `-${exam.section}` : ''}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Academic Year:</span>
+                    <span className="font-medium">{exam.academicYear}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Warning Notice */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-900 mb-1">Important Notice</p>
+                    <ul className="text-amber-700 space-y-1">
+                      <li>• Results will be immediately visible to students and parents</li>
+                      <li>• Notifications will be sent automatically</li>
+                      <li>• This action cannot be undone</li>
+                      <li>• Report cards will be generated in the background</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Confirmation Checkbox */}
+              <label className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                  required 
+                />
+                <div className="text-sm">
+                  <p className="font-medium text-blue-900">I confirm that:</p>
+                  <p className="text-blue-700">All results have been reviewed and are ready for publication</p>
+                </div>
+              </label>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-gray-100 flex gap-3 justify-end">
+              <button
+                onClick={() => setShowPublishConfirm(false)}
+                className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={publishResults}
+                disabled={publishing}
+                className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium inline-flex items-center gap-2"
+              >
+                {publishing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <BellAlertIcon className="h-4 w-4" />
+                    Publish Results
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-8">
       {/* Enhanced Header */}
       <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6">
         <div className="flex items-center justify-between">
@@ -560,110 +663,10 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
         </div>
       )}
 
-      {/* Enhanced Publish Confirmation Modal */}
-      {showPublishConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl">
-            {/* Modal Header */}
-            <div className="p-6 border-b border-gray-100">
-              <div className="text-center">
-                <div className="p-3 bg-green-100 rounded-full w-fit mx-auto mb-4">
-                  <BellAlertIcon className="h-8 w-8 text-green-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Publish Exam Results</h3>
-                <p className="text-sm text-gray-600">
-                  You're about to publish results for <span className="font-semibold">{exam.name}</span>
-                </p>
-              </div>
-            </div>
 
-            {/* Modal Content */}
-            <div className="p-6 space-y-4">
-              {/* Summary Stats */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-medium text-gray-900 mb-3">Publication Summary</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Students:</span>
-                    <span className="font-medium">{exam.marks[0]?.studentMarks.length || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Subjects:</span>
-                    <span className="font-medium">{exam.marks.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Grade:</span>
-                    <span className="font-medium">{exam.grade}{exam.section ? `-${exam.section}` : ''}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Academic Year:</span>
-                    <span className="font-medium">{exam.academicYear}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Warning Notice */}
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-amber-900 mb-1">Important Notice</p>
-                    <ul className="text-amber-700 space-y-1">
-                      <li>• Results will be immediately visible to students and parents</li>
-                      <li>• Notifications will be sent automatically</li>
-                      <li>• This action cannot be undone</li>
-                      <li>• Report cards will be generated in the background</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* Confirmation Checkbox */}
-              <label className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
-                  required 
-                />
-                <div className="text-sm">
-                  <p className="font-medium text-blue-900">I confirm that:</p>
-                  <p className="text-blue-700">All results have been reviewed and are ready for publication</p>
-                </div>
-              </label>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-6 border-t border-gray-100 flex gap-3 justify-end">
-              <button
-                onClick={() => setShowPublishConfirm(false)}
-                className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={publishResults}
-                disabled={publishing}
-                className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium inline-flex items-center gap-2"
-              >
-                {publishing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    Publishing...
-                  </>
-                ) : (
-                  <>
-                    <BellAlertIcon className="h-4 w-4" />
-                    Publish Results
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Enhanced Navigation */}
-      <div className="bg-white border-t border-gray-200 p-6 -mx-6 -mb-6 mt-8">
+      <div className="bg-white border-t border-gray-200 p-6 mt-8">
         <div className="flex items-center justify-between">
           <button 
             onClick={() => setActiveStep("moderation")} 
@@ -708,6 +711,7 @@ const PublishingStep: React.FC<PublishingStepProps> = ({ exam, setActiveStep, up
         </div>
       </div>
     </div>
+    </>
   );
 };
 

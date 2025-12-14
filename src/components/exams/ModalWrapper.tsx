@@ -26,7 +26,7 @@ const ModalWrapper: React.FC<ModalWrapperProps> = ({ title, subtitle, children, 
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
-        <div className={`relative w-full ${sizeClasses[size]} transform overflow-hidden rounded-2xl bg-white shadow-2xl max-h-[90vh] flex flex-col`}>
+        <div className={`relative w-full ${sizeClasses[size]} transform overflow-hidden rounded-2xl bg-white shadow-2xl max-h-[95vh] flex flex-col`}>
           <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5 flex-shrink-0">
             <div className="flex-1">
               <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
@@ -36,7 +36,9 @@ const ModalWrapper: React.FC<ModalWrapperProps> = ({ title, subtitle, children, 
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
-          <div className="p-6 overflow-y-auto flex-1">{children}</div>
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6">{children}</div>
+          </div>
         </div>
       </div>
     </div>

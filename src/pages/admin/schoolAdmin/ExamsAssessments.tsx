@@ -5,7 +5,6 @@ import {
   ClockIcon,
   CalendarIcon,
   DocumentTextIcon,
-  ShieldCheckIcon,
   PlayIcon,
   ClipboardDocumentListIcon,
   UserGroupIcon,
@@ -321,7 +320,7 @@ const ExamsAssessments: React.FC = () => {
       {activeView === "reports" && (
         <div className="space-y-6">
           {/* Analytics Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <StatsCard 
               label="Total Students Assessed" 
               value={exams.reduce((acc, exam) => acc + (exam.marks[0]?.studentMarks.length || 0), 0)} 
@@ -340,12 +339,7 @@ const ExamsAssessments: React.FC = () => {
               icon={CalendarIcon} 
               color="purple" 
             />
-            <StatsCard 
-              label="Pending Moderation" 
-              value={exams.reduce((count, e) => count + e.marks.filter(m => !m.isModerated).length, 0)} 
-              icon={ShieldCheckIcon} 
-              color="amber" 
-            />
+
           </div>
 
           {/* Published Exams Reports */}
@@ -369,9 +363,11 @@ const ExamsAssessments: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                       {exam.marks.slice(0, 3).map(subjectMark => {
                         const subject = exam.subjects.find(s => s.id === subjectMark.subjectId);
+                        const totalStudents = subjectMark.studentMarks.length;
                         const presentStudents = subjectMark.studentMarks.filter(s => !s.isAbsent);
                         const passedStudents = presentStudents.filter(s => s.marks !== null && s.marks >= (subject?.passingMarks || 0));
-                        const passRate = presentStudents.length > 0 ? Math.round((passedStudents.length / presentStudents.length) * 100) : 0;
+                        // Pass rate based on total students (absent students count as failed)
+                        const passRate = totalStudents > 0 ? Math.round((passedStudents.length / totalStudents) * 100) : 0;
                         
                         return (
                           <div key={subjectMark.subjectId} className="bg-gray-50 rounded-lg p-3">

@@ -31,50 +31,92 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ exams }) => {
     );
   }
 
-  // Calculate dynamic performance data
+  // Calculate overall performance trends across ALL published exams
   const calculatePerformanceData = () => {
-    const allSubjectMarks = publishedExams.flatMap(exam => exam.marks);
     const subjectPerformance: Record<string, { total: number; passed: number; marks: number[] }> = {};
     const gradeDistribution = { 'A+': 0, 'A': 0, 'B+': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0 };
-    let totalMarks = 0;
-    let totalStudents = 0;
+    let totalStudentExamInstances = 0;
+    let totalPassedInstances = 0;
 
-    allSubjectMarks.forEach(subjectMark => {
-      const subjectName = subjectMark.subjectName;
-      if (!subjectPerformance[subjectName]) {
-        subjectPerformance[subjectName] = { total: 0, passed: 0, marks: [] };
-      }
+    // Track all unique students across all exams for grade distribution
+    const allStudentExamResults: Array<{studentId: string, examId: string, overallPassed: boolean, percentage: number}> = [];
 
-      subjectMark.studentMarks.forEach(student => {
-        if (!student.isAbsent && student.marks !== null) {
-          const marks = student.marks;
-          subjectPerformance[subjectName].total++;
-          subjectPerformance[subjectName].marks.push(marks);
-          totalMarks += marks;
-          totalStudents++;
+    // Aggregate data across ALL published exams for overall trends
+    publishedExams.forEach(exam => {
+      // Calculate grade distribution for each exam (strict absence policy)
+      const allStudents = exam.marks.flatMap(m => m.studentMarks);
+      const uniqueStudents = Array.from(new Set(allStudents.map(s => s.studentId)));
 
-          // Find the exam and subject to get passing marks
-          const exam = publishedExams.find(e => e.marks.some(m => m.subjectId === subjectMark.subjectId));
-          const subject = exam?.subjects.find(s => s.id === subjectMark.subjectId);
-          const passingMarks = subject?.passingMarks || 35;
+      uniqueStudents.forEach(studentId => {
+        const studentSubjectMarks = exam.marks.map(subjectMark => {
+          const mark = subjectMark.studentMarks.find(sm => sm.studentId === studentId);
+          const subject = exam.subjects.find(s => s.id === subjectMark.subjectId);
+          return {
+            subjectName: subjectMark.subjectName,
+            marks: mark?.marks || null,
+            isAbsent: mark?.isAbsent || false,
+            passed: mark && !mark.isAbsent && mark.marks !== null && mark.marks >= (subject?.passingMarks || 0),
+            totalMarks: subject?.totalMarks || 100
+          };
+        });
 
-          if (marks >= passingMarks) {
-            subjectPerformance[subjectName].passed++;
-          }
-
-          // Grade distribution
-          if (marks >= 90) gradeDistribution['A+']++;
-          else if (marks >= 80) gradeDistribution['A']++;
-          else if (marks >= 70) gradeDistribution['B+']++;
-          else if (marks >= 60) gradeDistribution['B']++;
-          else if (marks >= 50) gradeDistribution['C']++;
-          else if (marks >= 35) gradeDistribution['D']++;
-          else gradeDistribution['F']++;
+        const appearedSubjects = studentSubjectMarks.filter(sm => !sm.isAbsent);
+        const passedSubjects = studentSubjectMarks.filter(sm => sm.passed);
+        
+        // Student passes overall ONLY if appeared for ALL subjects AND passed all
+        const overallPassed = appearedSubjects.length === exam.subjects.length && passedSubjects.length === exam.subjects.length;
+        
+        let percentage = 0;
+        if (appearedSubjects.length === exam.subjects.length) {
+          // Student appeared for all subjects - calculate percentage
+          const totalMarks = appearedSubjects.reduce((sum, sm) => sum + (sm.marks || 0), 0);
+          const maxMarks = appearedSubjects.reduce((sum, sm) => sum + sm.totalMarks, 0);
+          percentage = maxMarks > 0 ? Math.round((totalMarks / maxMarks) * 100) : 0;
         }
+
+        allStudentExamResults.push({
+          studentId,
+          examId: exam.id,
+          overallPassed,
+          percentage
+        });
+
+        // Update subject-wise performance for each subject this student encountered
+        studentSubjectMarks.forEach(sm => {
+          if (!subjectPerformance[sm.subjectName]) {
+            subjectPerformance[sm.subjectName] = { total: 0, passed: 0, marks: [] };
+          }
+          subjectPerformance[sm.subjectName].total++;
+          totalStudentExamInstances++;
+
+          if (!sm.isAbsent && sm.marks !== null) {
+            subjectPerformance[sm.subjectName].marks.push(sm.marks);
+            if (sm.passed) {
+              subjectPerformance[sm.subjectName].passed++;
+              totalPassedInstances++;
+            }
+          }
+          // Absent students are counted in total but not in passed (they fail)
+        });
       });
     });
 
-    const overallAverage = totalStudents > 0 ? totalMarks / totalStudents : 0;
+    // Calculate grade distribution from all student-exam results
+    allStudentExamResults.forEach(result => {
+      if (result.overallPassed && result.percentage > 0) {
+        const grade = result.percentage >= 90 ? 'A+' : 
+                     result.percentage >= 80 ? 'A' : 
+                     result.percentage >= 70 ? 'B+' : 
+                     result.percentage >= 60 ? 'B' : 
+                     result.percentage >= 50 ? 'C' : 'D';
+        gradeDistribution[grade as keyof typeof gradeDistribution]++;
+      } else {
+        gradeDistribution['F']++;
+      }
+    });
+
+    // Calculate overall pass rate across all subject instances
+    const overallPassRate = totalStudentExamInstances > 0 ? (totalPassedInstances / totalStudentExamInstances) * 100 : 0;
     
     // Find best and worst performing subjects
     const subjectAverages = Object.entries(subjectPerformance).map(([name, data]) => ({
@@ -97,10 +139,10 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ exams }) => {
     return {
       subjectAverages,
       gradeDistribution,
-      overallAverage,
+      overallAverage: overallPassRate,
       topPerformer,
       needsAttention,
-      totalStudents
+      totalStudents: Object.values(gradeDistribution).reduce((sum, count) => sum + count, 0)
     };
   };
 
@@ -120,21 +162,21 @@ const PerformanceTrends: React.FC<PerformanceTrendsProps> = ({ exams }) => {
                 <div key={subject.name} className="bg-white rounded-lg p-3 border border-blue-200">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">{subject.name}</span>
-                    <span className="text-lg font-bold text-blue-600">{subject.average.toFixed(1)}%</span>
+                    <span className="text-lg font-bold text-blue-600">{subject.passRate.toFixed(1)}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
                       className={`h-2 rounded-full ${
-                        subject.average >= 75 ? "bg-green-500" : 
-                        subject.average >= 60 ? "bg-blue-500" : 
-                        subject.average >= 45 ? "bg-yellow-500" : "bg-red-500"
+                        subject.passRate >= 75 ? "bg-green-500" : 
+                        subject.passRate >= 60 ? "bg-blue-500" : 
+                        subject.passRate >= 45 ? "bg-yellow-500" : "bg-red-500"
                       }`}
-                      style={{ width: `${Math.min(subject.average, 100)}%` }}
+                      style={{ width: `${Math.min(subject.passRate, 100)}%` }}
                     />
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>Pass Rate: {subject.passRate.toFixed(0)}% ({subject.passed}/{subject.total})</span>
-                    <span>Range: {subject.range}</span>
+                    <span>Avg: {subject.average.toFixed(1)} | Range: {subject.range}</span>
                   </div>
                 </div>
               ))}

@@ -134,13 +134,17 @@ const ExamWorkflowManager: React.FC<ExamWorkflowManagerProps> = (props) => {
       subtitle="Manage exam workflow"
       size="full"
     >
-      <div className="space-y-6">
+      <div className="flex flex-col h-full space-y-6">
         {/* Workflow Stepper */}
-        <WorkflowStepper exam={localExam} onStepClick={setActiveStep} />
+        <div className="flex-shrink-0">
+          <WorkflowStepper exam={localExam} onStepClick={setActiveStep} />
+        </div>
 
         {/* Content Area */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          {renderStepContent()}
+        <div className="flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="h-full overflow-y-auto p-6">
+            {renderStepContent()}
+          </div>
         </div>
       </div>
     </ModalWrapper>
