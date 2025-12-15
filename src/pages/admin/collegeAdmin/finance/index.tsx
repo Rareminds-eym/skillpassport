@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { DollarSign, AlertCircle, FileText, TrendingUp } from "lucide-react";
+import { IndianRupee, AlertCircle, FileText, TrendingUp } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
 import { FeeStructure, StudentFeeSummary } from "./types";
 import { useFeeStructures } from "./hooks/useFeeStructures";
@@ -48,11 +48,11 @@ const FinanceModule: React.FC = () => {
   // Hooks
   const feeStructuresHook = useFeeStructures(collegeId);
   const feeTrackingHook = useFeeTracking(collegeId);
-  const { programs } = usePrograms(collegeId);
+  const { programs, departments } = usePrograms(collegeId);
 
   // Stats for display
   const financeStats = [
-    { label: "Total Fee Structures", value: feeStructuresHook.stats.total.toString(), icon: DollarSign, color: "bg-green-500" },
+    { label: "Total Fee Structures", value: feeStructuresHook.stats.total.toString(), icon: IndianRupee, color: "bg-green-500" },
     { label: "Active Structures", value: feeStructuresHook.stats.active.toString(), icon: FileText, color: "bg-blue-500" },
     { label: "Inactive Structures", value: feeStructuresHook.stats.inactive.toString(), icon: AlertCircle, color: "bg-yellow-500" },
     { label: "Total Fee Value", value: `₹${(feeStructuresHook.stats.totalValue / 100000).toFixed(1)}L`, icon: TrendingUp, color: "bg-purple-500" },
@@ -185,6 +185,7 @@ const FinanceModule: React.FC = () => {
         onSave={handleSave}
         structure={selectedStructure}
         programs={programs}
+        departments={departments}
       />
 
       {/* Payment Form Modal */}
