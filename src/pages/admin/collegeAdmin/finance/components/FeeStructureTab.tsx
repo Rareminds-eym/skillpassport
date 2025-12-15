@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { Plus, Search, Pencil, Trash2, Copy, ToggleLeft, ToggleRight, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Copy, ToggleLeft, ToggleRight, IndianRupee, ChevronDown, ChevronUp, Eye, FileDown } from "lucide-react";
 import { FeeStructure } from "../types";
+import { FeeStructureViewModal } from "./FeeStructureViewModal";
+import { exportFeeStructurePDF } from "../utils/exportFeeStructurePDF";
 
 interface Props {
   feeStructures: FeeStructure[];
@@ -26,6 +28,17 @@ export const FeeStructureTab: React.FC<Props> = ({
   const [filterCategory, setFilterCategory] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [selectedStructure, setSelectedStructure] = useState<FeeStructure | null>(null);
+
+  const handleView = (structure: FeeStructure) => {
+    setSelectedStructure(structure);
+    setViewModalOpen(true);
+  };
+
+  const handleExportPDF = (structure: FeeStructure) => {
+    exportFeeStructurePDF(structure);
+  };
 
   const filteredStructures = feeStructures.filter((fs) => {
     const matchesSearch = fs.program_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -96,7 +109,7 @@ export const FeeStructureTab: React.FC<Props> = ({
 
       {filteredStructures.length === 0 ? (
         <div className="p-8 bg-blue-50 border border-blue-200 rounded-xl text-center">
-          <DollarSign className="h-12 w-12 text-blue-400 mx-auto mb-3" />
+          <IndianRupee className="h-12 w-12 text-blue-400 mx-auto mb-3" />
           <p className="text-blue-900 font-medium mb-1">
             {feeStructures.length === 0 ? "No fee structures added yet" : "No matching fee structures"}
           </p>
@@ -127,13 +140,19 @@ export const FeeStructureTab: React.FC<Props> = ({
                       </span>
                     </div>
                     <p className="text-sm text-gray-500">
-                      {fs.semester === 1 ? "1st PUC" : fs.semester === 2 ? "2nd PUC" : `Year ${fs.semester}`} • {fs.academic_year} • {fs.category} • {fs.quota}
+                      {fs.semester === 1 ? "1st Year" : fs.semester === 2 ? "2nd Year" : fs.semester === 3 ? "3rd Year" : `${fs.semester}th Year`} • {fs.academic_year} • {fs.category} • {fs.quota}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-bold text-green-600">₹{(fs.total_amount || 0).toLocaleString()}</span>
                   <div className="flex gap-1 ml-4">
+                    <button onClick={() => handleView(fs)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="View Details">
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => handleExportPDF(fs)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Export PDF">
+                      <FileDown className="h-4 w-4" />
+                    </button>
                     <button onClick={() => onEdit(fs)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Edit">
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -218,6 +237,16 @@ export const FeeStructureTab: React.FC<Props> = ({
           ))}
         </div>
       )}
+
+      {/* View Modal */}
+      <FeeStructureViewModal
+        isOpen={viewModalOpen}
+        onClose={() => {
+          setViewModalOpen(false);
+          setSelectedStructure(null);
+        }}
+        structure={selectedStructure}
+      />
     </div>
   );
 };
