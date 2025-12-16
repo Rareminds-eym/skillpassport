@@ -844,10 +844,59 @@ const StudentDashboard = () => {
               <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
                 {opportunities?.length || 0}
               </Badge>
+              {/* Badge for school students */}
+              {studentData?.grade && (studentData?.school_id || studentData?.school_class_id) && (
+                <Badge className={`px-2.5 py-0.5 rounded-md text-xs font-medium ml-2 ${
+                  parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8
+                    ? "bg-blue-50 text-blue-700"
+                    : parseInt(studentData.grade) >= 9
+                    ? "bg-green-50 text-green-700"
+                    : "bg-gray-50 text-gray-700"
+                }`}>
+                  {parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8
+                    ? "Internships Only"
+                    : parseInt(studentData.grade) >= 9
+                    ? "All Opportunities"
+                    : `Grade ${studentData.grade}`
+                  }
+                </Badge>
+              )}
+              
+              {/* Badge for college students */}
+              {(studentData?.university_college_id || studentData?.universityId) && (
+                <Badge className="bg-green-50 text-green-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
+                  All Opportunities
+                </Badge>
+              )}
             </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-4 p-6 space-y-3">
+          {/* Info message for school students */}
+          {/* {(studentData?.school_id || studentData?.school_class_id) && studentData?.grade && (
+            <div className="bg-blue-50 rounded-lg p-3 mb-4">
+              <p className="text-sm text-blue-700">
+                <span className="font-semibold">Grade {studentData.grade} Opportunities:</span> 
+                {parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8
+                  ? " Showing internships and learning programs suitable for your grade level."
+                  : parseInt(studentData.grade) >= 9
+                  ? " Showing all opportunities including internships, jobs, and career opportunities."
+                  : " Showing opportunities suitable for your grade level."
+                }
+              </p>
+            </div>
+          )} */}
+          
+          {/* Info message for college students */}
+          {/* {(studentData?.university_college_id || studentData?.universityId) && (
+            <div className="bg-green-50 rounded-lg p-3 mb-4">
+              <p className="text-sm text-green-700">
+                <span className="font-semibold">College Student Opportunities:</span> 
+                Showing all available opportunities including internships, full-time jobs, part-time work, and contract positions.
+              </p>
+            </div>
+          )} */}
+          
           {(() => {
             console.log({
               loading: opportunitiesLoading,
@@ -881,9 +930,10 @@ const StudentDashboard = () => {
               </p>
             </div>
           ) : (() => {
-            // Filter opportunities based on student type
+            // Filter opportunities based on student type and grade
             const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
             const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+            const studentGrade = studentData?.grade;
 
             // Fallback: Check education level if database fields are not available
             const hasHighSchoolOnly = userData.education.length > 0 &&
@@ -894,22 +944,45 @@ const StudentDashboard = () => {
             let filteredOpportunities = opportunities;
 
             if (isSchoolStudent || hasHighSchoolOnly) {
-              // School students: Show only internships (employment_type = 'internship')
-              filteredOpportunities = opportunities.filter(opp =>
-                opp.employment_type && opp.employment_type.toLowerCase() === 'internship'
-              );
+              // School students: Filter based on grade level
+              filteredOpportunities = opportunities.filter(opp => {
+                const isInternship = opp.employment_type && opp.employment_type.toLowerCase() === 'internship';
+                
+                // For grades 6-8: Show ONLY internships
+                if (studentGrade && parseInt(studentGrade) >= 6 && parseInt(studentGrade) <= 8) {
+                  return isInternship;
+                }
+                
+                // For grade 9+: Show ALL opportunities (internships + full-time + part-time, etc.)
+                if (studentGrade && parseInt(studentGrade) >= 9) {
+                  return true; // Show all opportunities
+                }
+                
+                // Fallback for students without grade info: show only internships
+                return isInternship;
+              });
             } else if (isUniversityStudent) {
-              // University students: Show intern level and other experience levels (but not school internships)
-              filteredOpportunities = opportunities.filter(opp =>
-                opp.experience_level && (
-                  opp.experience_level.toLowerCase().includes('intern') ||
-                  opp.experience_level.toLowerCase().includes('entry') ||
-                  opp.experience_level.toLowerCase().includes('mid') ||
-                  opp.experience_level.toLowerCase().includes('senior') ||
-                  opp.experience_level.toLowerCase().includes('lead')
-                )
-              );
+              // University/College students: Show ALL opportunities (internships + jobs)
+              filteredOpportunities = opportunities; // Show everything
             }
+
+            // Debug logging for opportunity filtering
+            console.log('🎯 Opportunity Filtering Debug:', {
+              isSchoolStudent,
+              isUniversityStudent,
+              studentGrade,
+              gradeRange: studentGrade ? 
+                (parseInt(studentGrade) >= 6 && parseInt(studentGrade) <= 8 ? 'Grades 6-8 (Internships Only)' :
+                 parseInt(studentGrade) >= 9 ? 'Grade 9+ (All Opportunities)' : 'Other Grade') : 'No Grade',
+              totalOpportunities: opportunities.length,
+              filteredCount: filteredOpportunities.length,
+              studentData: {
+                school_id: studentData?.school_id,
+                school_class_id: studentData?.school_class_id,
+                university_college_id: studentData?.university_college_id,
+                grade: studentData?.grade
+              }
+            });
 
             const displayOpportunities = showAllOpportunities ? filteredOpportunities : filteredOpportunities.slice(0, 3);
 
@@ -929,7 +1002,7 @@ const StudentDashboard = () => {
                           {opp.title}
                         </h4>
                         <p className="text-blue-600 text-sm font-medium mb-2">
-                          {opp.company_name || 'Learning Opportunity'}
+                          {opp.company_name || opp.department || opp.sector || 'Learning Opportunity'}
                         </p>
                         
                         {/* Mode and Location */}
@@ -1411,15 +1484,8 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
 <CardContent className="pt-4 p-6 space-y-4">
-          {/* AI-Powered Recommendations Section - TOP */}
-          {hasAssessment && assessmentRecommendations && (
-            <div className="mb-4">
-              <TrainingRecommendations recommendations={assessmentRecommendations} />
-            </div>
-          )}
-
-          {/* No Assessment CTA - TOP */}
-          {!hasAssessment && !recommendationsLoading && (
+          {/* No Assessment CTA - TOP (only show when not expanded) */}
+          {!hasAssessment && !recommendationsLoading && !showAllTraining && (
             <div className="bg-gradient-to-br from-blue-50 to-blue-50 rounded-lg p-4 border-2 border-dashed border-blue-300 mb-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-500 flex items-center justify-center flex-shrink-0">
@@ -1445,8 +1511,17 @@ const StudentDashboard = () => {
             </div>
           )}
 
-          {/* Training Courses List - BOTTOM */}
-          {/* Show 0 courses if recommendations exist, otherwise show 2 */}
+          {/* Unified Training Content - Both Recommendations and Courses */}
+          <div className={showAllTraining ? "max-h-80 overflow-y-auto pr-2 space-y-3" : "space-y-3"}>
+            {/* AI-Powered Recommendations Section */}
+            {hasAssessment && assessmentRecommendations && (
+              <div className="mb-4">
+                <TrainingRecommendations 
+                  recommendations={assessmentRecommendations} 
+                  showAll={showAllTraining}
+                />
+              </div>
+            )}
           {(showAllTraining
             ? userData.training.filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved"))
             : userData.training.filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved")).slice(0, hasAssessment && assessmentRecommendations ? 0 : 2)
@@ -1564,6 +1639,7 @@ const StudentDashboard = () => {
               </div>
             );
           })}
+          </div>
 
           {/* Show More / Less Button */}
           {userData.training.filter((t) => t.enabled !== false).length > 2 && (

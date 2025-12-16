@@ -2,6 +2,7 @@
 // This provides both the new unified modal and backward-compatible named exports
 
 import UnifiedProfileEditModal from "./UnifiedProfileEditModal";
+import PersonalInfoEditModalComponent from "./PersonalInfoEditModal";
 export { FIELD_CONFIGS } from "./fieldConfigs";
 export * from "./utils";
 
@@ -73,10 +74,9 @@ export const SkillsEditModal = ({ isOpen, onClose, data, onSave }) => (
 );
 
 export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => (
-  <UnifiedProfileEditModal
+  <PersonalInfoEditModalComponent
     isOpen={isOpen}
     onClose={onClose}
-    type="personalInfo"
     data={data}
     onSave={onSave}
   />

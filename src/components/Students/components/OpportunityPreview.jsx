@@ -460,10 +460,207 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { MapPin, Briefcase, X, ExternalLink, Star, Bookmark, Clock, Users, TrendingUp, Award, CheckCircle2, Calendar } from 'lucide-react';
+import { MapPin, Briefcase, X, ExternalLink, Star, Bookmark, Clock, Users, TrendingUp, Award, CheckCircle2, Calendar, AlertCircle, Send } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+
+// Application Confirmation Modal Component
+const ApplicationConfirmationModal = ({ 
+  opportunity, 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  isApplying 
+}) => {
+  const [applicationStatus, setApplicationStatus] = React.useState('confirm'); // 'confirm', 'applying', 'success'
+  
+  // Reset status when modal opens/closes
+  React.useEffect(() => {
+    if (isOpen) {
+      setApplicationStatus('confirm');
+    }
+  }, [isOpen]);
+
+  // Handle application status changes
+  React.useEffect(() => {
+    if (isApplying) {
+      setApplicationStatus('applying');
+    }
+  }, [isApplying]);
+
+  if (!isOpen || !opportunity) return null;
+
+  const getInitials = (name) => {
+    if (!name) return '??';
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getDisplayName = () => {
+    return opportunity.company_name || opportunity.job_title || opportunity.title || 'Unknown';
+  };
+
+  return ReactDOM.createPortal(
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100000]"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-blue-600 p-6 rounded-t-2xl text-center relative">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white bg-opacity-20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-opacity-30 transition-all"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white shadow-lg flex items-center justify-center overflow-hidden">
+            {opportunity.company_logo ? (
+              <img 
+                src={opportunity.company_logo} 
+                alt={getDisplayName()}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-xl font-bold text-blue-600">
+                {getInitials(getDisplayName())}
+              </span>
+            )}
+          </div>
+          
+          <h2 className="text-xl font-bold text-white mb-2">Confirm Application</h2>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          {/* Job Details */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 className="font-bold text-gray-900 text-lg mb-1">
+              {opportunity.job_title || opportunity.title}
+            </h3>
+            {opportunity.company_name && (
+              <p className="text-blue-600 font-medium mb-2">
+                {opportunity.company_name}
+              </p>
+            )}
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              {opportunity.location && (
+                <div className="flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  <span>{opportunity.location}</span>
+                </div>
+              )}
+              {opportunity.employment_type && (
+                <div className="flex items-center gap-1">
+                  <Briefcase className="w-4 h-4" />
+                  <span>{opportunity.employment_type}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Application Info */}
+          <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-100">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h5 className="font-semibold text-gray-900 mb-1">Ready to Apply</h5>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Your application will be submitted using your saved profile information. 
+                  Make sure your profile is up to date for the best results.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* External Link Warning */}
+          {opportunity.application_link && (
+            <div className="bg-yellow-50 rounded-lg p-4 mb-6 border border-yellow-200">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-yellow-600 flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-1">External Application</h4>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    This will also open an external application page. We'll save your application 
+                    to your profile for tracking.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                setApplicationStatus('applying');
+                await onConfirm();
+                setApplicationStatus('success');
+                // Auto-close after 2 seconds
+                setTimeout(() => {
+                  onClose();
+                }, 2000);
+              }}
+              disabled={isApplying || applicationStatus === 'applying' || applicationStatus === 'success'}
+              className={`flex-1 px-4 py-3 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
+                applicationStatus === 'success'
+                  ? 'bg-green-600 text-white cursor-default'
+                  : applicationStatus === 'applying'
+                  ? 'bg-gray-400 text-white cursor-wait'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg'
+              }`}
+            >
+              {applicationStatus === 'success' ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Application Submitted!
+                </>
+              ) : applicationStatus === 'applying' ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Applying...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Confirm & Apply
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Footer Note */}
+          <p className="text-xs text-gray-500 text-center mt-4">
+            {applicationStatus === 'success' 
+              ? '✅ Application submitted successfully! Check Applications tab to track progress.'
+              : '💡 You can track your application status in the Applications tab'
+            }
+          </p>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
 
 const OpportunityPreview = ({ 
   opportunity, 
@@ -479,6 +676,7 @@ const OpportunityPreview = ({
   const [showAllResponsibilities, setShowAllResponsibilities] = React.useState(false);
   const [showAllSkills, setShowAllSkills] = React.useState(false);
   const [showDetailsModal, setShowDetailsModal] = React.useState(false);
+  const [showApplicationModal, setShowApplicationModal] = React.useState(false);
 
   // Reset expand states when opportunity changes
   React.useEffect(() => {
@@ -486,6 +684,7 @@ const OpportunityPreview = ({
     setShowAllResponsibilities(false);
     setShowAllSkills(false);
     setShowDetailsModal(false);
+    setShowApplicationModal(false);
   }, [opportunity?.id]);
 
   if (!opportunity) {
@@ -562,7 +761,7 @@ const OpportunityPreview = ({
   return (
     <div className="bg-white rounded-3xl shadow-md h-full flex flex-col overflow-hidden border border-gray-100">
       {/* Modern Header with Gradient Accent */}
-      <div className="relative bg-gradient-to-br from-indigo-600 via-indigo-700 to-blue-700 p-6">
+      <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 p-6">
         {/* Decorative Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2"></div>
@@ -590,7 +789,7 @@ const OpportunityPreview = ({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <span className="text-xl font-bold text-indigo-600">
+              <span className="text-xl font-bold text-blue-600">
                 {getInitials(getDisplayName())}
               </span>
             )}
@@ -602,13 +801,13 @@ const OpportunityPreview = ({
               {opportunity.job_title || opportunity.title}
             </h1>
             {opportunity.company_name && (
-              <p className="text-indigo-100 text-sm font-medium mb-2">
+              <p className="text-blue-100 text-sm font-medium mb-2">
                 {opportunity.company_name}
               </p>
             )}
             
             {/* Quick Meta */}
-            <div className="flex items-center gap-3 text-xs text-indigo-200">
+            <div className="flex items-center gap-3 text-xs text-blue-200">
               <div className="flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5" />
                 <span className="line-clamp-1">{opportunity.location || 'Remote'}</span>
@@ -669,7 +868,7 @@ const OpportunityPreview = ({
         {opportunity.description && (
           <div>
             <h2 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-              <div className="w-1.5 h-4 bg-gradient-to-b from-indigo-600 to-indigo-400 rounded-full"></div>
+              <div className="w-1.5 h-4 bg-blue-600 rounded-full"></div>
               About the Role
             </h2>
             <p className="text-sm text-gray-600 leading-relaxed">
@@ -682,13 +881,13 @@ const OpportunityPreview = ({
         {isLearningInternship && opportunity.what_youll_learn && (
           <div>
             <h2 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-              <div className="w-1.5 h-4 bg-gradient-to-b from-indigo-600 to-indigo-400 rounded-full"></div>
+              <div className="w-1.5 h-4 bg-blue-600 rounded-full"></div>
               What You'll Learn
             </h2>
             <ul className="space-y-2">
               {opportunity.what_youll_learn.split(/[;,]/).filter(item => item.trim()).map((item, idx) => (
                 <li key={idx} className="flex items-start gap-2.5 text-sm text-gray-600">
-                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 flex-shrink-0 mt-2"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 flex-shrink-0 mt-2"></div>
                   <span className="flex-1 leading-relaxed">{item.trim()}</span>
                 </li>
               ))}
@@ -701,24 +900,26 @@ const OpportunityPreview = ({
           <div className="grid grid-cols-2 gap-4">
             {opportunity.sector && (
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-md">
-                  <Briefcase className="w-4.5 h-4.5 text-white" />
+                <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
+                  <Briefcase className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sector</p>
-                  <p className="text-sm font-bold text-gray-900">{opportunity.sector}</p>
+                  <p className="text-xs font-bold text-gray-900 uppercase tracking-wide">Sector</p>
+                  <p className="text-xs text-gray-600 mb-1">{opportunity.sector}</p>
                 </div>
               </div>
             )}
             
             {opportunity.exposure_type && (
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-md">
-                  <TrendingUp className="w-4.5 h-4.5 text-white" />
+                <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
+                  <TrendingUp className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Exposure</p>
-                  <p className="text-sm font-bold text-gray-900">{opportunity.exposure_type}</p>
+                  {/* <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Exposure</p>
+                  <p className="text-sm font-bold text-gray-900">{opportunity.exposure_type}</p> */}
+                  <p className="text-xs font-bold text-gray-900 uppercase tracking-wide">Exposure</p>
+                  <p className="text-xs text-gray-600 mb-1">{opportunity.exposure_type}</p>
                 </div>
               </div>
             )}
@@ -729,7 +930,7 @@ const OpportunityPreview = ({
         {isLearningInternship && opportunity.what_youll_do && (
           <div>
             <h2 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-              <div className="w-1.5 h-4 bg-gradient-to-b from-indigo-600 to-indigo-400 rounded-full"></div>
+              <div className="w-1.5 h-4 bg-blue-600 rounded-full"></div>
               What You'll Do
             </h2>
             <ul className="space-y-2">
@@ -748,7 +949,7 @@ const OpportunityPreview = ({
           <div className="flex justify-center">
             <button
               onClick={() => setShowDetailsModal(true)}
-              className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 group"
+              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 group"
             >
               View More Details
               <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
@@ -783,15 +984,32 @@ const OpportunityPreview = ({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-4 sm:p-6 flex items-center justify-between flex-shrink-0 sticky top-0 z-10">
-              <h2 className="text-lg sm:text-xl font-bold text-white">Complete Details</h2>
+            {/* <div className="bg-blue-600 p-4 sm:p-6 flex items-center justify-between flex-shrink-0 sticky top-0 z-10">
+              <h2 className="text-lg sm:text-xl font-bold text-white">Complete Details:</h2>
+              <h1 className="text-xl font-bold text-white mb-1 line-clamp-2 leading-tight">
+              {opportunity.job_title || opportunity.title}
+            </h1>
               <button
                 onClick={() => setShowDetailsModal(false)}
                 className="w-9 h-9 rounded-full bg-white bg-opacity-20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-opacity-30 transition-all flex-shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
-            </div>
+            </div> */}
+            <div className="bg-blue-600 p-4 sm:p-6 flex items-center justify-between flex-shrink-0 sticky top-0 z-10">
+  <div className="flex-1 min-w-0 pr-4">
+    <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">Complete Details</h2>
+    <h1 className="text-xl font-bold text-white line-clamp-2 leading-tight">
+      {opportunity.job_title || opportunity.title}
+    </h1>
+  </div>
+  <button
+    onClick={() => setShowDetailsModal(false)}
+    className="w-9 h-9 rounded-full bg-white bg-opacity-20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-opacity-30 transition-all flex-shrink-0"
+  >
+    <X className="w-5 h-5" />
+  </button>
+</div>
 
             {/* Modal Content - Dynamic Layout */}
             <div className="p-4 sm:p-6 overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 10rem)' }}>
@@ -825,24 +1043,30 @@ const OpportunityPreview = ({
                     <div className="space-y-3">
                       {opportunity.sector && (
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-md">
-                            <Briefcase className="w-4.5 h-4.5 text-white" />
-                          </div>
+                          {/* <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
+                            <Briefcase className="w-4 h-4 text-white" />
+                          </div> */}
+                          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                          <Briefcase className="w-4 h-4 text-white" />
+                        </div>
                           <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sector</p>
-                            <p className="text-sm font-bold text-gray-900">{opportunity.sector}</p>
+                            <p className="text-xs font-bold text-gray-900 uppercase tracking-wide">Sector</p>
+                            <p className="text-xs text-gray-600 mb-1">{opportunity.sector}</p>
                           </div>
                         </div>
                       )}
                       
                       {opportunity.exposure_type && (
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-md">
-                            <TrendingUp className="w-4.5 h-4.5 text-white" />
-                          </div>
+                          {/* <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
+                            <TrendingUp className="w-4 h-4 text-white" />
+                          </div> */}
+                          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                          <TrendingUp className="w-4 h-4 text-white" />
+                        </div>
                           <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Exposure</p>
-                            <p className="text-sm font-bold text-gray-900">{opportunity.exposure_type}</p>
+                            <p className="text-xs font-bold text-gray-900 uppercase tracking-wide">Exposure</p>
+                            <p className="text-xs text-gray-600 mb-1">{opportunity.exposure_type}</p>
                           </div>
                         </div>
                       )}
@@ -853,7 +1077,7 @@ const OpportunityPreview = ({
                   {(opportunity.duration_weeks || opportunity.duration_days || opportunity.total_hours) && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                           <Clock className="w-4 h-4 text-white" />
                         </div>
                         Duration & Schedule
@@ -888,7 +1112,7 @@ const OpportunityPreview = ({
                   {opportunity.what_youll_do && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                           <Users className="w-4 h-4 text-white" />
                         </div>
                         What You'll Do
@@ -910,15 +1134,15 @@ const OpportunityPreview = ({
                   {(opportunity.final_artifact_type || opportunity.final_artifact_description) && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                           <Award className="w-4 h-4 text-white" />
                         </div>
                         Final Deliverable
                       </h3>
-                      <div className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
                         {opportunity.final_artifact_type && (
                           <p className="text-sm font-bold text-gray-900 mb-1">
-                            🎯 {opportunity.final_artifact_type}
+                            {opportunity.final_artifact_type}
                           </p>
                         )}
                         {opportunity.final_artifact_description && (
@@ -934,12 +1158,12 @@ const OpportunityPreview = ({
                   {opportunity.mentor_bio && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                           <Users className="w-4 h-4 text-white" />
                         </div>
                         Your Mentor
                       </h3>
-                      <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
                         <p className="text-sm text-gray-700 leading-relaxed">
                           {opportunity.mentor_bio}
                         </p>
@@ -951,7 +1175,7 @@ const OpportunityPreview = ({
                   {(opportunity.cost_inr !== null && opportunity.cost_inr !== undefined) || opportunity.cost_note && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-green-600 flex items-center justify-center">
                           <Star className="w-4 h-4 text-white" fill="currentColor" />
                         </div>
                         Program Cost
@@ -982,7 +1206,7 @@ const OpportunityPreview = ({
                   {opportunity.prerequiste && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                           <CheckCircle2 className="w-4 h-4 text-white" />
                         </div>
                         Prerequisites
@@ -997,21 +1221,21 @@ const OpportunityPreview = ({
                   {(opportunity.safety_note || opportunity.parent_role) && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                           <Star className="w-4 h-4 text-white" fill="currentColor" />
                         </div>
                         Important Information
                       </h3>
                       <div className="space-y-2">
                         {opportunity.safety_note && (
-                          <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-100">
-                            <p className="text-xs font-semibold text-yellow-800 mb-1">⚠️ Safety Note</p>
+                          <div className="p-3 bg-blue-50 rounded-lg border border-yellow-100">
+                            <p className="text-xs font-semibold text-gray-800 mb-1">Safety Note</p>
                             <p className="text-sm text-gray-700">{opportunity.safety_note}</p>
                           </div>
                         )}
                         {opportunity.parent_role && (
                           <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                            <p className="text-xs font-semibold text-blue-800 mb-1">👨‍👩‍👧 Parent/Guardian Role</p>
+                            <p className="text-xs font-semibold text-gray-800 mb-1">Parent/Guardian Role</p>
                             <p className="text-sm text-gray-700">{opportunity.parent_role}</p>
                           </div>
                         )}
@@ -1023,7 +1247,7 @@ const OpportunityPreview = ({
                   {skills.length > 0 && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                           <Star className="w-4 h-4 text-white" fill="currentColor" />
                         </div>
                         Required Skills
@@ -1046,7 +1270,7 @@ const OpportunityPreview = ({
                   {requirements.length > 0 && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                           <CheckCircle2 className="w-4 h-4 text-white" />
                         </div>
                         Requirements
@@ -1054,8 +1278,8 @@ const OpportunityPreview = ({
                       <ul className="space-y-2">
                         {requirements.map((req, idx) => (
                           <li key={idx} className="flex items-start gap-2.5 text-sm text-gray-600">
-                            <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <CheckCircle2 className="w-3 h-3 text-indigo-600" />
+                            <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <CheckCircle2 className="w-3 h-3 text-blue-600" />
                             </div>
                             <span className="flex-1 leading-relaxed">{req}</span>
                           </li>
@@ -1068,7 +1292,7 @@ const OpportunityPreview = ({
                   {responsibilities.length > 0 && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                           <TrendingUp className="w-4 h-4 text-white" />
                         </div>
                         Key Responsibilities
@@ -1090,7 +1314,7 @@ const OpportunityPreview = ({
                   {benefits.length > 0 && (
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-lg bg-green-600 flex items-center justify-center">
                           <Star className="w-4 h-4 text-white" fill="currentColor" />
                         </div>
                         Benefits & Perks
@@ -1098,8 +1322,8 @@ const OpportunityPreview = ({
                       </h3>
                       <div className="grid grid-cols-1 gap-2">
                         {benefits.map((benefit, idx) => (
-                          <div key={idx} className="flex items-start gap-2.5 p-2.5 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-100">
-                            <Star className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" fill="currentColor" />
+                          <div key={idx} className="flex items-start gap-2.5 p-2.5 bg-green-50 rounded-lg border border-green-100">
+                            <Star className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" />
                             <span className="text-sm text-gray-700 font-medium">{benefit}</span>
                           </div>
                         ))}
@@ -1113,9 +1337,9 @@ const OpportunityPreview = ({
                     {/* Deadline - Full Width at Bottom */}
                     {(opportunity.deadline || opportunity.closing_date) && (
                       <div className={(hasLeftColumn && hasRightColumn) ? "col-span-1 lg:col-span-2" : ""}>
-                        <div className="flex items-center gap-2.5 p-4 bg-rose-50 rounded-lg border border-rose-100">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-md">
-                            <Calendar className="w-4.5 h-4.5 text-white" />
+                        <div className="flex items-center gap-2.5 p-4 bg-red-50 rounded-lg border border-red-100">
+                          <div className="w-9 h-9 rounded-xl bg-red-600 flex items-center justify-center shadow-md">
+                            <Calendar className="w-4 h-4 text-white" />
                           </div>
                           <div>
                             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Application Deadline</p>
@@ -1143,17 +1367,16 @@ const OpportunityPreview = ({
                 <button 
                   onClick={() => {
                     if (!isApplied && !isApplying) {
-                      onApply(opportunity);
-                      setShowDetailsModal(false);
+                      setShowApplicationModal(true);
                     }
                   }}
                   disabled={isApplied || isApplying}
                   className={`flex-1 relative overflow-hidden font-bold py-3.5 px-4 rounded-xl transition-all text-sm shadow-md group ${
                     isApplied
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white cursor-not-allowed'
+                      ? 'bg-green-600 text-white cursor-not-allowed'
                       : isApplying
                       ? 'bg-gray-400 text-white cursor-wait'
-                      : 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white hover:shadow-xl active:scale-[0.98]'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl active:scale-[0.98]'
                   }`}
                 >
                   {/* Shine Effect */}
@@ -1185,10 +1408,10 @@ const OpportunityPreview = ({
                 {opportunity.application_link && (
                   <button
                     onClick={() => window.open(opportunity.application_link, '_blank')}
-                    className="w-12 h-12 border-2 border-gray-300 hover:border-indigo-600 hover:bg-indigo-50 rounded-xl transition-all flex items-center justify-center group"
+                    className="w-12 h-12 border-2 border-gray-300 hover:border-blue-600 hover:bg-blue-50 rounded-xl transition-all flex items-center justify-center group"
                     title="Open external link"
                   >
-                    <ExternalLink className="w-5 h-5 text-gray-600 group-hover:text-indigo-600 transition-colors" />
+                    <ExternalLink className="w-5 h-5 text-gray-600 group-hover:text-blue-600 transition-colors" />
                   </button>
                 )}
 
@@ -1196,12 +1419,12 @@ const OpportunityPreview = ({
                 {onToggleSave && (
                   <button 
                     onClick={() => onToggleSave(opportunity)}
-                    className="w-12 h-12 border-2 border-gray-300 hover:border-rose-400 hover:bg-rose-50 rounded-xl transition-all flex items-center justify-center group"
+                    className="w-12 h-12 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 rounded-xl transition-all flex items-center justify-center group"
                     title={isSaved ? 'Unsave job' : 'Save job'}
                   >
                     <Bookmark
                       className={`w-5 h-5 transition-all ${
-                        isSaved ? 'fill-rose-500 text-rose-500' : 'text-gray-600 group-hover:text-rose-500'
+                        isSaved ? 'fill-red-500 text-red-500' : 'text-gray-600 group-hover:text-red-500'
                       }`}
                     />
                   </button>
@@ -1217,6 +1440,20 @@ const OpportunityPreview = ({
         </div>,
         document.body
       )}
+
+      {/* Application Confirmation Modal */}
+      <ApplicationConfirmationModal
+        opportunity={opportunity}
+        isOpen={showApplicationModal}
+        onClose={() => setShowApplicationModal(false)}
+        onConfirm={() => {
+          if (onApply) {
+            onApply(opportunity);
+            setShowDetailsModal(false);
+          }
+        }}
+        isApplying={isApplying}
+      />
     </div>
   );
 };

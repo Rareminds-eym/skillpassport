@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { FIELD_CONFIGS } from "./fieldConfigs";
-import { generateUuid, calculateDuration, calculateProgress, parseSkills, parsePositiveNumber } from "./utils";
+import { generateUuid, calculateDuration, calculateProgress, parseSkills, parsePositiveNumber, isValidUrl } from "./utils";
 
 const UnifiedProfileEditModal = ({ 
   isOpen, 
@@ -108,6 +108,7 @@ const UnifiedProfileEditModal = ({
   };
 
   const validateForm = () => {
+    // Check required fields
     const requiredFields = config.fields.filter(f => f.required);
     for (const field of requiredFields) {
       if (!formData[field.name]?.toString().trim()) {
@@ -119,6 +120,21 @@ const UnifiedProfileEditModal = ({
         return false;
       }
     }
+    
+    // Validate URL fields
+    const urlFields = config.fields.filter(f => f.type === "url");
+    for (const field of urlFields) {
+      const value = formData[field.name];
+      if (value && !isValidUrl(value)) {
+        toast({
+          title: "Validation Error",
+          description: `${field.label} must be a valid URL (e.g., https://example.com)`,
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+    
     return true;
   };
 

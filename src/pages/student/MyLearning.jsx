@@ -14,8 +14,8 @@ import {
   Plus,
   BookOpen,
   TrendingUp,
-  MessageCircleIcon,
 } from "lucide-react";
+import LearningProgressBar from "../../components/Students/components/LearningProgressBar";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useAuth } from "../../context/AuthContext";
 import { TrainingEditModal } from "../../components/Students/components/ProfileEditModals";
@@ -259,33 +259,19 @@ const MyLearning = () => {
                           </div>
                         )}
 
-                        {/* Progress */}
-                        {item.progress !== undefined && (
-                          <div className="space-y-2">
-                            <div className="flex justify-between items-center text-sm">
-                              <span className="text-gray-700 font-medium">
-                                Progress
-                              </span>
-                              <span className="text-blue-600 font-semibold">
-                                {item.status === "completed"
-                                  ? "100%"
-                                  : `${item.progress}%`}
-                              </span>
-                            </div>
-                            <div className="relative w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div
-                                className="absolute top-0 left-0 h-full bg-blue-600 rounded-full transition-all duration-300"
-                                style={{
-                                  width: `${
-                                    item.status === "completed"
-                                      ? 100
-                                      : item.progress
-                                  }%`,
-                                }}
-                              ></div>
-                            </div>
-                          </div>
-                        )}
+                        {/* Nike-style Progress Bar - Uses completedModules/totalModules for dynamic progress */}
+                        <LearningProgressBar 
+                          variant="card"
+                          progress={
+                            item.status === "completed" 
+                              ? 100 
+                              : item.totalModules > 0 
+                                ? Math.round((item.completedModules || 0) / item.totalModules * 100)
+                                : (item.progress || 0)
+                          }
+                          completedModules={item.completedModules || 0}
+                          totalModules={item.totalModules || 0}
+                        />
 
                         {item.certificateUrl && (
                           <Button

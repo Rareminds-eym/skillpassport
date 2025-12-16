@@ -679,7 +679,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
               {/* Right Column - QR Code and Score */}
               <div className="space-y-6">
                 {/* QR Code Card */}
-                <Card className="bg-blue-50/60 backdrop-blur-xl border border-blue-200/60 rounded-2xl shadow-2xl">
+                <Card variant="blue" className="bg-blue-50/60 backdrop-blur-xl border border-blue-200/60 rounded-2xl shadow-2xl">
                   <CardContent className="p-6 text-center pt-5 md:pt-10">
                     <div className="w-28 h-28 mx-auto mb-2 bg-white rounded-xl flex items-center justify-center shadow-md p-2">
                       {/* Student QR Code */}
