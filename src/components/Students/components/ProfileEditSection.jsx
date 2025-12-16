@@ -62,7 +62,10 @@ const ProfileEditSection = ({ profileEmail }) => {
 
   // Extract data from Supabase or use fallback
   const education = studentData?.education || educationData;
-  const training = studentData?.training || trainingData;
+  // Filter trainings to only show approved ones for display
+  const training = studentData?.training 
+    ? studentData.training.filter(t => t.approval_status === 'approved' || !t.approval_status)
+    : trainingData;
   const experience = studentData?.experience || experienceData;
   const techSkills = studentData?.technicalSkills || technicalSkills;
   const soft = studentData?.softSkills || softSkills;
@@ -84,7 +87,7 @@ const ProfileEditSection = ({ profileEmail }) => {
       technicalSkills: techSkills,
       softSkills: soft
     });
-  }, [studentData, education, training, experience, techSkills, soft]);
+  }, [studentData]);
 
   const handleSave = async (section, data) => {
     
@@ -136,7 +139,7 @@ const ProfileEditSection = ({ profileEmail }) => {
 
         if (result?.success) {
         } else {
-          console.error(`❌ ProfileEditSection: Error saving ${section}:`, result?.error);
+          console.error('🔵 Update failed:', result?.error);
         }
       } catch (err) {
         console.error(`❌ ProfileEditSection: Error saving ${section} to Supabase:`, err);
@@ -180,9 +183,14 @@ const ProfileEditSection = ({ profileEmail }) => {
           await handleSave('education', mergedData.education);
         }
         
-        // Update training if present
+        // Update training if present - mark as pending for approval
         if (mergedData.training && mergedData.training.length > 0) {
-          await handleSave('training', mergedData.training);
+          const trainingWithApproval = mergedData.training.map(t => ({
+            ...t,
+            approval_status: 'pending',
+            processing: true
+          }));
+          await handleSave('training', trainingWithApproval);
         }
         
         // Update experience if present
@@ -252,7 +260,10 @@ const ProfileEditSection = ({ profileEmail }) => {
   color: 'bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-blue-200',
       buttonColor: 'bg-blue-600 hover:bg-blue-700',
       data: userData.training,
-      count: Array.isArray(userData.training) ? userData.training.filter(item => item.enabled !== false).length : 0
+      count: Array.isArray(userData.training) ? userData.training.filter(item => 
+        item.enabled !== false && 
+        (item.approval_status === 'approved' || !item.approval_status)
+      ).length : 0
     },
     {
       id: 'experience',

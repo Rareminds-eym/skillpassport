@@ -95,6 +95,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               path: "/school-admin/students/assessment-results",
               icon: ChartPieIcon,
             },
+            {
+              name: "Verifications",
+              path: "/school-admin/students/verifications",
+              icon: ChartBarIcon,
+            }
           ],
         },
         {
@@ -444,6 +449,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             path: "/college-admin/students/graduation",
             icon: AcademicCapIcon,
           },
+          {
+             name: "Verifications",
+            path: "/college-admin/students/verifications",
+            icon: ChartPieIcon,
+          }
         ],
       },
       {
