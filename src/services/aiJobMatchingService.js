@@ -8,12 +8,16 @@ const OPENAI_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 // Rate limiting configuration
 const MAX_RETRIES = 3;
-const INITIAL_RETRY_DELAY = 1000; // 1 second
-const MAX_RETRY_DELAY = 10000; // 10 seconds
+const INITIAL_RETRY_DELAY = 2000; // 2 seconds
+const MAX_RETRY_DELAY = 15000; // 15 seconds
 
 // Cache for AI responses (simple in-memory cache)
 const matchCache = new Map();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+// Global request lock to prevent concurrent API calls
+let isRequestInProgress = false;
+let pendingRequest = null;
 
 /**
  * Match student profile with opportunities using AI
@@ -26,28 +30,22 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
   try {
     // Get student identifier for logging and caching
     const studentId = studentProfile?.id || studentProfile?.email || studentProfile?.profile?.email || 'unknown';
-    const studentEmail = studentProfile?.email || studentProfile?.profile?.email || 'unknown@email.com';
-    
-    console.log({
-      id: studentId,
-      email: studentEmail,
-      name: studentProfile?.name || studentProfile?.profile?.name || 'Unknown'
-    });
-    console.log({
-      hasProfile: !!studentProfile,
-      profileKeys: studentProfile ? Object.keys(studentProfile) : [],
-      hasNestedProfile: !!studentProfile?.profile,
-      nestedProfileKeys: studentProfile?.profile ? Object.keys(studentProfile.profile) : []
-    });
     
     // Create cache key specific to this student and opportunities
     const opportunitiesHash = opportunities.map(o => o.id).sort().join(',');
     const cacheKey = `${studentId}_${opportunitiesHash}_${topN}`;
     
-    // Check cache
+    // Check cache first
     const cached = matchCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log('✅ Returning cached AI recommendations');
       return cached.matches;
+    }
+
+    // If a request is already in progress, wait for it
+    if (isRequestInProgress && pendingRequest) {
+      console.log('⏳ Waiting for existing AI request to complete...');
+      return pendingRequest;
     }
 
     // Validate inputs
@@ -63,6 +61,9 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       console.error('❌ OpenAI API key not configured');
       throw new Error('OpenAI API key not found. Please add VITE_OPENAI_API_KEY to .env file');
     }
+
+    // Set lock
+    isRequestInProgress = true;
 
     // Extract student profile data
     const studentData = extractStudentData(studentProfile);
@@ -107,7 +108,7 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
 
     // Call OpenAI API via OpenRouter
     const requestBody = {
-      model: 'openai/gpt-4o-mini',
+      model: 'meta-llama/llama-3.2-3b-instruct:free',
       messages: [
         {
           role: 'system',
@@ -123,30 +124,58 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     };
 
 
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'HTTP-Referer': window.location.origin || 'http://localhost:3001',
-        'X-Title': 'SkillPassport Job Matching'
-      },
-      body: JSON.stringify(requestBody)
-    });
+    // Retry logic with exponential backoff for rate limiting
+    let response;
+    let lastError;
+    
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        response = await fetch(OPENAI_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
+            'HTTP-Referer': window.location.origin || 'http://localhost:3001',
+            'X-Title': 'SkillPassport Job Matching'
+          },
+          body: JSON.stringify(requestBody)
+        });
 
+        // If rate limited (429), wait and retry
+        if (response.status === 429) {
+          const retryDelay = Math.min(INITIAL_RETRY_DELAY * Math.pow(2, attempt), MAX_RETRY_DELAY);
+          console.log(`⏳ Rate limited, retrying in ${retryDelay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        }
+
+        // Success or non-retryable error
+        break;
+      } catch (fetchError) {
+        lastError = fetchError;
+        const retryDelay = Math.min(INITIAL_RETRY_DELAY * Math.pow(2, attempt), MAX_RETRY_DELAY);
+        console.log(`⏳ Network error, retrying in ${retryDelay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+    }
+
+    if (!response) {
+      throw lastError || new Error('Failed to connect to AI service after retries');
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: { message: response.statusText } }));
       console.error('❌ OpenRouter API Error Response:', {
         status: response.status,
         statusText: response.statusText,
-        errorData: errorData,
-        headers: Object.fromEntries(response.headers.entries())
+        errorData: errorData
       });
       
-      // More specific error message
       if (response.status === 401) {
         throw new Error('API authentication failed. Please verify your OpenRouter API key is valid and active.');
+      }
+      if (response.status === 429) {
+        throw new Error('AI service is busy. Please try again in a moment.');
       }
       
       throw new Error(`OpenRouter API error: ${errorData.error?.message || errorData.message || response.statusText}`);
@@ -200,6 +229,10 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
         timestamp: Date.now()
       });
       
+      // Release lock
+      isRequestInProgress = false;
+      pendingRequest = null;
+      
       return enrichedFallbackMatches;
     }
 
@@ -224,9 +257,16 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       timestamp: Date.now()
     });
     
+    // Release lock
+    isRequestInProgress = false;
+    pendingRequest = null;
+    
     return enrichedMatches;
 
   } catch (error) {
+    // Release lock on error
+    isRequestInProgress = false;
+    pendingRequest = null;
     console.error('❌ AI Job Matching Error:', error);
     throw error;
   }

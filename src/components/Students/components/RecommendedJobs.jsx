@@ -41,8 +41,10 @@ const RecommendedJobs = ({
     }
   }, []);
 
-  // Fetch AI recommendations
+  // Fetch AI recommendations with request deduplication
   useEffect(() => {
+    let isCancelled = false;
+    
     const fetchRecommendations = async () => {
       if (!studentProfile || !opportunities || opportunities.length === 0 || isDismissed) {
         setLoading(false);
@@ -60,6 +62,9 @@ const RecommendedJobs = ({
         // Call AI matching service
         const matches = await matchJobsWithAI(studentProfile, opportunities, 3);
 
+        // Check if component unmounted or effect was cancelled
+        if (isCancelled) return;
+
         // Ensure animation shows for at least 5 seconds
         const elapsedTime = Date.now() - startTime;
         const remainingTime = Math.max(0, 5000 - elapsedTime);
@@ -68,11 +73,14 @@ const RecommendedJobs = ({
           await new Promise(resolve => setTimeout(resolve, remainingTime));
         }
 
+        if (isCancelled) return;
+
         setRecommendations(matches);
         setLoading(false);
         setShowAnimation(false);
       } catch (err) {
-        console.error('Error fetching recommendations:', err);
+        if (isCancelled) return;
+        console.error('❌ Error fetching recommendations:', err);
         setError(err.message);
         setLoading(false);
         setShowAnimation(false);
@@ -80,7 +88,12 @@ const RecommendedJobs = ({
     };
 
     fetchRecommendations();
-  }, [studentProfile, opportunities, isDismissed]);
+    
+    // Cleanup function to prevent duplicate requests in StrictMode
+    return () => {
+      isCancelled = true;
+    };
+  }, [studentProfile?.id, opportunities?.length, isDismissed]);
 
   const handleDismiss = (e) => {
     e.preventDefault();
