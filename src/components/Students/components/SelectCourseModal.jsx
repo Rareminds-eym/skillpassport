@@ -280,8 +280,8 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
                 </div>
               )}
 
-              {/* Available Courses Section */}
-              {availableCourses.length > 0 && (
+              {/* Available Courses Section - Hidden */}
+              {/* {availableCourses.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <BookOpen size={20} className="text-indigo-600" />
@@ -333,7 +333,7 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
                     ))}
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* No courses message */}
               {enrolledCourses.length === 0 && availableCourses.length === 0 && (
