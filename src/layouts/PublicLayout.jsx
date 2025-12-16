@@ -2,10 +2,13 @@ import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Footer from '../components/Footer';
 import { PromotionalBanner } from '../components/Homepage';
-import { usePromotionalEvent } from '../hooks/usePromotionalEvent';
+import {
+  PromotionalEventProvider,
+  usePromotionalEventContext,
+} from '../contexts/PromotionalEventContext';
 
-const PublicLayout = () => {
-  const { event, showBanner, dismissBanner, getTimeRemaining } = usePromotionalEvent();
+const PublicLayoutContent = () => {
+  const { event, showBanner, dismissBanner, getTimeRemaining } = usePromotionalEventContext();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -17,7 +20,7 @@ const PublicLayout = () => {
         getTimeRemaining={getTimeRemaining}
       />
 
-      {/* Add margin-top when banner is visible to push content down (smaller banner ~36px) */}
+      {/* Add margin-top when banner is visible */}
       <div className={showBanner ? 'mt-[36px] sm:mt-[40px]' : ''}>
         <Header hasBanner={showBanner} />
         <main className="flex-1">
@@ -26,6 +29,14 @@ const PublicLayout = () => {
         <Footer />
       </div>
     </div>
+  );
+};
+
+const PublicLayout = () => {
+  return (
+    <PromotionalEventProvider>
+      <PublicLayoutContent />
+    </PromotionalEventProvider>
   );
 };
 

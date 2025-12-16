@@ -30,9 +30,13 @@ import { isTestPricing } from '../../config/payment';
 import Header from '../../layouts/Header';
 import FlipClockCountdown from '@leenguyen/react-flip-clock-countdown';
 import '@leenguyen/react-flip-clock-countdown/dist/index.css';
+import StudentPlanCard from './components/StudentPlanCard';
 
 // Role types that use institution pricing tiers (not individual plans)
 const ADMIN_ROLES = ['school-admin', 'college-admin', 'university-admin', 'educator', 'recruiter'];
+
+// Student roles that use individual pricing tiers from institution_pricing_tiers
+const STUDENT_ROLES = ['school-student', 'college-student', 'university-student'];
 
 // Roles
 const ROLES = [
@@ -61,15 +65,28 @@ const UNIVERSITY_TYPES = ['Central University', 'State University', 'Private Uni
 // Industry Types
 const INDUSTRY_TYPES = ['IT/Software', 'Manufacturing', 'Healthcare', 'Finance/Banking', 'Education', 'Retail', 'Consulting', 'Other'];
 
-// Load Razorpay
-const loadRazorpay = () => new Promise(resolve => {
+// Load Razorpay - improved for mobile compatibility
+const loadRazorpay = () => new Promise((resolve, reject) => {
   if (window.Razorpay) return resolve(true);
   const s = document.createElement('script');
   s.src = 'https://checkout.razorpay.com/v1/checkout.js';
-  s.onload = () => resolve(true);
-  s.onerror = () => resolve(false);
+  s.async = true;
+  s.onload = () => {
+    console.log('✅ Razorpay script loaded successfully');
+    resolve(true);
+  };
+  s.onerror = () => {
+    console.error('❌ Failed to load Razorpay script');
+    reject(new Error('Failed to load payment gateway'));
+  };
   document.body.appendChild(s);
 });
+
+// Detect mobile device
+const isMobileDevice = () => {
+  return /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    (window.innerWidth <= 768);
+};
 
 // Step Progress Component
 const StepProgress = memo(({ currentStep, steps }) => (
@@ -313,8 +330,20 @@ function EventSales() {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [razorpayReady, setRazorpayReady] = useState(false);
+  const [paymentError, setPaymentError] = useState(null);
   const [promoEvent, setPromoEvent] = useState(null);
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  // Preload Razorpay script on component mount (critical for mobile)
+  useEffect(() => {
+    loadRazorpay()
+      .then(() => setRazorpayReady(true))
+      .catch((err) => {
+        console.error('Razorpay preload failed:', err);
+        setPaymentError('Payment gateway failed to load. Please refresh the page.');
+      });
+  }, []);
 
   // Fetch active promotional event
   useEffect(() => {
@@ -370,6 +399,7 @@ function EventSales() {
   const isPromoActive = !!promoEvent;
 
   const isAdminRole = role && ADMIN_ROLES.includes(role.id);
+  const isStudentRole = role && STUDENT_ROLES.includes(role.id);
 
   // Dynamic steps
   const steps = useMemo(() => {
@@ -420,10 +450,10 @@ function EventSales() {
       }));
   }, [studentTiers]);
 
-  // Fetch student tiers for admin roles
+  // Fetch pricing tiers for admin and student roles
   useEffect(() => {
     const fetchTiers = async () => {
-      if (!role || !isAdminRole) return;
+      if (!role || (!isAdminRole && !isStudentRole)) return;
       setTiersLoading(true);
       try {
         const { data, error } = await supabase
@@ -443,7 +473,7 @@ function EventSales() {
       }
     };
     fetchTiers();
-  }, [role, isAdminRole]);
+  }, [role, isAdminRole, isStudentRole]);
 
   // Auto-select plan for non-admin roles
   useEffect(() => {
@@ -469,56 +499,30 @@ function EventSales() {
   };
 
   // Validate form based on role
+  // Only email, name, and phone are mandatory - all other fields are optional
   const validateForm = () => {
     const e = {};
     const emailRegex = /\S+@\S+\.\S+/;
     const phoneRegex = /^\d{10}$/;
 
-    // Common validations
+    // Mandatory fields: email, phone, and name
     if (!form.email?.trim() || !emailRegex.test(form.email)) e.email = 'Valid email required';
     if (!form.phone?.trim() || !phoneRegex.test(form.phone.replace(/\D/g, ''))) e.phone = 'Valid 10-digit phone required';
-    if (!form.address?.trim()) e.address = 'Address required';
-    if (!form.city?.trim()) e.city = 'City required';
-    if (!form.state) e.state = 'State required';
-    if (!form.pincode?.trim() || form.pincode.length !== 6) e.pincode = 'Valid 6-digit pincode required';
 
-    // Role-specific validations
+    // Name validation based on role
     switch (role?.id) {
       case 'school-admin':
-        if (!form.school_name?.trim()) e.school_name = 'School name required';
-        if (!form.school_type) e.school_type = 'School type required';
-        if (!form.principal_name?.trim()) e.principal_name = 'Principal name required';
+        if (!form.principal_name?.trim()) e.principal_name = 'Name required';
         break;
       case 'college-admin':
-        if (!form.college_name?.trim()) e.college_name = 'College name required';
-        if (!form.college_type) e.college_type = 'College type required';
-        if (!form.dean_name?.trim()) e.dean_name = 'Dean/Principal name required';
+        if (!form.dean_name?.trim()) e.dean_name = 'Name required';
         break;
       case 'university-admin':
-        if (!form.university_name?.trim()) e.university_name = 'University name required';
-        if (!form.university_type) e.university_type = 'University type required';
-        if (!form.vc_name?.trim()) e.vc_name = 'VC/Registrar name required';
+        if (!form.vc_name?.trim()) e.vc_name = 'Name required';
         break;
-      case 'school-student':
+      default:
+        // For students, educators, recruiters - use full_name
         if (!form.full_name?.trim()) e.full_name = 'Name required';
-        if (!form.school_name?.trim()) e.school_name = 'School name required';
-        if (!form.class_grade?.trim()) e.class_grade = 'Class required';
-        break;
-      case 'college-student':
-      case 'university-student':
-        if (!form.full_name?.trim()) e.full_name = 'Name required';
-        if (!form.institution_name?.trim()) e.institution_name = 'Institution name required';
-        if (!form.course?.trim()) e.course = 'Course required';
-        break;
-      case 'educator':
-        if (!form.full_name?.trim()) e.full_name = 'Name required';
-        if (!form.institution_name?.trim()) e.institution_name = 'Institution name required';
-        if (!form.designation?.trim()) e.designation = 'Designation required';
-        break;
-      case 'recruiter':
-        if (!form.full_name?.trim()) e.full_name = 'Name required';
-        if (!form.company_name?.trim()) e.company_name = 'Company name required';
-        if (!form.designation?.trim()) e.designation = 'Designation required';
         break;
     }
 
@@ -531,54 +535,37 @@ function EventSales() {
     if (step === 2) {
       // Step 2: Just select a plan/tier
       if (isAdminRole) return !!studentTier;
+      if (isStudentRole) return !!studentTier; // Students also use studentTier from DB
       return !!plan;
     }
     if (step === 3) {
-      // Step 3: Validate form fields and student count
-      
-      // Check common required fields
+      // Step 3: Only email, name, and phone are mandatory
       const emailRegex = /\S+@\S+\.\S+/;
       const phoneRegex = /^\d{10}$/;
-      const commonFieldsValid = 
-        form.email?.trim() && emailRegex.test(form.email) &&
-        form.phone?.trim() && phoneRegex.test(form.phone.replace(/\D/g, '')) &&
-        form.address?.trim() && 
-        form.city?.trim() && 
-        form.state && 
-        form.pincode?.trim() && form.pincode.length === 6;
       
-      if (!commonFieldsValid) return false;
+      // Check mandatory fields: email and phone
+      const emailValid = form.email?.trim() && emailRegex.test(form.email);
+      const phoneValid = form.phone?.trim() && phoneRegex.test(form.phone.replace(/\D/g, ''));
       
-      // Check role-specific required fields
-      let roleFieldsValid = true;
+      if (!emailValid || !phoneValid) return false;
+      
+      // Check name field based on role
+      let nameValid = false;
       switch (role?.id) {
         case 'school-admin':
-          roleFieldsValid = form.school_name?.trim() && form.school_type && form.principal_name?.trim();
+          nameValid = !!form.principal_name?.trim();
           break;
         case 'college-admin':
-          roleFieldsValid = form.college_name?.trim() && form.college_type && form.dean_name?.trim();
+          nameValid = !!form.dean_name?.trim();
           break;
         case 'university-admin':
-          roleFieldsValid = form.university_name?.trim() && form.university_type && form.vc_name?.trim();
-          break;
-        case 'educator':
-          roleFieldsValid = form.full_name?.trim() && form.institution_name?.trim() && form.designation?.trim();
-          break;
-        case 'recruiter':
-          roleFieldsValid = form.full_name?.trim() && form.company_name?.trim() && form.designation?.trim();
-          break;
-        case 'school-student':
-          roleFieldsValid = form.full_name?.trim() && form.school_name?.trim() && form.class_grade?.trim();
-          break;
-        case 'college-student':
-        case 'university-student':
-          roleFieldsValid = form.full_name?.trim() && form.institution_name?.trim() && form.course?.trim();
+          nameValid = !!form.vc_name?.trim();
           break;
         default:
-          roleFieldsValid = form.full_name?.trim();
+          nameValid = !!form.full_name?.trim();
       }
       
-      if (!roleFieldsValid) return false;
+      if (!nameValid) return false;
       
       // Check student count for admin roles
       if (isAdminRole && studentTier) {
@@ -617,6 +604,7 @@ function EventSales() {
   };
 
   const currentPricing = useMemo(() => {
+    // Admin role pricing (with student count multiplier)
     if (isAdminRole && studentTier) {
       const capacityLabel = role?.id === 'recruiter' ? 'candidates' : 'students';
       const count = parseInt(studentCount) || 0;
@@ -646,16 +634,53 @@ function EventSales() {
         capacityLabel
       };
     }
+    
+    // Student role pricing (individual, no multiplier)
+    if (isStudentRole && studentTier) {
+      const hasEsfePrice = isPromoActive && studentTier.esfe_active && studentTier.esfe_price;
+      const displayPrice = hasEsfePrice ? parseFloat(studentTier.esfe_price) : parseFloat(studentTier.price);
+      const originalPrice = parseFloat(studentTier.price);
+      
+      return {
+        name: `${studentTier.tier_name} Plan`,
+        price: displayPrice,
+        originalPrice: hasEsfePrice ? originalPrice : null,
+        isEsfe: hasEsfePrice,
+        discountPercent: hasEsfePrice ? studentTier.esfe_discount_percent : 0,
+        duration: studentTier.duration || 'year'
+      };
+    }
+    
     if (plan) return { name: plan.name, price: parseInt(plan.price), duration: plan.duration };
     return null;
-  }, [isAdminRole, studentTier, plan, role?.id, isPromoActive, studentCount]);
+  }, [isAdminRole, isStudentRole, studentTier, plan, role?.id, isPromoActive, studentCount]);
 
   const handlePayment = async () => {
     if (loading || !currentPricing) return;
+    
+    // Clear any previous errors
+    setPaymentError(null);
+    
+    // Check if Razorpay is ready (preloaded)
+    if (!razorpayReady || !window.Razorpay) {
+      setPaymentError('Payment gateway is loading. Please wait a moment and try again.');
+      // Try to load again
+      try {
+        await loadRazorpay();
+        setRazorpayReady(true);
+      } catch (e) {
+        setPaymentError('Payment gateway failed to load. Please refresh the page and try again.');
+        return;
+      }
+    }
+    
     setLoading(true);
+    
+    // Detect mobile for logging
+    const isMobile = isMobileDevice();
+    console.log(`💳 Payment initiated on ${isMobile ? 'MOBILE' : 'DESKTOP'} device`);
+    
     try {
-      await loadRazorpay();
-      
       // Prepare role_details JSON
       const roleDetails = { ...form };
       delete roleDetails.email;
@@ -722,42 +747,65 @@ function EventSales() {
       const orderData = await orderResponse.json();
       console.log('💳 Razorpay: Order created via Edge Function', orderData.id);
 
-      new window.Razorpay({
+      // Store registration data for use in callbacks
+      const regId = reg.id;
+      const pricingName = currentPricing.name;
+      const userEmail = form.email;
+      const userPhone = form.phone;
+      const displayName = getDisplayName();
+      const institutionName = getInstitutionName();
+      const userRole = role.id;
+      const savedRoleDetails = { ...roleDetails };
+
+      // Create Razorpay options - IMPORTANT: Open immediately after creation for mobile
+      const razorpayOptions = {
         key: orderData.key,
         order_id: orderData.id,
         amount: orderData.amount,
         currency: orderData.currency,
         name: 'Skill Passport',
-        description: currentPricing.name,
-        prefill: { name: getDisplayName(), email: form.email, contact: form.phone },
+        description: pricingName,
+        prefill: { 
+          name: displayName, 
+          email: userEmail, 
+          contact: userPhone 
+        },
         theme: { color: '#3B82F6' },
+        // Mobile-specific: Use redirect mode for better compatibility
+        // Note: handler is still used but redirect provides fallback
+        retry: {
+          enabled: true,
+          max_count: 3
+        },
+        timeout: 300, // 5 minutes timeout
         handler: async (res) => {
-          // Update payment status
+          console.log('✅ Payment successful:', res.razorpay_payment_id);
+          
+          // Update payment status using stored regId
           await supabase.from('event_registrations').update({ 
             razorpay_payment_id: res.razorpay_payment_id, 
             payment_status: 'completed' 
-          }).eq('id', reg.id);
+          }).eq('id', regId);
 
           // Create user account after successful payment
           try {
-            const displayName = getDisplayName();
             const nameParts = displayName?.split(' ') || ['User'];
             const firstName = nameParts[0];
             const lastName = nameParts.slice(1).join(' ') || '';
 
             const userResponse = await supabase.functions.invoke('create-event-user', {
               body: {
-                email: form.email,
+                email: userEmail,
                 firstName,
                 lastName,
-                role: role.id,
-                phone: form.phone,
-                registrationId: reg.id,
+                role: userRole,
+                phone: userPhone,
+                registrationId: regId,
                 metadata: {
-                  institution: getInstitutionName(),
-                  plan: currentPricing.name,
+                  institution: institutionName,
+                  plan: pricingName,
                   eventName,
-                  ...roleDetails
+                  ...savedRoleDetails
                 }
               }
             });
@@ -768,28 +816,55 @@ function EventSales() {
 
             // Navigate with temp password if available
             const tempPassword = userResponse.data?.temporaryPassword;
-            navigate(`/register/plans/success?id=${reg.id}&plan=${encodeURIComponent(currentPricing.name)}${tempPassword ? `&tp=${encodeURIComponent(tempPassword)}` : ''}`);
+            navigate(`/register/plans/success?id=${regId}&plan=${encodeURIComponent(pricingName)}${tempPassword ? `&tp=${encodeURIComponent(tempPassword)}` : ''}`);
           } catch (userErr) {
             console.error('User creation failed:', userErr);
             // Still navigate to success even if user creation fails
-            navigate(`/register/plans/success?id=${reg.id}&plan=${encodeURIComponent(currentPricing.name)}`);
+            navigate(`/register/plans/success?id=${regId}&plan=${encodeURIComponent(pricingName)}`);
           }
         },
         modal: { 
           ondismiss: () => {
+            console.log('❌ Payment modal dismissed');
             setLoading(false);
-            // Update registration status to cancelled
+            setPaymentError(null);
+            // Update registration status to cancelled using stored regId
             supabase.from('event_registrations').update({ 
               payment_status: 'cancelled' 
-            }).eq('id', reg.id);
-            navigate(`/register/plans/failure?error=cancelled&plan=${encodeURIComponent(currentPricing.name)}`);
-          }
+            }).eq('id', regId);
+            navigate(`/register/plans/failure?error=cancelled&plan=${encodeURIComponent(pricingName)}`);
+          },
+          // Mobile-specific: Handle escape key and back button
+          escape: true,
+          backdropclose: false,
+          confirm_close: true,
         },
-      }).open();
+      };
+
+      // Create and open Razorpay checkout immediately
+      // CRITICAL: This must happen synchronously after options creation for mobile
+      const rzp = new window.Razorpay(razorpayOptions);
+      
+      // Add error handler for payment failures
+      rzp.on('payment.failed', function (response) {
+        console.error('❌ Payment failed:', response.error);
+        setLoading(false);
+        setPaymentError(`Payment failed: ${response.error.description || 'Unknown error'}`);
+        // Update registration status
+        supabase.from('event_registrations').update({ 
+          payment_status: 'failed',
+          payment_error: response.error.description || 'Payment failed'
+        }).eq('id', regId);
+      });
+
+      // Open the checkout - this should happen as quickly as possible after user click
+      rzp.open();
+      
     } catch (e) {
       console.error('Payment error:', e);
       setLoading(false);
-      navigate(`/register/plans/failure?error=payment_failed&plan=${encodeURIComponent(currentPricing?.name || '')}`);
+      setPaymentError(e.message || 'Payment initialization failed. Please try again.');
+      // Don't navigate away on error, show error message instead
     }
   };
 
@@ -803,21 +878,21 @@ function EventSales() {
               <h3 className="font-semibold text-blue-900 mb-1">School Information</h3>
               <p className="text-sm text-blue-700">Enter your school details</p>
             </div>
-            <InputField label="School Name" icon={Building} placeholder="ABC Public School" value={form.school_name} onChange={e => updateForm('school_name', e.target.value)} error={errors.school_name} required />
-            <div className="grid sm:grid-cols-2 gap-4">
-              <SelectField label="School Board/Type" icon={BookOpen} options={SCHOOL_TYPES} value={form.school_type} onChange={e => updateForm('school_type', e.target.value)} error={errors.school_type} required />
-              <InputField label="Registration Number" icon={Hash} placeholder="Optional" value={form.registration_number} onChange={e => updateForm('registration_number', e.target.value)} />
-            </div>
             <InputField label="Principal Name" icon={User} placeholder="Dr. John Smith" value={form.principal_name} onChange={e => updateForm('principal_name', e.target.value)} error={errors.principal_name} required />
             <div className="grid sm:grid-cols-2 gap-4">
               <InputField label="Email" icon={Mail} type="email" placeholder="principal@school.edu" value={form.email} onChange={e => updateForm('email', e.target.value)} error={errors.email} required />
               <InputField label="Phone" icon={Phone} type="tel" placeholder="9876543210" value={form.phone} onChange={e => updateForm('phone', e.target.value)} error={errors.phone} required />
             </div>
-            <InputField label="School Address" icon={MapPin} placeholder="123 Education Street" value={form.address} onChange={e => updateForm('address', e.target.value)} error={errors.address} required />
+            <InputField label="School Name" icon={Building} placeholder="ABC Public School (Optional)" value={form.school_name} onChange={e => updateForm('school_name', e.target.value)} />
+            <div className="grid sm:grid-cols-2 gap-4">
+              <SelectField label="School Board/Type" icon={BookOpen} options={SCHOOL_TYPES} value={form.school_type} onChange={e => updateForm('school_type', e.target.value)} />
+              <InputField label="Registration Number" icon={Hash} placeholder="Optional" value={form.registration_number} onChange={e => updateForm('registration_number', e.target.value)} />
+            </div>
+            <InputField label="School Address" icon={MapPin} placeholder="123 Education Street (Optional)" value={form.address} onChange={e => updateForm('address', e.target.value)} />
             <div className="grid sm:grid-cols-3 gap-4">
-              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} error={errors.state} required />
-              <InputField label="City" icon={Building} placeholder="Mumbai" value={form.city} onChange={e => updateForm('city', e.target.value)} error={errors.city} required />
-              <InputField label="Pincode" placeholder="400001" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} error={errors.pincode} required />
+              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} />
+              <InputField label="City" icon={Building} placeholder="Mumbai (Optional)" value={form.city} onChange={e => updateForm('city', e.target.value)} />
+              <InputField label="Pincode" placeholder="400001 (Optional)" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} />
             </div>
             <InputField label="Website" icon={Globe} placeholder="https://school.edu (Optional)" value={form.website} onChange={e => updateForm('website', e.target.value)} />
           </>
@@ -830,24 +905,22 @@ function EventSales() {
               <h3 className="font-semibold text-blue-900 mb-1">College Information</h3>
               <p className="text-sm text-blue-700">Enter your college details</p>
             </div>
-            <InputField label="College Name" icon={Building} placeholder="ABC College of Engineering" value={form.college_name} onChange={e => updateForm('college_name', e.target.value)} error={errors.college_name} required />
-            <div className="grid sm:grid-cols-2 gap-4">
-              <SelectField label="College Type" icon={GraduationCap} options={COLLEGE_TYPES} value={form.college_type} onChange={e => updateForm('college_type', e.target.value)} error={errors.college_type} required />
-              <InputField label="University Affiliation" placeholder="XYZ University" value={form.university_affiliation} onChange={e => updateForm('university_affiliation', e.target.value)} />
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <InputField label="Dean/Principal Name" icon={User} placeholder="Dr. Jane Doe" value={form.dean_name} onChange={e => updateForm('dean_name', e.target.value)} error={errors.dean_name} required />
-              <InputField label="AICTE/UGC Code" icon={Hash} placeholder="Optional" value={form.aicte_code} onChange={e => updateForm('aicte_code', e.target.value)} />
-            </div>
+            <InputField label="Dean/Principal Name" icon={User} placeholder="Dr. Jane Doe" value={form.dean_name} onChange={e => updateForm('dean_name', e.target.value)} error={errors.dean_name} required />
             <div className="grid sm:grid-cols-2 gap-4">
               <InputField label="Email" icon={Mail} type="email" placeholder="admin@college.edu" value={form.email} onChange={e => updateForm('email', e.target.value)} error={errors.email} required />
               <InputField label="Phone" icon={Phone} type="tel" placeholder="9876543210" value={form.phone} onChange={e => updateForm('phone', e.target.value)} error={errors.phone} required />
             </div>
-            <InputField label="College Address" icon={MapPin} placeholder="123 College Road" value={form.address} onChange={e => updateForm('address', e.target.value)} error={errors.address} required />
+            <InputField label="College Name" icon={Building} placeholder="ABC College of Engineering (Optional)" value={form.college_name} onChange={e => updateForm('college_name', e.target.value)} />
+            <div className="grid sm:grid-cols-2 gap-4">
+              <SelectField label="College Type" icon={GraduationCap} options={COLLEGE_TYPES} value={form.college_type} onChange={e => updateForm('college_type', e.target.value)} />
+              <InputField label="University Affiliation" placeholder="XYZ University (Optional)" value={form.university_affiliation} onChange={e => updateForm('university_affiliation', e.target.value)} />
+            </div>
+            <InputField label="AICTE/UGC Code" icon={Hash} placeholder="Optional" value={form.aicte_code} onChange={e => updateForm('aicte_code', e.target.value)} />
+            <InputField label="College Address" icon={MapPin} placeholder="123 College Road (Optional)" value={form.address} onChange={e => updateForm('address', e.target.value)} />
             <div className="grid sm:grid-cols-3 gap-4">
-              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} error={errors.state} required />
-              <InputField label="City" icon={Building} placeholder="Bangalore" value={form.city} onChange={e => updateForm('city', e.target.value)} error={errors.city} required />
-              <InputField label="Pincode" placeholder="560001" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} error={errors.pincode} required />
+              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} />
+              <InputField label="City" icon={Building} placeholder="Bangalore (Optional)" value={form.city} onChange={e => updateForm('city', e.target.value)} />
+              <InputField label="Pincode" placeholder="560001 (Optional)" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} />
             </div>
             <InputField label="Website" icon={Globe} placeholder="https://college.edu (Optional)" value={form.website} onChange={e => updateForm('website', e.target.value)} />
           </>
@@ -860,21 +933,21 @@ function EventSales() {
               <h3 className="font-semibold text-blue-900 mb-1">University Information</h3>
               <p className="text-sm text-blue-700">Enter your university details</p>
             </div>
-            <InputField label="University Name" icon={Building} placeholder="XYZ University" value={form.university_name} onChange={e => updateForm('university_name', e.target.value)} error={errors.university_name} required />
-            <div className="grid sm:grid-cols-2 gap-4">
-              <SelectField label="University Type" icon={GraduationCap} options={UNIVERSITY_TYPES} value={form.university_type} onChange={e => updateForm('university_type', e.target.value)} error={errors.university_type} required />
-              <InputField label="UGC Recognition No." icon={Hash} placeholder="Optional" value={form.ugc_number} onChange={e => updateForm('ugc_number', e.target.value)} />
-            </div>
             <InputField label="Vice Chancellor / Registrar Name" icon={User} placeholder="Prof. John Smith" value={form.vc_name} onChange={e => updateForm('vc_name', e.target.value)} error={errors.vc_name} required />
             <div className="grid sm:grid-cols-2 gap-4">
               <InputField label="Email" icon={Mail} type="email" placeholder="registrar@university.edu" value={form.email} onChange={e => updateForm('email', e.target.value)} error={errors.email} required />
               <InputField label="Phone" icon={Phone} type="tel" placeholder="9876543210" value={form.phone} onChange={e => updateForm('phone', e.target.value)} error={errors.phone} required />
             </div>
-            <InputField label="University Address" icon={MapPin} placeholder="University Campus" value={form.address} onChange={e => updateForm('address', e.target.value)} error={errors.address} required />
+            <InputField label="University Name" icon={Building} placeholder="XYZ University (Optional)" value={form.university_name} onChange={e => updateForm('university_name', e.target.value)} />
+            <div className="grid sm:grid-cols-2 gap-4">
+              <SelectField label="University Type" icon={GraduationCap} options={UNIVERSITY_TYPES} value={form.university_type} onChange={e => updateForm('university_type', e.target.value)} />
+              <InputField label="UGC Recognition No." icon={Hash} placeholder="Optional" value={form.ugc_number} onChange={e => updateForm('ugc_number', e.target.value)} />
+            </div>
+            <InputField label="University Address" icon={MapPin} placeholder="University Campus (Optional)" value={form.address} onChange={e => updateForm('address', e.target.value)} />
             <div className="grid sm:grid-cols-3 gap-4">
-              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} error={errors.state} required />
-              <InputField label="City" icon={Building} placeholder="Delhi" value={form.city} onChange={e => updateForm('city', e.target.value)} error={errors.city} required />
-              <InputField label="Pincode" placeholder="110001" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} error={errors.pincode} required />
+              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} />
+              <InputField label="City" icon={Building} placeholder="Delhi (Optional)" value={form.city} onChange={e => updateForm('city', e.target.value)} />
+              <InputField label="Pincode" placeholder="110001 (Optional)" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} />
             </div>
             <InputField label="Website" icon={Globe} placeholder="https://university.edu (Optional)" value={form.website} onChange={e => updateForm('website', e.target.value)} />
           </>
@@ -888,16 +961,16 @@ function EventSales() {
               <InputField label="Email" icon={Mail} type="email" placeholder="john@email.com" value={form.email} onChange={e => updateForm('email', e.target.value)} error={errors.email} required />
               <InputField label="Phone" icon={Phone} type="tel" placeholder="9876543210" value={form.phone} onChange={e => updateForm('phone', e.target.value)} error={errors.phone} required />
             </div>
-            <InputField label="School Name" icon={Building} placeholder="ABC Public School" value={form.school_name} onChange={e => updateForm('school_name', e.target.value)} error={errors.school_name} required />
+            <InputField label="School Name" icon={Building} placeholder="ABC Public School (Optional)" value={form.school_name} onChange={e => updateForm('school_name', e.target.value)} />
             <div className="grid sm:grid-cols-2 gap-4">
-              <InputField label="Class/Grade" icon={BookOpen} placeholder="Class 10" value={form.class_grade} onChange={e => updateForm('class_grade', e.target.value)} error={errors.class_grade} required />
+              <InputField label="Class/Grade" icon={BookOpen} placeholder="Class 10 (Optional)" value={form.class_grade} onChange={e => updateForm('class_grade', e.target.value)} />
               <InputField label="Roll Number" placeholder="Optional" value={form.roll_number} onChange={e => updateForm('roll_number', e.target.value)} />
             </div>
-            <InputField label="Address" icon={MapPin} placeholder="123 Main Street" value={form.address} onChange={e => updateForm('address', e.target.value)} error={errors.address} required />
+            <InputField label="Address" icon={MapPin} placeholder="123 Main Street (Optional)" value={form.address} onChange={e => updateForm('address', e.target.value)} />
             <div className="grid sm:grid-cols-3 gap-4">
-              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} error={errors.state} required />
-              <InputField label="City" icon={Building} placeholder="Mumbai" value={form.city} onChange={e => updateForm('city', e.target.value)} error={errors.city} required />
-              <InputField label="Pincode" placeholder="400001" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} error={errors.pincode} required />
+              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} />
+              <InputField label="City" icon={Building} placeholder="Mumbai (Optional)" value={form.city} onChange={e => updateForm('city', e.target.value)} />
+              <InputField label="Pincode" placeholder="400001 (Optional)" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} />
             </div>
           </>
         );
@@ -911,17 +984,17 @@ function EventSales() {
               <InputField label="Email" icon={Mail} type="email" placeholder="john@email.com" value={form.email} onChange={e => updateForm('email', e.target.value)} error={errors.email} required />
               <InputField label="Phone" icon={Phone} type="tel" placeholder="9876543210" value={form.phone} onChange={e => updateForm('phone', e.target.value)} error={errors.phone} required />
             </div>
-            <InputField label="Institution Name" icon={Building} placeholder="ABC College/University" value={form.institution_name} onChange={e => updateForm('institution_name', e.target.value)} error={errors.institution_name} required />
+            <InputField label="Institution Name" icon={Building} placeholder="ABC College/University (Optional)" value={form.institution_name} onChange={e => updateForm('institution_name', e.target.value)} />
             <div className="grid sm:grid-cols-3 gap-4">
-              <InputField label="Course" icon={BookOpen} placeholder="B.Tech CSE" value={form.course} onChange={e => updateForm('course', e.target.value)} error={errors.course} required />
-              <InputField label="Year" placeholder="3rd Year" value={form.year} onChange={e => updateForm('year', e.target.value)} />
+              <InputField label="Course" icon={BookOpen} placeholder="B.Tech CSE (Optional)" value={form.course} onChange={e => updateForm('course', e.target.value)} />
+              <InputField label="Year" placeholder="3rd Year (Optional)" value={form.year} onChange={e => updateForm('year', e.target.value)} />
               <InputField label="Roll Number" placeholder="Optional" value={form.roll_number} onChange={e => updateForm('roll_number', e.target.value)} />
             </div>
-            <InputField label="Address" icon={MapPin} placeholder="123 Main Street" value={form.address} onChange={e => updateForm('address', e.target.value)} error={errors.address} required />
+            <InputField label="Address" icon={MapPin} placeholder="123 Main Street (Optional)" value={form.address} onChange={e => updateForm('address', e.target.value)} />
             <div className="grid sm:grid-cols-3 gap-4">
-              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} error={errors.state} required />
-              <InputField label="City" icon={Building} placeholder="Bangalore" value={form.city} onChange={e => updateForm('city', e.target.value)} error={errors.city} required />
-              <InputField label="Pincode" placeholder="560001" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} error={errors.pincode} required />
+              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} />
+              <InputField label="City" icon={Building} placeholder="Bangalore (Optional)" value={form.city} onChange={e => updateForm('city', e.target.value)} />
+              <InputField label="Pincode" placeholder="560001 (Optional)" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} />
             </div>
           </>
         );
@@ -934,17 +1007,17 @@ function EventSales() {
               <InputField label="Email" icon={Mail} type="email" placeholder="jane@school.edu" value={form.email} onChange={e => updateForm('email', e.target.value)} error={errors.email} required />
               <InputField label="Phone" icon={Phone} type="tel" placeholder="9876543210" value={form.phone} onChange={e => updateForm('phone', e.target.value)} error={errors.phone} required />
             </div>
-            <InputField label="Institution Name" icon={Building} placeholder="ABC School/College" value={form.institution_name} onChange={e => updateForm('institution_name', e.target.value)} error={errors.institution_name} required />
+            <InputField label="Institution Name" icon={Building} placeholder="ABC School/College (Optional)" value={form.institution_name} onChange={e => updateForm('institution_name', e.target.value)} />
             <div className="grid sm:grid-cols-3 gap-4">
-              <InputField label="Department" icon={BookOpen} placeholder="Mathematics" value={form.department} onChange={e => updateForm('department', e.target.value)} />
-              <InputField label="Designation" placeholder="Senior Teacher" value={form.designation} onChange={e => updateForm('designation', e.target.value)} error={errors.designation} required />
+              <InputField label="Department" icon={BookOpen} placeholder="Mathematics (Optional)" value={form.department} onChange={e => updateForm('department', e.target.value)} />
+              <InputField label="Designation" placeholder="Senior Teacher (Optional)" value={form.designation} onChange={e => updateForm('designation', e.target.value)} />
               <InputField label="Employee ID" placeholder="Optional" value={form.employee_id} onChange={e => updateForm('employee_id', e.target.value)} />
             </div>
-            <InputField label="Address" icon={MapPin} placeholder="123 Main Street" value={form.address} onChange={e => updateForm('address', e.target.value)} error={errors.address} required />
+            <InputField label="Address" icon={MapPin} placeholder="123 Main Street (Optional)" value={form.address} onChange={e => updateForm('address', e.target.value)} />
             <div className="grid sm:grid-cols-3 gap-4">
-              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} error={errors.state} required />
-              <InputField label="City" icon={Building} placeholder="Chennai" value={form.city} onChange={e => updateForm('city', e.target.value)} error={errors.city} required />
-              <InputField label="Pincode" placeholder="600001" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} error={errors.pincode} required />
+              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} />
+              <InputField label="City" icon={Building} placeholder="Chennai (Optional)" value={form.city} onChange={e => updateForm('city', e.target.value)} />
+              <InputField label="Pincode" placeholder="600001 (Optional)" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} />
             </div>
           </>
         );
@@ -957,16 +1030,16 @@ function EventSales() {
               <InputField label="Email" icon={Mail} type="email" placeholder="john@company.com" value={form.email} onChange={e => updateForm('email', e.target.value)} error={errors.email} required />
               <InputField label="Phone" icon={Phone} type="tel" placeholder="9876543210" value={form.phone} onChange={e => updateForm('phone', e.target.value)} error={errors.phone} required />
             </div>
-            <InputField label="Company Name" icon={Briefcase} placeholder="ABC Technologies" value={form.company_name} onChange={e => updateForm('company_name', e.target.value)} error={errors.company_name} required />
+            <InputField label="Company Name" icon={Briefcase} placeholder="ABC Technologies (Optional)" value={form.company_name} onChange={e => updateForm('company_name', e.target.value)} />
             <div className="grid sm:grid-cols-2 gap-4">
-              <InputField label="Designation" placeholder="HR Manager" value={form.designation} onChange={e => updateForm('designation', e.target.value)} error={errors.designation} required />
+              <InputField label="Designation" placeholder="HR Manager (Optional)" value={form.designation} onChange={e => updateForm('designation', e.target.value)} />
               <SelectField label="Industry" icon={Building} options={INDUSTRY_TYPES} value={form.industry} onChange={e => updateForm('industry', e.target.value)} />
             </div>
-            <InputField label="Company Address" icon={MapPin} placeholder="123 Business Park" value={form.address} onChange={e => updateForm('address', e.target.value)} error={errors.address} required />
+            <InputField label="Company Address" icon={MapPin} placeholder="123 Business Park (Optional)" value={form.address} onChange={e => updateForm('address', e.target.value)} />
             <div className="grid sm:grid-cols-3 gap-4">
-              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} error={errors.state} required />
-              <InputField label="City" icon={Building} placeholder="Hyderabad" value={form.city} onChange={e => updateForm('city', e.target.value)} error={errors.city} required />
-              <InputField label="Pincode" placeholder="500001" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} error={errors.pincode} required />
+              <SelectField label="State" options={STATES} value={form.state} onChange={e => updateForm('state', e.target.value)} />
+              <InputField label="City" icon={Building} placeholder="Hyderabad (Optional)" value={form.city} onChange={e => updateForm('city', e.target.value)} />
+              <InputField label="Pincode" placeholder="500001 (Optional)" value={form.pincode} onChange={e => updateForm('pincode', e.target.value)} />
             </div>
             <InputField label="Company Website" icon={Globe} placeholder="https://company.com (Optional)" value={form.company_website} onChange={e => updateForm('company_website', e.target.value)} />
           </>
@@ -1264,6 +1337,104 @@ function EventSales() {
                         })}
                       </div>
                     )}
+                  </div>
+                )}
+              </>
+            ) : isStudentRole ? (
+              <>
+                {/* ESFE Event Banner for Students */}
+                {isPromoActive && promoEvent?.end_date && (
+                  <div className="mb-6 relative overflow-hidden rounded-2xl shadow-lg">
+                    <style>{`
+                      .flip-clock-container-student {
+                        transform: scale(0.75);
+                        transform-origin: center;
+                      }
+                      @media (min-width: 640px) {
+                        .flip-clock-container-student {
+                          transform: scale(1);
+                        }
+                      }
+                    `}</style>
+                    
+                    <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgb(30, 78, 216) 0%, rgb(59, 130, 246) 100%)' }} />
+                    
+                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 200" preserveAspectRatio="xMidYMid slice">
+                      <defs>
+                        <linearGradient id="shape1-student" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="rgba(255,255,255,0.15)" />
+                          <stop offset="100%" stopColor="rgba(255,255,255,0.05)" />
+                        </linearGradient>
+                      </defs>
+                      <ellipse cx="700" cy="30" rx="150" ry="100" fill="url(#shape1-student)" />
+                      <ellipse cx="50" cy="180" rx="120" ry="80" fill="url(#shape1-student)" />
+                    </svg>
+                    
+                    <div className="relative z-10 px-3 sm:px-6 py-4 sm:py-5 text-white text-center">
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 mb-3 sm:mb-4">
+                        <span className="px-3 sm:px-4 py-1 sm:py-1.5 bg-emerald-500 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider shadow-md whitespace-nowrap">
+                          Limited Time
+                        </span>
+                        <h2 className="text-lg sm:text-2xl font-bold tracking-tight leading-tight">
+                          {promoEvent?.banner_text || 'ESFE Event Special Pricing!'}
+                        </h2>
+                      </div>
+                      
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] sm:text-[11px] text-white/70 uppercase tracking-widest font-medium mb-2 sm:mb-3">
+                          Offer Ends In
+                        </span>
+                        <div className="flip-clock-container-student">
+                          <FlipClockCountdown
+                            to={new Date(promoEvent.end_date)}
+                            labels={['DAYS', 'HOURS', 'MIN', 'SEC']}
+                            labelStyle={{ 
+                              fontSize: 10, 
+                              fontWeight: 600, 
+                              textTransform: 'uppercase', 
+                              color: 'rgba(255,255,255,0.7)',
+                              letterSpacing: '0.03em'
+                            }}
+                            digitBlockStyle={{ 
+                              width: 32, 
+                              height: 44, 
+                              fontSize: 22, 
+                              fontWeight: 700,
+                              backgroundColor: '#1e293b', 
+                              color: '#fff',
+                              borderRadius: 5
+                            }}
+                            dividerStyle={{ color: '#334155', height: 1 }}
+                            separatorStyle={{ color: 'rgba(255,255,255,0.5)', size: '4px' }}
+                            duration={0.5}
+                            onComplete={() => setPromoEvent(null)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">{getStepContent(role?.id).step2.heading}</h2>
+                  <p className="text-gray-500 mt-1">{getStepContent(role?.id).step2.subtitle}</p>
+                </div>
+                
+                {tiersLoading ? (
+                  <div className="flex justify-center py-12">
+                    <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                    {studentTiers.map(tier => (
+                      <StudentPlanCard
+                        key={tier.id}
+                        plan={tier}
+                        isSelected={studentTier?.id === tier.id}
+                        onSelect={setStudentTier}
+                        isPromoActive={isPromoActive}
+                      />
+                    ))}
                   </div>
                 )}
               </>
@@ -1574,15 +1745,29 @@ function EventSales() {
               Continue <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           ) : (
-            <button onClick={handlePayment} disabled={loading || !currentPricing} className="flex-1 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-blue-600 text-white font-semibold text-sm sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 hover:bg-blue-700 disabled:bg-blue-400">
+            <button onClick={handlePayment} disabled={loading || !currentPricing || !razorpayReady} className="flex-1 py-2.5 sm:py-3 rounded-lg sm:rounded-xl bg-blue-600 text-white font-semibold text-sm sm:text-base flex items-center justify-center gap-1.5 sm:gap-2 hover:bg-blue-700 disabled:bg-blue-400">
               {loading ? (
                 <><div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Processing...</>
+              ) : !razorpayReady ? (
+                <><div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Loading...</>
               ) : (
                 <><CreditCard className="w-4 h-4 sm:w-5 sm:h-5" />Pay ₹{currentPricing?.price.toLocaleString()}</>
               )}
             </button>
           )}
         </div>
+        {/* Payment Error Display */}
+        {paymentError && (
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600 text-center">{paymentError}</p>
+            <button 
+              onClick={() => setPaymentError(null)} 
+              className="mt-2 w-full text-xs text-red-500 hover:text-red-700 underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

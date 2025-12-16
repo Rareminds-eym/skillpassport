@@ -67,17 +67,14 @@ const PromotionalBanner = ({ event, isOpen, onClose, getTimeRemaining }) => {
         >
           {/* Banner Container - Light grey background */}
           <div className="bg-gray-100 border-b border-gray-200">
-            {/* Mobile Layout: Left-Center-Right */}
+            {/* Mobile Layout */}
             <div className="flex items-center justify-between px-3 py-2 sm:hidden">
-              {/* Left: Emoji + 50% OFF badge */}
               <div className="flex items-center gap-2">
                 <span className="text-sm">{event.banner_emoji || '🎉'}</span>
                 <span className="rounded-full bg-yellow-400 px-2.5 py-0.5 text-[11px] font-bold text-gray-900">
                   50% OFF
                 </span>
               </div>
-
-              {/* Center: Countdown */}
               <div className="flex items-center gap-1.5">
                 <span className="text-gray-400">•</span>
                 {timeLeft && (
@@ -86,8 +83,6 @@ const PromotionalBanner = ({ event, isOpen, onClose, getTimeRemaining }) => {
                   </span>
                 )}
               </div>
-
-              {/* Right: CTA + Close */}
               <div className="flex items-center gap-1.5">
                 <motion.button
                   className="flex items-center gap-1 rounded-full bg-gray-800 px-2.5 py-1 text-[10px] font-semibold text-white"
@@ -107,9 +102,8 @@ const PromotionalBanner = ({ event, isOpen, onClose, getTimeRemaining }) => {
               </div>
             </div>
 
-            {/* Desktop Layout: Centered content */}
+            {/* Desktop Layout */}
             <div className="hidden items-center justify-center gap-4 px-4 py-2 sm:flex">
-              {/* Content Group */}
               <div className="flex items-center gap-3">
                 <span className="text-base">{event.banner_emoji || '🎉'}</span>
                 <span className="rounded-full bg-yellow-400 px-3 py-0.5 text-xs font-bold text-gray-900">
@@ -126,8 +120,6 @@ const PromotionalBanner = ({ event, isOpen, onClose, getTimeRemaining }) => {
                   </span>
                 )}
               </div>
-
-              {/* CTA + Close */}
               <div className="flex items-center gap-2">
                 <motion.button
                   className="flex items-center gap-1 rounded-full bg-gray-800 px-3 py-1 text-xs font-semibold text-white transition-all hover:bg-gray-700"

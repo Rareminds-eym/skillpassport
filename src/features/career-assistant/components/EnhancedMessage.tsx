@@ -189,7 +189,7 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
   );
 };
 
-// Simple text message component (for user messages)
+// Simple text message component (for user messages and AI responses)
 interface SimpleMessageProps {
   content: string;
   timestamp: string;
@@ -212,7 +212,98 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = ({
           isUser ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'
         }`}
       >
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+        {isUser ? (
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+        ) : (
+          <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900 prose-code:bg-gray-200 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-gray-800 prose-code:before:content-none prose-code:after:content-none prose-pre:bg-gray-800 prose-pre:text-gray-100 prose-li:text-gray-800 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline">
+            <ReactMarkdown
+              components={{
+                // Custom code block rendering
+                code({ inline, className, children, ...props }: any) {
+                  return !inline ? (
+                    <pre className="bg-gray-800 text-gray-100 rounded-lg p-4 overflow-x-auto my-3">
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    </pre>
+                  ) : (
+                    <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+                // Custom list rendering
+                ul({ children }) {
+                  return <ul className="list-disc pl-4 space-y-1 my-2">{children}</ul>;
+                },
+                ol({ children }) {
+                  return <ol className="list-decimal pl-4 space-y-1 my-2">{children}</ol>;
+                },
+                // Custom heading rendering
+                h1({ children }) {
+                  return <h1 className="text-lg font-bold mt-4 mb-2">{children}</h1>;
+                },
+                h2({ children }) {
+                  return <h2 className="text-base font-bold mt-3 mb-2">{children}</h2>;
+                },
+                h3({ children }) {
+                  return <h3 className="text-sm font-bold mt-2 mb-1">{children}</h3>;
+                },
+                // Custom paragraph
+                p({ children }) {
+                  return <p className="my-2 leading-relaxed">{children}</p>;
+                },
+                // Custom link
+                a({ href, children }) {
+                  return (
+                    <a 
+                      href={href} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {children}
+                    </a>
+                  );
+                },
+                // Custom blockquote
+                blockquote({ children }) {
+                  return (
+                    <blockquote className="border-l-4 border-gray-300 pl-4 my-3 italic text-gray-600">
+                      {children}
+                    </blockquote>
+                  );
+                },
+                // Custom table
+                table({ children }) {
+                  return (
+                    <div className="overflow-x-auto my-3">
+                      <table className="min-w-full border border-gray-200 rounded-lg">
+                        {children}
+                      </table>
+                    </div>
+                  );
+                },
+                th({ children }) {
+                  return (
+                    <th className="px-3 py-2 bg-gray-100 border-b border-gray-200 text-left text-sm font-semibold">
+                      {children}
+                    </th>
+                  );
+                },
+                td({ children }) {
+                  return (
+                    <td className="px-3 py-2 border-b border-gray-100 text-sm">
+                      {children}
+                    </td>
+                  );
+                },
+              }}
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
+        )}
         <p className={`text-xs mt-2 ${isUser ? 'text-gray-400' : 'text-gray-500'}`}>
           {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>

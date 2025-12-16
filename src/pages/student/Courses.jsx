@@ -22,9 +22,12 @@ import { supabase } from '../../lib/supabaseClient';
 import { motion } from 'framer-motion';
 import CourseDetailModal from '../../components/student/courses/CourseDetailModal';
 import WeeklyLearningTracker from '../../components/student/WeeklyLearningTracker';
+import { useAuth } from '../../context/AuthContext';
+import { courseEnrollmentService } from '../../services/courseEnrollmentService';
 
 const Courses = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,11 +39,15 @@ const Courses = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const coursesPerPage = 6;
   const [activeTab, setActiveTab] = useState('courses'); // 'courses' or 'progress'
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
 
-  // Fetch courses from Supabase
+  // Fetch courses and enrollments from Supabase
   useEffect(() => {
     fetchCourses();
-  }, []);
+    if (user?.email) {
+      fetchEnrollments();
+    }
+  }, [user]);
 
   const fetchCourses = async () => {
     const startTime = Date.now();
@@ -81,6 +88,19 @@ const Courses = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEnrollments = async () => {
+    try {
+      const result = await courseEnrollmentService.getStudentEnrollments(user.email);
+      if (result.success && result.data) {
+        const enrolledIds = new Set(result.data.map(enrollment => enrollment.course_id));
+        setEnrolledCourseIds(enrolledIds);
+        console.log('📝 Student enrolled in courses:', enrolledIds.size);
+      }
+    } catch (error) {
+      console.error('Error fetching enrollments:', error);
     }
   };
 
@@ -429,18 +449,29 @@ const Courses = () => {
                           <BookOpen className="h-16 w-16 text-white opacity-90" />
                         </div>
                       )}
-                      {/* NEW Badge */}
-                      {isNewCourse(course.created_at) && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="absolute top-2 left-2"
-                        >
-                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                            NEW
-                          </Badge>
-                        </motion.div>
-                      )}
+                      {/* Badges */}
+                      <div className="absolute top-2 left-2 flex gap-2">
+                        {enrolledCourseIds.has(course.course_id) && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                          >
+                            <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                              Enrolled
+                            </Badge>
+                          </motion.div>
+                        )}
+                        {isNewCourse(course.created_at) && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                          >
+                            <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                              NEW
+                            </Badge>
+                          </motion.div>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -450,6 +481,11 @@ const Courses = () => {
                         <Badge className={`${getStatusColor(course.status)} border`}>
                           {course.status}
                         </Badge>
+                        {/* {enrolledCourseIds.has(course.course_id) && (
+                          <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 font-semibold">
+                            Enrolled
+                          </Badge>
+                        )} */}
                         {!course.thumbnail && isNewCourse(course.created_at) && (
                           <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 font-semibold">
                             NEW
@@ -528,14 +564,19 @@ const Courses = () => {
                               <BookOpen className="h-12 w-12 text-white opacity-90" />
                             </div>
                           )}
-                          {/* NEW Badge */}
-                          {isNewCourse(course.created_at) && (
-                            <div className="absolute top-2 left-2">
+                          {/* Badges */}
+                          <div className="absolute top-2 left-2 flex gap-2">
+                            {enrolledCourseIds.has(course.course_id) && (
+                              <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                                Enrolled
+                              </Badge>
+                            )}
+                            {isNewCourse(course.created_at) && (
                               <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
                                 NEW
                               </Badge>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                       )}
 
@@ -548,6 +589,11 @@ const Courses = () => {
                               <Badge className={`${getStatusColor(course.status)} border`}>
                                 {course.status}
                               </Badge>
+                              {/* {enrolledCourseIds.has(course.course_id) && (
+                                <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 font-semibold">
+                                  Enrolled
+                                </Badge>
+                              )} */}
                               {!course.thumbnail && isNewCourse(course.created_at) && (
                                 <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 font-semibold">
                                   NEW

@@ -13,10 +13,13 @@ import KPIDashboard from "../../../components/admin/KPIDashboard";
 import { BanknotesIcon, BuildingOfficeIcon, MapPinIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../../../context/AuthContext";
 import { supabase } from "../../../lib/supabaseClient";
+import NotificationBell from "../../../components/admin/schoolAdmin/NotificationBell";
+import { toast } from 'react-hot-toast';
 
 const SchoolDashboard: React.FC = () => {
   const { user } = useAuth();
   const [schoolId, setSchoolId] = useState<string | undefined>(undefined);
+
 
   useEffect(() => {
     const getSchoolId = async () => {
@@ -57,6 +60,20 @@ const SchoolDashboard: React.FC = () => {
 
     getSchoolId();
   }, [user]);
+
+  // Handle notification click
+  const handleNotificationClick = (notification: any) => {
+    if (notification.viewAll) {
+      // Navigate to verifications page
+      window.location.href = '/school-admin/students/verifications';
+      return;
+    }
+    
+    // Navigate to verifications page for individual notifications
+    window.location.href = '/school-admin/students/verifications';
+  };
+
+
   
   // ===== KPI Cards Based on School Programs Data =====
   const kpiData = [
@@ -103,7 +120,7 @@ const SchoolDashboard: React.FC = () => {
       }
     ],
     options: {
-      chart: { type: "bar", toolbar: { show: false }, height: 250 },
+      chart: { type: "bar" as const, toolbar: { show: false }, height: 250 },
       plotOptions: {
         bar: { horizontal: true, borderRadius: 6, dataLabels: { position: "center" } },
       },
@@ -141,8 +158,8 @@ const SchoolDashboard: React.FC = () => {
       },
     ],
     options: {
-      chart: { type: "area", toolbar: { show: false }, height: 250 },
-      stroke: { curve: "smooth", width: 3 },
+      chart: { type: "area" as const, toolbar: { show: false }, height: 250 },
+      stroke: { curve: "smooth" as const, width: 3 },
       fill: {
         type: "gradient",
         gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1 },
@@ -224,15 +241,29 @@ const SchoolDashboard: React.FC = () => {
   // ===== Render =====
   return (
     <div className="space-y-8 p-4 sm:p-6 lg:p-8">
-      {/* Header with gradient background */}
+      {/* Header with gradient background and notifications */}
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-          School Dashboard
-        </h1>
-        <p className="text-gray-600 text-sm sm:text-base">
-          Overview of school activities and academic performance
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+              School Dashboard
+            </h1>
+            <p className="text-gray-600 text-sm sm:text-base">
+              Overview of school activities and academic performance
+            </p>
+          </div>
+          
+          {/* Notification Bell */}
+          {schoolId && (
+            <NotificationBell 
+              schoolId={schoolId} 
+              onNotificationClick={handleNotificationClick}
+            />
+          )}
+        </div>
       </div>
+
+      {/* Pending Trainings moved to Verifications page */}
 
       {/* KPI Cards - Real-time Data from Database */}
       <KPIDashboard schoolId={schoolId} />
@@ -395,6 +426,8 @@ const SchoolDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+
     </div>
   );
 };

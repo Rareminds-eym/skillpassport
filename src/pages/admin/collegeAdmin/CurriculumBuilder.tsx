@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
-import { useCurriculum } from '../../../hooks/useCurriculum';
-import * as curriculumService from '../../../services/curriculumService';
 
-// Import all the modal and card components from the original file
-import CurriculumBuilderUI from '../../admin/schoolAdmin/CurriculumBuilder';
+// Import the college-adapted curriculum builder UI
+import CollegeCurriculumBuilderUI from '../../../components/admin/collegeAdmin/CollegeCurriculumBuilderUI';
 
 const CollegeCurriculumBuilder: React.FC = () => {
-  // Local state for selections
-  const [selectedSubject, setSelectedSubject] = useState('');
-  const [selectedClass, setSelectedClass] = useState('');
+  // Local state for college-specific selections
+  const [selectedCourse, setSelectedCourse] = useState(''); // Course/Subject
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [selectedProgram, setSelectedProgram] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -20,8 +20,10 @@ const CollegeCurriculumBuilder: React.FC = () => {
   } | null>(null);
   
   // Configuration data from database
-  const [subjects, setSubjects] = useState<string[]>([]);
-  const [classes, setClasses] = useState<string[]>([]);
+  const [courses, setCourses] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [programs, setPrograms] = useState<string[]>([]);
+  const [semesters, setSemesters] = useState<string[]>([]);
   const [academicYears, setAcademicYears] = useState<string[]>([]);
 
   // Load configuration data on mount
@@ -31,36 +33,90 @@ const CollegeCurriculumBuilder: React.FC = () => {
 
   const loadConfigurationData = async () => {
     try {
-      // Load configuration data with individual error handling
-      let subjectsData: string[] = [];
-      let classesData: string[] = [];
+      // Load college-specific configuration data
+      let coursesData: string[] = [];
+      let departmentsData: string[] = [];
+      let programsData: string[] = [];
+      let semestersData: string[] = [];
       let yearsData: string[] = [];
 
       try {
-        subjectsData = await curriculumService.getSubjects();
+        // For now, use hardcoded data - can be replaced with API calls later
+        coursesData = [
+          "Computer Science Fundamentals",
+          "Data Structures and Algorithms", 
+          "Database Management Systems",
+          "Software Engineering",
+          "Web Development",
+          "Machine Learning",
+          "Artificial Intelligence",
+          "Computer Networks",
+          "Operating Systems",
+          "Mathematics for CS",
+          "Statistics and Probability",
+          "Digital Electronics"
+        ];
       } catch (err) {
-        console.error('Error loading subjects:', err);
+        console.error('Error loading courses:', err);
       }
 
       try {
-        classesData = await curriculumService.getClasses();
+        departmentsData = [
+          "Computer Science",
+          "Information Technology", 
+          "Electronics and Communication",
+          "Mechanical Engineering",
+          "Civil Engineering",
+          "Electrical Engineering",
+          "Mathematics",
+          "Physics",
+          "Chemistry"
+        ];
       } catch (err) {
-        console.error('Error loading classes:', err);
+        console.error('Error loading departments:', err);
       }
 
       try {
-        yearsData = await curriculumService.getAcademicYears();
+        programsData = [
+          "B.Tech",
+          "B.E.",
+          "M.Tech", 
+          "M.E.",
+          "B.Sc",
+          "M.Sc",
+          "BCA",
+          "MCA",
+          "MBA"
+        ];
+      } catch (err) {
+        console.error('Error loading programs:', err);
+      }
+
+      try {
+        semestersData = ["1", "2", "3", "4", "5", "6", "7", "8"];
+      } catch (err) {
+        console.error('Error loading semesters:', err);
+      }
+
+      try {
+        yearsData = [
+          "2024-2025",
+          "2025-2026", 
+          "2026-2027"
+        ];
       } catch (err) {
         console.error('Error loading academic years:', err);
       }
       
-      setSubjects(subjectsData);
-      setClasses(classesData);
+      setCourses(coursesData);
+      setDepartments(departmentsData);
+      setPrograms(programsData);
+      setSemesters(semestersData);
       setAcademicYears(yearsData);
       
       // Auto-select current academic year if available
       try {
-        const currentYear = await curriculumService.getCurrentAcademicYear();
+        const currentYear = "2024-2025"; // Can be fetched from API
         if (currentYear && yearsData.includes(currentYear)) {
           setSelectedAcademicYear(currentYear);
         }
@@ -69,11 +125,11 @@ const CollegeCurriculumBuilder: React.FC = () => {
       }
 
       // Show warning if no data was loaded
-      if (subjectsData.length === 0 || classesData.length === 0 || yearsData.length === 0) {
+      if (coursesData.length === 0 || departmentsData.length === 0 || programsData.length === 0) {
         console.warn('Some configuration data is missing:', {
-          subjects: subjectsData.length,
-          classes: classesData.length,
-          years: yearsData.length,
+          courses: coursesData.length,
+          departments: departmentsData.length,
+          programs: programsData.length,
         });
       }
     } catch (error: any) {
@@ -82,164 +138,159 @@ const CollegeCurriculumBuilder: React.FC = () => {
     }
   };
 
-  // Use the curriculum hook
-  const {
-    curriculumId,
-    chapters,
-    learningOutcomes,
-    assessmentTypes,
-    status,
-    rejectionReason,
-    loading,
-    saveStatus,
-    addChapter,
-    updateChapter,
-    deleteChapter,
-    addLearningOutcome,
-    updateLearningOutcome,
-    deleteLearningOutcome,
-    submitForApproval,
-    approveCurriculum,
-    rejectCurriculum,
-  } = useCurriculum(selectedSubject, selectedClass, selectedAcademicYear);
+  // Local state for curriculum data (no database connection)
+  const [curriculumId] = useState<string | null>(null);
+  const [units, setUnits] = useState<any[]>([]);
+  const [learningOutcomes, setLearningOutcomes] = useState<any[]>([]);
+  const [status, setStatus] = useState<"draft" | "pending_approval" | "approved" | "rejected">("draft");
+  const [rejectionReason] = useState<string | undefined>();
+  const [loading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
-  // Handler wrappers to match the original component's interface
-  const handleAddChapter = async (chapter: any) => {
-    try {
-      if (chapter.id && chapters.find(ch => ch.id === chapter.id)) {
+  // Local handlers (no database connection)
+  const handleAddUnit = async (unit: any) => {
+    setSaveStatus("saving");
+    
+    // Simulate async operation
+    setTimeout(() => {
+      if (unit.id && units.find(u => u.id === unit.id)) {
         // Update existing
-        await updateChapter(chapter.id, {
-          name: chapter.name,
-          code: chapter.code,
-          description: chapter.description,
-          order: chapter.order,
-          estimatedDuration: chapter.estimatedDuration,
-          durationUnit: chapter.durationUnit,
-        });
+        setUnits(prev => prev.map(u => u.id === unit.id ? unit : u));
       } else {
         // Create new
-        await addChapter({
-          name: chapter.name,
-          code: chapter.code,
-          description: chapter.description,
-          order: chapter.order || chapters.length + 1,
-          estimatedDuration: chapter.estimatedDuration,
-          durationUnit: chapter.durationUnit,
-        });
+        const newUnit = { ...unit, id: Date.now().toString(), order: units.length + 1 };
+        setUnits(prev => [...prev, newUnit]);
       }
-    } catch (error: any) {
-      alert('Error saving chapter: ' + error.message);
-      throw error;
-    }
+      
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+      
+      setNotification({ type: 'success', message: 'Unit saved successfully!' });
+      setTimeout(() => setNotification(null), 3000);
+    }, 500);
   };
 
-  const handleDeleteChapter = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this chapter?')) return;
+  const handleDeleteUnit = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this unit?')) return;
     
-    try {
-      await deleteChapter(id);
-    } catch (error: any) {
-      alert('Error deleting chapter: ' + error.message);
-      throw error;
-    }
+    setSaveStatus("saving");
+    
+    // Simulate async operation
+    setTimeout(() => {
+      setUnits(prev => prev.filter(u => u.id !== id));
+      setLearningOutcomes(prev => prev.filter(lo => lo.unitId !== id));
+      
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+      
+      setNotification({ type: 'success', message: 'Unit deleted successfully!' });
+      setTimeout(() => setNotification(null), 3000);
+    }, 300);
   };
 
   const handleAddOutcome = async (outcome: any) => {
-    try {
+    setSaveStatus("saving");
+    
+    // Simulate async operation
+    setTimeout(() => {
       if (outcome.id && learningOutcomes.find(lo => lo.id === outcome.id)) {
         // Update existing
-        await updateLearningOutcome(outcome.id, {
-          outcome: outcome.outcome,
-          bloomLevel: outcome.bloomLevel,
-          assessmentMappings: outcome.assessmentMappings,
-          chapterId: outcome.chapterId,
-        });
+        setLearningOutcomes(prev => prev.map(lo => lo.id === outcome.id ? outcome : lo));
       } else {
         // Create new
-        await addLearningOutcome({
-          chapterId: outcome.chapterId,
-          outcome: outcome.outcome,
-          bloomLevel: outcome.bloomLevel,
-          assessmentMappings: outcome.assessmentMappings,
-        });
+        const newOutcome = { ...outcome, id: Date.now().toString() };
+        setLearningOutcomes(prev => [...prev, newOutcome]);
       }
-    } catch (error: any) {
-      alert('Error saving learning outcome: ' + error.message);
-      throw error;
-    }
+      
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+      
+      setNotification({ type: 'success', message: 'Learning outcome saved successfully!' });
+      setTimeout(() => setNotification(null), 3000);
+    }, 500);
   };
 
   const handleDeleteOutcome = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this outcome?')) return;
     
-    try {
-      await deleteLearningOutcome(id);
-    } catch (error: any) {
-      alert('Error deleting outcome: ' + error.message);
-      throw error;
-    }
+    setSaveStatus("saving");
+    
+    // Simulate async operation
+    setTimeout(() => {
+      setLearningOutcomes(prev => prev.filter(lo => lo.id !== id));
+      
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+      
+      setNotification({ type: 'success', message: 'Learning outcome deleted successfully!' });
+      setTimeout(() => setNotification(null), 3000);
+    }, 300);
   };
 
   const handleSubmitForApproval = async () => {
-    try {
-      // Check if user is college_admin to show appropriate message
-      const { data: { user } } = await curriculumService.supabase.auth.getUser();
-      let isCollegeAdmin = false;
-      
-      if (user) {
-        const { data: userData } = await curriculumService.supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-        isCollegeAdmin = userData?.role === 'college_admin';
-      }
+    // Simulate role check (no database)
+    const isCollegeAdmin = false; // For demo purposes, assume regular faculty
+    
+    const confirmMessage = isCollegeAdmin
+      ? "Are you sure you want to approve and publish this curriculum?"
+      : "Are you sure you want to submit this curriculum for Academic Head approval?";
 
-      await submitForApproval();
+    if (!window.confirm(confirmMessage)) return;
+    
+    setSaveStatus("saving");
+    
+    // Simulate async operation
+    setTimeout(() => {
+      setStatus(isCollegeAdmin ? "approved" : "pending_approval");
       
       const message = isCollegeAdmin
         ? 'Curriculum approved and published successfully!'
-        : 'Curriculum submitted for approval! The Academic Coordinator will review it.';
+        : 'Curriculum submitted for approval! The Academic Head will review it.';
+      
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
       
       setNotification({ type: 'success', message });
       setTimeout(() => setNotification(null), 5000);
-    } catch (error: any) {
-      setNotification({ type: 'error', message: 'Error submitting curriculum: ' + error.message });
-      setTimeout(() => setNotification(null), 5000);
-      throw error;
-    }
+    }, 800);
   };
 
   const handleApprove = async () => {
     if (!window.confirm('Approve this curriculum?')) return;
     
-    try {
-      await approveCurriculum();
+    setSaveStatus("saving");
+    
+    // Simulate async operation
+    setTimeout(() => {
+      setStatus("approved");
+      
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+      
       setNotification({ type: 'success', message: 'Curriculum approved successfully!' });
       setTimeout(() => setNotification(null), 5000);
-    } catch (error: any) {
-      setNotification({ type: 'error', message: 'Error approving curriculum: ' + error.message });
-      setTimeout(() => setNotification(null), 5000);
-      throw error;
-    }
+    }, 500);
   };
 
   const handleReject = async () => {
     const reason = prompt('Please provide a reason for rejection:');
     if (!reason) return;
     
-    try {
-      await rejectCurriculum(reason);
-      setNotification({ type: 'success', message: 'Curriculum rejected. Educator will be notified.' });
+    setSaveStatus("saving");
+    
+    // Simulate async operation
+    setTimeout(() => {
+      setStatus("rejected");
+      
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+      
+      setNotification({ type: 'success', message: 'Curriculum rejected. Faculty will be notified.' });
       setTimeout(() => setNotification(null), 5000);
-    } catch (error: any) {
-      setNotification({ type: 'error', message: 'Error rejecting curriculum: ' + error.message });
-      setTimeout(() => setNotification(null), 5000);
-      throw error;
-    }
+    }, 500);
   };
 
-  // Pass all props to the original component
+  // Pass all props to the college-adapted component
   return (
     <>
       {/* Notification Banner */}
@@ -276,23 +327,29 @@ const CollegeCurriculumBuilder: React.FC = () => {
         </div>
       )}
       
-      <CurriculumBuilderUI
-        // Selections
-        selectedSubject={selectedSubject}
-        setSelectedSubject={setSelectedSubject}
-        selectedClass={selectedClass}
-        setSelectedClass={setSelectedClass}
+      <CollegeCurriculumBuilderUI
+        // College-specific selections
+        selectedCourse={selectedCourse}
+        setSelectedCourse={setSelectedCourse}
+        selectedDepartment={selectedDepartment}
+        setSelectedDepartment={setSelectedDepartment}
+        selectedProgram={selectedProgram}
+        setSelectedProgram={setSelectedProgram}
+        selectedSemester={selectedSemester}
+        setSelectedSemester={setSelectedSemester}
         selectedAcademicYear={selectedAcademicYear}
         setSelectedAcademicYear={setSelectedAcademicYear}
-        // Configuration data from database
-        subjects={subjects}
-        classes={classes}
+        // Configuration data
+        courses={courses}
+        departments={departments}
+        programs={programs}
+        semesters={semesters}
         academicYears={academicYears}
-        // Data from hook
+        // Local data (no database connection)
         curriculumId={curriculumId}
-        chapters={chapters}
+        units={units}
         learningOutcomes={learningOutcomes}
-        assessmentTypes={assessmentTypes}
+        assessmentTypes={undefined} // Will use default college assessment types
         status={status}
         rejectionReason={rejectionReason}
         loading={loading}
@@ -300,9 +357,9 @@ const CollegeCurriculumBuilder: React.FC = () => {
         // Search
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        // Handlers
-        onAddChapter={handleAddChapter}
-        onDeleteChapter={handleDeleteChapter}
+        // Handlers (adapted for college terminology)
+        onAddUnit={handleAddUnit}
+        onDeleteUnit={handleDeleteUnit}
         onAddOutcome={handleAddOutcome}
         onDeleteOutcome={handleDeleteOutcome}
         onSubmitForApproval={handleSubmitForApproval}

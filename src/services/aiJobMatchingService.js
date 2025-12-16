@@ -411,8 +411,16 @@ CGPA: ${studentData.cgpa}
 
 **CRITICAL**: This student is from **${studentData.department}** background. PRIORITIZE jobs that match this field/domain!
 
-Technical Skills & Expertise (${studentData.technical_skills.length}):
-${studentData.technical_skills.map(s => `- ${s.name} (Level: ${s.level}/5)${s.category ? ` [${s.category}]` : ''}`).join('\n') || '- None listed'}
+**⚠️ STUDENT'S ACTUAL TECHNICAL SKILLS (${studentData.technical_skills.length}):**
+These are the ONLY skills this student has. Do NOT assume or infer additional skills!
+${studentData.technical_skills.map(s => `- ${s.name} (Level: ${s.level}/5)${s.category ? ` [${s.category}]` : ''}`).join('\n') || '- None listed - this is a significant gap'}
+
+**CRITICAL SKILL RULES:**
+1. ONLY use the skills listed above when matching - do NOT assume additional skills
+2. If a skill is generic like "Programming" or "Technical Skills", do NOT expand it to specific languages
+3. Hobbies and interests are NOT professional skills - do not count them
+4. If the student lacks skills for a job, clearly state this in the skills_gap field
+5. Be HONEST about skill mismatches - don't inflate match scores
 
 Soft Skills (${studentData.soft_skills.length}):
 ${studentData.soft_skills.map(s => `- ${s.name}${s.type ? ` (${s.type})` : ''}`).join('\n') || '- None listed'}

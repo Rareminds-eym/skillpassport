@@ -3,14 +3,16 @@ import { supabase } from '../lib/supabaseClient';
 
 /**
  * Custom hook to fetch and manage promotional events
- * Uses sessionStorage for dismissal state (resets when browser tab closes)
+ * Modal shows first, then banner shows after modal is dismissed
+ * Banner state is NOT persisted - only modal dismissal triggers banner
  */
 export const usePromotionalEvent = () => {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Modal dismissed state - persisted in sessionStorage
   const [isModalDismissed, setIsModalDismissed] = useState(() => {
-    // Check all sessionStorage keys for any dismissed modal
     for (let i = 0; i < sessionStorage.length; i++) {
       const key = sessionStorage.key(i);
       if (key?.startsWith('promo_modal_dismissed_') && sessionStorage.getItem(key) === 'true') {
@@ -19,16 +21,13 @@ export const usePromotionalEvent = () => {
     }
     return false;
   });
-  const [isBannerDismissed, setIsBannerDismissed] = useState(() => {
-    // Check all sessionStorage keys for any dismissed banner
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key?.startsWith('promo_banner_dismissed_') && sessionStorage.getItem(key) === 'true') {
-        return true;
-      }
-    }
-    return false;
-  });
+  
+  // Banner dismissed state - NOT persisted, only in memory
+  // This ensures banner shows after modal close but NOT after refresh
+  const [isBannerDismissed, setIsBannerDismissed] = useState(true); // Start as true (hidden)
+  
+  // Track if modal was just dismissed in this session to show banner
+  const [showBannerAfterModal, setShowBannerAfterModal] = useState(false);
 
   // Fetch active promotional event
   useEffect(() => {
@@ -52,11 +51,8 @@ export const usePromotionalEvent = () => {
 
         if (data) {
           setEvent(data);
-          // Check sessionStorage for dismissal state (persists only for current session)
           const modalKey = `promo_modal_dismissed_${data.event_code}`;
-          const bannerKey = `promo_banner_dismissed_${data.event_code}`;
           setIsModalDismissed(sessionStorage.getItem(modalKey) === 'true');
-          setIsBannerDismissed(sessionStorage.getItem(bannerKey) === 'true');
         }
       } catch (err) {
         console.error('Error fetching promotional event:', err);
@@ -69,22 +65,22 @@ export const usePromotionalEvent = () => {
     fetchEvent();
   }, []);
 
-
-  // Dismiss modal handler (saves to sessionStorage - resets on tab close)
+  // Dismiss modal handler - shows banner immediately after
   const dismissModal = useCallback(() => {
     if (event) {
       sessionStorage.setItem(`promo_modal_dismissed_${event.event_code}`, 'true');
       setIsModalDismissed(true);
+      // Show banner immediately after modal is dismissed
+      setIsBannerDismissed(false);
+      setShowBannerAfterModal(true);
     }
   }, [event]);
 
-  // Dismiss banner handler (saves to sessionStorage - resets on tab close)
+  // Dismiss banner handler - only in memory, not persisted
   const dismissBanner = useCallback(() => {
-    if (event) {
-      sessionStorage.setItem(`promo_banner_dismissed_${event.event_code}`, 'true');
-      setIsBannerDismissed(true);
-    }
-  }, [event]);
+    setIsBannerDismissed(true);
+    setShowBannerAfterModal(false);
+  }, []);
 
   // Calculate time remaining
   const getTimeRemaining = useCallback(() => {
@@ -107,8 +103,8 @@ export const usePromotionalEvent = () => {
   // Show modal if event exists and not dismissed
   const showModal = event && !isModalDismissed;
   
-  // Show banner if event exists, modal is dismissed, and banner not dismissed
-  const showBanner = event && isModalDismissed && !isBannerDismissed;
+  // Show banner only if modal was dismissed AND banner not dismissed (in current session only)
+  const showBanner = event && isModalDismissed && showBannerAfterModal && !isBannerDismissed;
 
   return {
     event,
