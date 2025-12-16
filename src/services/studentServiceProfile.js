@@ -454,7 +454,6 @@ console.log('📚 Formatted training records:', formattedTrainings.length);
 
     const mergedCertificates = formattedTableCertificates.length > 0 ? formattedTableCertificates : passportCertificates;
 
-    
 const tableExperience = Array.isArray(data?.experience) ? data.experience : [];
 const formattedExperience = tableExperience
   .map((exp) => ({
@@ -641,16 +640,9 @@ function transformProfileData(profile, email, studentRecord = null) {
 
     // Training - Will be fetched from separate 'training' table
     // Fallback to profile JSONB only if separate table is empty
-    training: profileData.training || [
-      {
-        id: 1,
-        course: data.course_name || profileData.course || 'No course specified',
-        progress: 75, // Default progress
-        status: 'ongoing',
-        skill: profileData.skill || '',
-        trainer: data.trainer_name || profileData.trainer_name || ''
-      }
-    ],
+    training: profileData.training || (data.course_name || profileData.course ? [
+     
+    ] : []),
 
     // Experience - Will be fetched from separate 'experience' table
     experience: profileData.experience || [],
@@ -658,34 +650,12 @@ function transformProfileData(profile, email, studentRecord = null) {
     // Technical skills - Will be fetched from separate 'skills' table (type='technical')
     // Fallback to profile JSONB only if separate table is empty
     technicalSkills: profileData.technicalSkills || (profileData.skill ? [
-      {
-        id: 1,
-        name: profileData.skill,
-        level: 3,
-        verified: true,
-        icon: '🔬', // Science/lab icon
-        category: data.course_name || profileData.course || 'Training'
-      }
+     
     ] : []),
 
     // Soft skills - Will be fetched from separate 'skills' table (type='soft')
     // Fallback to profile JSONB only if separate table is empty
-    softSkills: profileData.softSkills || [
-      {
-        id: 1,
-        name: 'Communication',
-        level: 4,
-        type: 'communication',
-        description: 'Effective communication skills'
-      },
-      {
-        id: 2,
-        name: 'Teamwork',
-        level: 4,
-        type: 'collaboration',
-        description: 'Works well in teams'
-      }
-    ],
+    softSkills: profileData.softSkills,
 
     projects: Array.isArray(profileData.projects)
       ? profileData.projects
@@ -880,6 +850,65 @@ export async function getOrCreateStudentByEmail(email, initialData = {}) {
     return { success: false, error: err.message };
   }
 }
+/**
+ * Find student record by email (returns raw database record)
+ */
+async function findStudentByEmail(email) {
+  try {
+    // STRATEGY 1: Try students.email column first (if it exists and is populated)
+    let { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+
+    // STRATEGY 2: If not found, try JSONB profile query
+    if (!data && !error) {
+      const result = await supabase
+        .from('students')
+        .select('*')
+        .eq('profile->>email', email)
+        .maybeSingle();
+
+      data = result.data;
+      error = result.error;
+    }
+
+    if (error) {
+      console.error('❌ Supabase error in findStudentByEmail:', error);
+      return { success: false, error: error.message };
+    }
+
+    // STRATEGY 3: If JSONB operator doesn't work, manual search
+    if (!data) {
+      const { data: allStudents, error: allError } = await supabase
+        .from('students')
+        .select('*');
+
+      if (allError) {
+        console.error('❌ Error fetching all students:', allError);
+        return { success: false, error: allError.message };
+      }
+
+      // Manually search for matching email
+      data = allStudents?.find(student => {
+        const profileData = safeJSONParse(student.profile);
+        const studentEmail = profileData?.email;
+        return studentEmail?.toLowerCase() === email.toLowerCase();
+      });
+
+      if (!data) {
+        return { success: false, error: 'No student found for this email.' };
+      }
+    }
+
+    return { success: true, data };
+  } catch (err) {
+    console.error('❌ findStudentByEmail exception:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 export async function updateStudentByEmail(email, updates) {
   try {
 
@@ -892,22 +921,53 @@ export async function updateStudentByEmail(email, updates) {
 
     const studentRecord = findResult.data;
 
-    const currentProfile = safeJSONParse(studentRecord.profile);
+    const currentProfile = safeJSONParse(studentRecord.profile) || {};
 
     // Prepare column updates for fields that have dedicated columns
     const columnUpdates = {};
     const profileOnlyUpdates = {};
 
     // Fields with dedicated columns (from migrate_students_to_columns.sql)
-    const columnFields = ['name', 'email', 'phone', 'department', 'university', 'cgpa', 'employability_score', 'verified'];
+    const columnFields = [
+      'name', 'email', 'phone', 'department', 'university', 'cgpa', 'employability_score', 'verified',
+      // Personal Information fields with dedicated columns
+      'age', 'contact_number', 'alternate_number', 'date_of_birth', 'dateOfBirth',
+      'district_name', 'college_school_name', 'branch_field', 'registration_number',
+      'enrollment_number', 'student_id', 'course_name', 'contact_dial_code',
+      // Social Media fields with dedicated columns
+      'github_link', 'linkedin_link', 'twitter_link', 'facebook_link', 
+      'instagram_link', 'portfolio_link', 'other_social_links',
+      // Location fields with dedicated columns
+      'address', 'city', 'state', 'country', 'pincode',
+      // Guardian fields with dedicated columns
+      'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation',
+      // Additional fields with dedicated columns
+      'gender', 'bloodGroup', 'enrollmentDate', 'expectedGraduationDate',
+      'currentCgpa', 'contactNumber', 'resumeUrl', 'profilePicture', 'bio',
+      'university_main', 'trainer_name', 'grade', 'section', 'roll_number',
+      'admission_number', 'category', 'quota',
+      // JSONB array fields with dedicated columns
+      'hobbies', 'languages', 'interests'
+    ];
+
+    // Field name mapping for frontend to database column names
+    const fieldMapping = {
+      'contact_number_dial_code': 'contact_dial_code',
+      'nm_id': 'student_id'
+    };
 
     Object.keys(updates).forEach(key => {
-      if (columnFields.includes(key)) {
-        columnUpdates[key] = updates[key];
+      // Map field name if needed
+      const dbFieldName = fieldMapping[key] || key;
+      
+      if (columnFields.includes(dbFieldName)) {
+        columnUpdates[dbFieldName] = updates[key];
       } else {
         profileOnlyUpdates[key] = updates[key];
       }
     });
+
+
 
     // Merge updates into existing profile for non-column fields
     const updatedProfile = {
@@ -974,7 +1034,7 @@ export async function updateStudentByEmail(email, updates) {
     }
 
 
-    const transformedData = transformProfileData(data.profile, email);
+    const transformedData = transformProfileData(data.profile, email, data);
 
     return {
       success: true,
@@ -988,6 +1048,9 @@ export async function updateStudentByEmail(email, updates) {
 }
 
 
+/**
+ * Update education records in education table
+ */
 export async function updateEducationByEmail(email, educationData = []) {
   try {
     // Find student record
@@ -1156,13 +1219,10 @@ export async function updateEducationByEmail(email, educationData = []) {
   }
 }
 
-
 export async function updateTrainingByEmail(email, trainingData = []) {
   try {
     console.log('🎓 Starting training update for:', email);
     console.log('📦 Training data received:', trainingData.length, 'records');
-    console.log('📦 Training IDs received:', trainingData?.map(t => ({ id: t.id, course: t.course || t.title })));
-    console.log('📦 First training full data:', JSON.stringify(trainingData?.[0], null, 2));
 
     // Find student record (keep existing code)
     let studentRecord = null;
@@ -1294,7 +1354,6 @@ export async function updateTrainingByEmail(email, trainingData = []) {
       });
 
     console.log('💾 Formatted training records:', formatted.length);
-    console.log('💾 Formatted IDs:', formatted.map(f => ({ id: f.id, title: f.title })));
 
     // Determine which records to delete
     const incomingIds = new Set(formatted.map((record) => record.id));
@@ -1850,6 +1909,9 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
   }
 };
 
+/**
+ * Update technical skills in skills table
+ */
 export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
   try {
     // Find student record

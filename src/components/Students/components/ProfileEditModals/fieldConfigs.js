@@ -223,6 +223,8 @@ export const FIELD_CONFIGS = {
       githubUrl: "",
       portfolioUrl: "",
     }),
+    getDisplayTitle: (item) => item.name || "Personal Information",
+    getDisplaySubtitle: (item) => item.email || "",
   },
 };
 
