@@ -71,3 +71,21 @@ export const parsePositiveNumber = (value) => {
   if (isNaN(num) || num < 0) return 0;
   return Math.round(num);
 };
+
+/**
+ * Validates if a string is a valid URL
+ * @param {string} value - The URL string to validate
+ * @returns {boolean} - True if valid URL or empty, false otherwise
+ */
+export const isValidUrl = (value) => {
+  // Allow empty values (URL fields are optional)
+  if (!value || !value.trim()) return true;
+  
+  try {
+    const url = new URL(value);
+    // Only allow http and https protocols
+    return ['http:', 'https:'].includes(url.protocol);
+  } catch {
+    return false;
+  }
+};
