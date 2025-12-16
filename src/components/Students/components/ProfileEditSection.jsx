@@ -540,6 +540,8 @@ const ProfileEditSection = ({ profileEmail }) => {
             onDataExtracted={handleResumeDataExtracted}
             onClose={() => setShowResumeParser(false)}
             userEmail={userEmail}
+            studentData={studentData}
+            user={user}
           />
         )}
       </div>

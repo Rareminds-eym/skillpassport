@@ -22,6 +22,7 @@ jobs:
         echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" > .env.production
         echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env.production
         echo "VITE_OPENAI_API_KEY=${{ secrets.VITE_OPENAI_API_KEY }}" >> .env.production
+        echo "VITE_GEMINI_API_KEY=${{ secrets.VITE_GEMINI_API_KEY }}" >> .env.production
         
         # Razorpay TEST
         echo "VITE_RAZORPAY_TEST_KEY_ID=${{ secrets.VITE_RAZORPAY_TEST_KEY_ID }}" >> .env.production
