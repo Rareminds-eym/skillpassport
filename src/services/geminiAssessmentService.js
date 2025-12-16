@@ -240,10 +240,10 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
   // Try different model variants for compatibility (updated Dec 2024)
   // Using models in order of preference and availability
   const models = [
-    'gemini-1.5-flash-latest',  // Latest stable flash model
-    'gemini-1.5-flash-8b',      // Smaller, faster variant
+    'gemini-1.5-flash',         // Stable flash model
+    'gemini-1.5-pro',           // Pro model
     'gemini-2.0-flash-exp',     // Experimental 2.0
-    'gemini-1.5-pro-latest',    // Pro model as fallback
+    'gemini-1.5-flash-8b',      // Smaller, faster variant
   ];
   let response = null;
   let lastError = null;
