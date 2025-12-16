@@ -376,16 +376,11 @@ const ProfileEditSection = ({ profileEmail }) => {
                 className="group relative bg-white border border-slate-200 shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-300 rounded-xl overflow-hidden flex flex-col h-full hover:-translate-y-1"
               >
                 <CardContent className="p-6 flex flex-col h-full">
-                  {/* Icon and Badge Section */}
+                  {/* Icon Section */}
                   <div className="flex items-start justify-between mb-4">
                     <div className={`w-12 h-12 rounded-lg ${section.iconBg} flex items-center justify-center group-hover:scale-105 transition-transform duration-200`}>
                       <IconComponent className={`w-6 h-6 ${section.iconColor}`} />
                     </div>
-                    {section.count > 0 && (
-                      <Badge className="bg-blue-50 text-blue-700 font-medium px-2.5 py-1 text-xs border border-blue-200">
-                        {section.count}
-                      </Badge>
-                    )}
                   </div>
 
                   {/* Content Section */}
