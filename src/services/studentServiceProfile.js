@@ -2395,6 +2395,195 @@ export async function updateEducationByEmail(email, educationData = []) {
 //   }
 // }
 /**
+ * Update projects in projects table
+ */
+export async function updateProjectsByEmail(email, projectsData = []) {
+  try {
+    console.log('🚀 Starting projects update for:', email);
+    console.log('📦 Projects data received:', projectsData.length, 'records');
+
+    // Find student record
+    let studentRecord = null;
+
+    const { data: directByEmail, error: directEmailError } = await supabase
+      .from('students')
+      .select('id, user_id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (directEmailError) {
+      return { success: false, error: directEmailError.message };
+    }
+
+    if (directByEmail) {
+      studentRecord = directByEmail;
+    }
+
+    if (!studentRecord) {
+      const { data: profileMatch, error: profileError } = await supabase
+        .from('students')
+        .select('id, user_id, profile')
+        .eq('profile->>email', email)
+        .maybeSingle();
+
+      if (profileError) {
+        return { success: false, error: profileError.message };
+      }
+
+      if (profileMatch) {
+        studentRecord = profileMatch;
+      }
+    }
+
+    if (!studentRecord) {
+      const { data: allStudents, error: allError } = await supabase
+        .from('students')
+        .select('id, user_id, profile');
+
+      if (allError) {
+        return { success: false, error: allError.message };
+      }
+
+      for (const student of allStudents || []) {
+        const profile = safeJSONParse(student.profile);
+        if (profile?.email === email) {
+          studentRecord = student;
+          break;
+        }
+      }
+    }
+
+    if (!studentRecord) {
+      return { success: false, error: 'Student not found' };
+    }
+
+    // Use student.id as student_id (as per foreign key constraint)
+    const studentId = studentRecord.id;
+    console.log('✅ Found student with id:', studentId);
+
+    // Get existing project records
+    const { data: existingProjects, error: existingError } = await supabase
+      .from('projects')
+      .select('id, approval_status')
+      .eq('student_id', studentId);
+
+    if (existingError) {
+      return { success: false, error: existingError.message };
+    }
+
+    console.log('📚 Existing projects:', existingProjects?.length || 0);
+
+    const nowIso = new Date().toISOString();
+
+    // Format projects data for database
+    const formatted = (projectsData || [])
+      .filter((project) => {
+        const titleField = project.title;
+        return project && typeof titleField === 'string' && titleField.trim().length > 0;
+      })
+      .map((project) => {
+        const record = {
+          student_id: studentId,
+          title: project.title?.trim() || '',
+          description: project.description?.trim() || null,
+          organization: project.organization?.trim() || project.client?.trim() || null,
+          status: project.status || 'In Progress',
+          start_date: project.start_date || null,
+          end_date: project.end_date || null,
+          duration: project.duration?.trim() || null,
+          tech_stack: Array.isArray(project.tech) ? project.tech : 
+                     Array.isArray(project.technologies) ? project.technologies :
+                     Array.isArray(project.tech_stack) ? project.tech_stack : [],
+          demo_link: project.link?.trim() || project.demo_link?.trim() || null,
+          github_link: project.githubLink?.trim() || project.github_link?.trim() || project.github_url?.trim() || null,
+          certificate_url: project.certificate_url?.trim() || project.certificateLink?.trim() || null,
+          video_url: project.video_url?.trim() || project.videoLink?.trim() || null,
+          ppt_url: project.ppt_url?.trim() || project.pptLink?.trim() || null,
+          enabled: project.enabled !== undefined ? project.enabled : true,
+          updated_at: nowIso,
+        };
+
+        // Preserve existing ID if valid UUID
+        const rawId = typeof project.id === 'string' ? project.id.trim() : null;
+        if (rawId && rawId.length === 36) {
+          record.id = rawId;
+          
+          // Preserve existing approval status for updates
+          const existingProject = existingProjects?.find(p => p.id === rawId);
+          if (existingProject) {
+            record.approval_status = existingProject.approval_status;
+            console.log(`  ♻️ Preserving approval status: ${existingProject.approval_status} for project: ${project.title}`);
+          } else {
+            record.approval_status = 'pending';
+          }
+        } else {
+          record.id = generateUuid();
+          record.approval_status = 'pending';
+          console.log(`  🆕 New project: ${project.title} - setting to pending`);
+        }
+
+        return record;
+      });
+
+    console.log('💾 Formatted project records:', formatted.length);
+
+    // Determine which records to delete
+    const incomingIds = new Set(formatted.map((record) => record.id));
+    const toDelete = (existingProjects || [])
+      .filter((existing) => !incomingIds.has(existing.id))
+      .map((existing) => existing.id);
+
+    // Delete removed records
+    if (toDelete.length > 0) {
+      console.log('🗑️ Deleting', toDelete.length, 'project records');
+      const { error: deleteError } = await supabase
+        .from('projects')
+        .delete()
+        .in('id', toDelete);
+
+      if (deleteError) {
+        console.error('❌ Error deleting projects:', deleteError);
+        return { success: false, error: deleteError.message };
+      }
+    }
+
+    // Upsert project records
+    if (formatted.length > 0) {
+      console.log('✍️ Upserting project records...', formatted);
+      const { data: upsertData, error: upsertError } = await supabase
+        .from('projects')
+        .upsert(formatted, { onConflict: 'id' });
+
+      if (upsertError) {
+        console.error('❌ Error upserting projects:', upsertError);
+        return { success: false, error: upsertError.message };
+      }
+      console.log('✅ Project records saved successfully');
+    } else if ((existingProjects || []).length > 0) {
+      // Delete all if no project data provided
+      console.log('🗑️ Deleting all project records (empty data provided)');
+      const { error: deleteAllError } = await supabase
+        .from('projects')
+        .delete()
+        .eq('student_id', studentId);
+
+      if (deleteAllError) {
+        console.error('❌ Error deleting all projects:', deleteAllError);
+        return { success: false, error: deleteAllError.message };
+      }
+    }
+
+    console.log('🎉 Projects update completed successfully');
+
+    // Return updated student data
+    return await getStudentByEmail(email);
+  } catch (err) {
+    console.error('❌ updateProjectsByEmail exception:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
  * Update experience array in student profile
  */
 // export async function updateTrainingByEmail(email, trainingData = []) {
@@ -3666,85 +3855,6 @@ export async function updateSoftSkillsByEmail(email, skillsData = []) {
     return { success: false, error: err.message };
   }
 }
-/**
- * Update projects in skill_passports table
- */
-export const updateProjectsByEmail = async (email, projectsData) => {
-  try {
-    // 1️⃣ Find student.id by email
-    const { data: student, error: studentError } = await supabase
-      .from('students')
-      .select('id')
-      .eq('email', email)
-      .single();
-
-    if (studentError || !student) {
-      return { success: false, error: 'Student not found' };
-    }
-
-    const studentId = student.id;
-
-    // 2️⃣ Clear existing projects for this student (simplest sync method)
-    const { error: deleteError } = await supabase
-      .from('projects')
-      .delete()
-      .eq('student_id', studentId);
-
-    if (deleteError) {
-      console.error('❌ Error deleting old projects:', deleteError);
-      return { success: false, error: deleteError.message };
-    }
-
-    // 3️⃣ Prepare new projects array for insert
-    const formatted = projectsData.map((p) => ({
-      student_id: studentId,
-      title: p.title || 'Untitled Project',
-      description: p.description || null,
-      status: p.status || null,
-      start_date: p.start_date ? new Date(p.start_date).toISOString().split('T')[0] : null,
-      end_date: p.end_date ? new Date(p.end_date).toISOString().split('T')[0] : null,
-      duration: p.duration || null,
-      tech_stack: Array.isArray(p.tech) ? p.tech : Array.isArray(p.tech_stack) ? p.tech_stack : [],
-      demo_link: p.link || p.demo_link || null,
-      organization: p.organization || null,
-      github_link:
-        p.github ||
-        p.github_link ||
-        p.github_url ||
-        p.githubLink ||
-        null,
-      certificate_url: p.certificate_url || p.certificateLink || null,
-      video_url: p.video_url || p.videoLink || null,
-      ppt_url: p.ppt_url || p.pptLink || null,
-      approval_status: p.approval_status || 'pending',
-      enabled:
-        typeof p.enabled === 'boolean'
-          ? p.enabled
-          : typeof p.enabled === 'string'
-            ? p.enabled.toLowerCase() === 'true'
-            : true,
-      created_at: p.createdAt || p.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }));
-
-    // 4️⃣ Insert new rows
-    const { error: insertError } = await supabase
-      .from('projects')
-      .insert(formatted);
-
-    if (insertError) {
-      console.error('❌ Error inserting projects:', insertError);
-      return { success: false, error: insertError.message };
-    }
-
-    // 5️⃣ Return success
-    return { success: true };
-  } catch (err) {
-    console.error('❌ updateProjectsByEmail exception:', err);
-    return { success: false, error: err.message };
-  }
-};
-
 /**
  * Update certificates table records
  */
