@@ -842,16 +842,16 @@ function transformProfileData(profile, email, studentRecord = null) {
 
     // Training - Will be fetched from separate 'training' table
     // Fallback to profile JSONB only if separate table is empty
-    training: profileData.training || [
+    training: profileData.training || (data.course_name || profileData.course ? [
       {
         id: 1,
-        course: data.course_name || profileData.course || 'No course specified',
+        course: data.course_name || profileData.course,
         progress: 75, // Default progress
         status: 'ongoing',
         skill: profileData.skill || '',
         trainer: data.trainer_name || profileData.trainer_name || ''
       }
-    ],
+    ] : []),
 
     // Experience - Will be fetched from separate 'experience' table
     experience: profileData.experience || [],

@@ -117,63 +117,8 @@ const MyLearning = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-          {/* LEFT COLUMN */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="lg:sticky lg:top-6 space-y-6">
-              {/* Recent Updates */}
-              <RecentUpdatesCard
-                ref={recentUpdatesRef}
-                updates={recentUpdates}
-                loading={recentUpdatesLoading}
-                error={
-                  recentUpdatesError ? "Failed to load recent updates" : null
-                }
-                onRetry={refreshRecentUpdates}
-                emptyMessage="No recent updates available"
-                isExpanded={showAllRecentUpdates}
-                onToggle={(next) => setShowAllRecentUpdates(next)}
-                badgeContent={
-                  unreadCount > 0 ? (
-                    <Badge className="bg-red-500 hover:bg-red-500 text-white px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
-                      <MessageCircleIcon className="w-3.5 h-3.5" />
-                      {unreadCount} {unreadCount === 1 ? "message" : "messages"}
-                    </Badge>
-                  ) : null
-                }
-                getUpdateClassName={(update) => {
-                  switch (update.type) {
-                    case "shortlist_added":
-                      return "bg-yellow-50 border-yellow-300";
-                    case "offer_extended":
-                      return "bg-green-50 border-green-300";
-                    case "offer_accepted":
-                      return "bg-emerald-50 border-emerald-300";
-                    case "placement_hired":
-                      return "bg-purple-50 border-purple-300";
-                    case "stage_change":
-                      return "bg-indigo-50 border-indigo-300";
-                    case "application_rejected":
-                      return "bg-red-50 border-red-300";
-                    default:
-                      return "bg-gray-50 border-gray-200";
-                  }
-                }}
-              />
-
-
-              {/* Suggestions */}
-              <SuggestedNextSteps
-                matchedJobs={matchedJobs}
-                loading={matchingLoading}
-                error={matchingError}
-                fallbackSuggestions={suggestions}
-              />
-            </div>
-          </div>
-
-          {/* RIGHT COLUMN */}
-          <div className="lg:col-span-2 space-y-8">
+        {/* Main Content - Full Width */}
+        <div className="space-y-8">
             {enabledLearning.length > 0 ? (
               <>
                 {/* Stats Summary */}
@@ -389,7 +334,6 @@ const MyLearning = () => {
                 </CardContent>
               </Card>
             )}
-          </div>
         </div>
 
         {/* Select Course Modal - Shows internal courses + option for external */}
