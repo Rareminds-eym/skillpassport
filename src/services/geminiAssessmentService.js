@@ -15,6 +15,9 @@ import { callClaude, isClaudeConfigured } from './claudeService';
 
 /**
  * Call Claude API with the given prompt
+ * Uses claude-3-5-sonnet for larger output capacity (8192 tokens)
+ * Assessment responses are large JSON objects requiring more tokens than haiku supports
+ * 
  * @param {string} prompt - The prompt to send
  * @returns {Promise<string>} - The response text
  */
@@ -24,7 +27,8 @@ const callClaudeAssessment = async (prompt) => {
   }
 
   return await callClaude(prompt, {
-    maxTokens: 16384,
+    model: 'claude-sonnet-4-20250514', // Latest Sonnet with higher token limits
+    maxTokens: 8192,
     temperature: 0.1,
     useCache: false // Assessment results should not be cached
   });
