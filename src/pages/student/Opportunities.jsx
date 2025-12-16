@@ -247,6 +247,27 @@ const Opportunities = () => {
       
       if (!matchesSearch) return false;
 
+      // Grade-based filtering (same logic as Dashboard)
+      const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
+      const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+      const studentGrade = studentData?.grade;
+
+      // Apply grade-based filtering for school students
+      if (isSchoolStudent) {
+        const isInternship = opp.employment_type && opp.employment_type.toLowerCase() === 'internship';
+        
+        // For grades 6-8: Show ONLY internships
+        if (studentGrade && parseInt(studentGrade) >= 6 && parseInt(studentGrade) <= 8) {
+          if (!isInternship) return false;
+        }
+        
+        // For grade 9+: Show ALL opportunities (no filtering needed)
+        // Grade 9+ students see everything, so no additional filtering
+      } else if (isUniversityStudent) {
+        // University/College students: Show ALL opportunities (no filtering)
+        // They see everything - internships, full-time, part-time, contracts, etc.
+      }
+
       // Employment Type filter
       if (advancedFilters.employmentType.length > 0) {
         if (!advancedFilters.employmentType.includes(opp.employment_type)) {
@@ -313,6 +334,24 @@ const Opportunities = () => {
       return true;
     });
 
+    // Debug logging for opportunity filtering
+    console.log('🎯 Opportunities Page Filtering Debug:', {
+      isSchoolStudent: studentData?.school_id || studentData?.school_class_id,
+      isUniversityStudent: studentData?.university_college_id || studentData?.universityId,
+      studentGrade: studentData?.grade,
+      gradeRange: studentData?.grade ? 
+        (parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8 ? 'Grades 6-8 (Internships Only)' :
+         parseInt(studentData.grade) >= 9 ? 'Grade 9+ (All Opportunities)' : 'Other Grade') : 'No Grade',
+      totalOpportunities: opportunities.length,
+      filteredCount: filtered.length,
+      studentData: {
+        school_id: studentData?.school_id,
+        school_class_id: studentData?.school_class_id,
+        university_college_id: studentData?.university_college_id,
+        grade: studentData?.grade
+      }
+    });
+
     // Sort filtered results
     return filtered.sort((a, b) => {
       if (sortBy === 'newest') {
@@ -323,7 +362,7 @@ const Opportunities = () => {
       }
       return 0;
     });
-  }, [opportunities, searchTerm, sortBy, advancedFilters]);
+  }, [opportunities, searchTerm, sortBy, advancedFilters, studentData]);
 
   const handleToggleSave = async (opportunity) => {
     if (!studentId) {
@@ -352,50 +391,46 @@ const Opportunities = () => {
 
   const handleApply = async (opportunity) => {
     if (!studentId) {
-      alert('Please log in to apply for jobs');
+      console.error('Please log in to apply for jobs');
       return;
     }
 
     if (appliedJobs.has(opportunity.id)) {
-      alert('You have already applied to this job');
+      console.log('You have already applied to this job');
       return;
     }
 
-    if (opportunity.application_link) {
-      const confirmExternal = window.confirm(
-        'This will open an external application page. Would you also like to save this application to your profile?'
-      );
-      
-      if (confirmExternal) {
-        setIsApplying(true);
+    setIsApplying(true);
+
+    try {
+      // Handle external application link
+      if (opportunity.application_link) {
+        // Save application to profile for tracking
         const result = await AppliedJobsService.applyToJob(studentId, opportunity.id);
-        setIsApplying(false);
         
         if (result.success) {
           setAppliedJobs(prev => new Set([...prev, opportunity.id]));
-          alert(result.message);
         }
+        
+        // Open external link
+        window.open(opportunity.application_link, '_blank');
+        setIsApplying(false);
+        return;
       }
+
+      // Handle regular application
+      const result = await AppliedJobsService.applyToJob(studentId, opportunity.id);
       
-      window.open(opportunity.application_link, '_blank');
-      return;
-    }
-
-    const confirmApply = window.confirm(
-      `Apply to ${opportunity.job_title} at ${opportunity.company_name}?`
-    );
-
-    if (!confirmApply) return;
-
-    setIsApplying(true);
-    const result = await AppliedJobsService.applyToJob(studentId, opportunity.id);
-    setIsApplying(false);
-
-    if (result.success) {
-      setAppliedJobs(prev => new Set([...prev, opportunity.id]));
-      alert(result.message);
-    } else {
-      alert(result.message);
+      if (result.success) {
+        setAppliedJobs(prev => new Set([...prev, opportunity.id]));
+        console.log('Application submitted successfully');
+      } else {
+        console.error('Application failed:', result.message);
+      }
+    } catch (error) {
+      console.error('Error applying to job:', error);
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -541,6 +576,7 @@ const Opportunities = () => {
                   currentPage={currentPage}
                   setCurrentPage={setCurrentPage}
                   opportunitiesPerPage={opportunitiesPerPage}
+                  studentData={studentData}
                 />
               </>
             )}
@@ -596,7 +632,8 @@ const MyJobsContent = ({
   refreshRecommendations,
   cached,
   fallback,
-  trackView
+  trackView,
+  studentData
 }) => {
   const totalPages = Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
   const paginatedOpportunities = React.useMemo(() => {
@@ -761,6 +798,30 @@ const MyJobsContent = ({
 
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        {/* Student type filtering info */}
+        {/* {((studentData?.school_id || studentData?.school_class_id) && studentData?.grade) && (
+          <div className="bg-blue-50 rounded-lg p-3 mb-4">
+            <p className="text-sm text-blue-700">
+              <span className="font-semibold">Grade {studentData.grade} Opportunities:</span> 
+              {parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8
+                ? " Showing internships and learning programs suitable for your grade level."
+                : parseInt(studentData.grade) >= 9
+                ? " Showing all opportunities including internships, jobs, and career opportunities."
+                : " Showing opportunities suitable for your grade level."
+              }
+            </p>
+          </div>
+        )} */}
+        
+        {/* {(studentData?.university_college_id || studentData?.universityId) && (
+          <div className="bg-green-50 rounded-lg p-3 mb-4">
+            <p className="text-sm text-green-700">
+              <span className="font-semibold">College Student Opportunities:</span> 
+              Showing all available opportunities including internships, full-time jobs, part-time work, and contract positions.
+            </p>
+          </div>
+        )} */}
+
         <div className="flex gap-4 mb-6">
           <div className="relative flex-1">
             <input
@@ -783,6 +844,30 @@ const MyJobsContent = ({
               <p className="text-sm font-semibold text-gray-900">
                 Showing {opportunities.length} Jobs Results
               </p>
+              {/* Badge for school students */}
+              {/* {studentData?.grade && (studentData?.school_id || studentData?.school_class_id) && (
+                <span className={`px-2.5 py-0.5 rounded-md text-xs font-medium ${
+                  parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8
+                    ? "bg-blue-50 text-blue-700"
+                    : parseInt(studentData.grade) >= 9
+                    ? "bg-green-50 text-green-700"
+                    : "bg-gray-50 text-gray-700"
+                }`}>
+                  {parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8
+                    ? "Internships Only"
+                    : parseInt(studentData.grade) >= 9
+                    ? "All Opportunities"
+                    : `Grade ${studentData.grade}`
+                  }
+                </span>
+              )} */}
+              
+              {/* Badge for college students */}
+              {/* {(studentData?.university_college_id || studentData?.universityId) && (
+                <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-green-50 text-green-700">
+                  All Opportunities
+                </span>
+              )} */}
               {opportunities.length > 0 && (
                 <span className="text-xs text-gray-500">
                   (Page {currentPage} of {Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage))})
