@@ -15,7 +15,7 @@ interface StreamCallbackData {
   error?: string;
 }
 
-interface CareerChatResult {
+export interface CareerChatResult {
   success: boolean;
   conversationId?: string;
   messageId?: string;
@@ -23,6 +23,7 @@ interface CareerChatResult {
   intentConfidence?: 'high' | 'medium' | 'low';
   phase?: 'opening' | 'exploring' | 'deep_dive';
   error?: string;
+  interactive?: any;
 }
 
 /**

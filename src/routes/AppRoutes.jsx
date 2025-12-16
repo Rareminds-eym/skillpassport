@@ -36,6 +36,7 @@ import SharingSettings from '../pages/digital-pp/settings/SharingSettings';
 const Home = lazy(() => import("../pages/homepage/Home"));
 const About = lazy(() => import("../pages/homepage/About"));
 const Contact = lazy(() => import("../pages/homepage/Contact"));
+const PuterDemo = lazy(() => import("../pages/puter/PuterDemo"));
 const SubscriptionPlans = lazy(() =>
   import("../pages/subscription/SubscriptionPlans")
 );
@@ -205,6 +206,7 @@ const ExaminationManagement = lazy(() =>
 const CollegeAdminDigitalPortfolio = lazy(() =>
   import("../pages/admin/collegeAdmin/DigitalPortfolio")
 );
+const StudentVerifications = lazy(() => import("../pages/admin/collegeAdmin/Verifications"))
 const PlacementManagement = lazy(() =>
   import("../pages/admin/collegeAdmin/PlacementManagement")
 );
@@ -307,6 +309,15 @@ const PerformanceMonitoring = lazy(() =>
 const CollegeSettings = lazy(() =>
   import("../pages/admin/collegeAdmin/Settings")
 );
+const AcademicCoverageTracker = lazy(() =>
+  import("../pages/admin/collegeAdmin/AcademicCoverageTracker")
+);
+const ProgramSectionManagement = lazy(() =>
+  import("../pages/admin/collegeAdmin/ProgramSectionManagement")
+);
+const CollegeLibrary = lazy(() =>
+  import("../pages/admin/collegeAdmin/Library")
+);
 
 const CurriculumBuilder = lazy(() =>
   import("../pages/admin/schoolAdmin/CurriculumBuilderWrapper")
@@ -352,7 +363,7 @@ const ClassManagement = lazy(() =>
 const SchoolAdminAssessmentResults = lazy(() =>
   import("../pages/admin/schoolAdmin/AssessmentResults")
 );
-
+const SchoolAdminVerifications = lazy(() => import("../pages/admin/schoolAdmin/Verifications"))
 // Settings
 const SchoolAdminSettings = lazy(() =>
   import("../pages/admin/schoolAdmin/Settings")
@@ -374,6 +385,7 @@ const AppRoutes = () => {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/puter" element={<PuterDemo />} />
           
           {/* Unified Login */}
           <Route path="/login" element={<UnifiedLogin />} />
@@ -467,12 +479,15 @@ const AppRoutes = () => {
           <Route path="students/assessment-results" element={<CollegeAdminAssessmentResults />} />
           <Route path="students/graduation" element={<GraduationEligibility />} />
           <Route path="students/digital-portfolio" element={<CollegeAdminDigitalPortfolio />} />
+          <Route path="students/verifications" element={<StudentVerifications />} />
           
           {/* Academic Management */}
           <Route path="academics/courses" element={<CollegeAdminCourses />} />
           <Route path="academics/browse-courses" element={<CollegeAdminBrowseCourses />} />
           <Route path="academics/curriculum" element={<CollegeCurriculumBuilder />} />
           <Route path="academics/lesson-plans" element={<LessonPlanManagement />} />
+          <Route path="academics/coverage-tracker" element={<AcademicCoverageTracker />} />
+          <Route path="academics/program-sections" element={<ProgramSectionManagement />} />
           <Route path="academics/calendar" element={<AcademicCalendar />} />
           
           {/* Examination Management */}
@@ -496,6 +511,9 @@ const AppRoutes = () => {
           
           {/* Finance & Accounts */}
           <Route path="finance" element={<FinanceManagement />} />
+          
+          {/* Library & Assets */}
+          <Route path="library" element={<CollegeLibrary />} />
           
           {/* Reports & Analytics */}
           <Route path="reports" element={<ReportsAnalytics />} />
@@ -521,6 +539,7 @@ const AppRoutes = () => {
           <Route path="students/admissions" element={<StudentAdmissions />} />
           <Route path="students/attendance-reports" element={<AttendanceReports />} />
           <Route path="students/assessment-results" element={<SchoolAdminAssessmentResults />} />
+          <Route path="students/verifications" element={<SchoolAdminVerifications  />} />
           <Route path="students/digital-portfolio" element={<SchoolAdminDigitalPortfolio />} />
           <Route path="classes/management" element={<ClassManagement />} />
           <Route path="teachers/list" element={<TeacherList />} />
