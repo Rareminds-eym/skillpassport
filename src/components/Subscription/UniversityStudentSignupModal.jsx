@@ -241,12 +241,7 @@ export default function UniversityStudentSignupModal({ isOpen, onClose, selected
         "expectedGraduationDate": formData.expectedGraduationDate || null,
         "dateOfBirth": formData.dateOfBirth || null,
         gender: formData.gender || null,
-        approval_status: 'pending',
-        profile: {
-          name: formData.fullName,
-          email: formData.email,
-          phone: formData.phone || null
-        }
+        approval_status: 'pending'
       });
 
       if (studentError) {

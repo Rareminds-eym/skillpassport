@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -7,17 +7,13 @@ import {
 } from "../../components/Students/components/ui/card";
 import { Button } from "../../components/Students/components/ui/button";
 import { Badge } from "../../components/Students/components/ui/badge";
-import { Progress } from "../../components/Students/components/ui/progress";
 import {
-  Code,
   Calendar,
   Award,
   Edit,
   Plus,
   BookOpen,
-  Bell,
   TrendingUp,
-  MessageCircle,
   MessageCircleIcon,
 } from "lucide-react";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
@@ -71,7 +67,6 @@ const MyLearning = () => {
     isLoading: recentUpdatesLoading,
     isError: recentUpdatesError,
     refetch: refreshRecentUpdates,
-    isConnected: realtimeConnected,
   } = useStudentRealtimeActivities(userEmail, 10);
 
   // AI Job Matching - Get top 3 matched jobs for student
@@ -84,14 +79,10 @@ const MyLearning = () => {
   const [activeModal, setActiveModal] = useState(null);
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
   const [expandedSkills, setExpandedSkills] = useState({});
+  const [editingItem, setEditingItem] = useState(null); // Track specific item being edited
 
   // Refs for Recent Updates
   const recentUpdatesRef = useRef(null);
-
-  const handleSaveLearning = async (updatedLearning) => {
-    await updateTraining(updatedLearning);
-    setActiveModal(null);
-  };
 
   const toggleSkillExpand = (id) => {
     setExpandedSkills((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -193,7 +184,10 @@ const MyLearning = () => {
                             {/* Only show edit button for external courses, not internal platform courses */}
                             {item.source !== 'internal_course' && (
                               <button
-                                onClick={() => setActiveModal("edit")}
+                                onClick={() => {
+                                  setEditingItem(item); // Set the specific item to edit
+                                  setActiveModal("edit");
+                                }}
                                 className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                                 title="Edit"
                               >
@@ -346,13 +340,63 @@ const MyLearning = () => {
           }}
         />
 
-        {/* Edit Modal */}
-        {activeModal === "edit" && (
+        {/* Edit Modal - Pass only the specific item being edited */}
+        {activeModal === "edit" && editingItem && (
           <TrainingEditModal
             isOpen={true}
-            onClose={() => setActiveModal(null)}
-            onSave={handleSaveLearning}
-            data={learning}
+            onClose={() => {
+              setActiveModal(null);
+              setEditingItem(null);
+              refresh(); // Refresh data after closing
+            }}
+            onSave={async (updatedItems) => {
+              console.log('📝 onSave called with updatedItems:', updatedItems);
+              console.log('📚 Current learning array:', learning);
+              console.log('📚 Learning IDs:', learning.map(l => l.id));
+              
+              // updatedItems will be an array with the single edited item
+              const updatedItem = updatedItems[0];
+              
+              if (!updatedItem) {
+                console.error('❌ No updated item received');
+                return;
+              }
+              
+              console.log('🔍 Looking for item with id:', updatedItem.id);
+              console.log('🔍 updatedItem full data:', updatedItem);
+              
+              // Check if the item exists in the learning array
+              const existingIndex = learning.findIndex(item => item.id === updatedItem.id);
+              console.log('🔍 Found at index:', existingIndex);
+              
+              let updatedLearning;
+              if (existingIndex >= 0) {
+                // Merge it back with the full learning array
+                updatedLearning = learning.map((item) => {
+                  if (item.id === updatedItem.id) {
+                    console.log('✅ Found matching item, merging:', item.id);
+                    // Merge the updated fields with the original item
+                    return { ...item, ...updatedItem };
+                  }
+                  return item;
+                });
+              } else {
+                // Item not found - this shouldn't happen for edits, but handle it
+                console.warn('⚠️ Item not found in learning array, adding as new');
+                updatedLearning = [...learning, updatedItem];
+              }
+              
+              console.log('💾 Sending to updateTraining:', updatedLearning);
+              console.log('💾 IDs being sent:', updatedLearning.map(l => l.id));
+              
+              const result = await updateTraining(updatedLearning);
+              console.log('📤 updateTraining result:', result);
+              
+              // Refresh to get latest data
+              await refresh();
+            }}
+            data={[editingItem]} // Pass only the single item as an array
+            singleEditMode={true} // Flag to indicate single item edit
           />
         )}
       </div>

@@ -150,7 +150,6 @@ export const logPaymentTransaction = async (transactionData) => {
       currency: transactionData.currency || 'INR',
       status: transactionData.status || 'success',
       payment_method: transactionData.payment_method || 'card',
-      payment_gateway_response: transactionData.gateway_response || null,
       created_at: new Date().toISOString()
     };
 
@@ -208,7 +207,7 @@ export const logFailedTransaction = async (failureData) => {
       currency: failureData.currency || 'INR',
       status: 'failed',
       payment_method: failureData.payment_method || 'unknown',
-      payment_gateway_response: failureData.error_description || failureData.error,
+      failure_reason: failureData.error_description || failureData.error || null,
       created_at: new Date().toISOString()
     };
 

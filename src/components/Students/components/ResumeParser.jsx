@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { parseResumeWithAI } from '../../../services/resumeParserService';
+import { saveResumeToTables } from '../../../services/resumeDataService';
 import { supabase } from '../../../utils/api';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
@@ -11,7 +12,7 @@ import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 // Configure PDF.js worker - using local worker file from node_modules
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
-const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
+const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }) => {
   const [file, setFile] = useState(null);
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState(null);
@@ -232,82 +233,59 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
     setSaveResult(null);
 
     try {
-
-      // Get current student data by email (from JSONB profile column)
-      const { data: currentStudent, error: fetchError } = await supabase
-        .from('students')
-        .select('profile, id')
-        .eq('profile->>email', emailToUse)
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        // PGRST116 = no rows found, which is okay - we'll create a new record
-        throw new Error(`Error fetching current data: ${fetchError.message}`);
+      // Check if we have user and student data from props
+      if (!user) {
+        throw new Error('Please log in to save your resume data.');
       }
 
-
-      // Merge extracted data with current profile
-      const updatedProfile = {
-        ...(currentStudent?.profile || {}),
-        name: extractedData.name || currentStudent?.profile?.name,
-        email: extractedData.email || currentStudent?.profile?.email,
-        contact_number: extractedData.contact_number,
-        age: extractedData.age,
-        date_of_birth: extractedData.date_of_birth,
-        college_school_name: extractedData.college_school_name,
-        university: extractedData.university,
-        registration_number: extractedData.registration_number,
-        district_name: extractedData.district_name,
-        branch_field: extractedData.branch_field,
-        trainer_name: extractedData.trainer_name,
-        nm_id: extractedData.nm_id,
-        course: extractedData.course,
-        alternate_number: extractedData.alternate_number,
-        contact_number_dial_code: extractedData.contact_number_dial_code,
-        skill: extractedData.skill,
-        
-        // Arrays - merge with existing
-        education: extractedData.education || currentStudent?.profile?.education || [],
-        training: extractedData.training || currentStudent?.profile?.training || [],
-        experience: extractedData.experience || currentStudent?.profile?.experience || [],
-        technicalSkills: extractedData.technicalSkills || currentStudent?.profile?.technicalSkills || [],
-        softSkills: extractedData.softSkills || currentStudent?.profile?.softSkills || [],
-        certificates: extractedData.certificates || currentStudent?.profile?.certificates || [],
-        projects: extractedData.projects || currentStudent?.profile?.projects || [],
-        
-        // Metadata
-        resumeImportedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-
-      if (currentStudent?.id) {
-        // Update existing student using student ID
-        const { data: savedData, error: updateError } = await supabase
+      // Try to get student ID from passed studentData first
+      let studentId = studentData?.id;
+      
+      // If not available, fetch from database
+      if (!studentId) {
+        const { data: currentStudent, error: fetchError } = await supabase
           .from('students')
-          .update({ profile: updatedProfile })
-          .eq('id', currentStudent.id)
-          .select()
+          .select('id, email, name, user_id')
+          .eq('user_id', user.id)
           .single();
 
-        if (updateError) {
-          throw new Error(`Error saving data: ${updateError.message}`);
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          console.error('Error fetching student:', fetchError);
         }
 
-        setSaveResult({ success: true, message: 'Profile updated successfully!' });
+        studentId = currentStudent?.id;
+        
+        // If still not found, try by email as fallback
+        if (!studentId && emailToUse) {
+          const { data: studentByEmail, error: emailError } = await supabase
+            .from('students')
+            .select('id, email, name')
+            .eq('email', emailToUse)
+            .single();
+          
+          if (!emailError && studentByEmail) {
+            studentId = studentByEmail.id;
+          }
+        }
+      }
+
+      // Save to separate tables instead of JSONB profile column
+      if (studentId) {
+        // Use the new service to save data to separate tables
+        const result = await saveResumeToTables(extractedData, studentId, emailToUse);
+        
+        if (result.success) {
+          const totalSaved = Object.values(result.saved).reduce((sum, count) => sum + count, 0);
+          setSaveResult({ 
+            success: true, 
+            message: `Successfully saved ${totalSaved} records to database!`,
+            details: result.saved
+          });
+        } else {
+          throw new Error(`Error saving data: ${result.errors.map(e => e.error).join(', ')}`);
+        }
       } else {
-        // Create new student record
-        const { data: newStudent, error: insertError } = await supabase
-          .from('students')
-          .insert([{ profile: updatedProfile }])
-          .select()
-          .single();
-
-        if (insertError) {
-          throw new Error(`Error creating profile: ${insertError.message}`);
-        }
-
-        setSaveResult({ success: true, message: 'Profile created successfully!' });
+        throw new Error('Student record not found. Please ensure your profile is set up correctly.');
       }
       
       // Call parent callback with extracted data
@@ -330,7 +308,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-2">
               <FileText className="w-6 h-6 text-blue-600" />
-              <h2 className="text-2xl font-bold text-gray-900">Resume Parser</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Resume</h2>
             </div>
             {onClose && (
               <button
@@ -404,11 +382,24 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
               )}
               <div className="flex-1">
                 <p className={`${saveResult.success ? 'text-green-800' : 'text-red-800'} font-medium`}>
-                  {saveResult.success ? 'Saved!' : 'Error'}
+                  {saveResult.success ? 'Saved to Database!' : 'Error'}
                 </p>
                 <p className={`${saveResult.success ? 'text-green-600' : 'text-red-600'} text-sm`}>
                   {saveResult.message}
                 </p>
+                {saveResult.success && saveResult.details && (
+                  <div className="mt-2 text-xs text-green-700 space-y-1">
+                    <p className="font-medium">Records saved:</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {saveResult.details.education > 0 && <span>• Education: {saveResult.details.education}</span>}
+                      {saveResult.details.experience > 0 && <span>• Experience: {saveResult.details.experience}</span>}
+                      {saveResult.details.skills > 0 && <span>• Skills: {saveResult.details.skills}</span>}
+                      {saveResult.details.certificates > 0 && <span>• Certificates: {saveResult.details.certificates}</span>}
+                      {saveResult.details.projects > 0 && <span>• Projects: {saveResult.details.projects}</span>}
+                      {saveResult.details.trainings > 0 && <span>• Trainings: {saveResult.details.trainings}</span>}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -938,7 +929,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
           </div>
 
           {/* Information */}
-          <div className="p-4 bg-blue-50 rounded-lg">
+          {/* <div className="p-4 bg-blue-50 rounded-lg">
             <h4 className="font-semibold text-blue-900 mb-2 text-sm">📋 How it works:</h4>
             <ul className="text-xs text-blue-800 space-y-1">
               <li>✅ <strong>Step 1:</strong> Upload your resume (PDF, DOC, DOCX, or TXT)</li>
@@ -946,7 +937,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail }) => {
               <li>✅ <strong>Step 3:</strong> Review the extracted data in the preview</li>
               <li>✅ <strong>Step 4:</strong> Click "Save to Database" to update your profile</li>
             </ul>
-          </div>
+          </div> */}
         </CardContent>
       </Card>
     </div>

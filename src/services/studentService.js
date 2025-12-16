@@ -90,11 +90,6 @@ export const createStudent = async (studentData, userId) => {
       student_type: normalizedStudentType,
       school_id: schoolId || null,
       college_id: collegeId || null,
-      profile: {
-        name: name,
-        email: email,
-        phone: phone || null
-      },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
