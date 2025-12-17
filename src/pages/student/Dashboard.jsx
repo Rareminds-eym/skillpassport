@@ -662,78 +662,86 @@ const StudentDashboard = () => {
         assessment: (
       <Card
         key="assessment"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 shadow-sm"
       >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <ClipboardList className="w-5 h-5 text-blue-600" />
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+                <ClipboardList className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-semibold text-gray-900">
+              <span className="text-xl font-bold text-gray-900">
                 Assessment Test
               </span>
-              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
-                Recommended
-              </Badge>
             </CardTitle>
+            <Badge className="bg-gradient-to-r from-blue-100 to-indigo-100 text-white p-1 rounded-full shadow-sm">
+              <Star className="w-6 h-6 fill-[#FBBF24]" />
+            </Badge>
           </div>
         </CardHeader>
-        <CardContent className="p-6 space-y-3">
-          <p className="text-gray-700 text-sm leading-relaxed">
+        <CardContent className="p-8 space-y-4">
+          <p className="text-gray-900 text-sm leading-relaxed font-medium">
             Take our comprehensive assessment to discover your strengths and get a personalized career roadmap.
           </p>
 
-          <div className="flex items-center gap-4 text-xs text-gray-600 font-medium">
-            <div className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-1 rounded-md">
-              <Target className="w-3.5 h-3.5" />
-              <span>Skill Analysis</span>
+          <div className="flex items-center gap-4 text-xs text-gray-900 font-medium">
+            <div className="flex items-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 px-3 py-1.5 rounded-lg shadow-sm">
+              <Target className="w-4 h-4 text-blue-600" />
+              <span className="font-semibold">Skill Analysis</span>
             </div>
           </div>
 
-          <Button
-            onClick={() => navigate("/student/assessment/test")}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm hover:shadow transition-all mt-4"
-          >
-            Start Assessment
-            <ChevronRight className="w-4 h-4 ml-2" />
-          </Button>
+          <div className="flex justify-center">
+            <Button
+              onClick={() => navigate("/student/assessment/test")}
+              className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-smshadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+            >
+              Start Assessment
+              <ChevronRight className="w-5 h-5 ml-2" />
+            </Button>
+          </div>
 
           {/* Conditional content below Start Assessment button */}
           {!hasAssessment ? (
             // Show detailed assessment info when NOT completed
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <p className="text-gray-700 text-sm leading-relaxed mb-4">
+            <div className="mt-6 pt-6 border-t-2 border-gray-200">
+              <p className="text-gray-900 text-sm leading-relaxed mb-4 font-medium">
                 Take this comprehensive assessment to uncover your strengths, identify areas for growth, and explore potential opportunities tailored to you. Gain insights that can help guide your learning, career, or personal development journey.
               </p>
 
-              <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">Why Take This Assessment?</h4>
-                <ul className="space-y-2 text-sm text-gray-700">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <span>Understand your unique strengths and skills</span>
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500 rounded-lg p-5 mb-4 shadow-sm">
+                <h4 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-blue-600" />
+                  Why Take This Assessment?
+                </h4>
+                <ul className="space-y-3 text-sm text-gray-900">
+                  <li className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span className="font-medium">Understand your unique strengths and skills</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <span>Identify opportunities for growth and improvement</span>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span className="font-medium">Identify opportunities for growth and improvement</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <span>Get insights that can help guide your career or personal goals</span>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span className="font-medium">Get insights that can help guide your career or personal goals</span>
                   </li>
                 </ul>
               </div>
 
-              <p className="text-sm text-gray-600 italic">
-                It's simple, quick, and tailored just for you—discover more about yourself today!
+              <p className="text-sm text-gray-900 italic font-medium bg-gray-50 p-3 rounded-lg border border-gray-200">
+                💡 It's simple, quick, and tailored just for you—discover more about yourself today!
               </p>
             </div>
           ) : (
             // Show Career AI Tools when assessment completed
-            <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Career AI Tools</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="mt-6 pt-6 border-t-2 border-gray-200">
+            <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Rocket className="w-5 h-5 text-blue-600" />
+              Career AI Tools
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => navigate("/student/career-ai", { state: { query: 'What jobs match my skills and experience?' } })}
                 className="bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
@@ -830,48 +838,28 @@ const StudentDashboard = () => {
     opportunities: (
       <Card
         key="opportunities"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 shadow-sm"
       >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-blue-600" />
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+                <Briefcase className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-semibold text-gray-900">
+              <span className="text-xl font-bold text-gray-900">
                 Opportunities
               </span>
-              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
-                {opportunities?.length || 0}
-              </Badge>
-              {/* Badge for school students */}
-              {studentData?.grade && (studentData?.school_id || studentData?.school_class_id) && (
-                <Badge className={`px-2.5 py-0.5 rounded-md text-xs font-medium ml-2 ${
-                  parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8
-                    ? "bg-blue-50 text-blue-700"
-                    : parseInt(studentData.grade) >= 9
-                    ? "bg-green-50 text-green-700"
-                    : "bg-gray-50 text-gray-700"
-                }`}>
-                  {parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8
-                    ? "Internships Only"
-                    : parseInt(studentData.grade) >= 9
-                    ? "All Opportunities"
-                    : `Grade ${studentData.grade}`
-                  }
-                </Badge>
-              )}
-              
-              {/* Badge for college students */}
-              {(studentData?.university_college_id || studentData?.universityId) && (
-                <Badge className="bg-green-50 text-green-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
-                  All Opportunities
-                </Badge>
-              )}
-            </div>
-          </CardTitle>
+            </CardTitle>
+            <button
+              className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+              title="View All Opportunities"
+              onClick={() => navigate('/student/opportunities')}
+            >
+              <Eye className="w-5 h-5 text-blue-600" />
+            </button>
+          </div>
         </CardHeader>
-        <CardContent className="pt-4 p-6 space-y-3">
+        <CardContent className="pt-4 p-8 space-y-4">
           {/* Info message for school students */}
           {/* {(studentData?.school_id || studentData?.school_class_id) && studentData?.grade && (
             <div className="bg-blue-50 rounded-lg p-3 mb-4">
@@ -984,70 +972,59 @@ const StudentDashboard = () => {
               }
             });
 
-            const displayOpportunities = showAllOpportunities ? filteredOpportunities : filteredOpportunities.slice(0, 3);
-
             return (
               <>
-                <div className={`space-y-3 ${showAllOpportunities ? 'max-h-[400px] overflow-y-auto pr-2' : ''}`}>
-                  {displayOpportunities.map((opp, idx) => {
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 blue-scrollbar">
+                  {filteredOpportunities.map((opp, idx) => {
                     // Determine mode display text
                     const modeDisplay = opp.mode === 'Onsite' ? 'Offline' : opp.mode === 'Remote' ? 'Online' : opp.mode;
-                    
+
                     return (
                       <div
                         key={opp.id || `${opp.title}-${opp.company_name}-${idx}`}
-                        className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
+                        className="p-5 rounded-xl bg-gradient-to-r from-blue-50 to-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
                       >
-                        <h4 className="font-semibold text-gray-900 text-base mb-1">
+                        <h4 className="text-base font-bold text-gray-900 mb-2">
                           {opp.title}
                         </h4>
-                        <p className="text-blue-600 text-sm font-medium mb-2">
-                          {opp.company_name || opp.department || opp.sector || 'Learning Opportunity'}
-                        </p>
-                        
-                        {/* Mode and Location */}
-                        {(opp.mode || opp.location) && (
-                          <div className="flex items-center gap-2 mb-3 text-xs text-gray-600">
-                            {opp.mode && (
-                              <div className="flex items-center gap-1">
-                                <MapPin className="w-3.5 h-3.5" />
-                                <span>{modeDisplay}</span>
-                              </div>
-                            )}
-                            {opp.location && opp.mode !== 'Remote' && (
-                              <span>• {opp.location}</span>
-                            )}
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center justify-between">
-                          <Badge className="bg-gray-200 text-gray-700 hover:bg-gray-200 text-xs font-medium px-3 py-1">
+
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                          <p className="text-blue-600 text-sm leading-relaxed font-medium">
+                            {opp.company_name || opp.department || opp.sector || 'Learning Opportunity'}
+                          </p>
+                          <Badge className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border border-blue-200 text-xs font-medium px-3 py-1.5 rounded-full shadow-sm whitespace-nowrap">
                             {opp.employment_type}
                           </Badge>
+                        </div>
+
+                        {/* Mode, Location and Apply Button */}
+                        <div className="flex items-center justify-between gap-3">
+                          {(opp.mode || opp.location) && (
+                            <div className="flex items-center gap-3 text-sm text-gray-900 leading-relaxed font-medium">
+                              {opp.mode && (
+                                <div className="flex items-center gap-1.5">
+                                  <MapPin className="w-4 h-4 text-blue-600" />
+                                  <span className="font-medium">{modeDisplay}</span>
+                                </div>
+                              )}
+                              {opp.location && opp.mode !== 'Remote' && (
+                                <span>• {opp.location}</span>
+                              )}
+                            </div>
+                          )}
+
                           <Button
                             size="sm"
                             onClick={() => navigate('/student/opportunities', { state: { selectedOpportunityId: opp.id } })}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors"
+                            className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-5 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
                           >
-                            Apply Now
+                            Apply
                           </Button>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-                
-                {filteredOpportunities.length > 3 && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowAllOpportunities((v) => !v)}
-                    className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-                  >
-                    {showAllOpportunities
-                      ? "Show Less"
-                      : `View All Opportunities (${filteredOpportunities.length})`}
-                  </Button>
-                )}
               </>
             );
           })()}
@@ -1308,7 +1285,7 @@ const StudentDashboard = () => {
                         asChild
                         variant="outline"
                         size="sm"
-                        className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                        className="text-blue-600 border-purple-200 hover:bg-purple-50"
                       >
                         <a
                           href={project.ppt_url}
@@ -1324,7 +1301,7 @@ const StudentDashboard = () => {
                         asChild
                         variant="outline"
                         size="sm"
-                        className="text-green-600 border-green-200 hover:bg-green-50"
+                        className="text-blue-600 border-green-200 hover:bg-green-50"
                       >
                         <a
                           href={project.certificate_url}
@@ -1464,68 +1441,76 @@ const StudentDashboard = () => {
     training: (
       <Card
         key="training"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 shadow-sm"
       >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <PresentationIcon className="w-5 h-5 text-blue-600" />
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+                <PresentationIcon className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-semibold text-gray-900">Training</span>
+              <span className="text-xl font-bold text-gray-900">Training</span>
             </CardTitle>
             <button
-              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-              title="Edit Training"
+              className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+              title="View All Courses"
               onClick={() => setActiveModal("training")}
             >
-              <Edit className="w-4 h-4 text-gray-600" />
+              <Eye className="w-5 h-5 text-blue-600" />
             </button>
           </div>
         </CardHeader>
-<CardContent className="pt-4 p-6 space-y-4">
+<CardContent className="pt-4 p-8 space-y-4">
           {/* No Assessment CTA - TOP (only show when not expanded) */}
           {!hasAssessment && !recommendationsLoading && !showAllTraining && (
-            <div className="bg-gradient-to-br from-blue-50 to-blue-50 rounded-lg p-4 border-2 border-dashed border-blue-300 mb-4">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 mb-4 shadow-sm">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-500 flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-5 h-5 text-white" />
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-md">
+                  <Sparkles className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-sm font-bold text-gray-900 mb-1">
+                  <h4 className="text-base font-bold text-gray-900 mb-2">
                     Get Personalized Recommendations
                   </h4>
-                  <p className="text-xs text-gray-600 mb-3">
+                  <p className="text-sm text-gray-900 mb-3 font-medium">
                     Take our assessment to receive AI-powered course recommendations tailored to your career goals and skills.
                   </p>
                   <Button
                     onClick={() => navigate("/student/assessment/test")}
                     size="sm"
-                    className="bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700 text-white text-xs font-semibold"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
                   >
                     Take Assessment
-                    <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                    <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Unified Training Content - Both Recommendations and Courses */}
-          <div className={showAllTraining ? "max-h-80 overflow-y-auto pr-2 space-y-3" : "space-y-3"}>
-            {/* AI-Powered Recommendations Section */}
-            {hasAssessment && assessmentRecommendations && (
-              <div className="mb-4">
-                <TrainingRecommendations 
-                  recommendations={assessmentRecommendations} 
+          {/* AI-Powered Recommendations Section */}
+          {hasAssessment && assessmentRecommendations && (
+            <div className="mb-6">
+              <div className="max-h-[400px] overflow-y-auto pr-2">
+                <TrainingRecommendations
+                  recommendations={assessmentRecommendations}
                   showAll={showAllTraining}
                 />
               </div>
-            )}
-          {(showAllTraining
-            ? userData.training.filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved"))
-            : userData.training.filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved")).slice(0, hasAssessment && assessmentRecommendations ? 0 : 2)
-          ).map((training, idx) => {
+            </div>
+          )}
+
+          {/* My Courses Section */}
+          {userData.training.filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved")).length > 0 && (
+            <div>
+              <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-blue-600" />
+                My Courses
+              </h3>
+              <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 blue-scrollbar">
+                {userData.training
+                  .filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved"))
+                  .map((training, idx) => {
             // Calculate progress
             const statusLower = (training.status || "").toLowerCase();
             let progressValue = 0;
@@ -1539,17 +1524,17 @@ const StudentDashboard = () => {
             return (
               <div
                 key={training.id || `training-${training.course}-${idx}`}
-                className="p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all duration-200"
+                className="p-5 rounded-xl bg-gradient-to-r from-blue-50 to-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-gray-900 text-base truncate max-w-[75%]">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <h4 className="text-base font-bold text-gray-900 truncate flex-1">
                     {training.course}
                   </h4>
                   <Badge
-                    className={`px-2.5 py-1 text-xs font-medium rounded-md ${training.status === "completed"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-blue-100 text-blue-700"
+                    className={`px-3 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${training.status === "completed"
+                      ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+                      : "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
                       }`}
                   >
                     {training.status === "completed" ? "Completed" : "Ongoing"}
@@ -1557,60 +1542,60 @@ const StudentDashboard = () => {
                 </div>
 
                 {/* Meta info */}
-                <div className="text-xs text-gray-600 mb-2 space-y-1">
+                <div className="flex items-center gap-4 mb-3 text-sm text-gray-900 font-medium flex-wrap">
                   {training.provider && (
-                    <div className="flex items-center gap-1.5">
-                      <BookOpen className="w-3.5 h-3.5 text-gray-500" />
-                      <span>{training.provider}</span>
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-blue-600" />
+                      <span className="font-medium">{training.provider}</span>
                     </div>
                   )}
                   {training.duration && (
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-gray-500" />
-                      <span>{training.duration}</span>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-blue-600" />
+                      <span className="font-medium">{training.duration}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Progress bar */}
                 {(training.total_modules > 0 || training.completed_modules > 0 || training.hours_spent > 0) && (
-                  <div className="mt-2">
+                  <div className="mt-3">
                     {/* Progress Header */}
-                    <div className="flex justify-between items-center text-xs font-medium text-gray-700 mb-1">
+                    <div className="flex justify-between items-center text-sm text-gray-900 font-medium mb-2">
                       <span>Progress</span>
-                      <span className="text-blue-600">{progressValue}%</span>
+                      <span className="text-blue-600 font-semibold">{progressValue}%</span>
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
                       <div
-                        className="h-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
+                        className="h-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${progressValue}%` }}
                       />
                     </div>
 
                     {/* Modules & Hours Info */}
-                    <div className="text-xs text-gray-500 mt-1 space-x-2">
+                    <div className="text-xs text-gray-900 font-medium mt-2 space-x-3">
                       {training.completed_modules != null && training.total_modules != null && (
                         <span>
                           Modules: {training.completed_modules}/{training.total_modules}
                         </span>
                       )}
-                      {training.hours_spent != null && <span>Hours Spent: {training.hours_spent}</span>}
+                      {training.hours_spent != null && <span>Hours: {training.hours_spent}</span>}
                     </div>
                   </div>
                 )}
 
                 {/* Skills */}
                 {Array.isArray(training.skills) && training.skills.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs font-semibold text-gray-700 mb-1">Skills Covered:</p>
+                  <div className="mt-4">
+                    <p className="text-sm text-gray-900 font-medium mb-2">Skills Covered:</p>
                     <div className="flex flex-wrap gap-2">
                       {(training.showAllSkills ? training.skills : training.skills.slice(0, 4)).map(
                         (skill, i) => (
                           <span
                             key={`skill-${training.id}-${i}`}
-                            className="px-2.5 py-1 text-[11px] rounded-md bg-blue-50 text-blue-700 font-medium"
+                            className="px-3 py-1.5 text-xs rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-medium border border-blue-200 shadow-sm"
                           >
                             {skill}
                           </span>
@@ -1639,17 +1624,8 @@ const StudentDashboard = () => {
               </div>
             );
           })}
-          </div>
-
-          {/* Show More / Less Button */}
-          {userData.training.filter((t) => t.enabled !== false).length > 2 && (
-            <Button
-              variant="outline"
-              onClick={() => setShowAllTraining((v) => !v)}
-              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-            >
-              {showAllTraining ? "Show Less" : "View All Courses"}
-            </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -1973,7 +1949,7 @@ const StudentDashboard = () => {
 
   const render3x3Grid = () => {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
         {threeByThreeCards.map((cardName, index) => {
           const cardKey = cardNameMapping[cardName];
           const card = allCards[cardKey];
@@ -1992,7 +1968,7 @@ const StudentDashboard = () => {
   // Utility to truncate long text and toggle full view
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-8 px-6">
+    <div className="min-h-screen bg-[#F8FAFC] py-6 px-4">
       {/* Hot-toast notification container */}
       <Toaster
         position="top-right"
@@ -2010,28 +1986,68 @@ const StudentDashboard = () => {
       <div className="w-full mx-auto">
         {/* View Switcher Tabs */}
         {!isViewingOthersProfile && (
-          <div className="mb-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-1.5">
-              <div className="grid grid-cols-2 gap-2">
+          <div className="mb-8">
+            {/* Tab Navigation with Subheadings */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {/* Dashboard Tab */}
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${activeView === 'dashboard'
-                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
-                    : 'bg-transparent text-gray-600 hover:bg-gray-50'
-                    }`}
+                  className={`relative text-left p-4 rounded-lg transition-all ${
+                    activeView === 'dashboard'
+                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                      : 'bg-white hover:bg-gray-50'
+                  }`}
                 >
-                  <LayoutDashboard className="w-5 h-5" />
-                  <span>Dashboard</span>
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      activeView === 'dashboard' ? 'bg-indigo-600' : 'bg-gray-100'
+                    }`}>
+                      <LayoutDashboard className={`w-6 h-6 ${
+                        activeView === 'dashboard' ? 'text-white' : 'text-gray-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h1 className={`font-bold text-2xl ${
+                        activeView === 'dashboard' ? 'text-indigo-600' : 'text-gray-900'
+                      }`}>
+                        Dashboard
+                      </h1>
+                      <p className="text-sm text-gray-600 mt-1">
+                        View your overview, opportunities, and achievements
+                      </p>
+                    </div>
+                  </div>
                 </button>
+
+                {/* Analytics Tab */}
                 <button
                   onClick={() => setActiveView('analytics')}
-                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${activeView === 'analytics'
-                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
-                    : 'bg-transparent text-gray-600 hover:bg-gray-50'
-                    }`}
+                  className={`relative text-left p-4 rounded-lg transition-all ${
+                    activeView === 'analytics'
+                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                      : 'bg-white hover:bg-gray-50'
+                  }`}
                 >
-                  <BarChart3 className="w-5 h-5" />
-                  <span>Analytics</span>
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      activeView === 'analytics' ? 'bg-indigo-600' : 'bg-gray-100'
+                    }`}>
+                      <BarChart3 className={`w-6 h-6 ${
+                        activeView === 'analytics' ? 'text-white' : 'text-gray-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h1 className={`font-bold text-lg ${
+                        activeView === 'analytics' ? 'text-indigo-600' : 'text-gray-900'
+                      }`}>
+                        Analytics
+                      </h1>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Track your learning progress and performance insights
+                      </p>
+                    </div>
+                  </div>
                 </button>
               </div>
             </div>
