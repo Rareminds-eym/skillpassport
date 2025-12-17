@@ -360,7 +360,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   ];
 
   return (
-    <div className="bg-[#f6f7fd] py-8 px-6">
+    <div className="bg-[#ffffff] py-8 px-6">
       {/* Debug Component - Temporarily hidden */}
       {/* {process.env.NODE_ENV === 'development' && <EmployabilityDebugger />} */}
 
