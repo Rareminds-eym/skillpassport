@@ -112,11 +112,12 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
       label: 'Registration Number',
       value: data.registration_number || data.registrationNumber
     },
-    {
-      icon: Hash,
-      label: 'NM ID',
-      value: data.nm_id
-    }
+    // COMMENTED OUT FOR NOW - RM ID not required
+    // {
+    //   icon: Hash,
+    //   label: 'RM ID',
+    //   value: data.nm_id
+    // }
   ];
 
   // Filter out items with no value
@@ -127,44 +128,32 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
     {
       icon: Github,
       label: 'GitHub',
-      value: data.github_link || data.githubLink,
-      color: 'text-gray-700',
-      bgColor: 'bg-gray-100'
+      value: data.github_link || data.githubLink
     },
     {
       icon: Globe,
       label: 'Portfolio',
-      value: data.portfolio_link || data.portfolioLink,
-      color: 'text-blue-700',
-      bgColor: 'bg-blue-100'
+      value: data.portfolio_link || data.portfolioLink
     },
     {
       icon: Linkedin,
       label: 'LinkedIn',
-      value: data.linkedin_link || data.linkedinLink,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100'
+      value: data.linkedin_link || data.linkedinLink
     },
     {
       icon: Twitter,
       label: 'Twitter/X',
-      value: data.twitter_link || data.twitterLink,
-      color: 'text-sky-600',
-      bgColor: 'bg-sky-100'
+      value: data.twitter_link || data.twitterLink
     },
     {
       icon: Instagram,
       label: 'Instagram',
-      value: data.instagram_link || data.instagramLink,
-      color: 'text-pink-600',
-      bgColor: 'bg-pink-100'
+      value: data.instagram_link || data.instagramLink
     },
     {
       icon: Facebook,
       label: 'Facebook',
-      value: data.facebook_link || data.facebookLink,
-      color: 'text-blue-800',
-      bgColor: 'bg-blue-100'
+      value: data.facebook_link || data.facebookLink
     }
   ];
 
@@ -191,14 +180,14 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
       {/* Institution Card */}
       {institution && (
         <div className="mb-6">
-          <Card className="border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-blue-50 shadow-lg">
+          <Card className="border border-blue-200 bg-blue-50">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center shadow-lg flex-shrink-0">
+                <div className="w-14 h-14 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
                   <Building2 className="w-7 h-7 text-white" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-1">
+                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">
                     {institution.type}
                   </p>
                   <h3 className="text-xl font-bold text-gray-900 mb-2">
@@ -241,21 +230,13 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
           return (
             <div
               key={index}
-              className={`flex items-center space-x-3 p-3 rounded-lg border transition-colors duration-200 ${
-                item.primary
-                  ? 'border-blue-200 bg-blue-50'
-                  : 'border-blue-100 bg-blue-50'
-              }`}
+              className="flex items-center space-x-3 p-4 rounded-lg border border-blue-200 bg-blue-50"
             >
-              <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
-                item.primary
-                  ? 'bg-blue-100 text-blue-600'
-                  : 'bg-blue-50 text-blue-500'
-              }`}>
+              <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
                 <IconComponent className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-blue-500 uppercase tracking-wider">
+                <p className="text-xs font-medium text-blue-600 uppercase tracking-wider">
                   {item.label}
                 </p>
                 <p className="text-sm font-semibold text-gray-900 truncate">
@@ -267,18 +248,22 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
         })}
       </div>
 
-      {/* Social Media Links Section - Enhanced Design */}
+      {/* Social Media Links Section - Modern Design */}
       {displaySocialLinks.length > 0 && (
-        <div className="border-t border-blue-200 pt-6 mt-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-300 to-transparent"></div>
-            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <LinkIcon className="w-5 h-5 text-blue-600" />
-              Social & Professional Links
-            </h3>
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-300 to-transparent"></div>
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <div className="mb-4">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                <LinkIcon className="w-4 h-4 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Social & Professional Links
+              </h3>
+            </div>
+            <p className="text-sm text-gray-600 ml-11">Connect and explore professional profiles</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {displaySocialLinks.map((link, index) => {
               const IconComponent = link.icon;
               return (
@@ -287,17 +272,23 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
                   href={link.value.startsWith('http') ? link.value : `https://${link.value}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`group relative overflow-hidden flex items-center space-x-3 p-4 rounded-xl border border-blue-200 hover:border-blue-400 transition-all duration-300 hover:shadow-lg hover:scale-105 ${link.bgColor}`}
+                  className="group relative bg-white border border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-md transition-all duration-200"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                  <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300 ${link.bgColor} ${link.color} group-hover:scale-110`}>
-                    <IconComponent className="w-5 h-5 group-hover:rotate-12 transition-all duration-300" />
-                  </div>
-                  <div className="flex-1 min-w-0 relative z-10">
-                    <p className={`text-sm font-bold ${link.color} group-hover:underline`}>
-                      {link.label}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">View Profile</p>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center group-hover:bg-blue-700 transition-colors duration-200">
+                      <IconComponent className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-semibold text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
+                        {link.label}
+                      </p>
+                      <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                        View Profile
+                        <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </p>
+                    </div>
                   </div>
                 </a>
               );
@@ -308,8 +299,8 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
 
       {/* Additional Info Badge */}
       {data.imported_at && (
-        <div className="flex justify-center">
-          <Badge variant="outline" className="text-xs border-blue-200 text-blue-600">
+        <div className="flex justify-center pt-4">
+          <Badge variant="outline" className="text-xs border-blue-200 text-blue-600 bg-blue-50">
             Last updated: {new Date(data.imported_at).toLocaleDateString()}
           </Badge>
         </div>

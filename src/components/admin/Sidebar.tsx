@@ -21,6 +21,7 @@ import {
   BuildingLibraryIcon,
   ClipboardIcon,
   FolderOpenIcon,
+  FolderIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../../context/AuthContext";
@@ -43,7 +44,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
     const allGroups = [
       "students", "teachers", "academics", "communication", "finance", "skills", // school_admin
       "colleges", "courses", "faculty", "placements", "analytics", // university_admin
-      "department", "student", "training", "events", "reports", "examinations", "mentors", "users", "settings" // college_admin
+      "department", "student", "examinations", "operations", "administration" // college_admin
     ];
     allGroups.forEach(group => {
       initialState[group] = true;
@@ -75,6 +76,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               icon: UserGroupIcon,
             },
             {
+              name: "Digital Portfolio",
+              path: "/school-admin/students/digital-portfolio",
+              icon: FolderIcon,
+            },
+            {
               name: "Class Management",
               path: "/school-admin/classes/management",
               icon: AcademicCapIcon,
@@ -84,6 +90,16 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               path: "/school-admin/students/attendance-reports",
               icon: ChartBarIcon,
             },
+            {
+              name: "Assessment Results",
+              path: "/school-admin/students/assessment-results",
+              icon: ChartPieIcon,
+            },
+            {
+              name: "Verifications",
+              path: "/school-admin/students/verifications",
+              icon: ChartBarIcon,
+            }
           ],
         },
         {
@@ -111,9 +127,14 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           title: "Academic Management",
           key: "academics",
           items: [
+            // {
+            //   name: "Courses",
+            //   path: "/school-admin/academics/courses",
+            //   icon: AcademicCapIcon,
+            // },
             {
               name: "Courses",
-              path: "/school-admin/academics/courses",
+              path: "/school-admin/academics/browse-courses",
               icon: AcademicCapIcon,
             },
             {
@@ -226,6 +247,16 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
           title: "Course & Curriculum Management",
           key: "courses",
           items: [
+            // {
+            //   name: "Courses",
+            //   path: "/university-admin/courses",
+            //   icon: BookOpenIcon,
+            // },
+            {
+              name: "Courses",
+              path: "/university-admin/browse-courses",
+              icon: BookOpenIcon,
+            },
             {
               name: "Syllabus Approval",
               path: "/university-admin/courses/syllabus",
@@ -267,6 +298,16 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               name: "Enrollment & Profiles",
               path: "/university-admin/students/enrollments",
               icon: UserGroupIcon,
+            },
+            {
+              name: "Digital Portfolios",
+              path: "/university-admin/students/digital-portfolios",
+              icon: FolderOpenIcon,
+            },
+            {
+              name: "Assessment Results",
+              path: "/university-admin/students/assessment-results",
+              icon: ChartPieIcon,
             },
             {
               name: "Continuous Assessment",
@@ -354,16 +395,57 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
     // Default: College Admin
     return [
       {
-        title: "Department Management",
+        title: "Students",
+        key: "student",
+        items: [
+          {
+            name: "Admissions & Data",
+            path: "/college-admin/students/data-management",
+            icon: UserGroupIcon,
+          },
+          {
+            name: "Attendance",
+            path: "/college-admin/students/attendance",
+            icon: ClipboardDocumentListIcon,
+          },
+          {
+            name: "Performance",
+            path: "/college-admin/students/performance",
+            icon: ChartBarIcon,
+          },
+          {
+            name: "Assessment Results",
+            path: "/college-admin/students/assessment-results",
+            icon: ChartPieIcon,
+          },
+          {
+            name: "Digital Portfolio",
+            path: "/college-admin/students/digital-portfolio",
+            icon: FolderIcon,
+          },
+          {
+            name: "Graduation & Alumni",
+            path: "/college-admin/students/graduation",
+            icon: AcademicCapIcon,
+          },
+          {
+             name: "Verifications",
+            path: "/college-admin/students/verifications",
+            icon: ChartPieIcon,
+          }
+        ],
+      },
+      {
+        title: "Departments & Faculty",
         key: "department",
         items: [
           {
-            name: "Department",
+            name: "Departments",
             path: "/college-admin/departments/management",
             icon: BuildingOffice2Icon,
           },
           {
-            name: "Faculty Management",
+            name: "Faculty",
             path: "/college-admin/departments/educators",
             icon: UserGroupIcon,
           },
@@ -375,38 +457,12 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
         ],
       },
       {
-        title: "Student Lifecycle Management",
-        key: "student",
-        items: [
-          {
-            name: "Student Data & Admission",
-            path: "/college-admin/students/data-management",
-            icon: UserGroupIcon,
-          },
-          {
-            name: "Attendance Tracking",
-            path: "/college-admin/students/attendance",
-            icon: ClipboardDocumentListIcon,
-          },
-          {
-            name: "Performance Monitoring",
-            path: "/college-admin/students/performance",
-            icon: ChartBarIcon,
-          },
-          {
-            name: "Graduation & Alumni",
-            path: "/college-admin/students/graduation",
-            icon: AcademicCapIcon,
-          },
-        ],
-      },
-      {
-        title: "Academic Management",
+        title: "Academics",
         key: "academics",
         items: [
           {
             name: "Courses",
-            path: "/college-admin/academics/courses",
+            path: "/college-admin/academics/browse-courses",
             icon: AcademicCapIcon,
           },
           {
@@ -415,9 +471,19 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             icon: BookOpenIcon,
           },
           {
+            name: "Program & Sections",
+            path: "/college-admin/academics/program-sections",
+            icon: UserGroupIcon,
+          },
+          {
             name: "Lesson Plans",
             path: "/college-admin/academics/lesson-plans",
             icon: ClipboardDocumentListIcon,
+          },
+          {
+            name: "Coverage Tracker",
+            path: "/college-admin/academics/coverage-tracker",
+            icon: ChartBarIcon,
           },
           {
             name: "Academic Calendar",
@@ -427,34 +493,23 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
         ],
       },
       {
-        title: "Examination Management",
+        title: "Examinations",
         key: "examinations",
         items: [
           {
-            name: "Examinations",
+            name: "Exam Management",
             path: "/college-admin/examinations",
             icon: ClipboardDocumentListIcon,
           },
           {
-            name: "Transcript Generation",
+            name: "Transcripts",
             path: "/college-admin/examinations/transcripts",
             icon: DocumentChartBarIcon,
           },
         ],
       },
       {
-        title: "Training & Skill Development",
-        key: "training",
-        items: [
-          {
-            name: "Skill Development",
-            path: "/college-admin/skill-development",
-            icon: SparklesIcon,
-          },
-        ],
-      },
-      {
-        title: "Placement Management",
+        title: "Placements & Skills",
         key: "placements",
         items: [
           {
@@ -462,12 +517,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
             path: "/college-admin/placements",
             icon: BriefcaseIcon,
           },
-        ],
-      },
-      {
-        title: "Mentor Allocation",
-        key: "mentors",
-        items: [
+          {
+            name: "Skill Development",
+            path: "/college-admin/skill-development",
+            icon: SparklesIcon,
+          },
           {
             name: "Mentors",
             path: "/college-admin/mentors",
@@ -476,57 +530,44 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
         ],
       },
       {
-        title: "Communication",
-        key: "communication",
-        items: [
-          {
-            name: "Circulars & Notifications",
-            path: "/college-admin/circulars",
-            icon: BellIcon,
-          },
-        ],
-      },
-      {
-        title: "Event Management",
-        key: "events",
-        items: [
-          {
-            name: "Events",
-            path: "/college-admin/events",
-            icon: CalendarDaysIcon,
-          },
-        ],
-      },
-      {
-        title: "Finance & Accounts",
-        key: "finance",
+        title: "Operations",
+        key: "operations",
         items: [
           {
             name: "Finance",
             path: "/college-admin/finance",
             icon: BanknotesIcon,
           },
-        ],
-      },
-      {
-        title: "Reports & Analytics",
-        key: "reports",
-        items: [
           {
-            name: "Reports",
-            path: "/college-admin/reports",
-            icon: ChartPieIcon,
+            name: "Library",
+            path: "/college-admin/library",
+            icon: BuildingLibraryIcon,
+          },
+          {
+            name: "Events",
+            path: "/college-admin/events",
+            icon: CalendarDaysIcon,
+          },
+          {
+            name: "Circulars",
+            path: "/college-admin/circulars",
+            icon: BellIcon,
           },
         ],
       },
       {
-        title: "User Management",
-        key: "users",
+        title: "Administration",
+        key: "administration",
         items: [
           {
-            name: "Users",
+            name: "User Management",
             path: "/college-admin/users",
             icon: UserGroupIcon,
+          },
+          {
+            name: "Reports & Analytics",
+            path: "/college-admin/reports",
+            icon: ChartPieIcon,
           },
         ],
       },

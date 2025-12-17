@@ -24,6 +24,9 @@ interface StudentFormData {
   dateOfBirth: string
   gender: string
   enrollmentNumber: string
+  rollNumber: string
+  category: string
+  quota: string
   guardianName: string
   guardianPhone: string
   guardianEmail: string
@@ -36,6 +39,7 @@ interface StudentFormData {
   bloodGroup: string
   district: string
   university: string
+  documents: File[]
 }
 
 const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
@@ -57,6 +61,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     dateOfBirth: '',
     gender: '',
     enrollmentNumber: '',
+    rollNumber: '',
+    category: '',
+    quota: '',
     guardianName: '',
     guardianPhone: '',
     guardianEmail: '',
@@ -68,7 +75,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     pincode: '',
     bloodGroup: '',
     district: '',
-    university: ''
+    university: '',
+    documents: []
   })
 
   useEffect(() => {
@@ -80,6 +88,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         dateOfBirth: '',
         gender: '',
         enrollmentNumber: '',
+        rollNumber: '',
+        category: '',
+        quota: '',
         guardianName: '',
         guardianPhone: '',
         guardianEmail: '',
@@ -91,7 +102,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         pincode: '',
         bloodGroup: '',
         district: '',
-        university: ''
+        university: '',
+        documents: []
       })
       setError(null)
       setSuccess(null)
@@ -107,19 +119,49 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
   // Download sample CSV template
   const downloadSampleCSV = () => {
-    const sampleData = [
-      ['name', 'email', 'contactNumber', 'alternateNumber', 'dateOfBirth', 'gender', 'enrollmentNumber', 'registrationNumber', 'rollNumber', 'admissionNumber', 'grade', 'section', 'academicYear', 'bloodGroup', 'district', 'university', 'collegeSchoolName', 'profilePicture', 'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation', 'address', 'city', 'state', 'country', 'pincode'],
-      ['Aarav Sharma', 'aarav.sharma@school.com', '919876501234', '919876543299', '2010-04-15', 'Male', 'ENR2024101', 'REG2024101', '1', 'ADM2024101', '10', 'A', '2024-25', 'O+', 'Mumbai', '', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=12', 'Rajesh Sharma', '919877654321', 'rajesh.sharma@parent.com', 'Father', 'Flat 301 Sunrise Apartments Andheri West', 'Mumbai', 'Maharashtra', 'India', '400053'],
-      ['Diya Patel', 'diya.patel@school.com', '919876502345', '', '2011-08-22', 'Female', 'ENR2024102', 'REG2024102', '2', 'ADM2024102', '9', 'B', '2024-25', 'A+', 'Mumbai', '', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=47', 'Priya Patel', '919877654322', 'priya.patel@parent.com', 'Mother', 'Bungalow 12 Green Valley Society Borivali', 'Mumbai', 'Maharashtra', 'India', '400092'],
-      ['Arjun Reddy', 'arjun.reddy@school.com', '919876503456', '919876543298', '2012-12-10', 'Male', 'ENR2024103', 'REG2024103', '3', 'ADM2024103', '8', 'C', '2024-25', 'B+', 'Mumbai', '', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=33', 'Venkatesh Reddy', '919877654323', 'venkatesh.reddy@parent.com', 'Father', 'Tower B 1502 Oberoi Heights Goregaon East', 'Mumbai', 'Maharashtra', 'India', '400063']
-    ]
+    // Determine context (college vs school) from localStorage
+    const userStr = localStorage.getItem('user')
+    let isCollegeContext = false
+    let userRole = null
+    
+    try {
+      const userData = JSON.parse(userStr || '{}')
+      const collegeId = userData.collegeId || null
+      userRole = userData.role || null
+      isCollegeContext = !!(collegeId || userRole === 'college_admin')
+    } catch (e) {
+      console.warn('Could not parse user data from localStorage')
+    }
+
+    let sampleData
+    let filename
+
+    if (isCollegeContext) {
+      // University/College template
+      filename = 'university_student_import_template.csv'
+      sampleData = [
+        ['name', 'email', 'contactNumber', 'alternateNumber', 'dateOfBirth', 'gender', 'enrollmentNumber', 'registrationNumber', 'rollNumber', 'admissionNumber', 'category', 'quota', 'academicYear', 'bloodGroup', 'district', 'university', 'profilePicture', 'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation', 'address', 'city', 'state', 'country', 'pincode'],
+        ['Priya Sharma', 'priya.sharma@university.edu', '919876501234', '919876543299', '2002-04-15', 'Female', 'UNI2024101', 'REG2024101', 'CS2024001', 'ADM2024101', 'General', 'Merit', '2024-25', 'O+', 'Mumbai', 'Mumbai University', 'https://i.pravatar.cc/150?img=25', 'Rajesh Sharma', '919877654321', 'rajesh.sharma@parent.com', 'Father', 'Flat 301 Sunrise Apartments Andheri West', 'Mumbai', 'Maharashtra', 'India', '400053'],
+        ['Arjun Patel', 'arjun.patel@university.edu', '919876502345', '', '2001-08-22', 'Male', 'UNI2024102', 'REG2024102', 'ME2024002', 'ADM2024102', 'OBC', 'Merit', '2024-25', 'A+', 'Pune', 'Pune University', 'https://i.pravatar.cc/150?img=33', 'Priya Patel', '919877654322', 'priya.patel@parent.com', 'Mother', 'Bungalow 12 Green Valley Society Borivali', 'Pune', 'Maharashtra', 'India', '411001'],
+        ['Meera Reddy', 'meera.reddy@university.edu', '919876503456', '919876543298', '2003-12-10', 'Female', 'UNI2024103', 'REG2024103', 'EC2024003', 'ADM2024103', 'SC', 'Sports', '2024-25', 'B+', 'Bangalore', 'Bangalore University', 'https://i.pravatar.cc/150?img=47', 'Venkatesh Reddy', '919877654323', 'venkatesh.reddy@parent.com', 'Father', 'Tower B 1502 Oberoi Heights Electronic City', 'Bangalore', 'Karnataka', 'India', '560100']
+      ]
+    } else {
+      // School template
+      filename = 'school_student_import_template.csv'
+      sampleData = [
+        ['name', 'email', 'contactNumber', 'alternateNumber', 'dateOfBirth', 'gender', 'enrollmentNumber', 'registrationNumber', 'rollNumber', 'admissionNumber', 'category', 'quota', 'grade', 'section', 'academicYear', 'bloodGroup', 'district', 'collegeSchoolName', 'profilePicture', 'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation', 'address', 'city', 'state', 'country', 'pincode'],
+        ['Aarav Sharma', 'aarav.sharma@school.com', '919876501234', '919876543299', '2010-04-15', 'Male', 'ENR2024101', 'REG2024101', '1', 'ADM2024101', 'General', 'Merit', '10', 'A', '2024-25', 'O+', 'Mumbai', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=12', 'Rajesh Sharma', '919877654321', 'rajesh.sharma@parent.com', 'Father', 'Flat 301 Sunrise Apartments Andheri West', 'Mumbai', 'Maharashtra', 'India', '400053'],
+        ['Diya Patel', 'diya.patel@school.com', '919876502345', '', '2011-08-22', 'Female', 'ENR2024102', 'REG2024102', '2', 'ADM2024102', 'OBC', 'Merit', '9', 'B', '2024-25', 'A+', 'Mumbai', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=47', 'Priya Patel', '919877654322', 'priya.patel@parent.com', 'Mother', 'Bungalow 12 Green Valley Society Borivali', 'Mumbai', 'Maharashtra', 'India', '400092'],
+        ['Arjun Reddy', 'arjun.reddy@school.com', '919876503456', '919876543298', '2012-12-10', 'Male', 'ENR2024103', 'REG2024103', '3', 'ADM2024103', 'SC', 'Sports', '8', 'C', '2024-25', 'B+', 'Mumbai', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=33', 'Venkatesh Reddy', '919877654323', 'venkatesh.reddy@parent.com', 'Father', 'Tower B 1502 Oberoi Heights Goregaon East', 'Mumbai', 'Maharashtra', 'India', '400063']
+      ]
+    }
     
     const csv = sampleData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'student_import_template.csv'
+    a.download = filename
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -154,6 +196,10 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setError('Contact number is required')
       return false
     }
+    if (formData.rollNumber && !validateRollNumber(formData.rollNumber)) {
+      setError('Roll number must be 3-20 characters long and contain only letters, numbers, and hyphens')
+      return false
+    }
     return true
   }
 
@@ -175,16 +221,35 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         throw new Error('You are not logged in. Please login and try again.')
       }
       
-      // Get schoolId from localStorage
+      // Get schoolId or collegeId from localStorage
       let schoolId = null
+      let collegeId = null
+      let userRole = null
       try {
         const userData = JSON.parse(userStr || '{}')
         schoolId = userData.schoolId || null
+        collegeId = userData.collegeId || null
+        userRole = userData.role || null
       } catch (e) {
         console.warn('Could not parse user data from localStorage')
       }
       
-      console.log('✅ User authenticated:', userEmail, 'School ID:', schoolId)
+      // If collegeId not in localStorage but user is college_admin, fetch from database
+      if (!collegeId && userRole === 'college_admin' && userEmail) {
+        console.log('🔍 Fetching collegeId from database for college admin:', userEmail)
+        const { data: college } = await supabase
+          .from('colleges')
+          .select('id')
+          .ilike('deanEmail', userEmail)
+          .single()
+        
+        if (college?.id) {
+          collegeId = college.id
+          console.log('✅ Found collegeId:', collegeId)
+        }
+      }
+      
+      console.log('✅ User authenticated:', userEmail, 'School ID:', schoolId, 'College ID:', collegeId, 'Role:', userRole)
 
       // Call the create-student Edge Function using direct fetch for better error handling
       console.log('Calling create-student Edge Function with data:', {
@@ -205,7 +270,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         },
         body: JSON.stringify({
           userEmail: userEmail,
-          schoolId: schoolId, // Send schoolId from localStorage
+          schoolId: schoolId, // Send schoolId from localStorage (for school admins)
+          collegeId: collegeId, // Send collegeId from localStorage (for college admins)
           student: {
             name: formData.name.trim(),
             email: formData.email.trim().toLowerCase(),
@@ -213,6 +279,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             dateOfBirth: formData.dateOfBirth || null,
             gender: formData.gender || null,
             enrollmentNumber: formData.enrollmentNumber.trim() || null,
+            rollNumber: formData.rollNumber.trim() || null,
+            category: formData.category || null,
+            quota: formData.quota || null,
             guardianName: formData.guardianName.trim() || null,
             guardianPhone: formData.guardianPhone.trim() || null,
             guardianEmail: formData.guardianEmail.trim() || null,
@@ -226,7 +295,12 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             university: formData.university.trim() || null,
             bloodGroup: formData.bloodGroup || null,
             approval_status: 'approved',
-            student_type: 'educator_added'
+            student_type: 'educator_added',
+            documents: formData.documents.map(file => ({
+              name: file.name,
+              size: file.size,
+              type: file.type
+            }))
           }
         })
       })
@@ -240,24 +314,23 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         throw new Error(data?.error || data?.details || 'Failed to create student')
       }
 
-      // Store the generated password and email
-      if (data?.data?.password) {
-        setCreatedStudentPassword(data.data.password)
-        setCreatedStudentEmail(data.data.email)
-      }
+      // Clear any stored credentials
+      setCreatedStudentPassword(null)
+      setCreatedStudentEmail(null)
 
-      // Show success message with password
-      const successMsg = data?.data?.password 
-        ? `✅ Student "${formData.name}" added successfully!\n\n🔑 Login Credentials:\nEmail: ${data.data.email}\nPassword: ${data.data.password}\n\n⚠️ Please save these credentials and share them with the student.`
-        : `✅ Student "${formData.name}" added successfully!`
+      // Show success message without password
+      const successMsg = `✅ Student "${formData.name}" added successfully!`
       
       setSuccess(successMsg)
       setError(null)
       
-      // DON'T call onSuccess immediately - let user see the password first
-      // The modal will stay open so admin can copy the credentials
-      // User will manually close it, then we refresh
-      console.log('✅ Student created successfully! Password:', data?.data?.password)
+      // Call onSuccess and close modal after a brief delay
+      onSuccess?.()
+      setTimeout(() => {
+        onClose()
+      }, 1500)
+      
+      console.log('✅ Student created successfully!')
     } catch (err: any) {
       setError(err.message || 'Failed to create student. Please try again.')
       setSuccess(null)
@@ -276,6 +349,41 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     const cleaned = phone.replace(/[\s-]/g, '')
     const phoneRegex = /^(\+?\d{1,3})?\d{10}$/
     return phoneRegex.test(cleaned)
+  }
+
+  const validateRollNumber = (rollNumber: string): boolean => {
+    // Roll number validation rules:
+    // - Must be alphanumeric
+    // - Length between 3-20 characters
+    // - Can contain letters, numbers, and hyphens
+    if (!rollNumber.trim()) return true // Optional field
+    const rollRegex = /^[A-Za-z0-9\-]{3,20}$/
+    return rollRegex.test(rollNumber.trim())
+  }
+
+  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    const validFiles = files.filter(file => {
+      const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg']
+      const maxSize = 5 * 1024 * 1024 // 5MB
+      return validTypes.includes(file.type) && file.size <= maxSize
+    })
+    
+    if (validFiles.length !== files.length) {
+      setError('Some files were rejected. Only PDF, JPG, PNG files under 5MB are allowed.')
+    }
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      documents: [...prev.documents, ...validFiles].slice(0, 5) // Max 5 files
+    }))
+  }
+
+  const removeDocument = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      documents: prev.documents.filter((_, i) => i !== index)
+    }))
   }
 
   const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -325,19 +433,40 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           const userStr = localStorage.getItem('user')
           const userEmail = localStorage.getItem('userEmail')
           let schoolId: string | null = null
+          let collegeId: string | null = null
+          let userRole: string | null = null
           
           try {
             const userData = JSON.parse(userStr || '{}')
             schoolId = userData.schoolId || null
+            collegeId = userData.collegeId || null
+            userRole = userData.role || null
           } catch (e) {
             console.warn('Could not parse user data from localStorage')
           }
 
           console.log('🔍 DEBUG: Initial schoolId from localStorage:', schoolId)
+          console.log('🔍 DEBUG: Initial collegeId from localStorage:', collegeId)
+          console.log('🔍 DEBUG: User role:', userRole)
           console.log('🔍 DEBUG: User email:', userEmail)
 
+          // If collegeId not in localStorage but user is college_admin, fetch from database
+          if (!collegeId && userRole === 'college_admin' && userEmail) {
+            console.log('🔍 DEBUG: Fetching collegeId from database for college admin:', userEmail)
+            const { data: college } = await supabase
+              .from('colleges')
+              .select('id')
+              .ilike('deanEmail', userEmail)
+              .single()
+            
+            if (college?.id) {
+              collegeId = college.id
+              console.log('✅ Found collegeId:', collegeId)
+            }
+          }
+
           // If schoolId not in localStorage, fetch from database
-          if (!schoolId && userEmail) {
+          if (!schoolId && !collegeId && userEmail) {
             console.log('🔍 DEBUG: Fetching schoolId from database for user:', userEmail)
             
             // Check school_educators table
@@ -382,8 +511,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
           console.log('🔍 DEBUG: Classes to check from CSV:', Array.from(classesToCheck.entries()))
           console.log('🔍 DEBUG: School ID:', schoolId)
+          console.log('🔍 DEBUG: College ID:', collegeId)
 
-          // Check which classes exist in database and store their IDs
+          // Check which classes exist in database and store their IDs (only for schools)
           const existingClasses = new Set<string>()
           const classIdMap = new Map<string, string>() // Map of "grade-section" to class_id
           
@@ -531,15 +661,32 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             }
 
             let schoolId: string | null = null
+            let collegeId: string | null = null
+            let userRole: string | null = null
             try {
               const userData = JSON.parse(userStr || '{}')
               schoolId = userData.schoolId || null
+              collegeId = userData.collegeId || null
+              userRole = userData.role || null
             } catch (e) {
               console.warn('Could not parse user data from localStorage')
             }
 
+            // If collegeId not in localStorage but user is college_admin, fetch from database
+            if (!collegeId && userRole === 'college_admin' && userEmail) {
+              const { data: college } = await supabase
+                .from('colleges')
+                .select('id')
+                .ilike('deanEmail', userEmail)
+                .single()
+              
+              if (college?.id) {
+                collegeId = college.id
+              }
+            }
+
             // If schoolId not in localStorage, fetch from database
-            if (!schoolId && userEmail) {
+            if (!schoolId && !collegeId && userEmail) {
               const { data: educatorData } = await supabase
                 .from('school_educators')
                 .select('school_id')
@@ -551,8 +698,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               }
             }
 
-            if (!schoolId) {
-              setError('School ID not found. Please ensure you are logged in as a school admin.')
+            if (!schoolId && !collegeId) {
+              setError('School/College ID not found. Please ensure you are logged in as a school or college admin.')
               setLoading(false)
               return
             }
@@ -633,6 +780,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   registrationNumber: student.registrationnumber || null,
                   rollNumber: student.rollnumber || null,
                   admissionNumber: student.admissionnumber || null,
+                  category: student.category || null,
+                  quota: student.quota || null,
                   grade: grade,
                   section: section,
                   academicYear: student.academicyear || student.year || null,
@@ -689,6 +838,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     body: JSON.stringify({
                       userEmail: userEmail,
                       schoolId: schoolId,
+                      collegeId: collegeId,
                       student: data
                     })
                   })
@@ -805,35 +955,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 <div className="ml-3 flex-1">
                   <p className="text-sm font-medium text-green-800 whitespace-pre-line">{success}</p>
                   
-                  {/* Show password in a copyable box if available */}
-                  {createdStudentPassword && createdStudentEmail && (
-                    <div className="mt-3 p-3 bg-white border border-green-200 rounded-md">
-                      <p className="text-xs font-semibold text-gray-700 mb-2">📋 Login Credentials (Click to copy):</p>
-                      <div className="space-y-2">
-                        <div 
-                          className="flex items-center justify-between p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100"
-                          onClick={() => {
-                            navigator.clipboard.writeText(createdStudentEmail)
-                            alert('Email copied to clipboard!')
-                          }}
-                        >
-                          <span className="text-xs text-gray-600">Email:</span>
-                          <span className="text-xs font-mono font-semibold text-gray-900">{createdStudentEmail}</span>
-                        </div>
-                        <div 
-                          className="flex items-center justify-between p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100"
-                          onClick={() => {
-                            navigator.clipboard.writeText(createdStudentPassword)
-                            alert('Password copied to clipboard!')
-                          }}
-                        >
-                          <span className="text-xs text-gray-600">Password:</span>
-                          <span className="text-xs font-mono font-semibold text-gray-900">{createdStudentPassword}</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-amber-600 mt-2">⚠️ Save these credentials before closing!</p>
-                    </div>
-                  )}
+
                 </div>
               </div>
             </div>
@@ -911,6 +1033,70 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="ENR2024001"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Roll Number
+                    <span className="text-xs text-gray-500 ml-1">(3-20 chars, letters/numbers/hyphens only)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.rollNumber}
+                    onChange={(e) => handleInputChange('rollNumber', e.target.value)}
+                    className={`w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                      formData.rollNumber && !validateRollNumber(formData.rollNumber)
+                        ? 'border-red-300 focus:ring-red-500'
+                        : 'border-gray-300 focus:ring-primary-500'
+                    }`}
+                    placeholder="ROLL2024001"
+                  />
+                  {formData.rollNumber && !validateRollNumber(formData.rollNumber) && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Roll number must be 3-20 characters long and contain only letters, numbers, and hyphens
+                    </p>
+                  )}
+                </div>
+
+                {/* Category & Quota Information */}
+                <div className="md:col-span-2 mt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3 border-b pb-2">Category & Quota Information</h4>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => handleInputChange('category', e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">Select Category</option>
+                    <option value="General">General</option>
+                    <option value="OBC">OBC (Other Backward Classes)</option>
+                    <option value="SC">SC (Scheduled Caste)</option>
+                    <option value="ST">ST (Scheduled Tribe)</option>
+                    <option value="EWS">EWS (Economically Weaker Section)</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Quota</label>
+                  <select
+                    value={formData.quota}
+                    onChange={(e) => handleInputChange('quota', e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">Select Quota</option>
+                    <option value="Merit">Merit</option>
+                    <option value="Management">Management</option>
+                    <option value="Sports">Sports</option>
+                    <option value="NRI">NRI (Non-Resident Indian)</option>
+                    <option value="Minority">Minority</option>
+                    <option value="Physically Challenged">Physically Challenged</option>
+                    <option value="Defense">Defense</option>
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
 
                 <div>
@@ -1090,6 +1276,68 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     placeholder="University name"
                   />
                 </div>
+
+                {/* Document Upload Section */}
+                <div className="md:col-span-2 mt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3 border-b pb-2">Document Upload</h4>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Upload Documents
+                    <span className="text-xs text-gray-500 ml-1">(PDF, JPG, PNG - Max 5MB each, up to 5 files)</span>
+                  </label>
+                  
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-gray-400 transition-colors">
+                    <div className="text-center">
+                      <DocumentArrowUpIcon className="mx-auto h-8 w-8 text-gray-400" />
+                      <div className="mt-2">
+                        <label className="cursor-pointer">
+                          <span className="text-sm font-medium text-primary-600 hover:text-primary-500">
+                            Click to upload documents
+                          </span>
+                          <input
+                            type="file"
+                            multiple
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={handleDocumentUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Supported: Marksheets, ID Proof, Address Proof, etc.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Display uploaded documents */}
+                  {formData.documents.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-sm font-medium text-gray-700">Uploaded Documents:</p>
+                      {formData.documents.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                          <div className="flex items-center space-x-2">
+                            <DocumentArrowUpIcon className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm text-gray-700 truncate max-w-xs">
+                              {file.name}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeDocument(index)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ) : (
@@ -1098,32 +1346,65 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <h4 className="text-sm font-semibold text-blue-900 mb-2">CSV Format Requirements</h4>
                 <p className="text-sm text-blue-800 mb-3">Your CSV file should include these columns:</p>
-                <ul className="text-sm text-blue-800 space-y-2">
-                  <li className="flex items-start">
-                    <span className="font-semibold mr-2">• Required:</span>
-                    <span>name, email, contactNumber</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="font-semibold mr-2">• School Students:</span>
-                    <span>grade, section, rollNumber, collegeSchoolName <span className="text-amber-600">(class must exist, leave university empty)</span></span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="font-semibold mr-2">• University Students:</span>
-                    <span>university, registrationNumber <span className="text-amber-600">(leave grade/section empty)</span></span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="font-semibold mr-2">• Optional:</span>
-                    <span>alternateNumber, dateOfBirth, gender, enrollmentNumber, bloodGroup, academicYear, profilePicture</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="font-semibold mr-2">• Guardian:</span>
-                    <span>guardianName, guardianPhone, guardianEmail, guardianRelation</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="font-semibold mr-2">• Address:</span>
-                    <span>address, city, state, country, pincode, district</span>
-                  </li>
-                </ul>
+                {(() => {
+                  // Determine context (college vs school) from localStorage
+                  const userStr = localStorage.getItem('user')
+                  let isCollegeContext = false
+                  let userRole = null
+                  
+                  try {
+                    const userData = JSON.parse(userStr || '{}')
+                    const collegeId = userData.collegeId || null
+                    userRole = userData.role || null
+                    isCollegeContext = !!(collegeId || userRole === 'college_admin')
+                  } catch (e) {
+                    // Default to school context if can't determine
+                  }
+
+                  return (
+                    <ul className="text-sm text-blue-800 space-y-2">
+                      <li className="flex items-start">
+                        <span className="font-semibold mr-2">• Required:</span>
+                        <span>name, email, contactNumber</span>
+                      </li>
+                      {isCollegeContext ? (
+                        <>
+                          <li className="flex items-start">
+                            <span className="font-semibold mr-2">• University Students:</span>
+                            <span>university, registrationNumber, rollNumber <span className="text-amber-600">(leave grade/section empty)</span></span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="font-semibold mr-2">• Academic Info:</span>
+                            <span>enrollmentNumber, admissionNumber, category, quota, academicYear</span>
+                          </li>
+                        </>
+                      ) : (
+                        <>
+                          <li className="flex items-start">
+                            <span className="font-semibold mr-2">• School Students:</span>
+                            <span>grade, section, rollNumber, collegeSchoolName <span className="text-amber-600">(class must exist)</span></span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="font-semibold mr-2">• Academic Info:</span>
+                            <span>enrollmentNumber, admissionNumber, category, quota, academicYear</span>
+                          </li>
+                        </>
+                      )}
+                      <li className="flex items-start">
+                        <span className="font-semibold mr-2">• Optional:</span>
+                        <span>alternateNumber, dateOfBirth, gender, bloodGroup, profilePicture</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="font-semibold mr-2">• Guardian:</span>
+                        <span>guardianName, guardianPhone, guardianEmail, guardianRelation</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="font-semibold mr-2">• Address:</span>
+                        <span>address, city, state, country, pincode, district</span>
+                      </li>
+                    </ul>
+                  )
+                })()}
                 
                 {/* Download Sample CSV Button */}
                 <button
@@ -1131,7 +1412,17 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   className="mt-4 inline-flex items-center px-3 py-2 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-300 rounded-md hover:bg-blue-200 transition-colors"
                 >
                   <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
-                  Download Sample CSV Template
+                  {(() => {
+                    const userStr = localStorage.getItem('user')
+                    let isCollegeContext = false
+                    try {
+                      const userData = JSON.parse(userStr || '{}')
+                      const collegeId = userData.collegeId || null
+                      const userRole = userData.role || null
+                      isCollegeContext = !!(collegeId || userRole === 'college_admin')
+                    } catch (e) {}
+                    return isCollegeContext ? 'Download University CSV Template' : 'Download School CSV Template'
+                  })()}
                 </button>
               </div>
 

@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const Header = () => {
+const Header = ({ hasBanner = false }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [authUser, setAuthUser] = useState(null);
   const location = useLocation();
@@ -208,7 +208,9 @@ const Header = () => {
   return (
     <header 
       ref={headerRef}
-      className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50 shadow-sm"
+      className={`bg-white/80 backdrop-blur-md border-b border-gray-100 sticky z-50 shadow-sm ${
+        hasBanner ? 'top-[36px] sm:top-[40px]' : 'top-0'
+      }`}
     >
       <nav className="max-w-8xl mx-auto px-6 sm:px-8 lg:px-12">
         <div className="flex justify-between items-center py-4 min-h-[72px]">

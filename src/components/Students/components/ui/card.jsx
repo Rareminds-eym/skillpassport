@@ -3,17 +3,19 @@ import * as React from "react";
 import { cn } from "../../lib/utils";
 
 
-const Card = React.forwardRef(({ className, variant = "purple", ...props }, ref) => {
-  // Theme variants
+const Card = React.forwardRef(({ className, variant = "default", ...props }, ref) => {
+  // Theme variants - keeping clean design with subtle variations
   const variantClasses =
     variant === "orange"
-      ? "border-amber-200 bg-[#fff9f0]"
-      : "border-blue-300 bg-[#faf6ff]";
+      ? "border-amber-200 bg-amber-50/30"
+      : variant === "blue"
+      ? "border-blue-200/60 bg-blue-50/60"
+      : "border-slate-200 bg-white"; // Default clean white
   return (
     <div
       ref={ref}
       className={cn(
-        "rounded-xl border text-card-foreground shadow-md",
+        "rounded-xl border text-card-foreground shadow-sm",
         variantClasses,
         className
       )}

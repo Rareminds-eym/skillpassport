@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
 import { X, BookOpen, ExternalLink, Search } from 'lucide-react';
 import AddLearningCourseModal from './AddLearningCourseModal';
+import LearningProgressBar from './LearningProgressBar';
 
 export default function SelectCourseModal({ isOpen, onClose, studentId, onSuccess }) {
   const [courses, setCourses] = useState([]);
   const [enrolledCourseIds, setEnrolledCourseIds] = useState([]);
+  const [enrollmentProgress, setEnrollmentProgress] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showExternalForm, setShowExternalForm] = useState(false);
@@ -38,9 +40,78 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
       if (enrollmentsError) throw enrollmentsError;
 
       const enrolledIds = enrollmentsData?.map(e => e.course_id) || [];
+
+      // Fetch progress data from student_course_progress table
+      const { data: progressData, error: progressError } = await supabase
+        .from('student_course_progress')
+        .select('course_id, lesson_id, status')
+        .eq('student_id', studentId);
+
+      if (progressError) {
+        console.error('Error fetching progress:', progressError);
+      }
+
+      // Fetch total lessons per course (lessons -> modules -> courses)
+      const { data: courseLessonsData, error: lessonsError } = await supabase
+        .from('course_modules')
+        .select(`
+          course_id,
+          lessons:lessons(lesson_id)
+        `);
+
+      if (lessonsError) {
+        console.error('Error fetching course lessons:', lessonsError);
+      }
+
+      // Build total lessons map per course
+      const totalLessonsMap = {};
+      courseLessonsData?.forEach(module => {
+        if (!totalLessonsMap[module.course_id]) {
+          totalLessonsMap[module.course_id] = 0;
+        }
+        totalLessonsMap[module.course_id] += module.lessons?.length || 0;
+      });
+
+      // Build progress map from student_course_progress
+      const progressMap = {};
+      const courseProgressTemp = {};
+
+      // Group progress by course_id
+      progressData?.forEach(p => {
+        if (!courseProgressTemp[p.course_id]) {
+          courseProgressTemp[p.course_id] = { completed: 0, total: 0 };
+        }
+        if (p.status === 'completed') {
+          courseProgressTemp[p.course_id].completed++;
+        }
+      });
+
+      // Create final progress map with total lessons from course structure
+      Object.keys(courseProgressTemp).forEach(courseId => {
+        const totalLessons = totalLessonsMap[courseId] || 0;
+        const completedLessons = courseProgressTemp[courseId].completed;
+        
+        progressMap[courseId] = {
+          completedModules: completedLessons,
+          totalModules: totalLessons,
+          status: totalLessons > 0 && completedLessons >= totalLessons ? 'completed' : 'ongoing'
+        };
+      });
+
+      // For enrolled courses without progress data, set default values with total lessons
+      enrolledIds.forEach(courseId => {
+        if (!progressMap[courseId]) {
+          progressMap[courseId] = {
+            completedModules: 0,
+            totalModules: totalLessonsMap[courseId] || 0,
+            status: 'ongoing'
+          };
+        }
+      });
       
       setCourses(coursesData || []);
       setEnrolledCourseIds(enrolledIds);
+      setEnrollmentProgress(progressMap);
     } catch (error) {
       console.error('Error fetching courses:', error);
     } finally {
@@ -262,7 +333,7 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
                           <p className="text-sm text-gray-700 mb-3 line-clamp-2">{course.description}</p>
                         )}
                         
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 mb-3">
                           {course.duration && (
                             <span className="text-xs bg-white text-gray-700 px-2 py-1 rounded border border-gray-200">
                               {course.duration}
@@ -274,14 +345,31 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
                             </span>
                           )}
                         </div>
+
+                        {/* Progress Bar */}
+                        <LearningProgressBar
+                          variant="card"
+                          progress={
+                            enrollmentProgress[course.course_id]?.status === 'completed'
+                              ? 100
+                              : enrollmentProgress[course.course_id]?.totalModules > 0
+                                ? Math.round(
+                                    (enrollmentProgress[course.course_id]?.completedModules || 0) /
+                                    enrollmentProgress[course.course_id]?.totalModules * 100
+                                  )
+                                : 0
+                          }
+                          completedModules={enrollmentProgress[course.course_id]?.completedModules || 0}
+                          totalModules={enrollmentProgress[course.course_id]?.totalModules || 0}
+                        />
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Available Courses Section */}
-              {availableCourses.length > 0 && (
+              {/* Available Courses Section - Hidden */}
+              {/* {availableCourses.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <BookOpen size={20} className="text-indigo-600" />
@@ -333,7 +421,7 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
                     ))}
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* No courses message */}
               {enrolledCourses.length === 0 && availableCourses.length === 0 && (

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   PlusIcon,
   BookOpenIcon,
@@ -18,7 +18,7 @@ import CreateCourseModal from '../../components/educator/courses/CreateCourseMod
 import CourseDetailDrawer from '../../components/educator/courses/CourseDetailDrawer';
 
 import {
-  getCoursesByEducator,
+  getAllCourses,
   createCourse,
   updateCourse
 } from '../../services/educator/coursesService';
@@ -30,6 +30,7 @@ import { View } from 'lucide-react';
 
 const Courses: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuth();
 
   /** ─────────────────────────────────────────────
@@ -192,9 +193,9 @@ const Courses: React.FC = () => {
           console.log('✅ Educator is independent (not affiliated)');
         }
 
-        // Load courses
-        console.log('📡 Fetching courses for educator:', user.id);
-        const coursesData = await getCoursesByEducator(user.id);
+        // Load all courses (not filtered by educator)
+        console.log('📡 Fetching all courses');
+        const coursesData = await getAllCourses();
         console.log('✅ Courses loaded:', coursesData.length, 'courses');
         
         // Debug: Log module counts for each course
@@ -226,6 +227,16 @@ const Courses: React.FC = () => {
 
     loadEducatorAndCourses();
   }, [user, isAuthenticated]);
+
+  /** ─────────────────────────────────────────────
+   *  READ SEARCH PARAMETER FROM URL
+   * ───────────────────────────────────────────── */
+  useEffect(() => {
+    const searchParam = searchParams.get('search');
+    if (searchParam) {
+      setSearchQuery(searchParam);
+    }
+  }, [searchParams]);
 
   /** ─────────────────────────────────────────────
    *  FILTER + SORT
@@ -564,10 +575,10 @@ const Courses: React.FC = () => {
               setEditingCourse(null);
               setShowCreateModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm"
+            // className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm"
           >
-            <PlusIcon className="h-5 w-5" />
-            Create Course
+            {/* <PlusIcon className="h-5 w-5" /> */}
+            {/* Create Course */}
           </button>
         )}
       </div>

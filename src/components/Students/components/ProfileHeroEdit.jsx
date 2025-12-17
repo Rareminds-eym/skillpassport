@@ -124,10 +124,12 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   const getGraduationYear = () => {
     if (!realStudentData) return null;
     
-    // For university/college students, use class_year or expectedGraduationDate
-    if (realStudentData.class_year) {
-      return realStudentData.class_year;
+    // For college students, check profile.classYear first
+    if (realStudentData.university_college_id && realStudentData.profile?.classYear) {
+      return realStudentData.profile.classYear;
     }
+    
+    // For university/college students, use expectedGraduationDate
     if (realStudentData.expectedGraduationDate) {
       return new Date(realStudentData.expectedGraduationDate).getFullYear();
     }
@@ -156,7 +158,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     email: realStudentData.email,
     department: realStudentData.branch_field,
     university: realStudentData.university,
-    classYear: graduationYear ? (realStudentData.school_id ? `Graduating ${graduationYear}` : `Class of ${graduationYear}`) : (realStudentData.profile?.classYear || null),
+    classYear: graduationYear || realStudentData.profile?.classYear || null,
     github_link: realStudentData.github_link,
     portfolio_link: realStudentData.portfolio_link,
     linkedin_link: realStudentData.linkedin_link,
@@ -431,10 +433,6 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       School Information
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
-                      {/* <div className="flex flex-col">
-                        <span className="text-xs text-gray-600">Name</span>
-                        <span className="text-sm text-gray-900 font-medium">{realStudentData.name || 'N/A'}</span>
-                      </div> */}
                       <div className="flex flex-col">
                         <span className="text-xs text-gray-600">Grade</span>
                         <span className="text-sm text-gray-900 font-medium">{realStudentData.grade || 'N/A'}</span>
@@ -455,8 +453,56 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   </div>
                 )}
 
+                {/* College-specific fields - Display when university_college_id is not null */}
+                {realStudentData?.university_college_id && (
+                  <div className="ml-1 bg-indigo-50/60 backdrop-blur-md rounded-2xl p-4 border border-indigo-200/60 shadow-lg">
+                    <h3 className="text-gray-900 font-semibold text-sm mb-3 flex items-center gap-2">
+                      <Award className="w-4 h-4" />
+                      College Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {realStudentData.registration_number && (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600">Registration No.</span>
+                          <span className="text-sm text-gray-900 font-medium">{realStudentData.registration_number}</span>
+                        </div>
+                      )}
+                      {realStudentData.admission_number && (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600">Admission Number</span>
+                          <span className="text-sm text-gray-900 font-medium">{realStudentData.admission_number}</span>
+                        </div>
+                      )}
+                      {realStudentData.student_id && (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600">Student ID</span>
+                          <span className="text-sm text-gray-900 font-medium">{realStudentData.student_id}</span>
+                        </div>
+                      )}
+                      {realStudentData.roll_number && (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600">Roll Number</span>
+                          <span className="text-sm text-gray-900 font-medium">{realStudentData.roll_number}</span>
+                        </div>
+                      )}
+                      {realStudentData.branch_field && (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600">Program/Degree</span>
+                          <span className="text-sm text-gray-900 font-medium">{realStudentData.branch_field}</span>
+                        </div>
+                      )}
+                      {realStudentData.section && (
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-600">Section</span>
+                          <span className="text-sm text-gray-900 font-medium">{realStudentData.section}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                  {/* Tags */}
-                {(displayData.classYear && displayData.department && displayData.degree) && (
+                {(displayData.classYear || displayData.department || displayData.degree) && (
                   <div className="flex flex-wrap gap-3 ml-1">
                   {(displayData.department || displayData.degree) && (
                     <Badge className="bg-white text-indigo-700 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
@@ -633,7 +679,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
               {/* Right Column - QR Code and Score */}
               <div className="space-y-6">
                 {/* QR Code Card */}
-                <Card className="bg-blue-50/60 backdrop-blur-xl border border-blue-200/60 rounded-2xl shadow-2xl">
+                <Card variant="blue" className="bg-blue-50/60 backdrop-blur-xl border border-blue-200/60 rounded-2xl shadow-2xl">
                   <CardContent className="p-6 text-center pt-5 md:pt-10">
                     <div className="w-28 h-28 mx-auto mb-2 bg-white rounded-xl flex items-center justify-center shadow-md p-2">
                       {/* Student QR Code */}

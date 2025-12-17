@@ -14,6 +14,9 @@ import {
 } from '@heroicons/react/24/outline';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/admin/Pagination';
+// @ts-ignore - AuthContext is a .jsx file
+import { useAuth } from '../../../context/AuthContext';
+import { supabase } from '../../../lib/supabaseClient';
 
 const TabButton = ({ active, onClick, children }) => (
   <button
@@ -440,6 +443,7 @@ const CollegeCard = ({ college, onViewProfile, onAddNote }) => {
 };
 
 const CollegeRegistration = () => {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
@@ -459,50 +463,87 @@ const CollegeRegistration = () => {
     maxRating: 5
   });
 
-  const [colleges, setColleges] = useState<any[]>([
-    {
-      id: 1,
-      name: 'Institute of Technology',
-      code: 'IT-001',
-      location: 'Delhi',
-      programs: ['B.Tech', 'M.Tech', 'B.Sc'],
-      students: 2500,
-      faculty: 150,
-      rating: 4.5,
-      status: 'registered',
-      registration_date: '2020-01-15',
-      updated_date: '2025-01-10'
-    },
-    {
-      id: 2,
-      name: 'City Arts College',
-      code: 'CAC-002',
-      location: 'Mumbai',
-      programs: ['BA', 'MA', 'B.Com'],
-      students: 1800,
-      faculty: 120,
-      rating: 4.2,
-      status: 'registered',
-      registration_date: '2019-06-20',
-      updated_date: '2025-01-08'
-    },
-    {
-      id: 3,
-      name: 'Science & Commerce Institute',
-      code: 'SCI-003',
-      location: 'Bangalore',
-      programs: ['B.Sc', 'B.Com', 'M.Sc'],
-      students: 2000,
-      faculty: 130,
-      rating: 4.0,
-      status: 'pending',
-      registration_date: '2024-11-10',
-      updated_date: '2025-01-05'
-    }
-  ]);
+  const [colleges, setColleges] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [loading] = useState(false);
-  const [error] = useState(null);
+  // Fetch colleges linked to this university
+  useEffect(() => {
+    const fetchColleges = async () => {
+      // Get user ID from session - check multiple possible fields
+      const userId = user?.user_id || user?.id;
+      
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        
+        // First, fetch the user's organizationId from the database (fresh data)
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('organizationId')
+          .eq('id', userId)
+          .single();
+
+        if (userError) {
+          console.error('Error fetching user:', userError);
+          throw userError;
+        }
+
+        const organizationId = userData?.organizationId;
+        
+        if (!organizationId) {
+          console.log('No organizationId found for user');
+          setColleges([]);
+          setLoading(false);
+          return;
+        }
+
+        console.log('Fetching colleges for universityId:', organizationId);
+
+        // Fetch colleges linked to this university
+        const { data, error: fetchError } = await supabase
+          .from('colleges')
+          .select('*')
+          .eq('universityId', organizationId)
+          .order('name', { ascending: true });
+
+        if (fetchError) throw fetchError;
+        
+        console.log('Colleges found:', data?.length || 0);
+        
+        // Map database fields to component expected format
+        const mappedColleges = (data || []).map(college => ({
+          id: college.id,
+          name: college.name,
+          code: college.code,
+          location: [college.city, college.state].filter(Boolean).join(', ') || 'N/A',
+          programs: [], // Can be extended to fetch programs if needed
+          students: college.totalStudents || 0,
+          faculty: college.totalLecturers || 0,
+          rating: null,
+          status: college.approvalStatus === 'approved' ? 'registered' : (college.approvalStatus || 'pending'),
+          registration_date: college.createdAt,
+          updated_date: college.updatedAt,
+          contact_email: college.email,
+          contact_phone: college.phone
+        }));
+
+        setColleges(mappedColleges);
+        setError(null);
+      } catch (err: any) {
+        console.error('Error fetching colleges:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchColleges();
+  }, [user]);
 
   useEffect(() => {
     setCurrentPage(1);
