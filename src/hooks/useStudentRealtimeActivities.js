@@ -65,30 +65,18 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
       let data = null;
       let error = null;
 
-      // Method 1: Search by JSONB email field
-      const result1 = await supabase
+      // Search by direct email column (students table has email as a direct column)
+      const result = await supabase
         .from("students")
-        .select("id, profile, email")
-        .eq("profile->>email", email)
+        .select("id, email, name")
+        .eq("email", email)
         .maybeSingle();
 
-      if (result1.data) {
-        data = result1.data;
-        console.log('✅ Found student using profile->>email:', data.id);
+      if (result.data) {
+        data = result.data;
+        console.log('✅ Found student using email column:', data.id);
       } else {
-        // Method 2: Search by direct email column
-        const result2 = await supabase
-          .from("students")
-          .select("id, profile, email")
-          .eq("email", email)
-          .maybeSingle();
-
-        if (result2.data) {
-          data = result2.data;
-          console.log('✅ Found student using direct email column:', data.id);
-        } else {
-          error = result1.error || result2.error;
-        }
+        error = result.error;
       }
 
       if (error) {
@@ -105,7 +93,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
       console.log('✅ [useStudentRealtimeActivities] Found student:', {
         id: data.id,
-        email: data.email || data.profile?.email,
+        email: data.email,
       });
       setStudentId(data.id);
       return data.id;

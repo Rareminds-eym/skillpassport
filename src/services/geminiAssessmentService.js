@@ -184,109 +184,8 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
   const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings);
   const prompt = buildAnalysisPrompt(assessmentData);
 
-  // Try different model variants for compatibility (updated Dec 2024)
-  // Using models in order of preference and availability
-  const models = [
-    'gemini-1.5-flash',         // Stable flash model
-    'gemini-1.5-pro',           // Pro model
-    'gemini-2.0-flash-exp',     // Experimental 2.0
-    'gemini-1.5-flash-8b',      // Smaller, faster variant
-  ];
-  let response = null;
-  let lastError = null;
-  const errors = [];
-
-  for (let i = 0; i < models.length; i++) {
-    const model = models[i];
-    try {
-      // Add delay between retries to help with rate limiting
-      if (i > 0) {
-        console.log(`Waiting 2 seconds before trying next model...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-      console.log(`Trying Gemini model: ${model}`);
-      
-      // Build request body
-      const requestBody = {
-        contents: [{
-          parts: [{ text: prompt }]
-        }],
-        generationConfig: {
-          temperature: 0.1,
-          topK: 10,
-          topP: 0.7,
-          maxOutputTokens: 16384, // Increased for large JSON response
-        }
-      };
-      
-      response = await fetch(getGeminiApiUrl(model) + `?key=${apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (response.ok) {
-        console.log(`Gemini API success with model: ${model}`);
-        break;
-      }
-
-      // Get error details from response
-      const errorData = await response.json().catch(() => ({}));
-      const errorMsg = errorData.error?.message || `Model ${model} returned ${response.status}`;
-      console.warn(`Model ${model} failed: ${errorMsg}`);
-      errors.push(`${model}: ${errorMsg}`);
-      lastError = errorMsg;
-      response = null; // Reset so we try next model
-    } catch (e) {
-      console.warn(`Model ${model} exception: ${e.message}`);
-      errors.push(`${model}: ${e.message}`);
-      lastError = e.message;
-    }
-  }
-
-  // If all Gemini models failed, try OpenRouter as fallback
-  if (!response || !response.ok) {
-    console.log('All Gemini models failed, trying OpenRouter as fallback...');
-    const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-    
-    if (openRouterKey) {
-      try {
-        const openRouterResponse = await callOpenRouter(prompt, openRouterKey);
-        
-        // Parse the JSON response from OpenRouter
-        const jsonMatch = openRouterResponse.match(/```json\n?([\s\S]*?)\n?```/) ||
-          openRouterResponse.match(/\{[\s\S]*\}/);
-
-        if (jsonMatch) {
-          const jsonStr = jsonMatch[1] || jsonMatch[0];
-          try {
-            const parsedResults = JSON.parse(jsonStr);
-            console.log('OpenRouter fallback successful!');
-            
-            // Validate and add course recommendations
-            const { isValid, missingFields } = validateResults(parsedResults);
-            if (!isValid) {
-              console.warn('OpenRouter response has missing fields:', missingFields);
-            }
-            
-            const resultsWithCourses = await addCourseRecommendations(parsedResults);
-            return resultsWithCourses;
-          } catch (parseError) {
-            console.error('OpenRouter JSON parse error:', parseError);
-          }
-        }
-      } catch (openRouterError) {
-        console.error('OpenRouter fallback also failed:', openRouterError.message);
-      }
-    }
-    
-    console.error('All AI providers failed:', errors);
-    throw new Error(`Rareminds AI error: ${lastError}. Please check your API keys are valid.`);
-  }
-
-  const data = await response.json();
+  // Use Claude AI for assessment analysis
+  console.log('🤖 Using Claude API for assessment analysis...');
   
   try {
     const claudeResponse = await callClaudeAssessment(prompt);
@@ -498,7 +397,11 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       formatted: formatTimeForPrompt(sectionTimings.aptitude),
       questionsCount: totalAptitudeQuestions,
       avgSecondsPerQuestion: sectionTimings.aptitude ? Math.round(sectionTimings.aptitude / totalAptitudeQuestions) : 0,
-      timeLimit: 10 * 60 // 10 minutes
+      timeLimit: 45 * 60, // 45 minutes total (30 questions × 1 min each + 20 questions × 15 min shared)
+      individualTimeLimit: 60, // 1 minute per question for first 30
+      sharedTimeLimit: 15 * 60, // 15 minutes for last 20 questions
+      individualQuestionCount: 30,
+      sharedQuestionCount: 20
     },
     bigfive: {
       seconds: sectionTimings.bigfive || 0,
@@ -624,7 +527,7 @@ Total Questions: ${assessmentData.totalKnowledgeQuestions}
 
 ## SECTION TIMING DATA (Time spent by student on each section):
 - RIASEC (Career Interests): ${assessmentData.sectionTimings?.riasec?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.riasec?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.riasec?.avgSecondsPerQuestion || 0}s per question)
-- Multi-Aptitude Battery: ${assessmentData.sectionTimings?.aptitude?.formatted || 'Not recorded'} of 10 minutes allowed (${assessmentData.sectionTimings?.aptitude?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.aptitude?.avgSecondsPerQuestion || 0}s per question)
+- Multi-Aptitude Battery: ${assessmentData.sectionTimings?.aptitude?.formatted || 'Not recorded'} of 45 minutes allowed (First 30 questions: 1 min each individual timer, Last 20 questions: 15 min shared timer) (${assessmentData.sectionTimings?.aptitude?.questionsCount || 0} questions total, avg ${assessmentData.sectionTimings?.aptitude?.avgSecondsPerQuestion || 0}s per question)
 - Big Five (Personality): ${assessmentData.sectionTimings?.bigfive?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.bigfive?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.bigfive?.avgSecondsPerQuestion || 0}s per question)
 - Work Values: ${assessmentData.sectionTimings?.values?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.values?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.values?.avgSecondsPerQuestion || 0}s per question)
 - Employability Skills: ${assessmentData.sectionTimings?.employability?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.employability?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.employability?.avgSecondsPerQuestion || 0}s per question)

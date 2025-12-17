@@ -95,7 +95,7 @@ const Dashboard = () => {
     softSkills: softSkills || mockSoftSkills
   });
 
-  // Update local state when Supabase data changes
+  // Update local state when Supabase data changess
   React.useEffect(() => {
     setUserData({
       education: education || mockEducationData,
