@@ -180,4 +180,63 @@ const parseFallback = (resumeText) => {
   return addMetadata(result);
 };
 
-export default { parseResumeWithAI };
+/**
+ * Merge parsed resume data with existing profile data
+ * @param {Object} existingData - Current profile data
+ * @param {Object} parsedData - Newly parsed resume data
+ * @returns {Object} Merged data with parsed data taking precedence for empty fields
+ */
+export const mergeResumeData = (existingData, parsedData) => {
+  if (!parsedData) return existingData;
+  if (!existingData) return parsedData;
+
+  const merged = { ...existingData };
+
+  // Merge simple string fields (only if existing is empty)
+  const stringFields = ['name', 'email', 'contact_number', 'college_school_name', 'university', 'branch_field'];
+  stringFields.forEach(field => {
+    if (parsedData[field] && (!existingData[field] || existingData[field].trim() === '')) {
+      merged[field] = parsedData[field];
+    }
+  });
+
+  // Merge array fields (append new items, avoid duplicates)
+  const arrayFields = ['education', 'experience', 'projects', 'technicalSkills', 'softSkills', 'certificates', 'training'];
+  arrayFields.forEach(field => {
+    const existing = existingData[field] || [];
+    const parsed = parsedData[field] || [];
+    
+    if (parsed.length > 0) {
+      // Simple deduplication by checking if item already exists
+      const newItems = parsed.filter(newItem => {
+        return !existing.some(existingItem => {
+          // Check by title/name/degree depending on field type
+          if (field === 'education') {
+            return existingItem.degree === newItem.degree && existingItem.university === newItem.university;
+          }
+          if (field === 'experience') {
+            return existingItem.organization === newItem.organization && existingItem.role === newItem.role;
+          }
+          if (field === 'projects') {
+            return existingItem.title === newItem.title;
+          }
+          if (field === 'technicalSkills' || field === 'softSkills') {
+            return existingItem.name?.toLowerCase() === newItem.name?.toLowerCase();
+          }
+          if (field === 'certificates') {
+            return existingItem.title === newItem.title;
+          }
+          return false;
+        });
+      });
+      
+      merged[field] = [...existing, ...newItems];
+    }
+  });
+
+  merged.imported_at = parsedData.imported_at || new Date().toISOString();
+  
+  return merged;
+};
+
+export default { parseResumeWithAI, mergeResumeData };
