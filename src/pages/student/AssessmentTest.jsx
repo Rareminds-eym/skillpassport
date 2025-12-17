@@ -478,7 +478,8 @@ const AssessmentTest = () => {
 
     // Timer for timed sections
     useEffect(() => {
-        if (currentSection?.isTimed && !showSectionIntro) {
+        // Don't run timer if section intro or complete screen is showing
+        if (currentSection?.isTimed && !showSectionIntro && !showSectionComplete) {
             // Aptitude section with individual timers for first 30 questions
             if (currentSection.isAptitude && aptitudePhase === 'individual') {
                 const timer = setInterval(() => {
@@ -513,7 +514,7 @@ const AssessmentTest = () => {
         } else if (!currentSection?.isTimed) {
             setTimeRemaining(null);
         }
-    }, [currentSection?.id, currentSection?.isTimed, currentSection?.timeLimit, currentSection?.isAptitude, aptitudePhase, showSectionIntro]);
+    }, [currentSection?.id, currentSection?.isTimed, currentSection?.timeLimit, currentSection?.isAptitude, aptitudePhase, showSectionIntro, showSectionComplete]);
 
     // Handle timer expiry for aptitude individual questions
     useEffect(() => {
@@ -719,13 +720,11 @@ const AssessmentTest = () => {
     };
 
     const handlePrevious = () => {
+        // Only allow going back within the current section, not to previous sections
         if (currentQuestionIndex > 0) {
             setCurrentQuestionIndex(prev => prev - 1);
-        } else if (currentSectionIndex > 0) {
-            setCurrentSectionIndex(prev => prev - 1);
-            setCurrentQuestionIndex(sections[currentSectionIndex - 1].questions.length - 1);
-            setTimeRemaining(null);
         }
+        // Removed: going back to previous sections is not allowed
     };
 
     const handleSubmit = async () => {
@@ -1622,6 +1621,16 @@ const AssessmentTest = () => {
                                                 <h3 className="text-xl font-bold text-gray-800 mb-2">Analyzing your profile with AI...</h3>
                                                 <p className="text-gray-500">Rareminds is generating your personalized career roadmap.</p>
                                             </motion.div>
+                                        ) : !currentQuestion ? (
+                                            <motion.div
+                                                key="loading-question"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                className="flex-1 flex flex-col items-center justify-center text-center"
+                                            >
+                                                <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                                                <p className="text-gray-600">Loading question...</p>
+                                            </motion.div>
                                         ) : (
                                             <motion.div
                                                 key={`${currentSectionIndex}-${currentQuestionIndex}`}
@@ -1776,7 +1785,7 @@ const AssessmentTest = () => {
                                             <Button
                                                 variant="ghost"
                                                 onClick={handlePrevious}
-                                                disabled={currentSectionIndex === 0 && currentQuestionIndex === 0}
+                                                disabled={currentQuestionIndex === 0}
                                                 className="text-gray-600 hover:text-indigo-700 hover:bg-indigo-50 border-2 border-transparent hover:border-indigo-100 px-6 py-3 rounded-xl transition-all duration-200 font-medium"
                                             >
                                                 <ChevronLeft className="w-4 h-4 mr-2" />
