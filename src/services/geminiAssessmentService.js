@@ -184,8 +184,109 @@ export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks
   const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings);
   const prompt = buildAnalysisPrompt(assessmentData);
 
-  // Use Claude AI
-  console.log('🤖 Using Claude API for assessment analysis...');
+  // Try different model variants for compatibility (updated Dec 2024)
+  // Using models in order of preference and availability
+  const models = [
+    'gemini-1.5-flash',         // Stable flash model
+    'gemini-1.5-pro',           // Pro model
+    'gemini-2.0-flash-exp',     // Experimental 2.0
+    'gemini-1.5-flash-8b',      // Smaller, faster variant
+  ];
+  let response = null;
+  let lastError = null;
+  const errors = [];
+
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    try {
+      // Add delay between retries to help with rate limiting
+      if (i > 0) {
+        console.log(`Waiting 2 seconds before trying next model...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      console.log(`Trying Gemini model: ${model}`);
+      
+      // Build request body
+      const requestBody = {
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          topK: 10,
+          topP: 0.7,
+          maxOutputTokens: 16384, // Increased for large JSON response
+        }
+      };
+      
+      response = await fetch(getGeminiApiUrl(model) + `?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (response.ok) {
+        console.log(`Gemini API success with model: ${model}`);
+        break;
+      }
+
+      // Get error details from response
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg = errorData.error?.message || `Model ${model} returned ${response.status}`;
+      console.warn(`Model ${model} failed: ${errorMsg}`);
+      errors.push(`${model}: ${errorMsg}`);
+      lastError = errorMsg;
+      response = null; // Reset so we try next model
+    } catch (e) {
+      console.warn(`Model ${model} exception: ${e.message}`);
+      errors.push(`${model}: ${e.message}`);
+      lastError = e.message;
+    }
+  }
+
+  // If all Gemini models failed, try OpenRouter as fallback
+  if (!response || !response.ok) {
+    console.log('All Gemini models failed, trying OpenRouter as fallback...');
+    const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+    
+    if (openRouterKey) {
+      try {
+        const openRouterResponse = await callOpenRouter(prompt, openRouterKey);
+        
+        // Parse the JSON response from OpenRouter
+        const jsonMatch = openRouterResponse.match(/```json\n?([\s\S]*?)\n?```/) ||
+          openRouterResponse.match(/\{[\s\S]*\}/);
+
+        if (jsonMatch) {
+          const jsonStr = jsonMatch[1] || jsonMatch[0];
+          try {
+            const parsedResults = JSON.parse(jsonStr);
+            console.log('OpenRouter fallback successful!');
+            
+            // Validate and add course recommendations
+            const { isValid, missingFields } = validateResults(parsedResults);
+            if (!isValid) {
+              console.warn('OpenRouter response has missing fields:', missingFields);
+            }
+            
+            const resultsWithCourses = await addCourseRecommendations(parsedResults);
+            return resultsWithCourses;
+          } catch (parseError) {
+            console.error('OpenRouter JSON parse error:', parseError);
+          }
+        }
+      } catch (openRouterError) {
+        console.error('OpenRouter fallback also failed:', openRouterError.message);
+      }
+    }
+    
+    console.error('All AI providers failed:', errors);
+    throw new Error(`Rareminds AI error: ${lastError}. Please check your API keys are valid.`);
+  }
+
+  const data = await response.json();
   
   try {
     const claudeResponse = await callClaudeAssessment(prompt);

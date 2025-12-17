@@ -1,4 +1,4 @@
-// Finance Module Types - PU College
+// Finance Module Types - College
 
 export interface FeeHead {
   name: string;
@@ -17,7 +17,7 @@ export interface FeeStructure {
   college_id?: string;
   program_id?: string;
   program_name: string; // Stream: Science, Commerce, Arts, etc.
-  semester: number; // 1 = 1st PUC, 2 = 2nd PUC
+  semester: number; // 1 = 1st Year, 2 = 2nd Year, etc.
   academic_year: string;
   category: FeeCategory;
   quota: FeeQuota;
@@ -39,6 +39,13 @@ export interface FeeStructure {
 export type FeeCategory = "General" | "OBC" | "SC" | "ST" | "EWS" | "Management" | "NRI" | "Foreign";
 export type FeeQuota = "Merit" | "Management" | "NRI" | "Sports" | "Defense";
 
+export interface Department {
+  id: string;
+  name: string;
+  code?: string;
+  college_id?: string;
+}
+
 export interface Program {
   id: string;
   name: string;
@@ -57,10 +64,12 @@ export const PU_STREAMS = [
   "Arts with Psychology",
 ];
 
-// PU College Years
+// College Years
 export const PU_YEARS = [
-  { value: 1, label: "1st PUC" },
-  { value: 2, label: "2nd PUC" },
+  { value: 1, label: "1st Year" },
+  { value: 2, label: "2nd Year" },
+  { value: 3, label: "3rd Year" },
+  { value: 4, label: "4th Year" },
 ];
 
 export const FEE_CATEGORIES: FeeCategory[] = ["General", "OBC", "SC", "ST", "EWS", "Management", "NRI", "Foreign"];
