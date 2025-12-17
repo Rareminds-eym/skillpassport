@@ -306,12 +306,21 @@ export const getLatestResult = async (studentId) => {
 
 /**
  * Check if student can take assessment (6-month restriction)
+ * In development mode, the restriction is bypassed for testing.
+ * 
  * @param {string} studentId - Student's user_id
  * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
  * @returns {object} { canTake: boolean, lastAttemptDate: Date|null, nextAvailableDate: Date|null }
  */
-export const canTakeAssessment = async (studentId, gradeLevel = null) => {
-  let query = supabase
+export const canTakeAssessment = async (studentId) => {
+  // Bypass restriction in development mode
+  const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+  if (isDevelopment) {
+    console.log('🔧 Development mode: Assessment 6-month restriction bypassed');
+    return { canTake: true, lastAttemptDate: null, nextAvailableDate: null, devBypass: true };
+  }
+
+  const { data, error } = await supabase
     .from('personal_assessment_results')
     .select('created_at')
     .eq('student_id', studentId)

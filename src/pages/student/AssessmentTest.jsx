@@ -93,6 +93,8 @@ const AssessmentTest = () => {
     const [showSectionIntro, setShowSectionIntro] = useState(true);
     const [showSectionComplete, setShowSectionComplete] = useState(false);
     const [elapsedTime, setElapsedTime] = useState(0); // Elapsed time for non-timed sections
+    const [aptitudeQuestionTimer, setAptitudeQuestionTimer] = useState(60); // Per-question timer for first 30 aptitude questions
+    const [aptitudePhase, setAptitudePhase] = useState('individual'); // 'individual' for first 30, 'shared' for last 20
     
     // TEST MODE - Auto-fill answers for development/testing
     const [testMode, setTestMode] = useState(false);
@@ -505,9 +507,11 @@ const AssessmentTest = () => {
             color: "amber",
             questions: getQuestionsForSection('aptitude'),
             isTimed: true,
-            timeLimit: 10 * 60, // 10 minutes
+            timeLimit: 15 * 60, // 15 minutes for last 20 questions (shared timer)
             isAptitude: true,
-            instruction: "Choose the correct answer. Speed matters for clerical questions."
+            individualTimeLimit: 60, // 1 minute per question for first 30 questions
+            individualQuestionCount: 30, // First 30 questions have individual timers
+            instruction: "Choose the correct answer. First 30 questions: 1 minute each. Last 20 questions: 15 minutes total."
         },
         {
             id: 'knowledge',
@@ -546,36 +550,94 @@ const AssessmentTest = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, [currentSectionIndex, currentQuestionIndex, showStreamSelection, showSectionIntro, showSectionComplete]);
 
+    // Determine aptitude phase based on question index
+    useEffect(() => {
+        if (currentSection?.isAptitude) {
+            const individualCount = currentSection.individualQuestionCount || 30;
+            if (currentQuestionIndex < individualCount) {
+                setAptitudePhase('individual');
+            } else {
+                setAptitudePhase('shared');
+            }
+        }
+    }, [currentSection?.isAptitude, currentQuestionIndex, currentSection?.individualQuestionCount]);
+
+    // Reset per-question timer when moving to a new question in aptitude individual phase
+    useEffect(() => {
+        if (currentSection?.isAptitude && aptitudePhase === 'individual' && !showSectionIntro) {
+            setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
+        }
+    }, [currentSection?.isAptitude, aptitudePhase, currentQuestionIndex, showSectionIntro, currentSection?.individualTimeLimit]);
+
+    // Initialize shared timer when entering aptitude shared phase
+    useEffect(() => {
+        if (currentSection?.isAptitude && aptitudePhase === 'shared' && timeRemaining === null) {
+            setTimeRemaining(currentSection.timeLimit); // 15 minutes for last 20 questions
+        }
+    }, [currentSection?.isAptitude, aptitudePhase, timeRemaining, currentSection?.timeLimit]);
+
     // Timer for timed sections
     useEffect(() => {
-        if (currentSection?.isTimed) {
-            // If we just entered the section and have no time set, set it
-            if (timeRemaining === null) {
-                setTimeRemaining(currentSection.timeLimit);
+        // Don't run timer if section intro or complete screen is showing
+        if (currentSection?.isTimed && !showSectionIntro && !showSectionComplete) {
+            // Aptitude section with individual timers for first 30 questions
+            if (currentSection.isAptitude && aptitudePhase === 'individual') {
+                const timer = setInterval(() => {
+                    setAptitudeQuestionTimer(prev => {
+                        if (prev <= 1) {
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+                return () => clearInterval(timer);
             }
+            
+            // Aptitude shared timer (last 20 questions) or other timed sections
+            if (!currentSection.isAptitude || aptitudePhase === 'shared') {
+                if (timeRemaining === null) {
+                    setTimeRemaining(currentSection.timeLimit);
+                }
 
-            const timer = setInterval(() => {
-                setTimeRemaining(prev => {
-                    if (prev === null) return currentSection.timeLimit;
-                    if (prev <= 1) {
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
+                const timer = setInterval(() => {
+                    setTimeRemaining(prev => {
+                        if (prev === null) return currentSection.timeLimit;
+                        if (prev <= 1) {
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
 
-            return () => clearInterval(timer);
-        } else {
+                return () => clearInterval(timer);
+            }
+        } else if (!currentSection?.isTimed) {
             setTimeRemaining(null);
         }
-    }, [currentSection?.id, currentSection?.isTimed, currentSection?.timeLimit]); // Only re-run if section changes
+    }, [currentSection?.id, currentSection?.isTimed, currentSection?.timeLimit, currentSection?.isAptitude, aptitudePhase, showSectionIntro, showSectionComplete]);
 
-    // Handle timer expiry
+    // Handle timer expiry for aptitude individual questions
+    useEffect(() => {
+        if (currentSection?.isAptitude && aptitudePhase === 'individual' && aptitudeQuestionTimer === 0) {
+            // Auto-advance to next question when individual timer expires
+            if (currentQuestionIndex < currentSection.questions.length - 1) {
+                setCurrentQuestionIndex(prev => prev + 1);
+            } else {
+                setShowSectionComplete(true);
+            }
+        }
+    }, [aptitudeQuestionTimer, currentSection?.isAptitude, aptitudePhase, currentQuestionIndex, currentSection?.questions?.length]);
+
+    // Handle timer expiry for shared timer sections
     useEffect(() => {
         if (timeRemaining === 0 && currentSection?.isTimed) {
+            // For aptitude, only handle shared phase expiry
+            if (currentSection.isAptitude && aptitudePhase !== 'shared') {
+                return;
+            }
             handleNextSection();
         }
-    }, [timeRemaining, currentSection?.isTimed]);
+    }, [timeRemaining, currentSection?.isTimed, currentSection?.isAptitude, aptitudePhase]);
 
     // Elapsed time timer for non-timed sections
     useEffect(() => {
@@ -806,13 +868,11 @@ const AssessmentTest = () => {
     };
 
     const handlePrevious = () => {
+        // Only allow going back within the current section, not to previous sections
         if (currentQuestionIndex > 0) {
             setCurrentQuestionIndex(prev => prev - 1);
-        } else if (currentSectionIndex > 0) {
-            setCurrentSectionIndex(prev => prev - 1);
-            setCurrentQuestionIndex(sections[currentSectionIndex - 1].questions.length - 1);
-            setTimeRemaining(null);
         }
+        // Removed: going back to previous sections is not allowed
     };
 
     const handleSubmit = async () => {
@@ -1729,12 +1789,36 @@ const AssessmentTest = () => {
                                             <span>Question {currentQuestionIndex + 1} / {currentSection.questions.length}</span>
                                         </div>
 
-                                        {currentSection.isTimed && timeRemaining !== null ? (
-                                            <div className="flex items-center gap-3 text-sm font-semibold text-orange-600">
-                                                <Clock className="w-4 h-4" />
-                                                <span>Time Left: {formatTime(timeRemaining)}</span>
-                                            </div>
-                                        ) : !currentSection.isTimed && (
+                                        {currentSection.isTimed ? (
+                                            currentSection.isAptitude ? (
+                                                aptitudePhase === 'individual' ? (
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className={`flex items-center gap-3 text-sm font-semibold ${aptitudeQuestionTimer <= 10 ? 'text-red-600' : 'text-orange-600'}`}>
+                                                            <Clock className="w-4 h-4" />
+                                                            <span>Question Time: {formatTime(aptitudeQuestionTimer)}</span>
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            Q {currentQuestionIndex + 1}/30 (1 min each)
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className={`flex items-center gap-3 text-sm font-semibold ${timeRemaining !== null && timeRemaining <= 60 ? 'text-red-600' : 'text-orange-600'}`}>
+                                                            <Clock className="w-4 h-4" />
+                                                            <span>Time Left: {formatTime(timeRemaining || 0)}</span>
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            Q {currentQuestionIndex + 1 - 30}/20 (15 min shared)
+                                                        </div>
+                                                    </div>
+                                                )
+                                            ) : timeRemaining !== null ? (
+                                                <div className="flex items-center gap-3 text-sm font-semibold text-orange-600">
+                                                    <Clock className="w-4 h-4" />
+                                                    <span>Time Left: {formatTime(timeRemaining)}</span>
+                                                </div>
+                                            ) : null
+                                        ) : (
                                             <div className="flex items-center gap-3 text-sm font-medium text-emerald-600">
                                                 <Clock className="w-4 h-4" />
                                                 <span>Time: {formatElapsedTime(elapsedTime)}</span>
@@ -1788,6 +1872,16 @@ const AssessmentTest = () => {
                                                 <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
                                                 <h3 className="text-xl font-bold text-gray-800 mb-2">Analyzing your profile with AI...</h3>
                                                 <p className="text-gray-500">Rareminds is generating your personalized career roadmap.</p>
+                                            </motion.div>
+                                        ) : !currentQuestion ? (
+                                            <motion.div
+                                                key="loading-question"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                className="flex-1 flex flex-col items-center justify-center text-center"
+                                            >
+                                                <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                                                <p className="text-gray-600">Loading question...</p>
                                             </motion.div>
                                         ) : (
                                             <motion.div
@@ -2083,7 +2177,7 @@ const AssessmentTest = () => {
                                             <Button
                                                 variant="ghost"
                                                 onClick={handlePrevious}
-                                                disabled={currentSectionIndex === 0 && currentQuestionIndex === 0}
+                                                disabled={currentQuestionIndex === 0}
                                                 className="text-gray-600 hover:text-indigo-700 hover:bg-indigo-50 border-2 border-transparent hover:border-indigo-100 px-6 py-3 rounded-xl transition-all duration-200 font-medium"
                                             >
                                                 <ChevronLeft className="w-4 h-4 mr-2" />

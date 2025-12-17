@@ -360,11 +360,11 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   ];
 
   return (
-    <div className="bg-[#ffffff] py-8 px-6">
+    <div className="bg-[#f6f7fd] py-8 px-4 sm:px-6 lg:px-8">
       {/* Debug Component - Temporarily hidden */}
       {/* {process.env.NODE_ENV === 'development' && <EmployabilityDebugger />} */}
 
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[1600px] mx-auto">
         <div
           className="rounded-3xl shadow-2xl border border-blue-300/70 overflow-hidden relative bg-blue-200/70 backdrop-blur-2xl"
           style={{

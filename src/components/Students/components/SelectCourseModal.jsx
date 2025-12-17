@@ -298,22 +298,22 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Enrolled Courses Section */}
+              {/* Enrolled Courses Section - Horizontal Carousel */}
               {enrolledCourses.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <BookOpen size={20} className="text-green-600" />
                     Enrolled Courses ({enrolledCourses.length})
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style={{ scrollbarWidth: 'thin' }}>
                     {enrolledCourses.map((course) => (
                       <div
                         key={course.course_id}
-                        className="border-2 border-green-200 bg-green-50 rounded-lg p-4 transition-all"
+                        className="flex-shrink-0 w-72 border-2 border-green-200 bg-green-50 rounded-lg p-4 transition-all hover:shadow-md"
                       >
                         <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-semibold text-gray-900 text-lg">{course.title}</h3>
-                          <div className="flex flex-col gap-1 items-end">
+                          <h3 className="font-semibold text-gray-900 text-base line-clamp-2">{course.title}</h3>
+                          <div className="flex flex-col gap-1 items-end ml-2 flex-shrink-0">
                             {course.code && (
                               <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
                                 {course.code}

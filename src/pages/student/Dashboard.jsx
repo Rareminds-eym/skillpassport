@@ -1983,7 +1983,7 @@ const StudentDashboard = () => {
         }}
       />
 
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full mx-auto">
         {/* View Switcher Tabs */}
         {!isViewingOthersProfile && (
           <div className="mb-8">
