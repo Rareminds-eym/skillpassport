@@ -169,7 +169,7 @@ const Header = ({ activeTab, setActiveTab }) => {
 
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm py-2 px-1 sm:px-2 lg:px-4 sticky top-0 z-50">
-      <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
+      <div className="flex items-center justify-between w-full mx-auto">
         {/* Logo and Title */}
         <div className="flex items-center flex-shrink-0">
           <img
@@ -179,9 +179,9 @@ const Header = ({ activeTab, setActiveTab }) => {
           />
         </div>
 
-        {/* Center Tabs - Desktop and Large Tablets */}
-        <nav className="hidden lg:flex flex-1 justify-center items-center mx-1 lg:mx-2 xl:mx-4">
-          <div className="flex items-center space-x-0 lg:space-x-1 xl:space-x-2">
+        {/* Center Tabs - Desktop Only (lg and above) */}
+        <nav className="hidden lg:flex flex-1 justify-center items-center mx-2">
+          <div className="flex items-center space-x-2">
             <button
               key="dashboard"
               onClick={() => {
@@ -189,7 +189,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                 localStorage.removeItem("dashboardActiveNav");
                 navigate("/student/dashboard");
               }}
-              className={`nav-tab relative py-2 px-1.5 lg:px-2 xl:px-3 text-xs lg:text-sm xl:text-sm font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === "dashboard" ? "active font-semibold text-blue-600" : ""
+              className={`nav-tab relative py-2 px-3 text-sm font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === "dashboard" ? "active font-semibold text-blue-600" : ""
                 }`}
             >
               Dashboard
@@ -226,68 +226,11 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/messages");
                   }
                 }}
-                className={`nav-tab relative py-2 px-1.5 lg:px-2 xl:px-3 text-xs lg:text-sm xl:text-sm font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === tab.id ? "active font-semibold text-blue-600" : ""
+                className={`nav-tab relative py-2 px-3 text-sm font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === tab.id ? "active font-semibold text-blue-600" : ""
                   }`}
               >
                 {tab.icon && <span className="mr-1">{tab.icon}</span>}
-                <span className="hidden xl:inline">{tab.label}</span>
-                <span className="xl:hidden">{tab.label.split(' ').map(word => word.charAt(0)).join('')}</span>
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        {/* Medium Tablets - Horizontal Scroll Navigation */}
-        <nav className="hidden md:flex lg:hidden flex-1 justify-start items-center mx-1 overflow-hidden">
-          <div className="flex items-center space-x-2 overflow-x-auto scrollbar-hide pb-1">
-            <button
-              key="dashboard"
-              onClick={() => {
-                setActiveTab("dashboard");
-                localStorage.removeItem("dashboardActiveNav");
-                navigate("/student/dashboard");
-              }}
-              className={`nav-tab relative py-2 px-3 text-xs font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap flex-shrink-0 ${activeTab === "dashboard" ? "active font-semibold text-blue-600" : ""
-                }`}
-            >
-              Dashboard
-            </button>
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  if (tab.id === "share") {
-                    setShowShareModal(true);
-                  } else if (tab.id === "skills") {
-                    navigate("/student/my-skills");
-                  } else if (tab.id === "training") {
-                    navigate("/student/my-learning");
-                  } else if (tab.id === "experience") {
-                    navigate("/student/my-experience");
-                  } else if (tab.id === "courses") {
-                    navigate("/student/courses");
-                  } else if (tab.id === "digital-portfolio") {
-                    navigate("/student/digital-portfolio");
-                  } else if (tab.id === "opportunities") {
-                    navigate("/student/opportunities");
-                  } else if (tab.id === "applications") {
-                    navigate("/student/applications");
-                  } else if (tab.id === "assignments") {
-                    navigate("/student/assignments");
-                  // } else if (tab.id === "clubs") {
-                  //   navigate("/student/clubs");
-                  } else if (tab.id === "career-ai") {
-                    navigate("/student/career-ai");
-                  } else if (tab.id === "messages") {
-                    navigate("/student/messages");
-                  }
-                }}
-                className={`nav-tab relative py-2 px-3 text-xs font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap flex-shrink-0 ${activeTab === tab.id ? "active font-semibold text-blue-600" : ""
-                  }`}
-              >
-                {tab.icon && <span className="mr-1">{tab.icon}</span>}
-                {tab.label.split(' ').map(word => word.charAt(0)).join('')}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -295,8 +238,8 @@ const Header = ({ activeTab, setActiveTab }) => {
 
         {/* Right Side - Mobile Menu and Profile */}
         <div className="flex items-center space-x-1 lg:space-x-2 flex-shrink-0">
-          {/* Hamburger Menu - Mobile and Small Tablets */}
-          <div className="flex md:hidden items-center">
+          {/* Hamburger Menu - Mobile and Tablets (up to lg) */}
+          <div className="flex lg:hidden items-center">
             <button
               className="p-2 rounded-md text-blue-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-300"
               onClick={() => setMobileMenuOpen((open) => !open)}
@@ -493,9 +436,9 @@ const Header = ({ activeTab, setActiveTab }) => {
           </DropdownMenu>
         </div>
       </div>
-      {/* Mobile Menu Dropdown */}
+      {/* Mobile Menu Dropdown - Shows on mobile and tablets (up to lg) */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-gray-200 shadow-lg px-2 pt-2 pb-3 animate-fade-in-down max-h-96 overflow-y-auto">
+        <div className="lg:hidden bg-white border-b border-gray-200 shadow-lg px-2 pt-2 pb-3 animate-fade-in-down max-h-96 overflow-y-auto">
           <div className="grid grid-cols-1 gap-1">
             <button
               key="dashboard"
