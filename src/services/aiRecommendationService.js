@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabaseClient';
 
 /**
  * AI-Powered Job Recommendation Service
- * Uses OpenRouter for embeddings and vector similarity search
+ * Uses Supabase Edge Functions for embeddings and vector similarity search
  */
 
 class AIRecommendationService {
