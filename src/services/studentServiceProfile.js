@@ -3404,6 +3404,163 @@ export async function updateSoftSkillsByEmail(email, skillsData = []) {
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Update projects table records
+ */
+export const updateProjectsByEmail = async (email, projectsData = []) => {
+  try {
+    // Find student record
+    let studentRecord = null;
+
+    const { data: directByEmail, error: directEmailError } = await supabase
+      .from('students')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (directEmailError) {
+      return { success: false, error: directEmailError.message };
+    }
+
+    if (directByEmail) {
+      studentRecord = directByEmail;
+    }
+
+    if (!studentRecord) {
+      const { data: profileMatch, error: profileError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('profile->>email', email)
+        .maybeSingle();
+
+      if (profileError) {
+        return { success: false, error: profileError.message };
+      }
+
+      if (profileMatch) {
+        studentRecord = profileMatch;
+      }
+    }
+
+    if (!studentRecord) {
+      const { data: allStudents, error: allError } = await supabase
+        .from('students')
+        .select('*');
+
+      if (allError) {
+        return { success: false, error: allError.message };
+      }
+
+      for (const student of allStudents || []) {
+        const profile = safeJSONParse(student.profile);
+        if (profile?.email === email) {
+          studentRecord = student;
+          break;
+        }
+      }
+    }
+
+    if (!studentRecord) {
+      return { success: false, error: 'Student not found' };
+    }
+
+    const studentId = studentRecord.id;
+
+    // Get existing projects
+    const { data: existingProjects, error: existingError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('student_id', studentId);
+
+    if (existingError) {
+      return { success: false, error: existingError.message };
+    }
+
+    const nowIso = new Date().toISOString();
+
+    // Format projects data for database
+    const formatted = (projectsData || [])
+      .filter((project) => project && typeof project.title === 'string' && project.title.trim().length > 0)
+      .map((project) => {
+        const record = {
+          student_id: studentId,
+          title: project.title.trim(),
+          description: project.description?.trim() || null,
+          status: project.status || 'completed',
+          start_date: project.start_date || project.startDate || null,
+          end_date: project.end_date || project.endDate || null,
+          duration: project.duration || null,
+          organization: project.organization || project.company || project.client || null,
+          tech_stack: project.tech || project.tech_stack || project.technologies || [],
+          demo_link: project.demo_link || project.link || null,
+          github_link: project.github_link || project.github || project.github_url || null,
+          certificate_url: project.certificate_url || null,
+          video_url: project.video_url || null,
+          ppt_url: project.ppt_url || null,
+          enabled: typeof project.enabled === 'boolean' ? project.enabled : true,
+          approval_status: project.approval_status || 'pending',
+          updated_at: nowIso,
+        };
+
+        // Preserve existing ID if valid UUID
+        const rawId = typeof project.id === 'string' ? project.id.trim() : null;
+        if (rawId && rawId.length === 36) {
+          record.id = rawId;
+        } else {
+          record.id = generateUuid();
+        }
+
+        return record;
+      });
+
+    // Determine which records to delete
+    const incomingIds = new Set(formatted.filter((record) => record.id).map((record) => record.id));
+    const toDelete = (existingProjects || [])
+      .filter((existing) => !incomingIds.has(existing.id))
+      .map((existing) => existing.id);
+
+    // Delete removed records
+    if (toDelete.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('projects')
+        .delete()
+        .in('id', toDelete);
+
+      if (deleteError) {
+        return { success: false, error: deleteError.message };
+      }
+    }
+
+    // Upsert projects records
+    if (formatted.length > 0) {
+      const { error: upsertError } = await supabase
+        .from('projects')
+        .upsert(formatted, { onConflict: 'id' });
+
+      if (upsertError) {
+        return { success: false, error: upsertError.message };
+      }
+    } else if ((existingProjects || []).length > 0) {
+      // Delete all if no projects data provided
+      const { error: deleteAllError } = await supabase
+        .from('projects')
+        .delete()
+        .eq('student_id', studentId);
+
+      if (deleteAllError) {
+        return { success: false, error: deleteAllError.message };
+      }
+    }
+
+    // Return updated student data
+    return await getStudentByEmail(email);
+  } catch (err) {
+    console.error('❌ updateProjectsByEmail exception:', err);
+    return { success: false, error: err.message };
+  }
+};
+
 /**
  * Update certificates table records
  */
