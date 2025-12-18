@@ -36,9 +36,7 @@ jobs:
           VITE_CLOUDFLARE_CERTIFICATE_WORKER_URL: ${{ secrets.VITE_CLOUDFLARE_CERTIFICATE_WORKER_URL }}
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: skillpassport
-          directory: dist
+        run: npx wrangler pages deploy dist --project-name=skillpassport
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
