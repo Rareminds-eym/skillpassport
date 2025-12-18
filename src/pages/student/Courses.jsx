@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { Button } from '../../components/Students/components/ui/button';
@@ -40,16 +40,43 @@ const Courses = () => {
   const coursesPerPage = 6;
   const [activeTab, setActiveTab] = useState('courses'); // 'courses' or 'progress'
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
+  
+  // Refs to prevent duplicate fetches and track initialization
+  const isFetchingRef = useRef(false);
+  const hasFetchedCoursesRef = useRef(false);
+  const hasFetchedEnrollmentsRef = useRef(false);
+  const userEmailRef = useRef(user?.email);
 
   // Fetch courses and enrollments from Supabase
+  // Use user?.email as dependency instead of user object to prevent re-fetches on object reference changes
   useEffect(() => {
-    fetchCourses();
-    if (user?.email) {
+    // Only fetch courses once on mount
+    if (!hasFetchedCoursesRef.current) {
+      hasFetchedCoursesRef.current = true;
+      fetchCourses();
+    }
+  }, []);
+
+  // Separate effect for enrollments - only when user email changes
+  useEffect(() => {
+    const currentEmail = user?.email;
+    
+    // Only fetch if email exists and either hasn't been fetched or email changed
+    if (currentEmail && (!hasFetchedEnrollmentsRef.current || userEmailRef.current !== currentEmail)) {
+      userEmailRef.current = currentEmail;
+      hasFetchedEnrollmentsRef.current = true;
       fetchEnrollments();
     }
-  }, [user]);
+  }, [user?.email]);
 
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
+    // Prevent duplicate fetches
+    if (isFetchingRef.current) {
+      console.log('📚 Fetch already in progress, skipping...');
+      return;
+    }
+    
+    isFetchingRef.current = true;
     const startTime = Date.now();
 
     try {
@@ -88,12 +115,16 @@ const Courses = () => {
       }
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
-  };
+  }, []);
 
-  const fetchEnrollments = async () => {
+  const fetchEnrollments = useCallback(async () => {
+    const email = userEmailRef.current;
+    if (!email) return;
+    
     try {
-      const result = await courseEnrollmentService.getStudentEnrollments(user.email);
+      const result = await courseEnrollmentService.getStudentEnrollments(email);
       if (result.success && result.data) {
         const enrolledIds = new Set(result.data.map(enrollment => enrollment.course_id));
         setEnrolledCourseIds(enrolledIds);
@@ -102,7 +133,7 @@ const Courses = () => {
     } catch (error) {
       console.error('Error fetching enrollments:', error);
     }
-  };
+  }, []);
 
   // Check if a course is new (posted within last 24 hours)
   const isNewCourse = (createdAt) => {
@@ -327,9 +358,11 @@ const Courses = () => {
             </div>
           )}
 
-        {/* Weekly Learning Progress Tab */}
-        {!loading && activeTab === 'progress' && (
-          <WeeklyLearningTracker />
+        {/* Weekly Learning Progress Tab - Keep mounted to prevent re-fetching */}
+        {!loading && (
+          <div className={activeTab === 'progress' ? 'block' : 'hidden'}>
+            <WeeklyLearningTracker />
+          </div>
         )}
 
         {/* Courses Tab Content */}
