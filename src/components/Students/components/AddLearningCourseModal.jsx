@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { callClaudeJSON, isClaudeConfigured } from '../../../services/claudeService';
+import { callClaudeJSON, callClaudeVisionJSON, isClaudeConfigured } from '../../../services/claudeService';
 import {
   X,
   AlertCircle,
@@ -11,7 +11,9 @@ import {
   Link as LinkIcon,
   Award,
   Sparkles,
-  GraduationCap
+  GraduationCap,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 
 // Platform configurations with brand colors and icons
@@ -122,6 +124,9 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
   const [skillInput, setSkillInput] = useState('');
   const [extracting, setExtracting] = useState(false);
   const [extractionSuccess, setExtractionSuccess] = useState(false);
+  const [certificateImage, setCertificateImage] = useState(null);
+  const [certificateImagePreview, setCertificateImagePreview] = useState(null);
+  const fileInputRef = useRef(null);
 
   const totalSteps = 4;
 
@@ -164,6 +169,130 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       handleAddSkill(skillInput);
+    }
+  };
+
+  // Handle certificate image upload
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file (PNG, JPG, etc.)');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size must be less than 5MB');
+      return;
+    }
+
+    setCertificateImage(file);
+    
+    // Create preview URL
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCertificateImagePreview(e.target.result);
+    };
+    reader.readAsDataURL(file);
+    setError('');
+  };
+
+  // Extract certificate details from uploaded image using Claude Vision
+  const extractFromImage = async () => {
+    if (!certificateImage) {
+      setError('Please upload a certificate image first');
+      return;
+    }
+
+    if (!isClaudeConfigured()) {
+      setError('AI extraction requires Claude API key. Please configure VITE_CLAUDE_API_KEY.');
+      return;
+    }
+
+    setExtracting(true);
+    setError('');
+    setExtractionSuccess(false);
+
+    try {
+      const platformName = selectedPlatform?.name || 'unknown platform';
+      
+      // Convert image to base64
+      const reader = new FileReader();
+      const imageBase64 = await new Promise((resolve, reject) => {
+        reader.onload = () => {
+          // Remove the data URL prefix (e.g., "data:image/png;base64,")
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(certificateImage);
+      });
+
+      const mediaType = certificateImage.type || 'image/png';
+
+      console.log('🖼️ Extracting certificate data from image using Claude Vision');
+
+      const prompt = `You are analyzing a certificate image from ${platformName}. Extract the following information:
+
+1. COURSE TITLE - The name of the course or certification
+2. INSTRUCTOR - The instructor or teacher name (look for "Instructors", "taught by", etc.)
+3. COMPLETION DATE - When the certificate was issued (look for "Date", "Completed on", etc.)
+4. STUDENT NAME - The name of the person who completed the course
+5. CERTIFICATE ID - Any certificate ID or reference number visible
+
+Return a JSON object with this exact structure:
+{
+  "courseTitle": "The course name",
+  "instructor": "Instructor name or empty string if not visible",
+  "completionDate": "Date in YYYY-MM-DD format if possible, or the date as shown",
+  "studentName": "Student name or empty string if not visible",
+  "certificateId": "Certificate ID or empty string if not visible",
+  "skills": ["skill1", "skill2"],
+  "category": "One of: Technology, Business, Data Science, Design, Marketing, Finance, Healthcare, Personal Development, Other"
+}
+
+Return ONLY the JSON object, no other text.`;
+
+      const extracted = await callClaudeVisionJSON(prompt, imageBase64, mediaType, { maxTokens: 500 });
+      
+      console.log('🖼️ Vision extracted:', extracted);
+
+      // Format completion date if provided
+      let completionDate = extracted.completionDate || '';
+      if (completionDate && !completionDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        try {
+          const parsedDate = new Date(completionDate);
+          if (!isNaN(parsedDate.getTime())) {
+            completionDate = parsedDate.toISOString().split('T')[0];
+          }
+        } catch (e) {
+          // Keep original
+        }
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        title: extracted.courseTitle || prev.title,
+        organization: platformName !== 'Other Platform' ? platformName : prev.organization,
+        instructor: extracted.instructor || prev.instructor,
+        completion_date: completionDate || prev.completion_date,
+        certificate_id: extracted.certificateId || prev.certificate_id,
+        category: extracted.category || prev.category,
+      }));
+
+      if (extracted.skills?.length > 0) {
+        setSkillTags(prev => [...prev, ...extracted.skills.filter(s => s && !prev.includes(s))]);
+      }
+
+      setExtractionSuccess(true);
+    } catch (err) {
+      console.error('Image extraction error:', err);
+      setError(`Could not extract from image: ${err.message}. Please fill in the fields manually.`);
+    } finally {
+      setExtracting(false);
     }
   };
 
@@ -219,12 +348,6 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
       // Check if worker indicates AI extraction is needed (for JS-rendered pages like Udemy)
       const needsAiExtraction = platformData?.needsAiExtraction || false;
       
-      // Try to get course title from various sources (prioritize platformData)
-      let courseTitle = platformData?.courseName || 
-                        metadata?.ogTitle || 
-                        metadata?.h1 || 
-                        metadata?.title || '';
-      
       // Clean up title (remove site name suffixes and common patterns)
       const cleanTitle = (title) => {
         if (!title) return '';
@@ -237,8 +360,38 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
           .replace(/^\s*Certificate\s*[-:]\s*/i, '')
           .replace(/\s*Certificate\s*$/i, '')
           .replace(/Udemy Course Completion Certificate/i, '')
+          .replace(/Udemy Course Completion/i, '')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
           .trim();
       };
+
+      // Try to extract course title from description (often contains the actual course name)
+      // Pattern: 'My course completion certificate for "Course Name"'
+      let extractedFromDescription = null;
+      let descriptionText = metadata?.ogDescription || metadata?.description || '';
+      // Decode HTML entities first
+      descriptionText = descriptionText
+        .replace(/&quot;/g, '"')
+        .replace(/&#34;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&#39;/g, "'")
+        .replace(/&amp;/g, '&');
+      
+      const courseNameMatch = descriptionText.match(/(?:for|course)\s*[""]([^""]+)[""]/i) ||
+                              descriptionText.match(/certificate\s+(?:for|in)\s+[""]?([^""]+)[""]?/i);
+      if (courseNameMatch) {
+        // Remove any remaining quotes from the extracted title
+        extractedFromDescription = courseNameMatch[1].trim().replace(/^["']+|["']+$/g, '');
+        console.log('📝 Extracted course title from description:', extractedFromDescription);
+      }
+      
+      // Try to get course title from various sources (prioritize extracted from description for Udemy)
+      let courseTitle = extractedFromDescription ||
+                        platformData?.courseName || 
+                        metadata?.ogTitle || 
+                        metadata?.h1 || 
+                        metadata?.title || '';
       
       courseTitle = cleanTitle(courseTitle);
 
@@ -262,13 +415,17 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
       // Get description
       const description = metadata?.ogDescription || metadata?.description || '';
 
-      console.log('✅ Extracted data:', { courseTitle, instructor, completionDate, description, needsAiExtraction });
+      console.log('✅ Extracted data:', { courseTitle, instructor, completionDate, description, needsAiExtraction, extractedFromDescription });
 
-      // Determine if we have valid data or need AI extraction
-      const hasValidTitle = courseTitle && !courseTitle.toLowerCase().includes('udemy course completion');
+      // Determine if we have valid data
+      const hasValidTitle = courseTitle && 
+                            !courseTitle.toLowerCase().includes('udemy course completion') &&
+                            courseTitle.length > 5;
       
-      // If we have good data from the page and don't need AI, use it
-      if (hasValidTitle && !needsAiExtraction) {
+      // For Udemy and other JS-rendered pages, we can only reliably extract the title from metadata
+      // Instructor and date are rendered by JavaScript and not available in static HTML
+      if (hasValidTitle) {
+        // We have all the data we need
         setFormData(prev => ({
           ...prev,
           title: courseTitle || prev.title,
@@ -546,6 +703,9 @@ Respond in JSON format:
     setError('');
     setVerifying(false);
     setVerificationResult(null);
+    setCertificateImage(null);
+    setCertificateImagePreview(null);
+    setExtractionSuccess(false);
   };
 
   const canProceedToNextStep = () => {
@@ -676,16 +836,99 @@ Respond in JSON format:
               </div>
 
               <div className="space-y-4">
-                {/* Auto-fill Section */}
+                {/* Image Upload Section - Primary Option */}
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <ImageIcon className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900 text-sm">Upload Certificate Image</h4>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        Upload a screenshot of your certificate for automatic extraction (Recommended)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    
+                    {certificateImagePreview ? (
+                      <div className="space-y-3">
+                        <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                          <img 
+                            src={certificateImagePreview} 
+                            alt="Certificate preview" 
+                            className="w-full h-40 object-contain bg-gray-50"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCertificateImage(null);
+                              setCertificateImagePreview(null);
+                              if (fileInputRef.current) fileInputRef.current.value = '';
+                            }}
+                            className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={extractFromImage}
+                          disabled={extracting}
+                          className="w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg font-medium text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                        >
+                          {extracting ? (
+                            <>
+                              <Loader size={16} className="animate-spin" />
+                              Extracting with AI...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={16} />
+                              Extract Details from Image
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full py-6 border-2 border-dashed border-purple-300 rounded-lg hover:border-purple-400 hover:bg-purple-50/50 transition-colors flex flex-col items-center gap-2"
+                      >
+                        <Upload className="w-8 h-8 text-purple-400" />
+                        <span className="text-sm text-gray-600">Click to upload certificate image</span>
+                        <span className="text-xs text-gray-400">PNG, JPG up to 5MB</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {extractionSuccess && (
+                    <div className="mt-3 flex items-center gap-2 text-green-700 bg-green-50 px-3 py-2 rounded-lg">
+                      <CheckCircle size={16} />
+                      <span className="text-sm font-medium">Details extracted successfully! Review below.</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* URL Auto-fill Section - Secondary Option */}
                 <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="w-5 h-5 text-indigo-600" />
+                      <LinkIcon className="w-5 h-5 text-indigo-600" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 text-sm">AI Auto-Fill</h4>
+                      <h4 className="font-medium text-gray-900 text-sm">Or Use Certificate URL</h4>
                       <p className="text-xs text-gray-600 mt-0.5">
-                        Paste your certificate URL or ID and we'll extract the details automatically
+                        Paste your certificate URL to extract basic details
                       </p>
                     </div>
                   </div>
@@ -723,8 +966,6 @@ Respond in JSON format:
                       </button>
                     </div>
 
-                    <div className="text-center text-xs text-gray-500">or enter Certificate ID</div>
-
                     <input
                       type="text"
                       name="certificate_id"
@@ -734,13 +975,6 @@ Respond in JSON format:
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white"
                     />
                   </div>
-
-                  {extractionSuccess && (
-                    <div className="mt-3 flex items-center gap-2 text-green-700 bg-green-50 px-3 py-2 rounded-lg">
-                      <CheckCircle size={16} />
-                      <span className="text-sm font-medium">Details extracted successfully! Review below.</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Divider */}
