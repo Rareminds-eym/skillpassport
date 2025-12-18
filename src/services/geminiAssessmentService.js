@@ -1,6 +1,6 @@
 /**
  * AI Assessment Service
- * Uses OpenRouter or Google Gemini AI to analyze assessment answers and provide personalized results
+ * Uses Claude AI to analyze assessment answers and provide personalized results
  * 
  * Feature: rag-course-recommendations
  * Requirements: 4.1, 5.2, 6.3
@@ -11,83 +11,32 @@ import {
   getRecommendedCoursesByType,
   getCoursesForMultipleSkillGaps 
 } from './courseRecommendationService';
-
-// API Configuration
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const getGeminiApiUrl = (model = 'gemini-1.5-flash') =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+import { callClaude, isClaudeConfigured } from './claudeService';
 
 /**
- * Call OpenRouter API with the given prompt
+ * Call Claude API with the given prompt
+ * Uses claude-3-5-sonnet for larger output capacity (8192 tokens)
+ * Assessment responses are large JSON objects requiring more tokens than haiku supports
+ * 
  * @param {string} prompt - The prompt to send
- * @param {string} apiKey - OpenRouter API key
  * @returns {Promise<string>} - The response text
  */
-const callOpenRouter = async (prompt, apiKey) => {
-  // Models to try in order of preference (cost-effective and capable)
-  const models = [
-    'google/gemini-2.0-flash-001',
-    'google/gemini-flash-1.5',
-    'anthropic/claude-3-haiku',
-    'meta-llama/llama-3.1-8b-instruct',
-  ];
-
-  let lastError = null;
-
-  for (const model of models) {
-    try {
-      console.log(`Trying OpenRouter model: ${model}`);
-      
-      const response = await fetch(OPENROUTER_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': window.location.origin,
-          'X-Title': 'SkillPassport Assessment'
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.1,
-          max_tokens: 16384,
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMsg = errorData.error?.message || `Status ${response.status}`;
-        console.warn(`OpenRouter model ${model} failed: ${errorMsg}`);
-        lastError = errorMsg;
-        continue;
-      }
-
-      const data = await response.json();
-      const textContent = data.choices?.[0]?.message?.content;
-
-      if (textContent) {
-        console.log(`OpenRouter success with model: ${model}`);
-        return textContent;
-      }
-
-      lastError = 'No content in response';
-    } catch (e) {
-      console.warn(`OpenRouter model ${model} exception: ${e.message}`);
-      lastError = e.message;
-    }
+const callClaudeAssessment = async (prompt) => {
+  if (!isClaudeConfigured()) {
+    throw new Error('Claude API not configured');
   }
 
-  throw new Error(`OpenRouter failed: ${lastError}`);
+  return await callClaude(prompt, {
+    model: 'claude-sonnet-4-20250514', // Latest Sonnet with higher token limits
+    maxTokens: 8192,
+    temperature: 0.1,
+    useCache: false // Assessment results should not be cached
+  });
 };
 
 /**
  * Validate that all required fields are present in the response
- * @param {Object} results - Parsed results from Gemini
+ * @param {Object} results - Parsed results from AI
  * @returns {Object} - { isValid: boolean, missingFields: string[] }
  */
 const validateResults = (results) => {
@@ -147,7 +96,7 @@ const validateResults = (results) => {
  * Separates courses by skill type (technical vs soft) to ensure both are represented.
  * Falls back to keyword matching if embedding-based search fails.
  * 
- * @param {Object} assessmentResults - Parsed results from Gemini
+ * @param {Object} assessmentResults - Parsed results from Claude AI
  * @returns {Promise<Object>} - Assessment results with platformCourses, coursesByType, and skillGapCourses added
  * 
  * Feature: rag-course-recommendations
@@ -218,7 +167,7 @@ const addCourseRecommendations = async (assessmentResults) => {
 };
 
 /**
- * Analyze assessment results using Gemini AI
+ * Analyze assessment results using Claude AI
  * @param {Object} answers - All answers from the assessment
  * @param {string} stream - Student's selected stream (cs, bca, bba, dm, animation)
  * @param {Object} questionBanks - All question banks for reference
@@ -226,198 +175,43 @@ const addCourseRecommendations = async (assessmentResults) => {
  * @returns {Promise<Object>} - AI-analyzed results
  */
 export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks, sectionTimings = {}) => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-  if (!apiKey) {
-    throw new Error('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your .env file.');
+  // Check for Claude API
+  if (!isClaudeConfigured()) {
+    throw new Error('Claude API key not configured. Please add VITE_CLAUDE_API_KEY to your .env file.');
   }
 
-  // Prepare the assessment data for Gemini
+  // Prepare the assessment data
   const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings);
-
   const prompt = buildAnalysisPrompt(assessmentData);
 
-  // Try different model variants for compatibility (updated Dec 2024)
-  // Using models in order of preference and availability
-  const models = [
-    'gemini-1.5-flash',         // Stable flash model
-    'gemini-1.5-pro',           // Pro model
-    'gemini-2.0-flash-exp',     // Experimental 2.0
-    'gemini-1.5-flash-8b',      // Smaller, faster variant
-  ];
-  let response = null;
-  let lastError = null;
-  const errors = [];
-
-  for (let i = 0; i < models.length; i++) {
-    const model = models[i];
-    try {
-      // Add delay between retries to help with rate limiting
-      if (i > 0) {
-        console.log(`Waiting 2 seconds before trying next model...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-      console.log(`Trying Gemini model: ${model}`);
-      
-      // Build request body
-      const requestBody = {
-        contents: [{
-          parts: [{ text: prompt }]
-        }],
-        generationConfig: {
-          temperature: 0.1,
-          topK: 10,
-          topP: 0.7,
-          maxOutputTokens: 16384, // Increased for large JSON response
-        }
-      };
-      
-      response = await fetch(getGeminiApiUrl(model) + `?key=${apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (response.ok) {
-        console.log(`Gemini API success with model: ${model}`);
-        break;
-      }
-
-      // Get error details from response
-      const errorData = await response.json().catch(() => ({}));
-      const errorMsg = errorData.error?.message || `Model ${model} returned ${response.status}`;
-      console.warn(`Model ${model} failed: ${errorMsg}`);
-      errors.push(`${model}: ${errorMsg}`);
-      lastError = errorMsg;
-      response = null; // Reset so we try next model
-    } catch (e) {
-      console.warn(`Model ${model} exception: ${e.message}`);
-      errors.push(`${model}: ${e.message}`);
-      lastError = e.message;
-    }
-  }
-
-  // If all Gemini models failed, try OpenRouter as fallback
-  if (!response || !response.ok) {
-    console.log('All Gemini models failed, trying OpenRouter as fallback...');
-    const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-    
-    if (openRouterKey) {
-      try {
-        const openRouterResponse = await callOpenRouter(prompt, openRouterKey);
-        
-        // Parse the JSON response from OpenRouter
-        const jsonMatch = openRouterResponse.match(/```json\n?([\s\S]*?)\n?```/) ||
-          openRouterResponse.match(/\{[\s\S]*\}/);
-
-        if (jsonMatch) {
-          const jsonStr = jsonMatch[1] || jsonMatch[0];
-          try {
-            const parsedResults = JSON.parse(jsonStr);
-            console.log('OpenRouter fallback successful!');
-            
-            // Validate and add course recommendations
-            const { isValid, missingFields } = validateResults(parsedResults);
-            if (!isValid) {
-              console.warn('OpenRouter response has missing fields:', missingFields);
-            }
-            
-            const resultsWithCourses = await addCourseRecommendations(parsedResults);
-            return resultsWithCourses;
-          } catch (parseError) {
-            console.error('OpenRouter JSON parse error:', parseError);
-          }
-        }
-      } catch (openRouterError) {
-        console.error('OpenRouter fallback also failed:', openRouterError.message);
-      }
-    }
-    
-    console.error('All AI providers failed:', errors);
-    throw new Error(`Rareminds AI error: ${lastError}. Please check your API keys are valid.`);
-  }
-
-  const data = await response.json();
+  // Use Claude AI for assessment analysis
+  console.log('🤖 Using Claude API for assessment analysis...');
   
-  // Debug: Log the full response structure to understand what Gemini returns
-  console.log('=== Gemini API Response Debug ===');
-  console.log('Full response keys:', Object.keys(data));
-  console.log('Candidates:', data.candidates?.length || 0);
-  if (data.candidates?.[0]) {
-    console.log('First candidate keys:', Object.keys(data.candidates[0]));
-    console.log('Content:', data.candidates[0].content);
-    console.log('Finish reason:', data.candidates[0].finishReason);
-  }
-  if (data.promptFeedback) {
-    console.log('Prompt feedback:', data.promptFeedback);
-  }
-  if (data.error) {
-    console.error('API Error in response:', data.error);
-  }
-  
-  const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!textContent) {
-    // Provide more detailed error information
-    const finishReason = data.candidates?.[0]?.finishReason;
-    const blockReason = data.promptFeedback?.blockReason;
-    const safetyRatings = data.candidates?.[0]?.safetyRatings;
+  try {
+    const claudeResponse = await callClaudeAssessment(prompt);
     
-    let errorDetail = 'No response received from Rareminds AI';
-    if (finishReason && finishReason !== 'STOP') {
-      errorDetail += `. Finish reason: ${finishReason}`;
-    }
-    if (blockReason) {
-      errorDetail += `. Blocked: ${blockReason}`;
-    }
-    if (safetyRatings?.some(r => r.blocked)) {
-      errorDetail += '. Content was blocked by safety filters.';
-    }
-    
-    console.error('Response structure:', JSON.stringify(data, null, 2).substring(0, 2000));
-    throw new Error(errorDetail);
-  }
+    const jsonMatch = claudeResponse.match(/```json\n?([\s\S]*?)\n?```/) ||
+      claudeResponse.match(/\{[\s\S]*\}/);
 
-  // Parse the JSON response from Gemini
-  const jsonMatch = textContent.match(/```json\n?([\s\S]*?)\n?```/) ||
-    textContent.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Invalid response format from Claude AI');
+    }
 
-  if (jsonMatch) {
     const jsonStr = jsonMatch[1] || jsonMatch[0];
-    try {
-      const parsedResults = JSON.parse(jsonStr);
-
-      // Debug logging for aptitude data
-      console.log('=== Gemini Response Debug ===');
-      console.log('Parsed aptitude:', parsedResults.aptitude);
-      console.log('Aptitude scores:', parsedResults.aptitude?.scores);
-      if (parsedResults.aptitude?.scores) {
-        Object.entries(parsedResults.aptitude.scores).forEach(([domain, data]) => {
-          console.log(`Aptitude ${domain}:`, data);
-        });
-      }
-
-      // Validate the response (no fallback data)
-      const { isValid, missingFields } = validateResults(parsedResults);
-
-      if (!isValid) {
-        console.warn('Gemini response has missing fields:', missingFields);
-      }
-
-      // Add course recommendations from platform courses (Requirement 4.1)
-      const resultsWithCourses = await addCourseRecommendations(parsedResults);
-
-      return resultsWithCourses;
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError);
-      console.error('Raw JSON string:', jsonStr.substring(0, 500));
-      throw new Error('Failed to parse AI response. Please try again.');
+    const parsedResults = JSON.parse(jsonStr);
+    console.log('✅ Claude assessment analysis successful');
+    
+    const { isValid, missingFields } = validateResults(parsedResults);
+    if (!isValid) {
+      console.warn('Claude response has missing fields:', missingFields);
     }
+    
+    const resultsWithCourses = await addCourseRecommendations(parsedResults);
+    return resultsWithCourses;
+  } catch (error) {
+    console.error('❌ Claude assessment analysis failed:', error.message);
+    throw new Error(`Assessment analysis failed: ${error.message}. Please try again.`);
   }
-
-  throw new Error('Invalid response format from Rareminds AI');
 };
 
 /**
@@ -603,7 +397,11 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       formatted: formatTimeForPrompt(sectionTimings.aptitude),
       questionsCount: totalAptitudeQuestions,
       avgSecondsPerQuestion: sectionTimings.aptitude ? Math.round(sectionTimings.aptitude / totalAptitudeQuestions) : 0,
-      timeLimit: 10 * 60 // 10 minutes
+      timeLimit: 45 * 60, // 45 minutes total (30 questions × 1 min each + 20 questions × 15 min shared)
+      individualTimeLimit: 60, // 1 minute per question for first 30
+      sharedTimeLimit: 15 * 60, // 15 minutes for last 20 questions
+      individualQuestionCount: 30,
+      sharedQuestionCount: 20
     },
     bigfive: {
       seconds: sectionTimings.bigfive || 0,
@@ -650,7 +448,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
 };
 
 /**
- * Build the analysis prompt for Gemini
+ * Build the analysis prompt for Claude AI
  */
 const buildAnalysisPrompt = (assessmentData) => {
   // Create a hash of the answers for consistency tracking
@@ -729,7 +527,7 @@ Total Questions: ${assessmentData.totalKnowledgeQuestions}
 
 ## SECTION TIMING DATA (Time spent by student on each section):
 - RIASEC (Career Interests): ${assessmentData.sectionTimings?.riasec?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.riasec?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.riasec?.avgSecondsPerQuestion || 0}s per question)
-- Multi-Aptitude Battery: ${assessmentData.sectionTimings?.aptitude?.formatted || 'Not recorded'} of 10 minutes allowed (${assessmentData.sectionTimings?.aptitude?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.aptitude?.avgSecondsPerQuestion || 0}s per question)
+- Multi-Aptitude Battery: ${assessmentData.sectionTimings?.aptitude?.formatted || 'Not recorded'} of 45 minutes allowed (First 30 questions: 1 min each individual timer, Last 20 questions: 15 min shared timer) (${assessmentData.sectionTimings?.aptitude?.questionsCount || 0} questions total, avg ${assessmentData.sectionTimings?.aptitude?.avgSecondsPerQuestion || 0}s per question)
 - Big Five (Personality): ${assessmentData.sectionTimings?.bigfive?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.bigfive?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.bigfive?.avgSecondsPerQuestion || 0}s per question)
 - Work Values: ${assessmentData.sectionTimings?.values?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.values?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.values?.avgSecondsPerQuestion || 0}s per question)
 - Employability Skills: ${assessmentData.sectionTimings?.employability?.formatted || 'Not recorded'} (${assessmentData.sectionTimings?.employability?.questionsCount || 0} questions, avg ${assessmentData.sectionTimings?.employability?.avgSecondsPerQuestion || 0}s per question)

@@ -132,9 +132,9 @@ const Header = ({ activeTab, setActiveTab }) => {
           />
         </div>
 
-        {/* Center Tabs - Desktop and Large Tablets */}
-        <nav className="hidden lg:flex flex-1 justify-center items-center mx-1 lg:mx-2 xl:mx-4">
-          <div className="flex items-center space-x-0 lg:space-x-1 xl:space-x-2">
+        {/* Center Tabs - Desktop Only (lg and above) */}
+        <nav className="hidden lg:flex flex-1 justify-center items-center mx-2">
+          <div className="flex items-center space-x-2">
             <button
               key="dashboard"
               onClick={() => {
@@ -263,8 +263,8 @@ const Header = ({ activeTab, setActiveTab }) => {
 
         {/* Right Side - Mobile Menu and Profile */}
         <div className="flex items-center space-x-1 lg:space-x-2 flex-shrink-0">
-          {/* Hamburger Menu - Mobile and Small Tablets */}
-          <div className="flex md:hidden items-center">
+          {/* Hamburger Menu - Mobile and Tablets (up to lg) */}
+          <div className="flex lg:hidden items-center">
             <button
               className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
               onClick={() => setMobileMenuOpen((open) => !open)}
@@ -354,9 +354,9 @@ const Header = ({ activeTab, setActiveTab }) => {
           </DropdownMenu>
         </div>
       </div>
-      {/* Mobile Menu Dropdown */}
+      {/* Mobile Menu Dropdown - Shows on mobile and tablets (up to lg) */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-gray-200 shadow-lg px-2 pt-2 pb-3 animate-fade-in-down max-h-96 overflow-y-auto">
+        <div className="lg:hidden bg-white border-b border-gray-200 shadow-lg px-2 pt-2 pb-3 animate-fade-in-down max-h-96 overflow-y-auto">
           <div className="grid grid-cols-1 gap-1">
             <button
               key="dashboard"
