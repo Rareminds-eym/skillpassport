@@ -23,7 +23,7 @@ import {
 } from '../components/Students/data/mockData';
 
 const StudentLayout = () => {
-  const [activeTab, setActiveTab] = useState('skills');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [activeModal, setActiveModal] = useState(null);
   const location = useLocation();
   const { user } = useAuth();
