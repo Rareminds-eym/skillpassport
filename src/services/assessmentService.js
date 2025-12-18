@@ -320,7 +320,7 @@ export const canTakeAssessment = async (studentId, gradeLevel = null) => {
     return { canTake: true, lastAttemptDate: null, nextAvailableDate: null, devBypass: true };
   }
 
-  let query = supabase
+  const { data, error } = await supabase
     .from('personal_assessment_results')
     .select('created_at')
     .eq('student_id', studentId)
