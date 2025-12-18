@@ -180,9 +180,10 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
 const DigitalPortfolioPage = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(25);
+  const [itemsPerPage] = useState(12);
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('relevance');
   const [filters, setFilters] = useState({
@@ -194,18 +195,29 @@ const DigitalPortfolioPage = () => {
     maxScore: 100
   });
 
-  // Fetch students from school admin hook
-  const { students, loading, error } = useStudents();
+  // Fetch students from school admin hook with search and pagination
+  const { students, loading, error, totalCount } = useStudents({
+    searchTerm: debouncedSearch,
+    page: currentPage,
+    pageSize: itemsPerPage
+  });
+
+  // Fetch all students for filter options (lightweight query - only needed fields)
+  const { students: allStudentsForFilters } = useStudents({
+    searchTerm: '', // No search filter for getting all filter options
+    page: 1,
+    pageSize: 1000 // Get more students for accurate filter counts
+  });
 
   // Reset to page 1 when filters or search change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filters, sortBy]);
+  }, [debouncedSearch, filters, sortBy]);
 
-  // Generate filter options from data
+  // Generate filter options from ALL students data
   const skillOptions = useMemo(() => {
     const skillCounts: any = {};
-    students.forEach(student => {
+    allStudentsForFilters.forEach(student => {
       if (student.skills && Array.isArray(student.skills)) {
         student.skills.forEach((skill: any) => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
@@ -224,11 +236,11 @@ const DigitalPortfolioPage = () => {
       }))
       .sort((a: any, b: any) => b.count - a.count)
       .slice(0, 15);
-  }, [students]);
+  }, [allStudentsForFilters]);
 
   const classOptions = useMemo(() => {
     const classCounts: any = {};
-    students.forEach(student => {
+    allStudentsForFilters.forEach(student => {
       if (student.class) {
         const normalized = student.class.toLowerCase();
         classCounts[normalized] = (classCounts[normalized] || 0) + 1;
@@ -241,11 +253,11 @@ const DigitalPortfolioPage = () => {
         count
       }))
       .sort((a: any, b: any) => b.count - a.count);
-  }, [students]);
+  }, [allStudentsForFilters]);
 
   const badgeOptions = useMemo(() => {
     const badgeCounts: any = {};
-    students.forEach(student => {
+    allStudentsForFilters.forEach(student => {
       if (student.badges && Array.isArray(student.badges)) {
         student.badges.forEach((badge: any) => {
           badgeCounts[badge] = (badgeCounts[badge] || 0) + 1;
@@ -259,11 +271,11 @@ const DigitalPortfolioPage = () => {
         count
       }))
       .sort((a: any, b: any) => b.count - a.count);
-  }, [students]);
+  }, [allStudentsForFilters]);
 
   const locationOptions = useMemo(() => {
     const locationCounts: any = {};
-    students.forEach(student => {
+    allStudentsForFilters.forEach(student => {
       if (student.location) {
         const normalized = student.location.toLowerCase();
         locationCounts[normalized] = (locationCounts[normalized] || 0) + 1;
@@ -276,27 +288,34 @@ const DigitalPortfolioPage = () => {
         count
       }))
       .sort((a: any, b: any) => b.count - a.count);
-  }, [students]);
+  }, [allStudentsForFilters]);
+
+  // Check if any filters are active
+  const hasActiveFilters = filters.classes.length > 0 || 
+                          filters.skills.length > 0 || 
+                          filters.badges.length > 0 || 
+                          filters.locations.length > 0 ||
+                          filters.minScore > 0 ||
+                          filters.maxScore < 100;
 
   // Apply filters and sorting
   const filteredStudents = useMemo(() => {
-    let result = students;
+    // When filters are active, use ALL students; otherwise use paginated students
+    const sourceData = hasActiveFilters ? allStudentsForFilters : students;
+    let result = sourceData;
 
-    // Apply search
-    if (searchQuery && searchQuery.trim() !== '') {
-      const query = searchQuery.toLowerCase().trim();
-      result = result.filter(student => {
-        return (
-          (student.name && student.name.toLowerCase().includes(query)) ||
-          (student.email && student.email.toLowerCase().includes(query)) ||
-          (student.class && student.class.toLowerCase().includes(query)) ||
-          (student.dept && student.dept.toLowerCase().includes(query)) ||
-          (student.skills && student.skills.some((s: any) => {
-            const skillName = typeof s === 'string' ? s : s?.name;
-            return skillName && skillName.toLowerCase().includes(query);
-          }))
-        );
-      });
+    // Apply search filter if not already applied at DB level
+    if (hasActiveFilters && debouncedSearch) {
+      const searchLower = debouncedSearch.toLowerCase();
+      result = result.filter(student => 
+        student.name?.toLowerCase().includes(searchLower) ||
+        student.email?.toLowerCase().includes(searchLower) ||
+        student.class?.toLowerCase().includes(searchLower) ||
+        student.skills?.some((skill: any) => {
+          const skillName = typeof skill === 'string' ? skill : skill?.name;
+          return skillName?.toLowerCase().includes(searchLower);
+        })
+      );
     }
 
     // Apply filters
@@ -352,12 +371,17 @@ const DigitalPortfolioPage = () => {
     }
 
     return sorted;
-  }, [students, searchQuery, filters, sortBy]);
-
-  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+  }, [students, allStudentsForFilters, filters, sortBy, hasActiveFilters, debouncedSearch]);
+  
+  const totalItems = hasActiveFilters ? filteredStudents.length : (totalCount || 0);
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedStudents = filteredStudents.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  
+  // If filters are active, paginate client-side; otherwise use DB-paginated data
+  const paginatedStudents = hasActiveFilters 
+    ? filteredStudents.slice(startIndex, endIndex)
+    : filteredStudents;
 
   const handleViewPortfolio = (student: any) => {
     navigate('/digital-pp/homepage', { state: { candidate: student } });
@@ -407,6 +431,8 @@ const DigitalPortfolioPage = () => {
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
+              onDebouncedChange={setDebouncedSearch}
+              debounceMs={500}
               placeholder="Search by name, skills, projects, class..."
               size="md"
             />
@@ -464,6 +490,8 @@ const DigitalPortfolioPage = () => {
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}
+            onDebouncedChange={setDebouncedSearch}
+            debounceMs={500}
             placeholder="Search portfolios..."
             size="md"
           />
@@ -589,9 +617,9 @@ const DigitalPortfolioPage = () => {
           <div className="px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-                <span className="font-medium">{Math.min(endIndex, filteredStudents.length)}</span> of{' '}
-                <span className="font-medium">{filteredStudents.length}</span> result{filteredStudents.length !== 1 ? 's' : ''}
+                Showing <span className="font-medium">{totalItems > 0 ? startIndex + 1 : 0}</span> to{' '}
+                <span className="font-medium">{endIndex}</span> of{' '}
+                <span className="font-medium">{totalItems}</span> result{totalItems !== 1 ? 's' : ''}
                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
               </p>
               <select
@@ -639,7 +667,35 @@ const DigitalPortfolioPage = () => {
               <>
                 {viewMode === 'grid' ? (
                   <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {paginatedStudents.map((student) => (
+                    {/* Skeleton Loading - Grid View */}
+                    {loading && (
+                      <>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
+                          <div key={i} className="animate-pulse bg-white border border-gray-200 rounded-lg p-5">
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center space-x-3 flex-1">
+                                <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+                                <div className="flex-1">
+                                  <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
+                                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="space-y-3 mb-4">
+                              <div className="h-4 bg-gray-200 rounded w-full"></div>
+                              <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                            </div>
+                            <div className="flex gap-2 mb-3">
+                              <div className="h-6 w-16 bg-gray-200 rounded-full"></div>
+                              <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
+                            </div>
+                            <div className="h-10 bg-gray-200 rounded w-full"></div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    
+                    {!loading && paginatedStudents.map((student) => (
                       <PortfolioCard
                         key={student.id}
                         student={student}

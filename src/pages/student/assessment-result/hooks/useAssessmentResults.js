@@ -21,6 +21,7 @@ export const useAssessmentResults = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [retrying, setRetrying] = useState(false);
+    const [gradeLevel, setGradeLevel] = useState('after12'); // Default to after12
     const [studentInfo, setStudentInfo] = useState({
         name: '—',
         regNo: '—',
@@ -107,7 +108,12 @@ export const useAssessmentResults = () => {
                 if (attempt?.results?.[0]?.gemini_results) {
                     const geminiResults = attempt.results[0].gemini_results;
                     setResults(geminiResults);
-                    
+
+                    // Set grade level from attempt
+                    if (attempt.grade_level) {
+                        setGradeLevel(attempt.grade_level);
+                    }
+
                     // Ensure recommendations are saved (in case they weren't before)
                     if (geminiResults.platformCourses && geminiResults.platformCourses.length > 0) {
                         try {
@@ -125,7 +131,7 @@ export const useAssessmentResults = () => {
                             console.log('Recommendations sync:', recError.message);
                         }
                     }
-                    
+
                     setLoading(false);
                     return;
                 }
@@ -143,7 +149,12 @@ export const useAssessmentResults = () => {
                     console.log('Loaded results from database');
                     const geminiResults = latestResult.gemini_results;
                     setResults(geminiResults);
-                    
+
+                    // Set grade level from result
+                    if (latestResult.grade_level) {
+                        setGradeLevel(latestResult.grade_level);
+                    }
+
                     // Ensure recommendations are saved
                     if (geminiResults.platformCourses && geminiResults.platformCourses.length > 0) {
                         try {
@@ -157,7 +168,7 @@ export const useAssessmentResults = () => {
                             console.log('Recommendations sync:', recError.message);
                         }
                     }
-                    
+
                     setLoading(false);
                     return;
                 }
@@ -221,6 +232,7 @@ export const useAssessmentResults = () => {
                                     inProgressAttempt.id,
                                     user.id,
                                     stream,
+                                    inProgressAttempt.grade_level || 'after12', // Use grade_level from attempt or default to after12
                                     geminiResults,
                                     sectionTimings
                                 );
@@ -372,13 +384,23 @@ export const useAssessmentResults = () => {
     }, [navigate]);
 
     // Validate results - only check critical fields that affect display
+    // Different validation based on grade level
     const validateResults = () => {
         if (!results) return [];
-        
-        const missingFields = [];
-        const { riasec, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap } = results;
 
-        // Critical fields - these are required for the report to display properly
+        const missingFields = [];
+        const { riasec, bigFive, workValues, employability, knowledge, careerFit, skillGap, roadmap, aptitude } = results;
+
+        // For middle school and high school, only check basic fields
+        if (gradeLevel === 'middle' || gradeLevel === 'highschool') {
+            // Basic interest exploration (mapped to RIASEC codes)
+            if (!riasec || !riasec.topThree || riasec.topThree.length === 0) missingFields.push('Interest Explorer');
+            // For high school, check aptitude sampling
+            if (gradeLevel === 'highschool' && (!aptitude || !aptitude.scores)) missingFields.push('Aptitude Sampling');
+            return missingFields;
+        }
+
+        // For after12, check all comprehensive assessment fields (keep as-is)
         if (!riasec || !riasec.topThree || riasec.topThree.length === 0) missingFields.push('RIASEC Interests');
         if (!bigFive || typeof bigFive.O === 'undefined') missingFields.push('Big Five Personality');
         if (!workValues || !workValues.topThree || workValues.topThree.length === 0) missingFields.push('Work Values');
@@ -387,7 +409,7 @@ export const useAssessmentResults = () => {
         if (!careerFit || !careerFit.clusters || careerFit.clusters.length === 0) missingFields.push('Career Fit');
         if (!skillGap || !skillGap.priorityA || skillGap.priorityA.length === 0) missingFields.push('Skill Gap Analysis');
         if (!roadmap || !roadmap.projects || roadmap.projects.length === 0) missingFields.push('Action Roadmap');
-        
+
         // Note: finalNote, profileSnapshot, and overallSummary are optional for display
         // They enhance the report but aren't critical for core functionality
 
@@ -399,6 +421,7 @@ export const useAssessmentResults = () => {
         loading,
         error,
         retrying,
+        gradeLevel, // Export grade level
         studentInfo,
         handleRetry,
         validateResults,

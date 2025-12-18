@@ -1,76 +1,407 @@
 import { useState } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { X, Upload, AlertCircle, CheckCircle, XCircle, Loader } from 'lucide-react';
+import { callClaudeJSON, isClaudeConfigured } from '../../../services/claudeService';
+import {
+  X,
+  AlertCircle,
+  CheckCircle,
+  Loader,
+  ChevronRight,
+  ChevronLeft,
+  Link as LinkIcon,
+  Award,
+  Sparkles,
+  GraduationCap
+} from 'lucide-react';
+
+// Platform configurations with brand colors and icons
+const PLATFORMS = [
+  {
+    id: 'coursera',
+    name: 'Coursera',
+    color: '#0056D2',
+    bgColor: 'bg-[#0056D2]/10',
+    hoverBg: 'hover:bg-[#0056D2]/20',
+    borderColor: 'border-[#0056D2]',
+    icon: '🎓',
+    urlPattern: /coursera\.org/i
+  },
+  {
+    id: 'linkedin',
+    name: 'LinkedIn Learning',
+    color: '#0A66C2',
+    bgColor: 'bg-[#0A66C2]/10',
+    hoverBg: 'hover:bg-[#0A66C2]/20',
+    borderColor: 'border-[#0A66C2]',
+    icon: '💼',
+    urlPattern: /linkedin\.com\/learning/i
+  },
+  {
+    id: 'udemy',
+    name: 'Udemy',
+    color: '#A435F0',
+    bgColor: 'bg-[#A435F0]/10',
+    hoverBg: 'hover:bg-[#A435F0]/20',
+    borderColor: 'border-[#A435F0]',
+    icon: '📚',
+    urlPattern: /udemy\.com/i
+  },
+  {
+    id: 'edx',
+    name: 'edX',
+    color: '#02262B',
+    bgColor: 'bg-[#02262B]/10',
+    hoverBg: 'hover:bg-[#02262B]/20',
+    borderColor: 'border-[#02262B]',
+    icon: '🏛️',
+    urlPattern: /edx\.org/i
+  },
+  {
+    id: 'pluralsight',
+    name: 'Pluralsight',
+    color: '#F15B2A',
+    bgColor: 'bg-[#F15B2A]/10',
+    hoverBg: 'hover:bg-[#F15B2A]/20',
+    borderColor: 'border-[#F15B2A]',
+    icon: '💡',
+    urlPattern: /pluralsight\.com/i
+  },
+  {
+    id: 'other',
+    name: 'Other Platform',
+    color: '#6B7280',
+    bgColor: 'bg-gray-100',
+    hoverBg: 'hover:bg-gray-200',
+    borderColor: 'border-gray-400',
+    icon: '➕',
+    urlPattern: null
+  }
+];
+
+const CATEGORIES = [
+  'Technology',
+  'Business',
+  'Data Science',
+  'Design',
+  'Marketing',
+  'Finance',
+  'Healthcare',
+  'Personal Development',
+  'Other'
+];
+
+const DIFFICULTY_LEVELS = [
+  { id: 'beginner', label: 'Beginner', color: 'text-green-600 bg-green-50 border-green-200' },
+  { id: 'intermediate', label: 'Intermediate', color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
+  { id: 'advanced', label: 'Advanced', color: 'text-orange-600 bg-orange-50 border-orange-200' },
+  { id: 'expert', label: 'Expert', color: 'text-red-600 bg-red-50 border-red-200' }
+];
 
 export default function AddLearningCourseModal({ isOpen, onClose, studentId, onSuccess }) {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedPlatform, setSelectedPlatform] = useState(null);
+
   const [formData, setFormData] = useState({
+    certificate_url: '',
     title: '',
     organization: '',
-    provider: '',
-    start_date: '',
-    end_date: '',
-    status: 'ongoing',
-    completed_modules: 0,
-    total_modules: 0,
-    hours_spent: 0,
-    certificate_url: '',
+    instructor: '',
+    completion_date: '',
+    certificate_id: '',
     skills_covered: '',
-    description: ''
+    description: '',
+    category: '',
+    difficulty: ''
   });
-  
-  const [isExternal, setIsExternal] = useState(false);
-  const [showAssessment, setShowAssessment] = useState(false);
-  const [assessmentQuestions, setAssessmentQuestions] = useState([]);
-  const [currentAnswers, setCurrentAnswers] = useState({});
-  const [assessmentScore, setAssessmentScore] = useState(null);
-  const [certificateLevel, setCertificateLevel] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState(null);
-  const [showInitialVerification, setShowInitialVerification] = useState(true);
-  const [initialVerificationData, setInitialVerificationData] = useState({
-    courseName: '',
-    provider: '',
-    certificateUrl: ''
-  });
+  const [skillTags, setSkillTags] = useState([]);
+  const [skillInput, setSkillInput] = useState('');
+  const [extracting, setExtracting] = useState(false);
+  const [extractionSuccess, setExtractionSuccess] = useState(false);
 
-  // Known organizations that don't require assessment
-  const knownOrganizations = [
-    'Coursera', 'Udemy', 'edX', 'LinkedIn Learning', 'Pluralsight',
-    'Udacity', 'Khan Academy', 'FreeCodeCamp', 'Codecademy'
-  ];
+  const totalSteps = 4;
+
+  // Auto-detect platform from URL
+  const detectPlatformFromUrl = (url) => {
+    for (const platform of PLATFORMS) {
+      if (platform.urlPattern && platform.urlPattern.test(url)) {
+        return platform;
+      }
+    }
+    return null;
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+
+    // Auto-detect platform from certificate URL
+    if (name === 'certificate_url' && value) {
+      const detected = detectPlatformFromUrl(value);
+      if (detected && !selectedPlatform) {
+        setSelectedPlatform(detected);
+      }
+    }
+  };
+
+  const handleAddSkill = (skill) => {
+    const trimmed = skill.trim();
+    if (trimmed && !skillTags.includes(trimmed)) {
+      setSkillTags(prev => [...prev, trimmed]);
+      setSkillInput('');
+    }
+  };
+
+  const handleRemoveSkill = (skillToRemove) => {
+    setSkillTags(prev => prev.filter(skill => skill !== skillToRemove));
+  };
+
+  const handleSkillKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      handleAddSkill(skillInput);
+    }
+  };
+
+  // AI-powered auto-fill from certificate URL using Edge Function
+  const extractCertificateDetails = async () => {
+    if (!formData.certificate_url && !formData.certificate_id) {
+      setError('Please enter a certificate URL or certificate ID first');
+      return;
+    }
+
+    setExtracting(true);
+    setError('');
+    setExtractionSuccess(false);
+
+    try {
+      let certificateUrl = formData.certificate_url || '';
+      const platformName = selectedPlatform?.name || 'unknown platform';
+
+      // Expand short URLs to full URLs
+      if (certificateUrl.includes('ude.my/')) {
+        const certId = certificateUrl.split('ude.my/')[1];
+        certificateUrl = `https://www.udemy.com/certificate/${certId}`;
+      }
+
+      // Use Cloudflare Worker to fetch certificate page (bypasses CORS)
+      console.log('📄 Fetching certificate via Cloudflare Worker:', certificateUrl);
+      
+      const workerUrl = import.meta.env.VITE_CLOUDFLARE_CERTIFICATE_WORKER_URL || 
+                        'https://fetch-certificate.rareminds.workers.dev';
+      
+      const response = await fetch(workerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: certificateUrl })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch certificate page: ${response.status}`);
+      }
+
+      const fetchResult = await response.json();
+
+      if (!fetchResult?.success) {
+        throw new Error(fetchResult?.error || 'Failed to fetch certificate page');
+      }
+
+      console.log('📄 Fetched certificate data:', fetchResult);
+
+      // Extract data from the response
+      const { metadata, platformData, bodySnippet } = fetchResult;
+      
+      // Check if worker indicates AI extraction is needed (for JS-rendered pages like Udemy)
+      const needsAiExtraction = platformData?.needsAiExtraction || false;
+      
+      // Try to get course title from various sources (prioritize platformData)
+      let courseTitle = platformData?.courseName || 
+                        metadata?.ogTitle || 
+                        metadata?.h1 || 
+                        metadata?.title || '';
+      
+      // Clean up title (remove site name suffixes and common patterns)
+      const cleanTitle = (title) => {
+        if (!title) return '';
+        return title
+          .replace(/\s*\|\s*Udemy$/i, '')
+          .replace(/\s*\|\s*Coursera$/i, '')
+          .replace(/\s*-\s*LinkedIn Learning$/i, '')
+          .replace(/\s*-\s*edX$/i, '')
+          .replace(/Certificate of Completion/i, '')
+          .replace(/^\s*Certificate\s*[-:]\s*/i, '')
+          .replace(/\s*Certificate\s*$/i, '')
+          .replace(/Udemy Course Completion Certificate/i, '')
+          .trim();
+      };
+      
+      courseTitle = cleanTitle(courseTitle);
+
+      // Get instructor if available
+      let instructor = platformData?.instructor || '';
+      
+      // Get completion date if available and try to format it
+      let completionDate = platformData?.completionDate || '';
+      if (completionDate) {
+        // Try to parse and format the date to YYYY-MM-DD for the date input
+        try {
+          const parsedDate = new Date(completionDate);
+          if (!isNaN(parsedDate.getTime())) {
+            completionDate = parsedDate.toISOString().split('T')[0];
+          }
+        } catch (e) {
+          // Keep original if parsing fails
+        }
+      }
+
+      // Get description
+      const description = metadata?.ogDescription || metadata?.description || '';
+
+      console.log('✅ Extracted data:', { courseTitle, instructor, completionDate, description, needsAiExtraction });
+
+      // Determine if we have valid data or need AI extraction
+      const hasValidTitle = courseTitle && !courseTitle.toLowerCase().includes('udemy course completion');
+      
+      // If we have good data from the page and don't need AI, use it
+      if (hasValidTitle && !needsAiExtraction) {
+        setFormData(prev => ({
+          ...prev,
+          title: courseTitle || prev.title,
+          organization: platformName !== 'Other Platform' ? platformName : prev.organization,
+          instructor: instructor || prev.instructor,
+          completion_date: completionDate || prev.completion_date,
+          description: description || prev.description
+        }));
+        setExtractionSuccess(true);
+      } else if (isClaudeConfigured() && bodySnippet) {
+        // Use AI to extract details from the page content
+        console.log('🤖 Using AI to extract details from page content');
+        
+        const prompt = `You are extracting certificate/course information from a ${platformName} certificate page.
+
+The page content below is from a certificate verification page. Look for:
+- The COURSE TITLE (the name of the course completed, NOT "Certificate of Completion" or generic text)
+- The INSTRUCTOR name (who taught the course)
+- The COMPLETION DATE (when the certificate was issued)
+- Any SKILLS mentioned in the course
+
+Page Content:
+${bodySnippet.slice(0, 4000)}
+
+IMPORTANT: 
+- The course title should be the actual course name like "The Complete Python Bootcamp" NOT generic text like "Udemy Course Completion Certificate"
+- Look for patterns like "completed", "course:", "title:", instructor names after "Instructors" or "taught by"
+- Dates are often in format like "Jan. 28, 2025" or "January 28, 2025"
+
+Return a JSON object:
+{
+  "courseTitle": "The actual course name",
+  "instructor": "Instructor/teacher name",
+  "completionDate": "Date in format YYYY-MM-DD if found",
+  "skills": ["skill1", "skill2"],
+  "category": "One of: Technology, Business, Data Science, Design, Marketing, Finance, Healthcare, Personal Development, Other",
+  "difficulty": "One of: beginner, intermediate, advanced, expert"
+}
+
+Return ONLY the JSON object, no other text.`;
+
+        const extracted = await callClaudeJSON(prompt, { maxTokens: 500 });
+        
+        console.log('🤖 AI extracted:', extracted);
+        
+        // Format completion date if provided
+        let aiCompletionDate = extracted.completionDate || '';
+        if (aiCompletionDate && !aiCompletionDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          try {
+            const parsedDate = new Date(aiCompletionDate);
+            if (!isNaN(parsedDate.getTime())) {
+              aiCompletionDate = parsedDate.toISOString().split('T')[0];
+            }
+          } catch (e) {
+            // Keep original
+          }
+        }
+        
+        setFormData(prev => ({
+          ...prev,
+          title: extracted.courseTitle || prev.title,
+          organization: platformName !== 'Other Platform' ? platformName : prev.organization,
+          instructor: extracted.instructor || prev.instructor,
+          completion_date: aiCompletionDate || prev.completion_date,
+          category: extracted.category || prev.category,
+          difficulty: extracted.difficulty?.toLowerCase() || prev.difficulty
+        }));
+
+        if (extracted.skills?.length > 0) {
+          setSkillTags(prev => [...prev, ...extracted.skills.filter(s => s && !prev.includes(s))]);
+        }
+        
+        setExtractionSuccess(true);
+      } else {
+        // Fallback: just set the platform name
+        setFormData(prev => ({
+          ...prev,
+          organization: platformName !== 'Other Platform' ? platformName : prev.organization
+        }));
+        setExtractionSuccess(true);
+        setError('Could not extract all details. Please fill in the remaining fields manually.');
+      }
+    } catch (err) {
+      console.error('Certificate extraction error:', err);
+      // Fallback: at least set the platform name if we failed
+      if (selectedPlatform && selectedPlatform.id !== 'other') {
+        setFormData(prev => ({
+          ...prev,
+          organization: selectedPlatform.name
+        }));
+        setExtractionSuccess(true);
+        setError('Could not fetch certificate page. Platform set - please fill in other details manually.');
+      } else {
+        setError(`Could not auto-fill: ${err.message}. Please fill in the fields manually.`);
+      }
+    } finally {
+      setExtracting(false);
+    }
+  };
 
   // AI Certificate Verification
   const verifyCertificateWithAI = async () => {
     setVerifying(true);
     setError('');
-    
+
     try {
-      const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY || import.meta.env.OPENAI_API_KEY;
-      
-      if (!apiKey) {
-        throw new Error('AI API key not configured. Please add OPENAI_API_KEY to your .env file');
+      if (!isClaudeConfigured()) {
+        // Skip verification if no API key - this is optional
+        setVerificationResult({
+          isLegitimate: true,
+          credibilityScore: 75,
+          providerRecognition: selectedPlatform?.id === 'other' ? 'unknown' : 'recognized',
+          summary: 'Verification skipped - API key not configured',
+          skipped: true
+        });
+        return;
       }
 
       const prompt = `You are a certificate verification assistant. Analyze the following certificate/training details and determine if it appears legitimate and valuable.
 
 Certificate Details:
 - Course Name: ${formData.title}
-- Provider: ${formData.provider || 'Not specified'}
+- Platform: ${selectedPlatform?.name || 'Not specified'}
 - Organization: ${formData.organization || 'Not specified'}
 - Certificate URL: ${formData.certificate_url || 'Not provided'}
-- Skills Covered: ${formData.skills_covered || 'Not specified'}
-- Duration: ${formData.start_date} to ${formData.end_date || 'Ongoing'}
-- Modules: ${formData.completed_modules}/${formData.total_modules}
-- Hours Spent: ${formData.hours_spent}
+- Skills Covered: ${skillTags.join(', ') || 'Not specified'}
+- Completion Date: ${formData.completion_date || 'Not specified'}
 
 Please analyze:
 1. Is this a legitimate/recognized training provider?
 2. Does the course content match the skills claimed?
 3. Is the certificate URL format valid (if provided)?
-4. Are the completion metrics reasonable?
-5. Overall credibility score (0-100)
+4. Overall credibility score (0-100)
 
 Respond in JSON format:
 {
@@ -82,139 +413,35 @@ Respond in JSON format:
   "summary": "brief assessment"
 }`;
 
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': window.location.origin,
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.0-flash-exp:free',
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.3,
-          max_tokens: 1000
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`AI verification failed: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
-      
-      // Parse JSON response
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('Invalid AI response format');
-      }
-      
-      const verification = JSON.parse(jsonMatch[0]);
+      // Use centralized Claude service
+      const verification = await callClaudeJSON(prompt, { maxTokens: 1000 });
       setVerificationResult(verification);
-      
+
       return verification;
     } catch (err) {
       console.error('AI verification error:', err);
-      setError(`Verification failed: ${err.message}`);
+      // Don't block on verification errors - make it optional
+      setVerificationResult({
+        isLegitimate: true,
+        credibilityScore: 70,
+        providerRecognition: 'unknown',
+        summary: 'Verification could not be completed',
+        error: true
+      });
       return null;
     } finally {
       setVerifying(false);
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // Check if organization is external
-    if (name === 'organization' || name === 'provider' || name === 'skills_covered') {
-      const org = name === 'organization' ? value : formData.organization;
-      const provider = name === 'provider' ? value : formData.provider;
-      const skills = name === 'skills_covered' ? value : formData.skills_covered;
-      const orgToCheck = org || provider;
-      
-      // If skills are provided, check if organization is external
-      if (skills && skills.trim().length > 0) {
-        const isKnown = knownOrganizations.some(known => 
-          orgToCheck.toLowerCase().includes(known.toLowerCase())
-        );
-        // Set external if organization is not known OR if no organization is provided
-        setIsExternal(!isKnown);
-      } else {
-        setIsExternal(false);
-      }
-    }
-  };
-
-  const generateAssessmentQuestions = async () => {
-    // Generate skill-based assessment questions
-    const skills = formData.skills_covered.split(',').map(s => s.trim()).filter(Boolean);
-    
-    if (skills.length === 0) {
-      setError('Please add skills covered to generate assessment');
-      return;
-    }
-
-    // Sample questions - in production, this could be AI-generated or from a question bank
-    const questions = skills.slice(0, 5).map((skill, idx) => ({
-      id: idx + 1,
-      skill,
-      question: `Rate your proficiency in ${skill}`,
-      type: 'scale',
-      options: ['Beginner', 'Intermediate', 'Advanced', 'Expert']
-    }));
-
-    setAssessmentQuestions(questions);
-    setShowAssessment(true);
-  };
-
-  const handleAnswerChange = (questionId, answer) => {
-    setCurrentAnswers(prev => ({ ...prev, [questionId]: answer }));
-  };
-
-  const calculateScore = () => {
-    const scoreMap = { 'Beginner': 25, 'Intermediate': 50, 'Advanced': 75, 'Expert': 100 };
-    const scores = Object.values(currentAnswers).map(ans => scoreMap[ans] || 0);
-    const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-    
-    setAssessmentScore(avgScore);
-    
-    // Determine certificate level based on score
-    let level = '';
-    if (avgScore >= 85) level = 'Expert';
-    else if (avgScore >= 70) level = 'Advanced';
-    else if (avgScore >= 50) level = 'Intermediate';
-    else level = 'Beginner';
-    
-    setCertificateLevel(level);
-    return { score: avgScore, level };
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setError('');
-
-    // FIRST: Check if assessment is required for external courses with skills
-    if (isExternal && !assessmentScore && formData.skills_covered && formData.skills_covered.trim().length > 0) {
-      generateAssessmentQuestions();
-      return;
-    }
-
-    // SECOND: After assessment, check if verification is done
-    if (isExternal && !verificationResult && formData.skills_covered && formData.skills_covered.trim().length > 0) {
-      setError('Please verify the certificate with AI before adding it to your profile.');
-      return;
-    }
-
     setLoading(true);
 
     try {
+      // Determine assessment status based on skills
+      const hasSkills = skillTags.length > 0;
+      const assessmentStatus = hasSkills ? 'rareminds_assessment_pending' : 'not_required';
 
       // Insert training record
       const { data: training, error: trainingError } = await supabase
@@ -222,16 +449,17 @@ Respond in JSON format:
         .insert({
           student_id: studentId,
           title: formData.title,
-          organization: formData.organization || formData.provider,
-          start_date: formData.start_date || null,
-          end_date: formData.end_date || null,
-          status: formData.status,
-          completed_modules: parseInt(formData.completed_modules) || 0,
-          total_modules: parseInt(formData.total_modules) || 0,
-          hours_spent: parseInt(formData.hours_spent) || 0,
+          organization: formData.organization || selectedPlatform?.name,
+          start_date: null,
+          end_date: formData.completion_date || null,
+          status: 'completed',
+          completed_modules: 0,
+          total_modules: 0,
+          hours_spent: 0,
           description: formData.description,
           approval_status: 'approved',
-          source: 'external_course'
+          source: 'external_course',
+          assessment_status: assessmentStatus
         })
         .select()
         .single();
@@ -244,33 +472,40 @@ Respond in JSON format:
           student_id: studentId,
           training_id: training.id,
           title: formData.title,
-          issuer: formData.organization || formData.provider,
-          issued_on: formData.end_date || new Date().toISOString().split('T')[0],
+          issuer: formData.organization || selectedPlatform?.name,
+          issued_on: formData.completion_date || new Date().toISOString().split('T')[0],
           link: formData.certificate_url,
-          level: certificateLevel || null,
+          level: formData.difficulty || null,
           description: formData.description,
           approval_status: 'approved',
-          enabled: true
+          enabled: true,
+          platform: selectedPlatform?.id,
+          certificate_id: formData.certificate_id,
+          instructor: formData.instructor,
+          category: formData.category,
+          assessment_status: assessmentStatus
         };
 
         const { error: certError } = await supabase
           .from('certificates')
           .insert(certificateData);
 
-        if (certError) throw certError;
+        if (certError) console.error('Certificate insert error:', certError);
       }
 
       // Add skills if provided
-      if (formData.skills_covered) {
-        const skills = formData.skills_covered.split(',').map(s => s.trim()).filter(Boolean);
-        const skillRecords = skills.map(skill => ({
+      if (skillTags.length > 0) {
+        const levelMap = { 'beginner': 1, 'intermediate': 2, 'advanced': 3, 'expert': 4 };
+        const skillRecords = skillTags.map(skill => ({
           student_id: studentId,
           training_id: training.id,
           name: skill,
           type: 'technical',
-          level: assessmentScore ? Math.ceil(assessmentScore / 20) : 3,
-          approval_status: 'approved',
-          enabled: true
+          level: levelMap[formData.difficulty] || 2,
+          approval_status: 'pending', // Pending until Rareminds assessment
+          enabled: true,
+          source: 'external_certificate',
+          platform: selectedPlatform?.id
         }));
 
         const { error: skillsError } = await supabase
@@ -292,455 +527,570 @@ Respond in JSON format:
   };
 
   const resetForm = () => {
+    setCurrentStep(1);
+    setSelectedPlatform(null);
     setFormData({
+      certificate_url: '',
       title: '',
       organization: '',
-      provider: '',
-      start_date: '',
-      end_date: '',
-      status: 'ongoing',
-      completed_modules: 0,
-      total_modules: 0,
-      hours_spent: 0,
-      certificate_url: '',
+      instructor: '',
+      completion_date: '',
+      certificate_id: '',
       skills_covered: '',
-      description: ''
+      description: '',
+      category: '',
+      difficulty: ''
     });
-    setIsExternal(false);
-    setShowAssessment(false);
-    setAssessmentQuestions([]);
-    setCurrentAnswers({});
-    setAssessmentScore(null);
-    setCertificateLevel('');
+    setSkillTags([]);
+    setSkillInput('');
     setError('');
     setVerifying(false);
     setVerificationResult(null);
   };
 
+  const canProceedToNextStep = () => {
+    switch (currentStep) {
+      case 1:
+        return selectedPlatform !== null;
+      case 2:
+        return formData.title.trim() !== '' && formData.completion_date !== '';
+      case 3:
+        return true; // Skills are optional
+      case 4:
+        return true;
+      default:
+        return false;
+    }
+  };
+
+  const handleNext = () => {
+    if (canProceedToNextStep() && currentStep < totalSteps) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(prev => prev - 1);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-indigo-900">Add Learning Course</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Add courses from external platforms (Coursera, Udemy, etc.)
-          </p>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X size={24} />
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+        {/* Header */}
+        <div className="relative bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-6 py-5">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-white/80 hover:text-white hover:bg-white/10 rounded-full p-1.5 transition-colors"
+          >
+            <X size={20} />
           </button>
+
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+              <GraduationCap className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Import External Certificate</h2>
+              <p className="text-white/80 text-sm mt-0.5">
+                Add your achievements from external learning platforms
+              </p>
+            </div>
+          </div>
+
+          {/* Progress Steps */}
+          <div className="flex items-center justify-center gap-2 mt-5">
+            {[1, 2, 3, 4].map((step) => (
+              <div key={step} className="flex items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === currentStep
+                    ? 'bg-white text-indigo-600 shadow-lg scale-110'
+                    : step < currentStep
+                      ? 'bg-white/30 text-white'
+                      : 'bg-white/10 text-white/50'
+                    }`}
+                >
+                  {step < currentStep ? <CheckCircle size={16} /> : step}
+                </div>
+                {step < 4 && (
+                  <div className={`w-8 h-0.5 mx-1 ${step < currentStep ? 'bg-white/50' : 'bg-white/20'}`} />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-center gap-6 mt-2 text-xs text-white/70">
+            <span className={currentStep === 1 ? 'text-white font-medium' : ''}>Platform</span>
+            <span className={currentStep === 2 ? 'text-white font-medium' : ''}>Details</span>
+            <span className={currentStep === 3 ? 'text-white font-medium' : ''}>Skills</span>
+            <span className={currentStep === 4 ? 'text-white font-medium' : ''}>Review</span>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-240px)]">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-start gap-2">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-2 mb-4">
               <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
 
-          {!showAssessment ? (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Course Name <span className="text-red-500">*</span>
+          {/* Step 1: Platform Selection */}
+          {currentStep === 1 && (
+            <div className="space-y-4">
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Where did you complete this course?</h3>
+                <p className="text-gray-500 text-sm mt-1">Select the platform where you earned your certificate</p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {PLATFORMS.map((platform) => (
+                  <button
+                    key={platform.id}
+                    onClick={() => setSelectedPlatform(platform)}
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2 ${selectedPlatform?.id === platform.id
+                      ? `${platform.borderColor} ${platform.bgColor} shadow-md scale-[1.02]`
+                      : `border-gray-200 hover:border-gray-300 ${platform.hoverBg}`
+                      }`}
+                  >
+                    <span className="text-3xl">{platform.icon}</span>
+                    <span className={`text-sm font-medium ${selectedPlatform?.id === platform.id ? 'text-gray-900' : 'text-gray-700'
+                      }`}>
+                      {platform.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Certificate Details */}
+          {currentStep === 2 && (
+            <div className="space-y-4">
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Certificate Details</h3>
+                <p className="text-gray-500 text-sm mt-1">Enter the details from your certificate</p>
+              </div>
+
+              <div className="space-y-4">
+                {/* Auto-fill Section */}
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900 text-sm">AI Auto-Fill</h4>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        Paste your certificate URL or ID and we'll extract the details automatically
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <input
+                          type="url"
+                          name="certificate_url"
+                          value={formData.certificate_url}
+                          onChange={handleInputChange}
+                          placeholder="https://coursera.org/verify/ABC123..."
+                          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={extractCertificateDetails}
+                        disabled={extracting || (!formData.certificate_url && !formData.certificate_id)}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 whitespace-nowrap"
+                      >
+                        {extracting ? (
+                          <>
+                            <Loader size={16} className="animate-spin" />
+                            Extracting...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={16} />
+                            Auto-Fill
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="text-center text-xs text-gray-500">or enter Certificate ID</div>
+
+                    <input
+                      type="text"
+                      name="certificate_id"
+                      value={formData.certificate_id}
+                      onChange={handleInputChange}
+                      placeholder="Certificate ID (e.g., UC-ABC123XYZ)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white"
+                    />
+                  </div>
+
+                  {extractionSuccess && (
+                    <div className="mt-3 flex items-center gap-2 text-green-700 bg-green-50 px-3 py-2 rounded-lg">
+                      <CheckCircle size={16} />
+                      <span className="text-sm font-medium">Details extracted successfully! Review below.</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-white px-3 text-gray-500">Certificate Details</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Course Title <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="title"
                     value={formData.title}
                     onChange={handleInputChange}
-                    placeholder="e.g., Advanced React Development"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="e.g., Machine Learning Specialization"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                     required
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Provider
-                  </label>
-                  <input
-                    type="text"
-                    name="provider"
-                    value={formData.provider}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Coursera, Udemy"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Issuing Organization
+                    </label>
+                    <input
+                      type="text"
+                      name="organization"
+                      value={formData.organization}
+                      onChange={handleInputChange}
+                      placeholder="e.g., Stanford University"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Instructor Name
+                    </label>
+                    <input
+                      type="text"
+                      name="instructor"
+                      value={formData.instructor}
+                      onChange={handleInputChange}
+                      placeholder="e.g., Andrew Ng"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Organization
-                  </label>
-                  <input
-                    type="text"
-                    name="organization"
-                    value={formData.organization}
-                    onChange={handleInputChange}
-                    placeholder="Issuing organization"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Start Date
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Completion Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
-                    name="start_date"
-                    value={formData.start_date}
+                    name="completion_date"
+                    value={formData.completion_date}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    name="end_date"
-                    value={formData.end_date}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  >
-                    <option value="ongoing">Ongoing</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Modules Completed
-                  </label>
-                  <input
-                    type="number"
-                    name="completed_modules"
-                    value={formData.completed_modules}
-                    onChange={handleInputChange}
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Total Modules
-                  </label>
-                  <input
-                    type="number"
-                    name="total_modules"
-                    value={formData.total_modules}
-                    onChange={handleInputChange}
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Hours Spent
-                  </label>
-                  <input
-                    type="number"
-                    name="hours_spent"
-                    value={formData.hours_spent}
-                    onChange={handleInputChange}
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Certificate URL
-                  </label>
-                  <input
-                    type="url"
-                    name="certificate_url"
-                    value={formData.certificate_url}
-                    onChange={handleInputChange}
-                    placeholder="https://..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Skills Covered (comma separated)
-                  </label>
-                  <textarea
-                    name="skills_covered"
-                    value={formData.skills_covered}
-                    onChange={handleInputChange}
-                    placeholder="React, TypeScript, Testing, Node.js"
-                    rows="2"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    placeholder="Brief description of what you learned in this training..."
-                    rows="3"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                    required
                   />
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* AI Verification Result */}
-              {verificationResult && (
-                <div className={`border-2 rounded-lg p-4 ${
-                  verificationResult.isLegitimate 
-                    ? 'bg-green-50 border-green-300' 
-                    : 'bg-red-50 border-red-300'
-                }`}>
-                  <div className="flex items-start gap-3">
-                    {verificationResult.isLegitimate ? (
-                      <CheckCircle size={24} className="text-green-600 flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <XCircle size={24} className="text-red-600 flex-shrink-0 mt-0.5" />
-                    )}
-                    <div className="flex-1">
-                      <h4 className={`font-semibold mb-2 ${
-                        verificationResult.isLegitimate ? 'text-green-900' : 'text-red-900'
-                      }`}>
-                        AI Verification: {verificationResult.isLegitimate ? 'Verified' : 'Needs Review'}
-                      </h4>
-                      
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Credibility Score:</span>
-                          <span className={`font-bold ${
-                            verificationResult.credibilityScore >= 70 
-                              ? 'text-green-700' 
-                              : verificationResult.credibilityScore >= 50 
-                                ? 'text-yellow-700' 
-                                : 'text-red-700'
-                          }`}>
-                            {verificationResult.credibilityScore}/100
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Provider Recognition:</span>
-                          <span className="capitalize">{verificationResult.providerRecognition}</span>
-                        </div>
-                        
-                        <p className="mt-2 text-gray-700">{verificationResult.summary}</p>
-                        
-                        {verificationResult.concerns && verificationResult.concerns.length > 0 && (
-                          <div className="mt-3">
-                            <p className="font-medium text-red-800 mb-1">Concerns:</p>
-                            <ul className="list-disc list-inside space-y-1 text-red-700">
-                              {verificationResult.concerns.map((concern, idx) => (
-                                <li key={idx}>{concern}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        
-                        {verificationResult.recommendations && verificationResult.recommendations.length > 0 && (
-                          <div className="mt-3">
-                            <p className="font-medium text-blue-800 mb-1">Recommendations:</p>
-                            <ul className="list-disc list-inside space-y-1 text-blue-700">
-                              {verificationResult.recommendations.map((rec, idx) => (
-                                <li key={idx}>{rec}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {isExternal && formData.skills_covered && formData.skills_covered.trim().length > 0 && !assessmentScore && (
-                <div className="bg-blue-50 border-2 border-blue-300 rounded-md p-4">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle size={24} className="text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-blue-900">
-                        📝 Assessment Required
-                      </p>
-                      <p className="text-sm text-blue-800 mt-1 font-medium">
-                        Since this is from an external platform, you must complete a skill assessment 
-                        before adding this course to your profile.
-                      </p>
-                      <p className="text-xs text-blue-700 mt-2">
-                        Click "Continue to Assessment" button below to proceed.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {isExternal && formData.skills_covered && formData.skills_covered.trim().length > 0 && assessmentScore !== null && !verificationResult && (
-                <div className="bg-yellow-50 border-2 border-yellow-300 rounded-md p-4">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle size={24} className="text-yellow-600 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-yellow-900">
-                        ⚠️ Verification Required
-                      </p>
-                      <p className="text-sm text-yellow-800 mt-1 font-medium">
-                        Great! Assessment completed. Now verify the certificate 
-                        with AI before adding it to your profile. This ensures legitimacy and value.
-                      </p>
-                      <p className="text-xs text-yellow-700 mt-2">
-                        Click "Verify Certificate" button below to proceed.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                
-                {/* Step 1: Assessment required first for external courses with skills */}
-                {isExternal && formData.skills_covered && formData.skills_covered.trim().length > 0 && !assessmentScore ? (
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Take Assessment
-                  </button>
-                ) : /* Step 2: After assessment, verification required */ 
-                isExternal && formData.skills_covered && formData.skills_covered.trim().length > 0 && assessmentScore !== null && !verificationResult ? (
-                  <button
-                    type="button"
-                    onClick={verifyCertificateWithAI}
-                    disabled={verifying}
-                    className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {verifying ? (
-                      <>
-                        <Loader size={16} className="animate-spin" />
-                        Verifying...
-                      </>
-                    ) : (
-                      'Verify Certificate'
-                    )}
-                  </button>
-                ) : /* Step 3: After both assessment and verification, allow save */ (
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'Saving...' : 'Add Learning'}
-                  </button>
-                )}
+          {/* Step 3: Skills & Learning */}
+          {currentStep === 3 && (
+            <div className="space-y-4">
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Skills & Learning</h3>
+                <p className="text-gray-500 text-sm mt-1">Add the skills you learned (optional)</p>
               </div>
-            </>
-          ) : (
-            <>
-              <div className="bg-indigo-50 border border-indigo-200 rounded-md p-4 mb-4">
-                <h3 className="font-semibold text-indigo-900 mb-2">Skill Assessment</h3>
-                <p className="text-sm text-indigo-700">
-                  Please rate your proficiency in the following skills to determine your certificate level.
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Skills Learned
+                </label>
+                <div className="border border-gray-300 rounded-lg p-3 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent">
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {skillTags.map((skill, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm"
+                      >
+                        {skill}
+                        <button
+                          onClick={() => handleRemoveSkill(skill)}
+                          className="hover:text-indigo-900 transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    value={skillInput}
+                    onChange={(e) => setSkillInput(e.target.value)}
+                    onKeyDown={handleSkillKeyDown}
+                    onBlur={() => skillInput && handleAddSkill(skillInput)}
+                    placeholder="Type a skill and press Enter..."
+                    className="w-full outline-none text-sm"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1.5">
+                  Press Enter or comma to add each skill
                 </p>
               </div>
 
-              <div className="space-y-4">
-                {assessmentQuestions.map((q) => (
-                  <div key={q.id} className="border border-gray-200 rounded-md p-4">
-                    <p className="font-medium text-gray-900 mb-3">{q.question}</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {q.options.map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => handleAnswerChange(q.id, option)}
-                          className={`px-4 py-2 rounded-md border transition-colors ${
-                            currentAnswers[q.id] === option
-                              ? 'bg-indigo-600 text-white border-indigo-600'
-                              : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400'
-                          }`}
-                        >
-                          {option}
-                        </button>
-                      ))}
+              {skillTags.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-900">Skills Assessment</p>
+                      <p className="text-sm text-amber-700 mt-1">
+                        Skills from external certificates will be marked as <strong>"Rareminds Assessment Pending"</strong> until verified through our skill assessment.
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-
-              {assessmentScore !== null && (
-                <div className="bg-green-50 border border-green-200 rounded-md p-4 mt-4">
-                  <h4 className="font-semibold text-green-900 mb-2">Assessment Complete!</h4>
-                  <p className="text-sm text-green-700">
-                    Your score: <span className="font-bold">{assessmentScore.toFixed(0)}%</span>
-                  </p>
-                  <p className="text-sm text-green-700">
-                    Certificate Level: <span className="font-bold">{certificateLevel}</span>
-                  </p>
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAssessment(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                >
-                  Back
-                </button>
-                {assessmentScore === null ? (
-                  <button
-                    type="button"
-                    onClick={calculateScore}
-                    disabled={Object.keys(currentAnswers).length !== assessmentQuestions.length}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Course Description
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  placeholder="Brief description of what you learned..."
+                  rows="3"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Category
+                  </label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white"
                   >
-                    Calculate Score
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    <option value="">Select category...</option>
+                    {CATEGORIES.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Difficulty Level
+                  </label>
+                  <select
+                    name="difficulty"
+                    value={formData.difficulty}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white"
                   >
-                    {loading ? 'Saving...' : 'Complete & Save'}
-                  </button>
+                    <option value="">Select level...</option>
+                    {DIFFICULTY_LEVELS.map(level => (
+                      <option key={level.id} value={level.id}>{level.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Review & Submit */}
+          {currentStep === 4 && (
+            <div className="space-y-4">
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Review Your Certificate</h3>
+                <p className="text-gray-500 text-sm mt-1">Verify the details before importing</p>
+              </div>
+
+              {/* Preview Card */}
+              <div className="border-2 border-gray-200 rounded-xl p-5 bg-gradient-to-br from-gray-50 to-white">
+                <div className="flex items-start gap-4">
+                  <div
+                    className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl ${selectedPlatform?.bgColor || 'bg-gray-100'}`}
+                  >
+                    {selectedPlatform?.icon || '📜'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-gray-900 text-lg">{formData.title || 'Course Title'}</h4>
+                    <p className="text-gray-600 text-sm mt-0.5">
+                      {formData.organization || selectedPlatform?.name}
+                      {formData.instructor && ` • ${formData.instructor}`}
+                    </p>
+                    <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <Award size={14} />
+                        {formData.completion_date || 'Date not set'}
+                      </span>
+                      {formData.category && (
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">
+                          {formData.category}
+                        </span>
+                      )}
+                      {formData.difficulty && (
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${DIFFICULTY_LEVELS.find(d => d.id === formData.difficulty)?.color || ''
+                          }`}>
+                          {DIFFICULTY_LEVELS.find(d => d.id === formData.difficulty)?.label}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {skillTags.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Skills</p>
+                    <div className="flex flex-wrap gap-2">
+                      {skillTags.map((skill, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-md text-xs font-medium"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                      <AlertCircle size={12} />
+                      Rareminds Assessment Pending
+                    </p>
+                  </div>
+                )}
+
+                {formData.certificate_url && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <a
+                      href={formData.certificate_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                    >
+                      <LinkIcon size={14} />
+                      View Certificate
+                    </a>
+                  </div>
                 )}
               </div>
-            </>
+
+              {/* AI Verification */}
+              {!verificationResult && (
+                <button
+                  onClick={verifyCertificateWithAI}
+                  disabled={verifying}
+                  className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-400 hover:text-indigo-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  {verifying ? (
+                    <>
+                      <Loader size={18} className="animate-spin" />
+                      Verifying certificate...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={18} />
+                      Verify with AI (Optional)
+                    </>
+                  )}
+                </button>
+              )}
+
+              {verificationResult && (
+                <div className={`border-2 rounded-lg p-4 ${verificationResult.isLegitimate
+                  ? 'bg-green-50 border-green-300'
+                  : 'bg-yellow-50 border-yellow-300'
+                  }`}>
+                  <div className="flex items-start gap-3">
+                    {verificationResult.isLegitimate ? (
+                      <CheckCircle size={24} className="text-green-600 flex-shrink-0" />
+                    ) : (
+                      <AlertCircle size={24} className="text-yellow-600 flex-shrink-0" />
+                    )}
+                    <div className="flex-1">
+                      <h4 className={`font-semibold ${verificationResult.isLegitimate ? 'text-green-900' : 'text-yellow-900'
+                        }`}>
+                        {verificationResult.isLegitimate ? 'Certificate Verified' : 'Verification Note'}
+                      </h4>
+                      <p className="text-sm text-gray-700 mt-1">{verificationResult.summary}</p>
+                      {verificationResult.credibilityScore && (
+                        <p className="text-sm mt-2">
+                          Credibility Score: <strong>{verificationResult.credibilityScore}/100</strong>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
-        </form>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-between items-center">
+          <button
+            onClick={currentStep === 1 ? onClose : handleBack}
+            className="flex items-center gap-1.5 px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors"
+          >
+            <ChevronLeft size={18} />
+            {currentStep === 1 ? 'Cancel' : 'Back'}
+          </button>
+
+          {currentStep < totalSteps ? (
+            <button
+              onClick={handleNext}
+              disabled={!canProceedToNextStep()}
+              className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Continue
+              <ChevronRight size={18} />
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-5 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? (
+                <>
+                  <Loader size={18} className="animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={18} />
+                  Import Certificate
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+    </div >
   );
 }

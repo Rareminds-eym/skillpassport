@@ -79,7 +79,7 @@ export const useAssessment = () => {
   }, [user?.id]);
 
   // Start a new assessment
-  const startAssessment = useCallback(async (streamId) => {
+  const startAssessment = useCallback(async (streamId, gradeLevel) => {
     if (!user?.id) throw new Error('User not authenticated');
 
     try {
@@ -87,11 +87,11 @@ export const useAssessment = () => {
       setError(null);
 
       // Create new attempt
-      const attempt = await assessmentService.createAttempt(user.id, streamId);
+      const attempt = await assessmentService.createAttempt(user.id, streamId, gradeLevel);
       setCurrentAttempt(attempt);
 
-      // Load all questions for this stream
-      const allQuestions = await assessmentService.fetchAllQuestions(streamId);
+      // Load all questions for this stream and grade level
+      const allQuestions = await assessmentService.fetchAllQuestions(streamId, gradeLevel);
       setQuestions(allQuestions);
       setResponses({});
 
@@ -112,8 +112,8 @@ export const useAssessment = () => {
       const attempt = await assessmentService.getAttemptWithResults(attemptId);
       setCurrentAttempt(attempt);
 
-      // Load questions for this stream
-      const allQuestions = await assessmentService.fetchAllQuestions(attempt.stream_id);
+      // Load questions for this stream and grade level
+      const allQuestions = await assessmentService.fetchAllQuestions(attempt.stream_id, attempt.grade_level);
       setQuestions(allQuestions);
 
       // Restore responses
@@ -195,10 +195,11 @@ export const useAssessment = () => {
         currentAttempt.id,
         user.id,
         currentAttempt.stream_id,
+        currentAttempt.grade_level,
         geminiResults,
         sectionTimings
       );
-      
+
       setCurrentAttempt(prev => ({
         ...prev,
         status: 'completed',

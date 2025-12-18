@@ -1,15 +1,9 @@
 /**
  * AI Job Matching Service
- * Uses OpenAI to match student profiles with job opportunities
+ * Uses Claude AI to match student profiles with job opportunities
  */
 
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
-const OPENAI_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-
-// Rate limiting configuration
-const MAX_RETRIES = 3;
-const INITIAL_RETRY_DELAY = 1000; // 1 second
-const MAX_RETRY_DELAY = 10000; // 10 seconds
+import { callClaude, isClaudeConfigured } from './claudeService';
 
 // Cache for AI responses (simple in-memory cache)
 const matchCache = new Map();
@@ -59,9 +53,9 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
       return [];
     }
 
-    if (!OPENAI_API_KEY) {
-      console.error('❌ OpenAI API key not configured');
-      throw new Error('OpenAI API key not found. Please add VITE_OPENAI_API_KEY to .env file');
+    if (!isClaudeConfigured()) {
+      console.error('❌ Claude API key not configured');
+      throw new Error('Claude API key not found. Please add VITE_CLAUDE_API_KEY to .env file');
     }
 
     // Extract student profile data
@@ -104,69 +98,17 @@ export async function matchJobsWithAI(studentProfile, opportunities, topN = 3) {
     // Create AI prompt
     const prompt = createMatchingPrompt(studentData, opportunitiesData, topN);
 
+    // Call Claude API using centralized service
+    const systemPrompt = 'You are an expert career counselor and job matching AI. Your task is to analyze student profiles and match them with the most suitable job opportunities based on their skills, education, training, and experience.';
 
-    // Call OpenAI API via OpenRouter
-    const requestBody = {
-      model: 'openai/gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert career counselor and job matching AI. Your task is to analyze student profiles and match them with the most suitable job opportunities based on their skills, education, training, and experience.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
+    const aiContent = await callClaude(prompt, {
+      systemPrompt,
+      maxTokens: 2000,
       temperature: 0.7,
-      max_tokens: 2000
-    };
-
-
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'HTTP-Referer': window.location.origin || 'http://localhost:3001',
-        'X-Title': 'SkillPassport Job Matching'
-      },
-      body: JSON.stringify(requestBody)
+      cacheKey: cacheKey // Use same cache key for consistency
     });
 
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: { message: response.statusText } }));
-      console.error('❌ OpenRouter API Error Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorData: errorData,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-      
-      // More specific error message
-      if (response.status === 401) {
-        throw new Error('API authentication failed. Please verify your OpenRouter API key is valid and active.');
-      }
-      
-      throw new Error(`OpenRouter API error: ${errorData.error?.message || errorData.message || response.statusText}`);
-    }
-
-    const data = await response.json();
-    console.log({
-      hasChoices: !!data.choices,
-      choicesLength: data.choices?.length,
-      firstChoice: data.choices?.[0],
-      usage: data.usage
-    });
-
-    // Parse AI response
-    const aiContent = data.choices[0]?.message?.content;
-    
-    if (!aiContent) {
-      console.error('❌ No content in AI response');
-      throw new Error('No content in AI response');
-    }
+    console.log('✅ Claude job matching response received');
 
     // Extract JSON from AI response
     const matches = parseAIResponse(aiContent);
