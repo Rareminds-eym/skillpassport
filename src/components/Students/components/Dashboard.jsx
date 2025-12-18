@@ -531,7 +531,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="bg-gray-50 py-8 px-6">
+    <div className="bg-gray-50 py-4 px-6">
       <div className="max-w-7xl mx-auto">
         {/* Connection Status Banner */}
         <div className="mb-6">

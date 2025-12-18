@@ -1,21 +1,25 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  User,
-  ChevronDown,
-  LogOut,
-  Settings,
-  Edit3,
-  Copy,
-  Check,
-  Bookmark,
-  Sparkles,
-  Bell,
-  Loader2,
-  ChevronUp,
-} from "lucide-react";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
+  BellIcon,
+  UserCircleIcon,
+  ArrowRightOnRectangleIcon,
+  Cog6ToothIcon,
+  PencilIcon,
+  DocumentDuplicateIcon,
+  CheckIcon,
+  BookmarkIcon,
+  Bars3Icon,
+  XMarkIcon,
+  HomeIcon,
+  AcademicCapIcon,
+  BookOpenIcon,
+  BriefcaseIcon,
+  RocketLaunchIcon,
+  SparklesIcon,
+  ClipboardDocumentListIcon,
+  EnvelopeIcon,
+} from "@heroicons/react/24/outline";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,10 +28,13 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { useAuth } from "../../../context/AuthContext";
-import { useStudentRealtimeActivities } from "../../../hooks/useStudentRealtimeActivities";
-import { recentUpdates as mockRecentUpdates } from '../data/mockData';
+import { useNotifications } from "../../../hooks/useNotifications";
+import NotificationPanel from "./NotificationPanel";
 
 const Header = ({ activeTab, setActiveTab }) => {
+  const [scrolled, setScrolled] = useState(false);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
   // Add scrollbar-hide and navbar hover styles
   React.useEffect(() => {
     const style = document.createElement('style');
@@ -39,89 +46,50 @@ const Header = ({ activeTab, setActiveTab }) => {
       .scrollbar-hide::-webkit-scrollbar {
         display: none;
       }
-      .nav-tab {
-        text-decoration: none;
-        transition: 0.4s;
-        position: relative;
+      .header-hidden {
+        transform: translateY(-100%);
       }
-      .nav-tab::before {
-        content: "";
-        position: absolute;
-        width: 0;
-        height: 4px;
-        background-color: #3B82F6;
-        bottom: 0;
-        left: 0;
-        transition: width 0.4s;
-      }
-      .nav-tab:hover::before {
-        width: 100%;
-      }
-      .nav-tab.active::before {
-        width: 100%;
+      .header-visible {
+        transform: translateY(0);
       }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
   }, []);
+
+  // Handle scroll to hide/show header
+  React.useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY < 10) {
+        // At the top, always show
+        setScrolled(false);
+      } else if (currentScrollY > lastScrollY) {
+        // Scrolling down
+        setScrolled(true);
+      } else {
+        // Scrolling up
+        setScrolled(false);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
+
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showAllUpdates, setShowAllUpdates] = useState(false);
   const { logout, user } = useAuth();
 
-  // Fetch real-time student activities
+  // Fetch real-time notifications
   const userEmail = user?.email || localStorage.getItem("userEmail");
-  const {
-    activities: recentActivities,
-    isLoading: activitiesLoading,
-    isError: activitiesError
-  } = useStudentRealtimeActivities(userEmail, 10);
-
-  // Use real activities instead of mock data
-  const recentUpdates = recentActivities.length > 0 ? recentActivities : mockRecentUpdates;
-
-  // Read/Unread tracking using localStorage
-  const [readNotifications, setReadNotifications] = useState(() => {
-    try {
-      const stored = localStorage.getItem(`readNotifications_${userEmail}`);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Save read notifications to localStorage whenever it changes
-  React.useEffect(() => {
-    if (userEmail) {
-      localStorage.setItem(`readNotifications_${userEmail}`, JSON.stringify(readNotifications));
-    }
-  }, [readNotifications, userEmail]);
-
-  // Calculate unread count
-  const unreadCount = recentUpdates.filter(update =>
-    !readNotifications.includes(update.id || update.timestamp)
-  ).length;
-
-  // Mark notification as read
-  const markAsRead = (notificationId) => {
-    if (!readNotifications.includes(notificationId)) {
-      setReadNotifications(prev => [...prev, notificationId]);
-    }
-  };
-
-  // Mark all notifications as read
-  const markAllAsRead = () => {
-    const allIds = recentUpdates.map(update => update.id || update.timestamp);
-    setReadNotifications(allIds);
-  };
-
-  // Check if notification is read
-  const isNotificationRead = (notificationId) => {
-    return readNotifications.includes(notificationId);
-  };
+  const { unreadCount } = useNotifications(userEmail);
 
   // Generate profile link
   const profileLink = useMemo(() => {
@@ -136,46 +104,31 @@ const Header = ({ activeTab, setActiveTab }) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Get icon for mobile menu tabs
-  const getTabIcon = (tabId) => {
-    const icons = {
-      skills: "🎯",
-      training: "📚",
-      experience: "💼",
-      courses: "📚",
-      "digital-portfolio": "🎨",
-      opportunities: "🚀",
-      "career-ai": "✨",
-      assignments: "📋",
-      messages: "💬",
-      clubs: "🎭",
-    };
-    return icons[tabId] || "📄";
-  };
-
   const tabs = [
     // { id: "skills", label: "Skills" },
-    { id: "training", label: "My Learning" },
+    { id: "training", label: "My Learning", icon: AcademicCapIcon },
     // { id: "experience", label: "Experience" },
-    { id: "courses", label: "Courses", },
-    { id: "digital-portfolio", label: "Digital Portfolio" },
-    { id: "opportunities", label: "Opportunities" },
-    { id: "career-ai", label: "Career AI", icon: "✨" },
-    { id: "assignments", label: "My Class" },
+    { id: "courses", label: "Courses", icon: BookOpenIcon },
+    { id: "digital-portfolio", label: "Digital Portfolio", icon: BriefcaseIcon },
+    { id: "opportunities", label: "Opportunities", icon: RocketLaunchIcon },
+    { id: "career-ai", label: "Career AI", icon: SparklesIcon },
+    { id: "assignments", label: "My Class", icon: ClipboardDocumentListIcon },
     // {id: "clubs", label: "Co-Curriculars"},
-    { id: "messages", label: "Messages" },
+    { id: "messages", label: "Messages", icon: EnvelopeIcon },
     // Analytics removed - now integrated in Dashboard with tabs
   ];
 
   return (
-    <header className="bg-white border-b border-gray-200 shadow-sm py-2 px-1 sm:px-2 lg:px-4 sticky top-0 z-50">
+    <header className={`bg-white border-b border-gray-200 shadow-sm py-2 px-1 sm:px-2 lg:px-4 sticky top-0 z-50 transition-transform duration-300 ease-in-out ${
+      scrolled ? 'header-hidden' : 'header-visible'
+    }`}>
       <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
         {/* Logo and Title */}
         <div className="flex items-center flex-shrink-0">
           <img
             src="/RareMinds.webp"
             alt="RareMinds Logo"
-            className="w-20 h-7 sm:w-24 sm:h-8 lg:w-28 lg:h-9 object-contain bg-white"
+            className="w-20 h-7 sm:w-24 sm:h-8 lg:w-auto lg:h-10 object-contain bg-white"
           />
         </div>
 
@@ -189,10 +142,15 @@ const Header = ({ activeTab, setActiveTab }) => {
                 localStorage.removeItem("dashboardActiveNav");
                 navigate("/student/dashboard");
               }}
-              className={`nav-tab relative py-2 px-1.5 lg:px-2 xl:px-3 text-xs lg:text-sm xl:text-sm font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === "dashboard" ? "active font-semibold text-blue-600" : ""
-                }`}
+              className={`group flex items-center py-2 px-1.5 lg:px-2 xl:px-2 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
+                activeTab === "dashboard"
+                  ? "bg-primary-50 text-primary-700"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              }`}
             >
-              Dashboard
+              <HomeIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span className="hidden xl:inline">Dashboard</span>
+              <span className="xl:hidden">D</span>
             </button>
             {tabs.map((tab) => (
               <button
@@ -217,7 +175,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/applications");
                   } else if (tab.id === "assignments") {
                     navigate("/student/assignments");
-                  // } 
+                  // }
                   // else if (tab.id === "clubs") {
                   //   navigate("/student/clubs");
                   } else if (tab.id === "career-ai") {
@@ -226,10 +184,13 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/messages");
                   }
                 }}
-                className={`nav-tab relative py-2 px-1.5 lg:px-2 xl:px-3 text-xs lg:text-sm xl:text-sm font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap ${activeTab === tab.id ? "active font-semibold text-blue-600" : ""
-                  }`}
+                className={`group flex items-center py-2 px-1.5 lg:px-2 xl:px-2 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? "bg-primary-50 text-primary-700"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
               >
-                {tab.icon && <span className="mr-1">{tab.icon}</span>}
+                {tab.icon && <tab.icon className="h-4 w-4 mr-2 flex-shrink-0" />}
                 <span className="hidden xl:inline">{tab.label}</span>
                 <span className="xl:hidden">{tab.label.split(' ').map(word => word.charAt(0)).join('')}</span>
               </button>
@@ -247,10 +208,14 @@ const Header = ({ activeTab, setActiveTab }) => {
                 localStorage.removeItem("dashboardActiveNav");
                 navigate("/student/dashboard");
               }}
-              className={`nav-tab relative py-2 px-3 text-xs font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap flex-shrink-0 ${activeTab === "dashboard" ? "active font-semibold text-blue-600" : ""
-                }`}
+              className={`group flex items-center py-2 px-1 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                activeTab === "dashboard"
+                  ? "bg-primary-50 text-primary-700"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              }`}
             >
-              Dashboard
+              <HomeIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+              D
             </button>
             {tabs.map((tab) => (
               <button
@@ -283,10 +248,13 @@ const Header = ({ activeTab, setActiveTab }) => {
                     navigate("/student/messages");
                   }
                 }}
-                className={`nav-tab relative py-2 px-3 text-xs font-medium transition-all duration-200 text-gray-900 hover:text-blue-600 bg-transparent border-none outline-none whitespace-nowrap flex-shrink-0 ${activeTab === tab.id ? "active font-semibold text-blue-600" : ""
-                  }`}
+                className={`group flex items-center py-2 px-1 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                  activeTab === tab.id
+                    ? "bg-primary-50 text-primary-700"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
               >
-                {tab.icon && <span className="mr-1">{tab.icon}</span>}
+                {tab.icon && <tab.icon className="h-4 w-4 mr-2 flex-shrink-0" />}
                 {tab.label.split(' ').map(word => word.charAt(0)).join('')}
               </button>
             ))}
@@ -298,164 +266,57 @@ const Header = ({ activeTab, setActiveTab }) => {
           {/* Hamburger Menu - Mobile and Small Tablets */}
           <div className="flex md:hidden items-center">
             <button
-              className="p-2 rounded-md text-blue-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-300"
+              className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
               onClick={() => setMobileMenuOpen((open) => !open)}
               aria-label="Open menu"
             >
-              <svg
-                className="w-6 h-6 sm:w-7 sm:h-7"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
+              {mobileMenuOpen ? (
+                <XMarkIcon className="h-6 w-6" />
+              ) : (
+                <Bars3Icon className="h-6 w-6" />
+              )}
             </button>
           </div>
 
-          {/* Notifications Dropdown */}
-          <DropdownMenu open={showNotifications} onOpenChange={setShowNotifications}>
-            <DropdownMenuTrigger asChild>
-              <button className="relative p-2 rounded-full hover:bg-blue-50 transition-colors">
-                <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 hover:text-blue-600" />
-                {unreadCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 bg-red-500 text-white text-xs min-w-[20px] h-5 flex items-center justify-center px-1 animate-pulse">
-                    {unreadCount}
-                  </Badge>
-                )}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-80 sm:w-96 bg-white border border-gray-200 shadow-xl max-h-[500px] overflow-y-auto"
+          {/* Notifications */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications((s) => !s)}
+              className="relative p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
             >
-              <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-blue-700 flex items-center gap-2">
-                    <Bell className="w-5 h-5" />
-                    Recent Updates
-                    {unreadCount > 0 && (
-                      <Badge className="bg-red-500 text-white text-xs ml-2">
-                        {unreadCount} new
-                      </Badge>
-                    )}
-                  </h3>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={markAllAsRead}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
-                    >
-                      Mark all read
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="p-3 space-y-3">
-                {activitiesLoading && recentActivities.length === 0 ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="w-5 h-5 animate-spin text-blue-600 mr-2" />
-                    <span className="text-sm text-gray-600">Loading activities...</span>
-                  </div>
-                ) : recentActivities.length === 0 ? (
-                  <div className="text-center py-6">
-                    <Bell className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">No recent activities yet</p>
-                    <p className="text-xs text-gray-400 mt-1">Recruiters' actions will appear here</p>
-                  </div>
-                ) : (
-                  recentUpdates?.slice(0, showAllUpdates ? recentUpdates.length : 4).map((update, index) => {
-                    const notificationId = update.id || update.timestamp;
-                    const timestamp = update.timestamp;
-                    const isRead = isNotificationRead(notificationId);
+              <BellIcon className="h-6 w-6" />
+              {unreadCount > 0 && (
+                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+              )}
+            </button>
 
-                    const getActivityColor = (type, isRead) => {
-                      if (isRead) {
-                        return 'from-gray-50 to-white border-l-gray-300 opacity-70';
-                      }
-                      switch(type) {
-                        case 'shortlist_added': return 'from-yellow-50 to-white border-l-yellow-400';
-                        case 'offer_extended': return 'from-green-50 to-white border-l-green-400';
-                        case 'offer_accepted': return 'from-emerald-50 to-white border-l-emerald-400';
-                        case 'placement_hired': return 'from-purple-50 to-white border-l-purple-400';
-                        case 'stage_change': return 'from-indigo-50 to-white border-l-indigo-400';
-                        case 'application_rejected': return 'from-red-50 to-white border-l-red-400';
-                        default: return 'from-blue-50 to-white border-l-blue-400';
-                      }
-                    };
-
-                    return (
-                      <div
-                        key={notificationId || index}
-                        onClick={() => markAsRead(notificationId)}
-                        className={`p-3 bg-gradient-to-r ${getActivityColor(update.type, isRead)} rounded-lg border-l-2 hover:shadow-md transition-all cursor-pointer relative ${!isRead ? 'border-l-4' : ''}`}
-                      >
-                        {!isRead && (
-                          <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                        )}
-                        <p className={`text-sm ${isRead ? 'text-gray-600' : 'text-gray-900'} font-medium`}>
-                          {update.user && <span className={isRead ? 'text-gray-500' : 'text-blue-700'}>{update.user}</span>}
-                          {update.action && <span className="text-gray-600"> {update.action} </span>}
-                          {update.candidate && <span className={isRead ? 'font-normal' : 'font-semibold'}>{update.candidate}</span>}
-                        </p>
-                        {update.details && (
-                          <p className="text-xs text-gray-600 mt-1">{update.details}</p>
-                        )}
-                        <p className="text-xs text-gray-500 mt-1">
-                          {typeof timestamp === 'string' && timestamp.includes('ago')
-                            ? timestamp
-                            : new Date(timestamp).toLocaleString()}
-                        </p>
-                      </div>
-                    );
-                  })
-                )}
-                {recentActivities.length > 4 && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowAllUpdates(!showAllUpdates)}
-                    className="w-full border-blue-300 text-blue-700 hover:bg-blue-50 mt-2"
-                  >
-                    {showAllUpdates ? (
-                      <>
-                        <ChevronUp className="w-4 h-4 mr-2" />
-                        Show Less
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="w-4 h-4 mr-2" />
-                        View All Updates ({recentActivities.length})
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            {/* Notification Panel */}
+            <NotificationPanel
+              isOpen={showNotifications}
+              onClose={() => setShowNotifications(false)}
+              studentEmail={userEmail}
+            />
+          </div>
 
           {/* Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-600 flex items-center justify-center shadow-md hover:bg-blue-700 transition-colors">
-                <User className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+              <button className="flex items-center space-x-3 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <UserCircleIcon className="h-8 w-8 text-gray-400" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-48 bg-white/80 backdrop-blur-md border border-gray-200 shadow-xl"
+              className="w-48 bg-white border border-gray-200 shadow-xl"
             >
               <DropdownMenuItem
                 onClick={() => {
                   setActiveTab("profile");
                   navigate("/student/profile");
                 }}
-                className="cursor-pointer"
+                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
-                <Edit3 className="w-4 h-4 mr-2" />
+                <PencilIcon className="w-4 h-4 mr-2" />
                 Edit Profile
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -463,9 +324,9 @@ const Header = ({ activeTab, setActiveTab }) => {
                   setActiveTab("saved-jobs");
                   navigate("/student/saved-jobs");
                 }}
-                className="cursor-pointer"
+                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
-                <Bookmark className="w-4 h-4 mr-2" />
+                <BookmarkIcon className="w-4 h-4 mr-2" />
                 Saved Jobs
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -473,20 +334,20 @@ const Header = ({ activeTab, setActiveTab }) => {
                   setActiveTab("settings");
                   navigate("/student/settings");
                 }}
-                className="cursor-pointer"
+                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
-                <Settings className="w-4 h-4 mr-2" />
+                <Cog6ToothIcon className="w-4 h-4 mr-2" />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                className="text-red-600"
                 onClick={() => {
                   logout();
                   navigate("/login");
                 }}
+                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
               >
-                <LogOut className="w-4 h-4 mr-2" />
+                <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
                 Logout
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -505,11 +366,14 @@ const Header = ({ activeTab, setActiveTab }) => {
                 navigate("/student/dashboard");
                 setMobileMenuOpen(false);
               }}
-              className={`w-full text-left py-3 px-4 rounded-lg text-gray-900 hover:text-blue-600 hover:bg-blue-50 font-medium transition-all duration-200 ${activeTab === "dashboard" ? "font-semibold bg-blue-100 text-blue-700" : ""
-                }`}
+              className={`w-full text-left py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
+                activeTab === "dashboard"
+                  ? "bg-primary-50 text-primary-700"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              }`}
             >
               <div className="flex items-center">
-                <span>📊</span>
+                <HomeIcon className="h-5 w-5 flex-shrink-0" />
                 <span className="ml-3">Dashboard</span>
               </div>
             </button>
@@ -543,11 +407,14 @@ const Header = ({ activeTab, setActiveTab }) => {
                   }
                   setMobileMenuOpen(false);
                 }}
-                className={`w-full text-left py-3 px-4 rounded-lg text-gray-900 hover:text-blue-600 hover:bg-blue-50 font-medium transition-all duration-200 ${activeTab === tab.id ? "font-semibold bg-blue-100 text-blue-700" : ""
-                  }`}
+                className={`w-full text-left py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  activeTab === tab.id
+                    ? "bg-primary-50 text-primary-700"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
               >
                 <div className="flex items-center">
-                  <span>{tab.icon || getTabIcon(tab.id)}</span>
+                  {tab.icon && <tab.icon className="h-5 w-5 flex-shrink-0" />}
                   <span className="ml-3">{tab.label}</span>
                 </div>
               </button>
@@ -717,9 +584,9 @@ const Header = ({ activeTab, setActiveTab }) => {
                     title={copied ? "Copied!" : "Copy Link"}
                   >
                     {copied ? (
-                      <Check className="w-5 h-5" />
+                      <CheckIcon className="w-5 h-5" />
                     ) : (
-                      <Copy className="w-5 h-5" />
+                      <DocumentDuplicateIcon className="w-5 h-5" />
                     )}
                   </button>
                 </div>
