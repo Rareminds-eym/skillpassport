@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
 import { callClaudeJSON, callClaudeVisionJSON, isClaudeConfigured } from '../../../services/claudeService';
 import {
@@ -16,7 +16,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 
-// Platform configurations with brand colors and icons
+// Platform configurations with brand colors, icons, and verification URL templates
 const PLATFORMS = [
   {
     id: 'coursera',
@@ -26,7 +26,8 @@ const PLATFORMS = [
     hoverBg: 'hover:bg-[#0056D2]/20',
     borderColor: 'border-[#0056D2]',
     icon: '🎓',
-    urlPattern: /coursera\.org/i
+    urlPattern: /coursera\.org/i,
+    verifyUrlTemplate: (certId) => `https://www.coursera.org/verify/${certId}`
   },
   {
     id: 'linkedin',
@@ -36,7 +37,8 @@ const PLATFORMS = [
     hoverBg: 'hover:bg-[#0A66C2]/20',
     borderColor: 'border-[#0A66C2]',
     icon: '💼',
-    urlPattern: /linkedin\.com\/learning/i
+    urlPattern: /linkedin\.com\/learning/i,
+    verifyUrlTemplate: null // LinkedIn doesn't have a simple verification URL
   },
   {
     id: 'udemy',
@@ -46,7 +48,8 @@ const PLATFORMS = [
     hoverBg: 'hover:bg-[#A435F0]/20',
     borderColor: 'border-[#A435F0]',
     icon: '📚',
-    urlPattern: /udemy\.com/i
+    urlPattern: /udemy\.com/i,
+    verifyUrlTemplate: (certId) => `https://www.udemy.com/certificate/${certId}`
   },
   {
     id: 'edx',
@@ -56,7 +59,8 @@ const PLATFORMS = [
     hoverBg: 'hover:bg-[#02262B]/20',
     borderColor: 'border-[#02262B]',
     icon: '🏛️',
-    urlPattern: /edx\.org/i
+    urlPattern: /edx\.org/i,
+    verifyUrlTemplate: (certId) => `https://courses.edx.org/certificates/${certId}`
   },
   {
     id: 'pluralsight',
@@ -66,7 +70,8 @@ const PLATFORMS = [
     hoverBg: 'hover:bg-[#F15B2A]/20',
     borderColor: 'border-[#F15B2A]',
     icon: '💡',
-    urlPattern: /pluralsight\.com/i
+    urlPattern: /pluralsight\.com/i,
+    verifyUrlTemplate: null // Pluralsight verification varies
   },
   {
     id: 'other',
@@ -76,7 +81,8 @@ const PLATFORMS = [
     hoverBg: 'hover:bg-gray-200',
     borderColor: 'border-gray-400',
     icon: '➕',
-    urlPattern: null
+    urlPattern: null,
+    verifyUrlTemplate: null
   }
 ];
 
@@ -98,6 +104,90 @@ const DIFFICULTY_LEVELS = [
   { id: 'advanced', label: 'Advanced', color: 'text-orange-600 bg-orange-50 border-orange-200' },
   { id: 'expert', label: 'Expert', color: 'text-red-600 bg-red-50 border-red-200' }
 ];
+
+// Month name to number mapping
+const MONTH_MAP = {
+  'jan': '01', 'january': '01',
+  'feb': '02', 'february': '02',
+  'mar': '03', 'march': '03',
+  'apr': '04', 'april': '04',
+  'may': '05',
+  'jun': '06', 'june': '06',
+  'jul': '07', 'july': '07',
+  'aug': '08', 'august': '08',
+  'sep': '09', 'sept': '09', 'september': '09',
+  'oct': '10', 'october': '10',
+  'nov': '11', 'november': '11',
+  'dec': '12', 'december': '12',
+};
+
+/**
+ * Parse various date formats and return YYYY-MM-DD
+ * Handles: "Jan. 28, 2025", "January 28, 2025", "28/01/2025", "2025-01-28", etc.
+ */
+const parseFlexibleDate = (dateStr) => {
+  if (!dateStr) return '';
+  
+  // Already in correct format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr;
+  }
+  
+  // Clean up the string
+  const cleaned = dateStr.trim().replace(/\./g, '').replace(/,/g, '');
+  
+  // Try "Month DD YYYY" or "Month DD, YYYY" format (e.g., "Jan 28 2025")
+  const monthFirstMatch = cleaned.match(/^([A-Za-z]+)\s+(\d{1,2})\s+(\d{4})$/i);
+  if (monthFirstMatch) {
+    const [, month, day, year] = monthFirstMatch;
+    const monthNum = MONTH_MAP[month.toLowerCase()];
+    if (monthNum) {
+      return `${year}-${monthNum}-${day.padStart(2, '0')}`;
+    }
+  }
+  
+  // Try "DD Month YYYY" format (e.g., "28 Jan 2025")
+  const dayFirstMatch = cleaned.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/i);
+  if (dayFirstMatch) {
+    const [, day, month, year] = dayFirstMatch;
+    const monthNum = MONTH_MAP[month.toLowerCase()];
+    if (monthNum) {
+      return `${year}-${monthNum}-${day.padStart(2, '0')}`;
+    }
+  }
+  
+  // Try "DD/MM/YYYY" or "DD-MM-YYYY" format
+  const slashMatch = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (slashMatch) {
+    const [, day, month, year] = slashMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  // Try "MM/DD/YYYY" format (US style) - assume if first number > 12, it's day
+  const usMatch = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (usMatch) {
+    const [, first, second, year] = usMatch;
+    if (parseInt(first) > 12) {
+      // First is day (DD/MM/YYYY)
+      return `${year}-${second.padStart(2, '0')}-${first.padStart(2, '0')}`;
+    } else {
+      // First is month (MM/DD/YYYY)
+      return `${year}-${first.padStart(2, '0')}-${second.padStart(2, '0')}`;
+    }
+  }
+  
+  // Try standard Date parsing as last resort
+  try {
+    const parsed = new Date(dateStr);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toISOString().split('T')[0];
+    }
+  } catch (e) {
+    // Ignore
+  }
+  
+  return dateStr; // Return original if all parsing fails
+};
 
 export default function AddLearningCourseModal({ isOpen, onClose, studentId, onSuccess }) {
   const [currentStep, setCurrentStep] = useState(1);
@@ -126,9 +216,18 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
   const [extractionSuccess, setExtractionSuccess] = useState(false);
   const [certificateImage, setCertificateImage] = useState(null);
   const [certificateImagePreview, setCertificateImagePreview] = useState(null);
+  const [verificationStatus, setVerificationStatus] = useState(null); // 'success', 'failed', null
   const fileInputRef = useRef(null);
+  const verificationStatusRef = useRef(null);
 
-  const totalSteps = 4;
+  // Scroll verification status into view when it changes
+  useEffect(() => {
+    if (verificationStatus && verificationStatusRef.current) {
+      verificationStatusRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [verificationStatus]);
+
+  const totalSteps = 5;
 
   // Auto-detect platform from URL
   const detectPlatformFromUrl = (url) => {
@@ -150,6 +249,12 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
       if (detected && !selectedPlatform) {
         setSelectedPlatform(detected);
       }
+    }
+    
+    // Reset verification status when user changes certificate URL or ID
+    if (name === 'certificate_url' || name === 'certificate_id') {
+      setVerificationStatus(null);
+      setExtractionSuccess(false);
     }
   };
 
@@ -198,6 +303,10 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
     };
     reader.readAsDataURL(file);
     setError('');
+    
+    // Reset verification status when new image is uploaded
+    setVerificationStatus(null);
+    setExtractionSuccess(false);
   };
 
   // Extract certificate details from uploaded image using Claude Vision
@@ -235,41 +344,52 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
 
       console.log('🖼️ Extracting certificate data from image using Claude Vision');
 
-      const prompt = `You are analyzing a certificate image from ${platformName}. Extract the following information:
+      const prompt = `You are analyzing a certificate image from ${platformName}. Extract the following information EXACTLY as shown on the certificate:
 
-1. COURSE TITLE - The name of the course or certification
+1. COURSE TITLE - The name of the course or certification (exact text)
 2. INSTRUCTOR - The instructor or teacher name (look for "Instructors", "taught by", etc.)
-3. COMPLETION DATE - When the certificate was issued (look for "Date", "Completed on", etc.)
+3. COMPLETION DATE - When the certificate was issued. IMPORTANT: Convert to YYYY-MM-DD format.
+   Examples: "Jan. 28, 2025" → "2025-01-28", "January 28, 2025" → "2025-01-28", "28/01/2025" → "2025-01-28"
 4. STUDENT NAME - The name of the person who completed the course
-5. CERTIFICATE ID - Any certificate ID or reference number visible
+5. CERTIFICATE NUMBER/ID - Look for "Certificate no:", "Reference Number:", "Certificate ID:", or similar. Extract the full ID (e.g., "UC-794d8663-2295-4407-84f6-f7cb2f0f1c01")
+6. CERTIFICATE URL - Look for "Certificate url:", "ude.my/...", or any URL shown on the certificate
 
 Return a JSON object with this exact structure:
 {
-  "courseTitle": "The course name",
+  "courseTitle": "The exact course name as shown",
   "instructor": "Instructor name or empty string if not visible",
-  "completionDate": "Date in YYYY-MM-DD format if possible, or the date as shown",
+  "completionDate": "MUST be in YYYY-MM-DD format (e.g., 2025-01-28)",
   "studentName": "Student name or empty string if not visible",
-  "certificateId": "Certificate ID or empty string if not visible",
+  "certificateId": "The certificate number/ID exactly as shown (e.g., UC-794d8663-2295-4407-84f6-f7cb2f0f1c01)",
+  "certificateUrl": "The certificate URL if visible (e.g., ude.my/UC-xxx or full URL)",
   "skills": ["skill1", "skill2"],
   "category": "One of: Technology, Business, Data Science, Design, Marketing, Finance, Healthcare, Personal Development, Other"
 }
 
+CRITICAL: 
+- The completionDate MUST be in YYYY-MM-DD format. Convert any date format you see to this format.
+- Extract the FULL certificate ID/number exactly as shown.
+- Extract any certificate URL visible on the image.
+
 Return ONLY the JSON object, no other text.`;
 
-      const extracted = await callClaudeVisionJSON(prompt, imageBase64, mediaType, { maxTokens: 500 });
+      const extracted = await callClaudeVisionJSON(prompt, imageBase64, mediaType, { maxTokens: 600 });
       
       console.log('🖼️ Vision extracted:', extracted);
 
-      // Format completion date if provided
+      // Format completion date if provided - with robust parsing
       let completionDate = extracted.completionDate || '';
       if (completionDate && !completionDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        try {
-          const parsedDate = new Date(completionDate);
-          if (!isNaN(parsedDate.getTime())) {
-            completionDate = parsedDate.toISOString().split('T')[0];
-          }
-        } catch (e) {
-          // Keep original
+        // Try to parse various date formats
+        completionDate = parseFlexibleDate(completionDate);
+      }
+
+      // Format certificate URL if it's a short URL
+      let certificateUrl = extracted.certificateUrl || '';
+      if (certificateUrl && !certificateUrl.startsWith('http')) {
+        // If it's a short URL like "ude.my/UC-xxx", prepend https://
+        if (certificateUrl.includes('ude.my')) {
+          certificateUrl = `https://${certificateUrl}`;
         }
       }
 
@@ -280,6 +400,7 @@ Return ONLY the JSON object, no other text.`;
         instructor: extracted.instructor || prev.instructor,
         completion_date: completionDate || prev.completion_date,
         certificate_id: extracted.certificateId || prev.certificate_id,
+        certificate_url: certificateUrl || prev.certificate_url,
         category: extracted.category || prev.category,
       }));
 
@@ -288,15 +409,87 @@ Return ONLY the JSON object, no other text.`;
       }
 
       setExtractionSuccess(true);
+      
+      // Return the extracted certificate URL for verification
+      return certificateUrl;
     } catch (err) {
       console.error('Image extraction error:', err);
       setError(`Could not extract from image: ${err.message}. Please fill in the fields manually.`);
+      return null;
     } finally {
       setExtracting(false);
     }
   };
 
-  // AI-powered auto-fill from certificate URL using Edge Function
+  // Verify certificate URL is valid (returns 200)
+  const verifyCertificateUrl = async (urlToVerify = null) => {
+    const certificateUrlToCheck = urlToVerify || formData.certificate_url;
+    
+    if (!certificateUrlToCheck) {
+      setError('Please enter a certificate URL first');
+      return false;
+    }
+
+    setExtracting(true);
+    setError('');
+
+    try {
+      let certificateUrl = certificateUrlToCheck;
+
+      // Expand short URLs to full URLs
+      if (certificateUrl.includes('ude.my/')) {
+        const certId = certificateUrl.split('ude.my/')[1];
+        certificateUrl = `https://www.udemy.com/certificate/${certId}`;
+        // Update the form with expanded URL if not passed as parameter
+        if (!urlToVerify) {
+          setFormData(prev => ({ ...prev, certificate_url: certificateUrl }));
+        }
+      }
+
+      // Use Cloudflare Worker to verify certificate page exists
+      console.log('🔍 Verifying certificate URL:', certificateUrl);
+      
+      const workerUrl = import.meta.env.VITE_CLOUDFLARE_CERTIFICATE_WORKER_URL || 
+                        'https://fetch-certificate.rareminds.workers.dev';
+      
+      const response = await fetch(workerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: certificateUrl })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Certificate verification failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (!result?.success) {
+        throw new Error(result?.error || 'Certificate URL is not valid');
+      }
+
+      console.log('✅ Certificate URL verified successfully');
+      
+      // Set organization based on platform
+      const platformName = selectedPlatform?.name || '';
+      if (platformName && platformName !== 'Other Platform') {
+        setFormData(prev => ({ ...prev, organization: platformName }));
+      }
+      
+      setVerificationStatus('success');
+      setExtractionSuccess(true);
+      return true;
+    } catch (err) {
+      console.error('Certificate verification error:', err);
+      setVerificationStatus('failed');
+      return false;
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  // AI-powered auto-fill from certificate URL using Edge Function (kept for reference but not used in main flow)
   const extractCertificateDetails = async () => {
     if (!formData.certificate_url && !formData.certificate_id) {
       setError('Please enter a certificate URL or certificate ID first');
@@ -596,10 +789,6 @@ Respond in JSON format:
     setLoading(true);
 
     try {
-      // Determine assessment status based on skills
-      const hasSkills = skillTags.length > 0;
-      const assessmentStatus = hasSkills ? 'rareminds_assessment_pending' : 'not_required';
-
       // Insert training record
       const { data: training, error: trainingError } = await supabase
         .from('trainings')
@@ -615,8 +804,7 @@ Respond in JSON format:
           hours_spent: 0,
           description: formData.description,
           approval_status: 'approved',
-          source: 'external_course',
-          assessment_status: assessmentStatus
+          source: 'external_course'
         })
         .select()
         .single();
@@ -639,8 +827,7 @@ Respond in JSON format:
           platform: selectedPlatform?.id,
           certificate_id: formData.certificate_id,
           instructor: formData.instructor,
-          category: formData.category,
-          assessment_status: assessmentStatus
+          category: formData.category
         };
 
         const { error: certError } = await supabase
@@ -706,6 +893,7 @@ Respond in JSON format:
     setCertificateImage(null);
     setCertificateImagePreview(null);
     setExtractionSuccess(false);
+    setVerificationStatus(null);
   };
 
   const canProceedToNextStep = () => {
@@ -713,20 +901,76 @@ Respond in JSON format:
       case 1:
         return selectedPlatform !== null;
       case 2:
-        return formData.title.trim() !== '' && formData.completion_date !== '';
+        // Verify step - need either image uploaded, URL, or certificate ID
+        return certificateImage !== null || formData.certificate_url.trim() !== '' || formData.certificate_id.trim() !== '';
       case 3:
-        return true; // Skills are optional
+        // Details step - need title and completion date
+        return formData.title.trim() !== '' && formData.completion_date !== '';
       case 4:
-        return true;
+        return true; // Skills are optional
+      case 5:
+        return true; // Review
       default:
         return false;
     }
   };
 
-  const handleNext = () => {
-    if (canProceedToNextStep() && currentStep < totalSteps) {
-      setCurrentStep(prev => prev + 1);
+  const handleNext = async () => {
+    if (!canProceedToNextStep() || currentStep >= totalSteps) return;
+    
+    // If on step 2 (Verify), extract/verify certificate details
+    if (currentStep === 2 && !extractionSuccess) {
+      if (certificateImage) {
+        // Extract from uploaded image using AI Vision
+        const extractedUrl = await extractFromImage();
+        
+        // After extraction, verify the certificate URL if one was extracted
+        if (extractedUrl) {
+          console.log('🔍 Verifying extracted certificate URL:', extractedUrl);
+          const isValid = await verifyCertificateUrl(extractedUrl);
+          if (!isValid) {
+            setError('Certificate URL verification failed. Please check the certificate image or enter a valid URL.');
+            return; // Don't proceed if verification failed
+          }
+        } else {
+          // No URL extracted from image - show error
+          setError('Could not extract certificate URL from image. Please enter the certificate URL manually.');
+          return; // Don't proceed without a valid URL
+        }
+      } else if (formData.certificate_url) {
+        // Only verify that the certificate URL is valid
+        const isValid = await verifyCertificateUrl();
+        if (!isValid) {
+          return; // Don't proceed if verification failed
+        }
+      } else if (formData.certificate_id) {
+        // Only certificate ID provided - construct URL from platform and verify
+        if (!selectedPlatform || !selectedPlatform.verifyUrlTemplate) {
+          setError('This platform does not support verification by certificate ID. Please provide a certificate URL or upload an image.');
+          return;
+        }
+        
+        // Construct verification URL from certificate ID
+        const constructedUrl = selectedPlatform.verifyUrlTemplate(formData.certificate_id);
+        console.log('🔗 Constructed verification URL from certificate ID:', constructedUrl);
+        
+        // Update form with constructed URL
+        setFormData(prev => ({ ...prev, certificate_url: constructedUrl }));
+        
+        // Verify the constructed URL
+        const isValid = await verifyCertificateUrl(constructedUrl);
+        if (!isValid) {
+          setError('Certificate ID verification failed. Please check the certificate ID or provide a valid URL.');
+          return; // Don't proceed if verification failed
+        }
+      } else {
+        // No verification method provided
+        setError('Please upload a certificate image, enter a certificate URL, or provide a certificate ID.');
+        return;
+      }
     }
+    
+    setCurrentStep(prev => prev + 1);
   };
 
   const handleBack = () => {
@@ -762,30 +1006,31 @@ Respond in JSON format:
           </div>
 
           {/* Progress Steps */}
-          <div className="flex items-center justify-center gap-2 mt-5">
-            {[1, 2, 3, 4].map((step) => (
+          <div className="flex items-center justify-center gap-1 mt-5">
+            {[1, 2, 3, 4, 5].map((step) => (
               <div key={step} className="flex items-center">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === currentStep
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${step === currentStep
                     ? 'bg-white text-indigo-600 shadow-lg scale-110'
                     : step < currentStep
                       ? 'bg-white/30 text-white'
                       : 'bg-white/10 text-white/50'
                     }`}
                 >
-                  {step < currentStep ? <CheckCircle size={16} /> : step}
+                  {step < currentStep ? <CheckCircle size={14} /> : step}
                 </div>
-                {step < 4 && (
-                  <div className={`w-8 h-0.5 mx-1 ${step < currentStep ? 'bg-white/50' : 'bg-white/20'}`} />
+                {step < 5 && (
+                  <div className={`w-6 h-0.5 mx-0.5 ${step < currentStep ? 'bg-white/50' : 'bg-white/20'}`} />
                 )}
               </div>
             ))}
           </div>
-          <div className="flex justify-center gap-6 mt-2 text-xs text-white/70">
+          <div className="flex justify-center gap-4 mt-2 text-xs text-white/70">
             <span className={currentStep === 1 ? 'text-white font-medium' : ''}>Platform</span>
-            <span className={currentStep === 2 ? 'text-white font-medium' : ''}>Details</span>
-            <span className={currentStep === 3 ? 'text-white font-medium' : ''}>Skills</span>
-            <span className={currentStep === 4 ? 'text-white font-medium' : ''}>Review</span>
+            <span className={currentStep === 2 ? 'text-white font-medium' : ''}>Verify</span>
+            <span className={currentStep === 3 ? 'text-white font-medium' : ''}>Details</span>
+            <span className={currentStep === 4 ? 'text-white font-medium' : ''}>Skills</span>
+            <span className={currentStep === 5 ? 'text-white font-medium' : ''}>Review</span>
           </div>
         </div>
 
@@ -827,12 +1072,12 @@ Respond in JSON format:
             </div>
           )}
 
-          {/* Step 2: Certificate Details */}
+          {/* Step 2: Verify Certificate */}
           {currentStep === 2 && (
             <div className="space-y-4">
               <div className="text-center mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Certificate Details</h3>
-                <p className="text-gray-500 text-sm mt-1">Enter the details from your certificate</p>
+                <h3 className="text-lg font-semibold text-gray-900">Verify Your Certificate</h3>
+                <p className="text-gray-500 text-sm mt-1">Upload an image or provide certificate details for verification</p>
               </div>
 
               <div className="space-y-4">
@@ -845,7 +1090,7 @@ Respond in JSON format:
                     <div className="flex-1">
                       <h4 className="font-medium text-gray-900 text-sm">Upload Certificate Image</h4>
                       <p className="text-xs text-gray-600 mt-0.5">
-                        Upload a screenshot of your certificate for automatic extraction (Recommended)
+                        Upload a screenshot or photo of your certificate (Recommended)
                       </p>
                     </div>
                   </div>
@@ -855,125 +1100,46 @@ Respond in JSON format:
                       type="file"
                       ref={fileInputRef}
                       onChange={handleImageUpload}
-                      accept="image/*"
+                      accept="image/*,.pdf"
                       className="hidden"
                     />
                     
                     {certificateImagePreview ? (
-                      <div className="space-y-3">
-                        <div className="relative rounded-lg overflow-hidden border border-gray-200">
-                          <img 
-                            src={certificateImagePreview} 
-                            alt="Certificate preview" 
-                            className="w-full h-40 object-contain bg-gray-50"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCertificateImage(null);
-                              setCertificateImagePreview(null);
-                              if (fileInputRef.current) fileInputRef.current.value = '';
-                            }}
-                            className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
+                      <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                        <img 
+                          src={certificateImagePreview} 
+                          alt="Certificate preview" 
+                          className="w-full h-48 object-contain bg-gray-50"
+                        />
                         <button
                           type="button"
-                          onClick={extractFromImage}
-                          disabled={extracting}
-                          className="w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg font-medium text-sm hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                          onClick={() => {
+                            setCertificateImage(null);
+                            setCertificateImagePreview(null);
+                            if (fileInputRef.current) fileInputRef.current.value = '';
+                            setExtractionSuccess(false);
+                            setVerificationStatus(null);
+                          }}
+                          className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600"
                         >
-                          {extracting ? (
-                            <>
-                              <Loader size={16} className="animate-spin" />
-                              Extracting with AI...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles size={16} />
-                              Extract Details from Image
-                            </>
-                          )}
+                          <X size={16} />
                         </button>
+                        <div className="absolute bottom-2 left-2 right-2 bg-green-500/90 text-white px-3 py-1.5 rounded-lg flex items-center gap-2">
+                          <CheckCircle size={14} />
+                          <span className="text-xs font-medium">Image uploaded - Click Continue to extract details</span>
+                        </div>
                       </div>
                     ) : (
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-full py-6 border-2 border-dashed border-purple-300 rounded-lg hover:border-purple-400 hover:bg-purple-50/50 transition-colors flex flex-col items-center gap-2"
+                        className="w-full py-8 border-2 border-dashed border-purple-300 rounded-lg hover:border-purple-400 hover:bg-purple-50/50 transition-colors flex flex-col items-center gap-2"
                       >
-                        <Upload className="w-8 h-8 text-purple-400" />
-                        <span className="text-sm text-gray-600">Click to upload certificate image</span>
-                        <span className="text-xs text-gray-400">PNG, JPG up to 5MB</span>
+                        <Upload className="w-10 h-10 text-purple-400" />
+                        <span className="text-sm font-medium text-gray-700">Click to upload certificate</span>
+                        <span className="text-xs text-gray-400">PNG, JPG, PDF up to 5MB</span>
                       </button>
                     )}
-                  </div>
-
-                  {extractionSuccess && (
-                    <div className="mt-3 flex items-center gap-2 text-green-700 bg-green-50 px-3 py-2 rounded-lg">
-                      <CheckCircle size={16} />
-                      <span className="text-sm font-medium">Details extracted successfully! Review below.</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* URL Auto-fill Section - Secondary Option */}
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <LinkIcon className="w-5 h-5 text-indigo-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 text-sm">Or Use Certificate URL</h4>
-                      <p className="text-xs text-gray-600 mt-0.5">
-                        Paste your certificate URL to extract basic details
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 space-y-3">
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                        <input
-                          type="url"
-                          name="certificate_url"
-                          value={formData.certificate_url}
-                          onChange={handleInputChange}
-                          placeholder="https://coursera.org/verify/ABC123..."
-                          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={extractCertificateDetails}
-                        disabled={extracting || (!formData.certificate_url && !formData.certificate_id)}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 whitespace-nowrap"
-                      >
-                        {extracting ? (
-                          <>
-                            <Loader size={16} className="animate-spin" />
-                            Extracting...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles size={16} />
-                            Auto-Fill
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    <input
-                      type="text"
-                      name="certificate_id"
-                      value={formData.certificate_id}
-                      onChange={handleInputChange}
-                      placeholder="Certificate ID (e.g., UC-ABC123XYZ)"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white"
-                    />
                   </div>
                 </div>
 
@@ -983,10 +1149,131 @@ Respond in JSON format:
                     <div className="w-full border-t border-gray-200"></div>
                   </div>
                   <div className="relative flex justify-center text-xs">
-                    <span className="bg-white px-3 text-gray-500">Certificate Details</span>
+                    <span className="bg-white px-3 text-gray-500">OR</span>
                   </div>
                 </div>
 
+                {/* URL/ID Section - Alternative Option */}
+                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <LinkIcon className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900 text-sm">Use Certificate URL or ID</h4>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        Enter your certificate verification URL or certificate number
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Certificate URL or ID</label>
+                    <div className="relative">
+                      <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                      <input
+                        type="text"
+                        name="certificate_url_or_id"
+                        value={formData.certificate_url || formData.certificate_id}
+                        onChange={(e) => {
+                          const value = e.target.value.trim();
+                          // Auto-detect if it's a URL or certificate ID
+                          if (value.startsWith('http') || value.includes('.')) {
+                            setFormData(prev => ({ ...prev, certificate_url: value, certificate_id: '' }));
+                          } else {
+                            setFormData(prev => ({ ...prev, certificate_id: value, certificate_url: '' }));
+                          }
+                          setVerificationStatus(null);
+                          setExtractionSuccess(false);
+                        }}
+                        placeholder="https://ude.my/UC-xxx or UC-794d8663-2295-4407-84f6-f7cb2f0f1c01"
+                        className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1.5">
+                      Paste the full URL or just the certificate ID
+                    </p>
+                  </div>
+                </div>
+
+                {/* Verification Status Display */}
+                {verificationStatus && (
+                  <div ref={verificationStatusRef}>
+                    {verificationStatus === 'success' && (
+                      <div className="bg-green-50 border-2 border-green-300 rounded-xl p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <CheckCircle className="w-6 h-6 text-green-600" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-green-900">Certificate Verified!</h4>
+                            <p className="text-sm text-green-700 mt-1">
+                              Your certificate has been successfully verified. Click Continue to proceed.
+                            </p>
+                            {formData.certificate_url && (
+                              <a 
+                                href={formData.certificate_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-sm text-green-600 hover:text-green-700 mt-2 font-medium"
+                              >
+                                <LinkIcon size={14} />
+                                View Certificate
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {verificationStatus === 'failed' && (
+                      <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <X className="w-6 h-6 text-red-600" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-red-900">Verification Failed</h4>
+                            <p className="text-sm text-red-700 mt-1">
+                              We couldn't verify this certificate. This could happen if:
+                            </p>
+                            <ul className="text-sm text-red-600 mt-2 space-y-1 list-disc list-inside">
+                              <li>The certificate URL is incorrect or expired</li>
+                              <li>The certificate ID doesn't match the platform's records</li>
+                              <li>The certificate page is temporarily unavailable</li>
+                            </ul>
+                            <p className="text-sm text-red-700 mt-3">
+                              Please double-check your certificate details and try again.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Info Note - only show when no verification status */}
+                {!verificationStatus && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                    <AlertCircle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-800">
+                      For best results, upload a clear screenshot of your certificate. This allows us to automatically extract all details including course name, instructor, and completion date.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Certificate Details */}
+          {currentStep === 3 && (
+            <div className="space-y-4">
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Certificate Details</h3>
+                <p className="text-gray-500 text-sm mt-1">Review and edit the extracted information</p>
+              </div>
+
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Course Title <span className="text-red-500">*</span>
@@ -1044,12 +1331,55 @@ Respond in JSON format:
                     required
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Certificate URL
+                    </label>
+                    <input
+                      type="url"
+                      name="certificate_url"
+                      value={formData.certificate_url}
+                      onChange={handleInputChange}
+                      placeholder="https://..."
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Certificate ID
+                    </label>
+                    <input
+                      type="text"
+                      name="certificate_id"
+                      value={formData.certificate_id}
+                      onChange={handleInputChange}
+                      placeholder="e.g., UC-ABC123"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Description (Optional)
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    placeholder="Brief description of what you learned..."
+                    rows="2"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm resize-none"
+                  />
+                </div>
               </div>
             </div>
           )}
 
-          {/* Step 3: Skills & Learning */}
-          {currentStep === 3 && (
+          {/* Step 4: Skills & Learning */}
+          {currentStep === 4 && (
             <div className="space-y-4">
               <div className="text-center mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Skills & Learning</h3>
@@ -1157,8 +1487,8 @@ Respond in JSON format:
             </div>
           )}
 
-          {/* Step 4: Review & Submit */}
-          {currentStep === 4 && (
+          {/* Step 5: Review & Submit */}
+          {currentStep === 5 && (
             <div className="space-y-4">
               <div className="text-center mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Review Your Certificate</h3>
@@ -1298,11 +1628,30 @@ Respond in JSON format:
           {currentStep < totalSteps ? (
             <button
               onClick={handleNext}
-              disabled={!canProceedToNextStep()}
+              disabled={!canProceedToNextStep() || extracting}
               className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Continue
-              <ChevronRight size={18} />
+              {extracting ? (
+                <>
+                  <Loader size={18} className="animate-spin" />
+                  {certificateImage ? 'Extracting...' : 'Verifying...'}
+                </>
+              ) : currentStep === 2 && certificateImage ? (
+                <>
+                  <Sparkles size={18} />
+                  Extract & Verify
+                </>
+              ) : currentStep === 2 && (formData.certificate_url || formData.certificate_id) ? (
+                <>
+                  <Sparkles size={18} />
+                  Verify & Continue
+                </>
+              ) : (
+                <>
+                  Continue
+                  <ChevronRight size={18} />
+                </>
+              )}
             </button>
           ) : (
             <button
