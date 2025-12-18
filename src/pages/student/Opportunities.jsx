@@ -45,6 +45,7 @@ import StudentPipelineService from '../../services/studentPipelineService';
 import MessageService from '../../services/messageService';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { supabase } from '../../lib/supabaseClient';
+import SearchBar from '../../components/common/SearchBar';
 
 const Opportunities = () => {
   const navigate = useNavigate();
@@ -60,6 +61,7 @@ const Opportunities = () => {
 
   // My Jobs state (existing opportunities logic)
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [viewMode, setViewMode] = useState('grid');
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
@@ -93,7 +95,8 @@ const Opportunities = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { opportunities, loading: dataLoading, error } = useOpportunities({
     fetchOnMount: true,
-    activeOnly: true
+    activeOnly: true,
+    searchTerm: debouncedSearch
   });
 
   // Pre-select opportunity from navigation state (from Dashboard)
@@ -239,13 +242,8 @@ const Opportunities = () => {
   // Filter and sort opportunities for My Jobs tab with advanced filters
   const filteredAndSortedOpportunities = React.useMemo(() => {
     let filtered = opportunities.filter(opp => {
-      // Search filter
-      const matchesSearch = 
-        opp.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        opp.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        opp.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      if (!matchesSearch) return false;
+      // Search is now handled at DB level via useOpportunities hook
+      // No need for client-side search filtering anymore
 
       // Grade-based filtering (same logic as Dashboard)
       const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
@@ -362,7 +360,7 @@ const Opportunities = () => {
       }
       return 0;
     });
-  }, [opportunities, searchTerm, sortBy, advancedFilters, studentData]);
+  }, [opportunities, sortBy, advancedFilters, studentData]);
 
   const handleToggleSave = async (opportunity) => {
     if (!studentId) {
@@ -558,6 +556,8 @@ const Opportunities = () => {
                 <MyJobsContent
                   searchTerm={searchTerm}
                   setSearchTerm={setSearchTerm}
+                  debouncedSearch={debouncedSearch}
+                  setDebouncedSearch={setDebouncedSearch}
                   sortBy={sortBy}
                   setSortBy={setSortBy}
                   viewMode={viewMode}
@@ -608,6 +608,8 @@ const Opportunities = () => {
 const MyJobsContent = ({
   searchTerm,
   setSearchTerm,
+  debouncedSearch,
+  setDebouncedSearch,
   sortBy,
   setSortBy,
   viewMode,
@@ -644,7 +646,7 @@ const MyJobsContent = ({
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, advancedFilters, sortBy, setCurrentPage]);
+  }, [debouncedSearch, advancedFilters, sortBy, setCurrentPage]);
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -823,19 +825,16 @@ const MyJobsContent = ({
         )} */}
 
         <div className="flex gap-4 mb-6">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              placeholder="Search job title here..."
+          <div className="flex-1">
+            <SearchBar
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 text-sm"
+              onChange={setSearchTerm}
+              onDebouncedChange={setDebouncedSearch}
+              debounceMs={500}
+              placeholder="Search job title, company, or location..."
+              size="lg"
             />
           </div>
-          <button className="bg-gray-900 hover:bg-gray-800 text-white rounded-lg px-6 py-3 flex items-center gap-2 font-medium">
-            <Search className="w-4 h-4" />
-            Search
-          </button>
         </div>
 
         <div className="flex flex-col gap-4">

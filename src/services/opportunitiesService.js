@@ -116,6 +116,31 @@ export class OpportunitiesService {
   }
 
   /**
+   * Search opportunities by job title, company name, or location
+   * @param {string} searchTerm - Search term to filter opportunities
+   * @returns {Promise<Array>} Matching opportunities
+   */
+  static async searchOpportunities(searchTerm) {
+    try {
+      if (!searchTerm || !searchTerm.trim()) {
+        return await this.getAllOpportunities();
+      }
+
+      const { data, error } = await supabase
+        .from('opportunities')
+        .select('*')
+        .or(`job_title.ilike.%${searchTerm}%,title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error in searchOpportunities:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Format opportunity data for display
    * @param {Object} opportunity - Raw opportunity data from database
    * @returns {Object} Formatted opportunity data
