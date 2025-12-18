@@ -11,6 +11,7 @@ import EducatorLayout from "../layouts/EducatorLayout";
 //digital passport
 import { ThemeProvider } from '../context/ThemeContext';
 import { PortfolioProvider } from '../context/PortfolioContext';
+import { TestProvider } from '../context/assessment/TestContext';
 import HomePage from '../pages/digital-pp/HomePage';
 import StudentDigitalPortfolioHomePage from '../pages/student/digital-pp/HomePage';
 import DigitalPortfolioPage from '../pages/digital-pp/PortfolioPage';
@@ -142,6 +143,10 @@ const StudentPublicViewer = lazy(() =>
 const Settings = lazy(() => import("../pages/student/Settings"));
 const AssessmentTest = lazy(() => import("../pages/student/AssessmentTest"));
 const AssessmentResult = lazy(() => import("../pages/student/AssessmentResult"));
+const AssessmentPlatform = lazy(() => import("../pages/student/AssessmentPlatform"));
+const AssessmentTestPage = lazy(() => import("../pages/student/AssessmentTestPage"));
+const AssessmentResults = lazy(() => import("../pages/student/AssessmentResults"));
+const AssessmentStart = lazy(() => import("../pages/student/AssessmentStart"));
 
 // Educator pages
 const EducatorDashboard = lazy(() => import("../pages/educator/Dashboard"));
@@ -665,6 +670,9 @@ const AppRoutes = () => {
           <Route path="assessment-report" element={<AssessmentTest />} /> {/* Keep old path for backward compat if needed, or redirect */}
           <Route path="assessment/test" element={<AssessmentTest />} />
           <Route path="assessment/result" element={<AssessmentResult />} />
+          <Route path="assessment/platform" element={<AssessmentStart />} />
+          <Route path="assessment/start" element={<TestProvider><AssessmentTestPage /></TestProvider>} />
+          <Route path="assessment/results" element={<TestProvider><AssessmentResults /></TestProvider>} />
 
           {/* Digital Portfolio routes with required providers */}
           <Route
