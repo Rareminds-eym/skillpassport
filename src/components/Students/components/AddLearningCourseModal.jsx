@@ -167,7 +167,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
     }
   };
 
-  // AI-powered auto-fill from certificate URL
+  // AI-powered auto-fill from certificate URL using Edge Function
   const extractCertificateDetails = async () => {
     if (!formData.certificate_url && !formData.certificate_id) {
       setError('Please enter a certificate URL or certificate ID first');
@@ -179,11 +179,6 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
     setExtractionSuccess(false);
 
     try {
-      if (!isClaudeConfigured()) {
-        setError('AI auto-fill requires a Claude API key. Please fill in the fields manually.');
-        return;
-      }
-
       let certificateUrl = formData.certificate_url || '';
       const platformName = selectedPlatform?.name || 'unknown platform';
 
@@ -193,192 +188,125 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
         certificateUrl = `https://www.udemy.com/certificate/${certId}`;
       }
 
-      // Try to fetch certificate page content using multiple CORS proxies
-      let pageContent = '';
-      const proxies = [
-        `https://api.allorigins.win/get?url=${encodeURIComponent(certificateUrl)}`,
-        `https://corsproxy.io/?${encodeURIComponent(certificateUrl)}`
-      ];
-
-      for (const proxyUrl of proxies) {
-        if (pageContent) break;
-        try {
-          const pageResponse = await fetch(proxyUrl);
-          if (pageResponse.ok) {
-            let text = '';
-            if (proxyUrl.includes('allorigins')) {
-              const data = await pageResponse.json();
-              text = data.contents;
-            } else {
-              text = await pageResponse.text();
-            }
-
-            if (text) {
-              // Extract text content from HTML
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(text, 'text/html');
-
-              // Remove script and style tags
-              doc.querySelectorAll('script, style, noscript, iframe, svg').forEach(el => el.remove());
-
-              // Get relevant text content
-              const title = doc.querySelector('title')?.textContent || '';
-              const h1 = doc.querySelector('h1')?.textContent || '';
-              const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content') || '';
-              const ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute('content') || '';
-              const ogDesc = doc.querySelector('meta[property="og:description"]')?.getAttribute('content') || '';
-
-              // Udemy certificate specific selectors
-              const udemyCourseTitle = doc.querySelector('[data-purpose="certificate-title"]')?.textContent || 
-                                       doc.querySelector('.certificate--course-title')?.textContent ||
-                                       doc.querySelector('h1.udlite-heading-xxl')?.textContent || '';
-              const udemyInstructor = doc.querySelector('[data-purpose="certificate-instructor"]')?.textContent ||
-                                      doc.querySelector('.certificate--instructor-name')?.textContent || '';
-              const udemyDate = doc.querySelector('[data-purpose="certificate-date"]')?.textContent ||
-                               doc.querySelector('.certificate--completion-date')?.textContent || '';
-              const udemyRecipient = doc.querySelector('[data-purpose="certificate-recipient"]')?.textContent || '';
-
-              const bodyText = doc.body?.textContent?.replace(/\s+/g, ' ').slice(0, 3000) || '';
-
-              // Check if we got meaningful content
-              const hasMeaningfulContent = udemyCourseTitle || ogTitle || (bodyText.length > 500 && !bodyText.includes('Please enable JavaScript'));
-
-              pageContent = `
-Page Title: ${title}
-OpenGraph Title: ${ogTitle}
-Main Heading: ${h1}
-Udemy Course Title: ${udemyCourseTitle}
-Udemy Instructor: ${udemyInstructor}
-Udemy Completion Date: ${udemyDate}
-Udemy Recipient: ${udemyRecipient}
-Meta Description: ${metaDesc}
-OpenGraph Description: ${ogDesc}
-Page Content (excerpt): ${bodyText}
-              `.trim();
-
-              console.log('📄 Fetched page content via', proxyUrl.includes('allorigins') ? 'allorigins' : 'corsproxy');
-              console.log('📄 Has meaningful content:', hasMeaningfulContent);
-              console.log('📄 Extracted title:', udemyCourseTitle || ogTitle || title);
-              
-              // If no meaningful content, clear it so AI knows to be cautious
-              if (!hasMeaningfulContent) {
-                console.log('⚠️ Page content appears to be a JavaScript shell, AI will need to be cautious');
-                pageContent = `[NOTE: Certificate page requires JavaScript to render. Only basic metadata available]
-Page Title: ${title}
-OpenGraph Title: ${ogTitle}
-Meta Description: ${metaDesc}`;
-              }
-            }
-          }
-        } catch (fetchError) {
-          console.log(`⚠️ Proxy failed: ${proxyUrl}`, fetchError);
-        }
-      }
-
-      const prompt = pageContent
-        ? `You are an expert at extracting certificate information from web page content.
-
-I have a certificate page from ${platformName}:
-URL: ${certificateUrl || formData.certificate_id}
-
-PAGE CONTENT:
-${pageContent}
-
-IMPORTANT RULES:
-1. ONLY extract information that is EXPLICITLY present in the page content above
-2. DO NOT guess or make up course names, instructor names, or dates
-3. If the page content doesn't contain clear certificate details (e.g., it says "JavaScript required" or is mostly empty), return null for fields you cannot verify
-4. The certificate ID in the URL is unique - do NOT assume it's a specific well-known course
-
-Return a JSON object with these fields (use null for any field you cannot determine from the actual page content):
-{
-  "courseTitle": "The exact course name from the page, or null if not found",
-  "organization": "The institution or company from the page (e.g., 'Udemy'), or null",
-  "instructor": "The exact instructor name from the page, or null if not found",
-  "skills": ["skill1", "skill2", "skill3"],
-  "category": "One of: Technology, Business, Data Science, Design, Marketing, Finance, Healthcare, Personal Development, Other",
-  "difficulty": "One of: beginner, intermediate, advanced, expert",
-  "description": "A brief description based on actual page content, or null",
-  "estimatedDate": "The completion date from the page in YYYY-MM-DD format, or null"
-}
-
-Return ONLY the JSON object, no additional text.`
-        : `You are helping extract certificate information, but the certificate page could not be loaded.
-
-Certificate URL: ${certificateUrl || formData.certificate_id}
-Platform: ${platformName}
-
-IMPORTANT: Since the actual certificate page content is not available, you CANNOT determine the specific course details.
-The certificate ID is unique to this user's certificate and does NOT indicate which course it is.
-
-Return a JSON object with mostly null values since we cannot verify the actual certificate content:
-{
-  "courseTitle": null,
-  "organization": "${platformName !== 'Other Platform' ? platformName : 'null'}",
-  "instructor": null,
-  "skills": [],
-  "category": null,
-  "difficulty": null,
-  "description": null,
-  "estimatedDate": null
-}
-
-DO NOT guess course names or instructor names. Return null for unknown fields. Return ONLY the JSON object.`;
-
-      // Use centralized Claude service
-      const extracted = await callClaudeJSON(prompt, {
-        maxTokens: 1000,
-        useCache: false // Don't cache certificate extractions
+      // Use Cloudflare Worker to fetch certificate page (bypasses CORS)
+      console.log('📄 Fetching certificate via Cloudflare Worker:', certificateUrl);
+      
+      const workerUrl = import.meta.env.VITE_CLOUDFLARE_CERTIFICATE_WORKER_URL || 
+                        'https://fetch-certificate.rareminds.workers.dev';
+      
+      const response = await fetch(workerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: certificateUrl })
       });
 
-      console.log('🔍 AI Extracted Data:', extracted);
-
-      // Update form data with extracted values
-      const updatedFormData = {
-        ...formData,
-        title: extracted.courseTitle || formData.title,
-        organization: extracted.organization || (platformName !== 'Other Platform' ? platformName : formData.organization),
-        instructor: extracted.instructor || formData.instructor,
-        description: extracted.description || formData.description,
-        category: extracted.category || formData.category,
-        difficulty: extracted.difficulty?.toLowerCase() || formData.difficulty,
-        completion_date: extracted.estimatedDate || formData.completion_date
-      };
-
-      console.log('📝 Updated Form Data:', updatedFormData);
-      setFormData(updatedFormData);
-
-      // Add extracted skills
-      if (extracted.skills && Array.isArray(extracted.skills)) {
-        const newSkills = extracted.skills.filter(s => s && !skillTags.includes(s));
-        console.log('🏷️ Extracted Skills:', newSkills);
-        if (newSkills.length > 0) {
-          setSkillTags(prev => [...prev, ...newSkills]);
-        }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch certificate page: ${response.status}`);
       }
 
-      setExtractionSuccess(true);
+      const fetchResult = await response.json();
 
+      if (!fetchResult?.success) {
+        throw new Error(fetchResult?.error || 'Failed to fetch certificate page');
+      }
+
+      console.log('📄 Fetched certificate data:', fetchResult);
+
+      // Extract data from the response
+      const { metadata, platformData, bodySnippet } = fetchResult;
+      
+      // Try to get course title from various sources
+      let courseTitle = platformData?.courseName || 
+                        metadata?.ogTitle || 
+                        metadata?.h1 || 
+                        metadata?.title || '';
+      
+      // Clean up title (remove site name suffixes)
+      courseTitle = courseTitle
+        .replace(/\s*\|\s*Udemy$/i, '')
+        .replace(/\s*\|\s*Coursera$/i, '')
+        .replace(/\s*-\s*LinkedIn Learning$/i, '')
+        .replace(/Certificate of Completion/i, '')
+        .trim();
+
+      // Get instructor if available
+      const instructor = platformData?.instructor || '';
+      
+      // Get completion date if available
+      const completionDate = platformData?.completionDate || '';
+
+      // If we have good data from the page, use it
+      if (courseTitle || instructor) {
+        setFormData(prev => ({
+          ...prev,
+          title: courseTitle || prev.title,
+          organization: platformName !== 'Other Platform' ? platformName : prev.organization,
+          instructor: instructor || prev.instructor,
+          description: metadata?.ogDescription || metadata?.description || prev.description
+        }));
+        setExtractionSuccess(true);
+        console.log('✅ Extracted from page:', { courseTitle, instructor, completionDate });
+      } else if (isClaudeConfigured() && bodySnippet) {
+        // Use AI to extract details from the page content
+        console.log('🤖 Using AI to extract details from page content');
+        
+        const prompt = `Extract certificate information from this page content.
+
+Platform: ${platformName}
+URL: ${certificateUrl}
+
+Page Content:
+${bodySnippet.slice(0, 3000)}
+
+Extract and return a JSON object with:
+{
+  "courseTitle": "The course name (required)",
+  "instructor": "Instructor name if found",
+  "skills": ["skill1", "skill2"],
+  "category": "One of: Technology, Business, Data Science, Design, Marketing, Finance, Healthcare, Personal Development, Other",
+  "difficulty": "One of: beginner, intermediate, advanced, expert"
+}
+
+Return ONLY the JSON object.`;
+
+        const extracted = await callClaudeJSON(prompt, { maxTokens: 500 });
+        
+        setFormData(prev => ({
+          ...prev,
+          title: extracted.courseTitle || prev.title,
+          organization: platformName !== 'Other Platform' ? platformName : prev.organization,
+          instructor: extracted.instructor || prev.instructor,
+          category: extracted.category || prev.category,
+          difficulty: extracted.difficulty?.toLowerCase() || prev.difficulty
+        }));
+
+        if (extracted.skills?.length > 0) {
+          setSkillTags(prev => [...prev, ...extracted.skills.filter(s => s && !prev.includes(s))]);
+        }
+        
+        setExtractionSuccess(true);
+      } else {
+        // Fallback: just set the platform name
+        setFormData(prev => ({
+          ...prev,
+          organization: platformName !== 'Other Platform' ? platformName : prev.organization
+        }));
+        setExtractionSuccess(true);
+        setError('Could not extract all details. Please fill in the remaining fields manually.');
+      }
     } catch (err) {
       console.error('Certificate extraction error:', err);
-      
-      // Check if it's a rate limit error
-      const isRateLimit = err.message?.includes('rate limit') || err.message?.includes('429');
-      
       // Fallback: at least set the platform name if we failed
       if (selectedPlatform && selectedPlatform.id !== 'other') {
         setFormData(prev => ({
           ...prev,
           organization: selectedPlatform.name
         }));
-        setExtractionSuccess(true); // Technically partial success
-        setError(isRateLimit 
-          ? 'AI service is busy. Platform set automatically - please fill in other details manually.'
-          : 'Could not auto-fill details completely. Please fill in the rest manually.');
+        setExtractionSuccess(true);
+        setError('Could not fetch certificate page. Platform set - please fill in other details manually.');
       } else {
-        setError(isRateLimit 
-          ? 'AI service is temporarily busy. Please wait a moment and try again, or fill in the fields manually.'
-          : `Could not auto-fill: ${err.message}. Please fill in the fields manually.`);
+        setError(`Could not auto-fill: ${err.message}. Please fill in the fields manually.`);
       }
     } finally {
       setExtracting(false);

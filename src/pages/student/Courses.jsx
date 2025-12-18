@@ -24,13 +24,16 @@ import CourseDetailModal from '../../components/student/courses/CourseDetailModa
 import WeeklyLearningTracker from '../../components/student/WeeklyLearningTracker';
 import { useAuth } from '../../context/AuthContext';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
+import SearchBar from '../../components/common/SearchBar';
 
 const Courses = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'Active', 'Upcoming'
   const [sortBy, setSortBy] = useState('created_at'); // 'created_at', 'title', 'enrollment_count'
@@ -47,10 +50,11 @@ const Courses = () => {
     if (user?.email) {
       fetchEnrollments();
     }
-  }, [user]);
+  }, [user, debouncedSearch, filterStatus, sortBy]);
 
   const fetchCourses = async () => {
     const startTime = Date.now();
+    const isFirstLoad = initialLoad;
 
     try {
       setLoading(true);
@@ -61,8 +65,31 @@ const Courses = () => {
         .from('courses')
         .select('*')
         .in('status', ['Active', 'Upcoming'])
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+        .is('deleted_at', null);
+
+      // Apply search filter at database level
+      if (debouncedSearch && debouncedSearch.trim()) {
+        query = query.or(`title.ilike.%${debouncedSearch}%,description.ilike.%${debouncedSearch}%,code.ilike.%${debouncedSearch}%`);
+      }
+
+      // Apply status filter
+      if (filterStatus !== 'all') {
+        query = query.eq('status', filterStatus);
+      }
+
+      // Apply sorting
+      switch (sortBy) {
+        case 'title':
+          query = query.order('title', { ascending: true });
+          break;
+        case 'enrollment_count':
+          query = query.order('enrollment_count', { ascending: false, nullsFirst: false });
+          break;
+        case 'created_at':
+        default:
+          query = query.order('created_at', { ascending: false });
+          break;
+      }
 
       const { data, error } = await query;
 
@@ -71,20 +98,26 @@ const Courses = () => {
       console.log('📚 Fetched courses for students:', data?.length || 0);
       setCourses(data || []);
 
-      // Ensure loader displays for at least 5 seconds
-      const elapsedTime = Date.now() - startTime;
-      const remainingTime = Math.max(0, 5000 - elapsedTime);
+      // Only show 5-second loader on initial page load, not on search/filter
+      if (isFirstLoad) {
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, 5000 - elapsedTime);
 
-      if (remainingTime > 0) {
-        await new Promise(resolve => setTimeout(resolve, remainingTime));
+        if (remainingTime > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
+        setInitialLoad(false);
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
-      // Still wait for 5 seconds even on error
-      const elapsedTime = Date.now() - startTime;
-      const remainingTime = Math.max(0, 5000 - elapsedTime);
-      if (remainingTime > 0) {
-        await new Promise(resolve => setTimeout(resolve, remainingTime));
+      // Still wait for 5 seconds on initial load even on error
+      if (isFirstLoad) {
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, 5000 - elapsedTime);
+        if (remainingTime > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
+        setInitialLoad(false);
       }
     } finally {
       setLoading(false);
@@ -116,36 +149,10 @@ const Courses = () => {
   // Reset to page 1 when search or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatus, sortBy]);
+  }, [debouncedSearch, filterStatus, sortBy]);
 
-  // Filter and search courses
-  const filteredCourses = React.useMemo(() => {
-    let filtered = courses.filter(course => {
-      const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           course.code.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesStatus = filterStatus === 'all' || course.status === filterStatus;
-
-      return matchesSearch && matchesStatus;
-    });
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'title':
-          return a.title.localeCompare(b.title);
-        case 'created_at':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case 'enrollment_count':
-          return (b.enrollment_count || 0) - (a.enrollment_count || 0);
-        default:
-          return 0;
-      }
-    });
-
-    return filtered;
-  }, [courses, searchTerm, filterStatus, sortBy]);
+  // No need for client-side filtering anymore - data comes filtered from DB
+  const filteredCourses = courses;
 
   // Pagination logic
   const totalPages = Math.ceil(filteredCourses.length / coursesPerPage);
@@ -225,8 +232,8 @@ const Courses = () => {
       />
       <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
-          {/* Loading State */}
-          {loading && (
+          {/* Initial Loading State - Full Page Loader */}
+          {loading && initialLoad && (
             <div className="flex flex-col items-center justify-center min-h-[80vh]">
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -258,7 +265,7 @@ const Courses = () => {
           )}
 
           {/* Header with Tabs */}
-          {!loading && (
+          {!initialLoad && (
             <div className="mb-8">
               {/* Tab Navigation with Subheadings */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2">
@@ -328,23 +335,24 @@ const Courses = () => {
           )}
 
         {/* Weekly Learning Progress Tab */}
-        {!loading && activeTab === 'progress' && (
+        {!initialLoad && activeTab === 'progress' && (
           <WeeklyLearningTracker />
         )}
 
         {/* Courses Tab Content */}
         {/* Search and Filters */}
-        {!loading && activeTab === 'courses' && (
+        {!initialLoad && activeTab === 'courses' && (
           <div className="mb-6 flex flex-col lg:flex-row items-center gap-4">
             {/* Search Bar */}
-            <div className="flex-1 w-full relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search courses by title, code, or description..."
+            <div className="flex-1 w-full">
+              <SearchBar
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full h-12 pl-10 pr-4 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+                onChange={setSearchTerm}
+                onDebouncedChange={setDebouncedSearch}
+                debounceMs={500}
+                placeholder="Search courses by title, code, or description..."
+                size="lg"
+                className="shadow-sm"
               />
             </div>
 
@@ -397,6 +405,7 @@ const Courses = () => {
                   onClick={() => {
                     setFilterStatus('all');
                     setSearchTerm('');
+                    setDebouncedSearch('');
                     setSortBy('created_at');
                   }}
                   className="h-12 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
@@ -409,7 +418,7 @@ const Courses = () => {
         )}
 
         {/* Empty State */}
-        {!loading && activeTab === 'courses' && filteredCourses.length === 0 && (
+        {!loading && !initialLoad && activeTab === 'courses' && filteredCourses.length === 0 && (
           <Card className="text-center py-12 shadow-sm border border-gray-200">
             <CardContent>
               <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -419,6 +428,36 @@ const Courses = () => {
               </p>
             </CardContent>
           </Card>
+        )}
+
+        {/* Skeleton Loading - Grid View */}
+        {loading && !initialLoad && activeTab === 'courses' && viewMode === 'grid' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="animate-pulse">
+                <Card className="h-full border border-gray-200 overflow-hidden">
+                  <div className="h-40 bg-gradient-to-br from-gray-200 to-gray-300"></div>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="h-6 bg-gray-200 rounded w-20"></div>
+                      <div className="h-4 bg-gray-200 rounded w-16"></div>
+                    </div>
+                    <div className="h-6 bg-gray-300 rounded w-3/4 mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full"></div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="h-4 bg-gray-200 rounded w-full"></div>
+                    <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                    <div className="flex items-center gap-4">
+                      <div className="h-4 bg-gray-200 rounded w-20"></div>
+                      <div className="h-4 bg-gray-200 rounded w-16"></div>
+                    </div>
+                    <div className="h-10 bg-gray-200 rounded w-full"></div>
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
+          </div>
         )}
 
         {/* Courses Grid View */}
@@ -537,6 +576,40 @@ const Courses = () => {
           </div>
         )}
 
+        {/* Skeleton Loading - List View */}
+        {loading && !initialLoad && activeTab === 'courses' && viewMode === 'list' && (
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="animate-pulse">
+                <Card className="border-0">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col lg:flex-row gap-6">
+                      <div className="w-full lg:w-48 h-32 flex-shrink-0 rounded-lg bg-gradient-to-br from-gray-200 to-gray-300"></div>
+                      <div className="flex-1 space-y-4">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2 flex-1">
+                            <div className="h-6 bg-gray-300 rounded w-2/3"></div>
+                            <div className="h-4 bg-gray-200 rounded w-32"></div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="h-4 bg-gray-200 rounded w-full"></div>
+                          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <div className="h-4 bg-gray-200 rounded w-24"></div>
+                          <div className="h-4 bg-gray-200 rounded w-20"></div>
+                        </div>
+                        <div className="h-10 bg-gray-200 rounded w-40"></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Courses List View */}
         {!loading && activeTab === 'courses' && viewMode === 'list' && currentCourses.length > 0 && (
           <div className="space-y-4">
@@ -641,7 +714,7 @@ const Courses = () => {
         )}
 
         {/* Pagination */}
-        {!loading && activeTab === 'courses' && filteredCourses.length > 0 && totalPages > 1 && (
+        {!loading && !initialLoad && activeTab === 'courses' && filteredCourses.length > 0 && totalPages > 1 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

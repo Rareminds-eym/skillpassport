@@ -152,6 +152,7 @@ const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }) =>
 
 const StudentAdmissions = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -165,7 +166,7 @@ const StudentAdmissions = () => {
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
 
   const [filters, setFilters] = useState({
     class: [],
@@ -175,16 +176,27 @@ const StudentAdmissions = () => {
     maxScore: 100
   });
 
-  const { students, loading, error } = useStudents();
+  const { students, loading, error, totalCount } = useStudents({
+    searchTerm: debouncedSearch,
+    page: currentPage,
+    pageSize: itemsPerPage
+  });
+
+  // Fetch all students for filter options (lightweight query - only needed fields)
+  const { students: allStudentsForFilters } = useStudents({
+    searchTerm: '', // No search filter for getting all filter options
+    page: 1,
+    pageSize: 1000 // Get more students for accurate filter counts
+  });
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filters, sortBy]);
+  }, [debouncedSearch, filters, sortBy]);
 
   const classOptions = useMemo(() => {
     const classCounts: any = {};
-    students.forEach(student => {
-      if (student.class) {
+    allStudentsForFilters.forEach(student => {
+      if (student.class && !student.universityId) { // Only school students
         const normalizedClass = student.class.toLowerCase();
         classCounts[normalizedClass] = (classCounts[normalizedClass] || 0) + 1;
       }
@@ -196,12 +208,12 @@ const StudentAdmissions = () => {
         count
       }))
       .sort((a, b) => b.count - a.count);
-  }, [students]);
+  }, [allStudentsForFilters]);
 
   const subjectOptions = useMemo(() => {
     const subjectCounts: any = {};
-    students.forEach(student => {
-      if (student.subjects && Array.isArray(student.subjects)) {
+    allStudentsForFilters.forEach(student => {
+      if (!student.universityId && student.subjects && Array.isArray(student.subjects)) {
         student.subjects.forEach(subject => {
           const normalizedSubject = subject.toLowerCase();
           subjectCounts[normalizedSubject] = (subjectCounts[normalizedSubject] || 0) + 1;
@@ -216,12 +228,12 @@ const StudentAdmissions = () => {
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 15);
-  }, [students]);
+  }, [allStudentsForFilters]);
 
   const statusOptions = useMemo(() => {
     const statusCounts: any = {};
-    students.forEach(student => {
-      if (student.admission_status) {
+    allStudentsForFilters.forEach(student => {
+      if (!student.universityId && student.admission_status) {
         const status = student.admission_status.toLowerCase();
         statusCounts[status] = (statusCounts[status] || 0) + 1;
       }
@@ -233,26 +245,36 @@ const StudentAdmissions = () => {
         count
       }))
       .sort((a, b) => b.count - a.count);
-  }, [students]);
+  }, [allStudentsForFilters]);
+
+  // Check if any filters are active
+  const hasActiveFilters = filters.class.length > 0 || 
+                          filters.subjects.length > 0 || 
+                          filters.status.length > 0 || 
+                          filters.minScore > 0 || 
+                          filters.maxScore < 100;
 
   const filteredAndSortedStudents = useMemo(() => {
+    // When filters are active, use ALL students; otherwise use paginated students
+    const sourceData = hasActiveFilters ? allStudentsForFilters : students;
+    
     // Filter students associated with schools (universityId is null)
-    let result = students.filter(student => !student.universityId);
+    let result = sourceData.filter(student => !student.universityId);
 
-    if (searchQuery && searchQuery.trim() !== '') {
-      const query = searchQuery.toLowerCase().trim();
-
-      result = result.filter(student => {
-        return (
-          (student.name && student.name.toLowerCase().includes(query)) ||
-          (student.email && student.email.toLowerCase().includes(query)) ||
-          (student.contact_number && student.contact_number.includes(query)) ||
-          (student.class && student.class.toLowerCase().includes(query)) ||
-          (student.subjects && student.subjects.some((s: any) => s.toLowerCase().includes(query)))
-        );
-      });
+    // Apply search filter if not already applied at DB level
+    if (hasActiveFilters && debouncedSearch) {
+      const searchLower = debouncedSearch.toLowerCase();
+      result = result.filter(student => 
+        student.name?.toLowerCase().includes(searchLower) ||
+        student.email?.toLowerCase().includes(searchLower) ||
+        student.contact_number?.toLowerCase().includes(searchLower) ||
+        student.grade?.toLowerCase().includes(searchLower) ||
+        student.section?.toLowerCase().includes(searchLower) ||
+        student.roll_number?.toLowerCase().includes(searchLower)
+      );
     }
 
+    // Apply client-side filters (these can't be done at DB level easily)
     if (filters.class.length > 0) {
       result = result.filter(student =>
         student.class && filters.class.includes(student.class.toLowerCase())
@@ -278,35 +300,36 @@ const StudentAdmissions = () => {
       return score >= filters.minScore && score <= filters.maxScore;
     });
 
-    if (!searchQuery || searchQuery.trim() === '') {
-      const sortedResult = [...result];
-      switch (sortBy) {
-        case 'score':
-          sortedResult.sort((a, b) => (b.score || 0) - (a.score || 0));
-          break;
-        case 'name':
-          sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-          break;
-        case 'date':
-          sortedResult.sort((a, b) =>
-            new Date(b.applied_date || 0).getTime() - new Date(a.applied_date || 0).getTime()
-          );
-          break;
-        case 'relevance':
-        default:
-          break;
-      }
-      return sortedResult;
+    // Apply sorting
+    const sortedResult = [...result];
+    switch (sortBy) {
+      case 'score':
+        sortedResult.sort((a, b) => (b.score || 0) - (a.score || 0));
+        break;
+      case 'name':
+        sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        break;
+      case 'date':
+        sortedResult.sort((a, b) =>
+          new Date(b.applied_date || 0).getTime() - new Date(a.applied_date || 0).getTime()
+        );
+        break;
+      case 'relevance':
+      default:
+        break;
     }
-
-    return result;
-  }, [students, searchQuery, filters, sortBy]);
-
-  const totalItems = filteredAndSortedStudents.length;
+    return sortedResult;
+  }, [students, allStudentsForFilters, filters, sortBy, hasActiveFilters, debouncedSearch]);
+  
+  const totalItems = hasActiveFilters ? filteredAndSortedStudents.length : (totalCount || 0);
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedStudents = filteredAndSortedStudents.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  
+  // If filters are active, paginate client-side; otherwise use DB-paginated data
+  const paginatedStudents = hasActiveFilters 
+    ? filteredAndSortedStudents.slice(startIndex, endIndex)
+    : filteredAndSortedStudents;
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -433,7 +456,9 @@ const StudentAdmissions = () => {
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder="Search by name, email, class, subjects..."
+              onDebouncedChange={setDebouncedSearch}
+              debounceMs={500}
+              placeholder="Search by name, email, class, grade, roll number..."
               size="md"
             />
           </div>
@@ -487,6 +512,8 @@ const StudentAdmissions = () => {
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}
+            onDebouncedChange={setDebouncedSearch}
+            debounceMs={500}
             placeholder="Search applications..."
             size="md"
           />
@@ -601,8 +628,8 @@ const StudentAdmissions = () => {
           <div className="px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-                <span className="font-medium">{Math.min(endIndex, totalItems)}</span> of{' '}
+                Showing <span className="font-medium">{totalItems > 0 ? startIndex + 1 : 0}</span> to{' '}
+                <span className="font-medium">{endIndex}</span> of{' '}
                 <span className="font-medium">{totalItems}</span> result{totalItems !== 1 ? 's' : ''}
                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
               </p>
@@ -622,7 +649,39 @@ const StudentAdmissions = () => {
           <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {loading && <div className="text-sm text-gray-500">Loading applications...</div>}
+                {/* Skeleton Loading - Grid View */}
+                {loading && (
+                  <>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
+                      <div key={i} className="animate-pulse bg-white border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div className="h-4 bg-gray-200 rounded w-1/2 mb-1"></div>
+                            <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <div className="h-4 w-12 bg-gray-200 rounded mb-1"></div>
+                            <div className="h-6 w-20 bg-gray-200 rounded"></div>
+                          </div>
+                        </div>
+                        <div className="space-y-2 mb-3">
+                          <div className="h-3 bg-gray-200 rounded w-full"></div>
+                          <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+                        </div>
+                        <div className="flex gap-2 mb-3">
+                          <div className="h-6 w-16 bg-gray-200 rounded-full"></div>
+                          <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="h-9 flex-1 bg-gray-200 rounded"></div>
+                          <div className="h-9 w-9 bg-gray-200 rounded"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+                
                 {error && <div className="text-sm text-red-600">{error}</div>}
                 {!loading && paginatedStudents.map((student) => (
                   <StudentCard
@@ -636,7 +695,7 @@ const StudentAdmissions = () => {
                 {!loading && paginatedStudents.length === 0 && !error && (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500">
-                      {searchQuery || filters.class.length > 0
+                      {debouncedSearch || filters.class.length > 0
                         ? 'No applications match your current filters'
                         : 'No applications found.'}
                     </p>
