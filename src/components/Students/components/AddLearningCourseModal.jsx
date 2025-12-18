@@ -216,67 +216,123 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
       // Extract data from the response
       const { metadata, platformData, bodySnippet } = fetchResult;
       
-      // Try to get course title from various sources
+      // Check if worker indicates AI extraction is needed (for JS-rendered pages like Udemy)
+      const needsAiExtraction = platformData?.needsAiExtraction || false;
+      
+      // Try to get course title from various sources (prioritize platformData)
       let courseTitle = platformData?.courseName || 
                         metadata?.ogTitle || 
                         metadata?.h1 || 
                         metadata?.title || '';
       
-      // Clean up title (remove site name suffixes)
-      courseTitle = courseTitle
-        .replace(/\s*\|\s*Udemy$/i, '')
-        .replace(/\s*\|\s*Coursera$/i, '')
-        .replace(/\s*-\s*LinkedIn Learning$/i, '')
-        .replace(/Certificate of Completion/i, '')
-        .trim();
+      // Clean up title (remove site name suffixes and common patterns)
+      const cleanTitle = (title) => {
+        if (!title) return '';
+        return title
+          .replace(/\s*\|\s*Udemy$/i, '')
+          .replace(/\s*\|\s*Coursera$/i, '')
+          .replace(/\s*-\s*LinkedIn Learning$/i, '')
+          .replace(/\s*-\s*edX$/i, '')
+          .replace(/Certificate of Completion/i, '')
+          .replace(/^\s*Certificate\s*[-:]\s*/i, '')
+          .replace(/\s*Certificate\s*$/i, '')
+          .replace(/Udemy Course Completion Certificate/i, '')
+          .trim();
+      };
+      
+      courseTitle = cleanTitle(courseTitle);
 
       // Get instructor if available
-      const instructor = platformData?.instructor || '';
+      let instructor = platformData?.instructor || '';
       
-      // Get completion date if available
-      const completionDate = platformData?.completionDate || '';
+      // Get completion date if available and try to format it
+      let completionDate = platformData?.completionDate || '';
+      if (completionDate) {
+        // Try to parse and format the date to YYYY-MM-DD for the date input
+        try {
+          const parsedDate = new Date(completionDate);
+          if (!isNaN(parsedDate.getTime())) {
+            completionDate = parsedDate.toISOString().split('T')[0];
+          }
+        } catch (e) {
+          // Keep original if parsing fails
+        }
+      }
 
-      // If we have good data from the page, use it
-      if (courseTitle || instructor) {
+      // Get description
+      const description = metadata?.ogDescription || metadata?.description || '';
+
+      console.log('✅ Extracted data:', { courseTitle, instructor, completionDate, description, needsAiExtraction });
+
+      // Determine if we have valid data or need AI extraction
+      const hasValidTitle = courseTitle && !courseTitle.toLowerCase().includes('udemy course completion');
+      
+      // If we have good data from the page and don't need AI, use it
+      if (hasValidTitle && !needsAiExtraction) {
         setFormData(prev => ({
           ...prev,
           title: courseTitle || prev.title,
           organization: platformName !== 'Other Platform' ? platformName : prev.organization,
           instructor: instructor || prev.instructor,
-          description: metadata?.ogDescription || metadata?.description || prev.description
+          completion_date: completionDate || prev.completion_date,
+          description: description || prev.description
         }));
         setExtractionSuccess(true);
-        console.log('✅ Extracted from page:', { courseTitle, instructor, completionDate });
       } else if (isClaudeConfigured() && bodySnippet) {
         // Use AI to extract details from the page content
         console.log('🤖 Using AI to extract details from page content');
         
-        const prompt = `Extract certificate information from this page content.
+        const prompt = `You are extracting certificate/course information from a ${platformName} certificate page.
 
-Platform: ${platformName}
-URL: ${certificateUrl}
+The page content below is from a certificate verification page. Look for:
+- The COURSE TITLE (the name of the course completed, NOT "Certificate of Completion" or generic text)
+- The INSTRUCTOR name (who taught the course)
+- The COMPLETION DATE (when the certificate was issued)
+- Any SKILLS mentioned in the course
 
 Page Content:
-${bodySnippet.slice(0, 3000)}
+${bodySnippet.slice(0, 4000)}
 
-Extract and return a JSON object with:
+IMPORTANT: 
+- The course title should be the actual course name like "The Complete Python Bootcamp" NOT generic text like "Udemy Course Completion Certificate"
+- Look for patterns like "completed", "course:", "title:", instructor names after "Instructors" or "taught by"
+- Dates are often in format like "Jan. 28, 2025" or "January 28, 2025"
+
+Return a JSON object:
 {
-  "courseTitle": "The course name (required)",
-  "instructor": "Instructor name if found",
+  "courseTitle": "The actual course name",
+  "instructor": "Instructor/teacher name",
+  "completionDate": "Date in format YYYY-MM-DD if found",
   "skills": ["skill1", "skill2"],
   "category": "One of: Technology, Business, Data Science, Design, Marketing, Finance, Healthcare, Personal Development, Other",
   "difficulty": "One of: beginner, intermediate, advanced, expert"
 }
 
-Return ONLY the JSON object.`;
+Return ONLY the JSON object, no other text.`;
 
         const extracted = await callClaudeJSON(prompt, { maxTokens: 500 });
+        
+        console.log('🤖 AI extracted:', extracted);
+        
+        // Format completion date if provided
+        let aiCompletionDate = extracted.completionDate || '';
+        if (aiCompletionDate && !aiCompletionDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          try {
+            const parsedDate = new Date(aiCompletionDate);
+            if (!isNaN(parsedDate.getTime())) {
+              aiCompletionDate = parsedDate.toISOString().split('T')[0];
+            }
+          } catch (e) {
+            // Keep original
+          }
+        }
         
         setFormData(prev => ({
           ...prev,
           title: extracted.courseTitle || prev.title,
           organization: platformName !== 'Other Platform' ? platformName : prev.organization,
           instructor: extracted.instructor || prev.instructor,
+          completion_date: aiCompletionDate || prev.completion_date,
           category: extracted.category || prev.category,
           difficulty: extracted.difficulty?.toLowerCase() || prev.difficulty
         }));

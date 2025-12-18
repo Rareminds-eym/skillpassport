@@ -128,27 +128,207 @@ export default {
       let platformData = {};
 
       if (fetchUrl.includes('udemy.com')) {
-        const courseNameMatch = html.match(/data-purpose="certificate-title"[^>]*>([^<]+)</i) ||
-                                html.match(/class="[^"]*certificate[^"]*course-title[^"]*"[^>]*>([^<]+)</i);
-        const instructorMatch = html.match(/data-purpose="certificate-instructor"[^>]*>([^<]+)</i) ||
-                                html.match(/class="[^"]*instructor[^"]*name[^"]*"[^>]*>([^<]+)</i);
-        const dateMatch = html.match(/data-purpose="certificate-date"[^>]*>([^<]+)</i) ||
-                          html.match(/class="[^"]*completion[^"]*date[^"]*"[^>]*>([^<]+)</i);
+        // Udemy uses React/Next.js - data is often in __NEXT_DATA__ or window.__INITIAL_STATE__
+        let courseName = null;
+        let instructor = null;
+        let completionDate = null;
+        let studentName = null;
+
+        // Try to extract from Next.js data
+        const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
+        if (nextDataMatch) {
+          try {
+            const nextData = JSON.parse(nextDataMatch[1]);
+            // Navigate through Next.js props structure
+            const pageProps = nextData?.props?.pageProps;
+            if (pageProps) {
+              courseName = pageProps.courseName || pageProps.course?.title || pageProps.certificate?.courseName;
+              instructor = pageProps.instructorName || pageProps.instructor?.name || pageProps.certificate?.instructorName;
+              completionDate = pageProps.completionDate || pageProps.certificate?.completionDate;
+              studentName = pageProps.studentName || pageProps.certificate?.studentName;
+            }
+          } catch (e) {
+            console.log('Failed to parse __NEXT_DATA__:', e.message);
+          }
+        }
+
+        // Try to extract from window.__INITIAL_STATE__ or similar
+        const initialStateMatch = html.match(/window\.__INITIAL_STATE__\s*=\s*({[\s\S]*?});?\s*<\/script>/i) ||
+                                  html.match(/window\.UD\s*=\s*({[\s\S]*?});?\s*<\/script>/i);
+        if (initialStateMatch && !courseName) {
+          try {
+            const stateData = JSON.parse(initialStateMatch[1]);
+            courseName = stateData.certificate?.courseName || stateData.course?.title;
+            instructor = stateData.certificate?.instructorName || stateData.instructor?.name;
+            completionDate = stateData.certificate?.completionDate;
+          } catch (e) {
+            console.log('Failed to parse initial state:', e.message);
+          }
+        }
+
+        // Try embedded JSON patterns in script tags
+        const scriptMatches = html.match(/<script[^>]*>([\s\S]*?)<\/script>/gi) || [];
+        for (const script of scriptMatches) {
+          if (courseName && instructor) break;
+          
+          // Look for course title patterns in inline scripts
+          const courseMatch = script.match(/"course_?[Tt]itle"\s*:\s*"([^"]+)"/i) ||
+                             script.match(/"title"\s*:\s*"([^"]+)"[^}]*"_class"\s*:\s*"course"/i);
+          if (courseMatch && !courseName) {
+            courseName = courseMatch[1];
+          }
+
+          const instructorMatch = script.match(/"instructor_?[Nn]ame"\s*:\s*"([^"]+)"/i) ||
+                                  script.match(/"visible_instructors"\s*:\s*\[\s*\{[^}]*"display_name"\s*:\s*"([^"]+)"/i);
+          if (instructorMatch && !instructor) {
+            instructor = instructorMatch[1];
+          }
+
+          const dateMatch = script.match(/"completion_?[Dd]ate"\s*:\s*"([^"]+)"/i);
+          if (dateMatch && !completionDate) {
+            completionDate = dateMatch[1];
+          }
+        }
+
+        // Try JSON-LD structured data
+        const jsonLdMatches = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi) || [];
+        for (const jsonScript of jsonLdMatches) {
+          if (courseName && instructor) break;
+          try {
+            const jsonContent = jsonScript.replace(/<script[^>]*>|<\/script>/gi, '');
+            const jsonData = JSON.parse(jsonContent);
+            
+            if (jsonData['@type'] === 'Course' || jsonData.name) {
+              courseName = courseName || jsonData.name;
+              if (jsonData.instructor) {
+                instructor = instructor || (typeof jsonData.instructor === 'string' 
+                  ? jsonData.instructor 
+                  : jsonData.instructor.name);
+              }
+            }
+          } catch (e) {
+            // JSON parse failed, continue
+          }
+        }
+
+        // Fallback: Try HTML patterns (less reliable for React apps)
+        if (!courseName) {
+          const htmlPatterns = [
+            /data-purpose="certificate-title"[^>]*>([^<]+)</i,
+            /class="[^"]*certificate[^"]*title[^"]*"[^>]*>([^<]+)</i,
+            /class="[^"]*course-title[^"]*"[^>]*>([^<]+)</i,
+          ];
+          for (const pattern of htmlPatterns) {
+            const match = html.match(pattern);
+            if (match && match[1] && !match[1].includes('Udemy Course Completion')) {
+              courseName = match[1].trim();
+              break;
+            }
+          }
+        }
+
+        // Mark if we need AI extraction (Udemy pages are JS-rendered)
+        const needsAiExtraction = !courseName || courseName.includes('Udemy Course Completion');
 
         platformData = {
           platform: 'udemy',
-          courseName: courseNameMatch ? courseNameMatch[1].trim() : null,
-          instructor: instructorMatch ? instructorMatch[1].trim() : null,
-          completionDate: dateMatch ? dateMatch[1].trim() : null,
+          courseName: needsAiExtraction ? null : courseName,
+          instructor,
+          completionDate,
+          studentName,
+          needsAiExtraction,
         };
       } else if (fetchUrl.includes('coursera.org')) {
-        const courseNameMatch = html.match(/class="[^"]*course-name[^"]*"[^>]*>([^<]+)</i);
+        let courseName = null;
+        let instructor = null;
+        let completionDate = null;
+
+        // Coursera patterns
+        const coursePatterns = [
+          /class="[^"]*course-name[^"]*"[^>]*>([^<]+)</i,
+          /<h1[^>]*>([^<]+)</i,
+          /"name"\s*:\s*"([^"]+)"/i,
+        ];
+        
+        for (const pattern of coursePatterns) {
+          const match = html.match(pattern);
+          if (match && match[1]) {
+            courseName = match[1].trim();
+            break;
+          }
+        }
+
+        // Try JSON-LD for Coursera
+        const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi);
+        if (jsonLdMatch) {
+          for (const jsonScript of jsonLdMatch) {
+            try {
+              const jsonContent = jsonScript.replace(/<script[^>]*>|<\/script>/gi, '');
+              const jsonData = JSON.parse(jsonContent);
+              
+              if (jsonData.name) {
+                courseName = courseName || jsonData.name;
+              }
+              if (jsonData.creator) {
+                instructor = instructor || (Array.isArray(jsonData.creator) 
+                  ? jsonData.creator[0]?.name 
+                  : jsonData.creator?.name);
+              }
+            } catch (e) {
+              // JSON parse failed
+            }
+          }
+        }
+
         platformData = {
           platform: 'coursera',
-          courseName: courseNameMatch ? courseNameMatch[1].trim() : null,
+          courseName,
+          instructor,
+          completionDate,
         };
       } else if (fetchUrl.includes('linkedin.com')) {
-        platformData = { platform: 'linkedin' };
+        let courseName = null;
+        let instructor = null;
+
+        // LinkedIn Learning patterns
+        const coursePatterns = [
+          /<h1[^>]*>([^<]+)</i,
+          /class="[^"]*course-title[^"]*"[^>]*>([^<]+)</i,
+        ];
+        
+        for (const pattern of coursePatterns) {
+          const match = html.match(pattern);
+          if (match && match[1]) {
+            courseName = match[1].trim();
+            break;
+          }
+        }
+
+        platformData = { 
+          platform: 'linkedin',
+          courseName,
+          instructor,
+        };
+      } else if (fetchUrl.includes('edx.org')) {
+        let courseName = null;
+        
+        const coursePatterns = [
+          /<h1[^>]*>([^<]+)</i,
+          /"name"\s*:\s*"([^"]+)"/i,
+        ];
+        
+        for (const pattern of coursePatterns) {
+          const match = html.match(pattern);
+          if (match && match[1]) {
+            courseName = match[1].trim();
+            break;
+          }
+        }
+
+        platformData = {
+          platform: 'edx',
+          courseName,
+        };
       }
 
       // Body snippet for AI processing (strip HTML tags)
