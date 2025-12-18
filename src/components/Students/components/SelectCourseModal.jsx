@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import { X, BookOpen, ExternalLink, Search } from 'lucide-react';
 import AddLearningCourseModal from './AddLearningCourseModal';
 import LearningProgressBar from './LearningProgressBar';
+import SearchBar from '../../common/SearchBar';
 
 export default function SelectCourseModal({ isOpen, onClose, studentId, onSuccess }) {
   const [courses, setCourses] = useState([]);
@@ -10,6 +11,7 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
   const [enrollmentProgress, setEnrollmentProgress] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showExternalForm, setShowExternalForm] = useState(false);
 
   useEffect(() => {
@@ -206,9 +208,11 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
     }
   };
 
+  // Use debounced search for filtering
   const filteredCourses = courses.filter(course =>
-    course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    course.code?.toLowerCase().includes(searchTerm.toLowerCase())
+    course.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    course.code?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    course.description?.toLowerCase().includes(debouncedSearch.toLowerCase())
   );
 
   const enrolledCourses = filteredCourses.filter(course => 
@@ -255,14 +259,14 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
         </div>
 
         <div className="px-6 py-4 border-b bg-gray-50 flex gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search courses..."
+          <div className="flex-1">
+            <SearchBar
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              onChange={setSearchTerm}
+              onDebouncedChange={setDebouncedSearch}
+              debounceMs={300}
+              placeholder="Search courses..."
+              size="md"
             />
           </div>
           <button
