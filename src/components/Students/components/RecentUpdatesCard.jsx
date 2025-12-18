@@ -1,13 +1,13 @@
 import React from "react";
 import { CardHeader, CardContent, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { Bell } from "lucide-react";
+import { BellIcon } from "@heroicons/react/24/outline";
 
 const RecentUpdatesCard = React.forwardRef(
   (
     {
       title = "Recent Updates",
-      icon: Icon = Bell,
+      icon: Icon = BellIcon,
       badgeContent = null,
       updates = [],
       loading = false,
