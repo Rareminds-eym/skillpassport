@@ -832,6 +832,7 @@ const AppRoutes = () => {
           <Route path="digital-portfolio" element={<EducatorDigitalPortfolio />} />
           <Route path="settings" element={<EducatorSettings />} />
           <Route path="profile" element={<EducatorProfile />} />
+          <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
           <Route path="profile-debug" element={<EducatorProfileDebug />} />
           <Route path="management" element={<EducatorManagement />} />
           <Route path="communication" element={<EducatorCommunication />} />

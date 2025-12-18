@@ -103,21 +103,19 @@ export const dashboardApi = {
         supabase.from('mentor_notes').select('id').eq('educator_id', user.id).in('student_id', studentIds)
       ]);
 
-      // Combine all activities for verification metrics
+      // Combine all activities for verification metrics (excluding assignments - they have separate grading workflow)
       const verifiableActivities = [
         ...(projectsData.data || []).map(p => ({ status: p.approval_status })),
         ...(trainingsData.data || []).map(t => ({ status: t.approval_status })),
-        ...(certificatesData.data || []).map(c => ({ status: c.approval_status })),
-        ...(assignmentData.data || []).map(a => ({ 
-          status: a.status === 'submitted' ? 'pending' : 
-                  a.status === 'graded' ? 'approved' : 'pending' 
-        }))
+        ...(certificatesData.data || []).map(c => ({ status: c.approval_status }))
+        // Note: Assignments excluded - they use separate grading system (submitted → graded)
       ];
 
       // Count all activities including non-verifiable ones
       const totalActivities = verifiableActivities.length + 
                              (attendanceData.data?.length || 0) + 
                              (assessmentData.data?.length || 0) + 
+                             (assignmentData.data?.length || 0) + 
                              (mentorNotesData.data?.length || 0);
 
       const pendingActivities = verifiableActivities.filter(a => a.status === 'pending').length;
