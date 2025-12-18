@@ -312,11 +312,7 @@ export const getLatestResult = async (studentId) => {
  * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
  * @returns {object} { canTake: boolean, lastAttemptDate: Date|null, nextAvailableDate: Date|null }
  */
-<<<<<<< HEAD
-export const canTakeAssessment = async (studentId, gradeLevel) => {
-=======
 export const canTakeAssessment = async (studentId, gradeLevel = null) => {
->>>>>>> 5aba225cd5472ea9b549570ffb27cabba3de0bb8
   // Bypass restriction in development mode
   const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
   if (isDevelopment) {
@@ -324,7 +320,7 @@ export const canTakeAssessment = async (studentId, gradeLevel = null) => {
     return { canTake: true, lastAttemptDate: null, nextAvailableDate: null, devBypass: true };
   }
 
-  let query = supabase
+  const { data, error } = await supabase
     .from('personal_assessment_results')
     .select('created_at')
     .eq('student_id', studentId)
