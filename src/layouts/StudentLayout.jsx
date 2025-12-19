@@ -61,17 +61,20 @@ const StudentLayout = () => {
   
   // Check if current page is Career AI
   const isCareerAIPage = location.pathname === '/student/career-ai' || location.pathname.includes('/career-ai');
+  
+  // Check if current page is Assessment (should be full-screen without padding)
+  const isAssessmentPage = location.pathname.includes('/assessment/platform') || location.pathname.includes('/assessment/start') || location.pathname.includes('/assessment/results');
 
   return (
     <GlobalPresenceProvider userType="student">
-      <div className={isCareerAIPage ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}>
-        <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+      <div className={isCareerAIPage || isAssessmentPage ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}>
+        {!isAssessmentPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
         {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
-        <main className={isCareerAIPage ? "flex-1 overflow-hidden" : "py-8 px-6"}>
+        <main className={isCareerAIPage || isAssessmentPage ? "flex-1 overflow-hidden" : "py-8 px-6"}>
           <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
         </main>
-        {!isCareerAIPage && <Footer />}
-        <FloatingAIButton />
+        {!isCareerAIPage && !isAssessmentPage && <Footer />}
+        {!isAssessmentPage && <FloatingAIButton />}
         <Toaster />
 
       {/* Edit Modals - Only show if not viewing someone else's profile */}

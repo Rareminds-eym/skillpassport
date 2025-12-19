@@ -31,6 +31,24 @@ const CoursePlayer = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  // Get the correct back navigation path based on user role
+  const getBackPath = () => {
+    switch (user?.role) {
+      case 'educator':
+        return '/educator/browse-courses';
+      case 'student':
+        return '/student/courses';
+      case 'school_admin':
+        return '/school-admin/academics/browse-courses';
+      case 'college_admin':
+        return '/college-admin/academics/browse-courses';
+      case 'university_admin':
+        return '/university-admin/browse-courses';
+      default:
+        return '/student/courses'; // fallback
+    }
+  };
+
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
@@ -364,7 +382,7 @@ const CoursePlayer = () => {
       if (courseError) throw courseError;
 
       if (!courseData) {
-        navigate('/student/courses');
+        navigate(getBackPath());
         return;
       }
 
@@ -456,7 +474,7 @@ const CoursePlayer = () => {
       }
     } catch (error) {
       console.error('Error fetching course:', error);
-      navigate('/student/courses');
+      navigate(getBackPath());
     } finally {
       setLoading(false);
     }
@@ -600,7 +618,7 @@ const CoursePlayer = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <Button
-                onClick={() => navigate('/student/courses')}
+                onClick={() => navigate(getBackPath())}
                 variant="ghost"
                 className="flex items-center gap-2"
               >
@@ -887,7 +905,7 @@ const CoursePlayer = () => {
                     This course doesn't have any lessons yet.
                   </p>
                   <Button
-                    onClick={() => navigate('/student/courses')}
+                    onClick={() => navigate(getBackPath())}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white"
                   >
                     Back to Courses

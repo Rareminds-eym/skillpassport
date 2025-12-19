@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Embedded Assessment</title>
+</head>
+<body>
+    <h1>Test Embedded Assessment URL</h1>
+    
+    <div style="margin: 20px;">
+        <h2>Test URL:</h2>
+        <p id="testUrl"></p>
+        
+        <h2>Instructions:</h2>
+        <ol>
+            <li>Make sure RM_Assessment is running</li>
+            <li>Click the link below to test if embedded mode works</li>
+            <li>You should see the welcome/start screen (NOT login page)</li>
+        </ol>
+        
+        <a id="testLink" href="" target="_blank" style="font-size: 18px; color: blue;">
+            Click here to test embedded mode
+        </a>
+    </div>
+
+    <script>
+        // Build the test URL
+        const baseUrl = 'http://localhost:5173'; // Change if your port is different
+        const params = new URLSearchParams({
+            userId: 'test-123',
+            email: 'test@example.com',
+            name: 'Test User',
+            source: 'skillpassport',
+            embedded: 'true'
+        });
+        
+        const fullUrl = `${baseUrl}?${params.toString()}`;
+        
+        document.getElementById('testUrl').textContent = fullUrl;
+        document.getElementById('testLink').href = fullUrl;
+        
+        console.log('Test URL:', fullUrl);
+    </script>
+</body>
+</html>

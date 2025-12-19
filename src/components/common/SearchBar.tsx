@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface SearchBarProps {
@@ -10,6 +10,8 @@ interface SearchBarProps {
   showClearButton?: boolean;
   disabled?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  debounceMs?: number; // NEW: Optional debounce delay
+  onDebouncedChange?: (value: string) => void; // NEW: Callback for debounced value
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({
@@ -20,8 +22,27 @@ const SearchBar: React.FC<SearchBarProps> = ({
   className = "",
   showClearButton = true,
   disabled = false,
-  size = 'md'
+  size = 'md',
+  debounceMs = 0, // NEW: Default 0 = no debounce (backward compatible)
+  onDebouncedChange // NEW: Optional debounced callback
 }) => {
+  const [internalValue, setInternalValue] = useState(value);
+
+  // Sync internal value with prop value
+  useEffect(() => {
+    setInternalValue(value);
+  }, [value]);
+
+  // Debounce effect - only runs if debounceMs > 0
+  useEffect(() => {
+    if (debounceMs > 0 && onDebouncedChange) {
+      const timer = setTimeout(() => {
+        onDebouncedChange(internalValue);
+      }, debounceMs);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [internalValue, debounceMs, onDebouncedChange]);
   const sizeClasses = {
     sm: 'py-1.5 pl-8 pr-8 text-sm',
     md: 'py-2 pl-10 pr-10 text-sm',
@@ -46,9 +67,20 @@ const SearchBar: React.FC<SearchBarProps> = ({
     lg: 'right-3'
   };
 
+  const handleInputChange = (newValue: string) => {
+    setInternalValue(newValue);
+    // Always call immediate onChange for controlled input
+    onChange(newValue);
+  };
+
   const handleClear = () => {
+    setInternalValue('');
     onChange('');
     onClear?.();
+    // Also trigger debounced callback immediately on clear
+    if (onDebouncedChange) {
+      onDebouncedChange('');
+    }
   };
 
   return (
@@ -58,8 +90,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
       />
       <input
         type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={internalValue}
+        onChange={(e) => handleInputChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
         className={`
@@ -69,7 +101,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           ${className}
         `}
       />
-      {showClearButton && value && !disabled && (
+      {showClearButton && internalValue && !disabled && (
         <button
           onClick={handleClear}
           className={`absolute ${clearButtonPositions[size]} top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors`}

@@ -8,19 +8,15 @@ import {
   BookOpen,
   Clock,
   Users,
-  Star,
-  Filter,
   Grid3x3,
   List,
-  Play,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
   ArrowDownAZ
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { motion } from 'framer-motion';
-import CoursePurchaseModal from '../../components/admin/courses/CoursePurchaseModal';
+import CourseDetailModal from '../../components/student/courses/CourseDetailModal';
 
 const BrowseCourses = () => {
   const navigate = useNavigate();
@@ -195,37 +191,20 @@ const BrowseCourses = () => {
     setShowDetailModal(true);
   };
 
-  // Handle purchase course
-  const handlePurchaseCourse = async (course) => {
-    try {
-      // TODO: Integrate with actual payment gateway (Razorpay, Stripe, etc.)
-      console.log('Initiating purchase for course:', course.course_id);
-      
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Show success message
-      alert(`✅ Purchase Successful!\n\nCourse: ${course.title}\nAmount: ₹499\n\nYou now have lifetime access to this course.`);
-      
-      setShowDetailModal(false);
-      
-      // Optionally navigate to purchased courses or course player
-      // navigate(`/educator/my-courses/${course.course_id}`);
-    } catch (error) {
-      console.error('Purchase failed:', error);
-      alert('❌ Purchase failed. Please try again.');
-    }
+  // Handle start course - navigate to course player
+  const handleStartCourse = (course) => {
+    setShowDetailModal(false);
+    navigate(`/educator/courses/${course.course_id}/learn`);
   };
 
   return (
     <>
-      {/* Course Purchase Modal */}
-      <CoursePurchaseModal
+      {/* Course Detail Modal */}
+      <CourseDetailModal
         course={selectedCourse}
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        onPurchase={handlePurchaseCourse}
-        userRole="educator"
+        onStartCourse={handleStartCourse}
       />
       <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
@@ -271,10 +250,10 @@ const BrowseCourses = () => {
                   </div>
                   <div className="flex-1">
                     <h1 className="font-bold text-2xl text-indigo-600">
-                      Browse & Purchase Courses
+                      Browse Courses
                     </h1>
                     <p className="text-sm text-gray-600 mt-1">
-                      Explore our course marketplace and purchase courses for professional development
+                      Explore our course library and access courses for professional development
                     </p>
                   </div>
                 </div>

@@ -1233,7 +1233,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                         student.approval_status === undefined ||
                         !student.approval_status;
                       
-                      return needsVerification;
+                      return needsVerification && !student.school_id;
                     })() && (
                       <div className="flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
                         <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-1 animate-pulse"></div>
@@ -1241,7 +1241,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       </div>
                     )}
                     
-                    {canPromote() && (
+                    {canPromote() && !student.school_id && (
                       <div className="flex items-center text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
                         <ArrowUpIcon className="h-3 w-3 mr-1" />
                         Ready for Promotion
@@ -1924,14 +1924,14 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                         name: student.name
                       });
                       
-                      // Show verify button if student needs verification
+                      // Show verify button if student needs verification and is not a school student
                       const needsVerification = 
                         student.approval_status === 'pending' ||
                         student.approval_status === null ||
                         student.approval_status === undefined ||
                         !student.approval_status;
                       
-                      return needsVerification;
+                      return needsVerification && !student.school_id;
                     })() && (
                       <button
                         onClick={() => setShowApprovalModal(true)}
@@ -1945,7 +1945,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
 
 
 
-                    {canPromote() && (
+                    {canPromote() && !student.school_id && (
                       <button
                         onClick={() => setShowPromotionModal(true)}
                         disabled={actionLoading}
@@ -1969,10 +1969,12 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                   </div>
                   
                   <div className="flex items-center space-x-3">
-                    {/* Semester Status - Subtle Display */}
-                    <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      Sem {getCurrentSemester()}/{getTotalSemesters()}
-                    </div>
+                    {/* Semester Status - Subtle Display - Only for College Students */}
+                    {!student.school_id && (
+                      <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                        Sem {getCurrentSemester()}/{getTotalSemesters()}
+                      </div>
+                    )}
                     
                     <div className="flex space-x-2">
                       <button

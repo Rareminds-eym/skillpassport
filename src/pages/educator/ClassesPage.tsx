@@ -20,6 +20,9 @@ import {
 import SearchBar from "../../components/common/SearchBar"
 import { useClasses } from "../../hooks/useClasses"
 import { useEducatorSchool } from "../../hooks/useEducatorSchool"
+import { useEducatorId } from "../../hooks/useEducatorId"
+// @ts-ignore - AuthContext is a .jsx file
+import { useAuth } from "../../context/AuthContext"
 import ManageStudentsModal from "../../components/educator/ManageStudentsModal"
 import { createClass, EducatorClass, updateClass } from "../../services/classService"
 import { supabase } from "../../lib/supabaseClient"
@@ -172,18 +175,24 @@ const ClassDetailsDrawer = ({
             </div>
             <p className="mt-1 text-sm text-gray-500">{classItem.course}</p>
             <p className="text-xs text-gray-400">{classItem.department} • Batch {classItem.year}</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-600">
-              <span className="text-gray-500">Educator:</span>
-              <span className="font-medium text-gray-900">{classItem.educator}</span>
-              <span className="text-gray-400">•</span>
-              <a
-                href={`mailto:${classItem.educatorEmail}`}
-                className="inline-flex items-center text-indigo-600 hover:text-indigo-700"
-              >
-                <EnvelopeIcon className="mr-1 h-4 w-4" />
-                {classItem.educatorEmail}
-              </a>
-            </div>
+            {classItem.educator && classItem.educator !== "TBD" && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                <span className="text-gray-500">Class Teacher:</span>
+                <span className="font-medium text-gray-900">{classItem.educator}</span>
+                {classItem.educatorEmail && classItem.educatorEmail !== "Not assigned" && (
+                  <>
+                    <span className="text-gray-400">•</span>
+                    <a
+                      href={`mailto:${classItem.educatorEmail}`}
+                      className="inline-flex items-center text-indigo-600 hover:text-indigo-700"
+                    >
+                      <EnvelopeIcon className="mr-1 h-4 w-4" />
+                      {classItem.educatorEmail}
+                    </a>
+                  </>
+                )}
+              </div>
+            )}
             <div className="mt-3 flex flex-wrap gap-2">
               {classItem.skillAreas.map((skill) => (
                 <span
@@ -668,44 +677,36 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
 const ClassesPage = () => {
   const navigate = useNavigate()
   
+  // Get auth context
+  const { user, isAuthenticated } = useAuth()
+  
   // Get educator's school information
   const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool()
   
-  // Get educator information from localStorage or context
+  // Get educator ID securely
+  const { educatorId, loading: educatorIdLoading, error: educatorIdError } = useEducatorId()
+  
+  // Get educator information from auth context and database
   const [educatorInfo, setEducatorInfo] = useState<{ id: string; name: string; email: string } | null>(null)
   
   useEffect(() => {
     const fetchEducatorInfo = async () => {
+      if (!user || !educatorId) return
+      
       try {
-        const storedUser = localStorage.getItem('user')
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser)
-          if (parsedUser.educator_id && parsedUser.full_name && parsedUser.email) {
-            setEducatorInfo({
-              id: parsedUser.educator_id,
-              name: parsedUser.full_name,
-              email: parsedUser.email
-            })
-            return
-          }
-        }
+        // Use educatorId from the hook and get additional info
+        const { data: educatorData } = await supabase
+          .from('school_educators')
+          .select('id, first_name, last_name, email')
+          .eq('id', educatorId)
+          .single()
 
-        // Fallback: fetch from Supabase
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const { data: educatorData } = await supabase
-            .from('school_educators')
-            .select('id, first_name, last_name, email')
-            .eq('user_id', user.id)
-            .single()
-
-          if (educatorData) {
-            setEducatorInfo({
-              id: educatorData.id,
-              name: `${educatorData.first_name || ''} ${educatorData.last_name || ''}`.trim() || educatorData.email,
-              email: educatorData.email
-            })
-          }
+        if (educatorData) {
+          setEducatorInfo({
+            id: educatorData.id,
+            name: `${educatorData.first_name || ''} ${educatorData.last_name || ''}`.trim() || educatorData.email,
+            email: educatorData.email
+          })
         }
       } catch (err) {
         console.error('Error fetching educator info:', err)
@@ -713,12 +714,26 @@ const ClassesPage = () => {
     }
 
     fetchEducatorInfo()
-  }, [])
+  }, [user, educatorId])
+
+  // Security check: Ensure user is authenticated and has educator role
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/auth/login')
+      return
+    }
+    
+    if (user?.role !== 'educator' && user?.role !== 'school_educator') {
+      console.error('Unauthorized access attempt to educator classes page')
+      navigate('/auth/login')
+      return
+    }
+  }, [isAuthenticated, user, navigate])
   
-  // Fetch classes filtered by educator's school and assigned classes
+  // Fetch classes - only for this specific educator
   const { classes, loading, error, stats, upsertClass } = useClasses({ 
     schoolId: educatorSchool?.id,
-    educatorId: educatorInfo?.id
+    educatorId: educatorId
   })
   
   const [viewMode, setViewMode] = useState("grid")
@@ -922,7 +937,9 @@ const ClassesPage = () => {
     filters.skillAreas.length +
     filters.performanceBands.length
 
-  const isEmpty = !loading && !schoolLoading && paginatedClasses.length === 0 && !error && !searchQuery && totalFilters === 0
+  const isLoading = loading || schoolLoading || educatorIdLoading
+  const hasError = error || educatorIdError
+  const isEmpty = !isLoading && paginatedClasses.length === 0 && !hasError && !searchQuery && totalFilters === 0
 
   return (
     <div className="flex  overflow-y-auto mb-4 flex-col h-screen">
@@ -1143,18 +1160,20 @@ const ClassesPage = () => {
           </div>
 
           <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
-            {(loading || schoolLoading) && (
+            {isLoading && (
               <div className="flex items-center justify-center py-10 text-sm text-gray-500 space-x-2">
                 <ArrowPathIcon className="h-5 w-5 animate-spin" />
                 <span>Loading classes...</span>
               </div>
             )}
-            {!loading && !schoolLoading && error && (
-              <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-md p-4">{error}</div>
+            {!isLoading && hasError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-md p-4">
+                {error || educatorIdError || "Failed to load classes"}
+              </div>
             )}
-            {!loading && !schoolLoading && isEmpty && <EmptyState onCreate={() => setShowAddClassModal(true)} />}
+            {!isLoading && isEmpty && <EmptyState onCreate={() => setShowAddClassModal(true)} />}
 
-            {!loading && !schoolLoading && !isEmpty && viewMode === "grid" && paginatedClasses.length > 0 && (
+            {!isLoading && !isEmpty && viewMode === "grid" && paginatedClasses.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {paginatedClasses.map((classItem) => (
                   <div key={classItem.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -1175,9 +1194,11 @@ const ClassesPage = () => {
                         </span>
                       </div>
                       <ProgressBar value={classItem.avg_progress} />
-                      <div className="text-sm text-gray-600">
-                        <span className="text-gray-500">Educator:</span> <span className="font-medium text-gray-900">{classItem.educator}</span>
-                      </div>
+                      {classItem.educator && classItem.educator !== "TBD" && (
+                        <div className="text-sm text-gray-600">
+                          <span className="text-gray-500">Class Teacher:</span> <span className="font-medium text-gray-900">{classItem.educator}</span>
+                        </div>
+                      )}
                       {classItem.skillAreas.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {classItem.skillAreas.map((skill) => (
@@ -1224,7 +1245,7 @@ const ClassesPage = () => {
               </div>
             )}
 
-            {!loading && !schoolLoading && !isEmpty && viewMode === "table" && paginatedClasses.length > 0 && (
+            {!isLoading && !isEmpty && viewMode === "table" && paginatedClasses.length > 0 && (
               <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -1290,7 +1311,7 @@ const ClassesPage = () => {
               </div>
             )}
 
-            {!loading && !schoolLoading && paginatedClasses.length === 0 && !isEmpty && (
+            {!isLoading && paginatedClasses.length === 0 && !isEmpty && (
               <div className="text-center py-10 text-sm text-gray-500">
                 No classes match your current filters. Try adjusting filters or clearing them.
                 <div className="mt-3">
@@ -1302,7 +1323,7 @@ const ClassesPage = () => {
             )}
           </div>
 
-          {!loading && totalPages > 1 && (
+          {!isLoading && totalPages > 1 && (
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

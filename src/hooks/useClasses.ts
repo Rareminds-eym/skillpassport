@@ -15,6 +15,15 @@ export function useClasses(options?: UseClassesOptions) {
 
   const loadClasses = async () => {
     setLoading(true)
+    
+    // Security: Ensure educatorId is provided for educator role
+    if (options?.educatorId === undefined) {
+      setError("Educator ID is required")
+      setClasses([])
+      setLoading(false)
+      return
+    }
+    
     const { data, error: serviceError } = await fetchEducatorClasses(schoolId || undefined, educatorId || undefined)
     if (serviceError || !data) {
       setError(serviceError || "Failed to load classes")
@@ -30,10 +39,20 @@ export function useClasses(options?: UseClassesOptions) {
     let isMounted = true
     const wrappedLoad = async () => {
       if (!isMounted) return
+      
+      // Security: Don't load classes without proper educator identification
+      if (options?.educatorId === undefined) {
+        setError("Educator authentication required")
+        setClasses([])
+        setLoading(false)
+        return
+      }
+      
       // Wait for schoolId if options are provided
       if (options !== undefined && schoolId === undefined) {
         return
       }
+      
       await loadClasses()
     }
     wrappedLoad()

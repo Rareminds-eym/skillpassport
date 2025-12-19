@@ -43,7 +43,6 @@ export const getStudentSettingsByEmail = async (email) => {
         instagram_link,
         portfolio_link,
         other_social_links,
-        profile,
         resumeUrl,
         profilePicture,
         gender,
@@ -116,10 +115,10 @@ export const getStudentSettingsByEmail = async (email) => {
       // Profile
       resumeUrl: data.resumeUrl || '',
       profilePicture: data.profilePicture || '',
-      bio: data.profile?.bio || '',
+      bio: '', // Bio field removed from profile JSONB
 
-      // Settings from profile JSONB
-      notificationSettings: data.profile?.notificationSettings || {
+      // Default settings (no longer stored in profile JSONB)
+      notificationSettings: {
         emailNotifications: true,
         pushNotifications: true,
         applicationUpdates: true,
@@ -129,7 +128,7 @@ export const getStudentSettingsByEmail = async (email) => {
         monthlyReport: false,
       },
 
-      privacySettings: data.profile?.privacySettings || {
+      privacySettings: {
         profileVisibility: 'public',
         showEmail: false,
         showPhone: false,
@@ -162,7 +161,7 @@ export const updateStudentSettings = async (email, updates) => {
     // First get the student ID
     const { data: student, error: findError } = await supabase
       .from('students')
-      .select('id, profile')
+      .select('id')
       .eq('email', email)
       .single();
 
@@ -172,7 +171,6 @@ export const updateStudentSettings = async (email, updates) => {
 
     // Prepare updates for direct columns
     const columnUpdates = {};
-    const profileUpdates = { ...student.profile };
 
     // Map form fields to database columns
     const fieldMapping = {
@@ -234,19 +232,10 @@ export const updateStudentSettings = async (email, updates) => {
         columnUpdates[fieldMapping[key]] = value;
       } else if (key === 'otherSocialLinks') {
         columnUpdates.other_social_links = updates[key];
-      } else if (key === 'bio') {
-        profileUpdates.bio = updates[key];
-      } else if (key === 'notificationSettings') {
-        profileUpdates.notificationSettings = updates[key];
-      } else if (key === 'privacySettings') {
-        profileUpdates.privacySettings = updates[key];
       }
+      // Note: bio, notificationSettings, and privacySettings are no longer stored in database
+      // They can be handled client-side or stored in separate tables if needed
     });
-
-    // Add profile updates if any
-    if (Object.keys(profileUpdates).length > Object.keys(student.profile || {}).length) {
-      columnUpdates.profile = profileUpdates;
-    }
 
     // Add updated timestamp
     columnUpdates.updated_at = new Date().toISOString();

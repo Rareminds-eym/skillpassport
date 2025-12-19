@@ -331,10 +331,18 @@ function mapToUICandidate(row: StudentRow): UICandidate {
   }
 }
 
-export function useStudents() {
+interface UseStudentsOptions {
+  searchTerm?: string
+  page?: number
+  pageSize?: number
+}
+
+export function useStudents(options: UseStudentsOptions = {}) {
+  const { searchTerm = '', page = 1, pageSize = 500 } = options
   const [data, setData] = useState<UICandidate[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+  const [totalCount, setTotalCount] = useState<number>(0)
 
   useEffect(() => {
     let isMounted = true
@@ -398,7 +406,7 @@ export function useStudents() {
               const { data: college } = await supabase
                 .from('colleges')
                 .select('id, name, deanEmail')
-                .ilike('deanEmail', user.email)
+                .ilike('deanEmail', user.email || '')
                 .single();
               
               if (college?.id) {
@@ -474,6 +482,33 @@ export function useStudents() {
           }
         }
         
+        // First, get total count for pagination
+        let countQuery = supabase
+          .from('students')
+          .select('id', { count: 'exact', head: true });
+        
+        // Apply same filters to count query
+        if (schoolId) {
+          countQuery = countQuery.eq('school_id', schoolId);
+        } else if (collegeId) {
+          countQuery = countQuery.eq('college_id', collegeId);
+        } else if (universityId) {
+          countQuery = countQuery.eq('universityId', universityId);
+        }
+        
+        if (searchTerm && searchTerm.trim()) {
+          countQuery = countQuery.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`);
+        }
+        
+        const { count } = await countQuery;
+        if (count !== null) {
+          setTotalCount(count);
+        }
+        
+        // Calculate pagination range
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize - 1;
+        
         // Build the query - use foreign key hints for joins
         let query = supabase
           .from('students')
@@ -485,7 +520,7 @@ export function useStudents() {
             experience!experience_student_id_fkey(id,organization,role,start_date,end_date,duration,verified,approval_status,created_at,updated_at),
             trainings!trainings_student_id_fkey(id,title,organization,start_date,end_date,duration,description,approval_status,created_at,updated_at)`)
           .order('updatedAt', { ascending: false })
-          .limit(500);
+          .range(startIndex, endIndex);
         
         // Filter by school_id, college_id, or universityId based on user role
         if (schoolId) {
@@ -571,9 +606,13 @@ export function useStudents() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [searchTerm, page, pageSize])
 
-  const stats = useMemo(() => ({ count: data.length }), [data])
+  const stats = useMemo(() => ({ 
+    count: data.length,
+    totalCount,
+    totalPages: Math.ceil(totalCount / pageSize)
+  }), [data.length, totalCount, pageSize])
 
-  return { students: data, loading, error, stats }
+  return { students: data, loading, error, stats, totalCount }
 }

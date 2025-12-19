@@ -212,6 +212,109 @@ export async function callClaudeJSON(prompt, options = {}) {
 }
 
 /**
+ * Call Claude with an image (Vision API)
+ * @param {string} prompt - The text prompt
+ * @param {string} imageBase64 - Base64 encoded image data
+ * @param {string} mediaType - Image media type (e.g., 'image/png', 'image/jpeg')
+ * @param {Object} options - Configuration options
+ * @returns {Promise<string>} AI response text
+ */
+export async function callClaudeWithImage(prompt, imageBase64, mediaType = 'image/png', options = {}) {
+  const {
+    model = CLAUDE_MODELS.HAIKU,
+    systemPrompt = null,
+    maxTokens = 1000,
+  } = options;
+
+  const apiKey = getApiKey();
+  
+  if (!apiKey) {
+    throw new Error('Claude API key not configured. Please add VITE_CLAUDE_API_KEY to your .env file.');
+  }
+
+  // Build messages with image
+  const messages = [{
+    role: 'user',
+    content: [
+      {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: mediaType,
+          data: imageBase64,
+        },
+      },
+      {
+        type: 'text',
+        text: prompt,
+      },
+    ],
+  }];
+
+  const requestBody = {
+    model,
+    max_tokens: maxTokens,
+    messages,
+  };
+
+  if (systemPrompt) {
+    requestBody.system = systemPrompt;
+  }
+
+  console.log(`🤖 Claude Vision API call - Model: ${model}`);
+
+  const response = await fetch(CLAUDE_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': ANTHROPIC_VERSION,
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(requestBody)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`Claude API error (${response.status}): ${errorData.error?.message || response.statusText}`);
+  }
+
+  const data = await response.json();
+  const responseText = data.content?.[0]?.text;
+
+  if (!responseText) {
+    throw new Error('No content in Claude response');
+  }
+
+  console.log('✅ Claude Vision response received');
+  return responseText;
+}
+
+/**
+ * Call Claude Vision and parse JSON response
+ * @param {string} prompt - The prompt expecting JSON response
+ * @param {string} imageBase64 - Base64 encoded image
+ * @param {string} mediaType - Image media type
+ * @param {Object} options - Same options as callClaudeWithImage
+ * @returns {Promise<Object>} Parsed JSON object
+ */
+export async function callClaudeVisionJSON(prompt, imageBase64, mediaType = 'image/png', options = {}) {
+  const response = await callClaudeWithImage(prompt, imageBase64, mediaType, options);
+  
+  try {
+    const jsonMatch = response.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      console.error('No JSON found in vision response:', response.slice(0, 500));
+      throw new Error('No JSON found in Claude response');
+    }
+    return JSON.parse(jsonMatch[0]);
+  } catch (error) {
+    console.error('Failed to parse Claude Vision JSON response:', error);
+    throw new Error(`Failed to parse JSON: ${error.message}`);
+  }
+}
+
+/**
  * Clear the response cache
  */
 export function clearCache() {
@@ -231,6 +334,8 @@ export function isClaudeConfigured() {
 export default {
   callClaude,
   callClaudeJSON,
+  callClaudeWithImage,
+  callClaudeVisionJSON,
   clearCache,
   isClaudeConfigured,
   CLAUDE_MODELS

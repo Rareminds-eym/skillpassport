@@ -19,6 +19,7 @@ import SubscriptionRouteGuard from '../../components/Subscription/SubscriptionRo
 import { useSubscription } from '../../hooks/Subscription/useSubscription';
 import { isActiveOrPaused } from '../../utils/subscriptionHelpers';
 import useAuth from '../../hooks/useAuth';
+import { supabase } from '../../lib/supabaseClient';
 
 // Clean Input Component
 const FormInput = memo(
@@ -212,20 +213,37 @@ function PaymentCompletion() {
     }
   }, [authLoading, isAuthenticated, navigate, plan, studentType]);
 
-  // Autofill user details
+  // Autofill user details from public.users table
   useEffect(() => {
-    if (isAuthenticated && user) {
-      const fullName =
-        user.user_metadata?.full_name ||
-        user.raw_user_meta_data?.full_name ||
-        `${user.user_metadata?.firstName || ''} ${user.user_metadata?.lastName || ''}`.trim() ||
-        '';
-      setUserDetails((prev) => ({
-        name: prev.name || fullName,
-        email: prev.email || user.email || '',
-        phone: prev.phone || user.user_metadata?.phone || user.raw_user_meta_data?.phone || '',
-      }));
-    }
+    const fetchUserDetails = async () => {
+      if (isAuthenticated && user) {
+        try {
+          // Fetch user data from public.users table
+          const { data: userData } = await supabase
+            .from('users')
+            .select('firstName, lastName, phone')
+            .eq('id', user.id)
+            .single();
+
+          const fullName = `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim();
+
+          setUserDetails((prev) => ({
+            name: prev.name || fullName,
+            email: prev.email || user.email || '',
+            phone: prev.phone || userData?.phone || '',
+          }));
+        } catch {
+          // Fallback on error
+          setUserDetails((prev) => ({
+            name: prev.name || '',
+            email: prev.email || user.email || '',
+            phone: prev.phone || '',
+          }));
+        }
+      }
+    };
+
+    fetchUserDetails();
   }, [isAuthenticated, user]);
 
   // Redirect if active subscription

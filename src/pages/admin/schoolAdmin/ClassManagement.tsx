@@ -193,11 +193,11 @@ const ClassDetailsDrawer = ({
             </div>
             <p className="mt-1 text-sm text-gray-500">Grade {classItem.grade}</p>
             <p className="text-xs text-gray-400">Section {classItem.section} • {classItem.academic_year}</p>
-            {classItem.educator && (
+            {classItem.educator && classItem.educator !== "TBD" && (
               <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-600">
-                <span className="text-gray-500">Educator:</span>
+                <span className="text-gray-500">Class Teacher:</span>
                 <span className="font-medium text-gray-900">{classItem.educator}</span>
-                {classItem.educatorEmail && (
+                {classItem.educatorEmail && classItem.educatorEmail !== "Not assigned" && (
                   <>
                     <span className="text-gray-400">•</span>
                     <a
@@ -1193,9 +1193,9 @@ const ClassManagement = () => {
                           }}
                         />
                       </div>
-                      {classItem.educator && (
+                      {classItem.educator && classItem.educator !== "TBD" && (
                         <div className="text-sm text-gray-600">
-                          <span className="text-gray-500">Educator:</span> <span className="font-medium text-gray-900">{classItem.educator}</span>
+                          <span className="text-gray-500">Class Teacher:</span> <span className="font-medium text-gray-900">{classItem.educator}</span>
                         </div>
                       )}
                       {classItem.skillAreas && classItem.skillAreas.length > 0 && (

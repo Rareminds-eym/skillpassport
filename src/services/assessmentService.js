@@ -320,18 +320,11 @@ export const canTakeAssessment = async (studentId, gradeLevel = null) => {
     return { canTake: true, lastAttemptDate: null, nextAvailableDate: null, devBypass: true };
   }
 
-  let query = supabase
+  const { data, error } = await supabase
     .from('personal_assessment_results')
     .select('created_at')
     .eq('student_id', studentId)
-    .eq('status', 'completed');
-
-  // Filter by grade level if provided
-  if (gradeLevel) {
-    query = query.eq('grade_level', gradeLevel);
-  }
-
-  const { data, error } = await query
+    .eq('status', 'completed')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
