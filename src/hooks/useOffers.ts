@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { NotificationType } from "./useNotifications";
-import { createNotification } from "../services/notificationService"; 
+import { createNotification } from "../services/notificationService.ts"; 
 
 // -------------------- OFFER TYPES --------------------
 export interface Offer {

@@ -73,7 +73,8 @@ const StudentLayout = () => {
         <main className={isCareerAIPage || isAssessmentPage ? "flex-1 overflow-hidden" : "py-8 px-6"}>
           <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
         </main>
-        {!isCareerAIPage && !isAssessmentPage && <Footer />}
+        {/* Footer hidden for all student pages */}
+        {/* {!isCareerAIPage && !isAssessmentPage && !isDashboardPage && <Footer />} */}
         {!isAssessmentPage && <FloatingAIButton />}
         <Toaster />
 

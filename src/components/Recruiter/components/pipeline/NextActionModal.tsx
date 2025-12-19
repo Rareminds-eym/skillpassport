@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useToast } from '../Toast';
 import { updateNextAction } from '../../../../services/pipelineService';
-import { createNotification } from '../../../../services/notificationService';
+import { createNotification } from '../../../../services/notificationService.ts';
 import { NEXT_ACTIONS, PipelineCandidate } from './types';
 
 interface NextActionModalProps {
