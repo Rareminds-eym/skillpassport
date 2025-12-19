@@ -30,15 +30,23 @@ const ContinueLearningHero = ({ course, onContinue }) => {
           animation: 'float 3s ease-in-out infinite',
         }}
       >
-        <div 
-          className="drop-shadow-xl"
-          style={{ width: 128, height: 128, minWidth: 128, minHeight: 128 }}
-        >
+        <div className="drop-shadow-xl" style={{ width: 128, height: 128 }}>
           <DotLottieReact 
             src="https://lottie.host/45abe60c-5bde-4cc9-b112-d35f11a7ffd0/DwMCYzvoQM.lottie" 
             loop 
             autoplay
+            renderConfig={{
+              autoResize: true,
+              devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+            }}
             style={{ width: '100%', height: '100%' }}
+            dotLottieRefCallback={(dotLottie) => {
+              if (dotLottie) {
+                dotLottie.addEventListener('load', () => {
+                  dotLottie.resize();
+                });
+              }
+            }}
           />
         </div>
       </div>
@@ -105,18 +113,24 @@ const WeeklyOverviewCard = ({ stats, activeDays }) => {
       {/* Streak Section */}
       <div className="flex items-center justify-between mb-auto">
         <div className="flex items-center gap-3">
-          <div 
-            className="flex-shrink-0 overflow-visible"
-            style={{ width: 64, height: 64, minWidth: 64, minHeight: 64, position: 'relative' }}
-          >
-            <div style={{ position: 'absolute', top: -8, left: -8, width: 80, height: 80 }}>
-              <DotLottieReact 
-                src="https://lottie.host/c64de14f-ce23-41a2-90a6-b64b2d11ea54/nqY24O7vea.lottie" 
-                loop 
-                autoplay
-                style={{ width: '100%', height: '100%' }}
-              />
-            </div>
+          <div style={{ width: 64, height: 64, flexShrink: 0 }}>
+            <DotLottieReact 
+              src="https://lottie.host/c64de14f-ce23-41a2-90a6-b64b2d11ea54/nqY24O7vea.lottie" 
+              loop 
+              autoplay
+              renderConfig={{
+                autoResize: true,
+                devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+              }}
+              style={{ width: '100%', height: '100%' }}
+              dotLottieRefCallback={(dotLottie) => {
+                if (dotLottie) {
+                  dotLottie.addEventListener('load', () => {
+                    dotLottie.resize();
+                  });
+                }
+              }}
+            />
           </div>
           <div>
             <p className="text-3xl font-bold text-gray-900">{stats.currentStreak}</p>
