@@ -22,7 +22,7 @@ const GlobalPresenceContext = createContext<GlobalPresenceContextType | undefine
 
 interface GlobalPresenceProviderProps {
   children: ReactNode;
-  userType: 'student' | 'recruiter';
+  userType: 'student' | 'recruiter' | 'educator';
 }
 
 export const GlobalPresenceProvider: React.FC<GlobalPresenceProviderProps> = ({ children, userType }) => {
@@ -34,7 +34,7 @@ export const GlobalPresenceProvider: React.FC<GlobalPresenceProviderProps> = ({ 
   useEffect(() => {
     if (user?.id) {
       setUserId(user.id);
-      setUserName(user.name || (userType === 'student' ? 'Student' : 'Recruiter'));
+      setUserName(user.name || (userType === 'student' ? 'Student' : userType === 'recruiter' ? 'Recruiter' : 'Educator'));
     }
   }, [user, userType]);
 

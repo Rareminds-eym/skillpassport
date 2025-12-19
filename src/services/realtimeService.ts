@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 
 export interface UserPresence {
   userId: string;
-  userType: 'student' | 'recruiter';
+  userType: 'student' | 'recruiter' | 'educator';
   userName: string;
   status: 'online' | 'away' | 'busy';
   lastSeen: string;
@@ -31,7 +31,7 @@ export interface TypingIndicator {
 export interface OnlineUser {
   userId: string;
   userName: string;
-  userType: 'student' | 'recruiter';
+  userType: 'student' | 'recruiter' | 'educator';
   status: 'online' | 'away' | 'busy';
   joinedAt: string;
 }
@@ -116,7 +116,7 @@ export class RealtimeService {
    */
   static subscribeToUserMessages(
     userId: string,
-    userType: 'student' | 'recruiter',
+    userType: 'student' | 'recruiter' | 'educator',
     onMessage: (payload: any) => void
   ): RealtimeChannel {
     const channelName = `user-messages:${userId}`;

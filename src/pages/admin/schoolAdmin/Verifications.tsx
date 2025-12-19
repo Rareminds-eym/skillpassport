@@ -201,7 +201,7 @@ const Verifications: React.FC = () => {
   const tabs = {
     trainings: { label: "Training Approvals", icon: CheckCircle, count: pendingTrainings.length },
     experiences: { label: "Experience Approvals", icon: User, count: pendingExperiences.length },
-    certificates: { label: "Certificate Verification", icon: FileText, count: 0 },
+    // certificates: { label: "Certificate Verification", icon: FileText, count: 0 },
     projects: { label: "Project Validation", icon: Building, count: pendingProjects.length }
   };
 

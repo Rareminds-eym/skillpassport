@@ -56,47 +56,116 @@ export class CollegeAdminNotificationService {
   }
 
   /**
-   * Get pending trainings for college
+   * Get pending trainings for college admin (Using database approval_authority)
    * @param {string} collegeId - College's UUID
    * @returns {Promise<Array>} List of pending trainings
    */
   static async getPendingTrainings(collegeId) {
     try {
-      const { data, error } = await supabase.rpc('get_pending_college_trainings', {
-        input_college_id: collegeId
-      });
+      console.log('🎓 Fetching trainings for college admin using approval_authority:', collegeId);
+      
+      // Get trainings where approval_authority = 'college_admin' and student belongs to this college
+      const { data, error } = await supabase
+        .from('trainings')
+        .select(`
+          *,
+          student:students!trainings_student_id_fkey (
+            id,
+            name,
+            email,
+            student_type,
+            school_id,
+            university_college_id,
+            college_school_name
+          )
+        `)
+        .eq('approval_status', 'pending')
+        .eq('approval_authority', 'college_admin')
+        .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching pending trainings:', error);
+        console.error('❌ Error fetching trainings:', error);
         throw error;
       }
 
-      return data || [];
+      // Filter by college_id to ensure security
+      const filteredTrainings = (data || []).filter(training => {
+        const studentCollegeId = training.student?.university_college_id;
+        return studentCollegeId === collegeId;
+      });
+
+      // Format for UI
+      const formattedTrainings = filteredTrainings.map(training => ({
+        ...training,
+        student_name: training.student?.name || 'Unknown Student',
+        student_email: training.student?.email || 'No email',
+        student_school_id: training.student?.school_id,
+        student_college_id: training.student?.university_college_id
+      }));
+
+      console.log('✅ Found trainings for college admin:', formattedTrainings.length);
+      console.log('ℹ️ Using database approval_authority field (automatic routing)');
+      return formattedTrainings;
     } catch (error) {
-      console.error('Error fetching pending trainings:', error);
+      console.error('❌ Error fetching pending trainings:', error);
       throw error;
     }
   }
 
   /**
-   * Get pending experiences for college
+   * Get pending experiences for college admin (Using database approval_authority)
    * @param {string} collegeId - College's UUID
    * @returns {Promise<Array>} List of pending experiences
    */
   static async getPendingExperiences(collegeId) {
     try {
-      const { data, error } = await supabase.rpc('get_pending_college_experiences', {
-        input_college_id: collegeId
-      });
+      console.log('🎓 Fetching experiences for college admin using approval_authority:', collegeId);
+      
+      // Get experiences where approval_authority = 'college_admin' and student belongs to this college
+      const { data, error } = await supabase
+        .from('experience')
+        .select(`
+          *,
+          student:students!experience_student_id_fkey (
+            id,
+            name,
+            email,
+            student_type,
+            school_id,
+            university_college_id,
+            college_school_name
+          )
+        `)
+        .eq('approval_status', 'pending')
+        .eq('approval_authority', 'college_admin')
+        .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching pending experiences:', error);
+        console.error('❌ Error fetching experiences:', error);
         throw error;
       }
 
-      return data || [];
+      // Filter by college_id to ensure security
+      const filteredExperiences = (data || []).filter(experience => {
+        const studentCollegeId = experience.student?.university_college_id;
+        return studentCollegeId === collegeId;
+      });
+
+      // Format for UI
+      const formattedExperiences = filteredExperiences.map(experience => ({
+        ...experience,
+        student_name: experience.student?.name || 'Unknown Student',
+        student_email: experience.student?.email || 'No email',
+        student_school_id: experience.student?.school_id,
+        student_college_id: experience.student?.university_college_id,
+        student_type: experience.student?.student_type
+      }));
+
+      console.log('✅ Found experiences for college admin:', formattedExperiences.length);
+      console.log('ℹ️ Using database approval_authority field (automatic routing)');
+      return formattedExperiences;
     } catch (error) {
-      console.error('Error fetching pending experiences:', error);
+      console.error('❌ Error fetching pending experiences:', error);
       throw error;
     }
   }
@@ -299,24 +368,58 @@ export class CollegeAdminNotificationService {
   }
 
   /**
-   * Get pending projects for college
+   * Get pending projects for college admin (Using database approval_authority)
    * @param {string} collegeId - College's UUID
    * @returns {Promise<Array>} List of pending projects
    */
   static async getPendingProjects(collegeId) {
     try {
-      const { data, error } = await supabase.rpc('get_pending_college_projects', {
-        input_college_id: collegeId
-      });
+      console.log('🎓 Fetching projects for college admin using approval_authority:', collegeId);
+      
+      // Get projects where approval_authority = 'college_admin' and student belongs to this college
+      const { data, error } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          student:students!projects_student_id_fkey (
+            id,
+            name,
+            email,
+            student_type,
+            school_id,
+            university_college_id,
+            college_school_name
+          )
+        `)
+        .eq('approval_status', 'pending')
+        .eq('approval_authority', 'college_admin')
+        .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching pending projects:', error);
+        console.error('❌ Error fetching projects:', error);
         throw error;
       }
 
-      return data || [];
+      // Filter by college_id to ensure security
+      const filteredProjects = (data || []).filter(project => {
+        const studentCollegeId = project.student?.university_college_id;
+        return studentCollegeId === collegeId;
+      });
+
+      // Format for UI
+      const formattedProjects = filteredProjects.map(project => ({
+        ...project,
+        student_name: project.student?.name || 'Unknown Student',
+        student_email: project.student?.email || 'No email',
+        student_school_id: project.student?.school_id,
+        student_college_id: project.student?.university_college_id
+      }));
+
+      console.log('✅ Found projects for college admin:', formattedProjects.length);
+      console.log('ℹ️ Using database approval_authority field (automatic routing)');
+      return formattedProjects;
     } catch (error) {
-      console.error('Error fetching pending projects:', error);
+      console.error('❌ Error fetching pending projects:', error);
       throw error;
     }
   }
