@@ -47,13 +47,12 @@ export const useAssessmentResults = () => {
             if (user) {
                 const { data: studentData } = await supabase
                     .from('students')
-                    .select('first_name, last_name, full_name, register_number, college_id, colleges(name)')
+                    .select('name, registration_number, college_id, colleges(name)')
                     .eq('user_id', user.id)
                     .single();
 
                 if (studentData) {
-                    const rawName = studentData.full_name ||
-                        `${studentData.first_name || ''} ${studentData.last_name || ''}`.trim() ||
+                    const rawName = studentData.name ||
                         user.user_metadata?.full_name ||
                         user.email?.split('@')[0] || '—';
 
@@ -61,13 +60,13 @@ export const useAssessmentResults = () => {
 
                     setStudentInfo({
                         name: fullName,
-                        regNo: studentData.register_number || '—',
+                        regNo: studentData.registration_number || '—',
                         college: studentData.colleges?.name || '—',
                         stream: (localStorage.getItem('assessment_stream') || '—').toUpperCase()
                     });
 
                     localStorage.setItem('studentName', fullName);
-                    localStorage.setItem('studentRegNo', studentData.register_number || '');
+                    localStorage.setItem('studentRegNo', studentData.registration_number || '');
                     localStorage.setItem('collegeName', studentData.colleges?.name || '');
                 } else {
                     const rawName = user.user_metadata?.full_name || user.email?.split('@')[0] || '—';

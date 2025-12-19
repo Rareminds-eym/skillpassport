@@ -3,7 +3,7 @@
     "supabase": {
       "url": "https://mcp.supabase.com/mcp?project_ref=dpooleduinyyzxgrcwko",
       "headers": {
-        "Authorization": "Bearer sbp_b5b91c19d86bb9a4143af4e66428a17ae6f130c7"
+        "Authorization": "Bearer sbp_e931fa33346724d0ad8c66a86605fd854225bb02"
       },
       "disabled": false,
       "autoApprove": [
