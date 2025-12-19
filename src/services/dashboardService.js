@@ -199,24 +199,17 @@ export const getRecentActivity = async (limit = 15) => {
         .select(`
           *,
           shortlists(name),
-          students(id, profile)
+          students(id, name)
         `)
         .order('added_at', { ascending: false })
         .limit(limit);
 
       if (shortlistCandidates?.length > 0) {
         shortlistCandidates.forEach(sc => {
-          // Extract student name from profile JSON
+          // Extract student name from direct column
           let studentName = 'Student';
-          if (sc.students?.profile) {
-            try {
-              const profile = typeof sc.students.profile === 'string' 
-                ? JSON.parse(sc.students.profile) 
-                : sc.students.profile;
-              studentName = profile.name || `Student ${sc.student_id}`;
-            } catch (e) {
-              studentName = `Student ${sc.student_id}`;
-            }
+          if (sc.students?.name) {
+            studentName = sc.students.name;
           } else {
             studentName = `Student ${sc.student_id}`;
           }
@@ -320,7 +313,7 @@ export const getRecentActivity = async (limit = 15) => {
         .from('placements')
         .select(`
           *,
-          students(id, profile)
+          students(id, name)
         `)
         .order('updatedAt', { ascending: false })
         .limit(limit);
@@ -331,16 +324,10 @@ export const getRecentActivity = async (limit = 15) => {
           if (placement.placementStatus === 'hired') action = 'hired';
           if (placement.placementStatus === 'applied') action = 'applied';
           
-          // Extract student name from profile JSON
+          // Extract student name from direct column
           let studentName = `Student ${placement.studentId}`;
-          if (placement.students?.profile) {
-            try {
-              const profile = typeof placement.students.profile === 'string' 
-                ? JSON.parse(placement.students.profile) 
-                : placement.students.profile;
-              studentName = profile.name || studentName;
-            } catch (e) {
-            }
+          if (placement.students?.name) {
+            studentName = placement.students.name;
           }
           
           allActivities.push({

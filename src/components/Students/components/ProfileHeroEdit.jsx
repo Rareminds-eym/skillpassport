@@ -527,6 +527,29 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <div className="text-center">
+          <div className="relative">
+            <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600"></div>
+            <img
+              src="/assets/HomePage/RMLogo.webp"
+              alt="RareMinds Logo"
+              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 object-contain"
+            />
+          </div>
+          <div className="mt-6">
+            <p className="text-xl font-semibold text-gray-800 mb-2">Loading Profile...</p>
+            <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
+              Powered by <span className="font-semibold text-indigo-600">RareMinds</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!displayData) {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-700 text-center">

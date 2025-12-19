@@ -159,10 +159,17 @@ const SplitScreenLayout: React.FC<SplitScreenLayoutProps> = ({
                 <span className="text-sm dark:text-gray-300">{student.contact_number}</span>
               </div>
             )}
-            {student.district_name && (
+            {(student.district_name || student.city || student.state || student.country) && (
               <div className="flex items-center space-x-3 bg-white dark:bg-gray-800 p-3 rounded-lg shadow">
                 <MapPin className="w-5 h-5" style={{ color: primaryColor }} />
-                <span className="text-sm dark:text-gray-300">{student.district_name}</span>
+                <span className="text-sm dark:text-gray-300">
+                  {[
+                    student.city,
+                    student.district_name,
+                    student.state,
+                    student.country
+                  ].filter(Boolean).join(', ') || 'Location not specified'}
+                </span>
               </div>
             )}
           </motion.div>

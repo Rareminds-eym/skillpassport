@@ -127,6 +127,14 @@ const SkillGapCoursesDisplay = ({ courses = [] }) => {
 };
 
 const SkillsSection = ({ skillGap, employability, skillGapCourses = {} }) => {
+    // Defensive defaults for nested arrays
+    const currentStrengths = skillGap?.currentStrengths || [];
+    const strengthAreas = employability?.strengthAreas || [];
+    const improvementAreas = employability?.improvementAreas || [];
+    const priorityA = skillGap?.priorityA || [];
+    const priorityB = skillGap?.priorityB || [];
+    const learningTracks = skillGap?.learningTracks || [];
+
     return (
         <div className="space-y-6">
             {/* Current Strengths */}
@@ -142,12 +150,14 @@ const SkillsSection = ({ skillGap, employability, skillGapCourses = {} }) => {
                         </div>
                     </div>
                     <div className="space-y-2">
-                        {skillGap.currentStrengths.map((skill, idx) => (
+                        {currentStrengths.length > 0 ? currentStrengths.map((skill, idx) => (
                             <div key={idx} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-100">
                                 <Check className="w-5 h-5 text-green-600" />
                                 <span className="text-gray-700 text-base">{skill}</span>
                             </div>
-                        ))}
+                        )) : (
+                            <p className="text-gray-500 text-sm">No strengths identified yet</p>
+                        )}
                     </div>
                 </div>
 
@@ -162,18 +172,20 @@ const SkillsSection = ({ skillGap, employability, skillGapCourses = {} }) => {
                         </div>
                     </div>
                     <div className="space-y-2">
-                        {employability.strengthAreas.map((skill, idx) => (
+                        {strengthAreas.length > 0 ? strengthAreas.map((skill, idx) => (
                             <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                 <span className="text-gray-700 text-base">{skill}</span>
                                 <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm font-medium">Strong</span>
                             </div>
-                        ))}
+                        )) : (
+                            <p className="text-gray-500 text-sm">No strength areas identified yet</p>
+                        )}
                     </div>
-                    {employability.improvementAreas?.length > 0 && (
+                    {improvementAreas.length > 0 && (
                         <div className="mt-4 pt-3 border-t border-gray-100">
                             <p className="text-sm font-semibold text-gray-500 mb-2">Areas to Improve</p>
                             <div className="flex flex-wrap gap-1">
-                                {employability.improvementAreas.map((area, idx) => (
+                                {improvementAreas.map((area, idx) => (
                                     <span key={idx} className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-sm">{area}</span>
                                 ))}
                             </div>
@@ -195,11 +207,11 @@ const SkillsSection = ({ skillGap, employability, skillGapCourses = {} }) => {
                                 <p className="text-sm text-gray-500">Must build in next 6 months</p>
                             </div>
                         </div>
-                        <span className="px-3 py-1 bg-red-500 text-white rounded-full text-base font-bold">{skillGap.priorityA.length} Skills</span>
+                        <span className="px-3 py-1 bg-red-500 text-white rounded-full text-base font-bold">{priorityA.length} Skills</span>
                     </div>
                 </div>
                 <div className="p-5 space-y-4">
-                    {skillGap.priorityA.map((item, idx) => {
+                    {priorityA.map((item, idx) => {
                         // Get courses for this skill gap (Requirement 5.1)
                         const coursesForSkill = skillGapCourses[item.skill] || [];
                         
@@ -254,12 +266,14 @@ const SkillsSection = ({ skillGap, employability, skillGapCourses = {} }) => {
                     </div>
                 </div>
                 <div className="grid md:grid-cols-2 gap-2">
-                    {skillGap.priorityB.map((item, idx) => (
+                    {priorityB.length > 0 ? priorityB.map((item, idx) => (
                         <div key={idx} className="flex items-center gap-2 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
                             <span className="w-7 h-7 rounded bg-yellow-500 flex items-center justify-center text-white text-sm font-bold">{idx + 1}</span>
                             <span className="text-gray-700 text-base">{item.skill}</span>
                         </div>
-                    ))}
+                    )) : (
+                        <p className="text-gray-500 text-sm col-span-2">No priority B skills identified</p>
+                    )}
                 </div>
             </div>
 
@@ -276,8 +290,8 @@ const SkillsSection = ({ skillGap, employability, skillGapCourses = {} }) => {
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4 mb-4">
-                    {skillGap.learningTracks?.map((track, idx) => {
-                        const isRecommended = track.track === skillGap.recommendedTrack;
+                    {learningTracks.map((track, idx) => {
+                        const isRecommended = track.track === skillGap?.recommendedTrack;
                         return (
                             <div key={idx} className={`rounded-lg p-5 ${isRecommended ? 'bg-indigo-500/20 border-2 border-indigo-400' : 'bg-white/5 border border-white/10'}`}>
                                 {isRecommended && (
@@ -298,7 +312,7 @@ const SkillsSection = ({ skillGap, employability, skillGapCourses = {} }) => {
 
                 <div className="flex items-center justify-between p-4 bg-white/10 rounded-lg">
                     <span className="text-gray-300 text-base">Your recommended track:</span>
-                    <span className="font-bold text-indigo-400 text-lg">{skillGap.recommendedTrack}</span>
+                    <span className="font-bold text-indigo-400 text-lg">{skillGap?.recommendedTrack || 'Not determined'}</span>
                 </div>
             </div>
         </div>

@@ -4,7 +4,7 @@ import { useOpportunities } from '../../hooks/useOpportunities';
 import { useNotifications } from '../../hooks/useNotifications';
 import { usePipelineData } from '../../hooks/usePipelineData';
 import { moveCandidateToStage } from '../../services/pipelineService';
-import { createNotification } from '../../services/notificationService';
+import { createNotification } from '../../services/notificationService.ts';
 import PipelineAdvancedFilters from '../../components/Recruiter/components/PipelineAdvancedFilters';
 import PipelineSortMenu from '../../components/Recruiter/components/PipelineSortMenu';
 import { PipelineFilters, PipelineSortOptions } from '../../types/recruiter';

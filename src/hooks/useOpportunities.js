@@ -8,6 +8,7 @@ import OpportunitiesService from '../services/opportunitiesService';
  * @param {Object} options.filters - Filters to apply to opportunities
  * @param {Array} options.studentSkills - Student skills for matching opportunities
  * @param {boolean} options.activeOnly - Whether to fetch only active opportunities
+ * @param {string} options.searchTerm - Search term for filtering opportunities at DB level
  * @returns {Object} Hook state and methods
  */
 export const useOpportunities = (options = {}) => {
@@ -15,7 +16,8 @@ export const useOpportunities = (options = {}) => {
     fetchOnMount = true,
     filters = {},
     studentSkills = [],
-    activeOnly = true
+    activeOnly = true,
+    searchTerm = ''
   } = options;
 
   const [opportunities, setOpportunities] = useState([]);
@@ -33,12 +35,19 @@ export const useOpportunities = (options = {}) => {
       console.log({
         studentSkills,
         activeOnly,
-        filters
+        filters,
+        searchTerm
       });
 
-      // Simplified: Always fetch all opportunities for now
-      const data = await OpportunitiesService.getAllOpportunities();
-
+      // Fetch opportunities with search term if provided
+      let data;
+      if (searchTerm && searchTerm.trim()) {
+        // Use search method when search term is provided
+        data = await OpportunitiesService.searchOpportunities(searchTerm);
+      } else {
+        // Fetch all opportunities when no search term
+        data = await OpportunitiesService.getAllOpportunities();
+      }
 
       // Format opportunities for display
       const formattedOpportunities = data.map(opp => 
@@ -131,18 +140,19 @@ export const useOpportunities = (options = {}) => {
     }
   }, [fetchOnMount]);
 
-  // Re-fetch when dependencies change
+  // Re-fetch when dependencies change (including searchTerm)
   useEffect(() => {
     console.log({
       filters,
       studentSkills,
       activeOnly,
+      searchTerm,
       fetchOnMount
     });
     if (fetchOnMount) {
       fetchOpportunities();
     }
-  }, [JSON.stringify(filters), JSON.stringify(studentSkills), activeOnly]);
+  }, [JSON.stringify(filters), JSON.stringify(studentSkills), activeOnly, searchTerm]);
 
   return {
     opportunities,

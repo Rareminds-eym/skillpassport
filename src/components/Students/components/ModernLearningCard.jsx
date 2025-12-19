@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Calendar,
   Award,
   Edit,
   Briefcase,
   ListChecks,
+  Target,
 } from "lucide-react";
 
 /**
@@ -15,6 +17,7 @@ const ModernLearningCard = ({
   item,
   onEdit,
 }) => {
+  const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
 
   // Calculate progress
@@ -125,15 +128,26 @@ const ModernLearningCard = ({
 
       {/* Footer Section - Outside the colored card, in white area */}
       <div className="px-3 py-4 flex items-center justify-between">
-        {/* Modules Count */}
-        <div className="text-sm text-gray-700">
-          Modules:{" "}
-          <span className="font-bold text-gray-900">
-            {item.completedModules || 0}/{item.totalModules || 0}
-          </span>
+        {/* Modules Count with Assessment Button */}
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-700">
+            Modules:{" "}
+            <span className="font-bold text-gray-900">
+              {item.completedModules || 0}/{item.totalModules || 0}
+            </span>
+          </div>
+          
+          {/* Assessment Button - Same size as Certificate */}
+          <button
+            onClick={() => navigate("/student/assessment/platform")}
+            className="px-6 py-2.5 rounded-full font-medium text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-all duration-300 flex items-center gap-2"
+          >
+            <Target className="w-4 h-4" />
+            Assessment
+          </button>
         </div>
 
-        {/* Action Button */}
+        {/* Certificate or Continue Button */}
         {item.certificateUrl ? (
           <button
             onClick={() => window.open(item.certificateUrl, "_blank")}

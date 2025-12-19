@@ -43,8 +43,12 @@ export const useStudentSettings = (email) => {
       const result = await updateStudentSettings(email, updates);
       
       if (result.success) {
-        setStudentData(result.data);
-        return { success: true };
+        // Only update studentData if we're NOT updating notification or privacy settings
+        // This prevents the state from being overwritten while user is toggling settings
+        if (!updates.notificationSettings && !updates.privacySettings) {
+          setStudentData(result.data);
+        }
+        return { success: true, data: result.data };
       } else {
         throw new Error(result.error);
       }
