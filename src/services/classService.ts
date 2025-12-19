@@ -107,12 +107,20 @@ export const getEducatorAssignedClassIds = async (educatorId: string): Promise<s
 
 const transformDBClassToClass = (dbClass: any): EducatorClass => {
   const metadata = dbClass.metadata || {}
+  
+  // Get class teacher info from the joined data
+  const classTeacherName = dbClass.class_teacher_first_name && dbClass.class_teacher_last_name 
+    ? `${dbClass.class_teacher_first_name} ${dbClass.class_teacher_last_name}`.trim()
+    : "TBD"
+  
+  const classTeacherEmail = dbClass.class_teacher_email || "Not assigned"
+  
   return {
     id: dbClass.id,
     name: dbClass.name || `Grade ${dbClass.grade} - ${dbClass.section || 'General'}`,
     course: dbClass.grade || "General",
-    educator: metadata.educator || "TBD",
-    educatorEmail: metadata.educatorEmail || "educator@example.com",
+    educator: classTeacherName,
+    educatorEmail: classTeacherEmail,
     department: dbClass.section || "General",
     year: dbClass.academic_year || String(new Date().getFullYear()),
     status: (metadata.status || "Active") as ClassStatus,
@@ -176,57 +184,120 @@ const calculateStudentProgress = async (studentId: string, classId: string): Pro
 
 export const fetchEducatorClasses = async (schoolId?: string, educatorId?: string): Promise<ServiceResponse<EducatorClass[]>> => {
   try {
-    // If educatorId is provided, fetch only assigned classes
-    if (educatorId) {
-      const { data: assignments, error: assignmentError } = await supabase
-        .from("school_educator_class_assignments")
-        .select("class_id")
-        .eq("educator_id", educatorId)
-
-      if (assignmentError) {
-        return { data: null, error: assignmentError.message }
-      }
-
-      const classIds = (assignments || []).map(a => a.class_id)
-
-      if (classIds.length === 0) {
-        return { data: [], error: null }
-      }
-
-      let query = supabase
-        .from("school_classes")
-        .select("*")
-        .in("id", classIds)
-        .order("created_at", { ascending: false })
-
-      if (schoolId) {
-        query = query.eq("school_id", schoolId)
-      }
-
-      const { data, error } = await query
-
-      if (error) {
-        return { data: null, error: error.message }
-      }
-
-      const classesWithStudents = await Promise.all(
-        (data || []).map(async (dbClass) => {
-          const classItem = transformDBClassToClass(dbClass)
-          const students = await fetchClassStudents(dbClass.id)
-          classItem.students = students
-          const tasks = await fetchClassTasks(dbClass.id)
-          classItem.tasks = tasks
-          return syncClassAggregates(classItem)
-        })
-      )
-
-      return { data: classesWithStudents, error: null }
+    // SECURITY: Always require educatorId for educator role to prevent unauthorized access
+    if (!educatorId) {
+      console.warn("fetchEducatorClasses called without educatorId - this should not happen for educators")
+      return { data: [], error: null }
     }
 
-    // If no educatorId, fetch all classes (for admin view)
+    // SECURITY: Verify educator exists and get only their assigned classes
+    const { data: educatorCheck, error: educatorCheckError } = await supabase
+      .from("school_educators")
+      .select("id")
+      .eq("id", educatorId)
+      .single()
+
+    if (educatorCheckError || !educatorCheck) {
+      console.error("Invalid educator ID:", educatorId)
+      return { data: null, error: "Invalid educator credentials" }
+    }
+
+    // Get only the classes assigned to this specific educator
+    const { data: assignments, error: assignmentError } = await supabase
+      .from("school_educator_class_assignments")
+      .select("class_id")
+      .eq("educator_id", educatorId)
+
+    if (assignmentError) {
+      console.error("Error fetching educator assignments:", assignmentError)
+      return { data: null, error: assignmentError.message }
+    }
+
+    const classIds = (assignments || []).map(a => a.class_id)
+
+    if (classIds.length === 0) {
+      return { data: [], error: null }
+    }
+
+    // Build query to fetch only assigned classes with class teacher info
     let query = supabase
       .from("school_classes")
-      .select("*")
+      .select(`
+        *,
+        class_teacher:school_educator_class_assignments(
+          educator:school_educators(
+            first_name,
+            last_name,
+            email
+          )
+        )
+      `)
+      .in("id", classIds)
+      .eq("school_educator_class_assignments.is_primary", true)
+      .eq("account_status", "active")
+      .order("created_at", { ascending: false })
+
+    // Additional school filter if provided
+    if (schoolId) {
+      query = query.eq("school_id", schoolId)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error("Error fetching classes:", error)
+      return { data: null, error: error.message }
+    }
+
+    // Process each class with additional data
+    const classesWithStudents = await Promise.all(
+      (data || []).map(async (dbClass) => {
+        // Extract class teacher info
+        const classTeacher = dbClass.class_teacher?.[0]?.educator
+        const enrichedClass = {
+          ...dbClass,
+          class_teacher_first_name: classTeacher?.first_name,
+          class_teacher_last_name: classTeacher?.last_name,
+          class_teacher_email: classTeacher?.email
+        }
+        
+        const classItem = transformDBClassToClass(enrichedClass)
+        const students = await fetchClassStudents(dbClass.id)
+        classItem.students = students
+        const tasks = await fetchClassTasks(dbClass.id)
+        classItem.tasks = tasks
+        return syncClassAggregates(classItem)
+      })
+    )
+
+    return { data: classesWithStudents, error: null }
+  } catch (err: any) {
+    console.error("Error in fetchEducatorClasses:", err)
+    return { data: null, error: err?.message || "Unable to fetch classes" }
+  }
+}
+
+/**
+ * Fetch all classes for admin view (school admin, etc.)
+ * This is separate from educator classes to maintain security
+ */
+export const fetchAllSchoolClasses = async (schoolId?: string): Promise<ServiceResponse<EducatorClass[]>> => {
+  try {
+    // Query all classes for admin view with class teacher info
+    let query = supabase
+      .from("school_classes")
+      .select(`
+        *,
+        class_teacher:school_educator_class_assignments(
+          educator:school_educators(
+            first_name,
+            last_name,
+            email
+          )
+        )
+      `)
+      .eq("school_educator_class_assignments.is_primary", true)
+      .eq("account_status", "active")
       .order("created_at", { ascending: false })
 
     if (schoolId) {
@@ -241,7 +312,16 @@ export const fetchEducatorClasses = async (schoolId?: string, educatorId?: strin
 
     const classesWithStudents = await Promise.all(
       (data || []).map(async (dbClass) => {
-        const classItem = transformDBClassToClass(dbClass)
+        // Extract class teacher info
+        const classTeacher = dbClass.class_teacher?.[0]?.educator
+        const enrichedClass = {
+          ...dbClass,
+          class_teacher_first_name: classTeacher?.first_name,
+          class_teacher_last_name: classTeacher?.last_name,
+          class_teacher_email: classTeacher?.email
+        }
+        
+        const classItem = transformDBClassToClass(enrichedClass)
         const students = await fetchClassStudents(dbClass.id)
         classItem.students = students
         const tasks = await fetchClassTasks(dbClass.id)
@@ -324,8 +404,18 @@ export const getClassById = async (classId: string): Promise<ServiceResponse<Edu
   try {
     const { data, error } = await supabase
       .from("school_classes")
-      .select("*")
+      .select(`
+        *,
+        class_teacher:school_educator_class_assignments(
+          educator:school_educators(
+            first_name,
+            last_name,
+            email
+          )
+        )
+      `)
       .eq("id", classId)
+      .eq("school_educator_class_assignments.is_primary", true)
       .single()
 
     if (error) {
@@ -336,7 +426,16 @@ export const getClassById = async (classId: string): Promise<ServiceResponse<Edu
       return { data: null, error: "Class not found" }
     }
 
-    const classItem = transformDBClassToClass(data)
+    // Extract class teacher info
+    const classTeacher = data.class_teacher?.[0]?.educator
+    const enrichedClass = {
+      ...data,
+      class_teacher_first_name: classTeacher?.first_name,
+      class_teacher_last_name: classTeacher?.last_name,
+      class_teacher_email: classTeacher?.email
+    }
+
+    const classItem = transformDBClassToClass(enrichedClass)
     const students = await fetchClassStudents(classId)
     classItem.students = students
     

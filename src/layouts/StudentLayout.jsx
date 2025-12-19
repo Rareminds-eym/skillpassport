@@ -5,7 +5,6 @@ import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
 import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
 import Header from '../components/Students/components/Header';
 import ProfileHeroEdit from '../components/Students/components/ProfileHeroEdit';
-import Footer from '../components/Students/components/Footer';
 import FloatingAIButton from '../components/FloatingAIButton';
 import { Toaster } from '../components/Students/components/ui/toaster';
 import {
@@ -86,17 +85,35 @@ const StudentLayout = () => {
   
   // Check if current page is Career AI
   const isCareerAIPage = location.pathname === '/student/career-ai' || location.pathname.includes('/career-ai');
+  
+  // Check if current page is Assessment (should be full-screen without padding)
+  const isAssessmentPage = location.pathname.includes('/assessment/platform') || location.pathname.includes('/assessment/start') || location.pathname.includes('/assessment/result');
+  
+  // Assessment result page needs scrolling, unlike test/platform pages
+  const isAssessmentResultPage = location.pathname.includes('/assessment/result');
+  const isFullScreenAssessment = isAssessmentPage && !isAssessmentResultPage;
 
   return (
     <GlobalPresenceProvider userType="student">
-      <div className={isCareerAIPage ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}>
-        <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+      <div className={isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}>
+        {!isAssessmentPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
         {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
         <main className={isCareerAIPage ? "flex-1 overflow-hidden" : "py-4 px-6"}>
           <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
         </main>
-        {!isCareerAIPage && <Footer />}
-        <FloatingAIButton />
+        {!isCareerAIPage && !isAssessmentPage && (
+          <footer className="bg-white border-t border-gray-200 py-4 px-6">
+            <div className="flex items-center justify-between text-sm text-gray-500">
+              <span>© {new Date().getFullYear()} Student Portal. All rights reserved.</span>
+              <div className="flex items-center gap-4">
+                <a href="#" className="hover:text-gray-700 transition-colors">Privacy Policy</a>
+                <a href="#" className="hover:text-gray-700 transition-colors">Terms of Service</a>
+                <a href="#" className="hover:text-gray-700 transition-colors">Help</a>
+              </div>
+            </div>
+          </footer>
+        )}
+        {!isAssessmentPage && <FloatingAIButton />}
         <Toaster />
 
       {/* Edit Modals - Only show if not viewing someone else's profile */}

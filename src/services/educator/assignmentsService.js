@@ -330,7 +330,10 @@ export const getAssignmentStudents = async (assignmentId) => {
           id,
           name,
           email,
-          profile
+          university,
+          branch_field,
+          college_school_name,
+          registration_number
         )
       `)
       .eq('assignment_id', assignmentId)
@@ -339,21 +342,20 @@ export const getAssignmentStudents = async (assignmentId) => {
 
     if (error) throw error;
 
-    // Flatten the response and extract from profile JSONB
+    // Flatten the response using actual column names
     const flattenedData = data?.map(item => {
       const student = item.students;
-      const profile = student?.profile || {};
 
       return {
         ...item,
         student: {
           id: student?.id,
-          name: student?.name || profile.name || 'Unknown',
-          email: student?.email || profile.email || '',
-          university: profile.university || '',
-          branch_field: profile.branch_field || '',
-          college_school_name: profile.college_school_name || '',
-          registration_number: profile.registration_number || ''
+          name: student?.name || 'Unknown',
+          email: student?.email || '',
+          university: student?.university || '',
+          branch_field: student?.branch_field || '',
+          college_school_name: student?.college_school_name || '',
+          registration_number: student?.registration_number || ''
         }
       };
     }) || [];

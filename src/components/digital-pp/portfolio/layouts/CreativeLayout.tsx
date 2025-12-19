@@ -169,14 +169,25 @@ const CreativeLayout: React.FC<CreativeLayoutProps> = ({
                 variants={itemVariants}
                 className="flex flex-wrap gap-6 text-sm text-gray-600"
               >
-                <div className="flex items-center space-x-2">
-                  <Phone className="w-4 h-4" />
-                  <span>{student.contact_number}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <MapPin className="w-4 h-4" />
-                  <span>{student.district_name}</span>
-                </div>
+                {student.contact_number && (
+                  <div className="flex items-center space-x-2">
+                    <Phone className="w-4 h-4" />
+                    <span>{student.contact_number}</span>
+                  </div>
+                )}
+                {(student.district_name || student.city || student.state || student.country) && (
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-4 h-4" />
+                    <span>
+                      {[
+                        student.city,
+                        student.district_name,
+                        student.state,
+                        student.country
+                      ].filter(Boolean).join(', ') || 'Location not specified'}
+                    </span>
+                  </div>
+                )}
               </motion.div>
             </motion.div>
 

@@ -25,7 +25,7 @@ const corsHeaders = {
 };
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request) {
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
@@ -82,9 +82,11 @@ export default {
 
       if (!response.ok) {
         return new Response(JSON.stringify({ 
-          error: `Failed to fetch page: ${response.status} ${response.statusText}` 
+          success: false,
+          error: `Certificate not found or invalid (${response.status})`,
+          details: `The certificate URL returned ${response.status} ${response.statusText}. Please verify the certificate ID is correct.`
         }), {
-          status: response.status,
+          status: 200, // Return 200 so client can read the error message
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -109,14 +111,8 @@ export default {
         return match ? match[1].trim() : '';
       };
 
-      const extractH1 = (html) => {
-        const match = html.match(/<h1[^>]*>([^<]*)<\/h1>/i);
-        return match ? match[1].trim() : '';
-      };
-
       const metadata = {
         title: extractTitle(html),
-        h1: extractH1(html),
         ogTitle: extractMeta(html, 'og:title') || extractMetaReverse(html, 'og:title'),
         ogDescription: extractMeta(html, 'og:description') || extractMetaReverse(html, 'og:description'),
         description: extractMeta(html, 'description') || extractMetaReverse(html, 'description'),
@@ -124,34 +120,23 @@ export default {
         finalUrl: response.url,
       };
 
-      // Platform-specific extraction
-      let platformData = {};
+      // Platform-specific extraction (limited for JS-rendered pages)
+      let platformData = {
+        platform: 'unknown',
+        needsAiExtraction: true,
+      };
 
       if (fetchUrl.includes('udemy.com')) {
-        const courseNameMatch = html.match(/data-purpose="certificate-title"[^>]*>([^<]+)</i) ||
-                                html.match(/class="[^"]*certificate[^"]*course-title[^"]*"[^>]*>([^<]+)</i);
-        const instructorMatch = html.match(/data-purpose="certificate-instructor"[^>]*>([^<]+)</i) ||
-                                html.match(/class="[^"]*instructor[^"]*name[^"]*"[^>]*>([^<]+)</i);
-        const dateMatch = html.match(/data-purpose="certificate-date"[^>]*>([^<]+)</i) ||
-                          html.match(/class="[^"]*completion[^"]*date[^"]*"[^>]*>([^<]+)</i);
-
-        platformData = {
-          platform: 'udemy',
-          courseName: courseNameMatch ? courseNameMatch[1].trim() : null,
-          instructor: instructorMatch ? instructorMatch[1].trim() : null,
-          completionDate: dateMatch ? dateMatch[1].trim() : null,
-        };
+        platformData.platform = 'udemy';
       } else if (fetchUrl.includes('coursera.org')) {
-        const courseNameMatch = html.match(/class="[^"]*course-name[^"]*"[^>]*>([^<]+)</i);
-        platformData = {
-          platform: 'coursera',
-          courseName: courseNameMatch ? courseNameMatch[1].trim() : null,
-        };
+        platformData.platform = 'coursera';
       } else if (fetchUrl.includes('linkedin.com')) {
-        platformData = { platform: 'linkedin' };
+        platformData.platform = 'linkedin';
+      } else if (fetchUrl.includes('edx.org')) {
+        platformData.platform = 'edx';
       }
 
-      // Body snippet for AI processing (strip HTML tags)
+      // Body snippet for reference
       const bodySnippet = html
         .replace(/<script[\s\S]*?<\/script>/gi, '')
         .replace(/<style[\s\S]*?<\/style>/gi, '')
