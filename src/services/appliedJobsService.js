@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { notificationHelpers } from './notificationService';
 
 /**
  * Service for managing job applications
@@ -212,10 +213,34 @@ export class AppliedJobsService {
         .from('applied_jobs')
         .update(updateData)
         .eq('id', applicationId)
-        .select()
+        .select(`
+          *,
+          students!inner(email, name),
+          opportunities!inner(title, company_name)
+        `)
         .single();
 
       if (error) throw error;
+
+      // Send notification to student (respects their preferences)
+      try {
+        if (data?.students?.email) {
+          const jobTitle = data?.opportunities?.title || 'Position';
+          const statusText = status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          
+          await notificationHelpers.applicationStatusUpdate(
+            data.students.email,
+            jobTitle,
+            statusText
+          );
+          
+          console.log(`✅ Notification sent for application ${applicationId} status: ${status}`);
+        }
+      } catch (notifError) {
+        // Don't fail the status update if notification fails
+        console.warn('Failed to send notification:', notifError);
+      }
+
       return data;
     } catch (error) {
       console.error('Error updating application status:', error);

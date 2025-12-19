@@ -61,7 +61,13 @@ const Settings = () => {
     onMessageReceived: () => {
       // Refresh Recent Updates to show new message activity
       setTimeout(() => {
-        refreshRecentUpdates();
+        try {
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates();
+          }
+        } catch (error) {
+          console.warn('Could not refresh recent updates:', error);
+        }
       }, 1000);
     },
   });
@@ -84,6 +90,7 @@ const Settings = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
 
   // Profile settings state
   const [profileData, setProfileData] = useState({
@@ -149,7 +156,7 @@ const Settings = () => {
 
   // Load student data into form
   useEffect(() => {
-    if (studentData) {
+    if (studentData && !savingRef.current) {
       setProfileData({
         name: studentData.name || "",
         email: studentData.email || userEmail || "",
@@ -183,13 +190,13 @@ const Settings = () => {
         portfolio: studentData.portfolio || "",
       });
 
-      // Load notification settings
-      if (studentData.notificationSettings) {
+      // Load notification settings - only when not saving
+      if (studentData.notificationSettings && !savingRef.current) {
         setNotificationSettings(studentData.notificationSettings);
       }
 
-      // Load privacy settings
-      if (studentData.privacySettings) {
+      // Load privacy settings - only when not saving
+      if (studentData.privacySettings && !savingRef.current) {
         setPrivacySettings(studentData.privacySettings);
       }
     }
@@ -219,7 +226,14 @@ const Settings = () => {
         title: "Success",
         description: "Profile updated successfully",
       });
-      finalRefresh();
+      // Refresh recent updates if available
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -232,6 +246,25 @@ const Settings = () => {
   };
 
   const handleSavePassword = async () => {
+    // Validation
+    if (!passwordData.currentPassword) {
+      toast({
+        title: "Error",
+        description: "Please enter your current password",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!passwordData.newPassword) {
+      toast({
+        title: "Error",
+        description: "Please enter a new password",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast({
         title: "Error",
@@ -250,26 +283,60 @@ const Settings = () => {
       return;
     }
 
+    if (passwordData.newPassword === passwordData.currentPassword) {
+      toast({
+        title: "Error",
+        description: "New password must be different from current password",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSaving(true);
     try {
-      await updatePassword(
+      console.log('🔐 Attempting password change for:', userEmail);
+      
+      const result = await updatePassword(
         passwordData.currentPassword,
         passwordData.newPassword
       );
+      
+      console.log('🔐 Password change result:', result);
+      
+      if (result && result.success === false) {
+        console.error('❌ Password change failed:', result.error);
+        toast({
+          title: "Password Change Failed",
+          description: result.error || "Failed to update password",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       toast({
         title: "Success",
-        description: "Password updated successfully",
+        description: "Password updated successfully! You can now use your new password to log in.",
       });
+      
       setPasswordData({
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
       });
-      finalRefresh();
+      
+      // Refresh recent updates if available
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
     } catch (error) {
+      console.error('❌ Password change exception:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update password",
+        description: error.message || "Failed to update password. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -279,13 +346,29 @@ const Settings = () => {
 
   const handleSaveNotifications = async () => {
     setIsSaving(true);
+    savingRef.current = true;
     try {
-      await updateProfile({ notificationSettings });
+      // Save the current state before update
+      const currentSettings = { ...notificationSettings };
+      
+      await updateProfile({ notificationSettings: currentSettings });
+      
       toast({
         title: "Success",
         description: "Notification preferences updated",
       });
-      finalRefresh();
+      
+      // Keep the current state (don't let it be overwritten)
+      setNotificationSettings(currentSettings);
+      
+      // Refresh recent updates if available
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -294,18 +377,37 @@ const Settings = () => {
       });
     } finally {
       setIsSaving(false);
+      setTimeout(() => {
+        savingRef.current = false;
+      }, 1000);
     }
   };
 
   const handleSavePrivacy = async () => {
     setIsSaving(true);
+    savingRef.current = true;
     try {
-      await updateProfile({ privacySettings });
+      // Save the current state before update
+      const currentSettings = { ...privacySettings };
+      
+      await updateProfile({ privacySettings: currentSettings });
+      
       toast({
         title: "Success",
         description: "Privacy settings updated",
       });
-      finalRefresh();
+      
+      // Keep the current state (don't let it be overwritten)
+      setPrivacySettings(currentSettings);
+      
+      // Refresh recent updates if available
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -314,6 +416,9 @@ const Settings = () => {
       });
     } finally {
       setIsSaving(false);
+      setTimeout(() => {
+        savingRef.current = false;
+      }, 1000);
     }
   };
 
@@ -500,8 +605,8 @@ const Settings = () => {
               </CardContent>
             </Card>
 
-            {/* Recent Updates */}
-            <RecentUpdatesCard
+            {/* Recent Updates - Hidden per user request */}
+            {/* <RecentUpdatesCard
               ref={recentUpdatesRef}
               updates={recentUpdates}
               loading={recentUpdatesLoading}
@@ -538,7 +643,7 @@ const Settings = () => {
                     return "bg-gray-50 border-gray-200";
                 }
               }}
-            />
+            /> */}
           </div>
 
           {/* RIGHT CONTENT AREA */}
@@ -1104,6 +1209,22 @@ const Settings = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 p-6 space-y-6">
+                  {/* Email Info Display */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Mail className="w-5 h-5 text-blue-600 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-blue-900 mb-1 text-sm">Account Email</h4>
+                        <p className="text-sm text-blue-700 mb-2">
+                          Password changes will be applied to: <strong>{userEmail || 'Not available'}</strong>
+                        </p>
+                        <p className="text-xs text-blue-600">
+                          If this email is incorrect, please log out and log in again.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-4">
                     <h3 className="text-sm font-bold text-gray-900">
                       Change Password
@@ -1158,15 +1279,30 @@ const Settings = () => {
                       </div>
                     ))}
 
-                    <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <p className="text-xs text-gray-700 leading-relaxed">
-                        <strong className="font-semibold">
-                          Password requirements:
-                        </strong>{" "}
-                        At least 8 characters with uppercase, lowercase,
-                        numbers, and special characters.
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                      <p className="text-xs font-semibold text-gray-700 mb-2">
+                        Password Requirements:
                       </p>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        <li className="flex items-center gap-2">
+                          <span className={passwordData.newPassword.length >= 8 ? "text-green-600 font-bold" : "text-gray-400"}>
+                            {passwordData.newPassword.length >= 8 ? "✓" : "○"}
+                          </span>
+                          At least 8 characters long
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className={passwordData.newPassword && passwordData.newPassword === passwordData.confirmPassword && passwordData.confirmPassword ? "text-green-600 font-bold" : "text-gray-400"}>
+                            {passwordData.newPassword && passwordData.newPassword === passwordData.confirmPassword && passwordData.confirmPassword ? "✓" : "○"}
+                          </span>
+                          Passwords match
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className={passwordData.newPassword && passwordData.currentPassword && passwordData.newPassword !== passwordData.currentPassword ? "text-green-600 font-bold" : "text-gray-400"}>
+                            {passwordData.newPassword && passwordData.currentPassword && passwordData.newPassword !== passwordData.currentPassword ? "✓" : "○"}
+                          </span>
+                          Different from current password
+                        </li>
+                      </ul>
                     </div>
                   </div>
 
