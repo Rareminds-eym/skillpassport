@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { callClaudeJSON, callClaudeVisionJSON, isClaudeConfigured } from '../../../services/claudeService';
+import { callClaudeJSON, callClaudeVisionJSON, isClaudeConfigured, CLAUDE_MODELS } from '../../../services/claudeService';
 import {
   X,
   AlertCircle,
@@ -154,15 +154,15 @@ const MONTH_MAP = {
  */
 const parseFlexibleDate = (dateStr) => {
   if (!dateStr) return '';
-  
+
   // Already in correct format
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     return dateStr;
   }
-  
+
   // Clean up the string
   const cleaned = dateStr.trim().replace(/\./g, '').replace(/,/g, '');
-  
+
   // Try "Month DD YYYY" or "Month DD, YYYY" format (e.g., "Jan 28 2025")
   const monthFirstMatch = cleaned.match(/^([A-Za-z]+)\s+(\d{1,2})\s+(\d{4})$/i);
   if (monthFirstMatch) {
@@ -172,7 +172,7 @@ const parseFlexibleDate = (dateStr) => {
       return `${year}-${monthNum}-${day.padStart(2, '0')}`;
     }
   }
-  
+
   // Try "DD Month YYYY" format (e.g., "28 Jan 2025")
   const dayFirstMatch = cleaned.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/i);
   if (dayFirstMatch) {
@@ -182,14 +182,14 @@ const parseFlexibleDate = (dateStr) => {
       return `${year}-${monthNum}-${day.padStart(2, '0')}`;
     }
   }
-  
+
   // Try "DD/MM/YYYY" or "DD-MM-YYYY" format
   const slashMatch = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (slashMatch) {
     const [, day, month, year] = slashMatch;
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
-  
+
   // Try "MM/DD/YYYY" format (US style) - assume if first number > 12, it's day
   const usMatch = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (usMatch) {
@@ -202,7 +202,7 @@ const parseFlexibleDate = (dateStr) => {
       return `${year}-${first.padStart(2, '0')}-${second.padStart(2, '0')}`;
     }
   }
-  
+
   // Try standard Date parsing as last resort
   try {
     const parsed = new Date(dateStr);
@@ -212,7 +212,7 @@ const parseFlexibleDate = (dateStr) => {
   } catch (e) {
     // Ignore
   }
-  
+
   return dateStr; // Return original if all parsing fails
 };
 
@@ -284,7 +284,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
         setSelectedPlatform(detected);
       }
     }
-    
+
     // Reset verification status when user changes certificate URL or ID
     if (name === 'certificate_url' || name === 'certificate_id') {
       setVerificationStatus(null);
@@ -332,7 +332,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
     }
 
     setCertificateImage(file);
-    
+
     if (isImage) {
       // Create preview URL for images
       const reader = new FileReader();
@@ -344,43 +344,185 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
       // For PDFs, set a placeholder preview
       setCertificateImagePreview('pdf');
     }
-    
+
     setError('');
-    
+
     // Reset verification status when new file is uploaded
     setVerificationStatus(null);
     setExtractionSuccess(false);
   };
 
   // Convert PDF to image using pdf.js
+  // Convert PDF to image using pdf.js standard build
   const convertPdfToImage = async (pdfFile) => {
-    // Dynamically import pdf.js
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    
-    // Use inline worker to avoid CORS issues
+    const pdfjsLib = await import('pdfjs-dist');
+
+    // Set worker source URL properly for standard build
     pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/legacy/build/pdf.worker.mjs',
+      'pdfjs-dist/build/pdf.worker.mjs',
       import.meta.url
     ).toString();
-    
+
     const arrayBuffer = await pdfFile.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const page = await pdf.getPage(1); // Get first page
-    
-    const scale = 2; // Higher scale for better quality
+    const page = await pdf.getPage(1);
+
+    // Calculate scale to get max 1600px width (similar to typical screenshot)
+    const originalViewport = page.getViewport({ scale: 1 });
+    const maxWidth = 1600;
+    const scale = Math.min(2, maxWidth / originalViewport.width);
     const viewport = page.getViewport({ scale });
-    
+
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
-    canvas.height = viewport.height;
     canvas.width = viewport.width;
-    
+    canvas.height = viewport.height;
+
+    // White background
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
     await page.render({
       canvasContext: context,
       viewport: viewport
     }).promise;
-    
-    return canvas.toDataURL('image/png');
+
+    console.log(`📄 PDF rendered: ${canvas.width}x${canvas.height}px`);
+
+    // Use JPEG with high quality - same format as typical screenshots
+    return canvas.toDataURL('image/jpeg', 0.92);
+  };
+
+  /**
+   * Clean and normalize certificate ID based on platform
+   * @param {string} rawId - Raw extracted certificate ID
+   * @param {string} platformId - Platform identifier
+   * @returns {string} Cleaned certificate ID
+   */
+  const cleanCertificateId = (rawId, platformId) => {
+    if (!rawId) return '';
+
+    let cleaned = rawId.trim();
+
+    // Remove common prefixes/suffixes that might be accidentally included
+    cleaned = cleaned.replace(/^(Certificate\s*(no\.?|number|id)?:?\s*)/i, '');
+    cleaned = cleaned.replace(/^(Credential\s*(no\.?|number|id)?:?\s*)/i, '');
+    cleaned = cleaned.replace(/^(ID:?\s*)/i, '');
+
+    // Remove all whitespace for processing
+    const noSpace = cleaned.replace(/\s+/g, '');
+
+    if (platformId === 'udemy') {
+      // Udemy format: UC-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      // Extract UUID pattern if present
+      const uuidMatch = noSpace.match(/UC-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i);
+      if (uuidMatch) {
+        return uuidMatch[0];
+      }
+      // Try to find UC- followed by any hex characters and dashes
+      const partialMatch = noSpace.match(/UC-[a-f0-9-]+/i);
+      if (partialMatch) {
+        return partialMatch[0];
+      }
+
+      // Sometimes 'UC-' is missed or read as 'VC-', 'JC-', etc.
+      // If we see a UUID-like structure, we can try to fix it
+      const uuidLike = noSpace.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i);
+      if (uuidLike) {
+        return 'UC-' + uuidLike[0];
+      }
+    } else if (platformId === 'coursera') {
+      // Coursera format: alphanumeric, typically 12-30 characters
+      // Often mixed case, no dashes usually
+      const courseraMatch = noSpace.match(/[A-Z0-9]{12,30}/i);
+      if (courseraMatch) {
+        return courseraMatch[0];
+      }
+    } else if (platformId === 'edx') {
+      // edX format: UUID or alphanumeric
+      const edxMatch = noSpace.match(/[a-f0-9]{32}|[a-f0-9-]{36}/i);
+      if (edxMatch) {
+        return edxMatch[0];
+      }
+    }
+
+    // Generic cleanup if no platform-specific match found
+    // Remove trailing punctuation often picked up by OCR
+    cleaned = cleaned.replace(/[.,;:]$/, '');
+
+    return cleaned;
+  };
+
+  /**
+   * Extract certificate URL from text, handling various formats
+   * @param {string} text - Text that might contain a URL
+   * @param {string} platformId - Platform identifier
+   * @returns {string} Extracted and normalized URL
+   */
+  const extractCertificateUrl = (text, platformId) => {
+    if (!text) return '';
+
+    // Common URL patterns for each platform
+    const urlPatterns = {
+      udemy: [
+        /https?:\/\/(?:www\.)?udemy\.com\/certificate\/[A-Za-z0-9-]+/i,
+        /https?:\/\/ude\.my\/UC-[a-f0-9-]+/i,
+        /ude\.my\/UC-[a-f0-9-]+/i,
+        /udemy\.com\/certificate\/[A-Za-z0-9-]+/i,
+      ],
+      coursera: [
+        /https?:\/\/(?:www\.)?coursera\.org\/verify\/[A-Za-z0-9]+/i,
+        /coursera\.org\/verify\/[A-Za-z0-9]+/i,
+        /coursera\.org\/account\/accomplishments\/verify\/[A-Za-z0-9]+/i,
+      ],
+      edx: [
+        /https?:\/\/courses\.edx\.org\/certificates\/[a-f0-9]+/i,
+        /courses\.edx\.org\/certificates\/[a-f0-9]+/i,
+        /credentials\.edx\.org\/credentials\/[a-f0-9]+/i,
+      ],
+      linkedin: [
+        /https?:\/\/(?:www\.)?linkedin\.com\/learning\/certificates\/[A-Za-z0-9]+/i,
+        /linkedin\.com\/learning\/certificates\/[A-Za-z0-9]+/i,
+      ],
+    };
+
+    // Try platform-specific patterns first
+    const patterns = urlPatterns[platformId] || [];
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        let url = match[0];
+        if (!url.startsWith('http')) {
+          url = 'https://' + url;
+        }
+        return url;
+      }
+    }
+
+    // Try generic URL pattern
+    // Look for common domains first to avoid false positives
+    const commonDomains = ['coursera.org', 'udemy.com', 'ude.my', 'edx.org', 'linkedin.com', 'pluralsight.com', 'hubspot.com', 'google.com'];
+    for (const domain of commonDomains) {
+      if (text.includes(domain)) {
+        // Try to extract the full URL containing this domain
+        const domainRegex = new RegExp(`https?:\\/\\/[\\w\\.-]*${domain.replace('.', '\\.')}[\\/\\w\\.-]*`, 'i');
+        const domainMatch = text.match(domainRegex);
+        if (domainMatch) return domainMatch[0];
+
+        // Try without protocol
+        const simpleRegex = new RegExp(`${domain.replace('.', '\\.')}[\\/\\w\\.-]*`, 'i');
+        const simpleMatch = text.match(simpleRegex);
+        if (simpleMatch) return 'https://' + simpleMatch[0];
+      }
+    }
+
+    // Last resort: generic URL pattern
+    const genericMatch = text.match(/https?:\/\/[^\s"'<>]+/i);
+    if (genericMatch) {
+      return genericMatch[0];
+    }
+
+    return '';
   };
 
   // Extract certificate details from uploaded image/PDF using Claude Vision
@@ -401,22 +543,25 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
 
     try {
       const platformName = selectedPlatform?.name || 'unknown platform';
+      const platformId = selectedPlatform?.id || 'other';
       const isPdf = certificateImage.type === 'application/pdf';
-      
-      let imageBase64;
-      let mediaType = 'image/png';
-      
+
+      let extracted;
+      let fileBase64;
+      let mediaType;
+
       if (isPdf) {
-        // Convert PDF to image first
-        console.log('📄 Converting PDF to image...');
-        const pdfImageDataUrl = await convertPdfToImage(certificateImage);
-        imageBase64 = pdfImageDataUrl.split(',')[1];
+        // For PDFs: Convert to image first since certificate is likely an image in PDF
+        console.log('📄 Converting PDF to image for OCR...');
+        const imageDataUrl = await convertPdfToImage(certificateImage);
+        fileBase64 = imageDataUrl.split(',')[1];
+        mediaType = 'image/jpeg';
       } else {
-        // Convert image to base64
+        // For images: Read as base64
+        console.log('🖼️ Reading image for Claude Vision...');
         const reader = new FileReader();
-        imageBase64 = await new Promise((resolve, reject) => {
+        fileBase64 = await new Promise((resolve, reject) => {
           reader.onload = () => {
-            // Remove the data URL prefix (e.g., "data:image/png;base64,")
             const base64 = reader.result.split(',')[1];
             resolve(base64);
           };
@@ -426,108 +571,176 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
         mediaType = certificateImage.type || 'image/png';
       }
 
-      console.log('🖼️ Extracting certificate data from image using Claude Vision');
+      // Platform-specific extraction instructions
+      const platformInstructions = {
+        udemy: `UDEMY CERTIFICATE EXTRACTION:
+- Certificate ID format: UC-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 characters total)
+- Location: Usually at the BOTTOM LEFT of the certificate
+- Look for text like "Certificate no:", "Certificate number:", or "ude.my/UC-..."
+- The ID contains lowercase letters a-f and numbers 0-9 separated by dashes
+- Example: UC-bd70ac16-df44-462c-944d-b8e32cc61ff0
+- URL format: ude.my/UC-xxx or udemy.com/certificate/UC-xxx`,
 
-      const prompt = `You are analyzing a certificate image from ${platformName}. Extract ALL information EXACTLY as shown on the certificate.
+        coursera: `COURSERA CERTIFICATE EXTRACTION:
+- Certificate ID: Alphanumeric string, typically 12-30 characters (mixed case)
+- Location: Bottom of certificate or in verification URL
+- Look for "coursera.org/verify/XXXXX" or "Verify at coursera.org/verify/XXXXX"
+- URL format: coursera.org/verify/[ID]`,
 
-IMPORTANT - LOOK CAREFULLY FOR THESE ITEMS:
+        linkedin: `LINKEDIN LEARNING CERTIFICATE EXTRACTION:
+- Look for certificate URL at the bottom
+- URL format: linkedin.com/learning/certificates/[ID]
+- Certificate ID is the long alphanumeric string at the end of the URL`,
 
-1. COURSE TITLE - The main course or certification name (usually the largest text)
+        edx: `EDX CERTIFICATE EXTRACTION:
+- Certificate ID: UUID format (32 hex characters or with dashes)
+- Location: Bottom of certificate
+- URL format: courses.edx.org/certificates/[ID]`,
 
-2. INSTRUCTOR(S) - Look for:
-   - "Instructor:", "Instructors:", "Taught by:", "By:"
-   - Names near the course title or at the bottom
+        other: `CERTIFICATE EXTRACTION:
+- Look for any verification URL or certificate ID
+- Check the bottom of the certificate, near QR codes
+- Look for text like "Verify at:", "Certificate ID:", "Credential ID:", "Validation Number:"`
+      };
 
-3. COMPLETION DATE - Look for:
-   - "Date:", "Completed:", "Issued:", "Completion Date:"
-   - Convert to YYYY-MM-DD format (e.g., "Jan 28, 2025" → "2025-01-28")
+      const platformInstruction = platformInstructions[platformId] || platformInstructions.other;
 
-4. STUDENT NAME - The recipient's name (usually prominent on the certificate)
+      // Highly specific prompt for accurate OCR extraction
+      const prompt = `You are a precise OCR system specialized in reading certificates. Analyze this ${platformName} certificate image.
 
-5. CERTIFICATE ID/NUMBER - VERY IMPORTANT! Look for:
-   - "Certificate no:", "Certificate ID:", "Reference Number:", "Credential ID:"
-   - For Udemy: Look for IDs starting with "UC-" (e.g., "UC-794d8663-2295-4407-84f6-f7cb2f0f1c01")
-   - For Coursera: Look for alphanumeric codes
-   - Usually found at the bottom or in small text
+${platformInstruction}
 
-6. CERTIFICATE URL - CRITICAL! Look EVERYWHERE for:
-   - "ude.my/" followed by the certificate ID (Udemy short URLs)
-   - "coursera.org/verify/" URLs
-   - "credential.net/" URLs
-   - Any URL or web address shown on the certificate
-   - QR codes often have URLs nearby
-   - For Udemy: The URL format is typically "ude.my/UC-xxxxx" or "udemy.com/certificate/UC-xxxxx"
+EXTRACTION TASK - Read EVERY character precisely:
 
-7. SKILLS - Any skills, technologies, or topics mentioned
+1. COURSE TITLE: The main course/certification name (usually the largest text)
 
-Return a JSON object:
+2. COMPLETION DATE: Find the date of completion/issue
+   - Convert to YYYY-MM-DD format
+   - Look for "Completed on", "Issued on", "Date:", etc.
+
+3. CERTIFICATE ID (CRITICAL - character-by-character accuracy required):
+   - Read the ID very carefully, character by character
+   - For Udemy: Must be exactly UC-[8chars]-[4chars]-[4chars]-[4chars]-[12chars]
+   - Pay attention to similar-looking characters: 0/O, 1/l/I, 8/B, 5/S
+   - If you see a QR code, the ID is usually printed nearby
+   - Return ONLY the ID string, no "Certificate No" prefix
+
+4. CERTIFICATE URL (if visible):
+   - Look for any URL printed on the certificate
+   - Common locations: bottom of certificate, near QR code
+   - Include the full URL exactly as shown
+   - If you see a short URL (e.g. ude.my/...), capture that
+
+5. INSTRUCTOR NAME: Look for "Instructor:", "Taught by:", "By:"
+
+6. SKILLS: List technologies, tools, or topics mentioned
+
+IMPORTANT:
+- If you're unsure about a character, indicate it with [?] 
+- Return the RAW text exactly as you see it for certificate ID and URL
+- Do not guess or autocomplete IDs - accuracy is critical for verification
+
+Return ONLY this JSON (no markdown, no explanation):
 {
-  "courseTitle": "Exact course name",
-  "instructor": "Instructor name(s) or empty string",
-  "completionDate": "YYYY-MM-DD format",
-  "studentName": "Student name or empty string",
-  "certificateId": "Full certificate ID exactly as shown",
-  "certificateUrl": "Full URL including https:// - construct from short URL if needed (e.g., if you see 'ude.my/UC-xxx', return 'https://ude.my/UC-xxx')",
+  "courseTitle": "exact course name as shown",
+  "completionDate": "YYYY-MM-DD or raw date string if unclear",
+  "certificateId": "exact ID character by character",
+  "certificateIdRaw": "the raw text around the certificate ID for context",
+  "certificateUrl": "full URL if visible, empty string if not",
+  "certificateUrlRaw": "the raw text around any URL for context",
+  "instructor": "instructor name or empty string",
   "skills": ["skill1", "skill2"],
-  "category": "Technology/Business/Data Science/Design/Marketing/Finance/Healthcare/Personal Development/Other"
-}
+  "category": "Technology/Business/etc",
+  "confidence": "high/medium/low"
+}`;
 
-CRITICAL RULES:
-- If you see "ude.my/UC-xxx", the certificateUrl should be "https://ude.my/UC-xxx"
-- If you see a certificate ID like "UC-xxx" but no URL, construct it as "https://ude.my/UC-xxx" for Udemy
-- Extract the COMPLETE certificate ID - don't truncate it
-- Return ONLY the JSON object, no other text.`;
+      // Use Haiku model which is confirmed to work with vision
+      extracted = await callClaudeVisionJSON(prompt, fileBase64, mediaType, {
+        maxTokens: 2000
+      });
 
-      const extracted = await callClaudeVisionJSON(prompt, imageBase64, mediaType, { maxTokens: 800 });
-      
-      console.log('🖼️ Vision extracted:', extracted);
+      console.log('🖼️ Claude extraction result:', JSON.stringify(extracted, null, 2));
 
       // Format completion date if provided - with robust parsing
       let completionDate = extracted.completionDate || '';
       if (completionDate && !completionDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        // Try to parse various date formats
         completionDate = parseFlexibleDate(completionDate);
       }
 
-      // Format certificate URL - handle various cases
+      // Process certificate ID with cleaning
+      let certificateId = cleanCertificateId(extracted.certificateId, platformId);
+
+      // If primary extraction failed, try to extract from raw context
+      if (!certificateId && extracted.certificateIdRaw) {
+        console.log('🔍 Attempting to extract ID from raw context:', extracted.certificateIdRaw);
+        certificateId = cleanCertificateId(extracted.certificateIdRaw, platformId);
+      }
+
+      // Process certificate URL
       let certificateUrl = extracted.certificateUrl || '';
-      const certificateId = extracted.certificateId || '';
-      
-      // If no URL but we have certificate ID, try to construct URL based on platform
+
+      // Try to extract URL from raw context if primary extraction failed
+      if (!certificateUrl && extracted.certificateUrlRaw) {
+        console.log('🔍 Attempting to extract URL from raw context:', extracted.certificateUrlRaw);
+        certificateUrl = extractCertificateUrl(extracted.certificateUrlRaw, platformId);
+      }
+
+      // If still no URL but we have certificate ID, construct URL based on platform
       if (!certificateUrl && certificateId) {
-        if (selectedPlatform?.id === 'udemy' || certificateId.startsWith('UC-')) {
+        if (platformId === 'udemy' || certificateId.startsWith('UC-')) {
           certificateUrl = `https://ude.my/${certificateId}`;
-        } else if (selectedPlatform?.id === 'coursera') {
+        } else if (platformId === 'coursera') {
           certificateUrl = `https://www.coursera.org/verify/${certificateId}`;
-        } else if (selectedPlatform?.id === 'edx') {
+        } else if (platformId === 'edx') {
           certificateUrl = `https://courses.edx.org/certificates/${certificateId}`;
         }
       }
-      
-      // Ensure URL has https:// prefix
-      if (certificateUrl && !certificateUrl.startsWith('http')) {
-        if (certificateUrl.includes('ude.my')) {
-          certificateUrl = `https://${certificateUrl}`;
-        } else if (certificateUrl.includes('coursera.org')) {
-          certificateUrl = `https://${certificateUrl}`;
-        } else if (certificateUrl.includes('udemy.com')) {
-          certificateUrl = `https://${certificateUrl}`;
-        } else {
-          certificateUrl = `https://${certificateUrl}`;
+
+      // STRATEGY CHANGE: Prioritize constructing URL from ID if we have a valid ID
+      // This is often more accurate than OCR on the URL text itself
+      if (certificateId) {
+        let constructedUrl = '';
+        if (platformId === 'udemy' || certificateId.startsWith('UC-')) {
+          constructedUrl = `https://ude.my/${certificateId}`;
+        } else if (platformId === 'coursera') {
+          constructedUrl = `https://www.coursera.org/verify/${certificateId}`;
+        } else if (platformId === 'edx') {
+          constructedUrl = `https://courses.edx.org/certificates/${certificateId}`;
         }
-      }
-      
-      // Expand short Udemy URLs
-      if (certificateUrl.includes('ude.my/')) {
-        const certId = certificateUrl.split('ude.my/')[1];
-        if (certId) {
-          // Keep the short URL format as it redirects properly
-          certificateUrl = `https://ude.my/${certId}`;
+
+        if (constructedUrl) {
+          console.log('🔗 Preferring constructed URL from ID:', constructedUrl);
+          certificateUrl = constructedUrl;
         }
       }
 
-      console.log('📋 Processed certificate URL:', certificateUrl);
-      console.log('📋 Certificate ID:', certificateId);
+      // Normalize URL format
+      if (certificateUrl) {
+        // Ensure URL has https:// prefix
+        if (!certificateUrl.startsWith('http')) {
+          certificateUrl = 'https://' + certificateUrl;
+        }
+
+        // Clean up any trailing/leading whitespace or invalid characters
+        certificateUrl = certificateUrl.trim().replace(/[<>"'\s]/g, '');
+
+        // For Udemy, ensure consistent format
+        if (certificateUrl.includes('ude.my/') || certificateUrl.includes('udemy.com/certificate/')) {
+          // Extract the certificate ID from URL and reconstruct
+          const idMatch = certificateUrl.match(/UC-[a-f0-9-]+/i);
+          if (idMatch) {
+            certificateUrl = `https://ude.my/${idMatch[0]}`;
+            // Also update certificateId if we extracted it from URL
+            if (!certificateId) {
+              certificateId = idMatch[0];
+            }
+          }
+        }
+      }
+
+      console.log('📋 Final processed certificate URL:', certificateUrl);
+      console.log('📋 Final certificate ID:', certificateId);
+      console.log('📋 Extraction confidence:', extracted.confidence);
 
       setFormData(prev => ({
         ...prev,
@@ -544,13 +757,23 @@ CRITICAL RULES:
         setSkillTags(prev => [...prev, ...extracted.skills.filter(s => s && !prev.includes(s))]);
       }
 
+      // Show warning if confidence is low
+      if (extracted.confidence === 'low') {
+        console.warn('⚠️ Low confidence extraction - manual verification recommended');
+      }
+
       setExtractionSuccess(true);
-      
+
       // Return the extracted certificate URL for verification
       return certificateUrl;
     } catch (err) {
       console.error('Image extraction error:', err);
-      setError(`Could not extract from image: ${err.message}. Please fill in the fields manually.`);
+      const isPdf = certificateImage?.type === 'application/pdf';
+      if (isPdf) {
+        setError(`PDF extraction failed: ${err.message}. For best results, please take a screenshot of your certificate and upload the image instead.`);
+      } else {
+        setError(`Could not extract from image: ${err.message}. Please fill in the fields manually.`);
+      }
       return null;
     } finally {
       setExtracting(false);
@@ -560,7 +783,7 @@ CRITICAL RULES:
   // Verify certificate URL is valid (returns 200)
   const verifyCertificateUrl = async (urlToVerify = null) => {
     const certificateUrlToCheck = urlToVerify || formData.certificate_url;
-    
+
     if (!certificateUrlToCheck) {
       setError('Please enter a certificate URL first');
       return false;
@@ -599,31 +822,31 @@ CRITICAL RULES:
 
       // Use Cloudflare Worker to verify certificate page exists
       console.log('🔍 Verifying certificate URL:', certificateUrl);
-      
-      const workerUrl = import.meta.env.VITE_CLOUDFLARE_CERTIFICATE_WORKER_URL || 
-                        'https://fetch-certificate.rareminds.workers.dev';
-      
+
+      const workerUrl = import.meta.env.VITE_CLOUDFLARE_CERTIFICATE_WORKER_URL ||
+        'https://fetch-certificate.dark-mode-d021.workers.dev';
+
       console.log('🔗 Worker URL:', workerUrl);
-      
+
       let response;
       let result;
-      
+
       try {
         response = await fetch(workerUrl, {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
           body: JSON.stringify({ url: certificateUrl })
         });
-        
+
         console.log('📡 Worker response status:', response.status);
-        
+
         // Try to parse response
         const responseText = await response.text();
         console.log('📡 Worker response:', responseText.substring(0, 500));
-        
+
         try {
           result = JSON.parse(responseText);
         } catch (parseError) {
@@ -645,7 +868,7 @@ CRITICAL RULES:
         const errorMsg = result?.error || `Certificate verification failed: ${response.status}`;
         console.warn('⚠️ Certificate verification failed:', errorMsg);
         console.warn('⚠️ URL attempted:', certificateUrl);
-        
+
         // If it's a 404 from the certificate page (not the worker)
         if (errorMsg.includes('404') || errorMsg.includes('Not Found')) {
           setError(`Certificate not found. The certificate URL or ID may be incorrect. Please verify the details.`);
@@ -666,13 +889,13 @@ CRITICAL RULES:
 
       console.log('✅ Certificate URL verified successfully');
       console.log('📋 Certificate metadata:', result.metadata);
-      
+
       // Set organization based on platform
       const platformName = selectedPlatform?.name || '';
       if (platformName && platformName !== 'Other Platform') {
         setFormData(prev => ({ ...prev, organization: platformName }));
       }
-      
+
       setVerificationStatus('success');
       setExtractionSuccess(true);
       return true;
@@ -887,17 +1110,17 @@ Respond in JSON format:
 
   const handleNext = async () => {
     if (!canProceedToNextStep() || currentStep >= totalSteps) return;
-    
+
     // If on step 2 (Verify), extract/verify certificate details
     if (currentStep === 2 && !extractionSuccess) {
       if (certificateImage) {
         // Extract from uploaded image using AI Vision
         const extractedUrl = await extractFromImage();
-        
+
         // After extraction, verify the certificate URL if one was extracted
         if (extractedUrl) {
           console.log('🔍 Verifying extracted certificate URL:', extractedUrl);
-          
+
           // Try to verify the URL
           const isValid = await verifyCertificateUrl(extractedUrl);
           if (!isValid) {
@@ -911,7 +1134,7 @@ Respond in JSON format:
             const constructedUrl = selectedPlatform.verifyUrlTemplate(formData.certificate_id);
             console.log('🔗 Constructed URL from extracted certificate ID:', constructedUrl);
             setFormData(prev => ({ ...prev, certificate_url: constructedUrl }));
-            
+
             const isValid = await verifyCertificateUrl(constructedUrl);
             if (!isValid) {
               // Verification failed - block proceeding
@@ -935,14 +1158,14 @@ Respond in JSON format:
           setError('This platform does not support verification by certificate ID. Please provide a certificate URL or upload an image.');
           return;
         }
-        
+
         // Construct verification URL from certificate ID
         const constructedUrl = selectedPlatform.verifyUrlTemplate(formData.certificate_id);
         console.log('🔗 Constructed verification URL from certificate ID:', constructedUrl);
-        
+
         // Update form with constructed URL
         setFormData(prev => ({ ...prev, certificate_url: constructedUrl }));
-        
+
         // Verify the constructed URL
         const isValid = await verifyCertificateUrl(constructedUrl);
         if (!isValid) {
@@ -955,7 +1178,7 @@ Respond in JSON format:
         return;
       }
     }
-    
+
     setError(''); // Clear any errors when moving to next step
     setCurrentStep(prev => prev + 1);
   };
@@ -1001,13 +1224,12 @@ Respond in JSON format:
               {[1, 2, 3, 4, 5].map((step, index) => (
                 <div key={step} className="flex items-center flex-1 last:flex-initial">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all flex-shrink-0 ${
-                      step === currentStep
-                        ? 'bg-white text-indigo-600 shadow-lg scale-110'
-                        : step < currentStep
-                          ? 'bg-white/30 text-white'
-                          : 'bg-white/10 text-white/50'
-                    }`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all flex-shrink-0 ${step === currentStep
+                      ? 'bg-white text-indigo-600 shadow-lg scale-110'
+                      : step < currentStep
+                        ? 'bg-white/30 text-white'
+                        : 'bg-white/10 text-white/50'
+                      }`}
                   >
                     {step < currentStep ? <CheckCircle size={14} /> : step}
                   </div>
@@ -1022,9 +1244,8 @@ Respond in JSON format:
               {['Platform', 'Verify', 'Details', 'Skills', 'Review'].map((label, index) => (
                 <div key={label} className="flex items-center flex-1 last:flex-initial">
                   <span
-                    className={`w-8 text-xs text-center flex-shrink-0 ${
-                      index + 1 === currentStep ? 'text-white font-medium' : 'text-white/70'
-                    }`}
+                    className={`w-8 text-xs text-center flex-shrink-0 ${index + 1 === currentStep ? 'text-white font-medium' : 'text-white/70'
+                      }`}
                   >
                     {label}
                   </span>
@@ -1086,9 +1307,9 @@ Respond in JSON format:
                       : `border-gray-200 hover:border-gray-300 ${platform.hoverBg}`
                       }`}
                   >
-                    <PlatformIcon 
-                      platformId={platform.id} 
-                      className={`w-8 h-8 ${selectedPlatform?.id === platform.id ? platform.iconColor : 'text-gray-400'}`} 
+                    <PlatformIcon
+                      platformId={platform.id}
+                      className={`w-8 h-8 ${selectedPlatform?.id === platform.id ? platform.iconColor : 'text-gray-400'}`}
                     />
                     <span className={`text-sm font-medium ${selectedPlatform?.id === platform.id ? 'text-gray-900' : 'text-gray-700'
                       }`}>
@@ -1131,21 +1352,21 @@ Respond in JSON format:
                       accept="image/*,.pdf"
                       className="hidden"
                     />
-                    
+
                     {certificateImagePreview ? (
                       <div className="relative rounded-lg overflow-hidden border border-gray-200">
                         {certificateImagePreview === 'pdf' ? (
                           <div className="w-full h-48 bg-gray-50 flex flex-col items-center justify-center">
                             <svg className="w-16 h-16 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13h1c.55 0 1 .45 1 1v1c0 .55-.45 1-1 1h-.5v1.5H8V13h.5zm3 0h1.5c.55 0 1 .45 1 1v2.5c0 .55-.45 1-1 1H11.5V13zm4 0h2v1h-1.5v.5h1v1h-1v2h-1V13h.5z"/>
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13h1c.55 0 1 .45 1 1v1c0 .55-.45 1-1 1h-.5v1.5H8V13h.5zm3 0h1.5c.55 0 1 .45 1 1v2.5c0 .55-.45 1-1 1H11.5V13zm4 0h2v1h-1.5v.5h1v1h-1v2h-1V13h.5z" />
                             </svg>
                             <span className="text-sm font-medium text-gray-700 mt-2">{certificateImage?.name}</span>
                             <span className="text-xs text-gray-500">PDF Document</span>
                           </div>
                         ) : (
-                          <img 
-                            src={certificateImagePreview} 
-                            alt="Certificate preview" 
+                          <img
+                            src={certificateImagePreview}
+                            alt="Certificate preview"
                             className="w-full h-48 object-contain bg-gray-50"
                           />
                         )}
@@ -1204,7 +1425,7 @@ Respond in JSON format:
                         {selectedPlatform?.id === 'other' ? 'Use Certificate URL' : 'Use Certificate URL or ID'}
                       </h4>
                       <p className="text-xs text-gray-600 mt-0.5">
-                        {selectedPlatform?.id === 'other' 
+                        {selectedPlatform?.id === 'other'
                           ? 'Enter your certificate verification URL'
                           : 'Enter your certificate verification URL or certificate number'
                         }
@@ -1238,15 +1459,15 @@ Respond in JSON format:
                           setVerificationStatus(null);
                           setExtractionSuccess(false);
                         }}
-                        placeholder={selectedPlatform?.id === 'other' 
-                          ? "https://example.com/certificate/123" 
+                        placeholder={selectedPlatform?.id === 'other'
+                          ? "https://example.com/certificate/123"
                           : "https://ude.my/UC-xxx or UC-794d8663-2295-4407-84f6-f7cb2f0f1c01"
                         }
                         className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white"
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1.5">
-                      {selectedPlatform?.id === 'other' 
+                      {selectedPlatform?.id === 'other'
                         ? 'Paste the full certificate verification URL'
                         : 'Paste the full URL or just the certificate ID'
                       }
@@ -1269,9 +1490,9 @@ Respond in JSON format:
                               Your certificate has been successfully verified. Click Continue to proceed.
                             </p>
                             {formData.certificate_url && (
-                              <a 
-                                href={formData.certificate_url} 
-                                target="_blank" 
+                              <a
+                                href={formData.certificate_url}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-sm text-green-600 hover:text-green-700 mt-2 font-medium"
                               >
@@ -1337,11 +1558,10 @@ Respond in JSON format:
                       onChange={handleInputChange}
                       placeholder="e.g., Stanford University"
                       disabled={selectedPlatform?.id !== 'other'}
-                      className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm ${
-                        selectedPlatform?.id !== 'other'
-                          ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
-                          : 'focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
-                      }`}
+                      className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm ${selectedPlatform?.id !== 'other'
+                        ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
+                        : 'focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+                        }`}
                     />
                   </div>
                   <div>
@@ -1678,12 +1898,12 @@ Respond in JSON format:
                   <Loader size={18} className="animate-spin" />
                   {certificateImage ? 'Extracting...' : 'Verifying...'}
                 </>
-              ) : currentStep === 2 && certificateImage ? (
+              ) : currentStep === 2 && certificateImage && !extractionSuccess ? (
                 <>
                   <Sparkles size={18} />
                   Extract & Verify
                 </>
-              ) : currentStep === 2 && (formData.certificate_url || formData.certificate_id) ? (
+              ) : currentStep === 2 && (formData.certificate_url || formData.certificate_id) && !extractionSuccess ? (
                 <>
                   <Sparkles size={18} />
                   Verify & Continue
