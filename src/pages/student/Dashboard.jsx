@@ -1961,13 +1961,6 @@ const StudentDashboard = () => {
                       </div>
                       <span className="text-lg font-bold text-gray-800">Suggested Steps</span>
                     </CardTitle>
-                    <button
-                      className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-                      title="View All Suggested Steps"
-                      onClick={() => navigate("/student/suggested-steps")}
-                    >
-                      <Eye className="w-5 h-5 text-blue-600" />
-                    </button>
                   </CardHeader>
                   <CardContent className="p-8">
                     <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
