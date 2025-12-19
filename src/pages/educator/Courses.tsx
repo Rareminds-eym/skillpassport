@@ -575,10 +575,10 @@ const Courses: React.FC = () => {
               setEditingCourse(null);
               setShowCreateModal(true);
             }}
-            // className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm"
           >
-            {/* <PlusIcon className="h-5 w-5" /> */}
-            {/* Create Course */}
+            <PlusIcon className="h-5 w-5" />
+            Create Course
           </button>
         )}
       </div>
