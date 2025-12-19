@@ -56,6 +56,12 @@ export const PRINT_STYLES = `
         display: none !important;
         visibility: hidden !important;
     }
+    
+    /* Hide print footer on screen - it has position:fixed which escapes parent positioning */
+    .print-footer {
+        display: none !important;
+        visibility: hidden !important;
+    }
 }
 
 /* Print styles */

@@ -8,7 +8,7 @@ import {
 import { useStudents } from '../../../../hooks/useStudents';
 import { useToast } from '../Toast';
 import { addCandidateToPipeline } from '../../../../services/pipelineService';
-import { createNotification } from '../../../../services/notificationService';
+import { createNotification } from '../../../../services/notificationService.ts';
 
 interface AddFromTalentPoolModalProps {
   isOpen: boolean;

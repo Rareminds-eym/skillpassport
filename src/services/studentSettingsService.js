@@ -2,9 +2,10 @@
  * Student Settings Service
  * Handles fetching and updating student data from the students table
  * Uses direct column access instead of profile JSONB for better performance
+ * Notification and privacy settings are stored in user_settings table
  */
 
-import { supabase } from '../utils/api';
+import { supabase } from '../lib/supabaseClient';
 
 /**
  * Fetch student data by email for settings page
@@ -54,6 +55,7 @@ export const getStudentSettingsByEmail = async (email) => {
         currentCgpa,
         expectedGraduationDate,
         enrollmentDate,
+        user_id,
         approval_status,
         created_at,
         updated_at
@@ -68,6 +70,20 @@ export const getStudentSettingsByEmail = async (email) => {
 
     if (!data) {
       return { success: false, error: 'Student not found' };
+    }
+
+    // Get settings from user_settings table
+    let userSettings = null;
+    if (data.user_id) {
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('user_settings')
+        .select('notification_preferences, privacy_settings')
+        .eq('user_id', data.user_id)
+        .maybeSingle();
+
+      if (!settingsError && settingsData) {
+        userSettings = settingsData;
+      }
     }
 
     // Transform data for settings form
@@ -117,8 +133,8 @@ export const getStudentSettingsByEmail = async (email) => {
       profilePicture: data.profilePicture || '',
       bio: '', // Bio field removed from profile JSONB
 
-      // Default settings (no longer stored in profile JSONB)
-      notificationSettings: {
+      // Notification settings from user_settings table
+      notificationSettings: userSettings?.notification_preferences || {
         emailNotifications: true,
         pushNotifications: true,
         applicationUpdates: true,
@@ -128,7 +144,8 @@ export const getStudentSettingsByEmail = async (email) => {
         monthlyReport: false,
       },
 
-      privacySettings: {
+      // Privacy settings from user_settings table
+      privacySettings: userSettings?.privacy_settings || {
         profileVisibility: 'public',
         showEmail: false,
         showPhone: false,
@@ -158,10 +175,10 @@ export const getStudentSettingsByEmail = async (email) => {
  */
 export const updateStudentSettings = async (email, updates) => {
   try {
-    // First get the student ID
+    // First get the student ID and user_id
     const { data: student, error: findError } = await supabase
       .from('students')
-      .select('id')
+      .select('id, user_id')
       .eq('email', email)
       .single();
 
@@ -233,27 +250,86 @@ export const updateStudentSettings = async (email, updates) => {
       } else if (key === 'otherSocialLinks') {
         columnUpdates.other_social_links = updates[key];
       }
-      // Note: bio, notificationSettings, and privacySettings are no longer stored in database
-      // They can be handled client-side or stored in separate tables if needed
+      // Note: notificationSettings and privacySettings are handled separately below
     });
+
+    // Handle notification and privacy settings in user_settings table
+    if ((updates.notificationSettings || updates.privacySettings) && student.user_id) {
+      console.log('💾 Saving settings to user_settings table...');
+      console.log('   Notification settings:', updates.notificationSettings);
+      console.log('   Privacy settings:', updates.privacySettings);
+      
+      // Check if user_settings record exists
+      const { data: existingSettings, error: checkError } = await supabase
+        .from('user_settings')
+        .select('id')
+        .eq('user_id', student.user_id)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('❌ Error checking user_settings:', checkError);
+      }
+
+      const settingsUpdate = {};
+      if (updates.notificationSettings) {
+        settingsUpdate.notification_preferences = updates.notificationSettings;
+      }
+      if (updates.privacySettings) {
+        settingsUpdate.privacy_settings = updates.privacySettings;
+      }
+      settingsUpdate.updated_at = new Date().toISOString();
+
+      if (existingSettings) {
+        // Update existing record
+        console.log('📝 Updating existing user_settings record...');
+        const { error: updateError } = await supabase
+          .from('user_settings')
+          .update(settingsUpdate)
+          .eq('user_id', student.user_id);
+        
+        if (updateError) {
+          console.error('❌ Error updating user_settings:', updateError);
+          return { success: false, error: updateError.message };
+        }
+        console.log('✅ User settings updated successfully');
+      } else {
+        // Create new record
+        console.log('➕ Creating new user_settings record...');
+        const { error: insertError } = await supabase
+          .from('user_settings')
+          .insert({
+            user_id: student.user_id,
+            ...settingsUpdate,
+          });
+        
+        if (insertError) {
+          console.error('❌ Error inserting user_settings:', insertError);
+          return { success: false, error: insertError.message };
+        }
+        console.log('✅ User settings created successfully');
+      }
+    }
 
     // Add updated timestamp
     columnUpdates.updated_at = new Date().toISOString();
 
-    // Perform the update
-    const { data, error } = await supabase
-      .from('students')
-      .update(columnUpdates)
-      .eq('id', student.id)
-      .select()
-      .single();
+    // Perform the update on students table (only if there are column updates)
+    if (Object.keys(columnUpdates).length > 1) { // More than just updated_at
+      const { data, error } = await supabase
+        .from('students')
+        .update(columnUpdates)
+        .eq('id', student.id)
+        .select()
+        .single();
 
-    if (error) {
-      console.error('❌ Error updating student settings:', error);
-      return { success: false, error: error.message };
+      if (error) {
+        console.error('❌ Error updating student settings:', error);
+        return { success: false, error: error.message };
+      }
     }
 
     // Return fresh data
+    console.log('🔄 Fetching fresh data after save...');
     return await getStudentSettingsByEmail(email);
   } catch (err) {
     console.error('❌ updateStudentSettings exception:', err);
@@ -262,7 +338,8 @@ export const updateStudentSettings = async (email, updates) => {
 };
 
 /**
- * Update password (placeholder - would integrate with auth system)
+ * Update password using Supabase Auth
+ * Same pattern as studentAuthService - simple and direct
  * @param {string} email - Student email
  * @param {string} currentPassword - Current password
  * @param {string} newPassword - New password
@@ -270,17 +347,77 @@ export const updateStudentSettings = async (email, updates) => {
  */
 export const updateStudentPassword = async (email, currentPassword, newPassword) => {
   try {
-    // This would integrate with Supabase Auth
-    // For now, return success (implement actual password change logic)
-    console.log('Password update requested for:', email);
+    console.log('🔐 Password update requested for:', email);
 
-    // In a real implementation, you would:
-    // 1. Verify current password with Supabase Auth
-    // 2. Update password using supabase.auth.updateUser()
+    // Verify current password by signing in (same as login flow)
+    console.log('🔐 Verifying current password...');
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password: currentPassword,
+    });
 
-    return { success: true, message: 'Password updated successfully' };
+    if (authError) {
+      console.error('❌ Current password verification failed:', authError.message);
+      return { 
+        success: false, 
+        error: 'Current password is incorrect. Please try again.' 
+      };
+    }
+
+    if (!authData?.user) {
+      console.error('❌ No user returned from authentication');
+      return { 
+        success: false, 
+        error: 'Authentication failed. Please try again.' 
+      };
+    }
+
+    console.log('✅ Current password verified');
+
+    // Update to new password (user is now authenticated with fresh session)
+    console.log('🔐 Updating to new password...');
+    const { data, error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) {
+      console.error('❌ Password update failed:', updateError.message);
+      
+      // Handle specific error cases
+      if (updateError.message?.includes('same password')) {
+        return { 
+          success: false, 
+          error: 'New password must be different from your current password.' 
+        };
+      }
+      
+      if (updateError.message?.includes('password') && (updateError.message?.includes('6') || updateError.message?.includes('characters'))) {
+        return { 
+          success: false, 
+          error: 'Password must be at least 6 characters long.' 
+        };
+      }
+      
+      return { 
+        success: false, 
+        error: updateError.message || 'Failed to update password. Please try again.' 
+      };
+    }
+
+    console.log('✅ Password updated successfully for:', email);
+    console.log('   User ID:', data?.user?.id);
+    console.log('   Updated at:', data?.user?.updated_at);
+    
+    return { 
+      success: true, 
+      message: 'Password updated successfully!',
+      data 
+    };
   } catch (err) {
     console.error('❌ updateStudentPassword exception:', err);
-    return { success: false, error: err.message };
+    return { 
+      success: false, 
+      error: err.message || 'An unexpected error occurred. Please try again.' 
+    };
   }
 };

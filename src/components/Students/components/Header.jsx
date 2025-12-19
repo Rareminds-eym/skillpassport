@@ -29,6 +29,7 @@ import {
 } from "./ui/dropdown-menu";
 import { useAuth } from "../../../context/AuthContext";
 import { useNotifications } from "../../../hooks/useNotifications";
+import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 import NotificationPanel from "./NotificationPanel";
 
 const Header = ({ activeTab, setActiveTab }) => {
@@ -90,6 +91,12 @@ const Header = ({ activeTab, setActiveTab }) => {
   // Fetch real-time notifications
   const userEmail = user?.email || localStorage.getItem("userEmail");
   const { unreadCount } = useNotifications(userEmail);
+  
+  // Fetch student data to check school/college association
+  const { studentData } = useStudentDataByEmail(userEmail);
+  
+  // Check if student is part of a school or college
+  const isPartOfSchoolOrCollege = studentData?.school_id || studentData?.university_college_id;
 
   // Generate profile link
   const profileLink = useMemo(() => {
@@ -112,7 +119,8 @@ const Header = ({ activeTab, setActiveTab }) => {
     { id: "digital-portfolio", label: "Digital Portfolio", icon: BriefcaseIcon },
     { id: "opportunities", label: "Opportunities", icon: RocketLaunchIcon },
     { id: "career-ai", label: "Career AI", icon: SparklesIcon },
-    { id: "assignments", label: "My Class", icon: ClipboardDocumentListIcon },
+    // Only show "My Class" if student is part of a school or college
+    ...(isPartOfSchoolOrCollege ? [{ id: "assignments", label: "My Class", icon: ClipboardDocumentListIcon }] : []),
     // {id: "clubs", label: "Co-Curriculars"},
     { id: "messages", label: "Messages", icon: EnvelopeIcon },
     // Analytics removed - now integrated in Dashboard with tabs

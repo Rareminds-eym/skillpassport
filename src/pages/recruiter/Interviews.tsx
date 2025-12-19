@@ -21,7 +21,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { supabase } from '../../lib/supabaseClient';
 import { createInterview, sendReminder } from '../../services/interviewService';
-import { createNotification } from "../../services/notificationService"; // ✅ Import notification service
+import { createNotification } from "../../services/notificationService.ts"; // ✅ Import notification service
 import { useAuth } from "../../context/AuthContext"; // ✅ Import auth context
 
 // Define TypeScript interfaces

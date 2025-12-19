@@ -7,7 +7,8 @@ import {
     Download,
     AlertCircle,
     RefreshCw,
-    ArrowLeft
+    ArrowLeft,
+    X
 } from 'lucide-react';
 import { Button } from '../../../components/Students/components/ui/button';
 import {
@@ -312,48 +313,60 @@ const AssessmentResult = () => {
                 <Dialog open={activeSection !== null} onOpenChange={() => setActiveSection(null)}>
                     <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] !p-0 gap-0 overflow-hidden border-0 shadow-2xl rounded-2xl">
                         {/* Header */}
-                        <DialogHeader className="bg-slate-800 px-8 py-6">
-                            <DialogTitle asChild>
-                                <div className="flex items-center gap-4">
-                                    {activeSection === 'profile' && (
-                                        <>
-                                            <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
-                                                <Target className="w-8 h-8 text-white" />
-                                            </div>
-                                            <h2 className="text-3xl font-bold text-white">Student Profile Snapshot - Your interests, aptitudes & personality</h2>
-                                        </>
-                                    )}
-                                    {activeSection === 'career' && (
-                                        <>
-                                            <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
-                                                <Briefcase className="w-8 h-8 text-white" />
-                                            </div>
-                                            <h2 className="text-3xl font-bold text-white">Career Fit Results - Best-matching career paths for you</h2>
-                                        </>
-                                    )}
-                                    {activeSection === 'skills' && (
-                                        <>
-                                            <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
-                                                <Zap className="w-8 h-8 text-white" />
-                                            </div>
-                                            <h2 className="text-3xl font-bold text-white">Skill Gap & Development - Skills to build for career success</h2>
-                                        </>
-                                    )}
-                                    {activeSection === 'roadmap' && (
-                                        <>
-                                            <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
-                                                <Rocket className="w-8 h-8 text-white" />
-                                            </div>
-                                            <h2 className="text-3xl font-bold text-white">Action Roadmap - Your 6-12 month career plan</h2>
-                                        </>
-                                    )}
-                                </div>
+                        <DialogHeader className="bg-slate-800 px-8 py-6 relative !mb-0">
+                            <DialogTitle className="sr-only">
+                                {activeSection === 'profile' && 'Student Profile Snapshot'}
+                                {activeSection === 'career' && 'Career Fit Results'}
+                                {activeSection === 'skills' && 'Skill Gap & Development'}
+                                {activeSection === 'roadmap' && 'Action Roadmap'}
                             </DialogTitle>
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setActiveSection(null)}
+                                className="absolute top-4 right-4 w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                                aria-label="Close modal"
+                            >
+                                <X className="w-6 h-6 text-white" />
+                            </button>
+                            <div className="flex items-center gap-4 pr-12">
+                                {activeSection === 'profile' && (
+                                    <>
+                                        <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
+                                            <Target className="w-8 h-8 text-white" />
+                                        </div>
+                                        <span className="text-3xl font-bold text-white">Student Profile Snapshot - Your interests, aptitudes & personality</span>
+                                    </>
+                                )}
+                                {activeSection === 'career' && (
+                                    <>
+                                        <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
+                                            <Briefcase className="w-8 h-8 text-white" />
+                                        </div>
+                                        <span className="text-3xl font-bold text-white">Career Fit Results - Best-matching career paths for you</span>
+                                    </>
+                                )}
+                                {activeSection === 'skills' && (
+                                    <>
+                                        <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
+                                            <Zap className="w-8 h-8 text-white" />
+                                        </div>
+                                        <span className="text-3xl font-bold text-white">Skill Gap & Development - Skills to build for career success</span>
+                                    </>
+                                )}
+                                {activeSection === 'roadmap' && (
+                                    <>
+                                        <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
+                                            <Rocket className="w-8 h-8 text-white" />
+                                        </div>
+                                        <span className="text-3xl font-bold text-white">Action Roadmap - Your 6-12 month career plan</span>
+                                    </>
+                                )}
+                            </div>
                         </DialogHeader>
 
                         {/* Scrollable Content */}
                         <div className="overflow-y-auto max-h-[calc(95vh-100px)] bg-gray-50">
-                            <div className="p-6">
+                            <div className="p-6 pb-12">
                                 {activeSection === 'profile' && (
                                     <ProfileSection
                                         results={results}

@@ -70,10 +70,20 @@ const EducatorLayout: React.FC = () => {
         )}
 
         {/* Scrollable Content Area */}
-        <main className="flex-1 md:ml-64 overflow-auto">
-          <div className="h-full w-full">
+        <main className="flex-1 md:ml-64 overflow-auto flex flex-col">
+          <div className="flex-1 w-full">
             <Outlet context={{ onViewProfile: handleViewProfile }} />
           </div>
+          <footer className="bg-white border-t border-gray-200 py-4 px-6">
+            <div className="flex items-center justify-between text-sm text-gray-500">
+              <span>© {new Date().getFullYear()} Educator Portal. All rights reserved.</span>
+              <div className="flex items-center gap-4">
+                <a href="#" className="hover:text-gray-700 transition-colors">Privacy Policy</a>
+                <a href="#" className="hover:text-gray-700 transition-colors">Terms of Service</a>
+                <a href="#" className="hover:text-gray-700 transition-colors">Help</a>
+              </div>
+            </div>
+          </footer>
         </main>
       </div>
 

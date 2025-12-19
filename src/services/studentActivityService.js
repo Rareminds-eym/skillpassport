@@ -211,7 +211,7 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
     // First, get student ID from email
     const { data: student, error: studentError } = await supabase
       .from('students')
-      .select('id, profile')
+      .select('id, name')
       .eq('email', studentEmail)
       .single();
 
@@ -220,10 +220,7 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
     }
 
     const studentId = student.id;
-    const studentProfile = typeof student.profile === 'string' 
-      ? JSON.parse(student.profile) 
-      : student.profile;
-    const studentName = studentProfile?.name || `Student ${studentId}`;
+    const studentName = student.name || `Student ${studentId}`;
 
 
     // 1. Shortlist Activities - When student gets shortlisted
