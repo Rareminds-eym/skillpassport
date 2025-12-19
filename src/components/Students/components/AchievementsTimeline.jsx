@@ -1,4 +1,3 @@
-import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   VerticalTimeline,
@@ -13,10 +12,9 @@ import {
   Medal,
   GraduationCap,
   Trophy,
-  ChevronRight,
+  Eye,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
 import { useNavigate } from "react-router-dom";
 
 // Helper function to get icon based on type
@@ -69,7 +67,6 @@ const parseDate = (dateStr) => {
 
 const AchievementsTimeline = ({ userData }) => {
   const navigate = useNavigate();
-  const [showPreview, setShowPreview] = useState(true);
 
   // Aggregate all achievements from different sources
   const aggregateAchievements = () => {
@@ -164,34 +161,27 @@ const AchievementsTimeline = ({ userData }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className="bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md">
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center justify-between">
+      <Card className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm">
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
+          <div className="flex items-center justify-between w-full">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Trophy className="w-5 h-5 text-blue-600" />
+              <div className="p-2 rounded-lg bg-blue-600">
+                <Trophy className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <span className="text-lg font-semibold text-gray-900">
-                  Achievement Timeline
-                </span>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Your journey at a glance
-                </p>
-              </div>
+              <span className="text-lg font-bold text-gray-800">Achievement Timeline</span>
             </CardTitle>
-            <Button
+            <button
               onClick={() => navigate("/student/timeline")}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium px-4 py-2 text-sm rounded-lg transition-all flex items-center gap-2"
+              className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+              title="View Full Timeline"
             >
-              View Full Timeline
-              <ChevronRight className="w-4 h-4" />
-            </Button>
+              <Eye className="w-5 h-5 text-blue-600" />
+            </button>
           </div>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="p-8">
           <VerticalTimeline layout="1-column-left" lineColor="#e5e7eb">
-            {(showPreview ? achievements.slice(0, previewCount) : achievements).map(
+            {achievements.slice(0, previewCount).map(
               (achievement, index) => (
                 <VerticalTimelineElement
                   key={achievement.id}
@@ -262,18 +252,6 @@ const AchievementsTimeline = ({ userData }) => {
               )
             )}
           </VerticalTimeline>
-
-          {achievements.length > previewCount && showPreview && (
-            <div className="mt-6 text-center">
-              <Button
-                onClick={() => navigate("/student/timeline")}
-                variant="outline"
-                className="border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 font-medium px-6 py-2 rounded-lg transition-all"
-              >
-                View All {achievements.length} Achievements
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
     </motion.div>

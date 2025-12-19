@@ -26,10 +26,10 @@ const TrainingRecommendations = ({ recommendations }) => {
   if (topCourses.length === 0) return null;
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 shadow-sm">
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 border-2 border-dashed border-blue-300 shadow-sm">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center shadow-md p-1.5">
+        <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center shadow-md p-1.5">
           <img
             src="/assets/HomePage/RMLogo.webp"
             alt="RM Logo"
