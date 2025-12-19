@@ -150,10 +150,17 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                 <span className="text-sm dark:text-gray-300">{student.contact_number}</span>
               </div>
             )}
-            {student.district_name && (
+            {(student.district_name || student.city || student.state || student.country) && (
               <div className="flex items-start space-x-3">
                 <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: primaryColor }} />
-                <span className="text-sm dark:text-gray-300">{student.district_name}</span>
+                <span className="text-sm dark:text-gray-300">
+                  {[
+                    student.city,
+                    student.district_name,
+                    student.state,
+                    student.country
+                  ].filter(Boolean).join(', ') || 'Location not specified'}
+                </span>
               </div>
             )}
           </motion.div>

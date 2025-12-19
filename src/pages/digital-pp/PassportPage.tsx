@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, ChevronRight, Shield, CheckCircle, XCircle, Award, Book, Globe, Code, Briefcase, Heart, Target, Maximize, Minimize, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Shield, CheckCircle, XCircle, Award, Book, Globe, Code, Briefcase, Heart, Target, Maximize, Minimize, ZoomIn, ZoomOut, Music, Camera, Palette, Gamepad2, Dumbbell, Plane, Coffee, Mountain, Users, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePortfolio } from '../../context/PortfolioContext';
 
@@ -13,6 +13,35 @@ const PassportPage: React.FC = () => {
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+
+  // Function to get appropriate icon for hobby
+  const getHobbyIcon = (hobby: string) => {
+    const hobbyLower = hobby.toLowerCase();
+    
+    if (hobbyLower.includes('music') || hobbyLower.includes('singing') || hobbyLower.includes('guitar') || hobbyLower.includes('piano')) {
+      return Music;
+    } else if (hobbyLower.includes('photo') || hobbyLower.includes('camera')) {
+      return Camera;
+    } else if (hobbyLower.includes('paint') || hobbyLower.includes('draw') || hobbyLower.includes('art')) {
+      return Palette;
+    } else if (hobbyLower.includes('game') || hobbyLower.includes('gaming')) {
+      return Gamepad2;
+    } else if (hobbyLower.includes('gym') || hobbyLower.includes('fitness') || hobbyLower.includes('workout') || hobbyLower.includes('exercise')) {
+      return Dumbbell;
+    } else if (hobbyLower.includes('travel') || hobbyLower.includes('trip')) {
+      return Plane;
+    } else if (hobbyLower.includes('coffee') || hobbyLower.includes('cooking') || hobbyLower.includes('baking')) {
+      return Coffee;
+    } else if (hobbyLower.includes('hiking') || hobbyLower.includes('climbing') || hobbyLower.includes('outdoor')) {
+      return Mountain;
+    } else if (hobbyLower.includes('social') || hobbyLower.includes('friend') || hobbyLower.includes('community')) {
+      return Users;
+    } else if (hobbyLower.includes('read') || hobbyLower.includes('book')) {
+      return Book;
+    } else {
+      return Star; // Default icon for other hobbies
+    }
+  };
   
   const minZoom = 0.7;
   const maxZoom = 1.3;
@@ -175,16 +204,16 @@ const PassportPage: React.FC = () => {
             <div className="bg-white rounded-lg p-4 shadow-md border-l-4 border-blue-600 mb-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-gray-500">Email</p>
-                  <p className="text-sm font-mono text-gray-800">{student?.email}</p>
+                  <p className="text-xs text-gray-500 font-medium">Email</p>
+                  <p className="text-sm font-medium text-gray-800">{student?.email}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Contact</p>
-                  <p className="text-sm font-mono text-gray-800">{student?.contact_number || 'N/A'}</p>
+                  <p className="text-xs text-gray-500 font-medium">Contact</p>
+                  <p className="text-sm font-medium text-gray-800">{student?.contact_number || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Location</p>
-                  <p className="text-sm text-gray-800">
+                  <p className="text-xs text-gray-500 font-medium">Location</p>
+                  <p className="text-sm font-medium text-gray-800">
                     {student?.city && student?.state
                       ? `${student.city}, ${student.state}${student.country ? `, ${student.country}` : ''}`
                       : (student?.district_name || 'N/A')
@@ -192,8 +221,8 @@ const PassportPage: React.FC = () => {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">ID Number</p>
-                  <p className="text-sm font-mono font-bold text-blue-600">
+                  <p className="text-xs text-gray-500 font-medium">ID Number</p>
+                  <p className="text-sm font-bold text-blue-600">
                     {student?.student_id || student?.profile?.passportId || 'N/A'}
                   </p>
                 </div>
@@ -444,27 +473,37 @@ const PassportPage: React.FC = () => {
       id: 'hobbies',
       title: 'Hobbies',
       content: (
-        <div className="h-full p-8 bg-gradient-to-br from-pink-50 to-rose-50">
+        <div className="h-full p-8 bg-gradient-to-br from-slate-50 to-gray-100">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
-              <Heart className="w-6 h-6 text-pink-600" />
+              <Star className="w-6 h-6 text-slate-600" />
               <h2 className="text-2xl font-bold text-gray-900 uppercase">Hobbies</h2>
             </div>
             <span className="text-xs font-mono text-gray-500">Page 07</span>
           </div>
           
-          <div className="grid grid-cols-2 gap-3">
-            {student?.profile.hobbies?.map((hobby, index) => (
-              <div key={index} className="bg-white rounded-lg p-4 shadow-sm text-center border-2 border-pink-200">
-                <Heart className="w-6 h-6 text-pink-600 mx-auto mb-2" />
-                <p className="font-medium text-gray-900">{hobby}</p>
-              </div>
-            ))}
+          <div className="grid grid-cols-2 gap-4">
+            {student?.profile.hobbies?.map((hobby, index) => {
+              const IconComponent = getHobbyIcon(hobby);
+              return (
+                <div key={index} className="bg-white rounded-lg p-4 shadow-md border-l-4 border-slate-500 hover:shadow-lg transition-shadow">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-shrink-0 w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
+                      <IconComponent className="w-5 h-5 text-slate-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900 text-sm leading-tight">{hobby}</p>
+                      <p className="text-xs text-gray-500 mt-1">Personal Interest</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
             
             {(!student?.profile.hobbies || student.profile.hobbies.length === 0) && (
               <div className="col-span-2 text-center text-gray-500 py-12">
-                <Heart className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                <p>No hobbies listed</p>
+                <Star className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                <p>No hobbies or interests listed</p>
               </div>
             )}
           </div>

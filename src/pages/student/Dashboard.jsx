@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
+import { motion } from "motion/react";
 import {
   Card,
   CardContent,
@@ -8,6 +9,7 @@ import {
 } from "../../components/Students/components/ui/card";
 import { Button } from "../../components/Students/components/ui/button";
 import { Badge } from "../../components/Students/components/ui/badge";
+import { LampContainer } from "../../components/Students/components/ui/lamp";
 import {
   TrendingUp,
   CheckCircle,
@@ -43,6 +45,10 @@ import {
   Lightbulb,
 } from "lucide-react";
 import {
+  ChartBarIcon,
+  RectangleStackIcon,
+} from "@heroicons/react/24/outline";
+import {
   suggestions,
   educationData,
   trainingData,
@@ -74,7 +80,6 @@ import { useStudentLearning } from "../../hooks/useStudentLearning";
 import { useStudentCertificates } from "../../hooks/useStudentCertificates";
 import { useStudentProjects } from "../../hooks/useStudentProjects";
 import AnalyticsView from "../../components/Students/components/AnalyticsView";
-import { BarChart3, LayoutDashboard } from "lucide-react";
 import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
 import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
 // Debug utilities removed for production cleanliness
@@ -217,14 +222,9 @@ const StudentDashboard = () => {
     projects: [],
     certificates: [],
   });
-  const [showAllEducation, setShowAllEducation] = useState(false);
-  const [showAllExperience, setShowAllExperience] = useState(false);
   const [showAllOpportunities, setShowAllOpportunities] = useState(false);
-  const [showAllSoftSkills, setShowAllSoftSkills] = useState(false);
-  const [showAllTechnicalSkills, setShowAllTechnicalSkills] = useState(false);
   const [showAllTraining, setShowAllTraining] = useState(false);
   const [showAllProjects, setShowAllProjects] = useState(false);
-  const [showAllCertificates, setShowAllCertificates] = useState(false);
 
   // Generate QR code value once and keep it constant
   const qrCodeValue = React.useMemo(() => {
@@ -662,16 +662,16 @@ const StudentDashboard = () => {
         assessment: (
       <Card
         key="assessment"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 shadow-sm"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+              <div className="p-2 rounded-lg bg-blue-600">
                 <ClipboardList className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">
-                Assessment Test
+              <span className="text-lg font-bold text-gray-800">
+                Assessment
               </span>
             </CardTitle>
             <Badge className="bg-gradient-to-r from-blue-100 to-indigo-100 text-white p-1 rounded-full shadow-sm">
@@ -680,23 +680,23 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="p-8 space-y-4">
-          <p className="text-gray-900 text-sm leading-relaxed font-medium">
+          <p className="text-gray-900 text-base leading-normal font-medium">
             Take our comprehensive assessment to discover your strengths and get a personalized career roadmap.
           </p>
 
-          <div className="flex items-center gap-4 text-xs text-gray-900 font-medium">
+          {/*<div className="flex items-center gap-4 text-xs text-gray-900 font-medium">
             <div className="flex items-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 px-3 py-1.5 rounded-lg shadow-sm">
               <Target className="w-4 h-4 text-blue-600" />
               <span className="font-semibold">Skill Analysis</span>
             </div>
-          </div>
+          </div>*/}
 
-          <div className="flex justify-center">
+          <div className="flex justify-center py-4">
             <Button
-              onClick={() => navigate("/student/assessment/test")}
+              onClick={() => navigate(hasAssessment ? "/student/assessment/result" : "/student/assessment/test")}
               className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-smshadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
             >
-              Start Assessment
+              {hasAssessment ? "View Report" : "Start Assessment"}
               <ChevronRight className="w-5 h-5 ml-2" />
             </Button>
           </div>
@@ -737,16 +737,16 @@ const StudentDashboard = () => {
           ) : (
             // Show Career AI Tools when assessment completed
             <div className="mt-6 pt-6 border-t-2 border-gray-200">
-            <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <h3 className="text-base font-bold text-gray-900 mb-6 flex items-center gap-2">
               <Rocket className="w-5 h-5 text-blue-600" />
               Career AI Tools
             </h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => navigate("/student/career-ai", { state: { query: 'What jobs match my skills and experience?' } })}
-                className="bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
               >
-                <div className="bg-amber-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                   <Briefcase className="w-5 h-5" />
                 </div>
                 <span className="font-semibold text-sm flex-1">Find Jobs</span>
@@ -755,7 +755,7 @@ const StudentDashboard = () => {
 
               <button
                 onClick={() => navigate("/student/career-ai", { state: { query: 'Analyze my skill gaps for my target career' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
               >
                 <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                   <Target className="w-5 h-5" />
@@ -766,9 +766,9 @@ const StudentDashboard = () => {
 
               <button
                 onClick={() => navigate("/student/career-ai", { state: { query: 'Help me prepare for upcoming interviews' } })}
-                className="bg-green-50 hover:bg-green-100 text-green-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
               >
-                <div className="bg-green-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                   <BookOpen className="w-5 h-5" />
                 </div>
                 <span className="font-semibold text-sm flex-1">Interview Prep</span>
@@ -776,10 +776,10 @@ const StudentDashboard = () => {
               </button>
 
               <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'Review my resume and suggest improvements' } })}
-                className="bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                onClick={() => navigate("/student/career-ai", { state: { query: 'Review my resume and suggest improvements?' } })}
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
               >
-                <div className="bg-purple-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                   <FileText className="w-5 h-5" />
                 </div>
                 <span className="font-semibold text-sm flex-1">Resume Review</span>
@@ -788,9 +788,9 @@ const StudentDashboard = () => {
 
               <button
                 onClick={() => navigate("/student/career-ai", { state: { query: 'Create a learning roadmap for my career goals' } })}
-                className="bg-pink-50 hover:bg-pink-100 text-pink-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
               >
-                <div className="bg-pink-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                   <GraduationCap className="w-5 h-5" />
                 </div>
                 <span className="font-semibold text-sm flex-1">Learning Path</span>
@@ -799,9 +799,9 @@ const StudentDashboard = () => {
 
               <button
                 onClick={() => navigate("/student/career-ai", { state: { query: 'What career paths are best suited for me?' } })}
-                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
               >
-                <div className="bg-indigo-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                   <TrendingUp className="w-5 h-5" />
                 </div>
                 <span className="font-semibold text-sm flex-1">Career Guidance</span>
@@ -810,9 +810,9 @@ const StudentDashboard = () => {
 
               <button
                 onClick={() => navigate("/student/career-ai", { state: { query: 'Give me networking strategies for my field' } })}
-                className="bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
               >
-                <div className="bg-teal-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                   <Users2 className="w-5 h-5" />
                 </div>
                 <span className="font-semibold text-sm flex-1">Networking Tips</span>
@@ -821,9 +821,9 @@ const StudentDashboard = () => {
 
               <button
                 onClick={() => navigate("/student/career-ai", { state: { query: 'I need career advice and guidance' } })}
-                className="bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg p-3 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
               >
-                <div className="bg-orange-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                   <Lightbulb className="w-5 h-5" />
                 </div>
                 <span className="font-semibold text-sm flex-1">Career Advice</span>
@@ -838,15 +838,15 @@ const StudentDashboard = () => {
     opportunities: (
       <Card
         key="opportunities"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 shadow-sm"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+              <div className="p-2 rounded-lg bg-blue-600">
                 <Briefcase className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">
+              <span className="text-lg font-bold text-gray-800">
                 Opportunities
               </span>
             </CardTitle>
@@ -982,7 +982,7 @@ const StudentDashboard = () => {
                     return (
                       <div
                         key={opp.id || `${opp.title}-${opp.company_name}-${idx}`}
-                        className="p-5 rounded-xl bg-gradient-to-r from-blue-50 to-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                        className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
                       >
                         <h4 className="text-base font-bold text-gray-900 mb-2">
                           {opp.title}
@@ -992,7 +992,7 @@ const StudentDashboard = () => {
                           <p className="text-blue-600 text-sm leading-relaxed font-medium">
                             {opp.company_name || opp.department || opp.sector || 'Learning Opportunity'}
                           </p>
-                          <Badge className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border border-blue-200 text-xs font-medium px-3 py-1.5 rounded-full shadow-sm whitespace-nowrap">
+                          <Badge className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 text-xs px-2.5 py-0.5 rounded-full font-medium">
                             {opp.employment_type}
                           </Badge>
                         </div>
@@ -1034,300 +1034,168 @@ const StudentDashboard = () => {
     technicalSkills: (
       <Card
         key="technicalSkills"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Cpu className="w-5 h-5 text-blue-600" />
+              <div className="p-2 rounded-lg bg-blue-600">
+                <Cpu className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-semibold text-gray-900">
+              <span className="text-lg font-bold text-gray-800">
                 Technical Skills
               </span>
-              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
-                {userData.technicalSkills.filter((skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified')).length}
-              </Badge>
             </CardTitle>
-            <button
-              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-              title="Edit Technical Skills"
-              onClick={() => setActiveModal("technicalSkills")}
-            >
-              <Edit className="w-4 h-4 text-gray-600" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+                title="View All Technical Skills"
+                onClick={() => setActiveModal("technicalSkills")}
+              >
+                <Eye className="w-5 h-5 text-blue-600" />
+              </button>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-4 p-6 space-y-3">
+        <CardContent className="p-8">
           {userData.technicalSkills.filter(
-            (skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified'
+            (skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified')
           ).length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-slate-500 font-medium">
-                No technical skills have been added or verified.
+              <p className="text-gray-900 text-base leading-normal font-medium">
+                No technical skills added yet
               </p>
             </div>
           ) : (
-            (showAllTechnicalSkills
-              ? userData.technicalSkills.filter(
-                (skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified'
-              )
-              : userData.technicalSkills
-                .filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-                .slice(0, 3)
-            ).map((skill, idx) => (
-              <div
-                key={skill.id || `tech-skill-${idx}`}
-                className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
-              >
-                <div className="flex items-start justify-between">
-                  <div key={`tech-skill-info-${skill.id}`} className="flex-1">
-                    <h4 className="font-semibold text-gray-900 text-base mb-1">
-                      {skill.name}
-                    </h4>
-                    <p className="text-xs text-gray-600 font-medium mb-2">
-                      {skill.category}
-                    </p>
-                    <div className="flex items-center gap-2">
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+              {userData.technicalSkills
+                .filter((skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified'))
+                .map((skill, idx) => (
+                  <div
+                    key={skill.id || `tech-skill-${idx}`}
+                    className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                  >
+                    {/* Skill Name + Level Badge */}
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <h4 className="text-base font-bold text-gray-900">
+                        {skill.name}
+                      </h4>
                       <Badge
-                        className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm border ${getSkillLevelColor(
                           skill.level
                         )}`}
                       >
                         {getSkillLevelText(skill.level)}
                       </Badge>
-                      <div className="flex gap-0.5">
-                        {renderStars(skill.level)}
+                    </div>
+
+                    {/* Category */}
+                    {skill.category && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-sm text-blue-600 font-medium">
+                          {skill.category}
+                        </span>
                       </div>
+                    )}
+
+                    {/* Star Rating */}
+                    <div className="flex gap-0.5">
+                      {renderStars(skill.level)}
                     </div>
                   </div>
-                </div>
-              </div>
-            ))
+                ))}
+            </div>
           )}
-          {userData.technicalSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-            .length > 3 && (
-              <Button
-                variant="outline"
-                onClick={() => setShowAllTechnicalSkills((v) => !v)}
-                className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-              >
-                {showAllTechnicalSkills
-                  ? "Show Less"
-                  : "View All Technical Skills"}
-              </Button>
-            )}
         </CardContent>
       </Card>
     ),
     projects: (
       <Card
         key="projects"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Rocket className="w-5 h-5 text-blue-600" />
+              <div className="p-2 rounded-lg bg-blue-600">
+                <Rocket className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-semibold text-gray-900">
+              <span className="text-lg font-bold text-gray-800">
                 Projects/Internships
               </span>
-              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
-                {enabledProjects.length}
-              </Badge>
             </CardTitle>
             <button
-              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-              title="Manage Projects & Internships"
+              className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+              title="View All Projects & Internships"
               onClick={() => setActiveModal("projects")}
             >
-              <Edit className="w-4 h-4 text-gray-600" />
+              <Eye className="w-5 h-5 text-blue-600" />
             </button>
           </div>
         </CardHeader>
-        <CardContent className="pt-4 p-6 space-y-3">
+        <CardContent className="p-8">
           {enabledProjects.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-slate-500 font-medium">
+              <p className="text-gray-900 text-base leading-normal font-medium">
                 No projects added yet
               </p>
             </div>
           ) : (
-            (showAllProjects
-              ? enabledProjects
-              : enabledProjects.slice(0, 2)
-            ).map((project, idx) => {
-              const techList = Array.isArray(project.tech)
-                ? project.tech
-                : Array.isArray(project.technologies)
-                  ? project.technologies
-                  : Array.isArray(project.tech_stack)
-                    ? project.tech_stack
-                    : Array.isArray(project.skills)
-                      ? project.skills
-                      : [];
-
-              return (
-                <div
-                  key={project.id || `project-${idx}`}
-                  className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${project.enabled ? "" : "opacity-75"
-                    }`}
-                >
-                  {/* First row: Title + Status */}
-                  <div className="flex items-center justify-between gap-3">
-                    <h4 className="font-semibold text-gray-900 text-base">
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+              {enabledProjects.map((project, idx) => {
+                return (
+                  <div
+                    key={project.id || `project-${idx}`}
+                    className={`p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200 ${project.enabled ? "" : "opacity-75"
+                      }`}
+                  >
+                    {/* Title */}
+                    <h4 className="text-base font-bold text-gray-900 mb-2">
                       {project.title || project.name || "Untitled Project"}
                     </h4>
-                    {project.status && (
-                      <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap">
-                        {project.status}
-                      </Badge>
-                    )}
-                  </div>
 
-                  {/* Second row: Organization + Duration */}
-                  <div className="flex items-center justify-between gap-3">
-                    {(project.organization ||
-                      project.company ||
-                      project.client) && (
-                        <p className="text-sm text-blue-600 font-medium truncate">
-                          {project.organization ||
-                            project.company ||
-                            project.client}
-                        </p>
+                    {/* Date + Status Badge */}
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <p className="text-sm text-gray-900 leading-relaxed font-medium">
+                        {project.duration || project.timeline || project.period || ""}
+                      </p>
+                      {project.status && (
+                        <Badge className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${
+                          project.status.toLowerCase() === "completed"
+                            ? "bg-green-100 text-green-600"
+                            : "bg-blue-100 text-blue-600"
+                        }`}>
+                          {project.status}
+                        </Badge>
                       )}
-                    {(project.duration ||
-                      project.timeline ||
-                      project.period) && (
-                        <p className="text-xs text-gray-600 whitespace-nowrap">
-                          {project.duration || project.timeline || project.period}
-                        </p>
-                      )}
-                  </div>
-
-                  {/* Description */}
-                  {project.description && (
-                    <TruncatedText text={project.description} maxLength={120} />
-                  )}
-
-                  {/* Tech stack */}
-                  {techList.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {techList.map((tech, techIdx) => (
-                        <span
-                          key={`${project.id || idx}-tech-${techIdx}`}
-                          className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium"
-                        >
-                          {tech}
-                        </span>
-                      ))}
                     </div>
-                  )}
 
-                  {/* Resource Buttons */}
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {project.demo_link && (
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                      >
-                        <a
-                          href={project.demo_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                    {/* Demo Button + GitHub Button */}
+                    <div className="flex items-center justify-end gap-3">
+                      {project.demo_link && (
+                        <Button
+                          size="sm"
+                          onClick={() => window.open(project.demo_link, '_blank')}
+                          className="w-auto bg-gradient-to-r from-blue-50 to-indigo-100 hover:from-blue-200 hover:to-indigo-300 text-blue-700 font-semibold px-1 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
                         >
-                          <Link className="w-4 h-4 mr-1" /> Demo
-                        </a>
-                      </Button>
-                    )}
-                    {project.github_link && (
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="text-gray-700 border-gray-300 hover:bg-gray-100"
-                      >
-                        <a
-                          href={
-                            project.github_url ||
-                            project.github_link ||
-                            project.github
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          Demo
+                        </Button>
+                      )}
+                      {(project.github_link || project.github_url || project.github) && (
+                        <Button
+                          size="sm"
+                          onClick={() => window.open(project.github_url || project.github_link || project.github, '_blank')}
+                          className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-2 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
                         >
-                          <Github className="w-4 h-4 mr-1" /> GitHub
-                        </a>
-                      </Button>
-                    )}
-                    {project.video_url && (
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        <a
-                          href={project.video_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Video className="w-4 h-4 mr-1" /> Video
-                        </a>
-                      </Button>
-                    )}
-                    {project.ppt_url && (
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="text-blue-600 border-purple-200 hover:bg-purple-50"
-                      >
-                        <a
-                          href={project.ppt_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Presentation className="w-4 h-4 mr-1" /> PPT
-                        </a>
-                      </Button>
-                    )}
-                    {project.certificate_url && (
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="text-blue-600 border-green-200 hover:bg-green-50"
-                      >
-                        <a
-                          href={project.certificate_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <FileText className="w-4 h-4 mr-1" /> Certificate
-                        </a>
-                      </Button>
-                    )}
+                          <Github className="w-4 h-4" />
+                          Git
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          )}
-
-          {enabledProjects.length > 2 && (
-            <Button
-              variant="outline"
-              onClick={() => setShowAllProjects((v) => !v)}
-              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-            >
-              {showAllProjects
-                ? "Show Less"
-                : `View All Projects (${enabledProjects.length})`}
-            </Button>
+                );
+              })}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -1335,121 +1203,117 @@ const StudentDashboard = () => {
     education: (
       <Card
         key="education"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <GraduationCap className="w-5 h-5 text-blue-600" />
+              <div className="p-2 rounded-lg bg-blue-600">
+                <GraduationCap className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-semibold text-gray-900">
+              <span className="text-lg font-bold text-gray-800">
                 Education
               </span>
-              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
-                {
-                  userData.education.filter(
-                    (education) =>
-                      education.enabled !== false &&
-                      (education.approval_status === "verified" || education.approval_status === "approved")
-                  ).length
-                }
-              </Badge>
             </CardTitle>
-            <button
-              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-              title="Edit Education"
-              onClick={() => setActiveModal("education")}
-            >
-              <Edit className="w-4 h-4 text-gray-600" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+                title="View All Education"
+                onClick={() => setActiveModal("education")}
+              >
+                <Eye className="w-5 h-5 text-blue-600" />
+              </button>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-4 p-6 space-y-3">
-          {(showAllEducation
-            ? userData.education.filter(
-              (education) =>
-                education.enabled !== false &&
-                (education.approval_status === "verified" || education.approval_status === "approved")
-            )
-            : userData.education
-              .filter((education) =>
-                education.enabled !== false &&
-                (education.approval_status === "verified" || education.approval_status === "approved")
-              )
-              .slice(0, 2)
-          ).map((education, idx) => (
-            <div
-              key={education.id || `edu-${idx}`}
-              className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h4 className="font-semibold text-gray-900 text-base mb-0.5">
-                    {education.degree || "N/A"}
-                  </h4>
-                  <p className="text-gray-600 text-sm">
-                    {education.university || "N/A"}
-                  </p>
-                </div>
-                <Badge
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md ${education.status === "ongoing"
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-green-100 text-green-700"
-                    }`}
-                >
-                  {education.status || "N/A"}
-                </Badge>
-              </div>
-              <div className="flex gap-6 text-xs">
-                <div key={`edu-level-${education.id}`}>
-                  <p className="text-gray-500 mb-0.5">Level</p>
-                  <p className="font-medium text-gray-900">
-                    {education.level || "N/A"}
-                  </p>
-                </div>
-                <div key={`edu-year-${education.id}`}>
-                  <p className="text-gray-500 mb-0.5">Year</p>
-                  <p className="font-medium text-gray-900">
-                    {education.yearOfPassing || "N/A"}
-                  </p>
-                </div>
-                <div key={`edu-grade-${education.id}`}>
-                  <p className="text-gray-500 mb-0.5">Grade</p>
-                  <p className="font-medium text-gray-900">
-                    {education.cgpa || "N/A"}
-                  </p>
-                </div>
-              </div>
+        <CardContent className="p-8">
+          {userData.education.filter(
+            (education) =>
+              education.enabled !== false &&
+              (education.approval_status === "verified" || education.approval_status === "approved")
+          ).length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-900 text-base leading-normal font-medium">
+                No education added yet
+              </p>
             </div>
-          ))}
-          {userData.education.filter((education) =>
-            education.enabled !== false &&
-            (education.approval_status === "verified" || education.approval_status === "approved")
-          ).length > 2 && (
-              <Button
-                variant="outline"
-                onClick={() => setShowAllEducation((v) => !v)}
-                className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-              >
-                {showAllEducation ? "Show Less" : "View All Qualifications"}
-              </Button>
-            )}
+          ) : (
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+              {userData.education
+                .filter((education) =>
+                  education.enabled !== false &&
+                  (education.approval_status === "verified" || education.approval_status === "approved")
+                )
+                .map((education, idx) => (
+                  <div
+                    key={education.id || `edu-${idx}`}
+                    className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                  >
+                    {/* Degree + Status Badge */}
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <h4 className="text-base font-bold text-gray-900">
+                        {education.degree || "N/A"}
+                      </h4>
+                      {education.status && (
+                        <Badge
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm ${
+                            education.status === "ongoing"
+                              ? "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700"
+                              : "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700"
+                          }`}
+                        >
+                          {education.status}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* University/Institution */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <Building2 className="w-4 h-4 text-blue-600" />
+                      <p className="text-sm text-blue-600 font-medium">
+                        {education.university || education.institution || "N/A"}
+                      </p>
+                    </div>
+
+                    {/* Level, Year, Grade */}
+                    <div className="flex items-center gap-6 text-sm text-gray-600">
+                      {education.level && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium">{education.level}</span>
+                        </div>
+                      )}
+                      {education.yearOfPassing && (
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-4 h-4 text-gray-600" />
+                          <span className="font-medium">{education.yearOfPassing}</span>
+                        </div>
+                      )}
+                      {education.cgpa && (
+                        <div className="flex items-center gap-1.5">
+                          <Award className="w-4 h-4 text-gray-600" />
+                          <span className="font-medium">{education.cgpa}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     ),
     training: (
       <Card
         key="training"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 shadow-sm"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+              <div className="p-2 rounded-lg bg-blue-600">
                 <PresentationIcon className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">Training</span>
+              <span className="text-lg font-bold text-gray-800">Training</span>
             </CardTitle>
             <button
               className="p-2 rounded-md hover:bg-blue-100 transition-colors"
@@ -1524,7 +1388,7 @@ const StudentDashboard = () => {
             return (
               <div
                 key={training.id || `training-${training.course}-${idx}`}
-                className="p-5 rounded-xl bg-gradient-to-r from-blue-50 to-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
               >
                 {/* Header */}
                 <div className="flex items-center justify-between gap-3 mb-3">
@@ -1532,9 +1396,9 @@ const StudentDashboard = () => {
                     {training.course}
                   </h4>
                   <Badge
-                    className={`px-3 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${training.status === "completed"
-                      ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white"
-                      : "bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
+                    className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${training.status === "completed"
+                      ? "bg-green-100 text-green-600"
+                      : "bg-blue-100 text-blue-600"
                       }`}
                   >
                     {training.status === "completed" ? "Completed" : "Ongoing"}
@@ -1567,9 +1431,9 @@ const StudentDashboard = () => {
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden shadow-inner">
                       <div
-                        className="h-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
+                        className="h-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${progressValue}%` }}
                       />
                     </div>
@@ -1633,286 +1497,280 @@ const StudentDashboard = () => {
     certificates: (
       <Card
         key="certificates"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center w-full justify-between">
-            <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Medal className="w-5 h-5 text-blue-600" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900">
-                Certificates
-              </span>
-              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
-                {enabledCertificates.length}
-              </Badge>
-            </CardTitle>
-            <button
-              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-              title="Manage Certificates"
-              onClick={() => setActiveModal("certificates")}
-            >
-              <Edit className="w-4 h-4 text-gray-600" />
-            </button>
+         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
+      <div className="flex items-center w-full justify-between">
+        <CardTitle className="flex items-center gap-3 m-0 p-0">
+          <div className="p-2 rounded-lg bg-blue-600">
+            <Medal className="w-6 h-6 text-white" />
           </div>
-        </CardHeader>
-        <CardContent className="p-6 space-y-3">
-          {enabledCertificates.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-slate-500 font-medium">
-                No certificates uploaded yet
-              </p>
+          <span className="text-lg font-bold text-gray-800">
+            Certificates
+          </span>
+        </CardTitle>
+        <div className="flex items-center gap-2">
+          <button
+            className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+            title="View All Certificates"
+            onClick={() => setActiveModal("certificates")}
+          >
+            <Eye className="w-5 h-5 text-blue-600" />
+          </button>
+        </div>
+      </div>
+    </CardHeader>
+        <CardContent className="p-8">
+  {enabledCertificates.length === 0 ? (
+    <div className="text-center py-8">
+      <p className="text-gray-900 text-base leading-normal font-medium">
+        No certificates uploaded yet
+      </p>
+    </div>
+  ) : (
+    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+      {enabledCertificates.map((cert, idx) => {
+        const certificateLink =
+          cert.link ||
+          cert.url ||
+          cert.certificateUrl ||
+          cert.credentialUrl ||
+          cert.viewUrl;
+        const issuedOn =
+          cert.year || cert.date || cert.issueDate || cert.issuedOn;
+        return (
+          <div
+            key={cert.id || `certificate-${idx}`}
+            className={`p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200 ${cert.enabled ? "" : "opacity-75"
+              }`}
+          >
+            {/* Certificate Name */}
+            <h4 className="text-base font-bold text-gray-900 mb-3">
+              {cert.title ||
+                cert.name ||
+                cert.certificate ||
+                "Certificate"}
+            </h4>
+
+            {/* Credential ID + Date */}
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="text-xs text-gray-600 font-medium">
+                {cert.credentialId ? (
+                  <span>{cert.credentialId}</span>
+                ) : (
+                  <span className="text-gray-400">No credential ID</span>
+                )}
+              </div>
+              {issuedOn && (
+                <Badge className="px-3 py-1 text-xs font-semibold bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-full shadow-sm">
+                  {issuedOn}
+                </Badge>
+              )}
             </div>
-          ) : (
-            (showAllCertificates
-              ? enabledCertificates
-              : enabledCertificates.slice(0, 2)
-            ).map((cert, idx) => {
-              const certificateLink =
-                cert.link ||
-                cert.url ||
-                cert.certificateUrl ||
-                cert.credentialUrl ||
-                cert.viewUrl;
-              const issuedOn =
-                cert.year || cert.date || cert.issueDate || cert.issuedOn;
-              return (
-                <div
-                  key={cert.id || `certificate-${idx}`}
-                  className={`p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all space-y-3 ${cert.enabled ? "" : "opacity-75"
-                    }`}
+
+            {/* Icon + Organization + View Button */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-blue-600" />
+                <p className="text-blue-600 text-sm leading-relaxed font-medium">
+                  {cert.issuer ||
+                    cert.organization ||
+                    cert.institution ||
+                    "Organization"}
+                </p>
+              </div>
+
+              {/* View Button */}
+              {certificateLink && (
+                <Button
+                  size="sm"
+                  onClick={() => window.open(certificateLink, '_blank')}
+                  className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-4 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <h4 className="font-semibold text-gray-900 text-base">
-                        {cert.title ||
-                          cert.name ||
-                          cert.certificate ||
-                          "Certificate"}
-                      </h4>
-                      <div className="flex items-center justify-between gap-3 mt-2">
-                        {(cert.issuer ||
-                          cert.organization ||
-                          cert.institution) && (
-                            <p className="text-sm text-blue-600 font-medium">
-                              {cert.issuer ||
-                                cert.organization ||
-                                cert.institution}
-                            </p>
-                          )}
-                        {issuedOn && (
-                          <p className="text-xs text-gray-600">{issuedOn}</p>
-                        )}
-                      </div>
-                      {cert.credentialId && (
-                        <div className="text-xs text-gray-500 font-medium">
-                          Credential ID: {cert.credentialId}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {cert.description && (
-                    <TruncatedText text={cert.description} maxLength={120} />
-                  )}
-
-                  {(cert.level || cert.category || cert.type) && (
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
-                        {cert.level || cert.category || cert.type}
-                      </span>
-                    </div>
-                  )}
-
-                  {certificateLink && (
-                    <div className="pt-1">
-                      <a
-                        href={certificateLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors"
-                        >
-                          View Credential
-                        </Button>
-                      </a>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-          {enabledCertificates.length > 2 && (
-            <Button
-              variant="outline"
-              onClick={() => setShowAllCertificates((v) => !v)}
-              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-            >
-              {showAllCertificates
-                ? "Show Less"
-                : `View All Certificates (${enabledCertificates.length})`}
-            </Button>
-          )}
-        </CardContent>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  View
+                </Button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  )}
+</CardContent>
       </Card>
     ),
        experience: (
-      <Card
-        key="experience"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
-      >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center w-full justify-between">
-            <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-blue-600" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900">
-                My Experience
-              </span>
-              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
-                {userData.experience?.filter(exp => exp.enabled !== false && (exp.approval_status === "verified" || exp.approval_status === "approved")).length || 0}
-              </Badge>
-            </CardTitle>
-            <button
-              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-              title="Edit Experience"
-              onClick={() => setActiveModal("experience")}
-            >
-              <Edit className="w-4 h-4 text-gray-600" />
-            </button>
+  <Card
+    key="experience"
+    className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
+  >
+    <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
+      <div className="flex items-center w-full justify-between">
+        <CardTitle className="flex items-center gap-3 m-0 p-0">
+          <div className="p-2 rounded-lg bg-blue-600">
+            <Building2 className="w-6 h-6 text-white" />
           </div>
-        </CardHeader>
-        <CardContent className="p-6 space-y-3">
-          {userData.experience
-            ?.filter(exp =>
-              exp.enabled !== false &&
-              (exp.approval_status === "verified" || exp.approval_status === "approved")
-            )
-            .slice(0, 3)
-            .map((exp, index) => (
-              <div
-                key={index}
-                className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900 text-base mb-1">
-                      {exp.role}
-                    </p>
-                    <p className="text-blue-600 text-sm font-medium mb-2">
-                      {exp.organization}
-                    </p>
-                    <p className="text-xs text-gray-600">{exp.duration}</p>
-                  </div>
-                  {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
-                    <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" />
-                      Verified
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            ))}
-          
-          {userData.experience?.filter(exp =>
-            exp.enabled !== false &&
-            (exp.approval_status === "verified" || exp.approval_status === "approved")
-          ).length > 3 && (
-            <Button
-              variant="outline"
-              onClick={() => navigate('/student/my-experience')}
-              className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-            >
-              View All Experience
-            </Button>
+          <span className="text-lg font-bold text-gray-800">
+            My Experience
+          </span>
+        </CardTitle>
+        <div className="flex items-center gap-2">
+          <button
+            className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+            title="View All Experience"
+            onClick={() => setActiveModal("experience")}
+          >
+            <Eye className="w-5 h-5 text-blue-600" />
+          </button>
+        </div>
+      </div>
+    </CardHeader>
+        <CardContent className="p-8">
+  {userData.experience?.filter(exp =>
+    exp.enabled !== false &&
+    (exp.approval_status === "verified" || exp.approval_status === "approved")
+  ).length === 0 ? (
+    <div className="text-center py-8">
+      <p className="text-gray-900 text-base leading-normal font-medium">
+        No experience added yet
+      </p>
+    </div>
+  ) : (
+    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+      {userData.experience
+        .filter(exp =>
+          exp.enabled !== false &&
+          (exp.approval_status === "verified" || exp.approval_status === "approved")
+        )
+        .map((exp, idx) => (
+          <div
+            key={exp.id || `exp-${idx}`}
+            className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+          >
+            {/* Title + Status Badge */}
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h4 className="text-base font-bold text-gray-900">
+                {exp.role || "Experience Role"}
+              </h4>
+            {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
+              <Badge className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5" />
+                Verified
+              </Badge>
+            )}
+          </div>
+
+          {/* Type */}
+          {exp.type && (
+            <div className="flex items-center gap-2 mb-3">
+              <Briefcase className="w-4 h-4 text-blue-600" />
+              <span className="text-sm text-gray-700 font-medium">{exp.type}</span>
+            </div>
           )}
-        </CardContent>
+
+          {/* Icon + Location */}
+          {(exp.organization || exp.company || exp.location) && (
+            <div className="flex items-center gap-2 mb-3">
+              <Building2 className="w-4 h-4 text-blue-600" />
+              <span className="text-sm text-blue-600 font-medium">
+                {exp.organization || exp.company || "Organization"}
+                {exp.location && `, ${exp.location}`}
+              </span>
+            </div>
+          )}
+
+          {/* Date */}
+          {(exp.duration || exp.period) && (
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-600" />
+              <span className="text-sm text-gray-600 font-medium">
+                {exp.duration || exp.period}
+              </span>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
+</CardContent>
       </Card>
     ),
     softSkills: (
       <Card
         key="softSkills"
-        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
           <div className="flex items-center w-full justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Users2 className="w-5 h-5 text-blue-600" />
+              <div className="p-2 rounded-lg bg-blue-600">
+                <Users2 className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-semibold text-gray-900">
+              <span className="text-lg font-bold text-gray-800">
                 Soft Skills
               </span>
-              <Badge className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
-                {userData.softSkills.filter((skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified')).length}
-              </Badge>
             </CardTitle>
-            <button
-              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-              title="Edit Soft Skills"
-              onClick={() => setActiveModal("softSkills")}
-            >
-              <Edit className="w-4 h-4 text-gray-600" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+                title="View All Soft Skills"
+                onClick={() => setActiveModal("softSkills")}
+              >
+                <Eye className="w-5 h-5 text-blue-600" />
+              </button>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-4 p-6 space-y-3">
-          {userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-            .length === 0 ? (
+        <CardContent className="p-8">
+          {userData.softSkills.filter(
+            (skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified')
+          ).length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-slate-500 font-medium">
-                No soft skills have been added or verified.
+              <p className="text-gray-900 text-base leading-normal font-medium">
+                No soft skills added yet
               </p>
             </div>
           ) : (
-            (showAllSoftSkills
-              ? userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-              : userData.softSkills
-                .filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-                .slice(0, 3)
-            ).map((skill, idx) => (
-              <div
-                key={skill.id || `soft-skill-${idx}`}
-                className="p-4 rounded-lg bg-gray-50 border border-gray-200 hover:bg-white hover:border-blue-300 transition-all"
-              >
-                <div className="flex items-start justify-between">
-                  <div key={`skill-info-${skill.id}`} className="flex-1">
-                    <h4 className="font-semibold text-gray-900 text-base mb-1">
-                      {skill.name}
-                    </h4>
-                    <p className="text-xs text-gray-600 mb-2">
-                      {skill.description}
-                    </p>
-                    <div className="flex items-center gap-2">
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+              {userData.softSkills
+                .filter((skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified'))
+                .map((skill, idx) => (
+                  <div
+                    key={skill.id || `soft-skill-${idx}`}
+                    className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                  >
+                    {/* Skill Name + Level Badge */}
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <h4 className="text-base font-bold text-gray-900">
+                        {skill.name}
+                      </h4>
                       <Badge
-                        className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${getSkillLevelColor(
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm border ${getSkillLevelColor(
                           skill.level
                         )}`}
                       >
                         {getSkillLevelText(skill.level)}
                       </Badge>
-                      <div className="flex gap-0.5">
-                        {renderStars(skill.level)}
+                    </div>
+
+                    {/* Description */}
+                    {skill.description && (
+                      <div className="mb-3">
+                        <p className="text-sm text-gray-600 font-medium">
+                          {skill.description}
+                        </p>
                       </div>
+                    )}
+
+                    {/* Star Rating */}
+                    <div className="flex gap-0.5">
+                      {renderStars(skill.level)}
                     </div>
                   </div>
-                </div>
-              </div>
-            ))
+                ))}
+            </div>
           )}
-          {userData.softSkills.filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
-            .length > 3 && (
-              <Button
-                variant="outline"
-                onClick={() => setShowAllSoftSkills((v) => !v)}
-                className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium text-sm rounded-md transition-all"
-              >
-                {showAllSoftSkills ? "Show Less" : "View All Soft Skills"}
-              </Button>
-            )}
         </CardContent>
       </Card>
     ),
@@ -1986,34 +1844,34 @@ const StudentDashboard = () => {
       <div className="w-full mx-auto">
         {/* View Switcher Tabs */}
         {!isViewingOthersProfile && (
-          <div className="mb-8">
+          <div className="mb-16 flex justify-center">
             {/* Tab Navigation with Subheadings */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2 w-full max-w-4xl">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {/* Dashboard Tab */}
                 <button
                   onClick={() => setActiveView('dashboard')}
                   className={`relative text-left p-4 rounded-lg transition-all ${
                     activeView === 'dashboard'
-                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                      ? 'bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md'
                       : 'bg-white hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`p-2 rounded-lg ${
-                      activeView === 'dashboard' ? 'bg-indigo-600' : 'bg-gray-100'
+                      activeView === 'dashboard' ? 'bg-blue-600' : 'bg-gray-100'
                     }`}>
-                      <LayoutDashboard className={`w-6 h-6 ${
+                      <RectangleStackIcon className={`w-6 h-6 ${
                         activeView === 'dashboard' ? 'text-white' : 'text-gray-600'
                       }`} />
                     </div>
                     <div className="flex-1">
-                      <h1 className={`font-bold text-2xl ${
-                        activeView === 'dashboard' ? 'text-indigo-600' : 'text-gray-900'
+                      <h1 className={`font-bold text-lg ${
+                        activeView === 'dashboard' ? 'text-blue-600' : 'text-gray-900'
                       }`}>
                         Dashboard
                       </h1>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-gray-600 mt-1 whitespace-nowrap">
                         View your overview, opportunities, and achievements
                       </p>
                     </div>
@@ -2025,25 +1883,25 @@ const StudentDashboard = () => {
                   onClick={() => setActiveView('analytics')}
                   className={`relative text-left p-4 rounded-lg transition-all ${
                     activeView === 'analytics'
-                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                      ? 'bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md'
                       : 'bg-white hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`p-2 rounded-lg ${
-                      activeView === 'analytics' ? 'bg-indigo-600' : 'bg-gray-100'
+                      activeView === 'analytics' ? 'bg-blue-600' : 'bg-gray-100'
                     }`}>
-                      <BarChart3 className={`w-6 h-6 ${
+                      <ChartBarIcon className={`w-6 h-6 ${
                         activeView === 'analytics' ? 'text-white' : 'text-gray-600'
                       }`} />
                     </div>
                     <div className="flex-1">
                       <h1 className={`font-bold text-lg ${
-                        activeView === 'analytics' ? 'text-indigo-600' : 'text-gray-900'
+                        activeView === 'analytics' ? 'text-blue-600' : 'text-gray-900'
                       }`}>
                         Analytics
                       </h1>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-gray-600 mt-1 whitespace-nowrap">
                         Track your learning progress and performance insights
                       </p>
                     </div>
@@ -2059,8 +1917,33 @@ const StudentDashboard = () => {
           <AnalyticsView studentId={studentData?.id} userEmail={userEmail} />
         ) : (
           <>
+            <LampContainer>
+              <motion.h1
+                initial={{ opacity: 0.5, y: 100 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: 0.3,
+                  duration: 0.8,
+                  ease: "easeInOut",
+                }}
+                className="bg-gradient-to-br from-slate-900 to-slate-900  bg-clip-text text-center text-xl font-bold tracking-tight text-transparent md:text-xl"
+              >
+                Welcome to your profile dashboard, {studentData?.profile?.firstName || studentData?.rawData?.firstName || (userEmail ? userEmail.split('@')[0] : "Student")}!
+              </motion.h1>
+            </LampContainer>
             {/* 3x3 Grid Section */}
-            {render3x3Grid()}
+            <motion.div
+              initial={{ opacity: 0.5, y: 100 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{
+                delay: 0.3,
+                duration: 0.8,
+                ease: "easeInOut",
+              }}
+              className="-mt-48 relative z-10"
+            >
+              {render3x3Grid()}
+            </motion.div>
             
             {/* Separate Section: 2 in a row and 1 column (Suggested Steps and Achievement Timeline) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -2068,34 +1951,26 @@ const StudentDashboard = () => {
               <div className="lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
                 <Card
                   ref={suggestedNextStepsRef}
-                  className="bg-white rounded-xl border border-gray-200 shadow-sm"
+                  className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
                   data-testid="suggested-next-steps-card"
                 >
-                  <CardHeader className="px-6 py-4 border-b border-gray-100">
-                    <div className="flex items-center w-full justify-between">
-                      <CardTitle className="flex items-center gap-3 m-0 p-0">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center border border-amber-200">
-                          <Lightbulb className="w-5 h-5 text-amber-600" />
-                        </div>
-                        <span className="text-lg font-semibold text-gray-900">
-                          Suggested Steps
-                        </span>
-                        {matchedJobs.length > 0 && (
-                          <Badge className="bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-md text-xs font-medium ml-2">
-                            {matchedJobs.length}
-                          </Badge>
-                        )}
-                      </CardTitle>
-                      <button
-                        className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-                        title="View All Suggested Steps"
-                        onClick={() => navigate("/student/suggested-steps")}
-                      >
-                        <Eye className="w-4 h-4 text-gray-600" />
-                      </button>
-                    </div>
+                  <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
+                    <CardTitle className="flex items-center gap-3 m-0 p-0">
+                      <div className="p-2 rounded-lg bg-blue-600">
+                        <Lightbulb className="w-6 h-6 text-white" />
+                      </div>
+                      <span className="text-lg font-bold text-gray-800">Suggested Steps</span>
+                    </CardTitle>
+                    <button
+                      className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+                      title="View All Suggested Steps"
+                      onClick={() => navigate("/student/suggested-steps")}
+                    >
+                      <Eye className="w-5 h-5 text-blue-600" />
+                    </button>
                   </CardHeader>
-                  <CardContent className="p-6 space-y-3">
+                  <CardContent className="p-8">
+                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
                     {matchingLoading ? (
                       <div className="flex items-center justify-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
@@ -2114,7 +1989,7 @@ const StudentDashboard = () => {
                         {matchedJobs.slice(0, 4).map((match, idx) => (
                           <div
                             key={match.job_id || `job-match-${idx}`}
-                            className="p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 hover:border-amber-300 hover:shadow-md transition-all cursor-pointer group"
+                            className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
                             data-testid={`matched-job-${idx}`}
                             onClick={() => {
                               // Navigate to opportunities page or show details
@@ -2224,7 +2099,7 @@ const StudentDashboard = () => {
                           variant="outline"
                           size="sm"
                           onClick={refreshMatches}
-                          className="w-full mt-2 text-amber-700 border-amber-300 hover:bg-amber-50"
+                          className="w-full mt-2 text-blue-600 border-blue-300 hover:bg-blue-50"
                           data-testid="refresh-matches-button"
                         >
                           <Sparkles className="w-4 h-4 mr-2" />
@@ -2237,7 +2112,7 @@ const StudentDashboard = () => {
                         {suggestions.map((suggestion, idx) => (
                           <div
                             key={suggestion.id || `suggestion-${idx}`}
-                            className="p-3 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-all"
+                            className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:border-blue-300 transition-all"
                           >
                             <p className="text-sm font-medium text-gray-900">
                               {typeof suggestion === "string"
@@ -2256,6 +2131,7 @@ const StudentDashboard = () => {
                         )}
                       </>
                     )}
+                    </div>
                   </CardContent>
                 </Card>
               </div>

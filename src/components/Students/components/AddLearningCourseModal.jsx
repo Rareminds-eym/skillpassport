@@ -603,24 +603,69 @@ CRITICAL RULES:
       const workerUrl = import.meta.env.VITE_CLOUDFLARE_CERTIFICATE_WORKER_URL || 
                         'https://fetch-certificate.rareminds.workers.dev';
       
-      const response = await fetch(workerUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: certificateUrl })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Certificate verification failed: ${response.status}`);
+      console.log('🔗 Worker URL:', workerUrl);
+      
+      let response;
+      let result;
+      
+      try {
+        response = await fetch(workerUrl, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ url: certificateUrl })
+        });
+        
+        console.log('📡 Worker response status:', response.status);
+        
+        // Try to parse response
+        const responseText = await response.text();
+        console.log('📡 Worker response:', responseText.substring(0, 500));
+        
+        try {
+          result = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('Failed to parse worker response:', parseError);
+          // If worker returns HTML (404 page), it means the worker route doesn't exist
+          if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
+            throw new Error('Worker endpoint not found. Please redeploy the Cloudflare worker.');
+          }
+          throw new Error('Invalid response from verification service');
+        }
+      } catch (fetchError) {
+        console.error('Worker fetch error:', fetchError);
+        setError(`Verification service error: ${fetchError.message}`);
+        setVerificationStatus('failed');
+        return false;
       }
 
-      const result = await response.json();
+      if (!response.ok) {
+        const errorMsg = result?.error || `Certificate verification failed: ${response.status}`;
+        console.warn('⚠️ Certificate verification failed:', errorMsg);
+        console.warn('⚠️ URL attempted:', certificateUrl);
+        
+        // If it's a 404 from the certificate page (not the worker)
+        if (errorMsg.includes('404') || errorMsg.includes('Not Found')) {
+          setError(`Certificate not found. The certificate URL or ID may be incorrect. Please verify the details.`);
+        } else {
+          setError(`Certificate verification failed: ${errorMsg}`);
+        }
+        setVerificationStatus('failed');
+        return false;
+      }
 
       if (!result?.success) {
-        throw new Error(result?.error || 'Certificate URL is not valid');
+        const errorMsg = result?.error || 'Certificate URL is not valid';
+        console.warn('⚠️ Certificate verification returned error:', errorMsg);
+        setError(errorMsg);
+        setVerificationStatus('failed');
+        return false;
       }
 
       console.log('✅ Certificate URL verified successfully');
+      console.log('📋 Certificate metadata:', result.metadata);
       
       // Set organization based on platform
       const platformName = selectedPlatform?.name || '';
@@ -633,7 +678,7 @@ CRITICAL RULES:
       return true;
     } catch (err) {
       console.error('Certificate verification error:', err);
-      setError('Certificate verification failed');
+      setError(`Certificate verification failed: ${err.message}`);
       setVerificationStatus('failed');
       return false;
     } finally {
@@ -856,10 +901,8 @@ Respond in JSON format:
           // Try to verify the URL
           const isValid = await verifyCertificateUrl(extractedUrl);
           if (!isValid) {
-            // Verification failed, but we extracted data - allow user to proceed with warning
-            // The error is already shown, but don't block completely
-            console.log('⚠️ URL verification failed, but extraction succeeded');
-            // Don't return - let user see the extracted data and decide
+            // Verification failed - block proceeding
+            return;
           }
         } else {
           // No URL extracted from image - check if we at least got a certificate ID
@@ -871,17 +914,15 @@ Respond in JSON format:
             
             const isValid = await verifyCertificateUrl(constructedUrl);
             if (!isValid) {
-              console.log('⚠️ Constructed URL verification failed');
+              // Verification failed - block proceeding
+              return;
             }
           } else {
-            // No URL and no certificate ID - show warning but allow proceeding
-            setError('Could not extract certificate URL. Please verify the details manually in the next step.');
-            // Don't return - allow user to proceed and enter URL manually
+            // No URL and no certificate ID - block proceeding
+            setError('Could not extract certificate URL from the image. Please enter the certificate URL manually.');
+            return;
           }
         }
-        
-        // Mark extraction as successful so user can proceed
-        setExtractionSuccess(true);
       } else if (formData.certificate_url) {
         // Only verify that the certificate URL is valid
         const isValid = await verifyCertificateUrl();

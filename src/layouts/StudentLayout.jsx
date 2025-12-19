@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
@@ -21,11 +21,36 @@ import {
   softSkills
 } from '../components/Students/data/mockData';
 
+// Helper function to get active tab from pathname
+const getActiveTabFromPath = (pathname) => {
+  if (pathname.includes('/my-learning')) return 'training';
+  if (pathname.includes('/courses')) return 'courses';
+  if (pathname.includes('/digital-portfolio')) return 'digital-portfolio';
+  if (pathname.includes('/opportunities')) return 'opportunities';
+  if (pathname.includes('/career-ai')) return 'career-ai';
+  if (pathname.includes('/assignments')) return 'assignments';
+  if (pathname.includes('/messages')) return 'messages';
+  if (pathname.includes('/my-skills')) return 'skills';
+  if (pathname.includes('/my-experience')) return 'experience';
+  if (pathname.includes('/applications')) return 'applications';
+  if (pathname.includes('/profile')) return 'profile';
+  if (pathname.includes('/saved-jobs')) return 'saved-jobs';
+  if (pathname.includes('/settings')) return 'settings';
+  if (pathname.includes('/dashboard') || pathname === '/student' || pathname === '/student/') return 'dashboard';
+  return 'dashboard';
+};
+
 const StudentLayout = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [activeModal, setActiveModal] = useState(null);
   const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => getActiveTabFromPath(location.pathname));
+  const [activeModal, setActiveModal] = useState(null);
   const { user } = useAuth();
+
+  // Sync activeTab with current route
+  useEffect(() => {
+    const tabFromPath = getActiveTabFromPath(location.pathname);
+    setActiveTab(tabFromPath);
+  }, [location.pathname]);
   
   // Check if viewing someone else's profile
   const isViewingOthersProfile = location.pathname.includes('/student/profile/');
@@ -73,7 +98,7 @@ const StudentLayout = () => {
       <div className={isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}>
         {!isAssessmentPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
         {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
-        <main className={isCareerAIPage || isFullScreenAssessment ? "flex-1 overflow-hidden" : isAssessmentResultPage ? "flex-1 overflow-auto" : "py-8 px-6"}>
+        <main className={isCareerAIPage ? "flex-1 overflow-hidden" : "py-4 px-6"}>
           <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
         </main>
         {!isCareerAIPage && !isAssessmentPage && (

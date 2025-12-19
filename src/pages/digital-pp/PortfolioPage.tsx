@@ -16,7 +16,14 @@ const PortfolioPage: React.FC = () => {
   const { student, settings, isLoading, isManuallySet, viewerRole } = usePortfolio();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  console.log('PortfolioPage rendering...', { student, settings, isLoading, isManuallySet, viewerRole });
+  // console.log('🎨 PortfolioPage rendering...', { 
+  //   student: student?.name || student?.email, 
+  //   currentLayout: settings.layout,
+  //   viewerRole,
+  //   isManuallySet,
+  //   isLoading,
+  //   message: `${viewerRole} using ${settings.layout} layout`
+  // });
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -125,28 +132,7 @@ const PortfolioPage: React.FC = () => {
       displayPreferences: settings.displayPreferences,
     };
 
-    // Check if an educator/admin is viewing another student's portfolio
-    const isEducatorOrAdmin = viewerRole === 'educator' ||
-                              viewerRole === 'school_admin' ||
-                              viewerRole === 'college_admin' ||
-                              viewerRole === 'university_admin';
-
-    // Check if a recruiter is viewing a student's portfolio
-    const isRecruiter = viewerRole === 'recruiter';
-
-    // If recruiter is viewing a student's portfolio, force AI Persona layout
-    if (isManuallySet && isRecruiter) {
-      console.log('💼 Recruiter viewing student portfolio - using AI Persona layout');
-      return <AIPersonaLayout {...layoutProps} />;
-    }
-
-    // If educator/admin is viewing a student's portfolio, force Journey Map layout
-    if (isManuallySet && isEducatorOrAdmin) {
-      console.log('🎓 Educator/Admin viewing student portfolio - using Journey Map layout');
-      return <JourneyMapLayout {...layoutProps} />;
-    }
-
-    // Otherwise, use the user's selected layout
+    // Use the user's selected layout (role-based defaults are handled in context)
     switch (settings.layout) {
       case 'modern':
         return <ModernLayout {...layoutProps} />;
@@ -203,19 +189,16 @@ const PortfolioPage: React.FC = () => {
                   </>
                 )}
               </button>
-              {/* Hide Customize button when educator/admin is viewing student portfolio */}
-              {!isManuallySet && (
-                <Link
-                  to="/settings/layout"
-                  className="flex items-center px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white hover:shadow-lg transition-all group relative overflow-hidden"
-                >
-                  <span className="relative z-10 flex items-center">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Customize
-                  </span>
-                  <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
-                </Link>
-              )}
+              <Link
+                to="/settings/layout"
+                className="flex items-center px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white hover:shadow-lg transition-all group relative overflow-hidden"
+              >
+                <span className="relative z-10 flex items-center">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Customize
+                </span>
+                <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
+              </Link>
             </div>
           </div>
         </div>

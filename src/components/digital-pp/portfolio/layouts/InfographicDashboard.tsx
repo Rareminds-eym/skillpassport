@@ -157,7 +157,7 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                     alt={student.name || 'Profile'}
                     className="relative w-48 h-48 rounded-full object-cover border-8 border-white dark:border-gray-800 shadow-2xl mx-auto"
                   />
-                  <motion.div
+                  {/* <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.5 }}
@@ -165,7 +165,7 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                     style={{ background: `linear-gradient(135deg, ${primaryColor}, ${accentColor})` }}
                   >
                     <Sparkles className="w-8 h-8 text-white" />
-                  </motion.div>
+                  </motion.div> */}
                 </motion.div>
               </div>
 
@@ -396,7 +396,7 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                   </motion.div>
                 )}
                 
-                {student.district_name && (
+                {(student.district_name || student.city || student.state || student.country) && (
                   <motion.div 
                     whileHover={{ x: 5 }}
                     className="flex items-center space-x-3 p-3 rounded-lg bg-white dark:bg-gray-800 shadow-sm"
@@ -406,7 +406,14 @@ const InfographicDashboard: React.FC<InfographicDashboardProps> = ({
                     >
                       <MapPin className="w-4 h-4" style={{ color: primaryColor }} />
                     </div>
-                    <span className="text-sm dark:text-gray-300">{student.district_name}</span>
+                    <span className="text-sm dark:text-gray-300">
+                      {[
+                        student.city,
+                        student.district_name,
+                        student.state,
+                        student.country
+                      ].filter(Boolean).join(', ') || 'Location not specified'}
+                    </span>
                   </motion.div>
                 )}
               </div>

@@ -11,6 +11,7 @@ import {
   CheckCircleIcon,
   ClockIcon,
   ChevronDownIcon,
+  MapPinIcon,
 } from "@heroicons/react/24/outline";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -225,8 +226,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   // State for achievements panel
   const [showAchievementsPanel, setShowAchievementsPanel] = useState(false);
 
-  // State for institution name
+  // State for institution name and location
   const [fetchedInstitutionName, setFetchedInstitutionName] = useState(null);
+  const [fetchedInstitutionLocation, setFetchedInstitutionLocation] = useState(null);
 
   // Fetch real student data
   const {
@@ -321,28 +323,33 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     // Fallback to profile JSONB for any missing data
     ...realStudentData.profile
   } : null;
-  // Fetch institution name if not in relationship data
+  // Fetch institution name and location if not in relationship data
   useEffect(() => {
     const fetchInstitutionName = async () => {
       if (!realStudentData) return;
-      
+
       // If school student and no school relationship data
       if (realStudentData.school_id && !realStudentData.schools?.name) {
         try {
           const { data, error } = await supabase
             .from('schools')
-            .select('name')
+            .select('name, city, state')
             .eq('id', realStudentData.school_id)
             .single();
-          
+
           if (data && !error) {
             setFetchedInstitutionName(data.name);
+            // Set location if city or state exists
+            if (data.city || data.state) {
+              const locationParts = [data.city, data.state].filter(Boolean);
+              setFetchedInstitutionLocation(locationParts.join(', '));
+            }
           }
         } catch (err) {
           console.error('Error fetching school name:', err);
         }
       }
-      
+
       // If college student and no college relationship data
       if (realStudentData.university_college_id && !realStudentData.university_colleges) {
         try {
@@ -351,32 +358,41 @@ const ProfileHeroEdit = ({ onEditClick }) => {
             .select(`
               name,
               universities:university_id (
-                name
+                name,
+                district,
+                state
               )
             `)
             .eq('id', realStudentData.university_college_id)
             .single();
-          
+
           if (data && !error) {
             const collegeName = data.name;
             const universityName = data.universities?.name;
             setFetchedInstitutionName(
               universityName ? `${collegeName} - ${universityName}` : collegeName
             );
+            // Set location if district or state exists
+            const district = data.universities?.district;
+            const state = data.universities?.state;
+            if (district || state) {
+              const locationParts = [district, state].filter(Boolean);
+              setFetchedInstitutionLocation(locationParts.join(', '));
+            }
           }
         } catch (err) {
           console.error('Error fetching college name:', err);
         }
       }
     };
-    
+
     fetchInstitutionName();
   }, [realStudentData]);
 
   // Determine institution from relationships (school_id or university_college_id)
   const institutionName = React.useMemo(() => {
     if (!realStudentData) return "Institution";
-    
+
     // For school students - check schools relationship first, then fallback to university field
     if (realStudentData.school_id) {
       if (realStudentData.schools?.name) {
@@ -395,7 +411,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       }
       return "School";
     }
-    
+
     // For college students - check university_colleges relationship
     if (realStudentData.university_college_id) {
       if (realStudentData.university_colleges) {
@@ -416,10 +432,50 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       }
       return "College";
     }
-    
+
     // For students without school_id or university_college_id
     return realStudentData.university || realStudentData.profile?.university || "Institution";
   }, [realStudentData, fetchedInstitutionName]);
+
+  // Determine institution location from relationships or fetched data
+  const institutionLocation = React.useMemo(() => {
+    if (!realStudentData) return null;
+
+    // For school students - check schools relationship first
+    if (realStudentData.school_id) {
+      if (realStudentData.schools?.city || realStudentData.schools?.state) {
+        const locationParts = [
+          realStudentData.schools.city,
+          realStudentData.schools.state
+        ].filter(Boolean);
+        return locationParts.join(', ');
+      }
+      // Use fetched location if available
+      if (fetchedInstitutionLocation) {
+        return fetchedInstitutionLocation;
+      }
+    }
+
+    // For college students - check university_colleges relationship
+    if (realStudentData.university_college_id) {
+      if (realStudentData.university_colleges?.universities) {
+        const university = realStudentData.university_colleges.universities;
+        const locationParts = [
+          university.district,
+          university.state
+        ].filter(Boolean);
+        if (locationParts.length > 0) {
+          return locationParts.join(', ');
+        }
+      }
+      // Use fetched location if available
+      if (fetchedInstitutionLocation) {
+        return fetchedInstitutionLocation;
+      }
+    }
+
+    return null;
+  }, [realStudentData, fetchedInstitutionLocation]);
 
   // Debug: Log student_id and school fields from database
   React.useEffect(() => {
@@ -554,12 +610,12 @@ const ProfileHeroEdit = ({ onEditClick }) => {
               <div className="w-full lg:w-64 flex-shrink-0 space-y-4 order-2 lg:order-1 pl-6">
                 {/* QR Code Card */}
                 <Card variant="blue" className="bg-blue-50/60 backdrop-blur-xl border border-blue-200/60 rounded-2xl shadow-2xl">
-                  <CardContent className="p-4 text-center">
+                  <CardContent className="p-6 text-center">
                     <div className="w-full bg-white rounded-xl flex items-center justify-center shadow-md p-2 mb-2">
                       {/* Student QR Code */}
                       <QRCodeSVG
                         value={qrCodeValue}
-                        size={130}
+                        size={140}
                         level="H"
                         bgColor="#ffffff"
                         fgColor="#000000"
@@ -569,7 +625,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       onClick={() => setShowDetailsModal(true)}
                       className="text-xs text-gray-900 font-bold mb-3 hover:text-blue-600 transition-colors cursor-pointer block w-full"
                     >
-                      PASSPORT-ID: {
+                      SKILL PASSPORT-ID : {
                         realStudentData?.student_id ||
                         (realStudentData?.registration_number ? `SP-${realStudentData.registration_number}` : null) ||
                         displayData?.passportId ||
@@ -581,7 +637,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                     <div className="flex gap-2 justify-center">
                       <button
                         onClick={handleCopyLink}
-                        className="flex items-center justify-center w-12 h-12 bg-white/90 hover:bg-white text-blue-600 rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105"
+                        className="flex items-center justify-center w-10 h-10 bg-white/90 hover:bg-white text-blue-600 rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105"
                         title="Copy Link"
                       >
                         {copied ? (
@@ -592,7 +648,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       </button>
                       <button
                         onClick={handleShare}
-                        className="flex items-center justify-center w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105"
+                        className="flex items-center justify-center w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105"
                         title="Share"
                       >
                         <ShareIcon className="w-5 h-5" />
@@ -609,9 +665,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   displayData?.instagram_link ||
                   displayData?.facebook_link ||
                   displayData?.youtube_link) && (
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                       <div className="flex items-center justify-center">
-                        <span className="text-xs font-medium text-gray-700">
+                        <span className="text-xs font-medium text-gray-900">
                           Connect:
                         </span>
                       </div>
@@ -677,7 +733,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                         {displayData.name || "Student Name"}
                       </h1>
                       {/* Approval Status Badge */}
-                      {(realStudentData?.approval_status === 'approved') ? (
+                      {/* {(realStudentData?.approval_status === 'approved') ? (
                         <Badge className="bg-green-500 text-white border-0 px-3 py-1.5 text-xs font-semibold rounded-full shadow-lg flex items-center gap-1.5 animate-in fade-in duration-300">
                           <CheckCircleIcon className="w-3.5 h-3.5" />
                           Approved
@@ -687,14 +743,24 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                           <ClockIcon className="w-3.5 h-3.5" />
                           Pending
                         </Badge>
-                      )}
+                      )} */}
                     </div>
-                    {/* Institution Name - Below Name */}
-                    <div className="flex items-center gap-2 text-gray-800 mt-2">
-                      <BriefcaseIcon className="w-4 h-4" />
-                      <span className="font-medium">
-                        {institutionName}
-                      </span>
+                    {/* Institution Name and Location - Below Name */}
+                    <div className="flex items-start gap-12 text-gray-800 mt-2">
+                      <div className="flex items-center gap-2">
+                        <BriefcaseIcon className="w-4 h-4 flex-shrink-0" />
+                        <span className="font-medium">
+                          {institutionName}
+                        </span>
+                      </div>
+                      {institutionLocation && (
+                        <div className="flex items-center gap-1.5 text-gray-800">
+                          <MapPinIcon className="w-4 h-4 flex-shrink-0" />
+                          <span className="font-medium">
+                            {institutionLocation}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -719,23 +785,23 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {realStudentData.grade && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
-                          <span className="text-gray-500">Grade:</span> {realStudentData.grade}
+                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm font-medium text-slate-900 shadow-sm">
+                          <span className="text-gray-900">Grade:</span> {realStudentData.grade}
                         </span>
                       )}
                       {realStudentData.section && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
-                          <span className="text-gray-500">Sec:</span> {realStudentData.section}
+                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm font-medium text-slate-900 shadow-sm">
+                          <span className="text-gray-900">Sec:</span> {realStudentData.section}
                         </span>
                       )}
                       {realStudentData.roll_number && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
-                          <span className="text-gray-500">Roll:</span> {realStudentData.roll_number}
+                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm font-medium text-slate-900 shadow-sm">
+                          <span className="text-gray-900">Roll:</span> {realStudentData.roll_number}
                         </span>
                       )}
                       {realStudentData.admission_number && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
-                          <span className="text-gray-500">Adm:</span> {realStudentData.admission_number}
+                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm font-medium text-slate-900 shadow-sm">
+                          <span className="text-gray-900">Adm:</span> {realStudentData.admission_number}
                         </span>
                       )}
                     </div>
@@ -806,7 +872,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                     <span className="font-bold text-gray-900 text-sm">
                       Employability Score
                     </span>
-                    <span className="text-2xl font-bold text-blue-600 drop-shadow-sm">
+                    <span className="text-lg font-bold text-blue-600 drop-shadow-sm">
                       {employabilityData.employabilityScore}%
                     </span>
                   </div>
@@ -1096,7 +1162,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       d="M 50, 50 m -37, 0 a 37,37 0 1,1 74,0 a 37,37 0 1,1 -74,0"
                     />
                   </defs>
-                  <text className="text-[10px] fill-gray-600 font-medium tracking-wider">
+                  <text className="text-[9.4px] fill-gray-600 font-medium tracking-wide">
                     <textPath href="#circlePath" startOffset="0%">
                       SCROLL DOWN • SCROLL DOWN • SCROLL DOWN •
                     </textPath>

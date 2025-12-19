@@ -10,12 +10,14 @@ import {
   Trophy,
   GraduationCap,
   ChevronRight,
-  Github,
   ExternalLink,
+  Mail,
+  Phone,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useAuth } from "../../context/AuthContext";
+import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 
 /**
  * TimelinePage - Digital Portfolio Journey Map
@@ -36,11 +38,26 @@ import { useAuth } from "../../context/AuthContext";
 
 const TimelinePage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  console.log("----------------------", user);
+  
+  // Get email for fetching detailed timeline data
   const userEmail = localStorage.getItem('userEmail') || user?.email;
-  const { studentData, loading } = useStudentDataByEmail(userEmail);
+  
+  // Fetch detailed timeline data from database
+  const { studentData: timelineData, loading: timelineLoading } = useStudentDataByEmail(userEmail);
+  
   const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [activeTab, setActiveTab] = useState("all"); // all, education, experience, project, certificate, achievement
+  
+  // Combine auth user data with timeline data for complete profile
+  const studentData = {
+    ...user, // Basic profile info from auth
+    ...timelineData, // Timeline arrays from database
+  };
+  
+  // Loading state - wait for both auth and timeline data
+  const loading = authLoading || timelineLoading;
 
   // Scroll to top when page loads
   useEffect(() => {
@@ -59,11 +76,48 @@ const TimelinePage = () => {
     console.log('🏆 Certificates:', studentData.certificates);
     console.log('⭐ Achievements:', studentData.achievements);
     
+    // Since the user data comes from auth context, we need to check if it has profile data
+    // The data might be in different structure than expected
+    console.log('🔍 Available keys in studentData:', Object.keys(studentData));
+    
     const milestones = [];
 
+    // Get data from profile or direct properties
+    const education = studentData.education || [];
+    const experience = studentData.experience || [];
+    const projects = studentData.projects || [];
+    const certificates = studentData.certificates || [];
+    const achievements = studentData.achievements || [];
+    
+    // If no timeline data exists, create some sample milestones from basic user info
+    if (education.length === 0 && experience.length === 0 && projects.length === 0 && certificates.length === 0 && achievements.length === 0) {
+      console.log('🔄 No timeline data found, creating basic milestones from user info');
+      
+      // Add basic education milestone if we have university info
+      if (studentData.university || studentData.college_school_name) {
+        education.push({
+          degree: studentData.branch_field || 'Current Studies',
+          university: studentData.university || studentData.college_school_name,
+          year: new Date().getFullYear(),
+          enabled: true
+        });
+      }
+      
+      // Add basic achievement if user has approval status
+      if (studentData.approval_status === 'approved') {
+        achievements.push({
+          title: 'Profile Approved',
+          category: 'Platform Achievement',
+          date: studentData.updated_at ? new Date(studentData.updated_at).getFullYear() : new Date().getFullYear(),
+          description: 'Successfully completed profile verification and approval process',
+          enabled: true
+        });
+      }
+    }
+
     // Education Milestones
-    if (Array.isArray(studentData.education)) {
-      studentData.education
+    if (Array.isArray(education)) {
+      education
         .filter((edu) => edu && edu.enabled !== false)
         .forEach((edu, index) => {
           milestones.push({
@@ -84,8 +138,8 @@ const TimelinePage = () => {
     }
 
     // Experience Milestones
-    if (Array.isArray(studentData.experience)) {
-      studentData.experience
+    if (Array.isArray(experience)) {
+      experience
         .filter((exp) => exp && exp.enabled !== false)
         .forEach((exp, index) => {
           milestones.push({
@@ -106,8 +160,8 @@ const TimelinePage = () => {
     }
 
     // Project Milestones
-    if (Array.isArray(studentData.projects)) {
-      studentData.projects
+    if (Array.isArray(projects)) {
+      projects
         .filter((project) => project && project.enabled !== false)
         .forEach((project, index) => {
           const tech = Array.isArray(project.tech) ? project.tech : 
@@ -132,8 +186,8 @@ const TimelinePage = () => {
     }
 
     // Certificate Milestones
-    if (Array.isArray(studentData.certificates)) {
-      studentData.certificates
+    if (Array.isArray(certificates)) {
+      certificates
         .filter((cert) => cert && cert.enabled !== false)
         .forEach((cert, index) => {
           milestones.push({
@@ -154,8 +208,8 @@ const TimelinePage = () => {
     }
 
     // Achievement Milestones
-    if (Array.isArray(studentData.achievements)) {
-      studentData.achievements
+    if (Array.isArray(achievements)) {
+      achievements
         .filter((achievement) => achievement && achievement.enabled !== false)
         .forEach((achievement, index) => {
           milestones.push({
@@ -233,7 +287,7 @@ const TimelinePage = () => {
             >
               <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-indigo-500 ring-offset-4 shadow-xl">
                 <img
-                  src={studentData?.profile_photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(studentData?.name || 'Student')}&size=200&background=6366f1&color=fff&bold=true`}
+                  src={studentData?.profilePicture || studentData?.profile_photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(studentData?.name || 'Student')}&size=200&background=6366f1&color=fff&bold=true`}
                   alt={studentData?.name || 'Student'}
                   className="w-full h-full object-cover"
                 />
@@ -257,7 +311,7 @@ const TimelinePage = () => {
                 transition={{ delay: 0.3 }}
                 className="text-xl text-indigo-600 font-medium mb-4"
               >
-                {studentData?.branch_field || 'Student'}
+                {studentData?.college_school_name || 'Student'}
               </motion.p>
 
               <motion.p
@@ -278,18 +332,42 @@ const TimelinePage = () => {
               >
                 {studentData?.email && (
                   <span className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
+                    <Mail className="w-4 h-4" />
                     <span className="text-sm">{studentData.email}</span>
                   </span>
                 )}
-                {studentData?.contact_number && (
+                {(studentData?.contact_number || studentData?.contactNumber) && (
                   <span className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
-                    <span className="text-sm">{studentData.contact_number}</span>
+                    <Phone className="w-4 h-4" />
+                    <span className="text-sm">{studentData.contact_number || studentData.contactNumber}</span>
                   </span>
                 )}
-                {studentData?.university && (
+                {(studentData?.city || studentData?.state || studentData?.district_name) && (
+                  <span className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
+                    <MapPin className="w-4 h-4" />
+                    <span className="text-sm">
+                      {studentData.city && studentData.state 
+                        ? `${studentData.city}, ${studentData.state}` 
+                        : studentData.district_name || studentData.city || studentData.state
+                      }
+                    </span>
+                  </span>
+                )}
+                {/* Show university/college badge only if it's a proper institution name */}
+                {(studentData?.university && 
+                  studentData.university !== 'bangalore' && 
+                  studentData.university.length > 3 &&
+                  !studentData.university.toLowerCase().includes('city')) && (
                   <span className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
                     <GraduationCap className="w-4 h-4" />
                     <span className="text-sm">{studentData.university}</span>
+                  </span>
+                )}
+                {/* For school students, show grade/section if available */}
+                {studentData?.student_type === 'school-student' && studentData?.grade && studentData?.section && (
+                  <span className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
+                    <GraduationCap className="w-4 h-4" />
+                    <span className="text-sm">Grade {studentData.grade} - {studentData.section}</span>
                   </span>
                 )}
               </motion.div>
@@ -541,7 +619,7 @@ const TimelinePage = () => {
                                     className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium mt-2"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <Github className="w-4 h-4" />
+                                    <Code className="w-4 h-4" />
                                     <span>View on GitHub</span>
                                     <ExternalLink className="w-3 h-3" />
                                   </a>

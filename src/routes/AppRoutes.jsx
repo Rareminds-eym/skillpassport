@@ -4,6 +4,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import Loader from "../components/Loader";
 
 import PublicLayout from "../layouts/PublicLayout";
+import PortfolioLayout from "../layouts/PortfolioLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import RecruiterLayout from "../layouts/RecruiterLayout";
 import StudentLayout from "../layouts/StudentLayout";
@@ -13,7 +14,6 @@ import { ThemeProvider } from '../context/ThemeContext';
 import { PortfolioProvider } from '../context/PortfolioContext';
 import { TestProvider } from '../context/assessment/TestContext';
 import HomePage from '../pages/digital-pp/HomePage';
-import StudentDigitalPortfolioHomePage from '../pages/student/digital-pp/HomePage';
 import DigitalPortfolioPage from '../pages/digital-pp/PortfolioPage';
 import DigitalPassportPage from '../pages/digital-pp/PassportPage';
 import DigitalVideoPortfolioPage from '../pages/digital-pp/VideoPortfolioPage';
@@ -24,15 +24,7 @@ import DigitalExportSettings from '../pages/digital-pp/settings/ExportSettings';
 import DigitalSharingSettings from '../pages/digital-pp/settings/SharingSettings';
 import DigitalProfileSettings from '../pages/digital-pp/settings/ProfileSettings';
 import StudentDigitalPortfolioNav from '../components/digital-pp/ui/StudentDigitalPortfolioNav';
-import PortfolioPage from '../pages/digital-pp/PortfolioPage';
-import PassportPage from '../pages/digital-pp/PassportPage';
-import VideoPortfolioPage from '../pages/digital-pp/VideoPortfolioPage';
-import SettingsPage from '../pages/digital-pp/SettingsPage';
-// import ProfileSettings from './pages/settings/ProfileSettings';
-import ThemeSettings from '../pages/digital-pp/settings/ThemeSettings';
-import LayoutSettings from '../pages/digital-pp/settings/LayoutSettings';
-import ExportSettings from '../pages/digital-pp/settings/ExportSettings';
-import SharingSettings from '../pages/digital-pp/settings/SharingSettings';
+// Duplicate imports removed - using the Digital* prefixed imports above
 
 const Home = lazy(() => import("../pages/homepage/Home"));
 const About = lazy(() => import("../pages/homepage/About"));
@@ -438,7 +430,10 @@ const AppRoutes = () => {
             element={<StudentPublicViewer />}
           />
 
-          {/* Digital Passport routes (public) wrapped with ThemeProvider & PortfolioProvider */}
+        </Route>
+
+        {/* Digital Portfolio routes (public) with PortfolioLayout (no footer) */}
+        <Route element={<PortfolioLayout />}>
           <Route
             element={
               <ThemeProvider>
@@ -448,16 +443,16 @@ const AppRoutes = () => {
               </ThemeProvider>
             }
           >
-            <Route path="/portfolio" element={<PortfolioPage />} />
+            <Route path="/portfolio" element={<DigitalPortfolioPage />} />
             <Route path="/digital-pp/homepage" element={<HomePage />} />
-            <Route path="/passport" element={<PassportPage />} />
-            <Route path="/video-portfolio" element={<VideoPortfolioPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/passport" element={<DigitalPassportPage />} />
+            <Route path="/video-portfolio" element={<DigitalVideoPortfolioPage />} />
+            <Route path="/settings" element={<DigitalSettingsPage />} />
             {/* Settings sub-pages for digital passport */}
-            <Route path="/settings/theme" element={<ThemeSettings />} />
-            <Route path="/settings/layout" element={<LayoutSettings />} />
-            <Route path="/settings/export" element={<ExportSettings />} />
-            <Route path="/settings/sharing" element={<SharingSettings />} />
+            <Route path="/settings/theme" element={<DigitalThemeSettings />} />
+            <Route path="/settings/layout" element={<DigitalLayoutSettings />} />
+            <Route path="/settings/export" element={<DigitalExportSettings />} />
+            <Route path="/settings/sharing" element={<DigitalSharingSettings />} />
           </Route>
         </Route>
 
@@ -681,7 +676,7 @@ const AppRoutes = () => {
               <ThemeProvider>
                 <PortfolioProvider>
                   <div className="-mx-6 -my-8">
-                    <StudentDigitalPortfolioHomePage />
+                    <HomePage />
                   </div>
                 </PortfolioProvider>
               </ThemeProvider>

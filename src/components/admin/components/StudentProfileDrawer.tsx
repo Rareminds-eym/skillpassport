@@ -1248,7 +1248,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       </div>
                     )}
                     
-                    {canGraduate() && (
+                    {canGraduate() && !student.school_id && (
                       <div className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
                         <TrophyIcon className="h-3 w-3 mr-1" />
                         Ready to Graduate
@@ -1956,7 +1956,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       </button>
                     )}
 
-                    {canGraduate() && (
+                    {canGraduate() && !student.school_id  && (
                       <button
                         onClick={() => setShowGraduationModal(true)}
                         disabled={actionLoading}

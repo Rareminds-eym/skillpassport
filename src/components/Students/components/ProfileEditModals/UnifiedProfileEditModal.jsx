@@ -399,8 +399,38 @@ const UnifiedProfileEditModal = ({
           </div>
           <p className="text-sm text-gray-600">{config.getDisplaySubtitle(item)}</p>
           {item.duration && <p className="text-xs text-gray-500 mt-1"><Calendar className="w-3 h-3 inline mr-1" />{item.duration}</p>}
+
+          {/* Description */}
+          {item.description && (
+            <p className="text-sm text-gray-700 mt-2 line-clamp-3">{item.description}</p>
+          )}
+
+          {/* Technologies/Tags */}
+          {(item.technologies || item.tech || item.tech_stack || item.skills) && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {(() => {
+                const techArray = Array.isArray(item.technologies)
+                  ? item.technologies
+                  : Array.isArray(item.tech)
+                    ? item.tech
+                    : Array.isArray(item.tech_stack)
+                      ? item.tech_stack
+                      : Array.isArray(item.skills)
+                        ? item.skills
+                        : typeof item.technologies === 'string'
+                          ? item.technologies.split(',').map(t => t.trim())
+                          : [];
+
+                return techArray.map((tech, i) => (
+                  <Badge key={i} className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border border-blue-200 text-xs font-medium shadow-sm">
+                    {tech}
+                  </Badge>
+                ));
+              })()}
+            </div>
+          )}
         </div>
-        
+
         <div className="flex gap-1">
           <Button variant="ghost" size="sm" onClick={() => startEditing(index)} className="text-blue-600 hover:bg-blue-50">
             <PenSquare className="w-4 h-4" />

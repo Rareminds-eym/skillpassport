@@ -145,9 +145,9 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="absolute -bottom-2 -right-2 bg-green-500 w-8 h-8 rounded-full border-4 border-white flex items-center justify-center">
+              {/* <div className="absolute -bottom-2 -right-2 bg-green-500 w-8 h-8 rounded-full border-4 border-white flex items-center justify-center">
                 <MapPin className="w-4 h-4 text-white" />
-              </div>
+              </div> */}
             </motion.div>
 
             {/* Profile Details */}
