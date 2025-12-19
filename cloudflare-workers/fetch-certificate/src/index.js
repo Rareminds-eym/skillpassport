@@ -82,9 +82,11 @@ export default {
 
       if (!response.ok) {
         return new Response(JSON.stringify({ 
-          error: `Failed to fetch page: ${response.status} ${response.statusText}` 
+          success: false,
+          error: `Certificate not found or invalid (${response.status})`,
+          details: `The certificate URL returned ${response.status} ${response.statusText}. Please verify the certificate ID is correct.`
         }), {
-          status: response.status,
+          status: 200, // Return 200 so client can read the error message
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
