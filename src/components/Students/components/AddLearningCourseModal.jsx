@@ -13,8 +13,35 @@ import {
   Sparkles,
   GraduationCap,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  BookOpen,
+  Briefcase,
+  Library,
+  Landmark,
+  Lightbulb,
+  PlusCircle
 } from 'lucide-react';
+
+// Platform icon components
+const PlatformIcon = ({ platformId, className = "w-8 h-8" }) => {
+  const iconProps = { className };
+  switch (platformId) {
+    case 'coursera':
+      return <GraduationCap {...iconProps} />;
+    case 'linkedin':
+      return <Briefcase {...iconProps} />;
+    case 'udemy':
+      return <BookOpen {...iconProps} />;
+    case 'edx':
+      return <Landmark {...iconProps} />;
+    case 'pluralsight':
+      return <Lightbulb {...iconProps} />;
+    case 'other':
+      return <PlusCircle {...iconProps} />;
+    default:
+      return <Library {...iconProps} />;
+  }
+};
 
 // Platform configurations with brand colors, icons, and verification URL templates
 const PLATFORMS = [
@@ -25,7 +52,7 @@ const PLATFORMS = [
     bgColor: 'bg-[#0056D2]/10',
     hoverBg: 'hover:bg-[#0056D2]/20',
     borderColor: 'border-[#0056D2]',
-    icon: '🎓',
+    iconColor: 'text-[#0056D2]',
     urlPattern: /coursera\.org/i,
     verifyUrlTemplate: (certId) => `https://www.coursera.org/verify/${certId}`
   },
@@ -36,7 +63,7 @@ const PLATFORMS = [
     bgColor: 'bg-[#0A66C2]/10',
     hoverBg: 'hover:bg-[#0A66C2]/20',
     borderColor: 'border-[#0A66C2]',
-    icon: '💼',
+    iconColor: 'text-[#0A66C2]',
     urlPattern: /linkedin\.com\/learning/i,
     verifyUrlTemplate: null // LinkedIn doesn't have a simple verification URL
   },
@@ -47,7 +74,7 @@ const PLATFORMS = [
     bgColor: 'bg-[#A435F0]/10',
     hoverBg: 'hover:bg-[#A435F0]/20',
     borderColor: 'border-[#A435F0]',
-    icon: '📚',
+    iconColor: 'text-[#A435F0]',
     urlPattern: /udemy\.com/i,
     verifyUrlTemplate: (certId) => `https://www.udemy.com/certificate/${certId}`
   },
@@ -58,7 +85,7 @@ const PLATFORMS = [
     bgColor: 'bg-[#02262B]/10',
     hoverBg: 'hover:bg-[#02262B]/20',
     borderColor: 'border-[#02262B]',
-    icon: '🏛️',
+    iconColor: 'text-[#02262B]',
     urlPattern: /edx\.org/i,
     verifyUrlTemplate: (certId) => `https://courses.edx.org/certificates/${certId}`
   },
@@ -69,7 +96,7 @@ const PLATFORMS = [
     bgColor: 'bg-[#F15B2A]/10',
     hoverBg: 'hover:bg-[#F15B2A]/20',
     borderColor: 'border-[#F15B2A]',
-    icon: '💡',
+    iconColor: 'text-[#F15B2A]',
     urlPattern: /pluralsight\.com/i,
     verifyUrlTemplate: null // Pluralsight verification varies
   },
@@ -80,7 +107,7 @@ const PLATFORMS = [
     bgColor: 'bg-gray-100',
     hoverBg: 'hover:bg-gray-200',
     borderColor: 'border-gray-400',
-    icon: '➕',
+    iconColor: 'text-gray-500',
     urlPattern: null,
     verifyUrlTemplate: null
   }
@@ -218,6 +245,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
   const [verificationStatus, setVerificationStatus] = useState(null); // 'success', 'failed', null
   const fileInputRef = useRef(null);
   const verificationStatusRef = useRef(null);
+  const errorRef = useRef(null);
 
   // Scroll verification status into view when it changes
   useEffect(() => {
@@ -225,6 +253,13 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
       verificationStatusRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [verificationStatus]);
+
+  // Scroll error message into view when it appears
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [error]);
 
   const totalSteps = 5;
 
@@ -276,42 +311,82 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
     }
   };
 
-  // Handle certificate image upload
+  // Handle certificate image/PDF upload
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const isPdf = file.type === 'application/pdf';
+    const isImage = file.type.startsWith('image/');
+
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file (PNG, JPG, etc.)');
+    if (!isImage && !isPdf) {
+      setError('Please upload an image file (PNG, JPG) or PDF');
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setError('Image size must be less than 5MB');
+      setError('File size must be less than 5MB');
       return;
     }
 
     setCertificateImage(file);
     
-    // Create preview URL
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setCertificateImagePreview(e.target.result);
-    };
-    reader.readAsDataURL(file);
+    if (isImage) {
+      // Create preview URL for images
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setCertificateImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // For PDFs, set a placeholder preview
+      setCertificateImagePreview('pdf');
+    }
+    
     setError('');
     
-    // Reset verification status when new image is uploaded
+    // Reset verification status when new file is uploaded
     setVerificationStatus(null);
     setExtractionSuccess(false);
   };
 
-  // Extract certificate details from uploaded image using Claude Vision
+  // Convert PDF to image using pdf.js
+  const convertPdfToImage = async (pdfFile) => {
+    // Dynamically import pdf.js
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    
+    // Use inline worker to avoid CORS issues
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/legacy/build/pdf.worker.mjs',
+      import.meta.url
+    ).toString();
+    
+    const arrayBuffer = await pdfFile.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const page = await pdf.getPage(1); // Get first page
+    
+    const scale = 2; // Higher scale for better quality
+    const viewport = page.getViewport({ scale });
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+    
+    await page.render({
+      canvasContext: context,
+      viewport: viewport
+    }).promise;
+    
+    return canvas.toDataURL('image/png');
+  };
+
+  // Extract certificate details from uploaded image/PDF using Claude Vision
   const extractFromImage = async () => {
     if (!certificateImage) {
-      setError('Please upload a certificate image first');
+      setError('Please upload a certificate image or PDF first');
       return;
     }
 
@@ -326,53 +401,84 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
 
     try {
       const platformName = selectedPlatform?.name || 'unknown platform';
+      const isPdf = certificateImage.type === 'application/pdf';
       
-      // Convert image to base64
-      const reader = new FileReader();
-      const imageBase64 = await new Promise((resolve, reject) => {
-        reader.onload = () => {
-          // Remove the data URL prefix (e.g., "data:image/png;base64,")
-          const base64 = reader.result.split(',')[1];
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(certificateImage);
-      });
-
-      const mediaType = certificateImage.type || 'image/png';
+      let imageBase64;
+      let mediaType = 'image/png';
+      
+      if (isPdf) {
+        // Convert PDF to image first
+        console.log('📄 Converting PDF to image...');
+        const pdfImageDataUrl = await convertPdfToImage(certificateImage);
+        imageBase64 = pdfImageDataUrl.split(',')[1];
+      } else {
+        // Convert image to base64
+        const reader = new FileReader();
+        imageBase64 = await new Promise((resolve, reject) => {
+          reader.onload = () => {
+            // Remove the data URL prefix (e.g., "data:image/png;base64,")
+            const base64 = reader.result.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(certificateImage);
+        });
+        mediaType = certificateImage.type || 'image/png';
+      }
 
       console.log('🖼️ Extracting certificate data from image using Claude Vision');
 
-      const prompt = `You are analyzing a certificate image from ${platformName}. Extract the following information EXACTLY as shown on the certificate:
+      const prompt = `You are analyzing a certificate image from ${platformName}. Extract ALL information EXACTLY as shown on the certificate.
 
-1. COURSE TITLE - The name of the course or certification (exact text)
-2. INSTRUCTOR - The instructor or teacher name (look for "Instructors", "taught by", etc.)
-3. COMPLETION DATE - When the certificate was issued. IMPORTANT: Convert to YYYY-MM-DD format.
-   Examples: "Jan. 28, 2025" → "2025-01-28", "January 28, 2025" → "2025-01-28", "28/01/2025" → "2025-01-28"
-4. STUDENT NAME - The name of the person who completed the course
-5. CERTIFICATE NUMBER/ID - Look for "Certificate no:", "Reference Number:", "Certificate ID:", or similar. Extract the full ID (e.g., "UC-794d8663-2295-4407-84f6-f7cb2f0f1c01")
-6. CERTIFICATE URL - Look for "Certificate url:", "ude.my/...", or any URL shown on the certificate
+IMPORTANT - LOOK CAREFULLY FOR THESE ITEMS:
 
-Return a JSON object with this exact structure:
+1. COURSE TITLE - The main course or certification name (usually the largest text)
+
+2. INSTRUCTOR(S) - Look for:
+   - "Instructor:", "Instructors:", "Taught by:", "By:"
+   - Names near the course title or at the bottom
+
+3. COMPLETION DATE - Look for:
+   - "Date:", "Completed:", "Issued:", "Completion Date:"
+   - Convert to YYYY-MM-DD format (e.g., "Jan 28, 2025" → "2025-01-28")
+
+4. STUDENT NAME - The recipient's name (usually prominent on the certificate)
+
+5. CERTIFICATE ID/NUMBER - VERY IMPORTANT! Look for:
+   - "Certificate no:", "Certificate ID:", "Reference Number:", "Credential ID:"
+   - For Udemy: Look for IDs starting with "UC-" (e.g., "UC-794d8663-2295-4407-84f6-f7cb2f0f1c01")
+   - For Coursera: Look for alphanumeric codes
+   - Usually found at the bottom or in small text
+
+6. CERTIFICATE URL - CRITICAL! Look EVERYWHERE for:
+   - "ude.my/" followed by the certificate ID (Udemy short URLs)
+   - "coursera.org/verify/" URLs
+   - "credential.net/" URLs
+   - Any URL or web address shown on the certificate
+   - QR codes often have URLs nearby
+   - For Udemy: The URL format is typically "ude.my/UC-xxxxx" or "udemy.com/certificate/UC-xxxxx"
+
+7. SKILLS - Any skills, technologies, or topics mentioned
+
+Return a JSON object:
 {
-  "courseTitle": "The exact course name as shown",
-  "instructor": "Instructor name or empty string if not visible",
-  "completionDate": "MUST be in YYYY-MM-DD format (e.g., 2025-01-28)",
-  "studentName": "Student name or empty string if not visible",
-  "certificateId": "The certificate number/ID exactly as shown (e.g., UC-794d8663-2295-4407-84f6-f7cb2f0f1c01)",
-  "certificateUrl": "The certificate URL if visible (e.g., ude.my/UC-xxx or full URL)",
+  "courseTitle": "Exact course name",
+  "instructor": "Instructor name(s) or empty string",
+  "completionDate": "YYYY-MM-DD format",
+  "studentName": "Student name or empty string",
+  "certificateId": "Full certificate ID exactly as shown",
+  "certificateUrl": "Full URL including https:// - construct from short URL if needed (e.g., if you see 'ude.my/UC-xxx', return 'https://ude.my/UC-xxx')",
   "skills": ["skill1", "skill2"],
-  "category": "One of: Technology, Business, Data Science, Design, Marketing, Finance, Healthcare, Personal Development, Other"
+  "category": "Technology/Business/Data Science/Design/Marketing/Finance/Healthcare/Personal Development/Other"
 }
 
-CRITICAL: 
-- The completionDate MUST be in YYYY-MM-DD format. Convert any date format you see to this format.
-- Extract the FULL certificate ID/number exactly as shown.
-- Extract any certificate URL visible on the image.
+CRITICAL RULES:
+- If you see "ude.my/UC-xxx", the certificateUrl should be "https://ude.my/UC-xxx"
+- If you see a certificate ID like "UC-xxx" but no URL, construct it as "https://ude.my/UC-xxx" for Udemy
+- Extract the COMPLETE certificate ID - don't truncate it
+- Return ONLY the JSON object, no other text.`;
 
-Return ONLY the JSON object, no other text.`;
-
-      const extracted = await callClaudeVisionJSON(prompt, imageBase64, mediaType, { maxTokens: 600 });
+      const extracted = await callClaudeVisionJSON(prompt, imageBase64, mediaType, { maxTokens: 800 });
       
       console.log('🖼️ Vision extracted:', extracted);
 
@@ -383,14 +489,45 @@ Return ONLY the JSON object, no other text.`;
         completionDate = parseFlexibleDate(completionDate);
       }
 
-      // Format certificate URL if it's a short URL
+      // Format certificate URL - handle various cases
       let certificateUrl = extracted.certificateUrl || '';
+      const certificateId = extracted.certificateId || '';
+      
+      // If no URL but we have certificate ID, try to construct URL based on platform
+      if (!certificateUrl && certificateId) {
+        if (selectedPlatform?.id === 'udemy' || certificateId.startsWith('UC-')) {
+          certificateUrl = `https://ude.my/${certificateId}`;
+        } else if (selectedPlatform?.id === 'coursera') {
+          certificateUrl = `https://www.coursera.org/verify/${certificateId}`;
+        } else if (selectedPlatform?.id === 'edx') {
+          certificateUrl = `https://courses.edx.org/certificates/${certificateId}`;
+        }
+      }
+      
+      // Ensure URL has https:// prefix
       if (certificateUrl && !certificateUrl.startsWith('http')) {
-        // If it's a short URL like "ude.my/UC-xxx", prepend https://
         if (certificateUrl.includes('ude.my')) {
+          certificateUrl = `https://${certificateUrl}`;
+        } else if (certificateUrl.includes('coursera.org')) {
+          certificateUrl = `https://${certificateUrl}`;
+        } else if (certificateUrl.includes('udemy.com')) {
+          certificateUrl = `https://${certificateUrl}`;
+        } else {
           certificateUrl = `https://${certificateUrl}`;
         }
       }
+      
+      // Expand short Udemy URLs
+      if (certificateUrl.includes('ude.my/')) {
+        const certId = certificateUrl.split('ude.my/')[1];
+        if (certId) {
+          // Keep the short URL format as it redirects properly
+          certificateUrl = `https://ude.my/${certId}`;
+        }
+      }
+
+      console.log('📋 Processed certificate URL:', certificateUrl);
+      console.log('📋 Certificate ID:', certificateId);
 
       setFormData(prev => ({
         ...prev,
@@ -398,7 +535,7 @@ Return ONLY the JSON object, no other text.`;
         organization: platformName !== 'Other Platform' ? platformName : prev.organization,
         instructor: extracted.instructor || prev.instructor,
         completion_date: completionDate || prev.completion_date,
-        certificate_id: extracted.certificateId || prev.certificate_id,
+        certificate_id: certificateId || prev.certificate_id,
         certificate_url: certificateUrl || prev.certificate_url,
         category: extracted.category || prev.category,
       }));
@@ -445,6 +582,21 @@ Return ONLY the JSON object, no other text.`;
         }
       }
 
+      // Validate URL matches selected platform (skip for "Other Platform")
+      if (selectedPlatform && selectedPlatform.id !== 'other' && selectedPlatform.urlPattern) {
+        if (!selectedPlatform.urlPattern.test(certificateUrl)) {
+          // Check which platform the URL actually belongs to
+          const detectedPlatform = PLATFORMS.find(p => p.urlPattern && p.urlPattern.test(certificateUrl));
+          if (detectedPlatform) {
+            setError(`This appears to be a ${detectedPlatform.name} certificate, but you selected ${selectedPlatform.name}. Please go back and select the correct platform.`);
+          } else {
+            setError(`This URL doesn't appear to be from ${selectedPlatform.name}. Please check the URL or select a different platform.`);
+          }
+          setVerificationStatus('failed');
+          return false;
+        }
+      }
+
       // Use Cloudflare Worker to verify certificate page exists
       console.log('🔍 Verifying certificate URL:', certificateUrl);
       
@@ -481,6 +633,7 @@ Return ONLY the JSON object, no other text.`;
       return true;
     } catch (err) {
       console.error('Certificate verification error:', err);
+      setError('Certificate verification failed');
       setVerificationStatus('failed');
       return false;
     } finally {
@@ -669,7 +822,11 @@ Respond in JSON format:
       case 1:
         return selectedPlatform !== null;
       case 2:
-        // Verify step - need either image uploaded, URL, or certificate ID
+        // Verify step - need either image uploaded, URL, or certificate ID (ID only for known platforms)
+        if (selectedPlatform?.id === 'other') {
+          // For "Other Platform", only allow image or URL (not certificate ID)
+          return certificateImage !== null || formData.certificate_url.trim() !== '';
+        }
         return certificateImage !== null || formData.certificate_url.trim() !== '' || formData.certificate_id.trim() !== '';
       case 3:
         // Details step - need title and completion date
@@ -695,16 +852,36 @@ Respond in JSON format:
         // After extraction, verify the certificate URL if one was extracted
         if (extractedUrl) {
           console.log('🔍 Verifying extracted certificate URL:', extractedUrl);
+          
+          // Try to verify the URL
           const isValid = await verifyCertificateUrl(extractedUrl);
           if (!isValid) {
-            setError('Certificate URL verification failed. Please check the certificate image or enter a valid URL.');
-            return; // Don't proceed if verification failed
+            // Verification failed, but we extracted data - allow user to proceed with warning
+            // The error is already shown, but don't block completely
+            console.log('⚠️ URL verification failed, but extraction succeeded');
+            // Don't return - let user see the extracted data and decide
           }
         } else {
-          // No URL extracted from image - show error
-          setError('Could not extract certificate URL from image. Please enter the certificate URL manually.');
-          return; // Don't proceed without a valid URL
+          // No URL extracted from image - check if we at least got a certificate ID
+          if (formData.certificate_id && selectedPlatform?.verifyUrlTemplate) {
+            // Try to construct and verify URL from certificate ID
+            const constructedUrl = selectedPlatform.verifyUrlTemplate(formData.certificate_id);
+            console.log('🔗 Constructed URL from extracted certificate ID:', constructedUrl);
+            setFormData(prev => ({ ...prev, certificate_url: constructedUrl }));
+            
+            const isValid = await verifyCertificateUrl(constructedUrl);
+            if (!isValid) {
+              console.log('⚠️ Constructed URL verification failed');
+            }
+          } else {
+            // No URL and no certificate ID - show warning but allow proceeding
+            setError('Could not extract certificate URL. Please verify the details manually in the next step.');
+            // Don't return - allow user to proceed and enter URL manually
+          }
         }
+        
+        // Mark extraction as successful so user can proceed
+        setExtractionSuccess(true);
       } else if (formData.certificate_url) {
         // Only verify that the certificate URL is valid
         const isValid = await verifyCertificateUrl();
@@ -738,11 +915,14 @@ Respond in JSON format:
       }
     }
     
+    setError(''); // Clear any errors when moving to next step
     setCurrentStep(prev => prev + 1);
   };
 
   const handleBack = () => {
     if (currentStep > 1) {
+      setError(''); // Clear any errors when going back
+      setVerificationStatus(null); // Reset verification status
       setCurrentStep(prev => prev - 1);
     }
   };
@@ -774,38 +954,50 @@ Respond in JSON format:
           </div>
 
           {/* Progress Steps */}
-          <div className="flex items-center justify-center gap-1 mt-5">
-            {[1, 2, 3, 4, 5].map((step) => (
-              <div key={step} className="flex items-center">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${step === currentStep
-                    ? 'bg-white text-indigo-600 shadow-lg scale-110'
-                    : step < currentStep
-                      ? 'bg-white/30 text-white'
-                      : 'bg-white/10 text-white/50'
+          <div className="mt-5 px-4 max-w-md mx-auto">
+            {/* Circles and lines row */}
+            <div className="flex items-center">
+              {[1, 2, 3, 4, 5].map((step, index) => (
+                <div key={step} className="flex items-center flex-1 last:flex-initial">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all flex-shrink-0 ${
+                      step === currentStep
+                        ? 'bg-white text-indigo-600 shadow-lg scale-110'
+                        : step < currentStep
+                          ? 'bg-white/30 text-white'
+                          : 'bg-white/10 text-white/50'
                     }`}
-                >
-                  {step < currentStep ? <CheckCircle size={14} /> : step}
+                  >
+                    {step < currentStep ? <CheckCircle size={14} /> : step}
+                  </div>
+                  {index < 4 && (
+                    <div className={`flex-1 h-0.5 mx-2 ${step < currentStep ? 'bg-white/50' : 'bg-white/20'}`} />
+                  )}
                 </div>
-                {step < 5 && (
-                  <div className={`w-6 h-0.5 mx-0.5 ${step < currentStep ? 'bg-white/50' : 'bg-white/20'}`} />
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-center gap-4 mt-2 text-xs text-white/70">
-            <span className={currentStep === 1 ? 'text-white font-medium' : ''}>Platform</span>
-            <span className={currentStep === 2 ? 'text-white font-medium' : ''}>Verify</span>
-            <span className={currentStep === 3 ? 'text-white font-medium' : ''}>Details</span>
-            <span className={currentStep === 4 ? 'text-white font-medium' : ''}>Skills</span>
-            <span className={currentStep === 5 ? 'text-white font-medium' : ''}>Review</span>
+              ))}
+            </div>
+            {/* Labels row */}
+            <div className="flex items-center mt-2">
+              {['Platform', 'Verify', 'Details', 'Skills', 'Review'].map((label, index) => (
+                <div key={label} className="flex items-center flex-1 last:flex-initial">
+                  <span
+                    className={`w-8 text-xs text-center flex-shrink-0 ${
+                      index + 1 === currentStep ? 'text-white font-medium' : 'text-white/70'
+                    }`}
+                  >
+                    {label}
+                  </span>
+                  {index < 4 && <div className="flex-1 mx-2" />}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-240px)]">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-2 mb-4">
+            <div ref={errorRef} className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-2 mb-4">
               <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -823,13 +1015,40 @@ Respond in JSON format:
                 {PLATFORMS.map((platform) => (
                   <button
                     key={platform.id}
-                    onClick={() => setSelectedPlatform(platform)}
+                    onClick={() => {
+                      // Reset form data when switching platforms
+                      if (selectedPlatform?.id !== platform.id) {
+                        setFormData({
+                          certificate_url: '',
+                          title: '',
+                          organization: '',
+                          instructor: '',
+                          completion_date: '',
+                          certificate_id: '',
+                          description: '',
+                          category: '',
+                          difficulty: ''
+                        });
+                        setSkillTags([]);
+                        setSkillInput('');
+                        setCertificateImage(null);
+                        setCertificateImagePreview(null);
+                        setExtractionSuccess(false);
+                        setVerificationStatus(null);
+                        setVerificationResult(null);
+                        setError('');
+                      }
+                      setSelectedPlatform(platform);
+                    }}
                     className={`p-4 rounded-xl border-2 transition-all duration-200 flex flex-col items-center gap-2 ${selectedPlatform?.id === platform.id
                       ? `${platform.borderColor} ${platform.bgColor} shadow-md scale-[1.02]`
                       : `border-gray-200 hover:border-gray-300 ${platform.hoverBg}`
                       }`}
                   >
-                    <span className="text-3xl">{platform.icon}</span>
+                    <PlatformIcon 
+                      platformId={platform.id} 
+                      className={`w-8 h-8 ${selectedPlatform?.id === platform.id ? platform.iconColor : 'text-gray-400'}`} 
+                    />
                     <span className={`text-sm font-medium ${selectedPlatform?.id === platform.id ? 'text-gray-900' : 'text-gray-700'
                       }`}>
                       {platform.name}
@@ -856,9 +1075,9 @@ Respond in JSON format:
                       <ImageIcon className="w-5 h-5 text-purple-600" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 text-sm">Upload Certificate Image</h4>
+                      <h4 className="font-medium text-gray-900 text-sm">Upload Certificate Image or PDF</h4>
                       <p className="text-xs text-gray-600 mt-0.5">
-                        Upload a screenshot or photo of your certificate (Recommended)
+                        Upload a screenshot, photo, or PDF of your certificate (Recommended)
                       </p>
                     </div>
                   </div>
@@ -874,11 +1093,21 @@ Respond in JSON format:
                     
                     {certificateImagePreview ? (
                       <div className="relative rounded-lg overflow-hidden border border-gray-200">
-                        <img 
-                          src={certificateImagePreview} 
-                          alt="Certificate preview" 
-                          className="w-full h-48 object-contain bg-gray-50"
-                        />
+                        {certificateImagePreview === 'pdf' ? (
+                          <div className="w-full h-48 bg-gray-50 flex flex-col items-center justify-center">
+                            <svg className="w-16 h-16 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13h1c.55 0 1 .45 1 1v1c0 .55-.45 1-1 1h-.5v1.5H8V13h.5zm3 0h1.5c.55 0 1 .45 1 1v2.5c0 .55-.45 1-1 1H11.5V13zm4 0h2v1h-1.5v.5h1v1h-1v2h-1V13h.5z"/>
+                            </svg>
+                            <span className="text-sm font-medium text-gray-700 mt-2">{certificateImage?.name}</span>
+                            <span className="text-xs text-gray-500">PDF Document</span>
+                          </div>
+                        ) : (
+                          <img 
+                            src={certificateImagePreview} 
+                            alt="Certificate preview" 
+                            className="w-full h-48 object-contain bg-gray-50"
+                          />
+                        )}
                         <button
                           type="button"
                           onClick={() => {
@@ -894,7 +1123,9 @@ Respond in JSON format:
                         </button>
                         <div className="absolute bottom-2 left-2 right-2 bg-green-500/90 text-white px-3 py-1.5 rounded-lg flex items-center gap-2">
                           <CheckCircle size={14} />
-                          <span className="text-xs font-medium">Image uploaded - Click Continue to extract details</span>
+                          <span className="text-xs font-medium">
+                            {certificateImagePreview === 'pdf' ? 'PDF uploaded' : 'Image uploaded'} - Click Continue to extract details
+                          </span>
                         </div>
                       </div>
                     ) : (
@@ -928,15 +1159,22 @@ Respond in JSON format:
                       <LinkIcon className="w-5 h-5 text-indigo-600" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 text-sm">Use Certificate URL or ID</h4>
+                      <h4 className="font-medium text-gray-900 text-sm">
+                        {selectedPlatform?.id === 'other' ? 'Use Certificate URL' : 'Use Certificate URL or ID'}
+                      </h4>
                       <p className="text-xs text-gray-600 mt-0.5">
-                        Enter your certificate verification URL or certificate number
+                        {selectedPlatform?.id === 'other' 
+                          ? 'Enter your certificate verification URL'
+                          : 'Enter your certificate verification URL or certificate number'
+                        }
                       </p>
                     </div>
                   </div>
 
                   <div className="mt-4">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Certificate URL or ID</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      {selectedPlatform?.id === 'other' ? 'Certificate URL' : 'Certificate URL or ID'}
+                    </label>
                     <div className="relative">
                       <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                       <input
@@ -945,21 +1183,32 @@ Respond in JSON format:
                         value={formData.certificate_url || formData.certificate_id}
                         onChange={(e) => {
                           const value = e.target.value.trim();
-                          // Auto-detect if it's a URL or certificate ID
-                          if (value.startsWith('http') || value.includes('.')) {
+                          // For "Other Platform", always treat as URL
+                          if (selectedPlatform?.id === 'other') {
                             setFormData(prev => ({ ...prev, certificate_url: value, certificate_id: '' }));
                           } else {
-                            setFormData(prev => ({ ...prev, certificate_id: value, certificate_url: '' }));
+                            // Auto-detect if it's a URL or certificate ID
+                            if (value.startsWith('http') || value.includes('.')) {
+                              setFormData(prev => ({ ...prev, certificate_url: value, certificate_id: '' }));
+                            } else {
+                              setFormData(prev => ({ ...prev, certificate_id: value, certificate_url: '' }));
+                            }
                           }
                           setVerificationStatus(null);
                           setExtractionSuccess(false);
                         }}
-                        placeholder="https://ude.my/UC-xxx or UC-794d8663-2295-4407-84f6-f7cb2f0f1c01"
+                        placeholder={selectedPlatform?.id === 'other' 
+                          ? "https://example.com/certificate/123" 
+                          : "https://ude.my/UC-xxx or UC-794d8663-2295-4407-84f6-f7cb2f0f1c01"
+                        }
                         className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white"
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1.5">
-                      Paste the full URL or just the certificate ID
+                      {selectedPlatform?.id === 'other' 
+                        ? 'Paste the full certificate verification URL'
+                        : 'Paste the full URL or just the certificate ID'
+                      }
                     </p>
                   </div>
                 </div>
@@ -994,29 +1243,7 @@ Respond in JSON format:
                       </div>
                     )}
 
-                    {verificationStatus === 'failed' && (
-                      <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <X className="w-6 h-6 text-red-600" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-red-900">Verification Failed</h4>
-                            <p className="text-sm text-red-700 mt-1">
-                              We couldn't verify this certificate. This could happen if:
-                            </p>
-                            <ul className="text-sm text-red-600 mt-2 space-y-1 list-disc list-inside">
-                              <li>The certificate URL is incorrect or expired</li>
-                              <li>The certificate ID doesn't match the platform's records</li>
-                              <li>The certificate page is temporarily unavailable</li>
-                            </ul>
-                            <p className="text-sm text-red-700 mt-3">
-                              Please double-check your certificate details and try again.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+
                   </div>
                 )}
 
@@ -1065,10 +1292,15 @@ Respond in JSON format:
                     <input
                       type="text"
                       name="organization"
-                      value={formData.organization}
+                      value={formData.organization || selectedPlatform?.name || ''}
                       onChange={handleInputChange}
                       placeholder="e.g., Stanford University"
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                      disabled={selectedPlatform?.id !== 'other'}
+                      className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm ${
+                        selectedPlatform?.id !== 'other'
+                          ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
+                          : 'focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+                      }`}
                     />
                   </div>
                   <div>
@@ -1109,9 +1341,10 @@ Respond in JSON format:
                       type="url"
                       name="certificate_url"
                       value={formData.certificate_url}
-                      onChange={handleInputChange}
+                      readOnly
+                      disabled
                       placeholder="https://..."
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed text-sm"
                     />
                   </div>
                   <div>
