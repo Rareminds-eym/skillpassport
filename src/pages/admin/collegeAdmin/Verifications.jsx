@@ -20,6 +20,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
+import { CollegeAdminNotificationService } from '@/services/collegeAdminNotificationService';
 import TrainingDetailsModal from '@/components/admin/schoolAdmin/TrainingDetailsModal';
 import ExperienceDetailsModal from '@/components/admin/schoolAdmin/ExperienceDetailsModal';
 import ProjectDetailsModal from '@/components/admin/schoolAdmin/ProjectDetailsModal';
@@ -39,91 +40,10 @@ const CollegeVerifications = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Fetch pending trainings for college admin
+  // Fetch pending trainings for college admin (Using database approval_authority)
   const fetchPendingTrainings = async () => {
     try {
-      console.log('🎓 Fetching pending trainings for college admin...');
-      
-      const { data, error } = await supabase
-        .from('trainings')
-        .select(`
-          *,
-          student:students!trainings_student_id_fkey (
-            id,
-            user_id,
-            student_type,
-            name,
-            email,
-            college_school_name,
-            university
-          )
-        `)
-        .eq('approval_status', 'pending')
-        .eq('approval_authority', 'college_admin')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Error fetching trainings:', error);
-        throw error;
-      }
-
-      console.log('✅ Fetched trainings:', data?.length || 0);
-      setPendingTrainings(data || []);
-    } catch (error) {
-      console.error('❌ Error in fetchPendingTrainings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch pending trainings",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Fetch pending experiences for college admin
-  const fetchPendingExperiences = async () => {
-    try {
-      console.log('🎓 Fetching pending experiences for college admin...');
-      
-      const { data, error } = await supabase
-        .from('experience')
-        .select(`
-          *,
-          student:students!experience_student_id_fkey (
-            id,
-            user_id,
-            student_type,
-            name,
-            email,
-            college_school_name,
-            university
-          )
-        `)
-        .eq('approval_status', 'pending')
-        .eq('approval_authority', 'college_admin')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Error fetching experiences:', error);
-        throw error;
-      }
-
-      console.log('✅ Fetched experiences:', data?.length || 0);
-      setPendingExperiences(data || []);
-    } catch (error) {
-      console.error('❌ Error in fetchPendingExperiences:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch pending experiences",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Fetch pending projects for college admin
-  const fetchPendingProjects = async () => {
-    try {
-      console.log('🏗️ Fetching pending projects for college admin...');
-      console.log('👤 Current user:', user);
+      console.log('🎓 Fetching pending trainings using CollegeAdminNotificationService...');
       
       // Get college_id from user or college_educators table
       let collegeId = user?.college_id;
@@ -151,44 +71,103 @@ const CollegeVerifications = () => {
       
       console.log('🏫 Using college_id:', collegeId);
       
-      // Use the RPC function to get pending projects
-      const { data, error } = await supabase.rpc('get_pending_college_projects', {
-        input_college_id: collegeId
+      // Use the notification service which now uses approval_authority
+      const trainings = await CollegeAdminNotificationService.getPendingTrainings(collegeId);
+      
+      console.log('✅ Trainings fetched via notification service:', trainings.length);
+      setPendingTrainings(trainings);
+    } catch (error) {
+      console.error('❌ Error in fetchPendingTrainings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch pending trainings",
+        variant: "destructive",
       });
+    }
+  };
 
-      if (error) {
-        console.error('❌ Error fetching projects:', error);
-        throw error;
+  // Fetch pending experiences for college admin (Using database approval_authority)
+  const fetchPendingExperiences = async () => {
+    try {
+      console.log('🎓 Fetching pending experiences using CollegeAdminNotificationService...');
+      
+      // Get college_id from user or college_educators table
+      let collegeId = user?.college_id;
+      
+      if (!collegeId) {
+        // Fallback: get college_id from college_lecturers table
+        console.log('🔍 Looking up college_id for user:', user?.id);
+        const { data: educatorData, error: educatorError } = await supabase
+          .from('college_lecturers')
+          .select('collegeId')
+          .eq('user_id', user?.id)
+          .single();
+          
+        if (educatorError) {
+          console.error('❌ Error fetching educator data:', educatorError);
+          throw new Error('Could not determine college admin college');
+        }
+        
+        collegeId = educatorData?.collegeId;
       }
+      
+      if (!collegeId) {
+        throw new Error('College ID not found for current user');
+      }
+      
+      console.log('🏫 Using college_id:', collegeId);
+      
+      // Use the notification service which now uses approval_authority
+      const experiences = await CollegeAdminNotificationService.getPendingExperiences(collegeId);
+      
+      console.log('✅ Experiences fetched via notification service:', experiences.length);
+      setPendingExperiences(experiences);
+    } catch (error) {
+      console.error('❌ Error in fetchPendingExperiences:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch pending experiences",
+        variant: "destructive",
+      });
+    }
+  };
 
-      console.log('📊 Projects data from RPC:', data);
-
-      // Format the data (data is already properly formatted from RPC)
-      const formattedProjects = (data || []).map(project => ({
-        project_id: project.project_id,
-        student_id: project.student_id,
-        student_name: project.student_name || 'Unknown Student',
-        title: project.title,
-        description: project.description,
-        organization: project.organization,
-        status: project.status,
-        start_date: project.start_date,
-        end_date: project.end_date,
-        duration: project.duration,
-        tech_stack: project.tech_stack,
-        demo_link: project.demo_link,
-        github_link: project.github_link,
-        certificate_url: project.certificate_url,
-        video_url: project.video_url,
-        ppt_url: project.ppt_url,
-        approval_status: project.approval_status,
-        approval_authority: project.approval_authority,
-        created_at: project.created_at,
-        updated_at: project.updated_at
-      }));
-
-      setPendingProjects(formattedProjects);
-      console.log('✅ Projects loaded:', formattedProjects.length);
+  // Fetch pending projects for college admin (Using database approval_authority)
+  const fetchPendingProjects = async () => {
+    try {
+      console.log('🏗️ Fetching pending projects using CollegeAdminNotificationService...');
+      
+      // Get college_id from user or college_educators table
+      let collegeId = user?.college_id;
+      
+      if (!collegeId) {
+        // Fallback: get college_id from college_lecturers table
+        console.log('🔍 Looking up college_id for user:', user?.id);
+        const { data: educatorData, error: educatorError } = await supabase
+          .from('college_lecturers')
+          .select('collegeId')
+          .eq('user_id', user?.id)
+          .single();
+          
+        if (educatorError) {
+          console.error('❌ Error fetching educator data:', educatorError);
+          throw new Error('Could not determine college admin college');
+        }
+        
+        collegeId = educatorData?.collegeId;
+      }
+      
+      if (!collegeId) {
+        throw new Error('College ID not found for current user');
+      }
+      
+      console.log('🏫 Using college_id:', collegeId);
+      
+      // Use the notification service which now uses approval_authority
+      const projects = await CollegeAdminNotificationService.getPendingProjects(collegeId);
+      
+      console.log('✅ Projects fetched via notification service:', projects.length);
+      setPendingProjects(projects);
     } catch (error) {
       console.error('❌ Error in fetchPendingProjects:', error);
       toast({

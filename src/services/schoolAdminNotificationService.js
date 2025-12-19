@@ -56,47 +56,173 @@ export class SchoolAdminNotificationService {
   }
 
   /**
-   * Get pending trainings for school
+   * Get pending trainings for school admin (Using database approval_authority with fallback)
    * @param {string} schoolId - School's UUID
    * @returns {Promise<Array>} List of pending trainings
    */
   static async getPendingTrainings(schoolId) {
     try {
-      const { data, error } = await supabase.rpc('get_pending_school_trainings', {
-        input_school_id: schoolId
-      });
+      console.log('🏫 Fetching trainings for school admin using approval_authority:', schoolId);
+      
+      // First try: Get trainings where approval_authority = 'school_admin'
+      const { data, error } = await supabase
+        .from('trainings')
+        .select(`
+          *,
+          student:students!trainings_student_id_fkey (
+            id,
+            name,
+            email,
+            student_type,
+            school_id,
+            university_college_id
+          )
+        `)
+        .eq('approval_status', 'pending')
+        .eq('approval_authority', 'school_admin')
+        .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching pending trainings:', error);
+        console.error('❌ Error fetching trainings:', error);
         throw error;
       }
 
-      return data || [];
+      // Filter by school_id to ensure security
+      const filteredTrainings = (data || []).filter(training => {
+        const studentSchoolId = training.student?.school_id;
+        return studentSchoolId === schoolId;
+      });
+
+      console.log('📊 Found trainings with approval_authority=school_admin:', filteredTrainings.length);
+
+      // FALLBACK: If no trainings found, check for Rareminds trainings that should be school_admin
+      if (filteredTrainings.length === 0) {
+        console.log('🔄 No trainings found with approval_authority=school_admin, checking fallback...');
+        
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('trainings')
+          .select(`
+            *,
+            student:students!trainings_student_id_fkey (
+              id,
+              name,
+              email,
+              student_type,
+              school_id,
+              university_college_id
+            )
+          `)
+          .eq('approval_status', 'pending')
+          .order('created_at', { ascending: false });
+
+        if (fallbackError) {
+          console.error('❌ Error in fallback query:', fallbackError);
+          throw fallbackError;
+        }
+
+        // Manual filtering for Rareminds trainings from school students
+        const fallbackTrainings = (fallbackData || []).filter(training => {
+          const provider = (training.organization || '').toLowerCase();
+          const studentSchoolId = training.student?.school_id;
+          const studentType = training.student?.student_type;
+          
+          // Show Rareminds trainings from non-college students in this school
+          return provider === 'rareminds' && 
+                 studentSchoolId === schoolId && 
+                 studentType !== 'college_student';
+        });
+
+        console.log('📊 Found trainings via fallback logic:', fallbackTrainings.length);
+        
+        if (fallbackTrainings.length > 0) {
+          console.log('⚠️ IMPORTANT: These trainings should have approval_authority=school_admin');
+          console.log('💡 Run the SQL fix to update approval_authority for existing records');
+          
+          // Format fallback trainings
+          const formattedFallback = fallbackTrainings.map(training => ({
+            ...training,
+            student_name: training.student?.name || 'Unknown Student',
+            student_email: training.student?.email || 'No email',
+            student_school_id: training.student?.school_id,
+            student_college_id: training.student?.university_college_id,
+            _needsApprovalAuthorityFix: true // Flag for debugging
+          }));
+
+          return formattedFallback;
+        }
+      }
+
+      // Format for UI
+      const formattedTrainings = filteredTrainings.map(training => ({
+        ...training,
+        student_name: training.student?.name || 'Unknown Student',
+        student_email: training.student?.email || 'No email',
+        student_school_id: training.student?.school_id,
+        student_college_id: training.student?.university_college_id
+      }));
+
+      console.log('✅ Final trainings for school admin:', formattedTrainings.length);
+      console.log('ℹ️ Using database approval_authority field (automatic routing)');
+      return formattedTrainings;
     } catch (error) {
-      console.error('Error fetching pending trainings:', error);
+      console.error('❌ Error fetching pending trainings:', error);
       throw error;
     }
   }
 
   /**
-   * Get pending experiences for school
+   * Get pending experiences for school admin (Using database approval_authority)
    * @param {string} schoolId - School's UUID
    * @returns {Promise<Array>} List of pending experiences
    */
   static async getPendingExperiences(schoolId) {
     try {
-      const { data, error } = await supabase.rpc('get_pending_school_experiences', {
-        input_school_id: schoolId
-      });
+      console.log('🏫 Fetching experiences for school admin using approval_authority:', schoolId);
+      
+      // Get experiences where approval_authority = 'school_admin' and student belongs to this school
+      const { data, error } = await supabase
+        .from('experience')
+        .select(`
+          *,
+          student:students!experience_student_id_fkey (
+            id,
+            name,
+            email,
+            student_type,
+            school_id,
+            university_college_id
+          )
+        `)
+        .eq('approval_status', 'pending')
+        .eq('approval_authority', 'school_admin')
+        .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching pending experiences:', error);
+        console.error('❌ Error fetching experiences:', error);
         throw error;
       }
 
-      return data || [];
+      // Filter by school_id to ensure security
+      const filteredExperiences = (data || []).filter(experience => {
+        const studentSchoolId = experience.student?.school_id;
+        return studentSchoolId === schoolId;
+      });
+
+      // Format for UI
+      const formattedExperiences = filteredExperiences.map(experience => ({
+        ...experience,
+        student_name: experience.student?.name || 'Unknown Student',
+        student_email: experience.student?.email || 'No email',
+        student_school_id: experience.student?.school_id,
+        student_college_id: experience.student?.university_college_id,
+        student_type: experience.student?.student_type
+      }));
+
+      console.log('✅ Found experiences for school admin:', formattedExperiences.length);
+      console.log('ℹ️ Using database approval_authority field (automatic routing)');
+      return formattedExperiences;
     } catch (error) {
-      console.error('Error fetching pending experiences:', error);
+      console.error('❌ Error fetching pending experiences:', error);
       throw error;
     }
   }
@@ -299,24 +425,114 @@ export class SchoolAdminNotificationService {
   }
 
   /**
-   * Get pending projects for school
+   * Get pending projects for school admin (Using database approval_authority with fallback)
    * @param {string} schoolId - School's UUID
    * @returns {Promise<Array>} List of pending projects
    */
   static async getPendingProjects(schoolId) {
     try {
-      const { data, error } = await supabase.rpc('get_pending_school_projects', {
-        input_school_id: schoolId
-      });
+      console.log('🏫 Fetching projects for school admin using approval_authority:', schoolId);
+      
+      // First try: Get projects where approval_authority = 'school_admin'
+      const { data, error } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          student:students!projects_student_id_fkey (
+            id,
+            name,
+            email,
+            student_type,
+            school_id,
+            university_college_id
+          )
+        `)
+        .eq('approval_status', 'pending')
+        .eq('approval_authority', 'school_admin')
+        .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching pending projects:', error);
+        console.error('❌ Error fetching projects:', error);
         throw error;
       }
 
-      return data || [];
+      // Filter by school_id to ensure security
+      const filteredProjects = (data || []).filter(project => {
+        const studentSchoolId = project.student?.school_id;
+        return studentSchoolId === schoolId;
+      });
+
+      console.log('📊 Found projects with approval_authority=school_admin:', filteredProjects.length);
+
+      // FALLBACK: If no projects found, check for projects that should be school_admin
+      if (filteredProjects.length === 0) {
+        console.log('🔄 No projects found with approval_authority=school_admin, checking fallback...');
+        
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('projects')
+          .select(`
+            *,
+            student:students!projects_student_id_fkey (
+              id,
+              name,
+              email,
+              student_type,
+              school_id,
+              university_college_id
+            )
+          `)
+          .eq('approval_status', 'pending')
+          .order('created_at', { ascending: false });
+
+        if (fallbackError) {
+          console.error('❌ Error in fallback query:', fallbackError);
+          throw fallbackError;
+        }
+
+        // Manual filtering for projects from school students
+        const fallbackProjects = (fallbackData || []).filter(project => {
+          const studentSchoolId = project.student?.school_id;
+          const studentType = project.student?.student_type;
+          
+          // Show projects from non-college students in this school
+          return studentSchoolId === schoolId && 
+                 studentType !== 'college_student';
+        });
+
+        console.log('📊 Found projects via fallback logic:', fallbackProjects.length);
+        
+        if (fallbackProjects.length > 0) {
+          console.log('⚠️ IMPORTANT: These projects should have approval_authority=school_admin');
+          console.log('💡 Run the SQL fix to update approval_authority for existing records');
+          
+          // Format fallback projects
+          const formattedFallback = fallbackProjects.map(project => ({
+            ...project,
+            student_name: project.student?.name || 'Unknown Student',
+            student_email: project.student?.email || 'No email',
+            student_school_id: project.student?.school_id,
+            student_college_id: project.student?.university_college_id,
+            _needsApprovalAuthorityFix: true // Flag for debugging
+          }));
+
+          return formattedFallback;
+        }
+      }
+
+      // Format for UI
+      const formattedProjects = filteredProjects.map(project => ({
+        ...project,
+        student_name: project.student?.name || 'Unknown Student',
+        student_email: project.student?.email || 'No email',
+        student_school_id: project.student?.school_id,
+        student_college_id: project.student?.university_college_id
+      }));
+
+      console.log('✅ Final projects for school admin:', formattedProjects.length);
+      console.log('ℹ️ Using database approval_authority field (automatic routing)');
+      return formattedProjects;
     } catch (error) {
-      console.error('Error fetching pending projects:', error);
+      console.error('❌ Error fetching pending projects:', error);
       throw error;
     }
   }
