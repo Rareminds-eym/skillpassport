@@ -37,15 +37,15 @@ const getIconByType = (type) => {
 const getColorByType = (type) => {
   switch (type) {
     case "certificate":
-      return "#10b981"; // green
+      return "#3b82f6"; // green
     case "project":
       return "#3b82f6"; // blue
     case "education":
-      return "#8b5cf6"; // purple
+      return "#3b82f6"; // purple
     case "experience":
-      return "#f59e0b"; // amber
+      return "#3b82f6"; // amber
     default:
-      return "#6366f1"; // indigo
+      return "#3b82f6"; // indigo
   }
 };
 
