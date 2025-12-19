@@ -39,15 +39,15 @@ const getIconByType = (type) => {
 const getColorByType = (type) => {
   switch (type) {
     case "certificate":
-      return "#10b981"; // green
-    case "project":
       return "#3b82f6"; // blue
+    case "project":
+      return "#2563eb"; // blue-600
     case "education":
-      return "#8b5cf6"; // purple
+      return "#1d4ed8"; // blue-700
     case "experience":
-      return "#f59e0b"; // amber
+      return "#1e40af"; // blue-800
     default:
-      return "#6366f1"; // indigo
+      return "#3b82f6"; // blue
   }
 };
 
@@ -164,32 +164,32 @@ const AchievementsTimeline = ({ userData }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className="bg-white rounded-xl border border-gray-200 hover:border-blue-400 transition-all duration-200 shadow-sm hover:shadow-md">
-        <CardHeader className="px-6 py-4 border-b border-gray-100">
+      <Card className="bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 shadow-sm">
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-3 m-0 p-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Trophy className="w-5 h-5 text-blue-600" />
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+                <Trophy className="w-6 h-6 text-white" />
               </div>
               <div>
-                <span className="text-lg font-semibold text-gray-900">
+                <span className="text-xl font-bold text-gray-900">
                   Achievement Timeline
                 </span>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-sm text-gray-600 mt-0.5 font-medium">
                   Your journey at a glance
                 </p>
               </div>
             </CardTitle>
             <Button
               onClick={() => navigate("/student/timeline")}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium px-4 py-2 text-sm rounded-lg transition-all flex items-center gap-2"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-5 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all flex items-center gap-2"
             >
               View Full Timeline
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="pt-4 p-8">
           <VerticalTimeline layout="1-column-left" lineColor="#e5e7eb">
             {(showPreview ? achievements.slice(0, previewCount) : achievements).map(
               (achievement, index) => (
@@ -197,16 +197,17 @@ const AchievementsTimeline = ({ userData }) => {
                   key={achievement.id}
                   className="vertical-timeline-element--work"
                   contentStyle={{
-                    background: "#f9fafb",
-                    border: "1px solid #e5e7eb",
-                    boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                    background: "linear-gradient(to right, #dbeafe, #ffffff)",
+                    border: "1px solid #bfdbfe",
+                    borderLeft: "4px solid #3b82f6",
+                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
                     borderRadius: "0.75rem",
                   }}
                   contentArrowStyle={{
-                    borderRight: "7px solid #f9fafb",
+                    borderRight: "7px solid #dbeafe",
                   }}
                   date={achievement.date.toString()}
-                  dateClassName="text-sm font-medium text-gray-600"
+                  dateClassName="text-sm font-bold text-blue-600"
                   iconStyle={{
                     background: getColorByType(achievement.type),
                     color: "#fff",
@@ -268,7 +269,7 @@ const AchievementsTimeline = ({ userData }) => {
               <Button
                 onClick={() => navigate("/student/timeline")}
                 variant="outline"
-                className="border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 font-medium px-6 py-2 rounded-lg transition-all"
+                className="border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 font-semibold px-6 py-2 rounded-lg shadow-sm hover:shadow-md transition-all"
               >
                 View All {achievements.length} Achievements
               </Button>

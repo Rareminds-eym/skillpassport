@@ -11,9 +11,24 @@ class AIRecommendationService {
    */
   async getRecommendations(studentId, forceRefresh = false) {
     try {
+      // Check cache first unless force refresh is requested
+      if (!forceRefresh) {
+        const cachedData = await this.getCachedRecommendations(studentId);
+        if (cachedData) {
+          console.log('✅ Returning cached recommendations');
+          return {
+            success: true,
+            recommendations: cachedData.recommendations,
+            cached: true,
+            fallback: false,
+            reason: 'Cached recommendations'
+          };
+        }
+      }
 
+      // Generate fresh recommendations via edge function
       const { data, error } = await supabase.functions.invoke('recommend-opportunities', {
-        body: { studentId, forceRefresh }
+        body: { studentId, forceRefresh: true }
       });
 
       if (error) {
@@ -21,11 +36,15 @@ class AIRecommendationService {
         throw error;
       }
 
-      
+      // Cache the fresh recommendations
+      if (data?.recommendations && data.recommendations.length > 0) {
+        await this.cacheRecommendations(studentId, data.recommendations);
+      }
+
       return {
         success: true,
         recommendations: data?.recommendations || [],
-        cached: data?.cached || false,
+        cached: false,
         fallback: data?.fallback || false,
         reason: data?.reason
       };
@@ -36,6 +55,80 @@ class AIRecommendationService {
         recommendations: [],
         error: error.message
       };
+    }
+  }
+
+  /**
+   * Get cached recommendations for a student
+   */
+  async getCachedRecommendations(studentId) {
+    try {
+      const { data, error } = await supabase
+        .from('recommendation_cache')
+        .select('recommendations, cached_at, expires_at')
+        .eq('student_id', studentId)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (error || !data) {
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error fetching cached recommendations:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Cache recommendations for a student
+   */
+  async cacheRecommendations(studentId, recommendations) {
+    try {
+      // Get current opportunities count
+      const { count } = await supabase
+        .from('opportunities')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+
+      // Get student profile hash
+      const { data: student } = await supabase
+        .from('students')
+        .select('skills, interests, bio, experience_level')
+        .eq('user_id', studentId)
+        .single();
+
+      const profileHash = student ? 
+        JSON.stringify({
+          skills: student.skills,
+          interests: student.interests,
+          bio: student.bio,
+          experience_level: student.experience_level
+        }) : '';
+
+      // Upsert cache
+      const { error } = await supabase
+        .from('recommendation_cache')
+        .upsert({
+          student_id: studentId,
+          recommendations: recommendations,
+          cached_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+          opportunities_count: count || 0,
+          student_profile_hash: profileHash,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'student_id'
+        });
+
+      if (error) {
+        console.error('Error caching recommendations:', error);
+      } else {
+        console.log('✅ Cached recommendations for student:', studentId);
+      }
+    } catch (error) {
+      console.error('Error caching recommendations:', error);
     }
   }
 
