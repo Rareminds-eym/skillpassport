@@ -9,11 +9,17 @@ const getMatchColor = (score) => {
 };
 
 const CareerSection = ({ careerFit }) => {
+    // Defensive defaults for nested arrays
+    const clusters = careerFit?.clusters || [];
+    const highFit = careerFit?.specificOptions?.highFit || [];
+    const mediumFit = careerFit?.specificOptions?.mediumFit || [];
+    const exploreLater = careerFit?.specificOptions?.exploreLater || [];
+
     return (
         <div className="space-y-6">
             {/* Career Clusters */}
             <div className="space-y-4">
-                {careerFit.clusters.map((cluster, idx) => {
+                {clusters.map((cluster, idx) => {
                     const style = getMatchColor(cluster.matchScore || 0);
                     return (
                         <div key={idx} className={`bg-white rounded-xl p-6 border ${style.border} shadow-sm`}>
@@ -120,12 +126,14 @@ const CareerSection = ({ careerFit }) => {
                             <h4 className="font-bold text-green-400 text-base">High Fit</h4>
                         </div>
                         <div className="space-y-2">
-                            {careerFit.specificOptions.highFit.map((role, idx) => (
+                            {highFit.length > 0 ? highFit.map((role, idx) => (
                                 <div key={idx} className="flex items-center gap-2 p-3 bg-white/5 rounded">
                                     <span className="w-6 h-6 rounded bg-green-500/30 flex items-center justify-center text-green-400 font-bold text-sm">{idx + 1}</span>
                                     <span className="text-white text-base">{role}</span>
                                 </div>
-                            ))}
+                            )) : (
+                                <p className="text-gray-400 text-sm">No high fit roles identified</p>
+                            )}
                         </div>
                     </div>
 
@@ -136,12 +144,14 @@ const CareerSection = ({ careerFit }) => {
                             <h4 className="font-bold text-yellow-400 text-base">Medium Fit</h4>
                         </div>
                         <div className="space-y-2">
-                            {careerFit.specificOptions.mediumFit.map((role, idx) => (
+                            {mediumFit.length > 0 ? mediumFit.map((role, idx) => (
                                 <div key={idx} className="flex items-center gap-2 p-3 bg-white/5 rounded">
                                     <span className="w-6 h-6 rounded bg-yellow-500/30 flex items-center justify-center text-yellow-400 font-bold text-sm">{idx + 1}</span>
                                     <span className="text-gray-300 text-base">{role}</span>
                                 </div>
-                            ))}
+                            )) : (
+                                <p className="text-gray-400 text-sm">No medium fit roles identified</p>
+                            )}
                         </div>
                     </div>
 
@@ -152,12 +162,14 @@ const CareerSection = ({ careerFit }) => {
                             <h4 className="font-bold text-red-400 text-base">Explore Later</h4>
                         </div>
                         <div className="space-y-2">
-                            {careerFit.specificOptions.exploreLater.map((role, idx) => (
+                            {exploreLater.length > 0 ? exploreLater.map((role, idx) => (
                                 <div key={idx} className="flex items-center gap-2 p-3 bg-white/5 rounded">
                                     <span className="w-6 h-6 rounded bg-red-500/30 flex items-center justify-center text-red-400 font-bold text-sm">{idx + 1}</span>
                                     <span className="text-gray-400 text-base">{role}</span>
                                 </div>
-                            ))}
+                            )) : (
+                                <p className="text-gray-400 text-sm">No roles to explore later</p>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -14,6 +14,14 @@ const RoadmapSection = ({
     skillGapCourses = {}, 
     onCourseClick 
 }) => {
+    // Defensive defaults for nested properties
+    const internshipTypes = roadmap?.internship?.types || [];
+    const internshipTimeline = roadmap?.internship?.timeline || 'Not specified';
+    const internshipPrep = roadmap?.internship?.preparation || {};
+    const activities = roadmap?.exposure?.activities || [];
+    const certifications = roadmap?.exposure?.certifications || [];
+    const projects = roadmap?.projects || [];
+
     return (
         <div className="space-y-6">
             {/* Recommended Platform Courses Section - Requirements: 4.1 */}
@@ -41,12 +49,14 @@ const RoadmapSection = ({
                     <div className="mb-4">
                         <p className="text-sm font-bold text-gray-500 uppercase mb-2">Best Internship Types</p>
                         <div className="space-y-2">
-                            {roadmap.internship.types.map((type, idx) => (
+                            {internshipTypes.length > 0 ? internshipTypes.map((type, idx) => (
                                 <div key={idx} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                                     <CheckCircle className="w-5 h-5 text-green-500" />
                                     <span className="text-gray-700 text-base">{type}</span>
                                 </div>
-                            ))}
+                            )) : (
+                                <p className="text-gray-500 text-sm">No internship types specified</p>
+                            )}
                         </div>
                     </div>
 
@@ -55,16 +65,16 @@ const RoadmapSection = ({
                             <Calendar className="w-4 h-4 text-indigo-600" />
                             <span className="text-sm font-bold text-indigo-600 uppercase">Target Timeline</span>
                         </div>
-                        <p className="text-indigo-800 font-semibold text-base">{roadmap.internship.timeline}</p>
+                        <p className="text-indigo-800 font-semibold text-base">{internshipTimeline}</p>
                     </div>
 
                     <div>
                         <p className="text-sm font-bold text-gray-500 uppercase mb-2">Preparation Checklist</p>
                         <div className="space-y-2">
                             {[
-                                { label: 'Resume', value: roadmap.internship.preparation.resume, icon: FileText },
-                                { label: 'Portfolio', value: roadmap.internship.preparation.portfolio, icon: Rocket },
-                                { label: 'Interview', value: roadmap.internship.preparation.interview, icon: Users }
+                                { label: 'Resume', value: internshipPrep.resume || 'Not specified', icon: FileText },
+                                { label: 'Portfolio', value: internshipPrep.portfolio || 'Not specified', icon: Rocket },
+                                { label: 'Interview', value: internshipPrep.interview || 'Not specified', icon: Users }
                             ].map((item, idx) => (
                                 <div key={idx} className="p-3 bg-gray-50 rounded-lg">
                                     <div className="flex items-center gap-2 mb-1">
@@ -93,24 +103,28 @@ const RoadmapSection = ({
                     <div className="mb-5">
                         <p className="text-sm font-bold text-gray-500 uppercase mb-2">Join / Lead These</p>
                         <div className="space-y-2">
-                            {roadmap.exposure.activities.map((activity, idx) => (
+                            {activities.length > 0 ? activities.map((activity, idx) => (
                                 <div key={idx} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                                     <span className="w-7 h-7 rounded bg-indigo-500 flex items-center justify-center text-white text-sm font-bold">{idx + 1}</span>
                                     <span className="text-gray-700 text-base">{activity}</span>
                                 </div>
-                            ))}
+                            )) : (
+                                <p className="text-gray-500 text-sm">No activities specified</p>
+                            )}
                         </div>
                     </div>
 
                     <div>
                         <p className="text-sm font-bold text-gray-500 uppercase mb-2">Certifications to Pursue</p>
                         <div className="space-y-2">
-                            {roadmap.exposure.certifications.map((cert, idx) => (
+                            {certifications.length > 0 ? certifications.map((cert, idx) => (
                                 <div key={idx} className="flex items-center gap-2 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
                                     <GraduationCap className="w-5 h-5 text-yellow-600" />
                                     <span className="text-gray-700 text-base">{cert}</span>
                                 </div>
-                            ))}
+                            )) : (
+                                <p className="text-gray-500 text-sm">No certifications specified</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -129,13 +143,13 @@ const RoadmapSection = ({
                 </div>
 
                 <div className="space-y-4">
-                    {roadmap.projects.map((project, idx) => (
+                    {projects.length > 0 ? projects.map((project, idx) => (
                         <div key={idx} className="flex gap-4">
                             <div className="flex flex-col items-center">
                                 <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-base">
                                     {idx + 1}
                                 </div>
-                                {idx < roadmap.projects.length - 1 && (
+                                {idx < projects.length - 1 && (
                                     <div className="w-0.5 flex-1 bg-indigo-200 mt-2" />
                                 )}
                             </div>
@@ -159,7 +173,9 @@ const RoadmapSection = ({
                                 </div>
                             </div>
                         </div>
-                    ))}
+                    )) : (
+                        <p className="text-gray-500 text-center py-4">No projects specified</p>
+                    )}
                 </div>
             </div>
 
