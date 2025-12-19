@@ -1,4 +1,3 @@
-import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   VerticalTimeline,
@@ -13,10 +12,9 @@ import {
   Medal,
   GraduationCap,
   Trophy,
-  ChevronRight,
+  Eye,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
 import { useNavigate } from "react-router-dom";
 
 // Helper function to get icon based on type
@@ -69,7 +67,6 @@ const parseDate = (dateStr) => {
 
 const AchievementsTimeline = ({ userData }) => {
   const navigate = useNavigate();
-  const [showPreview, setShowPreview] = useState(true);
 
   // Aggregate all achievements from different sources
   const aggregateAchievements = () => {
@@ -179,19 +176,19 @@ const AchievementsTimeline = ({ userData }) => {
                   Your journey at a glance
                 </p>
               </div>
+              <span className="text-lg font-bold text-gray-800">Achievement Timeline</span>
             </CardTitle>
-            <Button
+            <button
               onClick={() => navigate("/student/timeline")}
               className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-5 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all flex items-center gap-2"
             >
-              View Full Timeline
-              <ChevronRight className="w-4 h-4" />
-            </Button>
+              <Eye className="w-5 h-5 text-blue-600" />
+            </button>
           </div>
         </CardHeader>
         <CardContent className="pt-4 p-8">
           <VerticalTimeline layout="1-column-left" lineColor="#e5e7eb">
-            {(showPreview ? achievements.slice(0, previewCount) : achievements).map(
+            {achievements.slice(0, previewCount).map(
               (achievement, index) => (
                 <VerticalTimelineElement
                   key={achievement.id}

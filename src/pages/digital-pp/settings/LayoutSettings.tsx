@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Layout, Save, Eye } from 'lucide-react';
+import { ArrowLeft, Layout, Save, Eye, Sparkles, Palette, Zap, Bot, BarChart3, FileText, Map } from 'lucide-react';
 import { usePortfolio } from '../../../context/PortfolioContext';
 import ThemeToggle from '../../../components/digital-pp/ThemeToggle';
 import type { PortfolioLayout, DisplayPreferences } from '../../../types/student';
 
 const LayoutSettings: React.FC = () => {
-  const { settings, updateSettings } = usePortfolio();
+  const { settings, updateSettings, resetToRoleDefaults, viewerRole } = usePortfolio();
   const navigate = useNavigate();
   const [selectedLayout, setSelectedLayout] = useState<PortfolioLayout>(settings.layout);
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
@@ -21,54 +21,92 @@ const LayoutSettings: React.FC = () => {
     }
   );
 
+  // Role-based default layouts
+  const getRoleBasedDefault = (role: string | null): PortfolioLayout => {
+    switch (role) {
+      case 'student':
+        return 'infographic';
+      case 'university_admin':
+      case 'college_admin':
+      case 'school_admin':
+      case 'educator':
+        return 'journey';
+      case 'recruiter':
+        return 'aipersona';
+      default:
+        return 'infographic';
+    }
+  };
+
+  const roleBasedDefault = getRoleBasedDefault(viewerRole);
+  
+  console.log('🎨 Layout Settings - Role-based defaults:', {
+    viewerRole,
+    roleBasedDefault,
+    currentLayout: selectedLayout
+  });
+
+  // const handleResetToDefaults = () => {
+  //   resetToRoleDefaults();
+  //   setSelectedLayout(roleBasedDefault);
+  //   setDisplayPreferences({
+  //     showSocialLinks: true,
+  //     showSkillBars: true,
+  //     showProjectImages: true,
+  //     enableAnimations: true,
+  //     showContactForm: true,
+  //     showDownloadResume: true,
+  //   });
+  // };
+
   const layouts = [
     { 
       id: 'modern', 
       name: 'Modern', 
       desc: 'Clean and contemporary design',
-      icon: '✨',
+      icon: Sparkles,
       color: 'from-blue-500 to-cyan-500'
     },
     { 
       id: 'creative', 
       name: 'Creative', 
       desc: 'Bold and artistic expression',
-      icon: '🎨',
+      icon: Palette,
       color: 'from-purple-500 to-pink-500'
     },
     { 
       id: 'splitscreen', 
       name: 'Split Screen', 
       desc: 'Interactive dual-pane layout',
-      icon: '⚡',
+      icon: Zap,
       color: 'from-orange-500 to-red-500'
     },
     { 
       id: 'aipersona', 
       name: 'AI Persona', 
       desc: 'Futuristic digital twin',
-      icon: '🤖',
+      icon: Bot,
       color: 'from-indigo-500 to-blue-500'
     },
     { 
       id: 'infographic', 
       name: 'Infographic', 
       desc: 'Data visualization dashboard',
-      icon: '📊',
+      icon: BarChart3,
       color: 'from-green-500 to-teal-500'
     },
     { 
       id: 'resume', 
       name: 'Resume Dashboard', 
       desc: 'Professional recruiter view',
-      icon: '📄',
+      icon: FileText,
       color: 'from-slate-600 to-gray-700'
     },
     { 
       id: 'journey', 
       name: 'Journey Map', 
       desc: 'Interactive milestone timeline',
-      icon: '🗺️',
+      icon: Map,
       color: 'from-amber-500 to-orange-600'
     }
   ];
@@ -172,7 +210,9 @@ const LayoutSettings: React.FC = () => {
                 {/* Content */}
                 <div className="relative">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-4xl">{layout.icon}</span>
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${layout.color} flex items-center justify-center`}>
+                      <layout.icon className="w-6 h-6 text-white" />
+                    </div>
                     {selectedLayout === layout.id && (
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white text-lg">
                         ✓
