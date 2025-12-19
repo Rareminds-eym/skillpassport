@@ -5,7 +5,6 @@ import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
 import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
 import Header from '../components/Students/components/Header';
 import ProfileHeroEdit from '../components/Students/components/ProfileHeroEdit';
-import Footer from '../components/Students/components/Footer';
 import FloatingAIButton from '../components/FloatingAIButton';
 import { Toaster } from '../components/Students/components/ui/toaster';
 import {
@@ -77,7 +76,18 @@ const StudentLayout = () => {
         <main className={isCareerAIPage || isFullScreenAssessment ? "flex-1 overflow-hidden" : isAssessmentResultPage ? "flex-1 overflow-auto" : "py-8 px-6"}>
           <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
         </main>
-        {!isCareerAIPage && !isAssessmentPage && <Footer />}
+        {!isCareerAIPage && !isAssessmentPage && (
+          <footer className="bg-white border-t border-gray-200 py-4 px-6">
+            <div className="flex items-center justify-between text-sm text-gray-500">
+              <span>© {new Date().getFullYear()} Student Portal. All rights reserved.</span>
+              <div className="flex items-center gap-4">
+                <a href="#" className="hover:text-gray-700 transition-colors">Privacy Policy</a>
+                <a href="#" className="hover:text-gray-700 transition-colors">Terms of Service</a>
+                <a href="#" className="hover:text-gray-700 transition-colors">Help</a>
+              </div>
+            </div>
+          </footer>
+        )}
         {!isAssessmentPage && <FloatingAIButton />}
         <Toaster />
 
