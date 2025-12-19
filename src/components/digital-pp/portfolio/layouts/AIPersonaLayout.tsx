@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Code, GraduationCap, FolderOpen, Award, TrendingUp, X, Github, Linkedin, Mail } from 'lucide-react';
+import { Sparkles, Code, GraduationCap, FolderOpen, Award, TrendingUp, X, Github, Linkedin, Mail, Zap, Bot, Cpu, Brain, Atom } from 'lucide-react';
 import { Student, AnimationType, DisplayPreferences } from '../../../../types/student';
 
 interface AIPersonaLayoutProps {
@@ -94,7 +94,7 @@ const AIPersonaLayout: React.FC<AIPersonaLayoutProps> = ({
                       className="w-32 h-32 rounded-full object-cover border-4 border-cyan-500 shadow-2xl shadow-cyan-500/50"
                     />
                     <div className="absolute -top-2 -right-2 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full p-2 animate-bounce">
-                      <Sparkles className="w-6 h-6 text-white" />
+                      <Bot className="w-6 h-6 text-white" />
                     </div>
                   </div>
                 </motion.div>
