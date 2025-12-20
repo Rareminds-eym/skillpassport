@@ -9,7 +9,11 @@
       "autoApprove": [
         "execute_sql",
         "apply_migration",
-        "list_tables"
+        "list_tables",
+        "get_edge_function",
+        "get_edge_function",
+        "get_edge_function",
+        "get_edge_function"
       ]
     }
   }

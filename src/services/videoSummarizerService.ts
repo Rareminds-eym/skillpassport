@@ -1,5 +1,18 @@
 import { supabase } from '../lib/supabaseClient';
 
+// ==================== API URL CONFIGURATION ====================
+// Use Cloudflare Worker if configured, otherwise fall back to Supabase Edge Functions
+const WORKER_URL = import.meta.env.VITE_COURSE_API_URL;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+const getApiUrl = (endpoint: string) => {
+  if (WORKER_URL) {
+    return `${WORKER_URL}/${endpoint}`;
+  }
+  return `${SUPABASE_URL}/functions/v1/${endpoint}`;
+};
+
 // ==================== INTERFACES ====================
 
 export interface TranscriptSegment {
@@ -152,12 +165,13 @@ export async function processVideo(
     onProgress?.('Starting video analysis...', 10);
     
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-video-summarizer`,
+      getApiUrl('ai-video-summarizer'),
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+          ...(WORKER_URL ? {} : { 'apikey': SUPABASE_ANON_KEY }),
         },
         body: JSON.stringify({
           ...request,
