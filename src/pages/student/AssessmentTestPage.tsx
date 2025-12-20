@@ -43,6 +43,8 @@ const TestPage: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const courseId = location.state?.courseId;
+  const certificateName = location.state?.certificateName || location.state?.courseName || 'General Assessment';
+  const certificateId = location.state?.certificateId;
   const videoRef = useRef<HTMLVideoElement>(null);
   const totalTimerRef = useRef<NodeJS.Timeout | null>(null);
   const questionStartTimeRef = useRef<number>(Date.now());
@@ -87,17 +89,22 @@ const TestPage: React.FC = () => {
   // Fetch questions when component mounts
   useEffect(() => {
     const loadQuestions = async () => {
-      if (!courseId) {
+      if (!courseId && !certificateName) {
         navigate("/dashboard");
         return;
       }
 
       try {
         setLoading(true);
-        const fetchedQuestions = await getQuestions(courseId);
+        
+        // Try to fetch questions based on certificate name
+        let fetchedQuestions = await getQuestions(courseId, certificateName);
+        
         if (fetchedQuestions.length === 0) {
-          throw new Error("No questions found for this course");
+          throw new Error(`No questions found for ${certificateName}`);
         }
+        
+        console.log(`Loaded ${fetchedQuestions.length} questions for ${certificateName}`);
         setQuestions(fetchedQuestions);
         setSelectedAnswers(new Array(fetchedQuestions.length).fill(null));
         setTimeTakenPerQuestion(new Array(fetchedQuestions.length).fill(0));
@@ -111,7 +118,7 @@ const TestPage: React.FC = () => {
     };
 
     loadQuestions();
-  }, [courseId, navigate]);
+  }, [courseId, certificateName, navigate]);
 
   // Handle tab visibility changes
   useEffect(() => {

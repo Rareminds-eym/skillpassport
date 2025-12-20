@@ -15,6 +15,7 @@ import {
   Eye,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
 import { useNavigate } from "react-router-dom";
 
 // Helper function to get icon based on type
@@ -261,7 +262,7 @@ const AchievementsTimeline = ({ userData }) => {
             )}
           </VerticalTimeline>
 
-          {achievements.length > previewCount && showPreview && (
+          {achievements.length > previewCount && (
             <div className="mt-6 text-center">
               <Button
                 onClick={() => navigate("/student/timeline")}
