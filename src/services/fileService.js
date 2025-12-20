@@ -1,36 +1,89 @@
 /**
  * File Service for fetching course videos and resources from R2
- * Integrates with the Render file upload server
+ * Integrates with the Render file upload server or Supabase Edge Function
  */
 
 // Get the API URL from environment variables
-// For production, add VITE_FILE_SERVER_URL to your .env
 const FILE_SERVER_URL = import.meta.env.VITE_FILE_SERVER_URL || import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 class FileService {
   /**
+   * Get presigned URL for a file using Supabase Edge Function
+   * @param {string} fileKey - The R2 file key
+   * @returns {Promise<string>} - Presigned URL
+   */
+  async getFileUrlFromSupabase(fileKey) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error('Supabase not configured');
+    }
+
+    console.log('Calling Supabase edge function get-file-url with key:', fileKey);
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/get-file-url`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ fileKey }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      console.error('Edge function error:', error);
+      throw new Error(error.error || `Failed to fetch file URL: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('Edge function returned URL successfully');
+    
+    // Use presigned URL (public URL requires bucket to be public)
+    return data.url;
+  }
+
+  /**
+   * Get presigned URL for a file from local server
+   * @param {string} fileKey - The R2 file key
+   * @returns {Promise<string>} - Presigned URL
+   */
+  async getFileUrlFromServer(fileKey) {
+    const response = await fetch(`${FILE_SERVER_URL}/api/file/${fileKey}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch file URL: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.url;
+  }
+
+  /**
    * Get presigned URL for a file
+   * Tries local server first, falls back to Supabase Edge Function
    * @param {string} fileKey - The R2 file key (e.g., "courses/ABC123/lessons/L1/video.mp4")
    * @returns {Promise<string>} - Presigned URL valid for 7 days
    */
   async getFileUrl(fileKey) {
+    // Try Supabase Edge Function first (more reliable in production)
     try {
-      const response = await fetch(`${FILE_SERVER_URL}/api/file/${fileKey}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      return await this.getFileUrlFromSupabase(fileKey);
+    } catch (supabaseError) {
+      console.log('Supabase edge function failed, trying local server:', supabaseError.message);
+    }
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch file URL: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return data.url;
-    } catch (error) {
-      console.error('Error fetching file URL:', error);
-      throw error;
+    // Fallback to local server
+    try {
+      return await this.getFileUrlFromServer(fileKey);
+    } catch (serverError) {
+      console.error('Both file URL methods failed:', serverError);
+      throw new Error('Unable to generate file URL. Please check server configuration.');
     }
   }
 
