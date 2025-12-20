@@ -390,6 +390,10 @@ app.get('/api/files/:courseId/:lessonId', async (req, res) => {
 // Streak management routes
 app.use('/api/streaks', streakRoutes);
 
+// Assessment generation routes
+import assessmentRoutes from './routes/assessment.js';
+app.use('/api/assessment', assessmentRoutes);
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
