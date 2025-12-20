@@ -29,7 +29,23 @@ const ModernLearningCard = ({
       : item.progress || 0;
 
   const isCompleted = item.status === "completed";
-  const isExternal = item.source !== "internal_course";
+  
+  // Check if course is from RareMinds platform (internal) or external
+  // Internal courses: have course_id (linking to courses table) AND source='internal_course'
+  // External courses: everything else (manual, external_course, or no course_id)
+  const isInternalCourse = !!(item.course_id && item.source === "internal_course");
+  const isExternalCourse = !isInternalCourse;
+
+  // Debug logging - DETAILED
+  console.log('🔍 Course Debug:', {
+    title: item.course || item.title,
+    course_id: item.course_id,
+    courseId: item.courseId,
+    source: item.source,
+    isInternalCourse,
+    isExternalCourse,
+    allFields: Object.keys(item)
+  });
 
   return (
     <div
@@ -57,8 +73,8 @@ const ModernLearningCard = ({
             {isCompleted ? "Completed" : "In Progress"}
           </span>
 
-          {/* Edit Button */}
-          {isExternal && (
+          {/* Edit Button - Only for external courses */}
+          {isExternalCourse && (
             <button
               onClick={() => onEdit?.(item)}
               className="p-2 text-gray-500 hover:text-blue-600 hover:bg-white/50 rounded-lg transition-all duration-200"
@@ -137,14 +153,16 @@ const ModernLearningCard = ({
             </span>
           </div>
           
-          {/* Assessment Button - Same size as Certificate */}
-          <button
-            onClick={() => navigate("/student/assessment/platform")}
-            className="px-6 py-2.5 rounded-full font-medium text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-all duration-300 flex items-center gap-2"
-          >
-            <Target className="w-4 h-4" />
-            Assessment
-          </button>
+          {/* Assessment Button - ONLY show for EXTERNAL courses (not internal platform courses) */}
+          {isExternalCourse && (
+            <button
+              onClick={() => navigate("/student/assessment/platform")}
+              className="px-6 py-2.5 rounded-full font-medium text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-all duration-300 flex items-center gap-2"
+            >
+              <Target className="w-4 h-4" />
+              Assessment
+            </button>
+          )}
         </div>
 
         {/* Certificate or Continue Button */}
