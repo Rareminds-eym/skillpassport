@@ -62,15 +62,18 @@ const CoursePlayer = () => {
   const [lessonStartTime, setLessonStartTime] = useState(null);
   const [accumulatedTime, setAccumulatedTime] = useState(0);
 
-  // Enroll student and load existing progress
+  // Check if user is a student (for progress tracking)
+  const isStudent = user?.role === 'student';
+
+  // Enroll student and load existing progress (only for students)
   useEffect(() => {
-    if (user?.email && courseId) {
+    if (isStudent && user?.email && courseId) {
       enrollAndLoadProgress();
     }
-  }, [user, courseId]);
+  }, [user, courseId, isStudent]);
 
   const enrollAndLoadProgress = async () => {
-    if (!user?.email) return;
+    if (!user?.email || !isStudent) return;
 
     try {
       console.log('Enrolling student:', user.email, 'in course:', courseId);
@@ -95,15 +98,15 @@ const CoursePlayer = () => {
     }
   };
 
-  // Save progress whenever completed lessons change
+  // Save progress whenever completed lessons change (only for students)
   useEffect(() => {
-    if (user?.email && courseId && completedLessons.size > 0) {
+    if (isStudent && user?.email && courseId && completedLessons.size > 0) {
       saveProgress();
     }
-  }, [completedLessons]);
+  }, [completedLessons, isStudent]);
 
   const saveProgress = async () => {
-    if (!user?.email) return;
+    if (!user?.email || !isStudent) return;
 
     try {
       const lessonsArray = Array.from(completedLessons);
@@ -121,9 +124,9 @@ const CoursePlayer = () => {
     return currentModule.lessons[currentLessonIndex];
   };
 
-  // Save time spent on lesson
+  // Save time spent on lesson (only for students)
   const saveTimeSpent = async (additionalSeconds) => {
-    if (!user?.id || !courseId) return;
+    if (!user?.id || !courseId || !isStudent) return;
 
     const currentLesson = getCurrentLesson();
     if (!currentLesson) return;
@@ -157,9 +160,9 @@ const CoursePlayer = () => {
     }
   };
 
-  // Mark lesson as completed
+  // Mark lesson as completed (only for students)
   const markLessonCompleted = async (lessonId) => {
-    if (!user?.id || !courseId) return;
+    if (!user?.id || !courseId || !isStudent) return;
 
     try {
       const { error } = await supabase
@@ -202,9 +205,9 @@ const CoursePlayer = () => {
     }
   };
 
-  // Initialize lesson progress tracking
+  // Initialize lesson progress tracking (only for students)
   const initializeLessonProgress = async () => {
-    if (!user?.id || !courseId) return;
+    if (!user?.id || !courseId || !isStudent) return;
 
     const currentLesson = getCurrentLesson();
     if (!currentLesson) return;
