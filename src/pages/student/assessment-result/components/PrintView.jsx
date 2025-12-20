@@ -73,7 +73,7 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
         header: {
             background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
             color: 'white',
-            padding: '20px 25px',
+            padding: '12px 16px',
             marginBottom: '20px',
         },
         headerTitle: {
@@ -302,7 +302,7 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
             <div className="print-footer" style={{position: 'fixed', bottom: 0, left: 0, right: 0, padding: '10px 15mm', background: 'white', borderTop: '2px solid #4f46e5', zIndex: 9999}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                     <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                        <img src="/assets/HomePage/RMLogo.webp" alt="Rareminds" style={{width: '32px', height: '32px', objectFit: 'contain'}} />
+                        <img src="/RareMinds%20ISO%20Logo-01.png" alt="Rareminds" style={{width: '90px', height: '56px', objectFit: 'contain'}} />
                         <div>
                             <p style={{margin: '0', fontSize: '9px', fontWeight: 'bold', color: '#1e293b'}}>RAREMINDS SkillPassport • AI-Powered Career Assessment</p>
                             <p style={{margin: '0', fontSize: '7px', color: '#6b7280'}}>This is a digitally generated report, does not need signature</p>
@@ -320,9 +320,9 @@ const PrintView = ({ results, studentInfo, gradeLevel = 'after12', riasecNames, 
                 {/* Header with Branding */}
                 <div style={styles.header}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
-                            <img src="/assets/HomePage/RMLogo.webp" alt="Rareminds" style={{width: '50px', height: '50px', objectFit: 'contain'}} />
-                            <div>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                            <img src="/RareMinds%20ISO%20Logo-01.png" alt="Rareminds" style={{width: '144px', height: '88px', objectFit: 'contain'}} />
+                            <div style={{paddingLeft: '15px'}}>
                                 <h1 style={styles.headerTitle}>RAREMINDS SkillPassport • AI-Powered Career Assessment</h1>
                             </div>
                         </div>

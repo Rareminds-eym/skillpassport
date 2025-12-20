@@ -324,15 +324,20 @@ const AssessmentTest = () => {
     const transformDbQuestion = (dbQ) => ({
         id: dbQ.id,
         text: dbQ.question_text,
-        type: dbQ.subtype,           // Used for Career Interests (R,I,A,S,E,C), Big Five (O,C,E,A,N), Values, Employability domains
-        subtype: dbQ.subtype,        // Used for aptitude categorization (verbal, numerical, etc.)
+        type: dbQ.question_type || dbQ.subtype,  // question_type for input type (multiselect, singleselect, rating, text)
+        subtype: dbQ.subtype,                    // Used for aptitude categorization (verbal, numerical, etc.)
         moduleTitle: dbQ.module_title,
         options: dbQ.options,
         correct: dbQ.correct_answer,
-        partType: dbQ.part_type,     // For employability: 'selfRating' or 'sjt'
+        partType: dbQ.part_type,                 // For employability: 'selfRating' or 'sjt'
         scenario: dbQ.scenario,
         bestAnswer: dbQ.best_answer,
-        worstAnswer: dbQ.worst_answer
+        worstAnswer: dbQ.worst_answer,
+        maxSelections: dbQ.max_selections,       // For multiselect questions
+        categoryMapping: dbQ.category_mapping,   // Maps options to RIASEC types (R,I,A,S,E,C)
+        strengthType: dbQ.strength_type,         // For character strengths questions
+        taskType: dbQ.task_type,                 // For aptitude task categorization
+        placeholder: dbQ.placeholder             // For text input questions
     });
 
     // Get questions for a section - from database or fallback
@@ -355,34 +360,35 @@ const AssessmentTest = () => {
     // Define assessment sections with dynamic questions
     const sections = useMemo(() => {
         // For middle school (grades 6-8), show simplified assessment with 3 sections
+        // IMPORTANT: Section IDs must match database section names in personal_assessment_sections table
         if (gradeLevel === 'middle') {
             return [
                 {
-                    id: 'interest_explorer',
+                    id: 'middle_interest_explorer',  // Matches database section name
                     title: 'Interest Explorer',
                     icon: <Heart className="w-6 h-6 text-rose-500" />,
                     description: "Let's discover what kinds of activities and subjects you enjoy most!",
                     color: "rose",
-                    questions: interestExplorerQuestions,
+                    questions: getQuestionsForSection('middle_interest_explorer'),  // Load from database
                     instruction: "There are no right or wrong answers. Pick what feels most like you today."
                 },
                 {
-                    id: 'strengths_character',
+                    id: 'middle_strengths_character',  // Matches database section name
                     title: 'Strengths & Character',
                     icon: <Award className="w-6 h-6 text-amber-500" />,
                     description: "Discover your personal strengths and character traits.",
                     color: "amber",
-                    questions: strengthsCharacterQuestions,
+                    questions: getQuestionsForSection('middle_strengths_character'),  // Load from database
                     responseScale: strengthsRatingScale,
                     instruction: "Rate each statement: 1 = not like me, 2 = sometimes, 3 = mostly me, 4 = very me"
                 },
                 {
-                    id: 'learning_preferences',
+                    id: 'middle_learning_preferences',  // Matches database section name
                     title: 'Learning & Work Preferences',
                     icon: <Users className="w-6 h-6 text-blue-500" />,
                     description: "Learn about how you like to work and learn best.",
                     color: "blue",
-                    questions: learningPreferencesQuestions,
+                    questions: getQuestionsForSection('middle_learning_preferences'),  // Load from database
                     instruction: "Choose the options that best describe you."
                 }
             ];
@@ -397,7 +403,7 @@ const AssessmentTest = () => {
                     icon: <Heart className="w-6 h-6 text-rose-500" />,
                     description: "Discover what activities and subjects truly excite you.",
                     color: "rose",
-                    questions: highSchoolInterestQuestions,
+                    questions: getQuestionsForSection('hs_interest_explorer'),  // Load from database
                     instruction: "Answer honestly based on your real preferences, not what others expect."
                 },
                 {
@@ -406,7 +412,7 @@ const AssessmentTest = () => {
                     icon: <Award className="w-6 h-6 text-amber-500" />,
                     description: "Identify your personal strengths and character traits.",
                     color: "amber",
-                    questions: highSchoolStrengthsQuestions,
+                    questions: getQuestionsForSection('hs_strengths_character'),  // Load from database
                     responseScale: highSchoolRatingScale,
                     instruction: "Rate each: 1 = not me, 2 = a bit, 3 = mostly, 4 = strongly me"
                 },
@@ -416,7 +422,7 @@ const AssessmentTest = () => {
                     icon: <Users className="w-6 h-6 text-blue-500" />,
                     description: "Understand how you work, learn, and contribute best.",
                     color: "blue",
-                    questions: highSchoolLearningQuestions,
+                    questions: getQuestionsForSection('hs_learning_preferences'),  // Load from database
                     instruction: "Select the options that best describe you."
                 },
                 {
@@ -425,7 +431,7 @@ const AssessmentTest = () => {
                     icon: <Zap className="w-6 h-6 text-purple-500" />,
                     description: "Rate your experience with different types of tasks.",
                     color: "purple",
-                    questions: highSchoolAptitudeQuestions,
+                    questions: getQuestionsForSection('hs_aptitude_sampling'),  // Load from database
                     responseScale: aptitudeRatingScale,
                     instruction: "After each task, rate: Ease 1–4, Enjoyment 1–4"
                 }
@@ -913,7 +919,8 @@ const AssessmentTest = () => {
                 answers,
                 studentStream,
                 questionBanks,
-                finalTimings // Pass section timings to Gemini
+                finalTimings, // Pass section timings to Gemini
+                gradeLevel // Pass grade level for proper scoring
             );
 
             if (geminiResults) {

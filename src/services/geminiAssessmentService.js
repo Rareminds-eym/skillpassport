@@ -172,17 +172,18 @@ const addCourseRecommendations = async (assessmentResults) => {
  * @param {string} stream - Student's selected stream (cs, bca, bba, dm, animation)
  * @param {Object} questionBanks - All question banks for reference
  * @param {Object} sectionTimings - Time spent on each section in seconds
+ * @param {string} gradeLevel - Grade level: 'middle', 'highschool', or 'after12'
  * @returns {Promise<Object>} - AI-analyzed results
  */
-export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks, sectionTimings = {}) => {
+export const analyzeAssessmentWithGemini = async (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12') => {
   // Check for Claude API
   if (!isClaudeConfigured()) {
     throw new Error('Claude API key not configured. Please add VITE_CLAUDE_API_KEY to your .env file.');
   }
 
   // Prepare the assessment data
-  const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings);
-  const prompt = buildAnalysisPrompt(assessmentData);
+  const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings, gradeLevel);
+  const prompt = buildAnalysisPrompt(assessmentData, gradeLevel);
 
   // Use Claude AI for assessment analysis
   console.log('🤖 Using Claude API for assessment analysis...');
@@ -229,17 +230,48 @@ const formatTimeForPrompt = (seconds) => {
 /**
  * Prepare assessment data for analysis
  */
-const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}) => {
+const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12') => {
   const { riasecQuestions, aptitudeQuestions, bigFiveQuestions, workValuesQuestions, employabilityQuestions, streamKnowledgeQuestions } = questionBanks;
 
-  // Extract RIASEC answers
+  // Determine section ID prefixes based on grade level
+  // These MUST match the section names in the database (personal_assessment_sections table)
+  const getSectionPrefix = (baseSection) => {
+    if (gradeLevel === 'middle') {
+      // Middle school section mappings (matches database section names)
+      const middleSchoolMap = {
+        'riasec': 'middle_interest_explorer',
+        'bigfive': 'middle_strengths_character',
+        'knowledge': 'middle_learning_preferences'
+      };
+      return middleSchoolMap[baseSection] || baseSection;
+    } else if (gradeLevel === 'highschool') {
+      // High school section mappings (matches database section names)
+      const highSchoolMap = {
+        'riasec': 'hs_interest_explorer',
+        'bigfive': 'hs_strengths_character',
+        'aptitude': 'hs_aptitude_sampling',
+        'knowledge': 'hs_learning_preferences'
+      };
+      return highSchoolMap[baseSection] || baseSection;
+    }
+    // College (after12) uses standard section IDs
+    return baseSection;
+  };
+
+  // Extract RIASEC/Interest answers
   const riasecAnswers = {};
+  const riasecPrefix = getSectionPrefix('riasec');
   Object.entries(answers).forEach(([key, value]) => {
-    if (key.startsWith('riasec_')) {
-      const questionId = key.replace('riasec_', '');
-      const question = riasecQuestions.find(q => q.id === questionId);
+    if (key.startsWith(`${riasecPrefix}_`)) {
+      const questionId = key.replace(`${riasecPrefix}_`, '');
+      const question = riasecQuestions?.find(q => q.id === questionId);
       if (question) {
-        riasecAnswers[questionId] = { question: question.text, answer: value };
+        riasecAnswers[questionId] = {
+          question: question.text,
+          answer: value,
+          categoryMapping: question.categoryMapping, // Maps selected options to RIASEC types (R,I,A,S,E,C)
+          type: question.type // Question type (multiselect, singleselect, rating, text)
+        };
       }
     }
   });
@@ -254,17 +286,37 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   };
 
   if (aptitudeQuestions) {
+    let debugCount = 0;
+    const aptitudePrefix = getSectionPrefix('aptitude');
     Object.entries(answers).forEach(([key, value]) => {
-      if (key.startsWith('aptitude_')) {
-        const questionId = key.replace('aptitude_', '');
+      if (key.startsWith(`${aptitudePrefix}_`)) {
+        const questionId = key.replace(`${aptitudePrefix}_`, '');
         const question = aptitudeQuestions.find(q => q.id === questionId);
         if (question) {
+          const isCorrect = value === question.correct;
+
+          // Debug first 3 comparisons to see the issue
+          if (debugCount < 3) {
+            console.log(`[APTITUDE DEBUG ${debugCount + 1}]`, {
+              questionId,
+              studentAnswer: value,
+              studentAnswerType: typeof value,
+              correctAnswer: question.correct,
+              correctAnswerType: typeof question.correct,
+              isCorrect,
+              strictEqual: value === question.correct,
+              looseEqual: value == question.correct,
+              subtype: question.subtype
+            });
+            debugCount++;
+          }
+
           const answerData = {
             questionId,
             question: question.text,
             studentAnswer: value,
             correctAnswer: question.correct,
-            isCorrect: value === question.correct,
+            isCorrect,
             subtype: question.subtype
           };
           if (aptitudeAnswers[question.subtype]) {
@@ -275,12 +327,13 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     });
   }
 
-  // Extract Big Five answers
+  // Extract Big Five/Strengths & Character answers
   const bigFiveAnswers = {};
+  const bigFivePrefix = getSectionPrefix('bigfive');
   Object.entries(answers).forEach(([key, value]) => {
-    if (key.startsWith('bigfive_')) {
-      const questionId = key.replace('bigfive_', '');
-      const question = bigFiveQuestions.find(q => q.id === questionId);
+    if (key.startsWith(`${bigFivePrefix}_`)) {
+      const questionId = key.replace(`${bigFivePrefix}_`, '');
+      const question = bigFiveQuestions?.find(q => q.id === questionId);
       if (question) {
         bigFiveAnswers[questionId] = { question: question.text, answer: value };
       }
@@ -355,12 +408,13 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     }
   });
 
-  // Extract Knowledge Test answers with correct answers
+  // Extract Knowledge/Career Discovery/Career Pathways answers
   const knowledgeAnswers = {};
-  const streamQuestions = streamKnowledgeQuestions[stream] || [];
+  const streamQuestions = streamKnowledgeQuestions?.[stream] || [];
+  const knowledgePrefix = getSectionPrefix('knowledge');
   Object.entries(answers).forEach(([key, value]) => {
-    if (key.startsWith('knowledge_')) {
-      const questionId = key.replace('knowledge_', '');
+    if (key.startsWith(`${knowledgePrefix}_`)) {
+      const questionId = key.replace(`${knowledgePrefix}_`, '');
       const question = streamQuestions.find(q => q.id === questionId);
       if (question) {
         knowledgeAnswers[questionId] = {
@@ -382,6 +436,25 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     spatial: { correct: aptitudeAnswers.spatial.filter(a => a.isCorrect).length, total: aptitudeAnswers.spatial.length },
     clerical: { correct: aptitudeAnswers.clerical.filter(a => a.isCorrect).length, total: aptitudeAnswers.clerical.length }
   };
+
+  // DEBUG: Log assessment data
+  console.log('=== ASSESSMENT DEBUG ===');
+  console.log('Grade Level:', gradeLevel);
+  console.log('Total answers keys:', Object.keys(answers).length);
+  console.log('First 5 answer keys:', Object.keys(answers).slice(0, 5));
+  console.log('Expected RIASEC prefix:', riasecPrefix);
+  console.log('Expected Aptitude prefix:', getSectionPrefix('aptitude'));
+  console.log('RIASEC answers extracted:', Object.keys(riasecAnswers).length);
+  console.log('Aptitude answers extracted:', {
+    verbal: aptitudeAnswers.verbal.length,
+    numerical: aptitudeAnswers.numerical.length,
+    abstract: aptitudeAnswers.abstract.length,
+    spatial: aptitudeAnswers.spatial.length,
+    clerical: aptitudeAnswers.clerical.length
+  });
+  console.log('Aptitude scores calculated:', aptitudeScores);
+  console.log('========================');
+
   const totalAptitudeQuestions = aptitudeQuestions?.length || 50;
 
   // Calculate timing metrics
@@ -448,15 +521,534 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
 };
 
 /**
+ * Build simplified prompt for middle school (grades 6-8)
+ */
+const buildMiddleSchoolPrompt = (assessmentData, answersHash) => {
+  return `You are a career counselor for middle school students (grades 6-8). Analyze this student's interest exploration assessment using the EXACT scoring rules below.
+
+## CRITICAL: This must be DETERMINISTIC - same input = same output always
+Session ID: ${answersHash}
+
+## Interest Explorer Responses:
+${JSON.stringify(assessmentData.riasecAnswers, null, 2)}
+
+**CRITICAL RIASEC SCORING INSTRUCTIONS:**
+Each question includes a "categoryMapping" field that maps answer options to RIASEC types (R, I, A, S, E, C).
+You MUST use this mapping to calculate scores precisely:
+
+**RIASEC Type Meanings:**
+- **R (Realistic)**: Building, fixing, tools, outdoor work, sports, hands-on activities
+- **I (Investigative)**: Science, research, puzzles, experiments, figuring things out, learning
+- **A (Artistic)**: Art, music, writing, performing, creating, designing, expressing ideas
+- **S (Social)**: Helping people, teaching, working with groups, caring, making friends
+- **E (Enterprising)**: Leading, organizing, persuading, selling, being in charge, starting projects
+- **C (Conventional)**: Organizing, following rules, keeping things neat, detailed work, lists
+
+**EXACT SCORING ALGORITHM:**
+1. For each question with categoryMapping:
+   - If answer is an array (multiselect): For each selected option, look up its RIASEC type in categoryMapping and add 2 points to that type
+   - If answer is a single string (singleselect): Look up the RIASEC type in categoryMapping and add 2 points to that type
+   - If answer is a number 1-4 (rating): Use strengthType or context to determine RIASEC type, then:
+     * Response 1 or 2: 0 points
+     * Response 3: 1 point
+     * Response 4: 2 points
+2. Sum all points for each RIASEC type (R, I, A, S, E, C)
+3. Calculate maxScore = 20 (or highest score among all types if higher)
+4. Calculate percentage for each type: (score / maxScore) × 100
+5. Identify top 3 types by score
+
+## Strengths & Character Responses (1-4 scale):
+${JSON.stringify(assessmentData.bigFiveAnswers, null, 2)}
+
+**SCORING**: Map responses to Big Five traits (O, C, E, A, N) and calculate averages on 1-5 scale
+
+## Career Discovery Responses:
+${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
+
+**IMPORTANT**: Return ONLY a JSON object (no markdown). Use this EXACT structure and POPULATE all fields:
+
+{
+  "riasec": {
+    "topThree": ["R", "I", "A"],
+    "scores": { "R": 12, "I": 10, "A": 8, "S": 5, "E": 4, "C": 3 },
+    "percentages": { "R": 60, "I": 50, "A": 40, "S": 25, "E": 20, "C": 15 },
+    "maxScore": 20,
+    "interpretation": "Brief, encouraging explanation of what their interests mean for future careers"
+  },
+  "aptitude": {
+    "scores": {},
+    "topStrengths": ["2-3 character strengths like Curiosity, Creativity, Persistence, Problem-solving"],
+    "overallScore": 0,
+    "cognitiveProfile": "Age-appropriate description of how they think and learn best"
+  },
+  "bigFive": {
+    "O": 3.5, "C": 3.2, "E": 3.8, "A": 4.0, "N": 2.5,
+    "workStyleSummary": "How they work and learn best based on their personality traits"
+  },
+  "workValues": {
+    "topThree": [
+      {"value": "Helping Others / Creativity / Learning / Achievement / Independence", "score": 4.0},
+      {"value": "Second most important value", "score": 3.5},
+      {"value": "Third value", "score": 3.0}
+    ]
+  },
+  "employability": {
+    "strengthAreas": ["2-3 soft skills they're already showing (e.g., Teamwork, Communication, Curiosity)"],
+    "improvementAreas": ["1-2 areas to grow (phrase positively and encouragingly)"]
+  },
+  "knowledge": { "score": 70, "correctCount": 7, "totalQuestions": 10 },
+  "careerFit": {
+    "clusters": [
+      {
+        "title": "Broad career area #1 (e.g., Creative Arts & Design, Science & Technology, Helping People)",
+        "matchScore": 85,
+        "fit": "High",
+        "description": "2-3 sentences explaining WHY this career area matches their interests and strengths. Make it personal and specific to their assessment results.",
+        "examples": ["4-5 specific jobs in this area they can understand (e.g., Video Game Designer, App Developer)"],
+        "whatYoullDo": "Brief description of typical activities in this career area",
+        "whyItFits": "Connects to their top interests and character strengths",
+        "roles": {
+          "entry": ["3-4 jobs they could do right after school or training (e.g., Camp Counselor, Junior Designer)"],
+          "mid": ["3-4 jobs they could work towards (e.g., Art Teacher, Game Developer, Graphic Designer)"]
+        },
+        "domains": ["Related areas like Design, Technology, Education, Entertainment"]
+      },
+      {
+        "title": "Broad career area #2",
+        "matchScore": 75,
+        "fit": "Medium",
+        "description": "Specific explanation of how their assessment connects to this career path",
+        "examples": ["3-4 specific jobs"],
+        "whatYoullDo": "What work in this area looks like",
+        "whyItFits": "How their strengths apply here",
+        "roles": {
+          "entry": ["2-3 entry-level jobs"],
+          "mid": ["2-3 career-level jobs"]
+        },
+        "domains": ["Related fields and industries"]
+      },
+      {
+        "title": "Broad career area #3",
+        "matchScore": 65,
+        "fit": "Explore",
+        "description": "Why this could be interesting to explore based on their results",
+        "examples": ["3-4 jobs to consider"],
+        "whatYoullDo": "Overview of work in this area",
+        "whyItFits": "Potential connections to their interests",
+        "roles": {
+          "entry": ["2-3 starter jobs"],
+          "mid": ["2-3 growth opportunities"]
+        },
+        "domains": ["Related career areas"]
+      }
+    ],
+    "specificOptions": {
+      "highFit": ["4-5 specific, age-appropriate career names they can relate to"],
+      "mediumFit": ["3-4 more career options worth exploring"],
+      "exploreLater": ["2-3 careers to keep in mind for later"]
+    }
+  },
+  "skillGap": {
+    "priorityA": [
+      {"skill": "Key foundational skill #1", "reason": "2-3 sentences explaining WHY this skill matters for their career interests and how it will help them succeed", "targetLevel": "Beginner", "currentLevel": "Starting"},
+      {"skill": "Key foundational skill #2", "reason": "Specific explanation of how developing this skill supports their goals and opens opportunities", "targetLevel": "Beginner", "currentLevel": "Starting"}
+    ],
+    "priorityB": [
+      {"skill": "Additional skill to explore", "reason": "Clear explanation of why this skill is valuable for their career path", "targetLevel": "Beginner"}
+    ],
+    "currentStrengths": ["2-3 skills they're already showing"],
+    "recommendedTrack": "Clear learning path (e.g., Creative Exploration, STEM Discovery, People & Communication)"
+  },
+  "roadmap": {
+    "twelveMonthJourney": {
+      "phase1": {
+        "months": "Months 1-3",
+        "title": "Discover & Explore",
+        "goals": ["Learn about careers", "Try new activities", "Discover what you enjoy"],
+        "activities": ["2-3 specific things to do"],
+        "outcome": "What they'll achieve"
+      },
+      "phase2": {
+        "months": "Months 4-6",
+        "title": "Learn & Practice",
+        "goals": ["Build basic skills", "Join clubs or groups", "Start small projects"],
+        "activities": ["2-3 specific activities"],
+        "outcome": "Skills they'll gain"
+      },
+      "phase3": {
+        "months": "Months 7-9",
+        "title": "Create & Share",
+        "goals": ["Make something", "Share with others", "Get feedback"],
+        "activities": ["2-3 hands-on projects"],
+        "outcome": "What they'll create"
+      },
+      "phase4": {
+        "months": "Months 10-12",
+        "title": "Grow & Reflect",
+        "goals": ["Review progress", "Set new goals", "Plan next steps"],
+        "activities": ["2-3 reflection activities"],
+        "outcome": "Path forward"
+      }
+    },
+    "projects": [
+      {
+        "title": "Beginner-friendly project #1",
+        "description": "What they'll do (2-3 sentences, make it exciting and doable)",
+        "skills": ["Skills they'll learn"],
+        "timeline": "2-3 months",
+        "difficulty": "Beginner",
+        "purpose": "Why this project matters",
+        "output": "What they'll have when done",
+        "steps": ["Step 1: Start here", "Step 2: Then do this", "Step 3: Finish with this"]
+      },
+      {
+        "title": "Project #2",
+        "description": "Another age-appropriate activity",
+        "skills": ["Skills to build"],
+        "timeline": "2-3 months",
+        "difficulty": "Beginner",
+        "purpose": "Learning goal",
+        "output": "Final product",
+        "steps": ["3-4 simple steps"]
+      },
+      {
+        "title": "Project #3",
+        "description": "Third exploration project",
+        "skills": ["More skills"],
+        "timeline": "3-4 months",
+        "difficulty": "Beginner",
+        "purpose": "Why it's valuable",
+        "output": "What they'll create",
+        "steps": ["Clear action steps"]
+      }
+    ],
+    "internship": {
+      "types": ["Job shadowing opportunities", "School clubs to join", "Volunteer activities", "Summer camps"],
+      "timing": "When to pursue these (school year, summer, etc.)",
+      "preparation": {
+        "resume": "Not needed yet - focus on exploring",
+        "portfolio": "Keep notes about what you try and learn",
+        "interview": "Practice talking about what interests you"
+      }
+    },
+    "exposure": {
+      "activities": ["Specific clubs, field trips, events to attend"],
+      "certifications": ["Age-appropriate certificates to earn (e.g., Online badges, Typing certification, Basic computer skills)"],
+      "resources": ["Books to read", "Websites to explore", "Videos to watch"]
+    }
+  },
+  "finalNote": {
+    "advantage": "Their standout strength or characteristic based on the assessment",
+    "growthFocus": "One clear, encouraging next step"
+  },
+  "profileSnapshot": {
+    "keyPatterns": {
+      "enjoyment": "What they enjoy based on interest responses (RIASEC top types)",
+      "strength": "Their character strengths from the assessment",
+      "workStyle": "How they work and learn best (from personality traits)",
+      "motivation": "What motivates them (from work values)"
+    },
+    "aptitudeStrengths": [
+      {"name": "Character strength #1 (e.g., Curiosity, Creativity, Perseverance)", "description": "How this shows up in their responses"},
+      {"name": "Character strength #2", "description": "Evidence from assessment"}
+    ],
+    "interestHighlights": ["Top 2-3 interest areas from RIASEC"],
+    "personalityInsights": ["2-3 key personality traits that impact career fit"]
+  },
+  "overallSummary": "3-4 sentences: Affirm their interests, celebrate their strengths, paint an exciting picture of possible futures, encourage continued exploration"
+}`;
+};
+
+/**
+ * Build intermediate prompt for high school (grades 9-12)
+ */
+const buildHighSchoolPrompt = (assessmentData, answersHash) => {
+  return `You are a career counselor for high school students (grades 9-12). Analyze this student's career exploration assessment and provide guidance appropriate for their age and academic level.
+
+## CRITICAL: This must be DETERMINISTIC - same input = same output always
+Session ID: ${answersHash}
+
+## Interest Explorer Responses:
+${JSON.stringify(assessmentData.riasecAnswers, null, 2)}
+
+**CRITICAL RIASEC SCORING INSTRUCTIONS:**
+Each question includes a "categoryMapping" field that maps answer options to RIASEC types (R, I, A, S, E, C).
+You MUST use this mapping to calculate scores precisely:
+
+**RIASEC Type Meanings:**
+- **R (Realistic)**: Building, fixing, tools, outdoor work, sports, hands-on activities
+- **I (Investigative)**: Science, research, puzzles, experiments, figuring things out, learning
+- **A (Artistic)**: Art, music, writing, performing, creating, designing, expressing ideas
+- **S (Social)**: Helping people, teaching, working with groups, caring, making friends
+- **E (Enterprising)**: Leading, organizing, persuading, selling, being in charge, starting projects
+- **C (Conventional)**: Organizing, following rules, keeping things neat, detailed work, lists
+
+**EXACT SCORING ALGORITHM:**
+1. For each question with categoryMapping:
+   - If answer is an array (multiselect): For each selected option, look up its RIASEC type in categoryMapping and add 2 points to that type
+   - If answer is a single string (singleselect): Look up the RIASEC type in categoryMapping and add 2 points to that type
+   - If answer is a number 1-5 (rating): Use strengthType or context to determine RIASEC type, then:
+     * Response 1-3: 0 points
+     * Response 4: 1 point
+     * Response 5: 2 points
+2. Sum all points for each RIASEC type (R, I, A, S, E, C)
+3. Calculate maxScore = 20 (or highest score among all types if higher)
+4. Calculate percentage for each type: (score / maxScore) × 100
+5. Identify top 3 types by score
+
+## Strengths & Character Responses:
+${JSON.stringify(assessmentData.bigFiveAnswers, null, 2)}
+
+## Aptitude Sampling (if available):
+${JSON.stringify(assessmentData.aptitudeAnswers, null, 2)}
+Pre-calculated scores: ${JSON.stringify(assessmentData.aptitudeScores, null, 2)}
+
+## Career Pathways Responses:
+${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
+
+**IMPORTANT**: Return ONLY a JSON object (no markdown). Use this structure and POPULATE all fields with specific, actionable content for high school students:
+
+{
+  "riasec": {
+    "topThree": ["Top 3 RIASEC codes"],
+    "scores": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
+    "percentages": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
+    "maxScore": 20,
+    "interpretation": "2-3 sentences about what their interests mean for college majors and career paths"
+  },
+  "aptitude": {
+    "scores": {
+      "Verbal": {"correct": 0, "total": 0, "percentage": 0},
+      "Numerical": {"correct": 0, "total": 0, "percentage": 0},
+      "Abstract": {"correct": 0, "total": 0, "percentage": 0}
+    },
+    "topStrengths": ["2-3 cognitive strengths with specific implications for their studies"],
+    "overallScore": 0,
+    "cognitiveProfile": "How they think, learn, and solve problems - connect to academic success"
+  },
+  "bigFive": {
+    "O": 3.5, "C": 3.2, "E": 3.8, "A": 4.0, "N": 2.5,
+    "workStyleSummary": "Their work style, team dynamics, and how to leverage their personality in school and future careers"
+  },
+  "workValues": {
+    "topThree": [
+      {"value": "Top motivator (Achievement, Helping, Innovation, Security, etc.)", "score": 4.0},
+      {"value": "Second value", "score": 3.5},
+      {"value": "Third value", "score": 3.0}
+    ]
+  },
+  "employability": {
+    "strengthAreas": ["Soft skills they're demonstrating (e.g., Leadership, Communication, Critical Thinking)"],
+    "improvementAreas": ["Skills to develop - phrase constructively"],
+    "overallReadiness": "Their current career readiness level with specific context"
+  },
+  "knowledge": { "score": 70, "correctCount": 7, "totalQuestions": 10 },
+  "careerFit": {
+    "clusters": [
+      {
+        "title": "Career cluster #1 (e.g., Healthcare & Medicine, Technology & Engineering, Business & Entrepreneurship)",
+        "matchScore": 85,
+        "fit": "High",
+        "description": "3-4 sentences explaining WHY this fits based on their assessment. Be specific about how their interests, aptitudes, and personality align with this career path.",
+        "examples": ["5-6 specific careers with brief role descriptions"],
+        "educationPath": "Specific college majors and degree programs (e.g., 'Consider majors like Computer Science, Information Systems, or Software Engineering')",
+        "whatYoullDo": "Day-to-day activities and responsibilities in this field",
+        "whyItFits": "Detailed connection between their assessment results and this career area",
+        "evidence": {
+          "interest": "How their RIASEC scores support this path",
+          "aptitude": "Which cognitive strengths make them a good fit",
+          "personality": "Personality traits that align with success in this field"
+        },
+        "roles": {
+          "entry": ["4-5 entry-level jobs (e.g., Junior Developer, Lab Assistant, Marketing Intern)"],
+          "mid": ["4-5 mid-career jobs (e.g., Senior Engineer, Research Scientist, Marketing Manager)"]
+        },
+        "domains": ["Related fields (e.g., Software, Hardware, AI, Cybersecurity)"]
+      },
+      {
+        "title": "Career cluster #2",
+        "matchScore": 75,
+        "fit": "Medium",
+        "description": "Specific explanation connecting their profile to this career area",
+        "examples": ["4-5 career options"],
+        "educationPath": "Relevant majors and programs",
+        "whatYoullDo": "Overview of work in this field",
+        "whyItFits": "How their strengths translate here",
+        "evidence": {
+          "interest": "Interest alignment",
+          "aptitude": "Relevant cognitive skills",
+          "personality": "Personality fit"
+        },
+        "roles": {
+          "entry": ["3-4 entry-level positions"],
+          "mid": ["3-4 mid-level careers"]
+        },
+        "domains": ["Related industries and specializations"]
+      },
+      {
+        "title": "Career cluster #3",
+        "matchScore": 65,
+        "fit": "Explore",
+        "description": "Why this is worth exploring despite lower match score",
+        "examples": ["3-4 careers to consider"],
+        "educationPath": "Potential degree paths",
+        "whatYoullDo": "What professionals in this area do",
+        "whyItFits": "Potential growth areas that could make this a fit",
+        "evidence": {
+          "interest": "Interest connections",
+          "aptitude": "Transferable skills",
+          "personality": "Personality considerations"
+        },
+        "roles": {
+          "entry": ["2-3 starting positions"],
+          "mid": ["2-3 advanced roles"]
+        },
+        "domains": ["Related career paths"]
+      }
+    ],
+    "specificOptions": {
+      "highFit": ["5-6 specific career titles ranked by fit"],
+      "mediumFit": ["4-5 careers worth considering"],
+      "exploreLater": ["2-3 careers to keep on the radar"]
+    }
+  },
+  "skillGap": {
+    "priorityA": [
+      {"skill": "Critical skill #1", "reason": "2-3 sentences explaining WHY this skill is essential for their target careers, how it will differentiate them in college applications or internships, and what opportunities it unlocks", "targetLevel": "Intermediate", "currentLevel": "Beginner", "howToBuild": "Specific action steps"},
+      {"skill": "Critical skill #2", "reason": "Detailed explanation of how this skill impacts their career readiness, why employers/colleges value it, and how it supports their career path", "targetLevel": "Intermediate", "currentLevel": "Beginner", "howToBuild": "Concrete ways to develop this"}
+    ],
+    "priorityB": [
+      {"skill": "Important skill", "reason": "Clear explanation of why this skill matters for their career goals and how it complements their strengths", "targetLevel": "Intermediate", "currentLevel": "Beginner"}
+    ],
+    "currentStrengths": ["3-4 skills they already demonstrate"],
+    "recommendedTrack": "Clear development path with rationale (e.g., 'STEM Excellence Track - Build technical and analytical skills for engineering/science careers')"
+  },
+  "roadmap": {
+    "twelveMonthJourney": {
+      "phase1": {
+        "months": "Months 1-3",
+        "title": "Foundation Building",
+        "goals": ["Master core skills", "Identify specific career interests", "Build initial portfolio"],
+        "activities": ["Specific classes or online courses to take", "Projects to start", "Competitions to enter"],
+        "outcome": "Clear career direction and foundational skills"
+      },
+      "phase2": {
+        "months": "Months 4-6",
+        "title": "Skill Development",
+        "goals": ["Earn certifications", "Build portfolio projects", "Network with professionals"],
+        "activities": ["Specific certifications to pursue", "Portfolio work to complete", "Mentors to connect with"],
+        "outcome": "Demonstrable skills and professional network"
+      },
+      "phase3": {
+        "months": "Months 7-9",
+        "title": "Experience & Application",
+        "goals": ["Secure internship/shadowing", "Lead school projects", "Apply skills in real contexts"],
+        "activities": ["Internship applications", "Leadership opportunities", "Competitions or showcases"],
+        "outcome": "Real-world experience and leadership roles"
+      },
+      "phase4": {
+        "months": "Months 10-12",
+        "title": "College & Career Prep",
+        "goals": ["Finalize college plans", "Perfect portfolio", "Interview preparation"],
+        "activities": ["College application work", "Portfolio refinement", "Mock interviews"],
+        "outcome": "College-ready with strong applications"
+      }
+    },
+    "projects": [
+      {
+        "title": "Portfolio project #1",
+        "description": "Detailed description of the project (3-4 sentences explaining what they'll build and why it matters)",
+        "skills": ["Specific technical and soft skills they'll develop"],
+        "timeline": "3-4 months",
+        "difficulty": "Intermediate",
+        "purpose": "How this project demonstrates career readiness",
+        "output": "What they'll have to show (e.g., 'A functional mobile app published on app stores')",
+        "steps": ["Step 1: Research and planning", "Step 2: Development/creation", "Step 3: Testing and refinement", "Step 4: Presentation and portfolio addition"],
+        "resources": ["Specific tools, platforms, or courses needed"]
+      },
+      {
+        "title": "Project #2",
+        "description": "Another substantive portfolio project",
+        "skills": ["Skills to master"],
+        "timeline": "3-4 months",
+        "difficulty": "Intermediate",
+        "purpose": "Career relevance",
+        "output": "Deliverable",
+        "steps": ["4-5 actionable steps"],
+        "resources": ["Tools and learning resources"]
+      },
+      {
+        "title": "Project #3",
+        "description": "Advanced or capstone project",
+        "skills": ["Advanced skills"],
+        "timeline": "4-6 months",
+        "difficulty": "Intermediate-Advanced",
+        "purpose": "Why it's impressive for college/internships",
+        "output": "Portfolio piece",
+        "steps": ["Detailed action plan"],
+        "resources": ["Required resources"]
+      }
+    ],
+    "internship": {
+      "types": ["Specific internship types matching their career interests (e.g., 'Software development internships at tech companies', 'Research assistant positions at university labs')"],
+      "timing": "When and how long (e.g., 'Summer internships: June-August, 8-10 weeks')",
+      "preparation": {
+        "resume": "What to include (projects, skills, achievements relevant to their target field)",
+        "portfolio": "What to showcase (specific projects and work samples)",
+        "interview": "How to prepare (common questions, technical prep needed)"
+      },
+      "whereToApply": ["Specific companies, programs, or platforms to use"]
+    },
+    "exposure": {
+      "activities": ["Specific clubs to join (e.g., 'Robotics Club, FBLA, DECA')", "Competitions to enter", "Events to attend"],
+      "certifications": ["Specific certifications to earn (e.g., 'Google IT Support Certificate', 'Adobe Certified Professional', 'Python Programming Certificate')", "Why each certificate matters"],
+      "onlineLearning": ["Specific courses on Coursera, edX, Khan Academy", "Skills to focus on"],
+      "networking": ["How to connect with professionals in their field", "LinkedIn strategies", "Informational interview tips"]
+    }
+  },
+  "finalNote": {
+    "advantage": "Their strongest competitive advantage for college and careers",
+    "growthFocus": "One key area to focus development in the next 6-12 months"
+  },
+  "profileSnapshot": {
+    "keyPatterns": {
+      "enjoyment": "What they enjoy based on RIASEC interest results",
+      "strength": "Their aptitude strengths from the assessment (if aptitude section available) OR character strengths",
+      "workStyle": "How they work and collaborate (from personality traits)",
+      "motivation": "What drives them (from work values)"
+    },
+    "aptitudeStrengths": [
+      {"name": "Cognitive strength #1 (e.g., Analytical Reasoning, Creative Thinking, Verbal Skills)", "description": "How this shows in assessment OR character strength if no aptitude data"},
+      {"name": "Cognitive strength #2 OR Character strength #2", "description": "Evidence from results"}
+    ],
+    "interestHighlights": ["Top 2-3 RIASEC interest areas with descriptions"],
+    "personalityInsights": ["2-3 key personality traits that shape their career fit"]
+  },
+  "overallSummary": "3-4 sentences: Acknowledge their readiness level, affirm their direction, highlight unique strengths, and provide clear encouragement for next steps in college prep and career exploration"
+}`;
+};
+
+/**
  * Build the analysis prompt for Claude AI
  */
-const buildAnalysisPrompt = (assessmentData) => {
+const buildAnalysisPrompt = (assessmentData, gradeLevel = 'after12') => {
   // Create a hash of the answers for consistency tracking
   const answersHash = JSON.stringify(assessmentData).split('').reduce((a, b) => {
     a = ((a << 5) - a) + b.charCodeAt(0);
     return a & a;
   }, 0);
 
+  // For middle school (grades 6-8), use simplified prompt
+  if (gradeLevel === 'middle') {
+    return buildMiddleSchoolPrompt(assessmentData, answersHash);
+  }
+
+  // For high school (grades 9-12), use intermediate prompt
+  if (gradeLevel === 'highschool') {
+    return buildHighSchoolPrompt(assessmentData, answersHash);
+  }
+
+  // College (after12) - full detailed analysis
   return `You are a career counselor and psychometric assessment expert. Analyze the following student assessment data and provide comprehensive results.
 
 ## CONSISTENCY REQUIREMENT - CRITICAL:
