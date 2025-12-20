@@ -42,13 +42,38 @@ const CareerSection = ({ careerFit }) => {
                                 </div>
                             </div>
 
-                            {/* Evidence Section */}
-                            <div className="bg-gray-50 rounded-lg p-5 mb-4">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <CheckCircle className={`w-5 h-5 ${style.text}`} />
-                                    <h4 className="font-semibold text-gray-800 text-base">Why This Fits You</h4>
+                            {/* Description */}
+                            {cluster.description && (
+                                <div className="mb-4">
+                                    <p className="text-gray-700 text-base leading-relaxed">{cluster.description}</p>
                                 </div>
-                                {cluster.evidence ? (
+                            )}
+
+                            {/* What You'll Do & Why It Fits */}
+                            {(cluster.whatYoullDo || cluster.whyItFits) && (
+                                <div className="grid md:grid-cols-2 gap-3 mb-4">
+                                    {cluster.whatYoullDo && (
+                                        <div className="bg-indigo-50 p-4 rounded-lg">
+                                            <h5 className="text-sm font-bold text-indigo-600 uppercase mb-2">What You'll Do</h5>
+                                            <p className="text-gray-700 text-base">{cluster.whatYoullDo}</p>
+                                        </div>
+                                    )}
+                                    {cluster.whyItFits && (
+                                        <div className="bg-green-50 p-4 rounded-lg">
+                                            <h5 className="text-sm font-bold text-green-600 uppercase mb-2">Why It Fits You</h5>
+                                            <p className="text-gray-700 text-base">{cluster.whyItFits}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Evidence Section */}
+                            {cluster.evidence && (
+                                <div className="bg-gray-50 rounded-lg p-5 mb-4">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <CheckCircle className={`w-5 h-5 ${style.text}`} />
+                                        <h4 className="font-semibold text-gray-800 text-base">Assessment Evidence</h4>
+                                    </div>
                                     <div className="grid md:grid-cols-3 gap-3">
                                         {[
                                             { label: 'Interest', value: cluster.evidence.interest, icon: Target },
@@ -64,10 +89,19 @@ const CareerSection = ({ careerFit }) => {
                                             </div>
                                         ))}
                                     </div>
-                                ) : (
-                                    <p className="text-gray-700 text-base">{cluster.reason}</p>
-                                )}
-                            </div>
+                                </div>
+                            )}
+
+                            {/* Education Path for High School/Middle School */}
+                            {cluster.educationPath && (
+                                <div className="bg-amber-50 rounded-lg p-4 mb-4 border border-amber-200">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Award className="w-5 h-5 text-amber-600" />
+                                        <h5 className="text-sm font-bold text-amber-600 uppercase">Education Path</h5>
+                                    </div>
+                                    <p className="text-gray-700 text-base">{cluster.educationPath}</p>
+                                </div>
+                            )}
 
                             {/* Roles & Domains */}
                             <div className="grid md:grid-cols-2 gap-4">

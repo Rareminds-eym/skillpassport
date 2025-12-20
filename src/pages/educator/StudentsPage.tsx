@@ -10,6 +10,7 @@ import {
   XMarkIcon,
   PencilSquareIcon,
   TrashIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import { useStudents, UICandidate } from '../../hooks/useStudents';
 import { useEducatorSchool } from '../../hooks/useEducatorSchool';
@@ -21,6 +22,8 @@ import EditStudentModal from '../../components/educator/modals/EditStudentModal'
 import DeleteStudentModal from '../../components/educator/modals/DeleteStudentModal';
 import BulkDeleteStudentsModal from '../../components/educator/modals/BulkDeleteStudentsModal';
 import { UserPlusIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import MessageService from '../../services/messageService';
 
 const FilterSection = ({ title, children, defaultOpen = false }: {
   title: string;
@@ -214,11 +217,12 @@ const BadgeComponent = ({ badges }: { badges: string[] }) => {
   );
 };
 
-const StudentCard = ({ student, onViewProfile, onEdit, onDelete, isSelected, onToggleSelect }: {
+const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSelected, onToggleSelect }: {
   student: UICandidate;
   onViewProfile: (student: UICandidate) => void;
   onEdit: (student: UICandidate) => void;
   onDelete: (student: UICandidate) => void;
+  onMessage: (student: UICandidate) => void;
   isSelected?: boolean;
   onToggleSelect?: (studentId: string) => void;
 }) => {
@@ -308,6 +312,13 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, isSelected, onT
             View
           </button>
           <button
+            onClick={() => onMessage(student)}
+            className="inline-flex items-center px-2 py-1 border border-green-300 rounded text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100"
+          >
+            <ChatBubbleLeftRightIcon className="h-3 w-3 mr-1" />
+            Message
+          </button>
+          <button
             onClick={() => onEdit(student)}
             className="inline-flex items-center px-2 py-1 border border-blue-300 rounded text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
           >
@@ -334,6 +345,7 @@ type EducatorOutletContext = {
 const StudentsPage = () => {
   const { onViewProfile } = useOutletContext<EducatorOutletContext>()
   const { searchQuery, setSearchQuery } = useSearch();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
@@ -714,6 +726,32 @@ const StudentsPage = () => {
     await refetch();
   };
 
+  // Handle message student
+  const handleMessageStudent = async (student: UICandidate) => {
+    try {
+      // Get educator's user ID from auth context or localStorage
+      const educatorId = localStorage.getItem('userId') || localStorage.getItem('userEmail');
+      
+      if (!educatorId) {
+        alert('Unable to identify educator. Please log in again.');
+        return;
+      }
+
+      // Navigate to Communication page with student info
+      // The Communication page will handle creating the conversation
+      navigate('/educator/communication', {
+        state: {
+          targetStudentId: student.id,
+          targetStudentName: student.name,
+          targetStudentEmail: student.email
+        }
+      });
+    } catch (error) {
+      console.error('Error initiating message:', error);
+      alert('Failed to start conversation. Please try again.');
+    }
+  };
+
   const selectedStudents = students.filter(s => selectedStudentIds.has(s.id));
   const allOnPageSelected = paginatedStudents.length > 0 && paginatedStudents.every(s => selectedStudentIds.has(s.id));
 
@@ -1004,6 +1042,7 @@ const StudentsPage = () => {
                     onViewProfile={onViewProfile}
                     onEdit={handleEditClick}
                     onDelete={handleDeleteClick}
+                    onMessage={handleMessageStudent}
                     isSelected={selectedStudentIds.has(student.id)}
                     onToggleSelect={handleToggleStudent}
                   />
@@ -1112,8 +1151,15 @@ const StudentsPage = () => {
                               View
                             </button>
                             <button
-                              onClick={() => handleEditClick(student)}
+                              onClick={() => handleMessageStudent(student)}
                               className="text-green-600 hover:text-green-900"
+                              title="Message Student"
+                            >
+                              Message
+                            </button>
+                            <button
+                              onClick={() => handleEditClick(student)}
+                              className="text-orange-600 hover:text-orange-900"
                               title="Edit Student"
                             >
                               Edit

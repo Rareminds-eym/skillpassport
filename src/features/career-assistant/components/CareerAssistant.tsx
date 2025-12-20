@@ -23,6 +23,7 @@ import {
 import { streamCareerChat } from '../services/careerEdgeFunctionService';
 import { useAuth } from '../../../context/AuthContext';
 import { useCareerConversations, ConversationMessage } from '../hooks/useCareerConversations';
+import { useAIFeedback, AIFeedback } from '../hooks/useAIFeedback';
 import { ConversationSidebar } from './ConversationSidebar';
 import { EnhancedMessage, SimpleMessage } from './EnhancedMessage';
 import { EnhancedAIResponse } from '../types/interactive';
@@ -33,6 +34,9 @@ interface Message {
   content: string;
   timestamp: string;
   interactive?: EnhancedAIResponse['interactive'];
+  intent?: string;
+  intentConfidence?: string;
+  phase?: string;
 }
 
 const CareerAssistant: React.FC = () => {
@@ -50,6 +54,14 @@ const CareerAssistant: React.FC = () => {
     currentConversationId,
     setCurrentConversationId,
   } = useCareerConversations();
+
+  // AI Feedback hook
+  const {
+    submitFeedback,
+    loadFeedback,
+    getFeedback,
+    isLoading: isFeedbackLoading
+  } = useAIFeedback();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -241,11 +253,18 @@ const CareerAssistant: React.FC = () => {
         fetchConversations();
       }
 
-      if (result.interactive) {
-        setMessages(prev => prev.map(m => 
-          m.id === id ? { ...m, interactive: result.interactive } : m
-        ));
-      }
+      // Update message with backend's messageId, interactive content and metadata
+      // This ensures feedback is saved with the correct ID that matches the database
+      setMessages(prev => prev.map(m => 
+        m.id === id ? { 
+          ...m, 
+          id: result.messageId || m.id, // Use backend's messageId for feedback matching
+          interactive: result.interactive,
+          intent: result.intent,
+          intentConfidence: result.intentConfidence,
+          phase: result.phase
+        } : m
+      ));
     } catch (error: any) {
       console.error('Career AI Error:', error);
       
@@ -291,6 +310,44 @@ const CareerAssistant: React.FC = () => {
     setShowWelcome(true);
     setSelectedChips([]);
   };
+
+  // Handle feedback submission
+  const handleFeedback = useCallback(async (
+    messageId: string, 
+    thumbsUp: boolean,
+    rating?: number,
+    feedbackText?: string
+  ) => {
+    if (!currentConversationId) return;
+
+    // Find the message and its preceding user message
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+    if (messageIndex === -1) return;
+
+    const aiMessage = messages[messageIndex];
+    const userMessage = messages.slice(0, messageIndex).reverse().find(m => m.role === 'user');
+
+    if (!userMessage) return;
+
+    const feedback: AIFeedback = {
+      conversationId: currentConversationId,
+      messageId: messageId,
+      userMessage: userMessage.content,
+      aiResponse: aiMessage.content,
+      detectedIntent: aiMessage.intent,
+      intentConfidence: aiMessage.intentConfidence,
+      conversationPhase: aiMessage.phase
+    };
+
+    await submitFeedback(feedback, thumbsUp, rating, feedbackText);
+  }, [currentConversationId, messages, submitFeedback]);
+
+  // Load feedback when conversation changes
+  useEffect(() => {
+    if (currentConversationId) {
+      loadFeedback(currentConversationId);
+    }
+  }, [currentConversationId, loadFeedback]);
 
   const handleSelectConversation = async (id: string) => {
     await loadConversation(id);
@@ -426,7 +483,16 @@ const CareerAssistant: React.FC = () => {
                       </div>
                     </motion.div>
                   ) : (
-                    <SimpleMessage key={message.id} content={message.content} timestamp={message.timestamp} isUser={false} />
+                    <SimpleMessage 
+                      key={message.id} 
+                      content={message.content} 
+                      timestamp={message.timestamp} 
+                      isUser={false}
+                      messageId={message.id}
+                      onFeedback={handleFeedback}
+                      feedbackData={getFeedback(message.id)}
+                      feedbackLoading={isFeedbackLoading(message.id)}
+                    />
                   )
                 ))}
               </AnimatePresence>

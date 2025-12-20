@@ -13,13 +13,14 @@ export interface Message {
   id: number;
   conversation_id: string;
   sender_id: string;
-  sender_type: 'student' | 'recruiter';
+  sender_type: 'student' | 'recruiter' | 'educator';
   receiver_id: string;
-  receiver_type: 'student' | 'recruiter';
+  receiver_type: 'student' | 'recruiter' | 'educator';
   message_text: string;
   attachments?: any[];
   application_id?: number;
   opportunity_id?: number;
+  class_id?: number;
   is_read: boolean;
   read_at?: string;
   created_at: string;
@@ -28,31 +29,39 @@ export interface Message {
 
 export interface Conversation {
   id: string;
-  student_id: string;
-  recruiter_id: string;
+  student_id?: string;
+  recruiter_id?: string;
+  educator_id?: string;
   application_id?: number;
   opportunity_id?: number;
+  class_id?: number;
   subject?: string;
   status: 'active' | 'archived' | 'closed';
+  conversation_type: 'student_recruiter' | 'student_educator' | 'educator_recruiter';
   last_message_at?: string;
   last_message_preview?: string;
   last_message_sender?: string;
   student_unread_count: number;
   recruiter_unread_count: number;
+  educator_unread_count: number;
   created_at: string;
   updated_at: string;
   
   // Soft delete fields
   deleted_by_student?: boolean;
   deleted_by_recruiter?: boolean;
+  deleted_by_educator?: boolean;
   student_deleted_at?: string;
   recruiter_deleted_at?: string;
+  educator_deleted_at?: string;
   
   // Joined data
   student?: any;
   recruiter?: any;
+  educator?: any;
   application?: any;
   opportunity?: any;
+  class?: any;
 }
 
 export class MessageService {
@@ -134,7 +143,7 @@ export class MessageService {
             })
             .eq('id', existing.id)
             .select()
-            .single();
+            .maybeSingle();
           
           if (restoreError) {
             console.warn('⚠️ Could not restore conversation, using as-is');
@@ -174,38 +183,178 @@ export class MessageService {
   }
 
   /**
+   * Get or create conversation between student and educator
+   * For school class-related discussions, assignments, etc.
+   */
+  static async getOrCreateStudentEducatorConversation(
+    studentId: string,
+    educatorId: string,
+    classId?: string,
+    subject?: string
+  ): Promise<Conversation> {
+    const cacheKey = `student_educator:${studentId}:${educatorId}:${classId || 'null'}:${subject || 'general'}`;
+    
+    // Deduplicate concurrent requests
+    if (pendingRequests.has(cacheKey)) {
+      return pendingRequests.get(cacheKey)!;
+    }
+    
+    const request = this._getOrCreateStudentEducatorConversationInternal(
+      studentId,
+      educatorId,
+      classId,
+      subject
+    );
+    
+    pendingRequests.set(cacheKey, request);
+    
+    try {
+      const result = await request;
+      return result;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
+  }
+
+  private static async _getOrCreateStudentEducatorConversationInternal(
+    studentId: string,
+    educatorId: string,
+    classId?: string,
+    subject?: string
+  ): Promise<Conversation> {
+    try {
+      // Check for existing conversation
+      let query = supabase
+        .from('conversations')
+        .select('id, status, deleted_by_student, deleted_by_educator, student_id, educator_id, class_id, subject, created_at, updated_at')
+        .eq('student_id', studentId)
+        .eq('educator_id', educatorId)
+        .eq('conversation_type', 'student_educator')
+        .limit(1);
+      
+      if (classId) {
+        query = query.eq('class_id', classId);
+      }
+      
+      if (subject) {
+        query = query.eq('subject', subject);
+      }
+      
+      const { data: existing, error: fetchError } = await query.maybeSingle();
+      
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
+      
+      if (existing) {
+        // If conversation was deleted, restore it
+        if (existing.deleted_by_student || existing.deleted_by_educator) {
+          console.log('📥 Restoring previously deleted student-educator conversation:', existing.id);
+          
+          const { data: restored, error: restoreError } = await supabase
+            .from('conversations')
+            .update({
+              deleted_by_student: false,
+              deleted_by_educator: false,
+              student_deleted_at: null,
+              educator_deleted_at: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existing.id)
+            .select()
+            .maybeSingle();
+          
+          if (restoreError) {
+            console.warn('⚠️ Could not restore conversation, using as-is');
+            return existing as Conversation;
+          }
+          
+          console.log('✅ Student-educator conversation restored');
+          return restored;
+        }
+        
+        return existing as Conversation;
+      }
+      
+      // Create new conversation
+      const conversationId = `conv_se_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const { data, error } = await supabase
+        .from('conversations')
+        .insert({
+          id: conversationId,
+          student_id: studentId,
+          educator_id: educatorId,
+          class_id: classId,
+          subject: subject || 'General Discussion',
+          conversation_type: 'student_educator',
+          status: 'active'
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Send a message
    * Optimized with cache invalidation
    */
   static async sendMessage(
     conversationId: string,
     senderId: string,
-    senderType: 'student' | 'recruiter',
+    senderType: 'student' | 'recruiter' | 'educator',
     receiverId: string,
-    receiverType: 'student' | 'recruiter',
+    receiverType: 'student' | 'recruiter' | 'educator',
     messageText: string,
     applicationId?: number,
     opportunityId?: number,
+    classId?: string,
+    subject?: string,
     attachments?: any[]
   ): Promise<Message> {
     try {
+      // Validate required fields
+      if (!conversationId || !senderId || !receiverId || !messageText?.trim()) {
+        throw new Error('Missing required fields for message');
+      }
+
+      // Prepare message data, excluding undefined/null values that might cause issues
+      const messageData: any = {
+        conversation_id: conversationId,
+        sender_id: senderId,
+        sender_type: senderType,
+        receiver_id: receiverId,
+        receiver_type: receiverType,
+        message_text: messageText.trim()
+      };
+
+      // Only add optional fields if they have valid values
+      if (applicationId) messageData.application_id = applicationId;
+      if (opportunityId) messageData.opportunity_id = opportunityId;
+      if (classId) messageData.class_id = classId;
+      if (subject) messageData.subject = subject;
+      if (attachments && attachments.length > 0) messageData.attachments = attachments;
+
+      console.log('📤 Sending message with data:', messageData);
+
       const { data, error } = await supabase
         .from('messages')
-        .insert({
-          conversation_id: conversationId,
-          sender_id: senderId,
-          sender_type: senderType,
-          receiver_id: receiverId,
-          receiver_type: receiverType,
-          message_text: messageText,
-          application_id: applicationId,
-          opportunity_id: opportunityId,
-          attachments: attachments
-        })
+        .insert(messageData)
         .select('id, conversation_id, sender_id, sender_type, receiver_id, receiver_type, message_text, is_read, read_at, created_at, updated_at')
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Database error sending message:', error);
+        throw new Error(`Failed to send message: ${error.message}`);
+      }
+      
+      console.log('✅ Message sent successfully:', data);
       
       // Clear caches after sending message
       this.clearMessageCache(conversationId);
@@ -214,6 +363,71 @@ export class MessageService {
       
       return data;
     } catch (error) {
+      console.error('❌ Error in sendMessage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send a student-educator message
+   * Convenience method for student-educator messaging
+   */
+  static async sendStudentEducatorMessage(
+    conversationId: string,
+    studentId: string,
+    messageText: string,
+    classId?: string,
+    subject?: string,
+    attachments?: any[]
+  ): Promise<Message> {
+    try {
+      console.log('📨 Sending student-educator message:', {
+        conversationId,
+        studentId,
+        messageText: messageText.substring(0, 50) + '...',
+        classId,
+        subject
+      });
+
+      // Get conversation details to find the educator
+      const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .select('educator_id, class_id, subject')
+        .eq('id', conversationId)
+        .maybeSingle();
+      
+      if (convError && convError.code !== 'PGRST116') {
+        console.error('❌ Error fetching conversation:', convError);
+        throw new Error(`Conversation not found: ${convError.message}`);
+      }
+      
+      if (!conversation) {
+        console.error('❌ Conversation not found:', conversationId);
+        throw new Error('Conversation not found');
+      }
+      
+      if (!conversation?.educator_id) {
+        console.error('❌ No educator found in conversation:', conversation);
+        throw new Error('Educator not found in conversation');
+      }
+
+      console.log('✅ Found conversation:', conversation);
+      
+      return this.sendMessage(
+        conversationId,
+        studentId,
+        'student',
+        conversation.educator_id,
+        'educator',
+        messageText,
+        undefined, // applicationId
+        undefined, // opportunityId
+        classId || conversation.class_id,
+        subject || conversation.subject,
+        attachments
+      );
+    } catch (error) {
+      console.error('❌ Error in sendStudentEducatorMessage:', error);
       throw error;
     }
   }
@@ -267,7 +481,9 @@ export class MessageService {
           // Cleanup old cache entries
           if (messageCache.size > 50) {
             const oldestKey = messageCache.keys().next().value;
-            messageCache.delete(oldestKey);
+            if (oldestKey) {
+              messageCache.delete(oldestKey);
+            }
           }
         }
         
@@ -309,7 +525,7 @@ export class MessageService {
    */
   static async getUserConversations(
     userId: string,
-    userType: 'student' | 'recruiter',
+    userType: 'student' | 'recruiter' | 'educator',
     includeArchived: boolean = false,
     useCache: boolean = true
   ): Promise<Conversation[]> {
@@ -347,39 +563,54 @@ export class MessageService {
 
   private static async _getUserConversationsInternal(
     userId: string,
-    userType: 'student' | 'recruiter',
+    userType: 'student' | 'recruiter' | 'educator',
     includeArchived: boolean,
     cacheKey: string,
     useCache: boolean
   ): Promise<Conversation[]> {
     try {
-      const column = userType === 'student' ? 'student_id' : 'recruiter_id';
-      const deletedColumn = userType === 'student' ? 'deleted_by_student' : 'deleted_by_recruiter';
+      const column = userType === 'student' ? 'student_id' : userType === 'recruiter' ? 'recruiter_id' : 'educator_id';
+      const deletedColumn = userType === 'student' ? 'deleted_by_student' : userType === 'recruiter' ? 'deleted_by_recruiter' : 'deleted_by_educator';
       
-      // Optimized: Fetch only necessary fields to reduce payload size
+      // Optimized: Fetch only essential student data that exists in the database
       let query = supabase
         .from('conversations')
         .select(`
           id,
           student_id,
           recruiter_id,
+          educator_id,
           application_id,
           opportunity_id,
+          class_id,
           subject,
           status,
+          conversation_type,
           last_message_at,
           last_message_preview,
           last_message_sender,
           student_unread_count,
           recruiter_unread_count,
+          educator_unread_count,
           created_at,
           updated_at,
           deleted_by_student,
           deleted_by_recruiter,
-          student:students(id, profile, email),
+          deleted_by_educator,
+          student:students(
+            id,
+            user_id,
+            email,
+            name,
+            contact_number,
+            university,
+            branch_field
+          ),
           recruiter:recruiters(id, name, email, phone),
+          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
           opportunity:opportunities(id, title, company_name, location, employment_type),
-          application:applied_jobs(id, application_status)
+          application:applied_jobs(id, application_status),
+          school_class:school_classes(id, name, grade, section)
         `)
         .eq(column, userId);
       
@@ -411,21 +642,27 @@ export class MessageService {
               id,
               student_id,
               recruiter_id,
+              educator_id,
               application_id,
               opportunity_id,
+              class_id,
               subject,
               status,
+              conversation_type,
               last_message_at,
               last_message_preview,
               last_message_sender,
               student_unread_count,
               recruiter_unread_count,
+              educator_unread_count,
               created_at,
               updated_at,
-              student:students(id, profile, email),
+              student:students(id, name, email, contact_number, university, branch_field),
               recruiter:recruiters(id, name, email, phone),
+              educator:school_educators(id, first_name, last_name, email, phone_number, photo_url),
               opportunity:opportunities(id, title, company_name, location, employment_type),
-              application:applied_jobs(id, application_status)
+              application:applied_jobs(id, application_status),
+              school_class:school_classes(id, name, grade, section)
             `)
             .eq(column, userId);
           
@@ -539,14 +776,14 @@ export class MessageService {
           .eq('conversation_id', conversationId)
           .eq('receiver_id', userId)
           .eq('is_read', false)
-          .select('id', { count: 'exact', head: true }),
+          .select('id'),
         
         // Get conversation details
         supabase
           .from('conversations')
-          .select('student_id, recruiter_id')
+          .select('student_id, recruiter_id, educator_id')
           .eq('id', conversationId)
-          .single()
+          .maybeSingle()
       ]);
       
       if (messageResult.status === 'rejected') {
@@ -557,7 +794,9 @@ export class MessageService {
       if (conversationResult.status === 'fulfilled' && conversationResult.value.data) {
         const conversation = conversationResult.value.data;
         const isStudent = conversation.student_id === userId;
-        const updateField = isStudent ? 'student_unread_count' : 'recruiter_unread_count';
+        const isRecruiter = conversation.recruiter_id === userId;
+
+        const updateField = isStudent ? 'student_unread_count' : isRecruiter ? 'recruiter_unread_count' : 'educator_unread_count';
         
         // Update unread count without awaiting (fire and forget for speed)
         supabase
@@ -567,9 +806,6 @@ export class MessageService {
           .then(() => {
             // Clear conversation cache after update
             this.clearConversationCache(userId);
-          })
-          .catch(() => {
-            // Silently fail - realtime will sync eventually
           });
       }
       
@@ -634,7 +870,7 @@ export class MessageService {
    */
   static async getUnreadCount(
     userId: string,
-    userType: 'student' | 'recruiter'
+    userType: 'student' | 'recruiter' | 'educator'
   ): Promise<number> {
     try {
       const { count, error } = await supabase
@@ -657,10 +893,10 @@ export class MessageService {
    */
   static subscribeToUserConversations(
     userId: string,
-    userType: 'student' | 'recruiter',
+    userType: 'student' | 'recruiter' | 'educator',
     onUpdate: (conversation: Conversation) => void
   ) {
-    const column = userType === 'student' ? 'student_id' : 'recruiter_id';
+    const column = userType === 'student' ? 'student_id' : userType === 'recruiter' ? 'recruiter_id' : 'educator_id';
 
     return supabase
       .channel(`user-conversations:${userId}`)
@@ -702,7 +938,7 @@ export class MessageService {
         .from('conversations')
         .select(`
           *,
-          student:students(id, profile),
+          student:students(id, name, email, contact_number, university, branch_field),
           application:applied_jobs(
             id,
             application_status,
@@ -765,11 +1001,11 @@ export class MessageService {
   static async deleteConversationForUser(
     conversationId: string,
     userId: string,
-    userType: 'student' | 'recruiter'
+    userType: 'student' | 'recruiter' | 'educator'
   ): Promise<void> {
     try {
-      const deletedColumn = userType === 'student' ? 'deleted_by_student' : 'deleted_by_recruiter';
-      const deletedAtColumn = userType === 'student' ? 'student_deleted_at' : 'recruiter_deleted_at';
+      const deletedColumn = userType === 'student' ? 'deleted_by_student' : userType === 'recruiter' ? 'deleted_by_recruiter' : 'deleted_by_educator';
+      const deletedAtColumn = userType === 'student' ? 'student_deleted_at' : userType === 'recruiter' ? 'recruiter_deleted_at' : 'educator_deleted_at';
       
       const { error } = await supabase
         .from('conversations')
@@ -793,11 +1029,11 @@ export class MessageService {
   static async restoreConversation(
     conversationId: string,
     userId: string,
-    userType: 'student' | 'recruiter'
+    userType: 'student' | 'recruiter' | 'educator'
   ): Promise<void> {
     try {
-      const deletedColumn = userType === 'student' ? 'deleted_by_student' : 'deleted_by_recruiter';
-      const deletedAtColumn = userType === 'student' ? 'student_deleted_at' : 'recruiter_deleted_at';
+      const deletedColumn = userType === 'student' ? 'deleted_by_student' : userType === 'recruiter' ? 'deleted_by_recruiter' : 'deleted_by_educator';
+      const deletedAtColumn = userType === 'student' ? 'student_deleted_at' : userType === 'recruiter' ? 'recruiter_deleted_at' : 'educator_deleted_at';
       
       const { error } = await supabase
         .from('conversations')

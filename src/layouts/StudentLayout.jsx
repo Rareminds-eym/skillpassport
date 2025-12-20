@@ -98,7 +98,7 @@ const StudentLayout = () => {
       <div className={isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}>
         {!isAssessmentPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
         {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
-        <main className={isCareerAIPage ? "flex-1 overflow-hidden" : "py-4 px-6"}>
+        <main className={isCareerAIPage ? "flex-1 overflow-hidden" : ""}>
           <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
         </main>
         {!isCareerAIPage && !isAssessmentPage && (

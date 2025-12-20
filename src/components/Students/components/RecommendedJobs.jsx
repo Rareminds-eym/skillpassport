@@ -145,10 +145,10 @@ const RecommendedJobs = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="mb-6 h-[400px] rounded-xl overflow-hidden"
+        className="mb-6 h-[400px] rounded-xl overflow-hidden w-full"
       >
         <WavyBackground
-          className="max-w-4xl mx-auto pb-20"
+          className="w-full pb-20"
           containerClassName="h-full"
           colors={["#4f46e5", "#7c3aed", "#2563eb", "#06b6d4", "#8b5cf6"]}
           waveOpacity={0.3}

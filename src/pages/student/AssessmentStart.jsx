@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Target, Clock, FileText, Zap, CheckCircle, ArrowLeft } from 'lucide-react';
 
@@ -9,15 +9,23 @@ import { Target, Clock, FileText, Zap, CheckCircle, ArrowLeft } from 'lucide-rea
  */
 const AssessmentStart = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [isStarting, setIsStarting] = React.useState(false);
 
+  // Get certificate/course data from navigation state
+  const certificateName = location.state?.certificateName || location.state?.courseName || 'General Assessment';
+  const courseId = location.state?.courseId || 'default';
+  const certificateId = location.state?.certificateId;
+
   const handleStartAssessment = () => {
     setIsStarting(true);
-    // Navigate to the actual test page
+    // Navigate to the actual test page with certificate/course data
     navigate('/student/assessment/start', { 
       state: { 
-        courseId: 'default',
+        courseId,
+        certificateId,
+        certificateName,
         userId: user?.id,
         email: user?.email 
       } 
@@ -91,7 +99,7 @@ const AssessmentStart = () => {
             </div>
             
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome to Your Assessment
+              {certificateName}
             </h1>
             
             {user && (

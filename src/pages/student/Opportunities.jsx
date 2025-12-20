@@ -15,7 +15,19 @@ import {
   RefreshCw,
   TrendingUp,
   Target,
-  Building2
+  Building2,
+  Eye,
+  CheckCircle2,
+  XCircle,
+  Calendar,
+  Users,
+  AlertCircle,
+  Video,
+  Award,
+  Bell,
+  MessageSquare,
+  ArrowRight,
+  Filter
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -207,6 +219,64 @@ const Opportunities = () => {
     };
 
     fetchApplications();
+  }, [studentId, userEmail, activeTab]);
+
+  // Subscribe to real-time pipeline updates
+  useEffect(() => {
+    if (!studentId || activeTab !== 'my-applications') return;
+
+    const channel = StudentPipelineService.subscribeToPipelineUpdates(
+      studentId,
+      (payload) => {
+        // Refresh applications when pipeline updates
+        const fetchApplications = async () => {
+          try {
+            const applicationsData = await StudentPipelineService.getStudentApplicationsWithPipeline(
+              studentId,
+              userEmail
+            );
+
+            const transformedApplications = applicationsData.map(app => ({
+              id: app.id,
+              studentId: app.student_id,
+              jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
+              company: app.opportunity?.company_name || 'N/A',
+              location: app.opportunity?.location || 'N/A',
+              salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
+                ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
+                : 'Not specified',
+              appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+              status: app.application_status,
+              logo: app.opportunity?.company_logo,
+              type: app.opportunity?.employment_type || 'N/A',
+              level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
+              lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
+              opportunityId: app.opportunity_id,
+              recruiterId: app.opportunity?.recruiter_id || app.pipeline_recruiter_id || app.pipeline_status?.assigned_to || null,
+              pipelineStatus: app.pipeline_status,
+              hasPipelineStatus: app.has_pipeline_status,
+              pipelineStage: app.pipeline_stage,
+              pipelineStageChangedAt: app.pipeline_stage_changed_at,
+              rejectionReason: app.rejection_reason,
+              nextAction: app.next_action,
+              nextActionDate: app.next_action_date,
+              interviews: app.interviews || []
+            }));
+
+            setApplications(transformedApplications);
+            setFilteredApplications(transformedApplications);
+          } catch (err) {
+            console.error('Error refreshing applications:', err);
+          }
+        };
+
+        fetchApplications();
+      }
+    );
+
+    return () => {
+      StudentPipelineService.unsubscribeFromPipelineUpdates(channel);
+    };
   }, [studentId, userEmail, activeTab]);
 
   const formatLastUpdate = (dateString) => {
@@ -595,6 +665,9 @@ const Opportunities = () => {
                 studentId={studentId}
                 navigate={navigate}
                 queryClient={queryClient}
+                setActiveTab={setActiveTab}
+                opportunities={opportunities}
+                setSelectedOpportunity={setSelectedOpportunity}
               />
             )}
           </div>
@@ -1046,7 +1119,7 @@ const MyJobsContent = ({
   );
 };
 
-// My Applications Content Component (simplified from Applications.jsx)
+// My Applications Content Component (full-featured from Applications.jsx)
 const MyApplicationsContent = ({
   applications,
   searchQuery,
@@ -1059,24 +1132,234 @@ const MyApplicationsContent = ({
   setMessagingApplicationId,
   studentId,
   navigate,
-  queryClient
+  queryClient,
+  setActiveTab,
+  opportunities,
+  setSelectedOpportunity
 }) => {
+  // Helper function to get stage order
+  const getStageOrder = (stage) => {
+    const stageOrder = {
+      sourced: 1,
+      screened: 2,
+      interview_1: 3,
+      interview_2: 4,
+      offer: 5,
+      hired: 6,
+      rejected: -1
+    };
+    return stageOrder[stage] || 0;
+  };
+
   const getStatusConfig = (status) => {
     const configs = {
-      applied: { label: 'Applied', color: 'text-blue-700', bg: 'bg-blue-50' },
-      under_review: { label: 'Under Review', color: 'text-slate-700', bg: 'bg-slate-50' },
-      interview_scheduled: { label: 'Interview Scheduled', color: 'text-indigo-700', bg: 'bg-indigo-50' },
-      accepted: { label: 'Accepted', color: 'text-emerald-700', bg: 'bg-emerald-50' },
-      rejected: { label: 'Rejected', color: 'text-gray-600', bg: 'bg-gray-50' }
+      applied: {
+        label: 'Applied',
+        icon: Clock,
+        color: 'text-blue-700',
+        bg: 'bg-blue-50',
+        border: 'border-blue-300'
+      },
+      viewed: {
+        label: 'Viewed',
+        icon: Eye,
+        color: 'text-purple-700',
+        bg: 'bg-purple-50',
+        border: 'border-purple-300'
+      },
+      under_review: {
+        label: 'Under Review',
+        icon: Clock,
+        color: 'text-slate-700',
+        bg: 'bg-slate-50',
+        border: 'border-slate-300'
+      },
+      interview_scheduled: {
+        label: 'Interview Scheduled',
+        icon: Calendar,
+        color: 'text-indigo-700',
+        bg: 'bg-indigo-50',
+        border: 'border-indigo-200'
+      },
+      interviewed: {
+        label: 'Interviewed',
+        icon: CheckCircle2,
+        color: 'text-cyan-700',
+        bg: 'bg-cyan-50',
+        border: 'border-cyan-200'
+      },
+      offer_received: {
+        label: 'Offer Received',
+        icon: TrendingUp,
+        color: 'text-green-700',
+        bg: 'bg-green-50',
+        border: 'border-green-200'
+      },
+      accepted: {
+        label: 'Accepted',
+        icon: CheckCircle2,
+        color: 'text-emerald-700',
+        bg: 'bg-emerald-50',
+        border: 'border-emerald-200'
+      },
+      rejected: {
+        label: 'Rejected',
+        icon: XCircle,
+        color: 'text-gray-600',
+        bg: 'bg-gray-50',
+        border: 'border-gray-300'
+      },
+      withdrawn: {
+        label: 'Withdrawn',
+        icon: XCircle,
+        color: 'text-orange-600',
+        bg: 'bg-orange-50',
+        border: 'border-orange-300'
+      }
     };
     return configs[status] || configs.applied;
+  };
+
+  // Pipeline stage configuration
+  const getPipelineStageConfig = (stage) => {
+    const configs = {
+      sourced: {
+        label: 'Sourced',
+        icon: Users,
+        color: 'text-gray-700',
+        bg: 'bg-gray-100',
+        order: 1,
+        description: 'Your profile has been identified as a potential match!',
+        studentAction: 'No action required - Wait for recruiter to review your profile'
+      },
+      screened: {
+        label: 'Screened',
+        icon: Eye,
+        color: 'text-blue-700',
+        bg: 'bg-blue-100',
+        order: 2,
+        description: 'Your profile is being reviewed by the hiring team!',
+        studentAction: 'Be ready to respond to interview invitations quickly'
+      },
+      interview_1: {
+        label: 'Interview Round 1',
+        icon: Video,
+        color: 'text-indigo-700',
+        bg: 'bg-indigo-100',
+        order: 3,
+        description: 'First interview scheduled - Great progress!',
+        studentAction: 'Prepare well and attend your scheduled interview'
+      },
+      interview_2: {
+        label: 'Interview Round 2',
+        icon: Video,
+        color: 'text-purple-700',
+        bg: 'bg-purple-100',
+        order: 4,
+        description: 'Advanced to second round - Excellent!',
+        studentAction: 'Attend interview and follow up with thank you note'
+      },
+      offer: {
+        label: 'Offer Stage',
+        icon: Award,
+        color: 'text-green-700',
+        bg: 'bg-green-100',
+        order: 5,
+        description: 'Congratulations! Offer is being prepared 🎉',
+        studentAction: 'Wait for formal offer letter and review terms'
+      },
+      hired: {
+        label: 'Hired',
+        icon: CheckCircle2,
+        color: 'text-emerald-700',
+        bg: 'bg-emerald-100',
+        order: 6,
+        description: 'You\'re hired! Welcome to the team! 🎊',
+        studentAction: 'Prepare for your start date and complete all paperwork'
+      },
+      rejected: {
+        label: 'Not Selected',
+        icon: XCircle,
+        color: 'text-red-700',
+        bg: 'bg-red-100',
+        order: 7,
+        description: 'This position didn\'t work out, but don\'t give up!',
+        studentAction: 'Learn from the experience and continue your job search'
+      }
+    };
+    return configs[stage] || configs.sourced;
+  };
+
+  // Toggle function for pipeline status visibility
+  const togglePipelineStatus = (applicationId) => {
+    setShowPipelineStatus(prev => ({
+      ...prev,
+      [applicationId]: !prev[applicationId]
+    }));
+  };
+
+  // Handle messaging
+  const handleMessage = async (app) => {
+    console.log('🔍 handleMessage called with:', {
+      appId: app.id,
+      recruiterId: app.recruiterId,
+      opportunityId: app.opportunityId,
+      studentId: studentId,
+      jobTitle: app.jobTitle
+    });
+
+    if (!app.recruiterId) {
+      alert('Recruiter information not available for this application.');
+      return;
+    }
+
+    if (!studentId) {
+      alert('Student information not available. Please refresh the page.');
+      return;
+    }
+
+    setMessagingApplicationId(app.id);
+    
+    try {
+      console.log('📞 Calling MessageService.getOrCreateConversation...');
+      
+      const conversation = await MessageService.getOrCreateConversation(
+        String(studentId), // Ensure string
+        String(app.recruiterId), // Ensure string
+        app.id, // applicationId
+        app.opportunityId, // opportunityId
+        `Application: ${app.jobTitle}` // subject
+      );
+      
+      console.log('✅ Conversation created/found:', conversation);
+      
+      navigate('/student/messages', {
+        state: {
+          conversationId: conversation.id,
+          recipientId: app.recruiterId,
+          recipientName: app.company,
+          recipientType: 'recruiter'
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error opening message:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      alert(`Failed to open messaging: ${error.message || 'Please try again.'}`);
+    } finally {
+      setMessagingApplicationId(null);
+    }
   };
 
   return (
     <>
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 mb-6">
-        <div className="flex gap-4">
+        <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -1084,22 +1367,29 @@ const MyApplicationsContent = ({
               placeholder="Search by job title or company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all"
             />
           </div>
 
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-          >
-            <option value="all">All Status</option>
-            <option value="applied">Applied</option>
-            <option value="under_review">Under Review</option>
-            <option value="interview_scheduled">Interview Scheduled</option>
-            <option value="accepted">Accepted</option>
-            <option value="rejected">Rejected</option>
-          </select>
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all appearance-none bg-white cursor-pointer min-w-[200px]"
+            >
+              <option value="all">All Status</option>
+              <option value="applied">Applied</option>
+              <option value="viewed">Viewed</option>
+              <option value="under_review">Under Review</option>
+              <option value="interview_scheduled">Interview Scheduled</option>
+              <option value="interviewed">Interviewed</option>
+              <option value="offer_received">Offer Received</option>
+              <option value="accepted">Accepted</option>
+              <option value="rejected">Rejected</option>
+              <option value="withdrawn">Withdrawn</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -1109,39 +1399,278 @@ const MyApplicationsContent = ({
           <div className="bg-white rounded-lg shadow-sm p-12 text-center border border-gray-200">
             <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No applications found</h3>
+            <p className="text-gray-600">Try adjusting your search or filters</p>
           </div>
         ) : (
           applications.map((app) => {
             const statusConfig = getStatusConfig(app.status);
+            const StatusIcon = statusConfig.icon;
+            const currentStageConfig = app.pipelineStage ? getPipelineStageConfig(app.pipelineStage) : null;
+            const StageIcon = currentStageConfig?.icon;
 
             return (
               <div
                 key={app.id}
-                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all border border-gray-200 p-6"
+                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 overflow-hidden group"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-gray-900">{app.jobTitle}</h3>
-                    <p className="text-gray-600 font-medium mt-1">{app.company}</p>
-                    
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mt-3">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-4 h-4" />
-                        <span>{app.location}</span>
+                <div className="p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+                    {/* Job Details */}
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900 group-hover:text-slate-700 transition-colors">
+                            {app.jobTitle}
+                          </h3>
+                          <p className="text-gray-600 font-medium mt-1">{app.company}</p>
+                        </div>
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusConfig.bg} ${statusConfig.border} border`}>
+                          <StatusIcon className={`w-4 h-4 ${statusConfig.color}`} />
+                          <span className={`text-sm font-semibold ${statusConfig.color}`}>
+                            {statusConfig.label}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-4 h-4" />
-                        <span>Applied {new Date(app.appliedDate).toLocaleDateString()}</span>
+
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-4 h-4" />
+                          <span>{app.location}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span>{app.salary}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-4 h-4" />
+                          <span>Applied {new Date(app.appliedDate).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <TrendingUp className="w-4 h-4" />
+                          <span>Updated {app.lastUpdate}</span>
+                        </div>
                       </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold">
+                          {app.type}
+                        </span>
+                        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold">
+                          {app.level}
+                        </span>
+                      </div>
+
+                      {/* Pipeline Status Section - Only show when View Details is clicked */}
+                      {app.hasPipelineStatus && app.pipelineStage && showPipelineStatus[app.id] && (
+                        <div className="mt-4 p-5 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 rounded-xl border-2 border-slate-200 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                              <div className="p-2 bg-white rounded-lg shadow-sm">
+                                <Users className="w-5 h-5 text-slate-700" />
+                              </div>
+                              <h4 className="font-bold text-slate-900">Recruitment Pipeline Status</h4>
+                            </div>
+                          </div>
+
+                          {/* Visual Pipeline Stepper */}
+                          <div className="relative mb-6">
+                            <div className="flex items-center justify-between">
+                              {Object.entries({
+                                sourced: 'Sourced',
+                                screened: 'Screened',
+                                interview_1: 'Interview 1',
+                                interview_2: 'Interview 2',
+                                offer: 'Offer',
+                                hired: 'Hired'
+                              }).map(([stageKey, stageLabel], index, array) => {
+                                const isCompleted = getStageOrder(app.pipelineStage) > getStageOrder(stageKey);
+                                const isCurrent = app.pipelineStage === stageKey;
+                                const isRejected = app.pipelineStage === 'rejected';
+
+                                return (
+                                  <div key={stageKey} className="flex flex-col items-center flex-1 relative">
+                                    {/* Stage Number Circle */}
+                                    <div className="relative z-10 mb-2">
+                                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
+                                        isCompleted
+                                          ? 'bg-green-500 text-white shadow-lg shadow-green-200'
+                                          : isCurrent
+                                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse'
+                                            : isRejected && index > getStageOrder('sourced')
+                                              ? 'bg-gray-200 text-gray-400'
+                                              : 'bg-white text-gray-400 border-2 border-gray-300'
+                                      }`}>
+                                        {isCompleted ? (
+                                          <CheckCircle2 className="w-6 h-6" />
+                                        ) : (
+                                          index + 1
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Connecting Line */}
+                                    {index < array.length - 1 && (
+                                      <div className={`absolute top-5 left-1/2 w-full h-0.5 -z-0 transition-all ${
+                                        isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                                      }`} style={{ transform: 'translateY(-50%)' }} />
+                                    )}
+
+                                    {/* Stage Label */}
+                                    <div className={`text-xs font-medium text-center px-1 transition-all ${
+                                      isCurrent
+                                        ? 'text-blue-700 font-bold'
+                                        : isCompleted
+                                          ? 'text-green-700'
+                                          : 'text-gray-500'
+                                    }`}>
+                                      {stageLabel}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Current Status Info */}
+                          <div className="bg-white p-4 rounded-lg border border-blue-200 shadow-sm">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-3 rounded-lg ${currentStageConfig?.bg || 'bg-gray-100'}`}>
+                                {StageIcon && <StageIcon className="w-6 h-6" />}
+                              </div>
+                              <div className="flex-1">
+                                <div className="text-sm text-gray-600">Current Stage</div>
+                                <div className="text-lg font-bold text-gray-900">{currentStageConfig?.label || app.pipelineStage}</div>
+                                {app.pipelineStageChangedAt && (
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    <Clock className="w-3 h-3 inline mr-1" />
+                                    Updated {new Date(app.pipelineStageChangedAt).toLocaleDateString()}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <div className={`px-4 py-2 rounded-lg font-semibold ${currentStageConfig?.bg || 'bg-gray-100'} ${currentStageConfig?.color || 'text-gray-800'}`}>
+                                  Stage {getStageOrder(app.pipelineStage)} of 6
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Progress Message */}
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <p className="text-sm text-gray-700 font-medium">
+                                {currentStageConfig?.description}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Expanded Details */}
+                          {showPipelineStatus[app.id] && currentStageConfig && (
+                            <div className="mt-4 space-y-3">
+                              {/* What You Need to Do */}
+                              <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
+                                <div className="flex items-start gap-2">
+                                  <CheckCircle2 className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <h5 className="text-sm font-bold text-gray-900 mb-1">What You Need to Do:</h5>
+                                    <p className="text-sm text-blue-700 font-semibold bg-blue-50 px-3 py-2 rounded-lg">
+                                      {currentStageConfig.studentAction}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Next Action */}
+                              {app.nextAction && (
+                                <div className="flex items-start gap-2 p-3 bg-blue-100 rounded-lg border-2 border-blue-300">
+                                  <Bell className="w-5 h-5 text-blue-700 mt-0.5 flex-shrink-0 animate-pulse" />
+                                  <div className="flex-1">
+                                    <p className="text-xs font-bold text-blue-900 uppercase tracking-wide">Upcoming Action:</p>
+                                    <p className="text-sm font-semibold text-blue-800 mt-1">{app.nextAction.replace(/_/g, ' ').toUpperCase()}</p>
+                                    {app.nextActionDate && (
+                                      <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
+                                        <Calendar className="w-3 h-3" />
+                                        Scheduled: {new Date(app.nextActionDate).toLocaleDateString()}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Rejection Reason */}
+                              {app.rejectionReason && (
+                                <div className="flex items-start gap-2 p-3 bg-red-50 rounded-lg border-2 border-red-200">
+                                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="text-xs font-bold text-red-900 uppercase tracking-wide">Feedback from Recruiter:</p>
+                                    <p className="text-sm text-red-700 mt-1">{app.rejectionReason}</p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Scheduled Interviews */}
+                              {app.interviews && app.interviews.length > 0 && (
+                                <div className="bg-white rounded-lg p-4 shadow-sm border-2 border-indigo-200">
+                                  <h5 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                    <Video className="w-5 h-5 text-indigo-600" />
+                                    Scheduled Interviews ({app.interviews.length})
+                                  </h5>
+                                  <div className="space-y-2">
+                                    {app.interviews.map((interview, idx) => (
+                                      <div key={idx} className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors">
+                                        <div className="flex-1">
+                                          <p className="font-semibold text-gray-900">{interview.type} Interview</p>
+                                          <p className="text-sm text-gray-600 mt-0.5">with {interview.interviewer}</p>
+                                          {interview.meeting_link && (
+                                            <a
+                                              href={interview.meeting_link}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 inline-block"
+                                            >
+                                              Join Meeting →
+                                            </a>
+                                          )}
+                                        </div>
+                                        <div className="text-right ml-4">
+                                          <p className="font-bold text-indigo-700">
+                                            {new Date(interview.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                          </p>
+                                          <p className="text-sm text-gray-600">
+                                            {new Date(interview.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex gap-2 mt-3">
-                      <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold">
-                        {app.type}
-                      </span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusConfig.bg} ${statusConfig.color}`}>
-                        {statusConfig.label}
-                      </span>
+                    {/* Action Buttons */}
+                    <div className="flex lg:flex-col gap-2">
+                      <button
+                        onClick={() => {
+                          // Toggle pipeline status visibility
+                          togglePipelineStatus(app.id);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-colors text-sm font-medium"
+                      >
+                        <Eye className="w-4 h-4" />
+                        {showPipelineStatus[app.id] ? 'Hide Details' : 'View Details'}
+                      </button>
+                      
+                      {app.recruiterId && (
+                        <button
+                          onClick={() => handleMessage(app)}
+                          disabled={messagingApplicationId === app.id}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          {messagingApplicationId === app.id ? 'Opening...' : 'Message'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -50,7 +50,8 @@ const ProfileSection = ({ results, riasecNames }) => {
                         {riasec?.topThree?.map((code) => {
                             const score = riasec.scores?.[code] || 0;
                             const maxScore = riasec.maxScore || 20;
-                            const pct = Math.round((score / maxScore) * 100);
+                            // Use percentages from AI if available, otherwise calculate
+                            const pct = riasec.percentages?.[code] || Math.round((score / maxScore) * 100);
                             const scoreColor = getScoreColor(pct);
                             return (
                                 <div key={code}>
@@ -59,7 +60,10 @@ const ProfileSection = ({ results, riasecNames }) => {
                                             <span className={`w-8 h-8 rounded flex items-center justify-center text-white font-bold text-base ${scoreColor.bg}`}>{code}</span>
                                             <span className="text-lg font-medium text-gray-700">{riasecNames[code]}</span>
                                         </div>
-                                        <span className={`text-base font-bold px-2 py-1 rounded ${scoreColor.light} ${scoreColor.text}`}>{score}/{maxScore}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-base font-bold px-2 py-1 rounded ${scoreColor.light} ${scoreColor.text}`}>{score}/{maxScore}</span>
+                                            <span className={`text-lg font-bold ${scoreColor.text}`}>{pct}%</span>
+                                        </div>
                                     </div>
                                     <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
                                         <div className={`h-full rounded-full ${scoreColor.bg}`} style={{ width: `${pct}%` }} />

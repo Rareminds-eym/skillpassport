@@ -50,7 +50,7 @@ export const FIELD_CONFIGS = {
     addButtonText: "Add Training Course",
     fields: [
       { name: "course", label: "Course Name *", type: "text", required: true, placeholder: "e.g., Advanced React" },
-      { name: "provider", label: "Provider", type: "text", placeholder: "e.g., Coursera, Udemy" },
+      { name: "provider", label: "Provider *", type: "text", required: true, placeholder: "e.g., Coursera, Udemy, Rareminds" },
       { name: "startDate", label: "Start Date", type: "date" },
       { name: "endDate", label: "End Date", type: "date", dependsOn: { field: "status", value: "completed" } },
       { 
