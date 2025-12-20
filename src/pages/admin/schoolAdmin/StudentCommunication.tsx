@@ -16,22 +16,24 @@ import {
   TrashIcon,
   AcademicCapIcon,
   ChatBubbleLeftRightIcon,
-  XMarkIcon
+  XMarkIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import MessageService, { Conversation } from '../../services/messageService';
-import { useEducatorMessages } from '../../hooks/useEducatorMessages.js';
+import MessageService, { Conversation } from '../../../services/messageService';
+import { supabase } from '../../../lib/supabaseClient';
+import { useEducatorMessages } from '../../../hooks/useEducatorMessages.js';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '../../context/AuthContext.jsx';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
-import { useRealtimePresence } from '../../hooks/useRealtimePresence';
-import { useTypingIndicator } from '../../hooks/useTypingIndicator';
-import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
-import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
-import NewStudentConversationModalEducator from '../../components/messaging/NewStudentConversationModalEducator';
+import { useAuth } from '../../../context/AuthContext.jsx';
+import { useGlobalPresence } from '../../../context/GlobalPresenceContext';
+import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
+import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
+import { useNotificationBroadcast } from '../../../hooks/useNotificationBroadcast';
+import DeleteConversationModal from '../../../components/messaging/DeleteConversationModal';
+import NewStudentConversationModal from '../../../components/messaging/NewStudentConversationModal';
 
-const Communication = () => {
+const StudentCommunication = () => {
   const location = useLocation();
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
@@ -47,10 +49,10 @@ const Communication = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const markedAsReadRef = useRef<Set<string>>(new Set());
   
-  // Get educator ID from auth
+  // Get school admin ID from auth
   const { user } = useAuth();
-  const educatorId = user?.id;
-  const educatorName = user?.name || 'Educator';
+  const schoolAdminId = user?.id;
+  const schoolAdminName = user?.name || 'School Admin';
   const queryClient = useQueryClient();
   
   // Handle navigation from student management page
@@ -60,15 +62,47 @@ const Communication = () => {
     targetStudentEmail?: string; 
   } | null;
   
-  // Fetch active conversations with students
-  const { data: activeConversations = [], isLoading: loadingActive, refetch: refetchActive } = useQuery({
-    queryKey: ['educator-conversations', educatorId, 'active'],
+  // Get school ID for the current admin
+  const { data: schoolData } = useQuery({
+    queryKey: ['school-admin-school', schoolAdminId],
     queryFn: async () => {
-      if (!educatorId) return [];
-      const allConversations = await MessageService.getUserConversations(educatorId, 'educator', false);
-      return allConversations.filter(conv => conv.conversation_type === 'student_educator');
+      if (!schoolAdminId) return null;
+      const { data, error } = await supabase
+        .from('school_educators')
+        .select('school_id, schools(id, name)')
+        .eq('user_id', schoolAdminId)
+        .eq('role', 'school_admin')
+        .single();
+      
+      if (error) throw error;
+      return data;
     },
-    enabled: !!educatorId,
+    enabled: !!schoolAdminId,
+  });
+  
+  const schoolId = schoolData?.school_id;
+  
+  // Fetch active conversations with students using the same pattern as educator
+  const { data: activeConversations = [], isLoading: loadingActive, refetch: refetchActive } = useQuery({
+    queryKey: ['school-admin-conversations', schoolId, 'active'],
+    queryFn: async () => {
+      if (!schoolId) return [];
+      const { data, error } = await supabase
+        .from('conversations')
+        .select(`
+          *,
+          student:students(id, name, email, school_id, university, branch_field),
+          school:schools(id, name)
+        `)
+        .eq('school_id', schoolId)
+        .eq('conversation_type', 'student_admin')
+        .eq('deleted_by_admin', false)
+        .order('last_message_at', { ascending: false, nullsFirst: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!schoolId,
     staleTime: 60000,
     gcTime: 5 * 60 * 1000,
     refetchInterval: false,
@@ -78,15 +112,25 @@ const Communication = () => {
 
   // Fetch archived conversations
   const { data: archivedConversations = [], isLoading: loadingArchived, refetch: refetchArchived } = useQuery({
-    queryKey: ['educator-conversations', educatorId, 'archived'],
+    queryKey: ['school-admin-conversations', schoolId, 'archived'],
     queryFn: async () => {
-      if (!educatorId) return [];
-      const allConversations = await MessageService.getUserConversations(educatorId, 'educator', true);
-      return allConversations.filter(conv => 
-        conv.conversation_type === 'student_educator' && conv.status === 'archived'
-      );
+      if (!schoolId) return [];
+      const { data, error } = await supabase
+        .from('conversations')
+        .select(`
+          *,
+          student:students(id, name, email, school_id, university, branch_field),
+          school:schools(id, name)
+        `)
+        .eq('school_id', schoolId)
+        .eq('conversation_type', 'student_admin')
+        .eq('status', 'archived')
+        .order('last_message_at', { ascending: false, nullsFirst: false });
+      
+      if (error) throw error;
+      return data || [];
     },
-    enabled: !!educatorId,
+    enabled: !!schoolId,
     staleTime: 60000,
     gcTime: 5 * 60 * 1000,
     refetchInterval: false,
@@ -110,96 +154,51 @@ const Communication = () => {
   const { } = useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
     userPresence: {
-      userId: educatorId || '',
-      userName: educatorName,
-      userType: 'educator',
+      userId: schoolAdminId || '',
+      userName: schoolAdminName,
+      userType: 'school_admin',
       status: 'online',
       lastSeen: new Date().toISOString(),
       conversationId: selectedConversationId || undefined
     },
-    enabled: !!selectedConversationId && !!educatorId
+    enabled: !!selectedConversationId && !!schoolAdminId
   });
 
   // Typing indicators
   const { setTyping, getTypingText, isAnyoneTyping } = useTypingIndicator({
     conversationId: selectedConversationId || '',
-    currentUserId: educatorId || '',
-    currentUserName: educatorName,
-    enabled: !!selectedConversationId && !!educatorId
+    currentUserId: schoolAdminId || '',
+    currentUserName: schoolAdminName,
+    enabled: !!selectedConversationId && !!schoolAdminId
   });
 
   // Notification broadcasts
   const { sendNotification } = useNotificationBroadcast({
-    userId: educatorId || '',
+    userId: schoolAdminId || '',
     showToast: true,
-    enabled: !!educatorId
+    enabled: !!schoolAdminId
   });
-
-  // Handle new conversation creation
-  const handleNewConversation = useCallback(async (studentId: string, subject: string) => {
-    if (!educatorId) return;
-    
-    try {
-      console.log('🆕 Creating new conversation with student:', studentId, 'subject:', subject);
-      
-      // Check if conversation already exists
-      const existingConversation = activeConversations.find(conv => 
-        conv.student_id === studentId
-      );
-      
-      if (existingConversation) {
-        console.log('✅ Found existing conversation:', existingConversation.id);
-        setSelectedConversationId(existingConversation.id);
-        setShowNewConversationModal(false);
-        toast.success('Opened existing conversation');
-        return;
-      }
-      
-      // Create new conversation
-      const conversation = await MessageService.getOrCreateStudentEducatorConversation(
-        studentId,
-        educatorId,
-        undefined, // classId - will be determined by the system
-        subject
-      );
-      
-      console.log('✅ New conversation created:', conversation);
-      
-      // Refresh conversations to include the new one
-      await refetchActive();
-      
-      // Select the new conversation
-      setSelectedConversationId(conversation.id);
-      setShowNewConversationModal(false);
-      
-      toast.success('New conversation started');
-      
-    } catch (error) {
-      console.error('❌ Error creating conversation:', error);
-      toast.error('Failed to start conversation');
-    }
-  }, [educatorId, activeConversations, refetchActive]);
 
   // Subscribe to conversation updates
   useEffect(() => {
-    if (!educatorId) return;
+    if (!schoolId) return;
     
     const subscription = MessageService.subscribeToUserConversations(
-      educatorId,
-      'educator',
+      schoolId,
+      'school_admin',
       (conversation: Conversation) => {
-        // Only handle student-educator conversations
-        if (conversation.conversation_type !== 'student_educator') return;
+        // Only handle student-admin conversations
+        if (conversation.conversation_type !== 'student_admin') return;
         
-        console.log('🔄 [Educator] Realtime UPDATE detected:', conversation);
+        console.log('🔄 [School Admin] Realtime UPDATE detected:', conversation);
         
-        if (conversation.deleted_by_educator) {
-          console.log('❌ [Educator] Ignoring UPDATE for deleted conversation:', conversation.id);
+        if (conversation.deleted_by_admin) {
+          console.log('❌ [School Admin] Ignoring UPDATE for deleted conversation:', conversation.id);
           return;
         }
         
         queryClient.invalidateQueries({ 
-          queryKey: ['educator-conversations', educatorId],
+          queryKey: ['school-admin-conversations', schoolId],
           refetchType: 'active'
         });
       }
@@ -208,12 +207,12 @@ const Communication = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [educatorId, queryClient]);
+  }, [schoolId, queryClient]);
   
   // Auto-create conversation with target student from navigation
   useEffect(() => {
     const createConversationWithStudent = async () => {
-      if (!targetStudent?.targetStudentId || !educatorId || loadingConversations) {
+      if (!targetStudent?.targetStudentId || !schoolId || loadingConversations) {
         return;
       }
 
@@ -234,10 +233,9 @@ const Communication = () => {
         
         // Create new conversation
         console.log('🆕 Creating new conversation...');
-        const conversation = await MessageService.getOrCreateStudentEducatorConversation(
+        const conversation = await MessageService.getOrCreateStudentAdminConversation(
           targetStudent.targetStudentId,
-          educatorId,
-          undefined, // classId - will be determined by the system
+          schoolId,
           'General Discussion' // default subject
         );
         
@@ -258,55 +256,55 @@ const Communication = () => {
     };
 
     createConversationWithStudent();
-  }, [targetStudent, educatorId, activeConversations, loadingConversations, refetchActive]);
+  }, [targetStudent, schoolId, activeConversations, loadingConversations, refetchActive]);
   
   // Mark messages as read when conversation is selected
   useEffect(() => {
-    if (!selectedConversationId || !educatorId) return;
+    if (!selectedConversationId || !schoolAdminId) return;
     
     const conversation = activeConversations.find(c => c.id === selectedConversationId);
-    const hasUnread = (conversation?.educator_unread_count || 0) > 0;
+    const hasUnread = (conversation?.admin_unread_count || 0) > 0;
     
     if (!hasUnread) return;
     
-    const markKey = `${selectedConversationId}-${conversation?.educator_unread_count}`;
+    const markKey = `${selectedConversationId}-${conversation?.admin_unread_count}`;
     if (markedAsReadRef.current.has(markKey)) return;
     markedAsReadRef.current.add(markKey);
     
     // Optimistically update the UI
     queryClient.setQueryData<typeof activeConversations>(
-      ['educator-conversations', educatorId, 'active'],
+      ['school-admin-conversations', schoolId, 'active'],
       (oldData) => {
         if (!oldData) return oldData;
         return oldData.map(conv => 
           conv.id === selectedConversationId 
-            ? { ...conv, educator_unread_count: 0 }
+            ? { ...conv, admin_unread_count: 0 }
             : conv
         );
       }
     );
     
-    MessageService.markConversationAsRead(selectedConversationId, educatorId)
+    MessageService.markConversationAsRead(selectedConversationId, schoolAdminId)
       .catch(err => {
         console.error('Failed to mark as read:', err);
         markedAsReadRef.current.delete(markKey);
         refetchActive();
       });
-  }, [selectedConversationId, educatorId, activeConversations, queryClient, refetchActive]);
+  }, [selectedConversationId, schoolAdminId, activeConversations, queryClient, refetchActive, schoolId]);
   
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
-      await MessageService.deleteConversationForUser(conversationId, educatorId!, 'educator');
+      await MessageService.deleteConversationForUser(conversationId, schoolAdminId!, 'school_admin');
       return { conversationId };
     },
     onMutate: async ({ conversationId }) => {
-      await queryClient.cancelQueries({ queryKey: ['educator-conversations', educatorId] });
+      await queryClient.cancelQueries({ queryKey: ['school-admin-conversations', schoolId] });
       
-      const previousActive = queryClient.getQueryData(['educator-conversations', educatorId, 'active']);
-      const previousArchived = queryClient.getQueryData(['educator-conversations', educatorId, 'archived']);
+      const previousActive = queryClient.getQueryData(['school-admin-conversations', schoolId, 'active']);
+      const previousArchived = queryClient.getQueryData(['school-admin-conversations', schoolId, 'archived']);
       
-      queryClient.setQueryData(['educator-conversations', educatorId, 'active'], (old: any) => {
+      queryClient.setQueryData(['school-admin-conversations', schoolId, 'active'], (old: any) => {
         if (!old) return [];
         return old.map((conv: any) => 
           conv.id === conversationId ? { ...conv, _pendingDelete: true } : conv
@@ -314,7 +312,7 @@ const Communication = () => {
       });
       
       queryClient.invalidateQueries({ 
-        queryKey: ['educator-conversations', educatorId, 'active'],
+        queryKey: ['school-admin-conversations', schoolId, 'active'],
         refetchType: 'none'
       });
       
@@ -326,13 +324,13 @@ const Communication = () => {
       refetchArchived();
     },
     onSuccess: (_data, variables) => {
-      queryClient.setQueryData(['educator-conversations', educatorId, 'active'], (old: any) => {
+      queryClient.setQueryData(['school-admin-conversations', schoolId, 'active'], (old: any) => {
         if (!old) return [];
         return old.filter((conv: any) => conv.id !== variables.conversationId);
       });
       
       queryClient.invalidateQueries({ 
-        queryKey: ['educator-conversations', educatorId, 'active'],
+        queryKey: ['school-admin-conversations', schoolId, 'active'],
         refetchType: 'none'
       });
     }
@@ -341,7 +339,7 @@ const Communication = () => {
   // Undo mutation
   const undoMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
-      await MessageService.restoreConversation(conversationId, educatorId!, 'educator');
+      await MessageService.restoreConversation(conversationId, schoolAdminId!, 'school_admin');
       return { conversationId };
     },
     onSuccess: () => {
@@ -375,9 +373,53 @@ const Communication = () => {
     }
   }, [selectedConversationId, refetchActive, refetchArchived]);
 
+  // Handle new conversation creation
+  const handleNewConversation = useCallback(async (studentId: string, subject: string) => {
+    if (!schoolId) return;
+    
+    try {
+      console.log('🆕 Creating new conversation with student:', studentId, 'subject:', subject);
+      
+      // Check if conversation already exists
+      const existingConversation = activeConversations.find(conv => 
+        conv.student_id === studentId
+      );
+      
+      if (existingConversation) {
+        console.log('✅ Found existing conversation:', existingConversation.id);
+        setSelectedConversationId(existingConversation.id);
+        setShowNewConversationModal(false);
+        toast.success('Opened existing conversation');
+        return;
+      }
+      
+      // Create new conversation
+      const conversation = await MessageService.getOrCreateStudentAdminConversation(
+        studentId,
+        schoolId,
+        subject
+      );
+      
+      console.log('✅ New conversation created:', conversation);
+      
+      // Refresh conversations to include the new one
+      await refetchActive();
+      
+      // Select the new conversation
+      setSelectedConversationId(conversation.id);
+      setShowNewConversationModal(false);
+      
+      toast.success('New conversation started');
+      
+    } catch (error) {
+      console.error('❌ Error creating conversation:', error);
+      toast.error('Failed to start conversation');
+    }
+  }, [schoolId, activeConversations, refetchActive]);
+
   // Handle delete conversation
   const handleDeleteConversation = useCallback(async () => {
-    if (!deleteModal.conversationId || !educatorId) return;
+    if (!deleteModal.conversationId || !schoolAdminId) return;
     
     const conversationId = deleteModal.conversationId;
     const contactName = deleteModal.contactName;
@@ -401,7 +443,7 @@ const Communication = () => {
         duration: 3000,
       });
     }, 500);
-  }, [deleteModal.conversationId, deleteModal.contactName, educatorId, selectedConversationId, deleteMutation, undoMutation]);
+  }, [deleteModal.conversationId, deleteModal.contactName, schoolAdminId, selectedConversationId, deleteMutation]);
 
   // Open delete confirmation modal
   const openDeleteModal = useCallback((conversationId: string, contactName: string) => {
@@ -415,22 +457,15 @@ const Communication = () => {
     const contacts = activeConversations.map((conv: any) => {
       // Use direct student fields instead of profile JSONB
       const studentName = conv.student?.name || conv.student?.email || 'Student';
+      const studentEmail = conv.student?.email || '';
       const studentUniversity = conv.student?.university || '';
       const studentBranch = conv.student?.branch_field || '';
-      
-      // Get class and subject info from school tables
-      const className = conv.school_class?.name || 'Class';
-      const grade = conv.school_class?.grade || '';
-      const section = conv.school_class?.section || '';
       const subject = conv.subject || 'General Discussion';
       
       // Build role string with university and branch info
       let role = subject;
-      if (className && grade) {
-        role += ` • ${grade}`;
-        if (section) {
-          role += `-${section}`;
-        }
+      if (studentEmail) {
+        role += ` • ${studentEmail}`;
       }
       if (studentUniversity) {
         role += ` • ${studentUniversity}`;
@@ -443,21 +478,17 @@ const Communication = () => {
         id: conv.id,
         name: studentName,
         role: role,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=10B981&color=fff`,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=3B82F6&color=fff`,
         lastMessage: conv.last_message_preview || 'No messages yet',
         online: isUserOnlineGlobal(conv.student_id),
         time: conv.last_message_at 
           ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
           : 'No messages',
-        unread: conv.educator_unread_count || 0,
+        unread: conv.admin_unread_count || 0,
         studentId: conv.student_id,
-        classId: conv.class_id,
         subject: conv.subject,
         // Additional searchable fields
-        studentEmail: conv.student?.email || '',
-        className: className,
-        grade: grade,
-        section: section,
+        studentEmail: studentEmail,
         university: studentUniversity,
         branch: studentBranch,
       };
@@ -470,12 +501,9 @@ const Communication = () => {
       // Basic info
       c.name.toLowerCase().includes(query) || 
       c.studentEmail.toLowerCase().includes(query) ||
-      // Class and subject info
+      // Subject info
       c.role.toLowerCase().includes(query) ||
       c.subject.toLowerCase().includes(query) ||
-      c.className.toLowerCase().includes(query) ||
-      c.grade.toLowerCase().includes(query) ||
-      c.section.toLowerCase().includes(query) ||
       // University info
       c.university.toLowerCase().includes(query) ||
       c.branch.toLowerCase().includes(query) ||
@@ -491,26 +519,25 @@ const Communication = () => {
 
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !currentChat || !educatorId) return;
+    if (!messageInput.trim() || !currentChat || !schoolAdminId) return;
     
     try {
       await sendMessage({
-        senderId: educatorId,
-        senderType: 'educator',
+        senderId: schoolAdminId,
+        senderType: 'school_admin',
         receiverId: currentChat.studentId,
         receiverType: 'student',
         messageText: messageInput,
-        classId: currentChat.classId,
         subject: currentChat.subject
       });
       
       // Send notification to student
       try {
         await sendNotification(currentChat.studentId, {
-          title: 'New Message from Educator',
+          title: 'New Message from School Admin',
           message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
           type: 'message',
-          link: `/student/messages?tab=educators&conversation=${selectedConversationId}`
+          link: `/student/messages?tab=admin&conversation=${selectedConversationId}`
         });
       } catch (notifError) {
         // Silent fail
@@ -521,7 +548,7 @@ const Communication = () => {
     } catch (error) {
       console.error('Error sending message:', error);
     }
-  }, [messageInput, currentChat, educatorId, sendMessage, sendNotification, selectedConversationId, setTyping]);
+  }, [messageInput, currentChat, schoolAdminId, sendMessage, sendNotification, selectedConversationId, setTyping]);
 
   // Handle typing in input
   const handleInputChange = useCallback((value: string) => {
@@ -538,7 +565,7 @@ const Communication = () => {
     messages.map((msg: any) => ({
       id: msg.id,
       text: msg.message_text,
-      sender: msg.sender_type === 'educator' ? 'me' : 'them',
+      sender: msg.sender_type === 'school_admin' ? 'me' : 'them',
       time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
       status: msg.is_read ? 'read' : 'delivered'
     })),
@@ -554,7 +581,7 @@ const Communication = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <h1 className="text-2xl font-bold mb-6">Communication & Collaboration</h1>
+      <h1 className="text-2xl font-bold mb-6">Student Communication</h1>
 
       {/* Student Messages Section */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200 mb-6">
@@ -573,7 +600,7 @@ const Communication = () => {
                     <ChevronLeftIcon className="w-5 h-5 text-gray-700" />
                   </button>
                 )}
-                <ChatBubbleLeftRightIcon className="w-6 h-6 text-green-600" />
+                <UserGroupIcon className="w-6 h-6 text-blue-600" />
                 <div className="flex flex-col flex-1">
                   <h2 className="text-xl font-bold text-gray-900">
                     {showArchived ? 'Archived Messages' : 'Student Messages'}
@@ -587,7 +614,7 @@ const Communication = () => {
                 {!showArchived && (
                   <button
                     onClick={() => setShowNewConversationModal(true)}
-                    className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                     title="Start new conversation"
                   >
                     <ChatBubbleLeftRightIcon className="w-4 h-4" />
@@ -599,7 +626,7 @@ const Communication = () => {
                 <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search by student name, email, class, subject, or message content..."
+                  placeholder="Search by student name, email, subject, or university..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -607,7 +634,7 @@ const Communication = () => {
                       setSearchQuery('');
                     }
                   }}
-                  className="w-full pl-12 pr-10 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent focus:bg-white transition-all text-sm"
+                  className="w-full pl-12 pr-10 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all text-sm"
                 />
                 {searchQuery && (
                   <button
@@ -651,13 +678,13 @@ const Communication = () => {
               {/* Loading indicator during transition */}
               {isTransitioning && (
                 <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 pointer-events-none">
-                  <div className="w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
 
               {loadingConversations ? (
                 <div className="flex items-center justify-center h-full">
-                  <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : filteredContacts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full p-6 text-center">
@@ -676,14 +703,14 @@ const Communication = () => {
                     {showArchived 
                       ? 'Archived conversations will appear here' 
                       : searchQuery 
-                      ? 'Try searching by student name, email, class, subject, or message content' 
-                      : 'Students will message you about classes'
+                      ? 'Try searching by student name, email, subject, or university' 
+                      : 'Students will message you about school matters'
                     }
                   </p>
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-colors"
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
                     >
                       Clear Search
                     </button>
@@ -692,7 +719,7 @@ const Communication = () => {
                     <div className="space-y-3">
                       <button
                         onClick={() => setShowNewConversationModal(true)}
-                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
                       >
                         <ChatBubbleLeftRightIcon className="w-4 h-4" />
                         Start New Conversation
@@ -717,7 +744,7 @@ const Communication = () => {
                     key={contact.id}
                     className={`relative w-full flex items-center border-b border-gray-100 group transition-all duration-200 ${
                       selectedConversationId === contact.id 
-                        ? 'bg-green-50 border-l-4 border-l-green-600' 
+                        ? 'bg-blue-50 border-l-4 border-l-blue-600' 
                         : 'hover:bg-gray-50 border-l-4 border-l-transparent'
                     }`}
                   >
@@ -744,7 +771,7 @@ const Communication = () => {
                             {contact.time}
                           </span>
                         </div>
-                        <p className="text-xs text-green-600 font-semibold mb-1 truncate">
+                        <p className="text-xs text-blue-600 font-semibold mb-1 truncate">
                           {contact.role}
                         </p>
                         <p className="text-xs text-gray-600 truncate">
@@ -752,7 +779,7 @@ const Communication = () => {
                         </p>
                       </div>
                       {contact.unread > 0 && (
-                        <div className="flex-shrink-0 min-w-[18px] h-5 px-1.5 bg-green-600 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                        <div className="flex-shrink-0 min-w-[18px] h-5 px-1.5 bg-blue-600 text-white text-xs rounded-full flex items-center justify-center font-bold">
                           {contact.unread > 9 ? '9+' : contact.unread}
                         </div>
                       )}
@@ -813,7 +840,7 @@ const Communication = () => {
                     </div>
                     <div>
                       <h3 className="font-bold text-gray-900 text-lg">{currentChat.name}</h3>
-                      <p className="text-sm text-green-600 font-medium">{currentChat.role}</p>
+                      <p className="text-sm text-blue-600 font-medium">{currentChat.role}</p>
                       <p className="text-xs text-gray-500">
                         {currentChat.online ? (
                           <span className="flex items-center gap-1">
@@ -843,7 +870,7 @@ const Communication = () => {
                 <div className="flex-1 overflow-y-auto px-6 py-4 bg-gray-50 space-y-3">
                   {loadingMessages ? (
                     <div className="flex items-center justify-center h-full">
-                      <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+                      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                     </div>
                   ) : displayMessages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full">
@@ -863,7 +890,7 @@ const Communication = () => {
                           <div
                             className={`rounded-2xl px-4 py-2.5 shadow-sm ${
                               message.sender === 'me'
-                                ? 'bg-green-600 text-white'
+                                ? 'bg-blue-600 text-white'
                                 : 'bg-white text-gray-900 border border-gray-200'
                             }`}
                           >
@@ -873,7 +900,7 @@ const Communication = () => {
                             <div className="flex items-center justify-end gap-2 mt-1">
                               <span
                                 className={`text-xs ${
-                                  message.sender === 'me' ? 'text-green-100' : 'text-gray-400'
+                                  message.sender === 'me' ? 'text-blue-100' : 'text-gray-400'
                                 }`}
                               >
                                 {message.time}
@@ -928,7 +955,7 @@ const Communication = () => {
                           }
                         }}
                         placeholder="Type your message..."
-                        className="w-full pl-4 pr-12 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none text-sm bg-white transition-all"
+                        className="w-full pl-4 pr-12 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm bg-white transition-all"
                         rows={1}
                         style={{ minHeight: '44px', maxHeight: '100px' }}
                       />
@@ -943,7 +970,7 @@ const Communication = () => {
                     <button
                       type="submit"
                       disabled={!messageInput.trim() || isSending}
-                      className="p-3 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-lg"
+                      className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-lg"
                       title="Send"
                     >
                       {isSending ? (
@@ -958,8 +985,8 @@ const Communication = () => {
             ) : (
               <div className="flex-1 flex items-center justify-center bg-gray-50">
                 <div className="text-center max-w-md px-8">
-                  <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <ChatBubbleLeftRightIcon className="w-12 h-12 text-green-600" />
+                  <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <ChatBubbleLeftRightIcon className="w-12 h-12 text-blue-600" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-3">
                     Select a conversation
@@ -974,27 +1001,6 @@ const Communication = () => {
         </div>
       </div>
 
-      {/* Other Communication Features (Future) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Announcements */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Class Announcements</h2>
-          <p className="text-sm text-gray-600 mb-4">Send announcements to entire classes</p>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-            Coming Soon
-          </button>
-        </div>
-
-        {/* Feedback System */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Direct Feedback</h2>
-          <p className="text-sm text-gray-600 mb-4">Provide feedback on student activities</p>
-          <button className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors">
-            Coming Soon
-          </button>
-        </div>
-      </div>
-
       {/* Delete Confirmation Modal */}
       <DeleteConversationModal
         isOpen={deleteModal.isOpen}
@@ -1005,14 +1011,16 @@ const Communication = () => {
       />
 
       {/* New Conversation Modal */}
-      <NewStudentConversationModalEducator
+      <NewStudentConversationModal
         isOpen={showNewConversationModal}
         onClose={() => setShowNewConversationModal(false)}
-        onCreateConversation={handleNewConversation}
-        educatorId={educatorId}
+        onConversationCreated={({ studentId, subject, initialMessage }) => {
+          handleNewConversation(studentId, subject, initialMessage);
+        }}
+        schoolId={schoolId}
       />
     </div>
   );
 };
 
-export default Communication;
+export default StudentCommunication;
