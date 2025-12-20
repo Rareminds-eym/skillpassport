@@ -1,7 +1,17 @@
+/**
+ * @deprecated This Netlify function has been replaced by the storage-api Cloudflare Worker.
+ * See: cloudflare-workers/storage-api/
+ * 
+ * This file is kept for backwards compatibility during the migration period.
+ * Use storageApiService.js in the frontend which routes to the Cloudflare Worker.
+ */
+
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import multipart from 'lambda-multipart-parser';
 import crypto from 'crypto';
+
+// DEPRECATED: Use storage-api Cloudflare Worker instead
 
 // Configure R2 client
 const r2Client = new S3Client({

@@ -72,9 +72,47 @@ export async function resetPassword({ userId, newPassword }, token) {
   return response.json();
 }
 
+/**
+ * Create event user (after event registration payment)
+ */
+export async function createEventUser({ email, firstName, lastName, role, phone, registrationId, metadata }, token) {
+  const response = await fetch(`${getBaseUrl()}/create-event-user`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ email, firstName, lastName, role, phone, registrationId, metadata }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to create event user');
+  }
+
+  return response.json();
+}
+
+/**
+ * Send interview reminder email
+ */
+export async function sendInterviewReminder({ interviewId, recipientEmail, recipientName, interviewDetails }, token) {
+  const response = await fetch(`${getBaseUrl()}/send-interview-reminder`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ interviewId, recipientEmail, recipientName, interviewDetails }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to send interview reminder');
+  }
+
+  return response.json();
+}
+
 export default {
   createStudent,
   createTeacher,
+  createEventUser,
+  sendInterviewReminder,
   resetPassword,
   isUsingWorker,
 };

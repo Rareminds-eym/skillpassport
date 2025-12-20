@@ -64,7 +64,7 @@ export async function sendCareerChatMessage(
           const eventType = line.slice(7);
           const dataLineIndex = lines.indexOf(line) + 1;
           const dataLine = lines[dataLineIndex];
-          
+
           if (dataLine?.startsWith('data: ')) {
             try {
               const data = JSON.parse(dataLine.slice(6));
@@ -117,9 +117,29 @@ export async function healthCheck() {
   return response.json();
 }
 
+/**
+ * Generate embedding for text and store in database
+ */
+export async function generateEmbedding({ text, table, id, type = 'opportunity' }) {
+  const endpoint = '/generate-embedding';
+  const response = await fetch(`${getBaseUrl()}${endpoint}`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ text, table, id, type }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to generate embedding');
+  }
+
+  return response.json();
+}
+
 export default {
   sendCareerChatMessage,
   getRecommendations,
+  generateEmbedding,
   healthCheck,
   isUsingWorker,
 };

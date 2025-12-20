@@ -79,9 +79,84 @@ export async function extractContent(fileUrl, token) {
   return response.json();
 }
 
+/**
+ * Get presigned URL for large file upload
+ */
+export async function getPresignedUrl({ filename, contentType, fileSize, courseId, lessonId }, token) {
+  const response = await fetch(`${getBaseUrl()}/presigned`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ filename, contentType, fileSize, courseId, lessonId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to get presigned URL');
+  }
+
+  return response.json();
+}
+
+/**
+ * Confirm upload after direct-to-R2 upload completes
+ */
+export async function confirmUpload({ fileKey, fileName, fileSize, fileType }, token) {
+  const response = await fetch(`${getBaseUrl()}/confirm`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ fileKey, fileName, fileSize, fileType }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to confirm upload');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get file URL for a given file key
+ */
+export async function getFileUrl(fileKey, token) {
+  const response = await fetch(`${getBaseUrl()}/get-url`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ fileKey }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to get file URL');
+  }
+
+  return response.json();
+}
+
+/**
+ * List files for a lesson
+ */
+export async function listFiles(courseId, lessonId, token) {
+  const response = await fetch(`${getBaseUrl()}/files/${courseId}/${lessonId}`, {
+    method: 'GET',
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to list files');
+  }
+
+  return response.json();
+}
+
 export default {
   uploadFile,
   deleteFile,
   extractContent,
+  getPresignedUrl,
+  confirmUpload,
+  getFileUrl,
+  listFiles,
   isUsingWorker,
 };

@@ -172,7 +172,7 @@ async function handleExtractContent(request: Request, env: Env): Promise<Respons
       // Fetch PDF content
       const pdfUrl = resource.url;
       const pdfResponse = await fetch(pdfUrl);
-      
+
       if (!pdfResponse.ok) {
         throw new Error(`Failed to download: ${pdfResponse.status}`);
       }
@@ -214,6 +214,187 @@ async function handleExtractContent(request: Request, env: Env): Promise<Respons
   });
 }
 
+// ==================== PRESIGNED URL FOR UPLOAD ====================
+
+async function handlePresigned(request: Request, env: Env): Promise<Response> {
+  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+    return jsonResponse({ error: 'R2 credentials not configured' }, 500);
+  }
+
+  const body = await request.json() as {
+    filename: string;
+    contentType: string;
+    fileSize?: number;
+    courseId: string;
+    lessonId: string;
+  };
+
+  const { filename, contentType, courseId, lessonId } = body;
+
+  if (!filename || !contentType || !courseId || !lessonId) {
+    return jsonResponse({
+      error: 'Missing required fields',
+      required: ['filename', 'contentType', 'courseId', 'lessonId']
+    }, 400);
+  }
+
+  // Generate unique file key
+  const timestamp = Date.now();
+  const randomString = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+  const extension = filename.substring(filename.lastIndexOf('.'));
+  const fileKey = `courses/${courseId}/lessons/${lessonId}/${timestamp}-${randomString}${extension}`;
+
+  const bucketName = env.CLOUDFLARE_R2_BUCKET_NAME || 'skill-echosystem';
+  const r2 = new AwsClient({
+    accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+    secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+  });
+
+  const endpoint = `https://${env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+
+  // Create a signed URL for PUT
+  const uploadUrl = `${endpoint}/${bucketName}/${fileKey}`;
+
+  // For R2, we'll use direct upload with signed headers
+  const expiresIn = 3600; // 1 hour
+  const signedRequest = await r2.sign(new Request(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': contentType,
+    },
+  }));
+
+  // Extract the signed URL from the request
+  const signedUrl = signedRequest.url;
+  const authHeader = signedRequest.headers.get('Authorization');
+  const dateHeader = signedRequest.headers.get('x-amz-date');
+
+  return jsonResponse({
+    success: true,
+    data: {
+      uploadUrl: signedUrl,
+      fileKey,
+      headers: {
+        'Authorization': authHeader,
+        'x-amz-date': dateHeader,
+        'Content-Type': contentType,
+      },
+    },
+  });
+}
+
+// ==================== CONFIRM UPLOAD ====================
+
+async function handleConfirm(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as {
+    fileKey: string;
+    fileName?: string;
+    fileSize?: number;
+    fileType?: string;
+  };
+
+  const { fileKey, fileName, fileSize, fileType } = body;
+
+  if (!fileKey) {
+    return jsonResponse({ error: 'Missing fileKey' }, 400);
+  }
+
+  // Generate access URL
+  const fileUrl = env.CLOUDFLARE_R2_PUBLIC_URL
+    ? `${env.CLOUDFLARE_R2_PUBLIC_URL}/${fileKey}`
+    : `https://pub-${env.CLOUDFLARE_ACCOUNT_ID}.r2.dev/${fileKey}`;
+
+  return jsonResponse({
+    success: true,
+    data: {
+      key: fileKey,
+      url: fileUrl,
+      name: fileName,
+      size: fileSize,
+      type: fileType,
+    },
+  });
+}
+
+// ==================== GET FILE URL ====================
+
+async function handleGetFileUrl(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as { fileKey?: string };
+  const { fileKey } = body;
+
+  if (!fileKey) {
+    return jsonResponse({ error: 'fileKey is required' }, 400);
+  }
+
+  // Generate access URL
+  const fileUrl = env.CLOUDFLARE_R2_PUBLIC_URL
+    ? `${env.CLOUDFLARE_R2_PUBLIC_URL}/${fileKey}`
+    : `https://pub-${env.CLOUDFLARE_ACCOUNT_ID}.r2.dev/${fileKey}`;
+
+  return jsonResponse({
+    success: true,
+    url: fileUrl,
+  });
+}
+
+// ==================== LIST FILES ====================
+
+async function handleListFiles(request: Request, env: Env, courseId: string, lessonId: string): Promise<Response> {
+  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+    return jsonResponse({ error: 'R2 credentials not configured' }, 500);
+  }
+
+  const bucketName = env.CLOUDFLARE_R2_BUCKET_NAME || 'skill-echosystem';
+  const prefix = `courses/${courseId}/lessons/${lessonId}/`;
+
+  const r2 = new AwsClient({
+    accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+    secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+  });
+
+  const endpoint = `https://${env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+
+  // List objects with prefix
+  const listUrl = `${endpoint}/${bucketName}?list-type=2&prefix=${encodeURIComponent(prefix)}`;
+  const listRequest = new Request(listUrl, { method: 'GET' });
+  const signedRequest = await r2.sign(listRequest);
+  const response = await fetch(signedRequest);
+
+  if (!response.ok) {
+    return jsonResponse({ error: 'Failed to list files' }, 500);
+  }
+
+  const xmlText = await response.text();
+
+  // Parse XML response (simple parsing)
+  const files: { key: string; url: string; size?: string; lastModified?: string }[] = [];
+  const keyMatches = xmlText.matchAll(/<Key>([^<]+)<\/Key>/g);
+  const sizeMatches = xmlText.matchAll(/<Size>([^<]+)<\/Size>/g);
+  const lastModMatches = xmlText.matchAll(/<LastModified>([^<]+)<\/LastModified>/g);
+
+  const keys = Array.from(keyMatches, m => m[1]);
+  const sizes = Array.from(sizeMatches, m => m[1]);
+  const lastMods = Array.from(lastModMatches, m => m[1]);
+
+  for (let i = 0; i < keys.length; i++) {
+    const fileUrl = env.CLOUDFLARE_R2_PUBLIC_URL
+      ? `${env.CLOUDFLARE_R2_PUBLIC_URL}/${keys[i]}`
+      : `https://pub-${env.CLOUDFLARE_ACCOUNT_ID}.r2.dev/${keys[i]}`;
+
+    files.push({
+      key: keys[i],
+      url: fileUrl,
+      size: sizes[i],
+      lastModified: lastMods[i],
+    });
+  }
+
+  return jsonResponse({
+    success: true,
+    data: files,
+  });
+}
+
 // ==================== MAIN HANDLER ====================
 
 export default {
@@ -226,17 +407,36 @@ export default {
     const path = url.pathname;
 
     try {
+      // Check for /files/:courseId/:lessonId pattern
+      const filesMatch = path.match(/^\/files\/([^\/]+)\/([^\/]+)$/);
+      if (filesMatch) {
+        return await handleListFiles(request, env, filesMatch[1], filesMatch[2]);
+      }
+
       switch (path) {
         case '/upload':
           return await handleUpload(request, env);
+        case '/presigned':
+          return await handlePresigned(request, env);
+        case '/confirm':
+          return await handleConfirm(request, env);
+        case '/get-url':
+        case '/get-file-url':
+          return await handleGetFileUrl(request, env);
         case '/delete':
           return await handleDelete(request, env);
         case '/extract-content':
           return await handleExtractContent(request, env);
         case '/health':
-          return jsonResponse({ status: 'ok', timestamp: new Date().toISOString() });
+        case '/':
+          return jsonResponse({
+            status: 'ok',
+            service: 'storage-api',
+            endpoints: ['/upload', '/presigned', '/confirm', '/get-url', '/delete', '/files/:courseId/:lessonId', '/extract-content'],
+            timestamp: new Date().toISOString()
+          });
         default:
-          return jsonResponse({ error: 'Not found' }, 404);
+          return jsonResponse({ error: 'Not found', availableEndpoints: ['/upload', '/presigned', '/confirm', '/get-url', '/delete', '/extract-content'] }, 404);
       }
     } catch (error) {
       console.error('Worker error:', error);

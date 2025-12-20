@@ -10,7 +10,9 @@ This directory contains Cloudflare Workers that replace Supabase Edge Functions 
 | **career-api** | `/chat`, `/recommend-opportunities`, `/generate-embedding` | Career AI chat, job matching, embedding generation |
 | **payments-api** | `/create-order`, `/create-event-order`, `/verify-payment`, `/webhook`, `/cancel-subscription`, `/deactivate-subscription`, `/expire-subscriptions` | Razorpay payment processing |
 | **user-api** | `/create-student`, `/create-teacher`, `/create-event-user`, `/send-interview-reminder`, `/reset-password` | User management |
-| **storage-api** | `/upload`, `/delete`, `/extract-content` | R2 file storage |
+| **storage-api** | `/upload`, `/presigned`, `/confirm`, `/get-url`, `/delete`, `/files/:courseId/:lessonId`, `/extract-content` | R2 file storage with presigned URLs |
+| **streak-api** | `/:studentId`, `/:studentId/complete`, `/:studentId/notifications`, `/:studentId/process`, `/reset-daily` | Student streak management |
+
 
 
 ## Quick Start

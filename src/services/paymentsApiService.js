@@ -92,8 +92,28 @@ export async function deactivateSubscription(subscriptionId, token) {
   return response.json();
 }
 
+/**
+ * Create a Razorpay order for event registration
+ */
+export async function createEventOrder({ amount, currency = 'INR', registrationId, planName, userEmail, userName, origin }, token) {
+  const endpoint = isUsingWorker() ? '/create-event-order' : '/create-event-order';
+  const response = await fetch(`${getBaseUrl()}${endpoint}`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ amount, currency, registrationId, planName, userEmail, userName, origin }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to create event order');
+  }
+
+  return response.json();
+}
+
 export default {
   createOrder,
+  createEventOrder,
   verifyPayment,
   cancelSubscription,
   deactivateSubscription,

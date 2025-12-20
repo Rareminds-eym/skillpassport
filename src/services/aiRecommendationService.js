@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import careerApiService from './careerApiService';
 
 /**
  * AI-Powered Job Recommendation Service
@@ -26,14 +27,14 @@ class AIRecommendationService {
         }
       }
 
-      // Generate fresh recommendations via edge function
-      const { data, error } = await supabase.functions.invoke('recommend-opportunities', {
-        body: { studentId, forceRefresh: true }
-      });
-
-      if (error) {
-        console.error('Error fetching recommendations:', error);
-        throw error;
+      // Generate fresh recommendations via Cloudflare Worker (falls back to edge function)
+      let data, error;
+      try {
+        data = await careerApiService.getRecommendations(studentId, { forceRefresh: true });
+      } catch (err) {
+        error = err;
+        console.error('Error fetching recommendations:', err);
+        throw err;
       }
 
       // Cache the fresh recommendations
@@ -99,7 +100,7 @@ class AIRecommendationService {
         .eq('user_id', studentId)
         .single();
 
-      const profileHash = student ? 
+      const profileHash = student ?
         JSON.stringify({
           skills: student.skills,
           interests: student.interests,
@@ -165,17 +166,18 @@ class AIRecommendationService {
         Array.isArray(opp.responsibilities) ? opp.responsibilities.join(' ') : ''
       ].filter(Boolean).join(' ');
 
-      // Generate embedding
-      const { data, error } = await supabase.functions.invoke('generate-embedding', {
-        body: {
+      // Generate embedding via Cloudflare Worker
+      let data;
+      try {
+        data = await careerApiService.generateEmbedding({
           text,
           table: 'opportunities',
           id: opportunityId,
           type: 'opportunity'
-        }
-      });
-
-      if (error) throw error;
+        });
+      } catch (error) {
+        throw error;
+      }
 
       return { success: true, ...data };
     } catch (error) {
@@ -213,17 +215,18 @@ class AIRecommendationService {
         Array.isArray(student.preferred_employment_types) ? student.preferred_employment_types.join(' ') : ''
       ].filter(Boolean).join(' ');
 
-      // Generate embedding
-      const { data, error } = await supabase.functions.invoke('generate-embedding', {
-        body: {
+      // Generate embedding via Cloudflare Worker
+      let data;
+      try {
+        data = await careerApiService.generateEmbedding({
           text,
           table: 'students',
           id: studentId,
           type: 'student'
-        }
-      });
-
-      if (error) throw error;
+        });
+      } catch (error) {
+        throw error;
+      }
 
       return { success: true, ...data };
     } catch (error) {
@@ -309,7 +312,7 @@ class AIRecommendationService {
       for (const opp of opportunities) {
         const result = await this.generateOpportunityEmbedding(opp.id);
         results.push({ id: opp.id, ...result });
-        
+
         // Add small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 500));
       }
@@ -359,7 +362,7 @@ class AIRecommendationService {
    */
   getMatchExplanation(matchReasons) {
     const reasons = [];
-    
+
     if (matchReasons?.semantic_match) {
       reasons.push('Strong skill and experience match');
     }
