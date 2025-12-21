@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
@@ -7,7 +7,11 @@ import {
   Briefcase,
   ListChecks,
   Target,
+  CheckCircle,
 } from "lucide-react";
+import { checkAssessmentStatus } from "../../../services/externalAssessmentService";
+import { useAuth } from "../../../context/AuthContext";
+import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 
 /**
  * Modern Learning Card Component
@@ -18,7 +22,13 @@ const ModernLearningCard = ({
   onEdit,
 }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
+  const [assessmentCompleted, setAssessmentCompleted] = useState(false);
+  const [checkingAssessment, setCheckingAssessment] = useState(true);
+  
+  const userEmail = user?.email;
+  const { studentData } = useStudentDataByEmail(userEmail, false);
 
   // Calculate progress
   const progress =
@@ -46,6 +56,22 @@ const ModernLearningCard = ({
     isExternalCourse,
     allFields: Object.keys(item)
   });
+
+  // Check if assessment is already completed or in progress
+  useEffect(() => {
+    const checkCompletion = async () => {
+      if (isExternalCourse && studentData?.id && item.course) {
+        setCheckingAssessment(true);
+        const result = await checkAssessmentStatus(studentData.id, item.course);
+        setAssessmentCompleted(result.status === 'completed');
+        setCheckingAssessment(false);
+      } else {
+        setCheckingAssessment(false);
+      }
+    };
+    
+    checkCompletion();
+  }, [isExternalCourse, studentData?.id, item.course]);
 
   return (
     <div
@@ -154,14 +180,29 @@ const ModernLearningCard = ({
           </div>
           
           {/* Assessment Button - ONLY show for EXTERNAL courses (not internal platform courses) */}
-          {isExternalCourse && (
-            <button
-              onClick={() => navigate("/student/assessment/platform")}
-              className="px-6 py-2.5 rounded-full font-medium text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-all duration-300 flex items-center gap-2"
-            >
-              <Target className="w-4 h-4" />
-              Assessment
-            </button>
+          {isExternalCourse && !checkingAssessment && (
+            assessmentCompleted ? (
+              <div className="flex items-center gap-2 px-6 py-2.5 rounded-full font-medium text-sm bg-green-100 text-green-700 border-2 border-green-300">
+                <CheckCircle className="w-4 h-4" />
+                Completed
+              </div>
+            ) : (
+              <button
+                onClick={() => navigate("/student/assessment/platform", {
+                  state: {
+                    courseName: item.course || item.title,
+                    certificateName: item.course || item.title,
+                    level: item.level || 'Intermediate',
+                    courseId: item.id,
+                    useDynamicGeneration: true
+                  }
+                })}
+                className="px-6 py-2.5 rounded-full font-medium text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-all duration-300 flex items-center gap-2"
+              >
+                <Target className="w-4 h-4" />
+                Assessment
+              </button>
+            )
           )}
         </div>
 

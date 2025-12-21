@@ -1,12 +1,20 @@
 # Certificate-Based Assessment Guide
 
 ## Overview
-The assessment system now dynamically loads questions based on the certificate or course name, allowing different assessments for different certifications.
+The assessment system dynamically loads **1-15 questions** based on the certificate or course name, with configurable time limits and passing scores for each certificate.
+
+## Key Features
+
+✅ **Dynamic Question Count**: Each certificate can have 1-15 questions  
+✅ **Custom Time Limits**: Different time limits per certificate  
+✅ **Passing Score Configuration**: Set minimum passing percentage  
+✅ **Difficulty Levels**: Easy, Medium, or Hard  
+✅ **Smart Matching**: Automatic certificate name matching  
 
 ## How It Works
 
 ### 1. Navigation to Assessment
-When navigating to the assessment, pass the certificate/course information:
+Pass certificate/course information when navigating:
 
 ```javascript
 navigate('/student/assessment/platform', {
@@ -18,174 +26,228 @@ navigate('/student/assessment/platform', {
 });
 ```
 
-### 2. Assessment Start Page
-The `AssessmentStart.jsx` page now:
-- Displays the certificate name in the header
-- Passes certificate data to the test page
-- Shows personalized welcome message
+### 2. Automatic Configuration
+The system automatically:
+- Matches certificate name to question set
+- Applies configured question count (1-15)
+- Sets appropriate time limit
+- Defines passing score threshold
 
-### 3. Dynamic Question Loading
-The `AssessmentTestPage.tsx` loads questions based on:
-1. **Certificate Name** (primary) - Matches certificate name to question sets
-2. **Course ID** (fallback) - Uses course ID if certificate name doesn't match
-3. **Default** (last resort) - Loads default questions if no match found
+### 3. Example Configurations
 
-### 4. Question Matching Logic
-The system matches certificate names to question sets:
+| Certificate | Questions | Time Limit | Passing Score |
+|------------|-----------|------------|---------------|
+| JavaScript | 10 | 10 min | 70% |
+| React | 12 | 12 min | 75% |
+| Green Chemistry | 15 | 15 min | 70% |
+| EV Battery | 15 | 15 min | 75% |
+| Quick Check | 5 | 5 min | 60% |
+| Basic Assessment | 3 | 3 min | 60% |
+
+## Adding New Certificates
+
+### Step 1: Add Configuration
+Edit `src/data/assessment/certificateConfig.ts`:
 
 ```typescript
-// Examples of automatic matching:
-'Green Chemistry' → green-chemistry questions
-'EV Battery Management' → ev-battery questions
-'Food Analysis' → food-analysis questions
-'Organic Food Production' → organic-food questions
+export const certificateConfigs: Record<string, CertificateConfig> = {
+  'your-certificate': {
+    name: 'Your Certificate Name',
+    questionCount: 8,        // 1-15 questions
+    timeLimit: 480,          // 8 minutes (in seconds)
+    passingScore: 70,        // 70% to pass
+    difficulty: 'medium'
+  },
+  // ... other configs
+};
 ```
 
-## Adding New Certificate Questions
-
-### Option 1: Add to Existing Question Files
-Add questions to `src/data/assessment/questions/`:
+### Step 2: Add Questions (Optional)
+If you have custom questions, create a new file:
 
 ```typescript
-// src/data/assessment/questions/react-basics.ts
-export const reactBasicsQuestions: Question[] = [
+// src/data/assessment/questions/your-certificate.ts
+export const yourCertificateQuestions: Question[] = [
   {
     id: 1,
-    text: 'What is React?',
-    options: ['Library', 'Framework', 'Language', 'Database'],
-    correctAnswer: 'Library',
+    text: 'Your question here?',
+    options: ['A', 'B', 'C', 'D'],
+    correctAnswer: 'A',
     type: 'mcq'
-  }
+  },
+  // Add up to 15 questions
 ];
 ```
 
 Then register in `index.ts`:
 ```typescript
-import { reactBasicsQuestions } from './react-basics';
+import { yourCertificateQuestions } from './your-certificate';
 
 const questionsMap: Record<string, Question[]> = {
-  'react-basics': reactBasicsQuestions,
+  'your-certificate': yourCertificateQuestions,
   // ... other questions
 };
 ```
 
-### Option 2: Use Database (Recommended for Production)
-Store questions in the `assessment_questions` table:
-
-```sql
-INSERT INTO assessment_questions (
-  course_name,
-  certificate_name,
-  question_text,
-  options,
-  correct_answer,
-  question_type,
-  difficulty,
-  enabled
-) VALUES (
-  'JavaScript Fundamentals',
-  'JavaScript Developer Certificate',
-  'What is a closure in JavaScript?',
-  ARRAY['A function inside another function', 'A loop', 'A variable', 'An object'],
-  'A function inside another function',
-  'mcq',
-  'medium',
-  true
-);
+### Step 3: Test
+Navigate with your certificate name:
+```javascript
+navigate('/student/assessment/platform', {
+  state: { certificateName: 'Your Certificate Name' }
+});
 ```
 
-### Option 3: Use Fallback Service
-The `certificateAssessmentService.js` provides fallback questions for common topics:
-- JavaScript/Programming
-- Python
-- React
-- Data Science
-- Generic questions
+Check console for confirmation:
+```
+✅ Certificate: "Your Certificate Name"
+   Matched: your-certificate
+   Total available: 15 questions
+   Configured count: 8 questions
+   Returning: 8 questions
+   Time limit: 8 minutes
+   Passing score: 70%
+```
+
+## Pre-configured Certificates
+
+### Programming (10-12 questions)
+- JavaScript, Python, React, Node.js
+
+### Science (12-15 questions)
+- Green Chemistry, Chemistry, Food Analysis, Organic Food
+
+### Engineering (15 questions)
+- EV Battery Management
+
+### Data Science (15 questions)
+- Data Science, Machine Learning
+
+### Business (10-12 questions)
+- Digital Marketing, Project Management
+
+### Design (8-10 questions)
+- UI/UX Design, Graphic Design
+
+### Quick Assessments (3-5 questions)
+- Quick Skills Check, Basic Assessment
+
+## Smart Matching
+
+The system automatically matches certificate names:
+
+```
+"JavaScript Basics" → javascript config (10 questions)
+"React Hooks Course" → react config (12 questions)
+"Green Chemistry 101" → green-chemistry config (15 questions)
+"EV Battery Tech" → ev-battery config (15 questions)
+"Quick Python Check" → python config (10 questions)
+```
+
+## Question Randomization
+
+When a certificate has more questions than configured:
+- System randomly selects the configured number
+- Ensures variety across attempts
+- Example: 15 available questions, config says 10 → random 10 selected
 
 ## Usage Examples
 
-### From Course Player
+### From Course Completion
 ```javascript
-// When student completes a course
 <Button onClick={() => navigate('/student/assessment/platform', {
   state: {
-    certificateName: course.title,
-    courseId: course.id
+    certificateName: 'JavaScript Fundamentals',
+    courseId: 'js-101'
   }
 })}>
-  Take Assessment
+  Take Final Assessment (10 questions)
 </Button>
 ```
 
-### From Learning Page
+### Quick Skills Check
 ```javascript
-// When student wants to verify external certificate
+<Button onClick={() => navigate('/student/assessment/platform', {
+  state: {
+    certificateName: 'Quick Check',
+  }
+})}>
+  Quick Skills Check (5 questions)
+</Button>
+```
+
+### External Certificate Verification
+```javascript
 <Button onClick={() => navigate('/student/assessment/platform', {
   state: {
     certificateName: training.course,
     certificateId: training.id
   }
 })}>
-  Verify Skills
+  Verify Certificate
 </Button>
 ```
 
-### From Dashboard
-```javascript
-// General assessment
-<Button onClick={() => navigate('/student/assessment/platform')}>
-  Start Assessment
-</Button>
+## Console Logs
+
+When assessment loads, you'll see:
+
+```
+✅ Certificate: "React Fundamentals"
+   Matched: react
+   Total available: 15 questions
+   Configured count: 12 questions
+   Returning: 12 questions
+   Time limit: 12 minutes
+   Passing score: 75%
+   Difficulty: medium
+
+📝 Assessment Configuration:
+   Certificate: React Fundamentals
+   Questions: 12
+   Time Limit: 12 minutes
+   Passing Score: 75%
+   Difficulty: medium
 ```
 
-## Question Format
+## Files Structure
 
-Each question should follow this structure:
-
-```typescript
-interface Question {
-  id: number;
-  text: string;
-  options: string[];
-  correctAnswer: string;
-  type?: 'mcq' | 'true-false' | 'short-answer';
-  difficulty?: 'easy' | 'medium' | 'hard';
-  category?: string;
-  points?: number;
-  timeLimit?: number;
-  explanation?: string;
-}
+```
+src/
+├── data/
+│   └── assessment/
+│       ├── certificateConfig.ts      # Question counts & settings
+│       └── questions/
+│           ├── index.ts              # Question loading logic
+│           ├── javascript.ts         # JavaScript questions
+│           ├── react.ts              # React questions
+│           └── ...                   # Other question files
+├── pages/
+│   └── student/
+│       ├── AssessmentStart.jsx       # Shows certificate name
+│       └── AssessmentTestPage.tsx    # Loads configured questions
+└── services/
+    └── certificateAssessmentService.js  # Fallback questions
 ```
 
-## Testing
+## Best Practices
 
-To test with different certificates:
+1. **Question Count**: Use 5-10 for quick checks, 10-15 for comprehensive assessments
+2. **Time Limit**: Allow ~1 minute per question
+3. **Passing Score**: 60-70% for basic, 75-80% for advanced
+4. **Question Quality**: Ensure questions match difficulty level
+5. **Testing**: Always test with console logs enabled
 
-1. Navigate with certificate name:
-```javascript
-navigate('/student/assessment/platform', {
-  state: { certificateName: 'Green Chemistry' }
-});
-```
+## Troubleshooting
 
-2. Check console logs:
-```
-Loading questions for certificate: Green Chemistry, matched: green-chemistry, found 15 questions
-```
+**No questions loading?**
+- Check certificate name spelling
+- Verify config exists in `certificateConfig.ts`
+- Check console logs for matching details
 
-3. Verify correct questions are displayed
+**Wrong number of questions?**
+- Verify `questionCount` in config
+- Check if enough questions exist in question file
 
-## Files Modified
-
-- `src/pages/student/AssessmentStart.jsx` - Added certificate name display
-- `src/pages/student/AssessmentTestPage.tsx` - Added certificate-based loading
-- `src/data/assessment/questions/index.ts` - Enhanced matching logic
-- `src/services/certificateAssessmentService.js` - New fallback service
-
-## Next Steps
-
-1. **Add more question sets** for different certificates
-2. **Implement database integration** for dynamic question management
-3. **Add question difficulty levels** for adaptive testing
-4. **Create admin interface** for managing questions
-5. **Add analytics** to track which certificates need more questions
+**Time limit not working?**
+- Ensure `timeLimit` is in seconds
+- Check console logs for applied config
