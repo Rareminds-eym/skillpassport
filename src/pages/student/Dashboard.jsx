@@ -1253,37 +1253,19 @@ const StudentDashboard = () => {
                       </Badge>
                     </div>
 
-                    {/* Category */}
-                    {skill.category && (
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-sm text-blue-600 font-medium">
-                          {skill.category}
-                        </span>
-                      </div>
-
-                      {/* Category */}
-                      {skill.category && (
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-sm text-blue-600 font-medium">
-                            {skill.category}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Star Rating */}
-                      <div className="flex gap-0.5">
-                        {renderStars(skill.level)}
-                      </div>
+                    {/* Star Rating */}
+                    <div className="flex gap-0.5">
+                      {renderStars(skill.level)}
                     </div>
                   </div>
                 </div>
               </div>
             ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    ),
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  ),
     projects: (
       <Card
         key="projects"
@@ -1425,7 +1407,11 @@ const StudentDashboard = () => {
                 No education records added yet
               </p>
             </div>
-          ))}
+          ) : (
+            <div className="space-y-4">
+              {/* Education content would go here */}
+            </div>
+          )}
         </CardContent>
       </Card>
     ),
