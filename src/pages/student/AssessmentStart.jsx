@@ -1,7 +1,9 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Target, Clock, FileText, Zap, CheckCircle, ArrowLeft } from 'lucide-react';
+import { checkAssessmentStatus } from '../../services/externalAssessmentService';
+import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 
 /**
  * Assessment Start Page
@@ -9,19 +11,128 @@ import { Target, Clock, FileText, Zap, CheckCircle, ArrowLeft } from 'lucide-rea
  */
 const AssessmentStart = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [isStarting, setIsStarting] = React.useState(false);
+  const [checkingStatus, setCheckingStatus] = React.useState(true);
+  const [inProgressAttempt, setInProgressAttempt] = React.useState(null);
 
-  const handleStartAssessment = () => {
+  const userEmail = user?.email;
+  const { studentData } = useStudentDataByEmail(userEmail, false);
+
+  // Get certificate/course data from navigation state
+  const certificateName = location.state?.certificateName || location.state?.courseName || 'General Assessment';
+  const courseId = location.state?.courseId || 'default';
+  const certificateId = location.state?.certificateId;
+  const useDynamicGeneration = location.state?.useDynamicGeneration || false;
+  const level = location.state?.level || 'Intermediate';
+
+  // Check for in-progress assessment on mount
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (studentData?.id && certificateName) {
+        setCheckingStatus(true);
+        const result = await checkAssessmentStatus(studentData.id, certificateName);
+        
+        if (result.status === 'in_progress' && result.attempt) {
+          setInProgressAttempt(result.attempt);
+        } else if (result.status === 'completed') {
+          // Already completed, go back
+          alert('You have already completed this assessment');
+          navigate('/student/my-learning');
+          return;
+        }
+        setCheckingStatus(false);
+      } else {
+        setCheckingStatus(false);
+      }
+    };
+    
+    checkStatus();
+  }, [studentData?.id, certificateName, navigate]);
+
+  const handleStartAssessment = async () => {
     setIsStarting(true);
-    // Navigate to the actual test page
-    navigate('/student/assessment/start', { 
-      state: { 
-        courseId: 'default',
-        userId: user?.id,
-        email: user?.email 
-      } 
-    });
+    
+    // If there's an in-progress attempt, resume it
+    if (inProgressAttempt) {
+      console.log('📝 Resuming in-progress assessment from question', inProgressAttempt.current_question_index + 1);
+      
+      // Navigate with saved data
+      navigate('/student/assessment/start', { 
+        state: { 
+          courseId,
+          certificateId,
+          certificateName,
+          userId: user?.id,
+          email: user?.email,
+          useDynamicGeneration,
+          level,
+          resumeAttempt: inProgressAttempt,
+          preGeneratedQuestions: inProgressAttempt.questions
+        } 
+      });
+      return;
+    }
+    
+    // If using dynamic generation, pre-load questions here
+    if (useDynamicGeneration && certificateName) {
+      try {
+        console.log('🎯 Pre-generating questions for:', certificateName);
+        
+        // Call backend API to generate questions
+        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${backendUrl}/api/assessment/generate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            courseName: certificateName,
+            level: level,
+            questionCount: 15
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to generate assessment questions');
+        }
+        
+        const assessment = await response.json();
+        console.log('✅ Questions generated, navigating to test...');
+        
+        // Navigate with pre-generated questions
+        navigate('/student/assessment/start', { 
+          state: { 
+            courseId,
+            certificateId,
+            certificateName,
+            userId: user?.id,
+            email: user?.email,
+            useDynamicGeneration,
+            level,
+            preGeneratedQuestions: assessment.questions // Pass the questions
+          } 
+        });
+      } catch (error) {
+        console.error('❌ Error generating questions:', error);
+        alert('Failed to generate assessment. Please try again.');
+        setIsStarting(false);
+      }
+    } else {
+      // Navigate normally for static questions
+      navigate('/student/assessment/start', { 
+        state: { 
+          courseId,
+          certificateId,
+          certificateName,
+          userId: user?.id,
+          email: user?.email,
+          useDynamicGeneration,
+          level
+        } 
+      });
+    }
   };
 
   return (
@@ -43,7 +154,7 @@ const AssessmentStart = () => {
             className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all duration-200 backdrop-blur-sm border border-white/20"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Back to Learning</span>
+            <span className="font-medium">Back to My Learning</span>
           </button>
         </div>
 
@@ -91,7 +202,7 @@ const AssessmentStart = () => {
             </div>
             
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome to Your Assessment
+              {certificateName}
             </h1>
             
             {user && (

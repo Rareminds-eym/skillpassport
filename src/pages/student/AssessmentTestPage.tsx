@@ -13,6 +13,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { getQuestions } from "../../data/assessment/questions";
+import { getCertificateConfig } from "../../data/assessment/certificateConfig";
 import { Question } from "../../types";
 import ReviewPage from "../../components/assessment/test/ReviewPage";
 import InstructionsPage from "../../components/assessment/test/InstructionsPage";
@@ -43,6 +44,8 @@ const TestPage: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const courseId = location.state?.courseId;
+  const certificateName = location.state?.certificateName || location.state?.courseName || 'General Assessment';
+  const certificateId = location.state?.certificateId;
   const videoRef = useRef<HTMLVideoElement>(null);
   const totalTimerRef = useRef<NodeJS.Timeout | null>(null);
   const questionStartTimeRef = useRef<number>(Date.now());
@@ -87,20 +90,142 @@ const TestPage: React.FC = () => {
   // Fetch questions when component mounts
   useEffect(() => {
     const loadQuestions = async () => {
-      if (!courseId) {
-        navigate("/dashboard");
+      if (!courseId && !certificateName) {
+        navigate("/student/my-learning");
         return;
       }
 
       try {
         setLoading(true);
-        const fetchedQuestions = await getQuestions(courseId);
-        if (fetchedQuestions.length === 0) {
-          throw new Error("No questions found for this course");
+        
+        // Check if resuming an in-progress attempt
+        const resumeAttempt = location.state?.resumeAttempt;
+        
+        if (resumeAttempt) {
+          console.log('📝 Resuming assessment from question', resumeAttempt.current_question_index + 1);
+          
+          // Transform saved questions
+          const transformedQuestions = resumeAttempt.questions.map((q: any) => ({
+            id: q.id,
+            text: q.question || q.text,
+            question: q.question || q.text,
+            options: q.options || [],
+            correctAnswer: q.correct_answer || q.correctAnswer,
+            type: q.type,
+            difficulty: q.difficulty,
+            skillTag: q.skill_tag || q.skillTag,
+            estimatedTime: q.estimated_time || q.estimatedTime
+          }));
+          
+          // Restore saved answers
+          const restoredAnswers = resumeAttempt.student_answers.map((a: any) => a.selected_answer);
+          
+          setQuestions(transformedQuestions);
+          setSelectedAnswers(restoredAnswers);
+          setCurrentQuestion(resumeAttempt.current_question_index);
+          setTimeTakenPerQuestion(new Array(transformedQuestions.length).fill(0));
+          setTotalTimeLeft(resumeAttempt.time_remaining || 900);
+          
+          console.log('✅ Resumed at question', resumeAttempt.current_question_index + 1);
         }
-        setQuestions(fetchedQuestions);
-        setSelectedAnswers(new Array(fetchedQuestions.length).fill(null));
-        setTimeTakenPerQuestion(new Array(fetchedQuestions.length).fill(0));
+        // Check if we have pre-generated questions
+        else if (location.state?.preGeneratedQuestions && location.state.preGeneratedQuestions.length > 0) {
+          const preGeneratedQuestions = location.state.preGeneratedQuestions;
+          console.log('✅ Using pre-generated questions:', preGeneratedQuestions.length);
+          
+          // Transform API questions to match the expected format
+          const transformedQuestions = preGeneratedQuestions.map((q: any) => ({
+            id: q.id,
+            text: q.question,  // Map 'question' to 'text' for UI
+            question: q.question,  // Keep both for compatibility
+            options: q.options || [],
+            correctAnswer: q.correct_answer,
+            type: q.type,
+            difficulty: q.difficulty,
+            skillTag: q.skill_tag,
+            estimatedTime: q.estimated_time
+          }));
+          
+          setQuestions(transformedQuestions);
+          setSelectedAnswers(new Array(transformedQuestions.length).fill(null));
+          setTimeTakenPerQuestion(new Array(transformedQuestions.length).fill(0));
+          setTotalTimeLeft(900); // 15 minutes default
+        } else {
+          // Check if we should use dynamic generation
+          const useDynamicGeneration = location.state?.useDynamicGeneration;
+          const level = location.state?.level || 'Intermediate';
+          
+          if (useDynamicGeneration && certificateName) {
+            console.log('🎯 Using dynamic question generation for:', certificateName);
+            
+            // Call backend API to generate questions
+            const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            const response = await fetch(`${backendUrl}/api/assessment/generate`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                courseName: certificateName,
+                level: level,
+                questionCount: 15
+              })
+            });
+            
+            if (!response.ok) {
+              throw new Error('Failed to generate assessment questions');
+            }
+            
+            const assessment = await response.json();
+            
+            // Transform API questions to match the expected format
+            const transformedQuestions = assessment.questions.map((q: any) => ({
+              id: q.id,
+              text: q.question,  // Map 'question' to 'text' for UI
+              question: q.question,  // Keep both for compatibility
+              options: q.options || [],
+              correctAnswer: q.correct_answer,
+              type: q.type,
+              difficulty: q.difficulty,
+              skillTag: q.skill_tag,
+              estimatedTime: q.estimated_time
+            }));
+            
+            console.log(`✅ Generated ${transformedQuestions.length} questions dynamically`);
+            
+            setQuestions(transformedQuestions);
+            setSelectedAnswers(new Array(transformedQuestions.length).fill(null));
+            setTimeTakenPerQuestion(new Array(transformedQuestions.length).fill(0));
+            setTotalTimeLeft(900); // 15 minutes default
+          } else {
+            // Use original static question loading
+            // Get certificate configuration
+            const config = getCertificateConfig(certificateName || courseId);
+            
+            // Set time limit from config
+            if (config.timeLimit) {
+              setTotalTimeLeft(config.timeLimit);
+            }
+            
+            // Try to fetch questions based on certificate name
+            let fetchedQuestions = await getQuestions(courseId, certificateName);
+            
+            if (fetchedQuestions.length === 0) {
+              throw new Error(`No questions found for ${certificateName}`);
+            }
+            
+            console.log(`📝 Assessment Configuration:`);
+            console.log(`   Certificate: ${certificateName}`);
+            console.log(`   Questions: ${fetchedQuestions.length}`);
+            console.log(`   Time Limit: ${config.timeLimit ? `${config.timeLimit / 60} minutes` : 'No limit'}`);
+            console.log(`   Passing Score: ${config.passingScore}%`);
+            console.log(`   Difficulty: ${config.difficulty}`);
+            
+            setQuestions(fetchedQuestions);
+            setSelectedAnswers(new Array(fetchedQuestions.length).fill(null));
+            setTimeTakenPerQuestion(new Array(fetchedQuestions.length).fill(0));
+          }
+        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load questions"
@@ -111,7 +236,7 @@ const TestPage: React.FC = () => {
     };
 
     loadQuestions();
-  }, [courseId, navigate]);
+  }, [courseId, certificateName, navigate]);
 
   // Handle tab visibility changes
   useEffect(() => {
@@ -346,10 +471,10 @@ const TestPage: React.FC = () => {
           </h2>
           <p className="text-sm text-gray-600 mb-6">{error}</p>
           <button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/student/my-learning")}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            Return to Dashboard
+            Back to My Learning
           </button>
         </div>
       </div>
@@ -647,16 +772,13 @@ const TestPage: React.FC = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
-                  if (currentQuestion > 0) {
-                    setCurrentQuestion((prev) => prev - 1);
-                  }
+                  // Disable going back - students cannot change previous answers
+                  // if (currentQuestion > 0) {
+                  //   setCurrentQuestion((prev) => prev - 1);
+                  // }
                 }}
-                disabled={currentQuestion === 0}
-                className={`flex items-center gap-3 px-6 py-2 rounded-lg text-sm ${
-                  currentQuestion === 0
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                }`}
+                disabled={true}
+                className="bg-gray-100 text-gray-400 cursor-not-allowed flex items-center gap-3 px-6 py-2 rounded-lg text-sm"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Previous

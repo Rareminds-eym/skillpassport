@@ -396,6 +396,10 @@ const formattedTrainings = approvedTrainings.map((train) => {
     totalModules: train.total_modules || 0,
     hoursSpent: train.hours_spent || 0,
     
+    // IMPORTANT: Include course_id and source for internal/external detection
+    course_id: train.course_id || null,
+    source: train.source || null,
+    
     // From certificates table (linked by training_id)
     certificateUrl: cert?.link || "",
     

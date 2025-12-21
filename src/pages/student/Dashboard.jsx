@@ -227,10 +227,10 @@ const StudentDashboard = () => {
   const [showAllOpportunities, setShowAllOpportunities] = useState(false);
   const [showAllTraining, setShowAllTraining] = useState(false);
   const [showAllProjects, setShowAllProjects] = useState(false);
-  const [showAllTechnicalSkills, setShowAllTechnicalSkills] = useState(false);
-  const [showAllCertificates, setShowAllCertificates] = useState(false);
-  const [showAllSoftSkills, setShowAllSoftSkills] = useState(false);
   const [showAllEducation, setShowAllEducation] = useState(false);
+  const [showAllCertificates, setShowAllCertificates] = useState(false);
+  const [showAllTechnicalSkills, setShowAllTechnicalSkills] = useState(false);
+  const [showAllSoftSkills, setShowAllSoftSkills] = useState(false);
 
   // Generate QR code value once and keep it constant
   const qrCodeValue = React.useMemo(() => {
@@ -262,6 +262,14 @@ const StudentDashboard = () => {
     if (!Array.isArray(certificatesData)) return [];
     return certificatesData.filter((cert) => cert && cert.enabled !== false);
   }, [tableCertificates, userData.certificates]);
+
+  const verifiedExperience = useMemo(() => {
+    if (!Array.isArray(userData.experience)) return [];
+    return userData.experience.filter((exp) => 
+      exp.enabled !== false && 
+      (exp.approval_status === "verified" || exp.approval_status === "approved")
+    );
+  }, [userData.experience]);
 
   // Fetch opportunities data from Supabase
   const {
@@ -1217,32 +1225,40 @@ const StudentDashboard = () => {
             <div className="space-y-4">
               {(showAllTechnicalSkills
                 ? userData.technicalSkills.filter(
-                  (skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified')
+                  (skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified'
                 )
                 : userData.technicalSkills
-                  .filter((skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified'))
+                  .filter((skill) => skill.enabled !== false && skill.approval_status === 'approved' || skill.approval_status === 'verified')
                   .slice(0, 3)
               ).map((skill, idx) => (
-                <div
-                  key={skill.id || `tech-skill-${idx}`}
-                  className="p-5 rounded-xl bg-gradient-to-r from-blue-50 to-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-                >
-                  <div className="flex items-start justify-between">
-                    <div key={`tech-skill-info-${skill.id}`} className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-base mb-1">
-                        {skill.name}
-                      </h4>
-                      <p className="text-xs text-gray-600 font-medium mb-2">
-                        {skill.category}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm border ${getSkillLevelColor(
-                            skill.level
-                          )}`}
-                        >
-                          {getSkillLevelText(skill.level)}
-                        </Badge>
+              <div
+                key={skill.id || `tech-skill-${idx}`}
+                className="p-5 rounded-xl bg-gradient-to-r from-blue-50 to-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+              >
+                <div className="flex items-start justify-between">
+                  <div key={`tech-skill-info-${skill.id}`} className="flex-1">
+                    <h4 className="font-semibold text-gray-900 text-base mb-1">
+                      {skill.name}
+                    </h4>
+                    <p className="text-xs text-gray-600 font-medium mb-2">
+                      {skill.category}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm border ${getSkillLevelColor(
+                          skill.level
+                        )}`}
+                      >
+                        {getSkillLevelText(skill.level)}
+                      </Badge>
+                    </div>
+
+                    {/* Category */}
+                    {skill.category && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-sm text-blue-600 font-medium">
+                          {skill.category}
+                        </span>
                       </div>
 
                       {/* Category */}
@@ -1261,7 +1277,8 @@ const StudentDashboard = () => {
                     </div>
                   </div>
                 </div>
-              ))}
+              </div>
+            ))}
             </div>
           )}
         </CardContent>
@@ -1299,10 +1316,11 @@ const StudentDashboard = () => {
               </p>
             </div>
           ) : (
-            (showAllProjects
-              ? enabledProjects
-              : enabledProjects.slice(0, 2)
-            ).map((project, idx) => {
+            <div className="space-y-4">
+              {(showAllProjects
+                ? enabledProjects
+                : enabledProjects.slice(0, 2)
+              ).map((project, idx) => {
               const techList = Array.isArray(project.tech)
                 ? project.tech
                 : Array.isArray(project.technologies)
@@ -1366,7 +1384,8 @@ const StudentDashboard = () => {
                   </div>
                 </div>
               );
-            })
+            })}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -1406,68 +1425,7 @@ const StudentDashboard = () => {
                 No education records added yet
               </p>
             </div>
-          ) : (
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-              {userData.education
-                .filter((education) =>
-                  education.enabled !== false &&
-                  (education.approval_status === "verified" || education.approval_status === "approved")
-                )
-                .map((education, idx) => (
-                  <div
-                    key={education.id || `edu-${idx}`}
-                    className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-                  >
-                    {/* Degree + Status Badge */}
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <h4 className="text-base font-bold text-gray-900">
-                        {education.degree || "N/A"}
-                      </h4>
-                      {education.status && (
-                        <Badge
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm ${
-                            education.status === "ongoing"
-                              ? "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700"
-                              : "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700"
-                          }`}
-                        >
-                          {education.status}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* University/Institution */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <Building2 className="w-4 h-4 text-blue-600" />
-                      <p className="text-sm text-blue-600 font-medium">
-                        {education.university || education.institution || "N/A"}
-                      </p>
-                    </div>
-
-                    {/* Level, Year, Grade */}
-                    <div className="flex items-center gap-6 text-sm text-gray-600">
-                      {education.level && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-medium">{education.level}</span>
-                        </div>
-                      )}
-                      {education.yearOfPassing && (
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4 text-gray-600" />
-                          <span className="font-medium">{education.yearOfPassing}</span>
-                        </div>
-                      )}
-                      {education.cgpa && (
-                        <div className="flex items-center gap-1.5">
-                          <Award className="w-4 h-4 text-gray-600" />
-                          <span className="font-medium">{education.cgpa}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          )}
+          ))}
         </CardContent>
       </Card>
     ),
@@ -1695,19 +1653,20 @@ const StudentDashboard = () => {
               </p>
             </div>
           ) : (
-            (showAllCertificates
-              ? enabledCertificates
-              : enabledCertificates.slice(0, 2)
-            ).map((cert, idx) => {
-              const certificateLink =
-                cert.link ||
-                cert.url ||
-                cert.certificateUrl ||
-                cert.credentialUrl ||
-                cert.viewUrl;
-              const issuedOn =
-                cert.year || cert.date || cert.issueDate || cert.issuedOn;
-              return (
+            <>
+              {(showAllCertificates
+                ? enabledCertificates
+                : enabledCertificates.slice(0, 2)
+              ).map((cert, idx) => {
+                const certificateLink =
+                  cert.link ||
+                  cert.url ||
+                  cert.certificateUrl ||
+                  cert.credentialUrl ||
+                  cert.viewUrl;
+                const issuedOn =
+                  cert.year || cert.date || cert.issueDate || cert.issuedOn;
+                return (
                 <div
                   key={cert.id || `certificate-${idx}`}
                   className={`p-5 rounded-xl bg-gradient-to-r from-blue-50 to-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200 space-y-3 ${cert.enabled ? "" : "opacity-75"
@@ -1746,38 +1705,39 @@ const StudentDashboard = () => {
                     <TruncatedText text={cert.description} maxLength={120} />
                   )}
 
-            {/* Icon + Organization + View Button */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-blue-600" />
-                <p className="text-blue-600 text-sm leading-relaxed font-medium">
-                  {cert.issuer ||
-                    cert.organization ||
-                    cert.institution ||
-                    "Organization"}
-                </p>
-              </div>
+                  {/* Icon + Organization + View Button */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-blue-600" />
+                      <p className="text-blue-600 text-sm leading-relaxed font-medium">
+                        {cert.issuer ||
+                          cert.organization ||
+                          cert.institution ||
+                          "Organization"}
+                      </p>
+                    </div>
 
-              {/* View Button */}
-              {certificateLink && (
-                <Button
-                  size="sm"
-                  onClick={() => window.open(certificateLink, '_blank')}
-                  className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-4 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  View
-                </Button>
-              )}
-            </div>
+                    {/* View Button */}
+                    {certificateLink && (
+                      <Button
+                        size="sm"
+                        onClick={() => window.open(certificateLink, '_blank')}
+                        className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-4 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        View
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
-            })
+            })}
+            </>
           )}
         </CardContent>
-      </Card>
+    </Card>
     ),
-       experience: (
+    experience: (
       <Card
         key="experience"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 shadow-sm"
@@ -1795,52 +1755,40 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="pt-4 p-8 space-y-4">
-          {userData.experience?.filter(exp =>
-            exp.enabled !== false &&
-            (exp.approval_status === "verified" || exp.approval_status === "approved")
-          ).length === 0 ? (
+          {verifiedExperience.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-900 text-base leading-normal font-medium">
                 No experience added yet
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {userData.experience
-                ?.filter(exp =>
-                  exp.enabled !== false &&
-                  (exp.approval_status === "verified" || exp.approval_status === "approved")
-                )
-                .slice(0, 3)
-                .map((exp, index) => (
-                  <div
-                    key={index}
-                    className="p-5 rounded-xl bg-gradient-to-r from-blue-50 to-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 text-base mb-1">
-                          {exp.role}
-                        </p>
-                        <p className="text-blue-600 text-sm font-medium mb-2">
-                          {exp.organization}
-                        </p>
-                        <p className="text-xs text-gray-600">{exp.duration}</p>
-                      </div>
-                      {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
-                        <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" />
-                          Verified
-                        </Badge>
-                      )}
+            <>
+              {verifiedExperience.slice(0, 3).map((exp, index) => (
+                <div
+                  key={index}
+                  className="p-5 rounded-xl bg-gradient-to-r from-blue-50 to-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900 text-base mb-1">
+                        {exp.role}
+                      </p>
+                      <p className="text-blue-600 text-sm font-medium mb-2">
+                        {exp.organization}
+                      </p>
+                      <p className="text-xs text-gray-600">{exp.duration}</p>
                     </div>
+                    {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
+                      <Badge className="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        Verified
+                      </Badge>
+                    )}
                   </div>
-                ))}
+                </div>
+              ))}
               
-              {userData.experience?.filter(exp =>
-                exp.enabled !== false &&
-                (exp.approval_status === "verified" || exp.approval_status === "approved")
-              ).length > 3 && (
+              {verifiedExperience.length > 3 && (
                 <Button
                   variant="outline"
                   onClick={() => navigate('/student/my-experience')}
@@ -1849,7 +1797,7 @@ const StudentDashboard = () => {
                   View All Experience
                 </Button>
               )}
-            </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -1916,8 +1864,17 @@ const StudentDashboard = () => {
                         </Badge>
                       </div>
 
+                      {/* Description */}
+                      {skill.description && (
+                        <div className="mb-3">
+                          <p className="text-sm text-gray-600 font-medium">
+                            {skill.description}
+                          </p>
+                        </div>
+                      )}
+
                       {/* Star Rating */}
-                      <div className="flex gap-0.5 mt-2">
+                      <div className="flex gap-0.5">
                         {renderStars(skill.level)}
                       </div>
                     </div>
@@ -1962,7 +1919,7 @@ const StudentDashboard = () => {
 
   const render3x3Grid = () => {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-0 mb-0">
         {threeByThreeCards.map((cardName, index) => {
           const cardKey = cardNameMapping[cardName];
           const card = allCards[cardKey];
@@ -1981,7 +1938,7 @@ const StudentDashboard = () => {
   // Utility to truncate long text and toggle full view
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-6 px-4">
+    <div className="min-h-screen bg-[#F8FAFC]">
       {/* Hot-toast notification container */}
       <Toaster
         position="top-right"
@@ -1999,9 +1956,9 @@ const StudentDashboard = () => {
       <div className="w-full mx-auto">
         {/* View Switcher Tabs */}
         {!isViewingOthersProfile && (
-          <div className="mb-16 flex justify-center">
+          <div className="mb-0 flex justify-center">
             {/* Tab Navigation with Subheadings */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2 w-full max-w-4xl">
+            <div className="bg-white shadow-sm border-0 p-2 w-full">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {/* Dashboard Tab */}
                 <button
@@ -2095,13 +2052,13 @@ const StudentDashboard = () => {
                 duration: 0.8,
                 ease: "easeInOut",
               }}
-              className="-mt-48 relative z-10"
+              className="-mt-48 relative z-10 px-0"
             >
               {render3x3Grid()}
             </motion.div>
             
             {/* Separate Section: 2 in a row and 1 column (Suggested Steps and Achievement Timeline) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
               {/* Suggested Steps - 2 columns wide */}
               <div className="lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
                 <Card

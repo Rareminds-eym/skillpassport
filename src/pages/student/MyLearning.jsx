@@ -55,6 +55,14 @@ const MyLearning = () => {
   const learning = studentData?.training || [];
   const enabledLearning = learning.filter((t) => t && t.enabled !== false);
 
+  // Debug: Log raw training data
+  console.log('📚 Raw training data:', learning.map(t => ({
+    title: t.course || t.title,
+    course_id: t.course_id,
+    courseId: t.courseId,
+    source: t.source
+  })));
+
   // Get student ID for messaging
   const studentId = studentData?.id;
 
