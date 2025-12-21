@@ -177,7 +177,6 @@ const AchievementsTimeline = ({ userData }) => {
                   Your journey at a glance
                 </p>
               </div>
-              <span className="text-lg font-bold text-gray-800">Achievement Timeline</span>
             </CardTitle>
             <button
               onClick={() => navigate("/student/timeline")}
@@ -264,13 +263,12 @@ const AchievementsTimeline = ({ userData }) => {
 
           {achievements.length > previewCount && (
             <div className="mt-6 text-center">
-              <Button
+              <button
                 onClick={() => navigate("/student/timeline")}
-                variant="outline"
                 className="border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 font-semibold px-6 py-2 rounded-lg shadow-sm hover:shadow-md transition-all"
               >
                 View All {achievements.length} Achievements
-              </Button>
+              </button>
             </div>
           )}
         </CardContent>

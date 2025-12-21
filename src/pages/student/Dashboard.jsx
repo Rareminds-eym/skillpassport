@@ -1260,11 +1260,20 @@ const StudentDashboard = () => {
                           {skill.category}
                         </span>
                       </div>
-                    )}
 
-                    {/* Star Rating */}
-                    <div className="flex gap-0.5">
-                      {renderStars(skill.level)}
+                      {/* Category */}
+                      {skill.category && (
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-sm text-blue-600 font-medium">
+                            {skill.category}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Star Rating */}
+                      <div className="flex gap-0.5">
+                        {renderStars(skill.level)}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1406,61 +1415,15 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="pt-4 p-8 space-y-4">
-          {(showAllEducation
-            ? userData.education.filter(
-              (education) =>
-                education.enabled !== false &&
-                (education.approval_status === "verified" || education.approval_status === "approved")
-            )
-            : userData.education
-              .filter((education) =>
-                education.enabled !== false &&
-                (education.approval_status === "verified" || education.approval_status === "approved")
-              )
-              .slice(0, 2)
-          ).map((education, idx) => (
-            <div
-              key={education.id || `edu-${idx}`}
-              className="p-5 rounded-xl bg-gradient-to-r from-blue-50 to-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h4 className="font-semibold text-gray-900 text-base mb-0.5">
-                    {education.degree || "N/A"}
-                  </h4>
-                  <p className="text-gray-600 text-sm">
-                    {education.university || "N/A"}
-                  </p>
-                </div>
-                <Badge
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md ${education.status === "ongoing"
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-green-100 text-green-700"
-                    }`}
-                >
-                  {education.status || "N/A"}
-                </Badge>
-              </div>
-              <div className="flex gap-6 text-xs">
-                <div key={`edu-level-${education.id}`}>
-                  <p className="text-gray-500 mb-0.5">Level</p>
-                  <p className="font-medium text-gray-900">
-                    {education.level || "N/A"}
-                  </p>
-                </div>
-                <div key={`edu-year-${education.id}`}>
-                  <p className="text-gray-500 mb-0.5">Year</p>
-                  <p className="font-medium text-gray-900">
-                    {education.yearOfPassing || "N/A"}
-                  </p>
-                </div>
-                <div key={`edu-grade-${education.id}`}>
-                  <p className="text-gray-500 mb-0.5">Grade</p>
-                  <p className="font-medium text-gray-900">
-                    {education.cgpa || "N/A"}
-                  </p>
-                </div>
-              </div>
+          {userData.education.filter(
+            (education) =>
+              education.enabled !== false &&
+              (education.approval_status === "verified" || education.approval_status === "approved")
+          ).length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-900 text-base leading-normal font-medium">
+                No education records added yet
+              </p>
             </div>
           ))}
         </CardContent>
@@ -1789,13 +1752,6 @@ const StudentDashboard = () => {
                 My Experience
               </span>
             </CardTitle>
-            {/* <button
-              className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-              title="Edit Experience"
-              onClick={() => setActiveModal("experience")}
-            >
-              <Eye className="w-5 h-5 text-blue-600" />
-            </button> */}
           </div>
         </CardHeader>
         <CardContent className="pt-4 p-8 space-y-4">

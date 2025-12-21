@@ -339,6 +339,10 @@ const MessageCenter = lazy(() =>
 const CircularsFeedback = lazy(() =>
   import("../pages/admin/schoolAdmin/CircularsFeedback")
 );
+const StudentMessages = lazy(() =>
+  import("../pages/admin/schoolAdmin/StudentCommunication")
+);
+
 // skill && Curriculum Management
 const SkillCurricular = lazy(() =>
   import("../pages/admin/schoolAdmin/SkillCurricular")
@@ -560,6 +564,7 @@ const AppRoutes = () => {
             path="communication/circulars"
             element={<CircularsFeedback />}
           />
+          <Route path="communication/messages-student" element={<StudentMessages />} />
           {/* Skill & Curriculum Manament*/}
           <Route path="skills/clubs" element={<SkillCurricular />} />
           <Route path="skills/badges" element={<SkillBadges />} />
