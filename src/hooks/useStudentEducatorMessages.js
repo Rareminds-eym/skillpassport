@@ -16,10 +16,17 @@ export const useStudentEducatorConversations = (studentId, enabled = true) => {
     error,
     refetch
   } = useQuery({
-    queryKey: ['student-educator-conversations', studentId],
+    queryKey: ['student-educator-conversations', studentId || 'none'],
     queryFn: async () => {
       if (!studentId) return [];
-      return await MessageService.getUserConversations(studentId, 'student', false, true);
+      // Only fetch student-educator conversations
+      return await MessageService.getUserConversations(
+        studentId, 
+        'student', 
+        false, // includeArchived
+        true,  // useCache
+        'student_educator' // conversationType filter
+      );
     },
     enabled: !!studentId && enabled,
     staleTime: 30000, // 30 seconds
@@ -28,11 +35,6 @@ export const useStudentEducatorConversations = (studentId, enabled = true) => {
     refetchOnWindowFocus: true,
     refetchOnMount: 'always',
   });
-
-  // Filter only student-educator conversations
-  const educatorConversations = conversations.filter(conv => 
-    conv.conversation_type === 'student_educator' && conv.educator_id
-  );
 
   // Subscribe to real-time updates
   useEffect(() => {
@@ -68,7 +70,7 @@ export const useStudentEducatorConversations = (studentId, enabled = true) => {
 
   // Clear unread count function
   const clearUnreadCount = (conversationId) => {
-    queryClient.setQueryData(['student-educator-conversations', studentId], (oldData) => {
+    queryClient.setQueryData(['student-educator-conversations', studentId || 'none'], (oldData) => {
       if (!oldData) return oldData;
       return oldData.map(conv => 
         conv.id === conversationId 
@@ -82,7 +84,7 @@ export const useStudentEducatorConversations = (studentId, enabled = true) => {
   clearUnreadCountRef.current = clearUnreadCount;
 
   return {
-    conversations: educatorConversations,
+    conversations: conversations, // No need to filter - already filtered at DB level
     isLoading,
     error,
     refetch,
@@ -108,12 +110,12 @@ export const useStudentEducatorMessages = ({
     error,
     refetch
   } = useQuery({
-    queryKey: ['student-educator-messages', conversationId],
+    queryKey: ['student-educator-messages', conversationId || 'none'],
     queryFn: async () => {
       if (!conversationId) return [];
       return await MessageService.getConversationMessages(conversationId, { useCache: true });
     },
-    enabled: !!conversationId && enabled,
+    enabled: !!conversationId && enabled && !!studentId,
     staleTime: 10000, // 10 seconds
     gcTime: 2 * 60 * 1000, // 2 minutes
     refetchInterval: false,

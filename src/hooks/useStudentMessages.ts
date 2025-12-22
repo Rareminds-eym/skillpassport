@@ -38,7 +38,7 @@ export const useStudentMessages = ({
     error,
     refetch
   } = useQuery({
-    queryKey: ['student-messages', conversationId],
+    queryKey: ['student-messages', conversationId || 'none'],
     queryFn: async () => {
       if (!conversationId) return [];
       setIsLoadingMessages(true);
@@ -49,7 +49,7 @@ export const useStudentMessages = ({
         setIsLoadingMessages(false);
       }
     },
-    enabled: enabled && !!conversationId,
+    enabled: enabled && !!conversationId && !!studentId,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: false,
     refetchInterval: false, // Rely on realtime instead of polling
@@ -195,7 +195,7 @@ export const useStudentUnreadCount = (studentId: string | null, enabled = true) 
   const { setUnreadCount } = useMessageStore();
   
   const { data: unreadCount = 0, isLoading } = useQuery({
-    queryKey: ['student-unread-count', studentId],
+    queryKey: ['student-unread-count', studentId || 'none'],
     queryFn: async () => {
       if (!studentId) return 0;
       const count = await MessageService.getUnreadCount(studentId, 'student');
@@ -265,12 +265,19 @@ export const useStudentConversations = (studentId: string | null, enabled = true
     error,
     refetch
   } = useQuery({
-    queryKey: ['student-conversations', studentId],
+    queryKey: ['student-conversations', studentId || 'none'],
     queryFn: async () => {
       if (!studentId) return [];
       setIsLoadingConversations(true);
       try {
-        const convs = await MessageService.getUserConversations(studentId, 'student');
+        // Only fetch student-recruiter conversations for this hook
+        const convs = await MessageService.getUserConversations(
+          studentId, 
+          'student', 
+          false, // includeArchived
+          true,  // useCache
+          'student_recruiter' // conversationType filter
+        );
         return convs;
       } finally {
         setIsLoadingConversations(false);
@@ -292,7 +299,7 @@ export const useStudentConversations = (studentId: string | null, enabled = true
     
     // Get current data from React Query cache
     const currentConversations = queryClient.getQueryData<any[]>(
-      ['student-conversations', studentId]
+      ['student-conversations', studentId || 'none']
     ) || [];
     
     
@@ -305,7 +312,7 @@ export const useStudentConversations = (studentId: string | null, enabled = true
     
     // Update React Query cache immediately
     queryClient.setQueryData(
-      ['student-conversations', studentId],
+      ['student-conversations', studentId || 'none'],
       optimisticConversations
     );
     
@@ -338,7 +345,7 @@ export const useStudentConversations = (studentId: string | null, enabled = true
           
           // Invalidate and refetch to get updated data
           queryClient.invalidateQueries({ 
-            queryKey: ['student-conversations', studentId],
+            queryKey: ['student-conversations', studentId || 'none'],
             refetchType: 'active' // Only refetch if query is active
           });
         }

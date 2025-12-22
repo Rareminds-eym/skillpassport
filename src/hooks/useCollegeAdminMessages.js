@@ -4,9 +4,9 @@ import MessageService from '../services/messageService';
 import { supabase } from '../lib/supabaseClient';
 
 /**
- * Hook for managing student-admin conversations
+ * Hook for managing college admin conversations with students
  */
-export const useStudentAdminConversations = (studentId, enabled = true) => {
+export const useCollegeAdminConversations = (collegeAdminId, enabled = true) => {
   const queryClient = useQueryClient();
   const clearUnreadCountRef = useRef(null);
 
@@ -17,43 +17,76 @@ export const useStudentAdminConversations = (studentId, enabled = true) => {
     error,
     refetch
   } = useQuery({
-    queryKey: ['student-admin-conversations', studentId || 'none'],
+    queryKey: ['college-admin-conversations', collegeAdminId],
     queryFn: async () => {
-      if (!studentId) return [];
+      if (!collegeAdminId) return [];
       
-      // Get student's school_id first
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('school_id')
-        .eq('id', studentId)
+      // Get college admin's college_id first
+      const { data: collegeData, error: collegeError } = await supabase
+        .from('college_lecturers')
+        .select('collegeId, college_id')
+        .or(`user_id.eq.${collegeAdminId},userId.eq.${collegeAdminId}`)
         .single();
       
-      if (studentError || !studentData?.school_id) {
-        console.error('Error fetching student school:', studentError);
-        return [];
+      if (collegeError || (!collegeData?.collegeId && !collegeData?.college_id)) {
+        // Fallback: check if user is college owner
+        const { data: ownerData, error: ownerError } = await supabase
+          .from('colleges')
+          .select('id')
+          .eq('created_by', collegeAdminId)
+          .single();
+        
+        if (ownerError || !ownerData?.id) {
+          console.error('Error fetching college admin college:', collegeError);
+          return [];
+        }
+        
+        const collegeId = ownerData.id;
+        
+        // Fetch college admin conversations
+        const { data: collegeAdminConversations, error: convError } = await supabase
+          .from('conversations')
+          .select(`
+            *,
+            student:students(id, name, email, university, branch_field),
+            college:colleges(id, name)
+          `)
+          .eq('college_id', collegeId)
+          .eq('conversation_type', 'student_college_admin')
+          .eq('deleted_by_college_admin', false)
+          .order('last_message_at', { ascending: false, nullsFirst: false });
+        
+        if (convError) {
+          console.error('Error fetching college admin conversations:', convError);
+          throw convError;
+        }
+        
+        return collegeAdminConversations || [];
       }
       
-      // Fetch student-admin conversations directly from database
-      const { data: adminConversations, error: convError } = await supabase
+      const collegeId = collegeData.collegeId || collegeData.college_id;
+      
+      // Fetch college admin conversations
+      const { data: collegeAdminConversations, error: convError } = await supabase
         .from('conversations')
         .select(`
           *,
-          school:schools(id, name)
+          student:students(id, name, email, university, branch_field),
+          college:colleges(id, name)
         `)
-        .eq('student_id', studentId)
-        .eq('conversation_type', 'student_admin')
-        .eq('school_id', studentData.school_id)
-        .eq('deleted_by_student', false)
+        .eq('college_id', collegeId)
+        .eq('conversation_type', 'student_college_admin')
+        .eq('deleted_by_college_admin', false)
         .order('last_message_at', { ascending: false, nullsFirst: false });
       
       if (convError) {
-        console.error('Error fetching admin conversations:', convError);
+        console.error('Error fetching college admin conversations:', convError);
         throw convError;
       }
       
-      return adminConversations || [];
+      return collegeAdminConversations || [];
     },
-    enabled: !!studentId && enabled,
+    enabled: !!collegeAdminId && enabled,
     staleTime: 30000, // 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes
     refetchInterval: false,
@@ -63,26 +96,26 @@ export const useStudentAdminConversations = (studentId, enabled = true) => {
 
   // Subscribe to real-time updates
   useEffect(() => {
-    if (!studentId || !enabled) return;
+    if (!collegeAdminId || !enabled) return;
 
     const subscription = MessageService.subscribeToUserConversations(
-      studentId,
-      'student',
+      collegeAdminId,
+      'college_admin',
       (conversation) => {
-        // Only handle student-admin conversations
-        if (conversation.conversation_type !== 'student_admin') return;
+        // Only handle student-college_admin conversations
+        if (conversation.conversation_type !== 'student_college_admin') return;
         
-        console.log('🔄 [Student-Admin] Realtime UPDATE detected:', conversation);
+        console.log('🔄 [College Admin] Realtime UPDATE detected:', conversation);
         
         // Ignore updates for conversations that were deleted
-        if (conversation.deleted_by_student) {
-          console.log('❌ [Student-Admin] Ignoring UPDATE for deleted conversation:', conversation.id);
+        if (conversation.deleted_by_college_admin) {
+          console.log('❌ [College Admin] Ignoring UPDATE for deleted conversation:', conversation.id);
           return;
         }
         
         // Invalidate conversation queries
         queryClient.invalidateQueries({ 
-          queryKey: ['student-admin-conversations', studentId],
+          queryKey: ['college-admin-conversations', collegeAdminId],
           refetchType: 'active'
         });
       }
@@ -91,15 +124,15 @@ export const useStudentAdminConversations = (studentId, enabled = true) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [studentId, enabled, queryClient]);
+  }, [collegeAdminId, enabled, queryClient]);
 
   // Clear unread count function
   const clearUnreadCount = (conversationId) => {
-    queryClient.setQueryData(['student-admin-conversations', studentId || 'none'], (oldData) => {
+    queryClient.setQueryData(['college-admin-conversations', collegeAdminId], (oldData) => {
       if (!oldData) return oldData;
       return oldData.map(conv => 
         conv.id === conversationId 
-          ? { ...conv, student_unread_count: 0 }
+          ? { ...conv, college_admin_unread_count: 0 }
           : conv
       );
     });
@@ -118,10 +151,9 @@ export const useStudentAdminConversations = (studentId, enabled = true) => {
 };
 
 /**
- * Hook for managing messages in a student-admin conversation
+ * Hook for managing messages in a college admin conversation
  */
-export const useStudentAdminMessages = ({ 
-  studentId, 
+export const useCollegeAdminMessages = ({ 
   conversationId, 
   enabled = true,
   enableRealtime = true 
@@ -135,12 +167,12 @@ export const useStudentAdminMessages = ({
     error,
     refetch
   } = useQuery({
-    queryKey: ['student-admin-messages', conversationId || 'none'],
+    queryKey: ['college-admin-messages', conversationId],
     queryFn: async () => {
       if (!conversationId) return [];
       return await MessageService.getConversationMessages(conversationId, { useCache: true });
     },
-    enabled: !!conversationId && enabled && !!studentId,
+    enabled: !!conversationId && enabled,
     staleTime: 10000, // 10 seconds
     gcTime: 2 * 60 * 1000, // 2 minutes
     refetchInterval: false,
@@ -154,10 +186,10 @@ export const useStudentAdminMessages = ({
     const subscription = MessageService.subscribeToConversation(
       conversationId,
       (newMessage) => {
-        console.log('📨 [Student-Admin] New message received:', newMessage);
+        console.log('📨 [College Admin] New message received:', newMessage);
         
         // Add message to cache optimistically
-        queryClient.setQueryData(['student-admin-messages', conversationId], (oldMessages) => {
+        queryClient.setQueryData(['college-admin-messages', conversationId], (oldMessages) => {
           if (!oldMessages) return [newMessage];
           
           // Check if message already exists (prevent duplicates)
@@ -166,19 +198,13 @@ export const useStudentAdminMessages = ({
           
           return [...oldMessages, newMessage];
         });
-
-        // Update conversation list with new message preview
-        queryClient.invalidateQueries({ 
-          queryKey: ['student-admin-conversations', studentId],
-          refetchType: 'active'
-        });
       }
     );
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [conversationId, enableRealtime, queryClient, studentId]);
+  }, [conversationId, enableRealtime, queryClient]);
 
   // Send message mutation
   const sendMessageMutation = useMutation({
@@ -205,10 +231,10 @@ export const useStudentAdminMessages = ({
     },
     onMutate: async (variables) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['student-admin-messages', conversationId] });
+      await queryClient.cancelQueries({ queryKey: ['college-admin-messages', conversationId] });
 
       // Snapshot previous value
-      const previousMessages = queryClient.getQueryData(['student-admin-messages', conversationId]);
+      const previousMessages = queryClient.getQueryData(['college-admin-messages', conversationId]);
 
       // Optimistically add the message
       const optimisticMessage = {
@@ -225,7 +251,7 @@ export const useStudentAdminMessages = ({
         _optimistic: true
       };
 
-      queryClient.setQueryData(['student-admin-messages', conversationId], (old) => {
+      queryClient.setQueryData(['college-admin-messages', conversationId], (old) => {
         return old ? [...old, optimisticMessage] : [optimisticMessage];
       });
 
@@ -234,23 +260,17 @@ export const useStudentAdminMessages = ({
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousMessages) {
-        queryClient.setQueryData(['student-admin-messages', conversationId], context.previousMessages);
+        queryClient.setQueryData(['college-admin-messages', conversationId], context.previousMessages);
       }
-      console.error('❌ [Student-Admin] Failed to send message:', err);
+      console.error('❌ [College Admin] Failed to send message:', err);
     },
     onSuccess: (data, variables, context) => {
       // Replace optimistic message with real one
-      queryClient.setQueryData(['student-admin-messages', conversationId], (old) => {
+      queryClient.setQueryData(['college-admin-messages', conversationId], (old) => {
         if (!old) return [data];
         return old.map(msg => 
           msg.id === context?.optimisticMessage?.id ? data : msg
         );
-      });
-
-      // Update conversation list
-      queryClient.invalidateQueries({ 
-        queryKey: ['student-admin-conversations', studentId],
-        refetchType: 'active'
       });
     }
   });
@@ -263,48 +283,4 @@ export const useStudentAdminMessages = ({
     sendMessage: sendMessageMutation.mutateAsync,
     isSending: sendMessageMutation.isPending
   };
-};
-
-/**
- * Hook for creating or getting a student-admin conversation
- */
-export const useCreateStudentAdminConversation = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ 
-      studentId, 
-      subject 
-    }) => {
-      // Get student's school_id
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('school_id')
-        .eq('id', studentId)
-        .single();
-      
-      if (studentError || !studentData?.school_id) {
-        throw new Error('Could not find student school');
-      }
-      
-      const result = await MessageService.getOrCreateStudentAdminConversation(
-        studentId,
-        studentData.school_id,
-        subject
-      );
-      
-      // Return the conversation ID properly
-      if (Array.isArray(result) && result.length > 0) {
-        return result[0].conversation_id;
-      }
-      return result;
-    },
-    onSuccess: (data, variables) => {
-      // Invalidate conversations list to include new conversation
-      queryClient.invalidateQueries({ 
-        queryKey: ['student-admin-conversations', variables.studentId],
-        refetchType: 'active'
-      });
-    }
-  });
 };
