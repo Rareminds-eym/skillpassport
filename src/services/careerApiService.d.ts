@@ -7,7 +7,7 @@ export interface CareerApiService {
         onError: (error: any) => void
     ): void;
     healthCheck(): Promise<any>;
-    generateEmbedding(text: string, table: string, id: string, type: string, token: string): Promise<any>;
+    generateEmbedding(data: { text: string; table: string; id: string; type?: string }, token?: string): Promise<any>;
     // Add other methods as needed based on usage
     [key: string]: any;
 }
