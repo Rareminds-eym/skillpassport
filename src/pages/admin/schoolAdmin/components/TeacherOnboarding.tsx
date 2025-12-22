@@ -135,35 +135,7 @@ const TeacherOnboardingPage: React.FC = () => {
     }
 
     try {
-      // Upload documents (only if provided)
-      const degreeUrl = documents.degree_certificate
-        ? await uploadFile(documents.degree_certificate, "degrees")
-        : null;
-
-      const idProofUrl = documents.id_proof
-        ? await uploadFile(documents.id_proof, "id-proofs")
-        : null;
-
-      // If still no school_id, try to get from users table
-      if (!schoolId) {
-        const { data: userRecord } = await supabase
-          .from('users')
-          .select('school_id')
-          .eq('email', email)
-          .maybeSingle();
-
-        if (userRecord?.school_id) {
-          schoolId = userRecord.school_id;
-        }
-      }
-
-      const experienceUrls = documents.experience_letters.length > 0
-        ? await Promise.all(
-            documents.experience_letters.map((file) => uploadFile(file, "experience-letters"))
-          )
-        : [];
-
-      // Get current user from localStorage (custom auth)
+      // Get current user from localStorage (custom auth) - MUST BE FIRST
       const userStr = localStorage.getItem('user');
       const userEmail = localStorage.getItem('userEmail');
       
@@ -219,6 +191,21 @@ const TeacherOnboardingPage: React.FC = () => {
       }
 
       console.log("Using school_id:", schoolId);
+
+      // Upload documents (only if provided) - AFTER schoolId is confirmed
+      const degreeUrl = documents.degree_certificate
+        ? await uploadFile(documents.degree_certificate, "degrees")
+        : null;
+
+      const idProofUrl = documents.id_proof
+        ? await uploadFile(documents.id_proof, "id-proofs")
+        : null;
+
+      const experienceUrls = documents.experience_letters.length > 0
+        ? await Promise.all(
+            documents.experience_letters.map((file) => uploadFile(file, "experience-letters"))
+          )
+        : [];
 
       // Determine status based on action
       let status = "pending";
@@ -310,9 +297,9 @@ const TeacherOnboardingPage: React.FC = () => {
           first_name: formData.first_name,
           last_name: formData.last_name,
           email: formData.email,
-          phone_number: formData.phone || null,
-          dob: formData.date_of_birth || null,
-          address: formData.address || null,
+          phone_number: formData.phone_number || null,
+          dob: null, // formData doesn't have date_of_birth field
+          address: null, // formData doesn't have address field
           qualification: formData.qualification || null,
           role: formData.role,
           degree_certificate_url: degreeUrl,

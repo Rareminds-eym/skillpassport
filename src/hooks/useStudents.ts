@@ -407,6 +407,13 @@ export function useStudents(options?: UseStudentsOptions) {
     setError(null)
     
     try {
+      // Check if educator has no class assignments (and is not admin)
+      if (classIds !== undefined && classIds.length === 0 && schoolId) {
+        // Educator has no class assignments - return empty array
+        setData([]);
+        return;
+      }
+
       let query = supabase
         .from('students')
         .select(`
@@ -571,7 +578,7 @@ export function useStudents(options?: UseStudentsOptions) {
         // For school educators: filter by assigned class IDs
         query = query.in('school_class_id', classIds)
       } else if (schoolId) {
-        // Fallback: filter by school ID (for admins or when no class assignments)
+        // Fallback: filter by school ID (for admins or when no class assignments check)
         query = query.eq('school_id', schoolId)
       } else if (collegeId) {
         // For college educators: filter by college ID

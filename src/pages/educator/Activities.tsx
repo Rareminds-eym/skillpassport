@@ -549,7 +549,7 @@ const Activities = () => {
   const [sortBy, setSortBy] = useState('date_desc');
 
   // Get educator's school information with class assignments
-  const { school: educatorSchool, college: educatorCollege, educatorType, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
+  const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
   useEffect(() => {
     // Wait for school data before fetching activities
@@ -565,8 +565,17 @@ const Activities = () => {
       let students;
       
       if (educatorType === 'school' && educatorSchool) {
-        // For school educators, filter by assigned classes
-        if (assignedClassIds.length > 0) {
+        // For school educators, check role and class assignments
+        if (educatorRole === 'admin' || educatorRole === 'school_admin') {
+          // School admins can see all students in their school
+          const { data } = await supabase
+            .from('students')
+            .select('id, name, user_id')
+            .eq('school_id', educatorSchool.id)
+            .eq('is_deleted', false);
+          students = data;
+        } else if (assignedClassIds.length > 0) {
+          // Regular educators can only see students in their assigned classes
           const { data } = await supabase
             .from('students')
             .select('id, name, user_id')
@@ -575,13 +584,8 @@ const Activities = () => {
             .eq('is_deleted', false);
           students = data;
         } else {
-          // Fallback for admins or educators without class assignments
-          const { data } = await supabase
-            .from('students')
-            .select('id, name, user_id')
-            .eq('school_id', educatorSchool.id)
-            .eq('is_deleted', false);
-          students = data;
+          // Educators with no class assignments should see no students
+          students = [];
         }
       } else if (educatorType === 'college' && educatorCollege) {
         // For college educators, filter by college
@@ -1166,9 +1170,19 @@ const Activities = () => {
               }`}>
                 {filteredAndSortedActivities.length === 0 ? (
                   <div className="col-span-full text-center py-8">
-                    <p className="text-sm text-gray-500">
-                      No {getTabLabel(activeTab).toLowerCase()} activities found
+                    <p className="text-sm text-gray-500 mb-2">
+                      {activities.length === 0 && !searchQuery && filters.types.length === 0
+                        ? educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                          ? 'You have not been assigned to any classes yet'
+                          : 'No student activities found'
+                        : `No ${getTabLabel(activeTab).toLowerCase()} activities found`}
                     </p>
+                    {activities.length === 0 && !searchQuery && filters.types.length === 0 && 
+                     educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0 && (
+                      <p className="text-xs text-gray-400">
+                        Please contact your school administrator to assign you to classes.
+                      </p>
+                    )}
                     {(searchQuery || filters.types.length > 0) && (
                       <button
                         onClick={handleClearFilters}
@@ -1227,8 +1241,22 @@ const Activities = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredAndSortedActivities.length === 0 ? (
                       <tr>
-                        <td colSpan={activeTab === 'pending' ? 6 : 5} className="px-6 py-12 text-center text-gray-500">
-                          No {getTabLabel(activeTab).toLowerCase()} activities found
+                        <td colSpan={activeTab === 'pending' ? 6 : 5} className="px-6 py-12 text-center">
+                          <div className="text-gray-500">
+                            <p className="mb-2">
+                              {activities.length === 0 && !searchQuery && filters.types.length === 0
+                                ? educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                                  ? 'You have not been assigned to any classes yet'
+                                  : 'No student activities found'
+                                : `No ${getTabLabel(activeTab).toLowerCase()} activities found`}
+                            </p>
+                            {activities.length === 0 && !searchQuery && filters.types.length === 0 && 
+                             educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0 && (
+                              <p className="text-xs text-gray-400">
+                                Please contact your school administrator to assign you to classes.
+                              </p>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ) : (
