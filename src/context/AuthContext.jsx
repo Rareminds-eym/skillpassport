@@ -127,9 +127,47 @@ export const AuthProvider = ({ children }) => {
           setUser(null);
           localStorage.removeItem('user');
           localStorage.removeItem('userEmail');
-        } else if (event === 'TOKEN_REFRESHED') {
-          // Token refreshed - session is still valid
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          // Token refreshed - ensure user state is still valid
           console.log('Token refreshed successfully');
+          // Re-validate and update user state if needed
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            const userMatches = 
+              parsedUser.user_id === session.user.id || 
+              parsedUser.id === session.user.id ||
+              parsedUser.email === session.user.email;
+            
+            if (userMatches && !user) {
+              // User state was lost but session is valid - restore it
+              setUser(parsedUser);
+            }
+          } else if (!user && session.user) {
+            // No stored user but session exists - create user data
+            const userData = {
+              id: session.user.id,
+              email: session.user.email,
+              role: session.user.user_metadata?.role || 'user',
+            };
+            setUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
+        } else if (event === 'USER_UPDATED' && session?.user) {
+          // User data updated - refresh stored user data
+          console.log('User updated');
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            // Update with latest session data
+            const updatedUser = {
+              ...parsedUser,
+              email: session.user.email,
+              role: session.user.user_metadata?.role || parsedUser.role,
+            };
+            setUser(updatedUser);
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+          }
         }
       }
     );
