@@ -537,6 +537,12 @@ export function useStudents(options: UseStudentsOptions = {}) {
           console.warn('⚠️ This will fetch ALL students - this should not happen for admins');
         }
         
+        // Apply search filter to main query (same as count query)
+        if (searchTerm && searchTerm.trim()) {
+          // console.log('🔍 Applying search filter to main query:', searchTerm);
+          query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`);
+        }
+        
         let result = await query;
         
         // If full query fails, try simpler query
@@ -555,6 +561,12 @@ export function useStudents(options: UseStudentsOptions = {}) {
             simpleQuery = simpleQuery.eq('college_id', collegeId);
           } else if (universityId) {
             simpleQuery = simpleQuery.eq('universityId', universityId);
+          }
+          
+          // Apply search filter to simple query as well
+          if (searchTerm && searchTerm.trim()) {
+            // console.log('🔍 Applying search filter to simple query:', searchTerm);
+            simpleQuery = simpleQuery.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`);
           }
           
           result = await simpleQuery;

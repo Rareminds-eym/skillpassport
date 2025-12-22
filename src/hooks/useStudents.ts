@@ -99,7 +99,6 @@ interface StudentRow {
   alternate_number?: string
   contact_dial_code?: string
   date_of_birth?: string
-  dateOfBirth?: string
   age?: number
   gender?: string
   bloodGroup?: string
@@ -118,9 +117,9 @@ interface StudentRow {
   facebook_link?: string
   instagram_link?: string
   portfolio_link?: string
+  youtube_link?: string
   other_social_links?: Record<string, unknown>
   approval_status?: string
-  nm_id?: string // kept for backwards-compatibility with older profile JSON
   trainer_name?: string
   bio?: string
   address?: string
@@ -132,10 +131,63 @@ interface StudentRow {
   resumeUrl?: string
   profile_picture?: string
   profilePicture?: string
-  class_year?: string
+  contactNumber?: string
   created_at?: string
+  createdAt?: string
   updated_at?: string
+  updatedAt?: string
   imported_at?: string
+  school_id?: string
+  college_id?: string
+  schools?: {
+    id: string
+    name: string
+    code: string
+    city?: string
+    state?: string
+    country?: string
+  } | {
+    id: string
+    name: string
+    code: string
+    city?: string
+    state?: string
+    country?: string
+  }[]
+  colleges?: {
+    id: string
+    name: string
+    code?: string
+    city?: string
+    state?: string
+    country?: string
+  } | {
+    id: string
+    name: string
+    code?: string
+    city?: string
+    state?: string
+    country?: string
+  }[]
+  grade?: string
+  section?: string
+  roll_number?: string
+  admission_number?: string
+  currentCgpa?: number
+  guardianName?: string
+  guardianPhone?: string
+  guardianEmail?: string
+  guardianRelation?: string
+  enrollmentDate?: string
+  expectedGraduationDate?: string
+  student_type?: string
+  hobbies?: string[]
+  languages?: string[]
+  interests?: string[]
+  category?: string
+  quota?: string
+  metadata?: Record<string, unknown>
+  notification_settings?: Record<string, unknown>
   // Related data from joins
   skills?: Skill[]
   projects?: Project[]
@@ -170,10 +222,34 @@ export interface UICandidate {
   facebook_link?: string
   instagram_link?: string
   portfolio_link?: string
+  youtube_link?: string
   other_social_links?: Record<string, unknown>
-  // Other fields
+  // Personal details
   age?: number
+  gender?: string
+  bloodGroup?: string
+  date_of_birth?: string
   bio?: string
+  address?: string
+  city?: string
+  state?: string
+  country?: string
+  pincode?: string
+  // Academic details
+  grade?: string
+  section?: string
+  roll_number?: string
+  admission_number?: string
+  currentCgpa?: number
+  enrollmentDate?: string
+  expectedGraduationDate?: string
+  student_type?: string
+  // Guardian details
+  guardianName?: string
+  guardianPhone?: string
+  guardianEmail?: string
+  guardianRelation?: string
+  // Additional fields
   nm_id?: string
   trainer_name?: string
   district_name?: string
@@ -182,9 +258,22 @@ export interface UICandidate {
   contact_number?: string
   alternate_number?: string
   contact_dial_code?: string
-  date_of_birth?: string
   imported_at?: string
   updated_at?: string
+  school_id?: string
+  college_id?: string
+  college_school_name?: string // Original field
+  school_name?: string // Proper school name from join
+  approval_status?: string // Add this field
+  hobbies?: string[]
+  languages?: string[]
+  interests?: string[]
+  category?: string
+  quota?: string
+  metadata?: Record<string, unknown>
+  notification_settings?: Record<string, unknown>
+  resumeUrl?: string
+  profilePicture?: string
 }
 
 function mapToUICandidate(row: StudentRow): UICandidate {
@@ -194,9 +283,14 @@ function mapToUICandidate(row: StudentRow): UICandidate {
   const altNum = row.alternate_number ? String(row.alternate_number).replace(/\.0$/, '') : ''
   const phone = phoneNum || altNum ? `${dial ? '+' + dial + ' ' : ''}${phoneNum || altNum}` : undefined
 
-  const college = row.college_school_name || row.university
+  // Get school name from joined data or fallback to college_school_name
+  const schoolData = Array.isArray(row.schools) ? row.schools[0] : row.schools
+  const collegeData = Array.isArray(row.colleges) ? row.colleges[0] : row.colleges
+  const schoolName = schoolData?.name || row.college_school_name
+  const collegeName = collegeData?.name || row.college_school_name || row.university
+
   const dept = row.branch_field || row.course_name
-  const location = row.district_name
+  const location = row.district_name || row.city
 
   // Use skills from the skills table (already fetched via join)
   const skills = Array.isArray(row.skills) ? row.skills.filter(s => s.enabled !== false) : []
@@ -219,7 +313,7 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     name: row.name || 'Unknown',
     email: row.email,
     phone,
-    college,
+    college: collegeName,
     dept,
     university: row.university_main || row.university,
     location,
@@ -239,11 +333,35 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     facebook_link: row.facebook_link,
     instagram_link: row.instagram_link,
     portfolio_link: row.portfolio_link,
+    youtube_link: row.youtube_link,
     other_social_links: row.other_social_links,
-    // Other fields
+    // Personal details
     age: row.age,
+    gender: row.gender,
+    bloodGroup: row.bloodGroup,
+    date_of_birth: row.date_of_birth,
     bio: row.bio,
-    nm_id: row.student_id || row.nm_id,
+    address: row.address,
+    city: row.city,
+    state: row.state,
+    country: row.country,
+    pincode: row.pincode,
+    // Academic details
+    grade: row.grade,
+    section: row.section,
+    roll_number: row.roll_number,
+    admission_number: row.admission_number,
+    currentCgpa: row.currentCgpa,
+    enrollmentDate: row.enrollmentDate,
+    expectedGraduationDate: row.expectedGraduationDate,
+    student_type: row.student_type,
+    // Guardian details
+    guardianName: row.guardianName,
+    guardianPhone: row.guardianPhone,
+    guardianEmail: row.guardianEmail,
+    guardianRelation: row.guardianRelation,
+    // Additional fields
+    nm_id: row.student_id,
     trainer_name: row.trainer_name,
     district_name: row.district_name,
     branch_field: row.branch_field,
@@ -251,14 +369,29 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     contact_number: row.contactNumber || row.contact_number,
     alternate_number: row.alternate_number,
     contact_dial_code: row.contact_dial_code,
-    date_of_birth: row.dateOfBirth || row.date_of_birth,
     imported_at: row.imported_at,
     updated_at: row.updatedAt || row.updated_at,
+    school_id: row.school_id,
+    college_id: row.college_id,
+    college_school_name: row.college_school_name, // Keep original field
+    school_name: schoolName, // Add proper school name
+    approval_status: row.approval_status, // Add this field
+    hobbies: row.hobbies,
+    languages: row.languages,
+    interests: row.interests,
+    category: row.category,
+    quota: row.quota,
+    metadata: row.metadata,
+    notification_settings: row.notification_settings,
+    resumeUrl: row.resumeUrl,
+    profilePicture: row.profilePicture,
   }
 }
 
 interface UseStudentsOptions {
   schoolId?: string | null;
+  collegeId?: string | null;
+  classIds?: string[]; // Add class IDs for filtering
 }
 
 export function useStudents(options?: UseStudentsOptions) {
@@ -266,6 +399,8 @@ export function useStudents(options?: UseStudentsOptions) {
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const schoolId = options?.schoolId
+  const collegeId = options?.collegeId
+  const classIds = options?.classIds
 
   const fetchStudents = async () => {
     setLoading(true)
@@ -284,7 +419,6 @@ export function useStudents(options?: UseStudentsOptions) {
           alternate_number,
           contact_dial_code,
           date_of_birth,
-          dateOfBirth,
           age,
           gender,
           bloodGroup,
@@ -302,6 +436,7 @@ export function useStudents(options?: UseStudentsOptions) {
           facebook_link,
           instagram_link,
           portfolio_link,
+          youtube_link,
           other_social_links,
           approval_status,
           trainer_name,
@@ -320,6 +455,42 @@ export function useStudents(options?: UseStudentsOptions) {
           updatedAt,
           imported_at,
           school_id,
+          college_id,
+          schools!students_school_id_fkey (
+            id,
+            name,
+            code,
+            city,
+            state,
+            country
+          ),
+          colleges!students_college_id_fkey (
+            id,
+            name,
+            code,
+            city,
+            state,
+            country
+          ),
+          grade,
+          section,
+          roll_number,
+          admission_number,
+          currentCgpa,
+          guardianName,
+          guardianPhone,
+          guardianEmail,
+          guardianRelation,
+          enrollmentDate,
+          expectedGraduationDate,
+          student_type,
+          hobbies,
+          languages,
+          interests,
+          category,
+          quota,
+          metadata,
+          notification_settings,
           skills!skills_student_id_fkey(
             id,
             name,
@@ -395,9 +566,16 @@ export function useStudents(options?: UseStudentsOptions) {
         `)
         .eq('is_deleted', false)
 
-      // Apply school filter if provided
-      if (schoolId) {
+      // Apply filtering logic
+      if (classIds && classIds.length > 0) {
+        // For school educators: filter by assigned class IDs
+        query = query.in('school_class_id', classIds)
+      } else if (schoolId) {
+        // Fallback: filter by school ID (for admins or when no class assignments)
         query = query.eq('school_id', schoolId)
+      } else if (collegeId) {
+        // For college educators: filter by college ID
+        query = query.eq('college_id', collegeId)
       }
 
       const { data, error } = await query
@@ -419,9 +597,8 @@ export function useStudents(options?: UseStudentsOptions) {
     let isMounted = true
     const wrappedFetch = async () => {
       if (!isMounted) return
-      // Only fetch if we have a schoolId (when filtering is expected)
-      // Skip the fetch if schoolId is explicitly expected but not yet loaded
-      if (options !== undefined && schoolId === undefined) {
+      // Only fetch if we have filtering criteria
+      if (options !== undefined && !schoolId && !collegeId && (!classIds || classIds.length === 0)) {
         return
       }
       await fetchStudents()
@@ -431,7 +608,7 @@ export function useStudents(options?: UseStudentsOptions) {
       isMounted = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId])
+  }, [schoolId, collegeId, classIds])
 
   const stats = useMemo(() => ({ count: data.length }), [data])
 

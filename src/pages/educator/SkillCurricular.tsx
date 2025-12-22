@@ -14,25 +14,12 @@ import {
     Trash2,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
+import { useEducatorSchool } from "../../hooks/useEducatorSchool";
 import * as clubsService from "../../services/clubsService";
 import * as competitionsService from "../../services/competitionsService";
 import * as XLSX from 'xlsx';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-// Helper function to get school_id from logged-in user
-async function getSchoolId() {
-    const userEmail = localStorage.getItem('userEmail');
-    if (!userEmail) return null;
-    
-    const { data } = await supabase
-        .from('schools')
-        .select('id')
-        .eq('email', userEmail)
-        .maybeSingle();
-    
-    return data?.school_id || null;
-}
-
 const categories = [
     { id: "all", label: "All" },
     { id: "arts", label: "Arts" },
@@ -196,12 +183,63 @@ function Modal({ open, onClose, title, children }) {
     );
 }
 
+interface Club {
+    club_id: string;
+    name: string;
+    category: string;
+    description: string;
+    capacity: number;
+    members: string[];
+    meeting_day?: string;
+    meeting_time?: string;
+    location?: string;
+    mentor_name?: string;
+    upcomingCompetitions?: any[];
+    avgAttendance?: number;
+}
+
+interface Competition {
+    comp_id: string;
+    name: string;
+    level: string;
+    date?: string;
+    competition_date?: string;
+    description?: string;
+    category?: string;
+    status: string;
+    participatingClubs?: string[];
+    results?: any[];
+    reward?: string;
+    skill_level?: string;
+    team_size?: string;
+}
+
+interface Student {
+    id: string;
+    user_id?: string;
+    email: string;
+    name: string;
+    grade: string;
+    section: string;
+    rollNumber: string;
+    school_id: string;
+    school_class_id?: string;
+}
+
+interface Notice {
+    type: 'error' | 'success' | 'info' | 'warning';
+    text: string;
+}
+
 export default function ClubsActivitiesPage() {
     const currentStudent = useMemo(() => ({ id: "s_new", name: "You" }), []);
 
-    const [clubs, setClubs] = useState([]);
-    const [competitions, setCompetitions] = useState([]);
+    const [clubs, setClubs] = useState<Club[]>([]);
+    const [competitions, setCompetitions] = useState<Competition[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Get educator's school information with class assignments
+    const { school: educatorSchool, college: educatorCollege, educatorType, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
     // Fetch clubs and competitions from Supabase on mount
     useEffect(() => {
@@ -228,15 +266,15 @@ export default function ClubsActivitiesPage() {
     const [q, setQ] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [showMine, setShowMine] = useState(false);
-    const [selectedClub, setSelectedClub] = useState(null);
+    const [selectedClub, setSelectedClub] = useState<Club | null>(null);
     const [detailsOpen, setDetailsOpen] = useState(false);
-    const [viewComp, setViewComp] = useState(null);
-    const [notice, setNotice] = useState(null);
+    const [viewComp, setViewComp] = useState<Competition | null>(null);
+    const [notice, setNotice] = useState<Notice | null>(null);
     const [showExportMenu, setShowExportMenu] = useState(false);
-    const [registerCompModal, setRegisterCompModal] = useState(null);
+    const [registerCompModal, setRegisterCompModal] = useState<Competition | null>(null);
     const [addClubModal, setAddClubModal] = useState(false);
     const [addCompModal, setAddCompModal] = useState(false);
-    const [editClubModal, setEditClubModal] = useState(null);
+    const [editClubModal, setEditClubModal] = useState<Club | null>(null);
     const [editClubForm, setEditClubForm] = useState({
         name: "",
         category: "arts",
@@ -247,124 +285,103 @@ export default function ClubsActivitiesPage() {
         location: "",
         mentor_name: ""
     });
-    const [studentDrawer, setStudentDrawer] = useState({ open: false, club: null });
-    const [allStudents, setAllStudents] = useState([]);
+    const [studentDrawer, setStudentDrawer] = useState<{ open: boolean; club: Club | null }>({ open: false, club: null });
+    const [allStudents, setAllStudents] = useState<Student[]>([]);
     const [loadingStudents, setLoadingStudents] = useState(true);
     const [studentSearchQuery, setStudentSearchQuery] = useState("");
-    const [attendanceModal, setAttendanceModal] = useState({ open: false, club: null });
+    const [attendanceModal, setAttendanceModal] = useState<{ open: boolean; club: Club | null }>({ open: false, club: null });
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceTopic, setAttendanceTopic] = useState("");
-    const [attendanceRecords, setAttendanceRecords] = useState({});
+    const [attendanceRecords, setAttendanceRecords] = useState<Record<string, string>>({});
 
-    // Fetch real students from Supabase (only from the same school)
+    // Fetch real students from Supabase (filtered by educator's assigned classes)
     useEffect(() => {
         const fetchStudents = async () => {
             try {
                 setLoadingStudents(true);
                 
-                // Get logged-in user's email
-                const userEmail = localStorage.getItem('userEmail');
-                console.log('🔍 [SkillCurricular] Fetching students for user:', userEmail);
-                
-                if (!userEmail) {
-                    console.warn('❌ [SkillCurricular] No user email found in localStorage');
+                // Wait for educator school data to be loaded
+                if (schoolLoading || (!educatorSchool && !educatorCollege)) {
                     setAllStudents([]);
                     setLoadingStudents(false);
                     return;
                 }
+
+                console.log('🔍 [SkillCurricular] Fetching students for educator type:', educatorType);
                 
-                // Try multiple approaches to get school_id
-                let schoolId = null;
+                let students = [];
                 
-                // 1. Check localStorage for school admin
-                const storedUser = localStorage.getItem('user');
-                if (storedUser) {
-                    try {
-                        const userData = JSON.parse(storedUser);
-                        if (userData.role === 'school_admin' && userData.schoolId) {
-                            schoolId = userData.schoolId;
-                            console.log('✅ [SkillCurricular] Found school_id from localStorage:', schoolId);
+                if (educatorType === 'school' && educatorSchool) {
+                    // For school educators, filter by assigned classes
+                    if (assignedClassIds && assignedClassIds.length > 0) {
+                        console.log('📚 [SkillCurricular] Fetching students for assigned classes:', assignedClassIds);
+                        const { data, error } = await supabase
+                            .from('students')
+                            .select('id, user_id, email, name, grade, section, roll_number, school_id, school_class_id')
+                            .eq('school_id', educatorSchool.id)
+                            .in('school_class_id', assignedClassIds)
+                            .eq('is_deleted', false)
+                            .order('name');
+
+                        if (error) {
+                            console.error('❌ [SkillCurricular] Error fetching students:', error);
+                        } else {
+                            students = data || [];
                         }
-                    } catch (e) {
-                        console.error('Error parsing stored user:', e);
-                    }
-                }
-                
-                // 2. Check school_educators table
-                if (!schoolId) {
-                    const { data: educatorData, error: educatorError } = await supabase
-                        .from('school_educators')
-                        .select('school_id')
-                        .eq('email', userEmail)
-                        .maybeSingle();
+                    } else {
+                        // Fallback for admins or educators without class assignments
+                        console.log('👨‍💼 [SkillCurricular] Fetching all school students (admin/no assignments)');
+                        const { data, error } = await supabase
+                            .from('students')
+                            .select('id, user_id, email, name, grade, section, roll_number, school_id, school_class_id')
+                            .eq('school_id', educatorSchool.id)
+                            .eq('is_deleted', false)
+                            .order('name');
 
-                    if (educatorError) {
-                        console.error('❌ [SkillCurricular] Error fetching educator data:', educatorError);
-                    } else if (educatorData?.school_id) {
-                        schoolId = educatorData.school_id;
-                        console.log('✅ [SkillCurricular] Found school_id from school_educators:', schoolId);
+                        if (error) {
+                            console.error('❌ [SkillCurricular] Error fetching students:', error);
+                        } else {
+                            students = data || [];
+                        }
                     }
-                }
-                
-                // 3. Check schools table (for principal/admin)
-                if (!schoolId) {
-                    const { data: schoolData, error: schoolError } = await supabase
-                        .from('schools')
-                        .select('id')
-                        .eq('email', userEmail)
-                        .maybeSingle();
+                } else if (educatorType === 'college' && educatorCollege) {
+                    // For college educators, filter by college
+                    console.log('🎓 [SkillCurricular] Fetching college students for college:', educatorCollege.id);
+                    const { data, error } = await supabase
+                        .from('students')
+                        .select('id, user_id, email, name, grade, section, roll_number, college_id')
+                        .eq('college_id', educatorCollege.id)
+                        .eq('is_deleted', false)
+                        .order('name');
 
-                    if (schoolError) {
-                        console.error('❌ [SkillCurricular] Error fetching school data:', schoolError);
-                    } else if (schoolData?.id) {
-                        schoolId = schoolData.id;
-                        console.log('✅ [SkillCurricular] Found school_id from schools table:', schoolId);
+                    if (error) {
+                        console.error('❌ [SkillCurricular] Error fetching college students:', error);
+                    } else {
+                        students = data || [];
                     }
                 }
 
-                if (!schoolId) {
-                    console.warn('❌ [SkillCurricular] No school_id found for user:', userEmail);
+                if (students.length === 0) {
+                    console.log('⚠️ [SkillCurricular] No students found for educator');
                     setAllStudents([]);
                     setLoadingStudents(false);
                     return;
                 }
 
-                console.log('📡 [SkillCurricular] Fetching students for school_id:', schoolId);
-
-                // Fetch students from this school only
-                const { data, error } = await supabase
-                    .from('students')
-                    .select('id, email, profile, name, grade, section, roll_number, school_id')
-                    .eq('school_id', schoolId)
-                    .eq('is_deleted', false)
-                    .order('name');
-
-                if (error) {
-                    console.error('❌ [SkillCurricular] Error fetching students:', error);
-                    setAllStudents([]);
-                    setLoadingStudents(false);
-                    return;
-                }
-
-                if (!data || data.length === 0) {
-                    console.log('⚠️ [SkillCurricular] No students found for school_id:', schoolId);
-                    setAllStudents([]);
-                    setLoadingStudents(false);
-                    return;
-                }
-
-                // Map students to the format we need (using email as ID)
-                const mappedStudents = data.map(student => ({
-                    id: student.email,
+                // Map students to the format we need (using user_id as primary ID, consistent with other educator pages)
+                const mappedStudents = students.map(student => ({
+                    id: student.user_id || student.id, // Use user_id as primary identifier
+                    user_id: student.user_id,
                     email: student.email,
-                    name: student.name || student.profile?.name || student.email,
-                    grade: student.grade || student.profile?.grade || student.profile?.class || 'N/A',
-                    section: student.section || student.profile?.section || '',
-                    rollNumber: student.roll_number || student.profile?.rollNumber || '',
-                    school_id: student.school_id
+                    name: student.name || student.email,
+                    grade: student.grade || 'N/A',
+                    section: student.section || '',
+                    rollNumber: student.roll_number || '',
+                    school_id: student.school_id || student.college_id,
+                    school_class_id: student.school_class_id
                 }));
                 
-                console.log(`✅ [SkillCurricular] Loaded ${mappedStudents.length} students from school ${schoolId}`);
+                console.log(`✅ [SkillCurricular] Loaded ${mappedStudents.length} students for ${educatorType} educator`);
                 console.log('📋 [SkillCurricular] Sample student:', mappedStudents[0]);
                 setAllStudents(mappedStudents);
                 
@@ -377,7 +394,7 @@ export default function ClubsActivitiesPage() {
         };
 
         fetchStudents();
-    }, []);
+    }, [educatorSchool, educatorCollege, educatorType, assignedClassIds, schoolLoading]);
     const [newCompForm, setNewCompForm] = useState({
         name: "",
         level: "district",
@@ -385,8 +402,8 @@ export default function ClubsActivitiesPage() {
         description: "",
         category: "",
         status: "upcoming",
-        results: [],
-        participatingClubs: []
+        results: [] as any[],
+        participatingClubs: [] as string[]
     });
 
     const [newClubForm, setNewClubForm] = useState({
@@ -406,7 +423,7 @@ export default function ClubsActivitiesPage() {
         status: "upcoming"
     });
     
-    const [editCompModal, setEditCompModal] = useState(null);
+    const [editCompModal, setEditCompModal] = useState<Competition | null>(null);
     const [editCompForm, setEditCompForm] = useState({
         name: "",
         level: "district",
@@ -414,11 +431,11 @@ export default function ClubsActivitiesPage() {
         description: "",
         category: "",
         status: "upcoming",
-        participatingClubs: []
+        participatingClubs: [] as string[]
     });
-    const [competitionRegistrations, setCompetitionRegistrations] = useState([]);
+    const [competitionRegistrations, setCompetitionRegistrations] = useState<any[]>([]);
     const [loadingRegistrations, setLoadingRegistrations] = useState(false);
-    const [editingRegistration, setEditingRegistration] = useState(null);
+    const [editingRegistration, setEditingRegistration] = useState<any>(null);
 
     const joinedClubIds = useMemo(() => {
         return new Set(clubs.filter((c) => c.members.includes(currentStudent.id)).map((c) => c.club_id));
@@ -464,10 +481,10 @@ export default function ClubsActivitiesPage() {
         setAttendanceModal({ open: true, club });
         setAttendanceDate(new Date().toISOString().split('T')[0]);
         setAttendanceTopic("");
-        // Initialize attendance records for all club members
+        // Initialize attendance records for all club members (using email as key)
         const records = {};
-        club.members.forEach(memberId => {
-            records[memberId] = 'present'; // Default to present
+        club.members.forEach(memberEmail => {
+            records[memberEmail] = 'present'; // Default to present
         });
         setAttendanceRecords(records);
     };
@@ -525,11 +542,18 @@ export default function ClubsActivitiesPage() {
     }
 
     try {
-        await clubsService.enrollStudent(club.club_id, studentId);
+        // Find the student to get their email
+        const student = allStudents.find(s => s.id === studentId);
+        if (!student) {
+            setNotice({ type: "error", text: "Student not found." });
+            return;
+        }
+
+        await clubsService.enrollStudent(club.club_id, student.email);
         
         const updated = clubs.map((c) => 
             c.club_id === club.club_id 
-                ? { ...c, members: [...c.members, studentId] } 
+                ? { ...c, members: [...c.members, student.email] } 
                 : c
         );
         setClubs(updated);
@@ -548,11 +572,18 @@ const handleStudentLeave = async (studentId, club) => {
     }
 
     try {
-        await clubsService.removeStudent(club.club_id, studentId);
+        // Find the student to get their email
+        const student = allStudents.find(s => s.id === studentId);
+        if (!student) {
+            setNotice({ type: "error", text: "Student not found." });
+            return;
+        }
+
+        await clubsService.removeStudent(club.club_id, student.email);
         
         const updated = clubs.map((c) => 
             c.club_id === club.club_id 
-                ? { ...c, members: c.members.filter((m) => m !== studentId) } 
+                ? { ...c, members: c.members.filter((m) => m !== student.email) } 
                 : c
         );
         setClubs(updated);
@@ -2136,7 +2167,7 @@ const handleStudentLeave = async (studentId, club) => {
                                         <button
                                             onClick={() => {
                                                 const records = {};
-                                                attendanceModal.club.members.forEach(m => records[m] = 'present');
+                                                attendanceModal.club.members.forEach(memberEmail => records[memberEmail] = 'present');
                                                 setAttendanceRecords(records);
                                             }}
                                             className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
@@ -2146,7 +2177,7 @@ const handleStudentLeave = async (studentId, club) => {
                                         <button
                                             onClick={() => {
                                                 const records = {};
-                                                attendanceModal.club.members.forEach(m => records[m] = 'absent');
+                                                attendanceModal.club.members.forEach(memberEmail => records[memberEmail] = 'absent');
                                                 setAttendanceRecords(records);
                                             }}
                                             className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
@@ -2158,14 +2189,14 @@ const handleStudentLeave = async (studentId, club) => {
 
                                 <div className="max-h-80 overflow-y-auto space-y-2 border rounded-lg p-3 bg-gray-50">
                                     {attendanceModal.club.members.length > 0 ? (
-                                        attendanceModal.club.members.map((memberId) => {
-                                            const student = allStudents.find(s => s.id === memberId);
-                                            const studentName = student?.name || memberId;
+                                        attendanceModal.club.members.map((memberEmail) => {
+                                            const student = allStudents.find(s => s.email === memberEmail);
+                                            const studentName = student?.name || memberEmail;
                                             const studentGrade = student?.grade || 'N/A';
                                             
                                             return (
                                                 <div
-                                                    key={memberId}
+                                                    key={memberEmail}
                                                     className="flex items-center justify-between p-3 bg-white rounded-lg border hover:shadow-sm"
                                                 >
                                                     <div className="flex-1">
@@ -2175,9 +2206,9 @@ const handleStudentLeave = async (studentId, club) => {
 
                                                     <div className="flex gap-1">
                                                         <button
-                                                            onClick={() => handleAttendanceStatusChange(memberId, 'present')}
+                                                            onClick={() => handleAttendanceStatusChange(memberEmail, 'present')}
                                                             className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                                                                attendanceRecords[memberId] === 'present'
+                                                                attendanceRecords[memberEmail] === 'present'
                                                                     ? 'bg-green-600 text-white'
                                                                     : 'bg-gray-100 text-gray-600 hover:bg-green-100'
                                                             }`}
@@ -2185,9 +2216,9 @@ const handleStudentLeave = async (studentId, club) => {
                                                             Present
                                                         </button>
                                                         <button
-                                                            onClick={() => handleAttendanceStatusChange(memberId, 'late')}
+                                                            onClick={() => handleAttendanceStatusChange(memberEmail, 'late')}
                                                             className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                                                                attendanceRecords[memberId] === 'late'
+                                                                attendanceRecords[memberEmail] === 'late'
                                                                     ? 'bg-yellow-600 text-white'
                                                                     : 'bg-gray-100 text-gray-600 hover:bg-yellow-100'
                                                             }`}
@@ -2195,9 +2226,9 @@ const handleStudentLeave = async (studentId, club) => {
                                                             Late
                                                         </button>
                                                         <button
-                                                            onClick={() => handleAttendanceStatusChange(memberId, 'absent')}
+                                                            onClick={() => handleAttendanceStatusChange(memberEmail, 'absent')}
                                                             className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                                                                attendanceRecords[memberId] === 'absent'
+                                                                attendanceRecords[memberEmail] === 'absent'
                                                                     ? 'bg-red-600 text-white'
                                                                     : 'bg-gray-100 text-gray-600 hover:bg-red-100'
                                                             }`}
@@ -2205,9 +2236,9 @@ const handleStudentLeave = async (studentId, club) => {
                                                             Absent
                                                         </button>
                                                         <button
-                                                            onClick={() => handleAttendanceStatusChange(memberId, 'excused')}
+                                                            onClick={() => handleAttendanceStatusChange(memberEmail, 'excused')}
                                                             className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                                                                attendanceRecords[memberId] === 'excused'
+                                                                attendanceRecords[memberEmail] === 'excused'
                                                                     ? 'bg-blue-600 text-white'
                                                                     : 'bg-gray-100 text-gray-600 hover:bg-blue-100'
                                                             }`}
@@ -2324,7 +2355,7 @@ const handleStudentLeave = async (studentId, club) => {
                 return (
                     <div className="max-h-96 overflow-y-auto space-y-2">
                         {filteredStudents.map((student) => {
-                            const isEnrolled = studentDrawer.club.members.includes(student.id);
+                            const isEnrolled = studentDrawer.club.members.includes(student.email);
                             const isFull = studentDrawer.club.members.length >= studentDrawer.club.capacity;
 
                             return (

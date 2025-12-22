@@ -173,6 +173,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
               path: "/school-admin/communication/circulars",
               icon: ClipboardDocumentListIcon,
             },
+            {
+              name: "Student Communication",
+              path: "/school-admin/communication/messages-student",
+              icon: BellIcon,
+            },
           ],
         },
         {
@@ -432,6 +437,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose })
              name: "Verifications",
             path: "/college-admin/students/verifications",
             icon: ChartPieIcon,
+          },
+          {
+             name: "Communication",
+            path: "/college-admin/students/communication",
+            icon: BellIcon,
           }
         ],
       },

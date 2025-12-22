@@ -29,6 +29,7 @@ import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
+import NewStudentConversationModalEducator from '../../components/messaging/NewStudentConversationModalEducator';
 
 const Communication = () => {
   const location = useLocation();
@@ -42,6 +43,7 @@ const Communication = () => {
     conversationId: null, 
     contactName: '' 
   });
+  const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const markedAsReadRef = useRef<Set<string>>(new Set());
   
@@ -132,6 +134,51 @@ const Communication = () => {
     showToast: true,
     enabled: !!educatorId
   });
+
+  // Handle new conversation creation
+  const handleNewConversation = useCallback(async (studentId: string, subject: string) => {
+    if (!educatorId) return;
+    
+    try {
+      console.log('🆕 Creating new conversation with student:', studentId, 'subject:', subject);
+      
+      // Check if conversation already exists
+      const existingConversation = activeConversations.find(conv => 
+        conv.student_id === studentId
+      );
+      
+      if (existingConversation) {
+        console.log('✅ Found existing conversation:', existingConversation.id);
+        setSelectedConversationId(existingConversation.id);
+        setShowNewConversationModal(false);
+        toast.success('Opened existing conversation');
+        return;
+      }
+      
+      // Create new conversation
+      const conversation = await MessageService.getOrCreateStudentEducatorConversation(
+        studentId,
+        educatorId,
+        undefined, // classId - will be determined by the system
+        subject
+      );
+      
+      console.log('✅ New conversation created:', conversation);
+      
+      // Refresh conversations to include the new one
+      await refetchActive();
+      
+      // Select the new conversation
+      setSelectedConversationId(conversation.id);
+      setShowNewConversationModal(false);
+      
+      toast.success('New conversation started');
+      
+    } catch (error) {
+      console.error('❌ Error creating conversation:', error);
+      toast.error('Failed to start conversation');
+    }
+  }, [educatorId, activeConversations, refetchActive]);
 
   // Subscribe to conversation updates
   useEffect(() => {
@@ -527,7 +574,7 @@ const Communication = () => {
                   </button>
                 )}
                 <ChatBubbleLeftRightIcon className="w-6 h-6 text-green-600" />
-                <div className="flex flex-col">
+                <div className="flex flex-col flex-1">
                   <h2 className="text-xl font-bold text-gray-900">
                     {showArchived ? 'Archived Messages' : 'Student Messages'}
                   </h2>
@@ -537,6 +584,16 @@ const Communication = () => {
                     </p>
                   )}
                 </div>
+                {!showArchived && (
+                  <button
+                    onClick={() => setShowNewConversationModal(true)}
+                    className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                    title="Start new conversation"
+                  >
+                    <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                    New
+                  </button>
+                )}
               </div>
               <div className="relative">
                 <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -632,17 +689,26 @@ const Communication = () => {
                     </button>
                   )}
                   {!showArchived && !searchQuery && (
-                    <button
-                      onClick={() => {
-                        toast('Students will initiate conversations with you from their Messages page', {
-                          icon: 'ℹ️',
-                          duration: 4000,
-                        });
-                      }}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
-                    >
-                      Waiting for Students
-                    </button>
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => setShowNewConversationModal(true)}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                        Start New Conversation
+                      </button>
+                      <button
+                        onClick={() => {
+                          toast('Students will initiate conversations with you from their Messages page', {
+                            icon: 'ℹ️',
+                            duration: 4000,
+                          });
+                        }}
+                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Waiting for Students
+                      </button>
+                    </div>
                   )}
                 </div>
               ) : (
@@ -936,6 +1002,14 @@ const Communication = () => {
         onConfirm={handleDeleteConversation}
         contactName={deleteModal.contactName}
         isDeleting={deleteMutation.isPending}
+      />
+
+      {/* New Conversation Modal */}
+      <NewStudentConversationModalEducator
+        isOpen={showNewConversationModal}
+        onClose={() => setShowNewConversationModal(false)}
+        onCreateConversation={handleNewConversation}
+        educatorId={educatorId}
       />
     </div>
   );

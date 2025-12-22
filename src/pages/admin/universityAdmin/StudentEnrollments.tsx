@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/admin/Pagination';
-import StudentProfileDrawer from '@/components/admin/components/StudentProfileDrawer';
+import StudentProfileDrawer from '@/components/shared/StudentProfileDrawer';
 import CareerPathDrawer from '@/components/admin/components/CareerPathDrawer';
 import { useStudents } from '../../../hooks/useAdminStudents';
 import { generateCareerPath, type CareerPathResponse, type StudentProfile } from '@/services/aiCareerPathService';
@@ -836,6 +836,7 @@ const StudentEnrollments = () => {
           setShowDrawer(false);
           setSelectedStudent(null);
         }}
+        userRole="university_admin"
       />
 
       {/* Career Path Drawer */}

@@ -107,7 +107,7 @@ const EmbeddedAssessment = ({ onClose }) => {
   return (
     <div className="fixed inset-0 z-50 bg-white">
       {/* Header with Close Button */}
-      <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg z-10 flex items-center justify-between px-6">
+      <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg z-10 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
             <img 

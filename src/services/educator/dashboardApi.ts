@@ -1,24 +1,71 @@
 import { supabase } from '../../lib/supabaseClient';
 
-// Shared function to get authenticated educator data
+// Shared function to get authenticated educator data with class assignments
 async function getAuthenticatedEducator() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.user) throw new Error('No authenticated user');
   
   const user = session.user;
 
-  // Get educator's school
-  const { data: educatorData, error: educatorError } = await supabase
+  // First check if they are a school educator
+  const { data: schoolEducatorData, error: schoolEducatorError } = await supabase
     .from('school_educators')
-    .select('id, school_id')
+    .select('id, school_id, role')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
-  if (educatorError || !educatorData?.school_id) {
-    throw new Error('Educator not registered with any school. Please contact your administrator.');
+  if (schoolEducatorError && schoolEducatorError.code !== 'PGRST116') {
+    throw schoolEducatorError;
   }
 
-  return { user, educatorData };
+  if (schoolEducatorData?.school_id) {
+    // Get assigned class IDs for this educator (if not admin)
+    let assignedClassIds: string[] = [];
+    
+    if (schoolEducatorData.role !== 'admin') {
+      const { data: classAssignments, error: classError } = await supabase
+        .from('school_educator_class_assignments')
+        .select('class_id')
+        .eq('educator_id', schoolEducatorData.id);
+
+      if (!classError && classAssignments) {
+        assignedClassIds = classAssignments.map(assignment => assignment.class_id);
+      }
+    }
+
+    return { 
+      user, 
+      educatorData: schoolEducatorData, 
+      educatorType: 'school' as const,
+      assignedClassIds 
+    };
+  }
+
+  // Check if they are a college lecturer
+  const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
+    .from('college_lecturers')
+    .select('id, collegeId')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (collegeLecturerError && collegeLecturerError.code !== 'PGRST116') {
+    throw collegeLecturerError;
+  }
+
+  if (collegeLecturerData?.collegeId) {
+    return { 
+      user, 
+      educatorData: { 
+        id: collegeLecturerData.id, 
+        school_id: collegeLecturerData.collegeId,
+        role: 'lecturer'
+      }, 
+      educatorType: 'college' as const,
+      assignedClassIds: [] // College lecturers see all college students
+    };
+  }
+
+  throw new Error('Educator not registered with any school or college. Please contact your administrator.');
 }
 
 export interface DashboardKPIs {
@@ -56,14 +103,26 @@ export interface Announcement {
 export const dashboardApi = {
   async getKPIs(): Promise<DashboardKPIs> {
     try {
-      const { user, educatorData } = await getAuthenticatedEducator();
+      const { user, educatorData, educatorType, assignedClassIds } = await getAuthenticatedEducator();
 
-      // Get students from educator's school
-      const { data: studentsData, error: studentsError } = await supabase
+      let studentsQuery = supabase
         .from('students')
         .select('id, user_id')
-        .eq('school_id', educatorData.school_id)
         .eq('is_deleted', false);
+
+      // Apply filtering based on educator type and role
+      if (educatorType === 'school') {
+        studentsQuery = studentsQuery.eq('school_id', educatorData.school_id);
+        
+        // If educator has assigned classes (not admin), filter by those classes
+        if (assignedClassIds.length > 0) {
+          studentsQuery = studentsQuery.in('school_class_id', assignedClassIds);
+        }
+      } else if (educatorType === 'college') {
+        studentsQuery = studentsQuery.eq('college_id', educatorData.school_id);
+      }
+
+      const { data: studentsData, error: studentsError } = await studentsQuery;
 
       if (studentsError) throw studentsError;
 
@@ -152,14 +211,26 @@ export const dashboardApi = {
 
   async getRecentActivities(limit: number = 10): Promise<RecentActivity[]> {
     try {
-      const { user, educatorData } = await getAuthenticatedEducator();
+      const { user, educatorData, educatorType, assignedClassIds } = await getAuthenticatedEducator();
 
-      // Get students from educator's school
-      const { data: studentsData } = await supabase
+      let studentsQuery = supabase
         .from('students')
         .select('id, user_id, name')
-        .eq('school_id', educatorData.school_id)
         .eq('is_deleted', false);
+
+      // Apply filtering based on educator type and role
+      if (educatorType === 'school') {
+        studentsQuery = studentsQuery.eq('school_id', educatorData.school_id);
+        
+        // If educator has assigned classes (not admin), filter by those classes
+        if (assignedClassIds.length > 0) {
+          studentsQuery = studentsQuery.in('school_class_id', assignedClassIds);
+        }
+      } else if (educatorType === 'college') {
+        studentsQuery = studentsQuery.eq('college_id', educatorData.school_id);
+      }
+
+      const { data: studentsData } = await studentsQuery;
 
       const studentUserIds = studentsData?.map(s => s.user_id) || [];
       const studentIds = studentsData?.map(s => s.id) || [];
@@ -577,14 +648,26 @@ export const dashboardApi = {
 
   async getSkillAnalytics(): Promise<SkillAnalytics> {
     try {
-      const { educatorData } = await getAuthenticatedEducator();
+      const { educatorData, educatorType, assignedClassIds } = await getAuthenticatedEducator();
 
-      // Get students from educator's school
-      const { data: studentsData } = await supabase
+      let studentsQuery = supabase
         .from('students')
         .select('id, user_id')
-        .eq('school_id', educatorData.school_id)
         .eq('is_deleted', false);
+
+      // Apply filtering based on educator type and role
+      if (educatorType === 'school') {
+        studentsQuery = studentsQuery.eq('school_id', educatorData.school_id);
+        
+        // If educator has assigned classes (not admin), filter by those classes
+        if (assignedClassIds.length > 0) {
+          studentsQuery = studentsQuery.in('school_class_id', assignedClassIds);
+        }
+      } else if (educatorType === 'college') {
+        studentsQuery = studentsQuery.eq('college_id', educatorData.school_id);
+      }
+
+      const { data: studentsData } = await studentsQuery;
 
       const studentUserIds = studentsData?.map(s => s.user_id) || [];
 

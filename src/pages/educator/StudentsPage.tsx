@@ -227,109 +227,127 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
   onToggleSelect?: (studentId: string) => void;
 }) => {
   return (
-    <div className={`bg-white border rounded-lg p-4 hover:shadow-md transition-shadow ${
-      isSelected ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200'
-    }`}>
-      {/* Checkbox */}
+    <div 
+      className={`bg-white border rounded-lg p-4 hover:shadow-md transition-all duration-200 flex flex-col h-full relative group ${
+        isSelected ? 'border-primary-500 ring-2 ring-primary-200 bg-primary-50/30' : 'border-gray-200 hover:border-gray-300'
+      }`}
+    >
+      {/* Professional Checkbox - Top Right Corner */}
       {onToggleSelect && (
-        <div className="flex items-start mb-3">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => onToggleSelect(student.id)}
-            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mt-1"
-          />
+        <div className="absolute top-3 right-3 z-10">
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onToggleSelect(student.id)}
+              className="sr-only peer"
+            />
+            <div className={`
+              w-5 h-5 rounded border-2 transition-all duration-200 flex items-center justify-center
+              ${isSelected 
+                ? 'bg-primary-600 border-primary-600' 
+                : 'bg-white border-gray-300 hover:border-primary-400 group-hover:border-gray-400'
+              }
+            `}>
+              {isSelected && (
+                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+          </label>
         </div>
       )}
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <h3 className="font-medium text-gray-900">{student.name}</h3>
-          <p className="text-sm text-gray-500">{student.dept}</p>
-          <p className="text-xs text-gray-400">{student.college} • {student.location}</p>
-        </div>
-        <div className="flex flex-col items-end">
-          <div className="flex items-center mb-1">
-            <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
-            <span className="text-sm font-medium text-gray-700 ml-1">{student.ai_score_overall}</span>
+      
+      {/* Content that can grow */}
+      <div className="flex-1">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3 pr-8">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-gray-900 truncate">{student.name}</h3>
+            <p className="text-sm text-gray-500 truncate">{student.dept}</p>
+            <p className="text-xs text-gray-400 truncate">{student.college} • {student.location}</p>
           </div>
-          <BadgeComponent badges={student.badges} />
+          <div className="flex flex-col items-end ml-3 flex-shrink-0">
+            <div className="flex items-center mb-1">
+              <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
+              <span className="text-sm font-medium text-gray-700 ml-1">{student.ai_score_overall}</span>
+            </div>
+            <BadgeComponent badges={student.badges} />
+          </div>
         </div>
-      </div>
 
-      {/* Skills */}
-      <div className="mb-3">
-        <div className="flex flex-wrap gap-1">
-          {student.skills.slice(0, 5).map((skill, index: number) => {
-            const label = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
-            if (!label) return null;
-            return (
-              <span
-                key={index}
-                className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
-              >
-                {label}
-              </span>
-            );
-          })}
-          {student.skills.length > 5 && (
-            <span className="text-xs text-gray-500">+{student.skills.length - 5} more</span>
+        {/* Skills */}
+        <div className="mb-3">
+          <div className="flex flex-wrap gap-1">
+            {student.skills.slice(0, 5).map((skill, index: number) => {
+              const label = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
+              if (!label) return null;
+              return (
+                <span
+                  key={index}
+                  className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
+                >
+                  {label}
+                </span>
+              );
+            })}
+            {student.skills.length > 5 && (
+              <span className="text-xs text-gray-500">+{student.skills.length - 5} more</span>
+            )}
+          </div>
+        </div>
+
+        {/* Evidence snippets */}
+        <div className="mb-4 space-y-1">
+          {student.hackathon && (
+            <p className="text-xs text-gray-600">
+              🏆 Rank #{student.hackathon.rank} in {student.hackathon.event_id}
+            </p>
+          )}
+          {student.internship && (
+            <p className="text-xs text-gray-600">
+              💼 {student.internship.org} ({student.internship.rating}⭐)
+            </p>
+          )}
+          {student.projects && student.projects.length > 0 && (
+            <p className="text-xs text-gray-600">
+              🔬 {student.projects[0].title}
+            </p>
           )}
         </div>
       </div>
 
-      {/* Evidence snippets */}
-      <div className="mb-4 space-y-1">
-        {student.hackathon && (
-          <p className="text-xs text-gray-600">
-            🏆 Rank #{student.hackathon.rank} in {student.hackathon.event_id}
-          </p>
-        )}
-        {student.internship && (
-          <p className="text-xs text-gray-600">
-            💼 {student.internship.org} ({student.internship.rating}⭐)
-          </p>
-        )}
-        {student.projects && student.projects.length > 0 && (
-          <p className="text-xs text-gray-600">
-            🔬 {student.projects[0].title}
-          </p>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500">
-          Updated {new Date(student.last_updated).toLocaleDateString()}
-        </span>
-        <div className="flex flex-wrap gap-2">
+      {/* Actions - Always at bottom */}
+      <div className="flex items-center justify-end mt-auto pt-2 border-t border-gray-100">
+        <div className="flex gap-2 flex-nowrap">
           <button
             onClick={() => onViewProfile(student)}
-            className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+            className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-colors whitespace-nowrap"
             disabled={!onViewProfile}
           >
-            <EyeIcon className="h-3 w-3 mr-1" />
+            <EyeIcon className="h-3 w-3 mr-1.5" />
             View
           </button>
           <button
             onClick={() => onMessage(student)}
-            className="inline-flex items-center px-2 py-1 border border-green-300 rounded text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100"
+            className="inline-flex items-center px-3 py-1.5 border border-green-300 rounded-md text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-400 transition-colors whitespace-nowrap"
           >
-            <ChatBubbleLeftRightIcon className="h-3 w-3 mr-1" />
+            <ChatBubbleLeftRightIcon className="h-3 w-3 mr-1.5" />
             Message
           </button>
           <button
             onClick={() => onEdit(student)}
-            className="inline-flex items-center px-2 py-1 border border-blue-300 rounded text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
+            className="inline-flex items-center px-3 py-1.5 border border-blue-300 rounded-md text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 transition-colors whitespace-nowrap"
           >
-            <PencilSquareIcon className="h-3 w-3 mr-1" />
+            <PencilSquareIcon className="h-3 w-3 mr-1.5" />
             Edit
           </button>
           <button
             onClick={() => onDelete(student)}
-            className="inline-flex items-center px-2 py-1 border border-red-300 rounded text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100"
+            className="inline-flex items-center px-3 py-1.5 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 transition-colors whitespace-nowrap"
           >
-            <TrashIcon className="h-3 w-3 mr-1" />
+            <TrashIcon className="h-3 w-3 mr-1.5" />
             Delete
           </button>
         </div>
@@ -368,6 +386,8 @@ const StudentsPage = () => {
   const [filters, setFilters] = useState({
     skills: [],
     courses: [],
+    grades: [], // For school educators
+    sections: [], // For school educators
     badges: [],
     locations: [],
     years: [],
@@ -375,12 +395,14 @@ const StudentsPage = () => {
     maxScore: 100
   });
 
-  // Get educator's school information
-  const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
+  // Get educator's school/college information
+  const { school: educatorSchool, college: educatorCollege, educatorType, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
-  // Fetch students filtered by educator's school
+  // Fetch students filtered by educator's assigned classes or institution
   const { students, loading, error, refetch } = useStudents({ 
-    schoolId: educatorSchool?.id 
+    schoolId: educatorSchool?.id,
+    collegeId: educatorCollege?.id,
+    classIds: educatorType === 'school' ? assignedClassIds : undefined
   });
 
   // Reset to page 1 when filters or search change
@@ -413,23 +435,92 @@ const StudentsPage = () => {
       .slice(0, 20);
   }, [students]);
 
+  // Dynamic filter options based on educator type
   const courseOptions = useMemo(() => {
-    const courseCounts = {};
+    if (educatorType === 'school') {
+      // For school educators, show branch/subject options
+      const branchCounts = {};
+      students.forEach(student => {
+        const branch = student.branch_field || student.course_name;
+        if (branch) {
+          const normalizedBranch = branch.toLowerCase();
+          branchCounts[normalizedBranch] = (branchCounts[normalizedBranch] || 0) + 1;
+        }
+      });
+      return Object.entries(branchCounts)
+        .map(([branch, count]) => ({
+          value: branch,
+          label: branch,
+          count
+        }))
+        .sort((a, b) => b.count - a.count);
+    } else {
+      // For college educators, show department/course options
+      const courseCounts = {};
+      students.forEach(student => {
+        const dept = student.dept;
+        if (dept) {
+          const normalizedCourse = dept.toLowerCase();
+          courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
+        }
+      });
+      return Object.entries(courseCounts)
+        .map(([course, count]) => ({
+          value: course,
+          label: course,
+          count
+        }))
+        .sort((a, b) => b.count - a.count);
+    }
+  }, [students, educatorType]);
+
+  // Grade options for school educators
+  const gradeOptions = useMemo(() => {
+    if (educatorType !== 'school') return [];
+    
+    const gradeCounts = {};
     students.forEach(student => {
-      const dept = student.dept;
-      if (dept) {
-        const normalizedCourse = dept.toLowerCase();
-        courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
+      const grade = student.grade || student.class_grade;
+      if (grade) {
+        gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
       }
     });
-    return Object.entries(courseCounts)
-      .map(([course, count]) => ({
-        value: course,
-        label: course,
+    return Object.entries(gradeCounts)
+      .map(([grade, count]) => ({
+        value: grade,
+        label: `Grade ${grade}`,
         count
       }))
-      .sort((a, b) => b.count - a.count);
-  }, [students]);
+      .sort((a, b) => {
+        // Sort numerically if possible, otherwise alphabetically
+        const aNum = parseInt(a.value);
+        const bNum = parseInt(b.value);
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return aNum - bNum;
+        }
+        return a.value.localeCompare(b.value);
+      });
+  }, [students, educatorType]);
+
+  // Section options for school educators
+  const sectionOptions = useMemo(() => {
+    if (educatorType !== 'school') return [];
+    
+    const sectionCounts = {};
+    students.forEach(student => {
+      const section = student.section || student.class_section;
+      if (section) {
+        sectionCounts[section] = (sectionCounts[section] || 0) + 1;
+      }
+    });
+    return Object.entries(sectionCounts)
+      .map(([section, count]) => ({
+        value: section,
+        label: `Section ${section}`,
+        count
+      }))
+      .sort((a, b) => a.value.localeCompare(b.value));
+  }, [students, educatorType]);
 
   const badgeOptions = useMemo(() => {
     const badgeCounts = {};
@@ -470,7 +561,14 @@ const StudentsPage = () => {
   const yearOptions = useMemo(() => {
     const yearCounts = {};
     students.forEach(student => {
-      const year = (student as { year?: string }).year;
+      // Extract year from enrollmentDate or use created year as fallback
+      let year = null;
+      if (student.enrollmentDate) {
+        year = new Date(student.enrollmentDate).getFullYear().toString();
+      } else if (student.updated_at) {
+        year = new Date(student.updated_at).getFullYear().toString();
+      }
+      
       if (year) {
         yearCounts[year] = (yearCounts[year] || 0) + 1;
       }
@@ -478,10 +576,10 @@ const StudentsPage = () => {
     return Object.entries(yearCounts)
       .map(([year, count]) => ({
         value: year,
-        label: year,
+        label: `Academic Year ${year}`,
         count
       }))
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => parseInt(b.value) - parseInt(a.value)); // Sort by year descending
   }, [students]);
 
   // Enhanced filter and sort with comprehensive search - WITH LEXICOGRAPHICAL ORDERING
@@ -580,10 +678,35 @@ const StudentsPage = () => {
         }
       }
       
-      // Course/department filters
+      // Course/department/branch filters
       if (filters.courses.length > 0) {
-        const dept = student.dept?.toLowerCase();
-        if (!dept || !filters.courses.includes(dept)) {
+        if (educatorType === 'school') {
+          // For school students, check branch_field or course_name
+          const branch = (student.branch_field || student.course_name)?.toLowerCase();
+          if (!branch || !filters.courses.includes(branch)) {
+            return false;
+          }
+        } else {
+          // For college students, check dept
+          const dept = student.dept?.toLowerCase();
+          if (!dept || !filters.courses.includes(dept)) {
+            return false;
+          }
+        }
+      }
+
+      // Grade filters (school only)
+      if (filters.grades.length > 0) {
+        const grade = student.grade || student.class_grade;
+        if (!grade || !filters.grades.includes(grade)) {
+          return false;
+        }
+      }
+
+      // Section filters (school only)
+      if (filters.sections.length > 0) {
+        const section = student.section || student.class_section;
+        if (!section || !filters.sections.includes(section)) {
           return false;
         }
       }
@@ -605,7 +728,14 @@ const StudentsPage = () => {
       
       // Year filters
       if (filters.years.length > 0) {
-        if (!filters.years.includes((student as { year?: string }).year)) {
+        let studentYear = null;
+        if (student.enrollmentDate) {
+          studentYear = new Date(student.enrollmentDate).getFullYear().toString();
+        } else if (student.updated_at) {
+          studentYear = new Date(student.updated_at).getFullYear().toString();
+        }
+        
+        if (!studentYear || !filters.years.includes(studentYear)) {
           return false;
         }
       }
@@ -662,6 +792,8 @@ const StudentsPage = () => {
     setFilters({
       skills: [],
       courses: [],
+      grades: [],
+      sections: [],
       badges: [],
       locations: [],
       years: [],
@@ -776,7 +908,7 @@ const StudentsPage = () => {
           <div className="inline-flex items-baseline">
             <h1 className="text-xl font-semibold text-gray-900">Students</h1>
             <span className="ml-2 text-sm text-gray-500">
-              ({totalItems} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students)
+              ({totalItems} {searchQuery || filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students)
             </span>
           </div>
         </div>
@@ -799,9 +931,9 @@ const StudentsPage = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            {(filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
+            {(filters.skills.length + filters.courses.length + filters.grades.length + filters.sections.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
-                {filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length}
+                {filters.skills.length + filters.courses.length + filters.grades.length + filters.sections.length + filters.badges.length + filters.locations.length + filters.years.length}
               </span>
             )}
           </button>
@@ -833,7 +965,7 @@ const StudentsPage = () => {
         <div className="text-left">
           <h1 className="text-xl font-semibold text-gray-900">Students</h1>
           <span className="text-sm text-gray-500">
-            {totalItems} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students
+            {totalItems} {searchQuery || filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0 ? 'matching' : ''} students
           </span>
         </div>
 
@@ -853,9 +985,9 @@ const StudentsPage = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            {(filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
+            {(filters.skills.length + filters.courses.length + filters.grades.length + filters.sections.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
-                {filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length}
+                {filters.skills.length + filters.courses.length + filters.grades.length + filters.sections.length + filters.badges.length + filters.locations.length + filters.years.length}
               </span>
             )}
           </button>
@@ -906,13 +1038,41 @@ const StudentsPage = () => {
                   />
                 </FilterSection>
 
-                <FilterSection title="Course/Track">
-                  <CheckboxGroup
-                    options={courseOptions}
-                    selectedValues={filters.courses}
-                    onChange={(values) => setFilters({ ...filters, courses: values })}
-                  />
-                </FilterSection>
+                {educatorType === 'school' ? (
+                  <>
+                    <FilterSection title="Subject/Branch">
+                      <CheckboxGroup
+                        options={courseOptions}
+                        selectedValues={filters.courses}
+                        onChange={(values) => setFilters({ ...filters, courses: values })}
+                      />
+                    </FilterSection>
+
+                    <FilterSection title="Grade">
+                      <CheckboxGroup
+                        options={gradeOptions}
+                        selectedValues={filters.grades}
+                        onChange={(values) => setFilters({ ...filters, grades: values })}
+                      />
+                    </FilterSection>
+
+                    <FilterSection title="Section">
+                      <CheckboxGroup
+                        options={sectionOptions}
+                        selectedValues={filters.sections}
+                        onChange={(values) => setFilters({ ...filters, sections: values })}
+                      />
+                    </FilterSection>
+                  </>
+                ) : (
+                  <FilterSection title="Course/Track">
+                    <CheckboxGroup
+                      options={courseOptions}
+                      selectedValues={filters.courses}
+                      onChange={(values) => setFilters({ ...filters, courses: values })}
+                    />
+                  </FilterSection>
+                )}
 
                 <FilterSection title="Verification Badge">
                   <CheckboxGroup
@@ -1032,7 +1192,11 @@ const StudentsPage = () => {
           {/* Results */}
           <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className={`grid grid-cols-1 gap-4 items-stretch ${
+                showFilters 
+                  ? 'md:grid-cols-1 lg:grid-cols-2' // 2 columns when filters are open
+                  : 'md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3' // 3 columns when filters are closed
+              }`}>
                 {(loading || schoolLoading) && <div className="text-sm text-gray-500">Loading students...</div>}
                 {error && <div className="text-sm text-red-600">{error}</div>}
                 {!loading && !schoolLoading && paginatedStudents.map((student) => (
@@ -1050,18 +1214,20 @@ const StudentsPage = () => {
                 {!loading && !schoolLoading && paginatedStudents.length === 0 && !error && (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500">
-                      {searchQuery || filters.skills.length > 0 || filters.locations.length > 0
+                      {searchQuery || filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0
                         ? 'No students match your current filters'
                         : educatorSchool 
                           ? `No students found in ${educatorSchool.name}`
-                          : 'No students found.'}
+                          : educatorCollege
+                            ? `No students found in ${educatorCollege.name}`
+                            : 'No students found.'}
                     </p>
                     <p className="text-xs text-gray-400 mt-2">
-                      {educatorSchool 
-                        ? 'Students are filtered by your assigned school.'
+                      {educatorSchool || educatorCollege
+                        ? `Students are filtered by your assigned ${educatorType === 'school' ? 'school' : 'college'}.`
                         : 'Try adjusting your search terms or filters.'}
                     </p>
-                    {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
+                    {(filters.skills.length > 0 || filters.courses.length > 0 || filters.grades.length > 0 || filters.sections.length > 0 || filters.locations.length > 0) && (
                       <button
                         onClick={handleClearFilters}
                         className="mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium"
