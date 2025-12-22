@@ -33,6 +33,14 @@ export async function sendCareerChatMessage(
   onError
 ) {
   try {
+    // Debug logging
+    console.log('🔍 DEBUG - Sending to worker:');
+    console.log('  Worker URL:', getBaseUrl());
+    console.log('  VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
+    console.log('  VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) + '...');
+    console.log('  JWT Token (FULL):', token);
+    console.log('  Message:', message);
+    
     const response = await fetch(`${getBaseUrl()}/chat`, {
       method: 'POST',
       headers: getAuthHeaders(token),
@@ -41,6 +49,7 @@ export async function sendCareerChatMessage(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
+      console.error('❌ Worker error response:', error);
       onError?.(new Error(error.error || 'Chat request failed'));
       return;
     }

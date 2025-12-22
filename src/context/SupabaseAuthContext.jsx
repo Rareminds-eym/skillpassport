@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { handleAuthError, isJwtExpiryError } from '../utils/authErrorHandler';
 
 /**
  * Enhanced AuthContext with Supabase Integration
@@ -68,7 +69,17 @@ export const SupabaseAuthProvider = ({ children }) => {
         .maybeSingle();
 
       // PGRST116 means no rows found - this is expected for non-student users (educators, admins)
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return;
+        }
+        
+        // Handle JWT expiration
+        if (isJwtExpiryError(error)) {
+          await handleAuthError(error);
+          return;
+        }
+
         console.error('❌ Error loading user profile:', error);
         return;
       }
@@ -81,6 +92,9 @@ export const SupabaseAuthProvider = ({ children }) => {
       // For non-student users, userProfile will remain null - this is expected
     } catch (error) {
       console.error('❌ Error loading user profile:', error);
+      if (isJwtExpiryError(error)) {
+        await handleAuthError(error);
+      }
     }
   };
 
