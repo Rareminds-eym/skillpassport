@@ -711,7 +711,7 @@ const WeeklyLearningTracker = () => {
         totalMinutes: weeklyData.reduce((sum, d) => sum + d.minutes, 0),
         completedLessons: (progressData || []).filter(p => p.status === 'completed').length,
         completedModules: new Set((progressData || []).map(p => p.module_id)).size,
-        completedCourses: (enrollments || []).length,
+        completedCourses: (enrollments || []).filter(e => e.completed_at !== null).length,
         currentStreak: streak
       });
     } catch (error) {

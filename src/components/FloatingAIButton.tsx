@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, X, MessageCircle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const FloatingAIButton: React.FC = () => {
@@ -41,14 +40,14 @@ const FloatingAIButton: React.FC = () => {
         onClick={handleClick}
         onMouseEnter={() => setIsTooltipVisible(true)}
         onMouseLeave={() => setIsTooltipVisible(false)}
-        className="relative w-16 h-16 rounded-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 flex items-center justify-center group overflow-hidden"
+        className="relative w-16 h-16 rounded-full bg-white border border-gray-200 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center group overflow-hidden"
       >
         {/* Animated background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <div className="absolute inset-0 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         
         {/* Pulse animation */}
         <motion.div
-          className="absolute inset-0 rounded-full bg-purple-400"
+          className="absolute inset-0 rounded-full bg-gray-200"
           animate={{
             scale: [1, 1.2, 1],
             opacity: [0.5, 0, 0.5],
@@ -62,7 +61,7 @@ const FloatingAIButton: React.FC = () => {
 
         {/* Icon */}
         <div className="relative z-10">
-          <Sparkles className="w-8 h-8 animate-pulse" />
+          <img src="/ai.png" alt="Career AI" className="w-10 h-10 object-contain" />
         </div>
 
         {/* Notification badge (optional - can be activated when there are new features) */}
