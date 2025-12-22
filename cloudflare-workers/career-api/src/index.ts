@@ -1024,9 +1024,6 @@ async function handleGenerateEmbedding(request: Request, env: Env): Promise<Resp
   }
 }
 
-}
-}
-
 // ==================== HANDLER: ANALYZE ASSESSMENT ====================
 
 /**
